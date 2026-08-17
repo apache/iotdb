@@ -121,6 +121,7 @@ public final class DataNodeMiscMessages {
 
   public static final String CREATE_NEW_REGION_ERROR_FMT = "create new region %s error,  exception:%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "create new region %s succeed";
+  public static final String LOG_USER_ARG_ROLE_ARG_422D48D3 = "user: %s, role: %s";
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -949,12 +950,6 @@ public final class DataNodeMiscMessages {
       "cache role's path privileges error";
 
   // ---------------------------------------------------------------------------
-  // auth – BasicAuthorityCache
-  // ---------------------------------------------------------------------------
-  public static final String DATANODE_CACHE_INIT_FAILED =
-      "datanode cache initialization failed";
-
-  // ---------------------------------------------------------------------------
   // trigger – TriggerExecutor
   // ---------------------------------------------------------------------------
   public static final String TRIGGER_FIRE_ERROR =
@@ -1508,5 +1503,32 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is ";
   public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"";
   public static final String MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0 = "initial allocateMemoryForAutoResizingBuffer = {}";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_IT_IS_UNDER_DATA_DIRECTORY_KEEP_USING_ORIGINAL_CONFIGURATION_EE87FFD9 =
+      "Skip setting {} to {} because it is under data directory. Keep using the original "
+          + "configuration: {}.";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_ITS_CANONICAL_PATH_CANNOT_BE_RESOLVED_ARG_KEEP_USING_ORIGINAL_CONFIGURATION_C0A8ED09 =
+      "Skip setting {} to {} because its canonical path cannot be resolved: {}. Keep using the "
+          + "original configuration: {}.";
+  public static final String MISC_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_ACTIVE_LOAD_LISTENING_DIRECTORY_S_ARG_0E6A508E =
+      "Failed to resolve canonical path for active load listening directory %s: %s";
+
+  public static final String EXCEPTION_COLUMNSTOCLONE_CANNOT_BE_NULL_458FDF37 =
+      "columnsToClone cannot be null";
+  public static final String EXCEPTION_CLONELIST_CANNOT_BE_NULL_47AEEA8F =
+      "cloneList cannot be null";
+  public static final String EXCEPTION_TARGET_ALIGNEDTVLIST_HAS_INCOMPATIBLE_COLUMN_CONTAINERS_31FAC613 =
+      "Target AlignedTVList has incompatible column containers";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MOVE_08D46037 =
+      "Missing value arrays for aligned column index %d during move";
+  public static final String EXCEPTION_TARGET_VALUE_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_7889C74F =
+      "Target value column index %d is not ready for move";
+  public static final String EXCEPTION_TARGET_BITMAP_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_AE3B5F88 =
+      "Target bitmap column index %d is not ready for move";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_CLONE_795EB1C5 =
+      "Missing value arrays for aligned column index %d during clone";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6 =
+      "Missing value arrays for aligned column index %d during expand";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E =
+      "Missing value arrays for aligned column index %d during mark null value";
 
 }

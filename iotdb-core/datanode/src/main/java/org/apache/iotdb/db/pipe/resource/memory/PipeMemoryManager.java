@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 
 public class PipeMemoryManager {
@@ -54,6 +55,8 @@ public class PipeMemoryManager {
 
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
   private final IMemoryBlock memoryBlock;
+
+  private final LongSupplier floatingMemoryUsageSupplier;
 
   private static final double EXCEED_PROTECT_THRESHOLD = 0.95;
 
@@ -83,7 +86,8 @@ public class PipeMemoryManager {
         IoTDBDescriptor.getInstance()
             .getMemoryConfig()
             .getPipeMemoryManager()
-            .exactAllocate("Stream", MemoryBlockType.DYNAMIC));
+            .exactAllocate("Stream", MemoryBlockType.DYNAMIC),
+        () -> PipeDataNodeAgent.task().getAllFloatingMemoryUsageInByte());
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeMemoryManager#tryExpandAll()",
@@ -92,7 +96,13 @@ public class PipeMemoryManager {
   }
 
   PipeMemoryManager(final IMemoryBlock memoryBlock) {
+    this(memoryBlock, () -> PipeDataNodeAgent.task().getAllFloatingMemoryUsageInByte());
+  }
+
+  PipeMemoryManager(
+      final IMemoryBlock memoryBlock, final LongSupplier floatingMemoryUsageSupplier) {
     this.memoryBlock = memoryBlock;
+    this.floatingMemoryUsageSupplier = floatingMemoryUsageSupplier;
   }
 
   // NOTE: Here we unify the memory threshold judgment for tablet and tsfile memory block, because
@@ -472,12 +482,23 @@ public class PipeMemoryManager {
         && (double) usedMemorySizeInBytesOfTsFiles < allowedMaxMemorySizeInBytesOfTsTiles();
   }
 
-  private boolean isHardEnoughForResizing(final PipeMemoryBlock block) {
+  private boolean isHardEnoughForResizing(
+      final PipeMemoryBlock block, final long extraMemoryInBytes) {
     if (block instanceof PipeTabletMemoryBlock) {
-      return isHardEnough4TabletParsing();
+      return (double) usedMemorySizeInBytesOfTablets
+                  + (double) extraMemoryInBytes
+                  + (double) usedMemorySizeInBytesOfTsFiles
+              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+          && (double) usedMemorySizeInBytesOfTablets + (double) extraMemoryInBytes
+              < allowedMaxMemorySizeInBytesOfTablets();
     }
     if (block instanceof PipeTsFileMemoryBlock) {
-      return isHardEnough4TsFileSlicing();
+      return (double) usedMemorySizeInBytesOfTablets
+                  + (double) usedMemorySizeInBytesOfTsFiles
+                  + (double) extraMemoryInBytes
+              < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+          && (double) usedMemorySizeInBytesOfTsFiles + (double) extraMemoryInBytes
+              < allowedMaxMemorySizeInBytesOfTsTiles();
     }
     return true;
   }
@@ -710,7 +731,7 @@ public class PipeMemoryManager {
       // Dynamically resized data-structure blocks must obey the same admission thresholds as
       // blocks allocated with a non-zero initial size. Otherwise they can exhaust the pool and
       // prevent downstream consumers from allocating the memory needed to release them.
-      if (isHardEnoughForResizing(block)
+      if (isHardEnoughForResizing(block, sizeInBytes)
           && getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
               >= sizeInBytes) {
         memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
@@ -1027,19 +1048,31 @@ public class PipeMemoryManager {
   }
 
   public long getFreeMemorySizeInBytes() {
-    return memoryBlock.getFreeMemoryInBytes();
+    return Math.max(0, getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes());
   }
 
   public long getTotalNonFloatingMemorySizeInBytes() {
-    return (long)
-        (memoryBlock.getTotalMemorySizeInBytes()
-            * (1 - PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
+    // Floating memory is an upper limit for retained InsertNodes instead of a statically reserved
+    // partition. Non-floating allocations can borrow all floating memory that is not actually in
+    // use, which is especially important for TsFile-only pipes.
+    return Math.max(
+        0, memoryBlock.getTotalMemorySizeInBytes() - getUsedFloatingMemorySizeInBytes());
   }
 
   public long getTotalFloatingMemorySizeInBytes() {
-    return (long)
-        (memoryBlock.getTotalMemorySizeInBytes()
-            * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion());
+    final long configuredUpperLimit =
+        Math.max(
+            0,
+            (long)
+                (memoryBlock.getTotalMemorySizeInBytes()
+                    * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
+    final long memoryNotUsedByNonFloatingAllocations =
+        Math.max(0, memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes());
+    return Math.min(configuredUpperLimit, memoryNotUsedByNonFloatingAllocations);
+  }
+
+  private long getUsedFloatingMemorySizeInBytes() {
+    return Math.max(0, floatingMemoryUsageSupplier.getAsLong());
   }
 
   public long getTotalMemorySizeInBytes() {

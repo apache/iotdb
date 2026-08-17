@@ -165,7 +165,7 @@ public class CreateSubscriptionProcedureTest {
     Mockito.when(
             subscriptionInfo.isTopicSubscribedByConsumerGroup("test_topic", "test_consumer_group"))
         .thenReturn(false);
-    Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic")).thenReturn(topicMeta);
+    Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic", false)).thenReturn(topicMeta);
 
     final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);
     Mockito.when(pipeTaskInfo.checkBeforeCreatePipe(Mockito.any(TCreatePipeReq.class)))

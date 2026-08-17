@@ -22,10 +22,12 @@ package org.apache.iotdb.db.storageengine.load.converter;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileParserMemoryManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -153,10 +155,20 @@ class LoadTreeTsFileTabletIterator
       try {
         scanParser =
             new TsFileInsertionEventScanParser(
-                file, LOAD_TREE_PATTERN, Long.MIN_VALUE, Long.MAX_VALUE, null, null, isWithMod);
+                file,
+                LOAD_TREE_PATTERN,
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                null,
+                isWithMod,
+                LoadTsFileParserMemoryManager.getInstance());
         activeIterator = scanParser.toTabletWithIsAligneds().iterator();
         return;
       } catch (final Exception e) {
+        if (shouldRethrow(e)) {
+          throw toRuntimeException(e);
+        }
         if (!switchFromScanToQuery(e)) {
           throw toRuntimeException(e);
         }
@@ -324,7 +336,8 @@ class LoadTreeTsFileTabletIterator
                 activeQueryTask.startTime,
                 activeQueryTask.endTime,
                 activeQueryTask.toDeviceMeasurementsMap(),
-                isWithMod);
+                isWithMod,
+                LoadTsFileParserMemoryManager.getInstance());
         final Iterator<TabletInsertionEvent> tabletIterator =
             activeQueryParser.toTabletInsertionEvents().iterator();
         activeIterator =
@@ -352,6 +365,9 @@ class LoadTreeTsFileTabletIterator
             };
         return true;
       } catch (final Exception e) {
+        if (shouldRethrow(e)) {
+          throw toRuntimeException(e);
+        }
         LOGGER.warn(
             StorageEngineMessages
                 .MESSAGE_LOAD_FAILED_TO_INITIALIZE_QUERY_FALLBACK_FOR_DEVICE_ARG_MEASUREMENTS_ARG_IN_TSFILE_ARG_SPLIT_OR_SKIP_THIS_QUERY_TASK_AND_CONTINUE_C6F69685,
@@ -389,7 +405,8 @@ class LoadTreeTsFileTabletIterator
     Throwable current = e;
     while (Objects.nonNull(current)) {
       if (current instanceof InterruptedException
-          || current instanceof PipeRuntimeOutOfMemoryCriticalException) {
+          || current instanceof PipeRuntimeOutOfMemoryCriticalException
+          || current instanceof LoadRuntimeOutOfMemoryException) {
         return true;
       }
       current = current.getCause();

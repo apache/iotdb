@@ -147,6 +147,10 @@ import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.DELTA;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INCREASE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.IRATE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.RATE;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind.AGGREGATE;
 import static org.apache.iotdb.commons.queryengine.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
@@ -1320,9 +1324,10 @@ public class TableDistributedPlanGenerator
     //  push down aggregation if the child of aggregation node only has the union Node
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
+      AggregationNode physicalAggregation = withRateFunctionInputOrdering(node, childOrdering);
 
       if (childrenNodes.get(0) instanceof UnionNode
-          && node.getAggregations().values().stream()
+          && physicalAggregation.getAggregations().values().stream()
               .noneMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
         UnionNode unionNode = (UnionNode) childrenNodes.get(0);
         List<PlanNode> children = unionNode.getChildren();
@@ -1343,7 +1348,8 @@ public class TableDistributedPlanGenerator
         }
 
         // 2. split the aggregation into partial and final
-        Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
+        Pair<AggregationNode, AggregationNode> splitResult =
+            split(physicalAggregation, symbolAllocator, queryId);
         AggregationNode intermediate = splitResult.right;
 
         // 3. add the aggregation node above the project node
@@ -1362,7 +1368,7 @@ public class TableDistributedPlanGenerator
                               intermediate.getStep(),
                               intermediate.getHashSymbol(),
                               intermediate.getGroupIdSymbol());
-                      if (node.isStreamable() && childOrdering != null) {
+                      if (physicalAggregation.isStreamable() && childOrdering != null) {
                         nodeOrderingMap.put(planNodeId, expectedOrderingSchema);
                       }
                       return aggregationNode;
@@ -1378,7 +1384,7 @@ public class TableDistributedPlanGenerator
         return Collections.singletonList(splitResult.left);
       }
 
-      return Collections.singletonList(node);
+      return Collections.singletonList(physicalAggregation);
     }
 
     // We cannot do multi-stage Aggregate if any aggregation-function is distinct.
@@ -1386,10 +1392,12 @@ public class TableDistributedPlanGenerator
     // MarkDistinctNode will merge all data from different child.
     if (node.getAggregations().values().stream()
         .anyMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
-      node.setChild(
+      PlanNode physicalChild =
           mergeChildrenViaCollectOrMergeSort(
-              nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
-      return Collections.singletonList(node);
+              nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes);
+      node.setChild(physicalChild);
+      return Collections.singletonList(
+          withRateFunctionInputOrdering(node, nodeOrderingMap.get(physicalChild.getPlanNodeId())));
     }
     Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
     AggregationNode intermediate = splitResult.right;
@@ -1419,6 +1427,58 @@ public class TableDistributedPlanGenerator
         mergeChildrenViaCollectOrMergeSort(
             nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
     return Collections.singletonList(splitResult.left);
+  }
+
+  private static AggregationNode withRateFunctionInputOrdering(
+      AggregationNode node, OrderingScheme childOrdering) {
+    Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>();
+    node.getAggregations()
+        .forEach(
+            (symbol, aggregation) ->
+                aggregations.put(
+                    symbol,
+                    new AggregationNode.Aggregation(
+                        aggregation.getResolvedFunction(),
+                        aggregation.getArguments(),
+                        aggregation.isDistinct(),
+                        aggregation.getFilter(),
+                        aggregation.getOrderingScheme(),
+                        aggregation.getMask(),
+                        isInputOrderedByTimeAscending(
+                            aggregation, node.getStep(), node.getGroupingKeys(), childOrdering))));
+    return AggregationNode.builderFrom(node).setAggregations(aggregations).build();
+  }
+
+  static boolean isInputOrderedByTimeAscending(
+      AggregationNode.Aggregation aggregation,
+      AggregationNode.Step step,
+      List<Symbol> groupingKeys,
+      OrderingScheme childOrdering) {
+    String functionName = aggregation.getResolvedFunction().getSignature().getName();
+    if (step != SINGLE
+        || childOrdering == null
+        || aggregation.getArguments().size() < 2
+        || !(RATE.equalsIgnoreCase(functionName)
+            || INCREASE.equalsIgnoreCase(functionName)
+            || IRATE.equalsIgnoreCase(functionName)
+            || DELTA.equalsIgnoreCase(functionName))) {
+      return false;
+    }
+
+    Symbol timeSymbol = Symbol.from(aggregation.getArguments().get(1));
+    List<Symbol> orderBy = childOrdering.getOrderBy();
+    int timeIndex = orderBy.indexOf(timeSymbol);
+    if (timeIndex < 0 || !childOrdering.getOrdering(timeSymbol).isAscending()) {
+      return false;
+    }
+
+    Set<Symbol> groupingKeySet = new HashSet<>(groupingKeys);
+    for (int i = 0; i < timeIndex; i++) {
+      if (!groupingKeySet.contains(orderBy.get(i))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private boolean prefixMatched(OrderingScheme childOrdering, List<Symbol> preGroupedSymbols) {

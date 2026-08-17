@@ -123,10 +123,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
+  private volatile String authenticatedUsername;
   private volatile ConsumerConfig sharedConsumerConfig;
   private volatile boolean consumerInvalidated;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
   private final AtomicLong inFlightRequestCount = new AtomicLong(0);
+  private long consumerStateVersion;
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
 
@@ -181,57 +183,95 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   @Override
-  public void handleExit() {
-    final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
-    if (Objects.nonNull(consumerConfig)) {
-      LOGGER.info(
-          DataNodePipeMessages
-              .PIPE_LOG_SUBSCRIPTION_REMOVE_CONSUMER_CONFIG_WHEN_HANDLING_EXIT_3827D0E8,
-          consumerConfigThreadLocal.get());
-      // we should not close the consumer here because it might reuse the previous consumption
-      // progress to continue consuming
-      // closeConsumer(consumerConfig);
-      // when handling exit, unsubscribe from topics that have already been completed as much as
-      // possible to release some resources (such as the underlying pipe) in a timely manner
-      unsubscribeCompleteTopics(consumerConfig);
-      consumerConfigThreadLocal.remove();
-    }
+  public void setAuthenticatedUsername(final String username) {
+    authenticatedUsername = username;
+  }
+
+  @Override
+  public String getConsumerId() {
+    final ConsumerConfig consumerConfig = sharedConsumerConfig;
+    return Objects.isNull(consumerConfig) ? null : consumerConfig.getConsumerId();
+  }
+
+  @Override
+  public String getConsumerGroupId() {
+    final ConsumerConfig consumerConfig = sharedConsumerConfig;
+    return Objects.isNull(consumerConfig) ? null : consumerConfig.getConsumerGroupId();
+  }
+
+  @Override
+  public boolean hasActiveConsumer() {
+    return Objects.nonNull(sharedConsumerConfig);
+  }
+
+  @Override
+  public void invalidateConsumer() {
     clearSharedConsumerState();
   }
 
   @Override
-  public void handleTimeout() {
-    final ConsumerConfig consumerConfig;
-    final long inactiveMs;
-    final long timeoutMs;
+  public void handleExit() {
     synchronized (this) {
-      consumerConfig = sharedConsumerConfig;
+      final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+      try {
+        if (Objects.nonNull(consumerConfig)) {
+          LOGGER.info(
+              DataNodePipeMessages
+                  .PIPE_LOG_SUBSCRIPTION_REMOVE_CONSUMER_CONFIG_WHEN_HANDLING_EXIT_3827D0E8,
+              consumerConfig);
+          // We should not close the consumer here because it might reuse the previous consumption
+          // progress to continue consuming. When another connection has already taken ownership,
+          // the receiver is invalidated and even this best-effort cleanup must be skipped.
+          if (!consumerInvalidated) {
+            // When handling exit, unsubscribe from topics that have already been completed as much
+            // as possible to release some resources (such as the underlying pipe) in a timely
+            // manner.
+            unsubscribeCompleteTopics(consumerConfig);
+          }
+        }
+      } finally {
+        consumerConfigThreadLocal.remove();
+        pollTimerThreadLocal.remove();
+        authenticatedUsername = null;
+      }
+    }
+  }
+
+  @Override
+  public void handleTimeout() {
+    synchronized (this) {
+      final ConsumerConfig consumerConfig = sharedConsumerConfig;
       if (Objects.isNull(consumerConfig) || inFlightRequestCount.get() > 0) {
         return;
       }
-      timeoutMs = calculateConsumerInactivityTimeoutMs(consumerConfig);
-      inactiveMs = System.currentTimeMillis() - lastActivityTimeMs;
+      final long timeoutMs = calculateConsumerInactivityTimeoutMs(consumerConfig);
+      final long inactiveMs = System.currentTimeMillis() - lastActivityTimeMs;
       if (inactiveMs <= timeoutMs) {
         return;
       }
-      clearSharedConsumerState();
-    }
 
-    LOGGER.info(
-        DataNodePipeMessages
-            .PIPE_LOG_SUBSCRIPTION_CONSUMER_IS_INACTIVE_FOR_MS_EXCEEDING_TIMEOUT_36E06B11,
-        consumerConfig,
-        inactiveMs,
-        timeoutMs);
-    try {
-      closeConsumer(consumerConfig);
-    } catch (final Exception e) {
-      LOGGER.warn(
+      final long stateVersion = consumerStateVersion;
+      LOGGER.info(
           DataNodePipeMessages
-              .PIPE_LOG_SUBSCRIPTION_FAILED_TO_CLOSE_TIMED_OUT_CONSUMER_AFTER_MS_89CC11F1,
+              .PIPE_LOG_SUBSCRIPTION_CONSUMER_IS_INACTIVE_FOR_MS_EXCEEDING_TIMEOUT_36E06B11,
           consumerConfig,
           inactiveMs,
-          e);
+          timeoutMs);
+      try {
+        closeConsumer(consumerConfig);
+        // Clear the timeout state only after successful cleanup and only if it still represents the
+        // same consumer activation. On failure, keep it so the timeout checker can retry.
+        if (sharedConsumerConfig == consumerConfig && consumerStateVersion == stateVersion) {
+          clearSharedConsumerState();
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTION_FAILED_TO_CLOSE_TIMED_OUT_CONSUMER_AFTER_MS_89CC11F1,
+            consumerConfig,
+            inactiveMs,
+            e);
+      }
     }
   }
 
@@ -369,11 +409,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(ownerStatus);
     }
 
+    final TSStatus readPermissionStatus =
+        SubscriptionAgent.topic()
+            .checkTopicReadPermissions(authenticatedUsername, consumerConfig, subscribedTopicNames);
+    if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(readPermissionStatus);
+    }
+
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CONSUMER_HEARTBEAT_SUCCESS, consumerConfig);
 
     // fetch subscribed topics
     final Map<String, TopicConfig> topics =
-        SubscriptionAgent.topic().getTopicConfigs(subscribedTopicNames);
+        SubscriptionAgent.topic()
+            .getTopicConfigs(subscribedTopicNames, isTableModel(consumerConfig));
 
     // fetch available endpoints
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
@@ -452,6 +500,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(ownerStatus);
     }
+    final TSStatus readPermissionStatus =
+        SubscriptionAgent.topic()
+            .checkTopicReadPermissions(authenticatedUsername, consumerConfig, topicNames);
+    if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(readPermissionStatus);
+    }
     subscribe(consumerConfig, topicNames);
 
     LOGGER.info(
@@ -462,7 +516,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .getTopicConfigs(
                 SubscriptionAgent.consumer()
                     .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+                isTableModel(consumerConfig)));
   }
 
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribe(final PipeSubscribeUnsubscribeReq req) {
@@ -508,7 +563,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .getTopicConfigs(
                 SubscriptionAgent.consumer()
                     .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+                isTableModel(consumerConfig)));
   }
 
   private TPipeSubscribeResp handlePipeSubscribePoll(final PipeSubscribePollReq req) {
@@ -561,6 +617,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return PipeSubscribePollResp.toTPipeSubscribeResp(ownerStatus, Collections.emptyList());
           }
+          final TSStatus readPermissionStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicReadPermissions(
+                      authenticatedUsername, consumerConfig, topicNamesToCheck);
+          if (readPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                readPermissionStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollRequest(
                   consumerConfig,
@@ -578,6 +642,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             return PipeSubscribePollResp.toTPipeSubscribeResp(
                 tsFileOwnerStatus, Collections.emptyList());
           }
+          final String tsFileTopicName =
+              ((PollFilePayload) request.getPayload()).getCommitContext().getTopicName();
+          final TSStatus tsFileReadPermissionStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicReadPermissions(
+                      authenticatedUsername,
+                      consumerConfig,
+                      Collections.singleton(tsFileTopicName));
+          if (tsFileReadPermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tsFileReadPermissionStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTsFileRequest(
                   consumerConfig, (PollFilePayload) request.getPayload());
@@ -593,6 +669,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           if (tabletsOwnerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return PipeSubscribePollResp.toTPipeSubscribeResp(
                 tabletsOwnerStatus, Collections.emptyList());
+          }
+          final String tabletsTopicName =
+              ((PollTabletsPayload) request.getPayload()).getCommitContext().getTopicName();
+          final TSStatus tabletsReadPermissionStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicReadPermissions(
+                      authenticatedUsername,
+                      consumerConfig,
+                      Collections.singleton(tabletsTopicName));
+          if (tabletsReadPermissionStatus.getCode()
+              != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tabletsReadPermissionStatus, Collections.emptyList());
           }
           events =
               handlePipeSubscribePollTabletsRequest(
@@ -658,7 +747,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                         SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
                             commitContext.getConsumerGroupId(), commitContext.getTopicName());
                     if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
-                        commitContext.getTopicName())) {
+                        commitContext.getTopicName(), isTableModel(consumerConfig))) {
                       ConsensusSubscriptionPrefetchingQueueMetrics.getInstance()
                           .mark(queueId, commitContext.getRegionId(), size);
                     } else {
@@ -1028,7 +1117,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     return PipeSubscribeSeekResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
-  private void closeConsumer(final ConsumerConfig consumerConfig) {
+  void closeConsumer(final ConsumerConfig consumerConfig) {
     // unsubscribe all subscribed topics
     final Set<String> topicNames =
         SubscriptionAgent.consumer()
@@ -1069,7 +1158,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .getTopicConfigs(
                 SubscriptionAgent.consumer()
                     .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()),
+                isTableModel(consumerConfig));
 
     // fetch topics should be unsubscribed
     final List<String> topicNamesToUnsubscribe =
@@ -1261,17 +1351,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       sharedConsumerConfig = consumerConfig;
       consumerInvalidated = false;
       lastActivityTimeMs = System.currentTimeMillis();
+      consumerStateVersion++;
     }
   }
 
-  private void clearSharedConsumerState() {
-    sharedConsumerConfig = null;
-    consumerInvalidated = true;
+  private synchronized void clearSharedConsumerState() {
+    if (Objects.nonNull(sharedConsumerConfig) || !consumerInvalidated) {
+      sharedConsumerConfig = null;
+      consumerInvalidated = true;
+      consumerStateVersion++;
+    }
   }
 
   private long calculateConsumerInactivityTimeoutMs(final ConsumerConfig consumerConfig) {
     return Math.max(
         SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs(),
         consumerConfig.getHeartbeatIntervalMs() * HEARTBEAT_TIMEOUT_MULTIPLIER);
+  }
+
+  private static boolean isTableModel(final ConsumerConfig consumerConfig) {
+    return SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(consumerConfig.getSqlDialect());
   }
 }

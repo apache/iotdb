@@ -52,33 +52,33 @@ public class SubscriptionCoordinatorTest {
     final CountDownLatch sameTopicLockAcquired = new CountDownLatch(1);
     boolean topic1LockHeld = true;
 
-    coordinator.lockTopicAlteration("topic1");
+    coordinator.lockTopicAlteration("topic1", false);
     try {
       final Future<?> sameTopicAlteration =
           executor.submit(
               () -> {
                 sameTopicAttemptStarted.countDown();
-                coordinator.lockTopicAlteration("topic1");
+                coordinator.lockTopicAlteration("topic1", false);
                 try {
                   sameTopicLockAcquired.countDown();
                 } finally {
-                  coordinator.unlockTopicAlteration("topic1");
+                  coordinator.unlockTopicAlteration("topic1", false);
                 }
               });
 
       Assert.assertTrue(sameTopicAttemptStarted.await(5, TimeUnit.SECONDS));
       Assert.assertFalse(sameTopicLockAcquired.await(100, TimeUnit.MILLISECONDS));
 
-      coordinator.lockTopicAlteration("topic2");
-      coordinator.unlockTopicAlteration("topic2");
+      coordinator.lockTopicAlteration("topic1", true);
+      coordinator.unlockTopicAlteration("topic1", true);
 
-      coordinator.unlockTopicAlteration("topic1");
+      coordinator.unlockTopicAlteration("topic1", false);
       topic1LockHeld = false;
       Assert.assertTrue(sameTopicLockAcquired.await(5, TimeUnit.SECONDS));
       sameTopicAlteration.get(5, TimeUnit.SECONDS);
     } finally {
       if (topic1LockHeld) {
-        coordinator.unlockTopicAlteration("topic1");
+        coordinator.unlockTopicAlteration("topic1", false);
       }
       executor.shutdownNow();
     }
@@ -108,8 +108,11 @@ public class SubscriptionCoordinatorTest {
         new SubscriptionCoordinator(Mockito.mock(ConfigManager.class), subscriptionInfo) {
           @Override
           void waitForOwnerLeaseExpiration(
-              final String waitingTopicName, final long waitingLeaseDurationMs) {
+              final String waitingTopicName,
+              final boolean isTableModel,
+              final long waitingLeaseDurationMs) {
             Assert.assertEquals(topicName, waitingTopicName);
+            Assert.assertFalse(isTableModel);
             Assert.assertEquals(ownerLeaseDurationMs, waitingLeaseDurationMs);
 
             final Map<String, String> updatedAttributes = new HashMap<>();

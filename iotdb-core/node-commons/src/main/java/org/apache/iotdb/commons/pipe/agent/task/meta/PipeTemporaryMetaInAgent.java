@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.resource.PipeRecentFailureCounter;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 
 import java.util.Map;
 import java.util.Objects;
@@ -31,6 +33,7 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
 
   // Statistics
   private final AtomicLong floatingMemoryUsageInByte = new AtomicLong(0L);
+  private final PipeRecentFailureCounter recentFailureCounter = new PipeRecentFailureCounter();
   private final ConcurrentMap<Integer, Boolean> regionId2TsFileEpochDegradedMap =
       new ConcurrentHashMap<>();
 
@@ -71,6 +74,14 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
     return regionId2TsFileEpochDegradedMap.isEmpty() ? null : false;
   }
 
+  public void recordResourceFailure(final PipeResourceFailureType failureType) {
+    recentFailureCounter.record(failureType);
+  }
+
+  public Map<String, Long> getRecentFailures() {
+    return recentFailureCounter.getRecentFailures();
+  }
+
   public String getPipeNameWithCreationTime() {
     return pipeNameWithCreationTime;
   }
@@ -107,13 +118,17 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
             this.floatingMemoryUsageInByte.get(), that.floatingMemoryUsageInByte.get())
         && Objects.equals(
             this.regionId2TsFileEpochDegradedMap, that.regionId2TsFileEpochDegradedMap)
+        && Objects.equals(this.getRecentFailures(), that.getRecentFailures())
         && Objects.equals(this.regionId2CommitterKeyMap, that.regionId2CommitterKeyMap);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        floatingMemoryUsageInByte.get(), regionId2TsFileEpochDegradedMap, regionId2CommitterKeyMap);
+        floatingMemoryUsageInByte.get(),
+        regionId2TsFileEpochDegradedMap,
+        getRecentFailures(),
+        regionId2CommitterKeyMap);
   }
 
   @Override
@@ -123,6 +138,8 @@ public class PipeTemporaryMetaInAgent implements PipeTemporaryMeta {
         + floatingMemoryUsageInByte
         + ", regionId2TsFileEpochDegradedMap="
         + regionId2TsFileEpochDegradedMap
+        + ", recentFailures="
+        + getRecentFailures()
         + ", regionId2CommitterKeyMap="
         + regionId2CommitterKeyMap
         + '}';

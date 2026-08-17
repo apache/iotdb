@@ -318,6 +318,7 @@ struct TDataNodeHeartbeatResp {
   16: optional list<double> pipeRemainingTimeList
   17: optional map<i32, i64> dataRegionRawDataSize
   18: optional list<i32> pipeDegradedStatusList
+  19: optional list<map<string, i64>> pipeRecentFailureList
 }
 
 struct TPipeHeartbeatReq {
@@ -567,6 +568,7 @@ struct TPushTopicMetaReq {
 struct TPushSingleTopicMetaReq {
    1: optional binary topicMeta // Should not set both to null.
    2: optional string topicNameToDrop
+   3: optional bool isTableModel
 }
 
 struct TPushMultiTopicMetaReq {
@@ -594,6 +596,7 @@ struct TTopicOwnerLeaseEntry {
   2: required string ownerId
   3: required i64 ownerEpoch
   4: required i64 leaseRemainingMs
+  5: optional bool isTableModel
 }
 
 struct TPushTopicOwnerLeaseReq {

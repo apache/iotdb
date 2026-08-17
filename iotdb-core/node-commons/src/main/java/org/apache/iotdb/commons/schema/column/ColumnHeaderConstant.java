@@ -197,6 +197,7 @@ public class ColumnHeaderConstant {
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
   public static final String IS_DEGRADED = "IsDegraded";
+  public static final String RECENT_FAILURES = "RecentFailures";
 
   // column names for show repair data partition table progress
   public static final String REPAIR_DATA_PARTITION_TABLE_STATUS = "Status";
@@ -279,6 +280,7 @@ public class ColumnHeaderConstant {
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
   public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
+  public static final String RECENT_FAILURES_TABLE_MODEL = "recent_failures";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
@@ -616,7 +618,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
           new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT),
-          new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN));
+          new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN),
+          new ColumnHeader(RECENT_FAILURES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showRepairDataPartitionTableProgressColumnHeaders =
       ImmutableList.of(
@@ -840,7 +843,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> COPY_TO_TSFILE_COLUMN_HEADERS =
       ImmutableList.of(
-          new ColumnHeader(PATH.toLowerCase(), TSDataType.TEXT),
+          new ColumnHeader(PATH.toLowerCase(), TSDataType.STRING),
           new ColumnHeader(ROW_COUNT, TSDataType.INT64),
           new ColumnHeader(DEVICE_COUNT, TSDataType.INT64),
           new ColumnHeader(SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64),

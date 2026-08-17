@@ -94,6 +94,7 @@ public class LoadTsFileStatement extends Statement {
   private LoadTsFileStatement(
       String filePath, boolean validateSourcePath, boolean validateInternalDataDir)
       throws FileNotFoundException {
+    validateLoadTsFilePath(filePath);
     this.file = new File(filePath).getAbsoluteFile();
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
@@ -109,6 +110,13 @@ public class LoadTsFileStatement extends Statement {
     this.writePointCountList = new ArrayList<>();
     this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.statementType = StatementType.MULTI_BATCH_INSERT;
+  }
+
+  public static void validateLoadTsFilePath(final String filePath) throws FileNotFoundException {
+    if (filePath == null || filePath.isEmpty()) {
+      throw new FileNotFoundException(
+          DataNodeQueryMessages.EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181);
+    }
   }
 
   public static List<File> processTsFile(final File file) throws FileNotFoundException {
