@@ -36,6 +36,9 @@ public final class DataNodeSchemaMessages {
       "SchemaRegion(id = {}) has been deleted, skiped";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
       "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.";
+  public static final String
+      LOG_METADATA_LEASE_IS_FENCED_SKIP_REPORTING_SCHEMA_USAGE_IN_THIS_HEARTBEAT_81D36975 =
+          "Metadata lease is fenced. Skip reporting schema usage in this heartbeat.";
   public static final String TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED =
       "The table %s.%s is a view from tree, cannot be written or deleted from";
   public static final String PEER_IS_SHUTTING_DOWN = "Peer is shutting down now.";

@@ -231,6 +231,9 @@ public class InformationSchema {
     pipeTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.IS_DEGRADED_TABLE_MODEL, TSDataType.BOOLEAN));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.RECENT_FAILURES_TABLE_MODEL, TSDataType.STRING));
     schemaTables.put(PIPES, pipeTable);
 
     final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);

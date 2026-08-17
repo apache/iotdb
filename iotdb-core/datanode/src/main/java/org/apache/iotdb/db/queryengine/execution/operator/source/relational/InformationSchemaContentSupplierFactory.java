@@ -715,6 +715,12 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[10].appendNull();
       }
+      columnBuilders[11].writeBinary(
+          new Binary(
+              tPipeInfo.isSetRecentFailures()
+                  ? new TreeMap<>(tPipeInfo.getRecentFailures()).toString()
+                  : "{}",
+              TSFileConfig.STRING_CHARSET));
 
       resultBuilder.declarePosition();
     }

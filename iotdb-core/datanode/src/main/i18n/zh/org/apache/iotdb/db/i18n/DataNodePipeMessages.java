@@ -412,6 +412,8 @@ public final class DataNodePipeMessages {
       "发送 request {}（watermark = {}）到 {} 失败";
   public static final String FAILED_TO_TRIGGER_COMBINE_WATERMARK_COUNT_PROGRESSINDEX =
       "触发合并失败。watermark={}, count={}, progressIndex={}";
+  public static final String EXCEPTION_FAILED_TO_INITIALIZE_STATEPROGRESSINDEX_FROM_PROGRESS_INDEX_ARG_E95617F9 =
+      "无法从进度索引 %s 初始化 StateProgressIndex。";
   public static final String FAILURE_OCCURRED_WHEN_TRYING_TO_COMMIT_PROGRESS =
       "尝试提交进度索引时发生失败。timestamp={}, count={}, "
           + "progressIndex={}";
@@ -616,8 +618,8 @@ public final class DataNodePipeMessages {
       "当 '{}'（'{}'）设置为 false 时，指定 {} 和 {} 无效。";
   public static final String WHEN_IS_SET_TO_TRUE_SPECIFYING_AND =
       "当 '{}'（'{}'、'{}'、'{}'）设置为 true 时，指定 {} 和 {} 无效。";
-  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_AND_IS =
-      "当指定 {}、{}、{} 或 {} 时，指定 {}、{}、{}、{}、{} 和 {} 无效。";
+  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_OR_IS_INVALID =
+      "当指定 {}、{}、{} 或 {} 时，指定 {}、{}、{} 或 {} 无效。";
 
   // ===================== SINK =====================
 
@@ -1213,8 +1215,6 @@ public final class DataNodePipeMessages {
       "Pipe air gap receiver {} 已启动。Socket：{}";
   public static final String PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY =
       "Pipe air gap receiver {}：临时不可用重试超时，向 sender 返回 FAIL。";
-  public static final String PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED =
-      "Pipe air gap receiver {}：在 air gap receiver 处遇到 TSStatus {}，将忽略。";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe 数据传输错误，{}";
   public static final String PIPE_INSERTING_ROW_CASTING_TYPE_FROM =
       "Pipe：写入 row。将类型从 {} 转换为 {}。";
@@ -1254,8 +1254,6 @@ public final class DataNodePipeMessages {
       "开始加载 serialize number 为 {}、type 为 {} 的 pipeData，value={}";
   public static final String STORAGE_ENGINE_READONLY = "存储引擎只读";
   public static final String SYNC_START_AT_TO_IS_DONE = "Sync {} 从 {} 开始到 {} 已完成。";
-  public static final String TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP =
-      "在 air gap receiver 处遇到临时不可用异常，将在本地重试。";
   public static final String THE_IOTCONSENSUSV2_REQUEST_VERSION_IS_DIFFERENT_FROM =
       "iotConsensusV2 请求版本 {} 与 sender 请求版本 {} 不同，"
           + "receiver 将被重置为 sender 请求版本。";
@@ -1873,9 +1871,14 @@ public final class DataNodePipeMessages {
           + "{} -> {}，runtimeState={}（route hint）";
   public static final String PIPE_LOG_FAILED_TO_CHECK_IF_TOPIC_IS_CONSENSUS_BASED_DEFAULTING_TO_ECCE1509 =
       "检查 topic [{}] 是否为 consensus-based 失败，默认设为 false";
-  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812 =
-      "跳过 consumer group [{}] 的 consensus-based subscription 设置，因为 mode=consensus 仅支持 "
+  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4 =
+      "跳过 consumer group [{}] 的 consensus-based subscription 设置，因为 mode=incremental 仅支持 "
           + "data_region_consensus_protocol_class={}，但当前配置值为 {}（运行时 consensus 实现：{}）";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CANNOT_ARG_CONSENSUS_BASED_TOPIC_S_ARG_IN_CONSUMER_GROUP_ARG_BECAUSE_MODE_INCREMENTAL_ONLY_SUPPORTS_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_ARG_BUT_CURRENT_CONFIGURED_VALUE_IS_ARG_RUNTIME_CONSENSUS_IMPLEMENTATION_ARG_6F21ED67 =
+          "Subscription：无法执行 %s，consensus-based topic 为 %s，consumer group 为 [%s]，因为 "
+              + "mode=incremental 仅支持 data_region_consensus_protocol_class=%s，但当前配置值为 %s"
+              + "（运行时 consensus 实现：%s）";
   public static final String PIPE_LOG_TOPIC_CONFIG_NOT_FOUND_FOR_TOPIC_CANNOT_SET_UP_CONSENSUS_A93339CE =
       "未找到 topic [{}] 的配置，无法设置 consensus queue";
   public static final String PIPE_LOG_NO_LOCAL_IOTCONSENSUS_DATA_REGION_FOUND_FOR_TOPIC_IN_CONSUMER_6FD0600E =
@@ -2413,4 +2416,6 @@ public final class DataNodePipeMessages {
       "共识订阅设置期间 topic %s 的配置不可用";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "无法释放 Pipe {}（创建时间 {}）在 DataRegion {} 中的 TsFile 解析器内存，因为不存在对应的预留。";
+  public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
+      "Pipe processor worker {} 已连续处理同一 event {} ms。Pipe：{}，DataRegion：{}，subtask：{}，event：{}，线程状态：{}。栈：{}";
 }

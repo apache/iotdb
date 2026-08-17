@@ -29,6 +29,8 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -37,10 +39,14 @@ import static org.junit.Assert.assertTrue;
 public class ShowPipeTaskTest {
 
   @Test
-  public void testBuildTSBlockWritesDegradedColumn() throws Exception {
+  public void testBuildTSBlockWritesRuntimeColumns() throws Exception {
     final TShowPipeInfo degradedPipe = createPipeInfo("degraded_pipe");
     degradedPipe.setIsDegraded(true);
     degradedPipe.setExceptionMessage("Authentication failed");
+    final Map<String, Long> recentFailures = new HashMap<>();
+    recentFailures.put("network_timeout", 10L);
+    recentFailures.put("memory_timeout", 15L);
+    degradedPipe.setRecentFailures(recentFailures);
     final TShowPipeInfo normalPipe = createPipeInfo("normal_pipe");
     normalPipe.setIsDegraded(false);
     final TShowPipeInfo unknownPipe = createPipeInfo("unknown_pipe");
@@ -56,6 +62,8 @@ public class ShowPipeTaskTest {
         ColumnHeaderConstant.SUGGESTED_ACTION, result.getResultSetHeader().getRespColumns().get(7));
     assertEquals(
         ColumnHeaderConstant.IS_DEGRADED, result.getResultSetHeader().getRespColumns().get(10));
+    assertEquals(
+        ColumnHeaderConstant.RECENT_FAILURES, result.getResultSetHeader().getRespColumns().get(11));
     assertEquals(3, resultSet.getPositionCount());
     assertTrue(
         resultSet
@@ -66,6 +74,9 @@ public class ShowPipeTaskTest {
     assertTrue(resultSet.getColumn(10).getBoolean(0));
     assertFalse(resultSet.getColumn(10).getBoolean(1));
     assertTrue(resultSet.getColumn(10).isNull(2));
+    assertEquals(
+        "{memory_timeout=15, network_timeout=10}", resultSet.getColumn(11).getBinary(0).toString());
+    assertEquals("{}", resultSet.getColumn(11).getBinary(1).toString());
   }
 
   private TShowPipeInfo createPipeInfo(final String pipeName) {

@@ -55,7 +55,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -114,6 +113,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private String databaseForTableData;
   private final boolean isAsyncLoad;
   private final boolean isVerifySchema;
+  private final boolean isAutoCreateSchemaRequested;
+  private final boolean isAutoCreateSchemaEnabled;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
@@ -141,6 +142,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseForTableData = loadTsFileStatement.getDatabase();
     this.isAsyncLoad = loadTsFileStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
+    this.isAutoCreateSchemaRequested = loadTsFileStatement.isAutoCreateSchema();
+    this.isAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && isAutoCreateSchemaRequested;
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
@@ -165,6 +170,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseForTableData = loadTsFileTableStatement.getDatabase();
     this.isAsyncLoad = loadTsFileTableStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileTableStatement.isVerifySchema();
+    this.isAutoCreateSchemaRequested = loadTsFileTableStatement.isAutoCreateSchema();
+    this.isAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && isAutoCreateSchemaRequested;
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
@@ -186,6 +195,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   protected boolean isAutoCreateDatabase() {
     return isAutoCreateDatabase;
+  }
+
+  protected boolean isAutoCreateSchemaEnabled() {
+    return isAutoCreateSchemaEnabled;
+  }
+
+  protected boolean isAutoCreateSchemaRequested() {
+    return isAutoCreateSchemaRequested;
   }
 
   protected boolean isConvertOnTypeMismatch() {
@@ -298,6 +315,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               databaseLevel,
               isConvertOnTypeMismatch,
               isVerifySchema,
+              isAutoCreateSchemaRequested,
               tabletConversionThresholdBytes,
               isGeneratedByPipe,
               Objects.nonNull(context) ? context.getUsername() : null);
@@ -470,7 +488,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           DataNodeQueryMessages.EMPTY_FILE_DETECTED_WILL_SKIP_LOADING_THIS_FILE,
           tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
-        FileUtils.deleteQuietly(tsFile);
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
       }
     } finally {
       // reset the session info to the original one
@@ -488,15 +506,20 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           isTableModelTsFile.get(i)
               ? loadTsFileDataTypeConverter
                   .convertForTableModel(
-                      LoadTsFile.createUnchecked(
-                              null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                      (isGeneratedByPipe
+                              ? LoadTsFile.createForPipe(
+                                  null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                              : LoadTsFile.createUnchecked(
+                                  null, tsFiles.get(i).getPath(), Collections.emptyMap()))
                           .setDatabase(databaseForTableData)
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null)
               : loadTsFileDataTypeConverter
                   .convertForTreeModel(
-                      LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
+                      (isGeneratedByPipe
+                              ? LoadTsFileStatement.createForPipe(tsFiles.get(i).getPath())
+                              : LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath()))
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null);
@@ -537,7 +560,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     getOrCreateTreeSchemaVerifier().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
     final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
-        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled() || isVerifySchema();
+        isAutoCreateSchemaEnabled || isVerifySchema();
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
@@ -781,15 +804,20 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             isTableModelTsFile.get(i)
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        LoadTsFile.createUnchecked(
-                                null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                        (isGeneratedByPipe
+                                ? LoadTsFile.createForPipe(
+                                    null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                                : LoadTsFile.createUnchecked(
+                                    null, tsFiles.get(i).getPath(), Collections.emptyMap()))
                             .setDatabase(databaseForTableData)
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
-                        LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
+                        (isGeneratedByPipe
+                                ? LoadTsFileStatement.createForPipe(tsFiles.get(i).getPath())
+                                : LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath()))
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null);
@@ -846,9 +874,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   boolean isTemporaryUnavailableDueToPipeSchemaNotReady(final Throwable throwable) {
-    if (!isGeneratedByPipe
-        || !isVerifySchema
-        || IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+    if (!isGeneratedByPipe || !isVerifySchema || isAutoCreateSchemaEnabled) {
       return false;
     }
 

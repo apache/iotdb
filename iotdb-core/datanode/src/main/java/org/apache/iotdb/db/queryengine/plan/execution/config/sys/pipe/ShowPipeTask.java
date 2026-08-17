@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class ShowPipeTask implements IConfigTask {
@@ -164,6 +165,14 @@ public class ShowPipeTask implements IConfigTask {
       } else {
         builder.getColumnBuilder(10).appendNull();
       }
+      builder
+          .getColumnBuilder(11)
+          .writeBinary(
+              new Binary(
+                  tPipeInfo.isSetRecentFailures()
+                      ? new TreeMap<>(tPipeInfo.getRecentFailures()).toString()
+                      : "{}",
+                  TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();

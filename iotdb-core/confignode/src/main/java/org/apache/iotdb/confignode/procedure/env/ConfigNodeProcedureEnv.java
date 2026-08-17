@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -71,6 +72,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
@@ -102,6 +104,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -768,10 +771,21 @@ public class ConfigNodeProcedureEnv {
   }
 
   public List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop) {
+    return dropSingleTopicOnDataNode(topicNameToDrop, null);
+  }
+
+  public List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop, boolean isTableModel) {
+    return dropSingleTopicOnDataNode(topicNameToDrop, Boolean.valueOf(isTableModel));
+  }
+
+  private List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop, Boolean isTableModel) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSingleTopicMetaReq request =
         new TPushSingleTopicMetaReq().setTopicNameToDrop(topicNameToDrop);
+    if (Objects.nonNull(isTableModel)) {
+      request.setIsTableModel(isTableModel);
+    }
 
     final DataNodeAsyncRequestContext<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
@@ -914,6 +928,37 @@ public class ConfigNodeProcedureEnv {
                 CnToDnAsyncRequestType.PULL_COMMIT_PROGRESS, request, dataNodeLocationMap);
     final long timeoutInMs = sendBestEffortRuntimeMetaRequest(clientHandler);
     fillMissingPullCommitProgressResponses(clientHandler, timeoutInMs);
+    return clientHandler.getResponseMap();
+  }
+
+  /**
+   * Collect the current pipe metadata from the specified DataNodes before a metadata-changing
+   * procedure. The caller can use the returned task progress to avoid basing a replacement pipe on
+   * a stale ConfigNode heartbeat.
+   *
+   * <p>This is deliberately best effort. A DataNode that is unavailable cannot contribute a newer
+   * checkpoint, but the alter procedure can still use the checkpoint already stored by ConfigNode.
+   */
+  public Map<Integer, TPipeHeartbeatResp> collectPipeMetaFromDataNodes(
+      final Set<Integer> dataNodeIds) {
+    if (dataNodeIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations().entrySet().stream()
+            .filter(entry -> dataNodeIds.contains(entry.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    if (dataNodeLocationMap.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    final DataNodeAsyncRequestContext<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.PIPE_HEARTBEAT,
+            new TPipeHeartbeatReq(System.currentTimeMillis()),
+            dataNodeLocationMap);
+    sendRuntimeMetaRequest(clientHandler, true, getRuntimeMetaPushTimeoutInMs());
     return clientHandler.getResponseMap();
   }
 
