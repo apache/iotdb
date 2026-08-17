@@ -109,5 +109,4 @@ public final class AuthMessages {
   public static final String EXCEPTION_ACCESS_DENIED_E128C1A1 = "访问被拒绝：";
   public static final String EXCEPTION_ENCRYPT_DECRYPT_FAILED_163764B5 = "加密或解密失败。";
   public static final String EXCEPTION_BACKSLASH_QUOTE_D4C5D637 = "\"";
-
 }

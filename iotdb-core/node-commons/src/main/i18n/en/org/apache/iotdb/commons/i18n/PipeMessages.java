@@ -29,8 +29,7 @@ public final class PipeMessages {
   // All use SLF4J {} placeholder pattern: "ConfigName: {}"
 
   public static final String CONFIG_PIPE_HARDLINK_BASE_DIR_NAME = "PipeHardlinkBaseDirName: {}";
-  public static final String CONFIG_PIPE_HARDLINK_TSFILE_DIR_NAME =
-      "PipeHardlinkTsFileDirName: {}";
+  public static final String CONFIG_PIPE_HARDLINK_TSFILE_DIR_NAME = "PipeHardlinkTsFileDirName: {}";
   public static final String CONFIG_PIPE_FILE_RECEIVER_FSYNC_ENABLED =
       "PipeFileReceiverFsyncEnabled: {}";
   public static final String CONFIG_PIPE_DATA_STRUCTURE_TABLET_ROW_SIZE =
@@ -45,21 +44,18 @@ public final class PipeMessages {
           "PipeDataStructureTsFileMemoryBlockAllocationRejectThreshold: {}";
   public static final String CONFIG_PIPE_TOTAL_FLOATING_MEMORY_PROPORTION =
       "PipeTotalFloatingMemoryProportion: {}";
-  public static final String CONFIG_IS_PIPE_ENABLE_MEMORY_CHECK =
-      "IsPipeEnableMemoryCheck: {}";
+  public static final String CONFIG_IS_PIPE_ENABLE_MEMORY_CHECK = "IsPipeEnableMemoryCheck: {}";
   public static final String CONFIG_PIPE_TSFILE_PARSER_MEMORY = "PipeTsFileParserMemory: {}";
   public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM =
       "PipeTsFileParserInFlightMaxNum: {}";
   public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION =
       "PipeTsFileParserInFlightMaxNumPerPipeRegion: {}";
-  public static final String CONFIG_SINK_BATCH_MEMORY_INSERT_NODE =
-      "SinkBatchMemoryInsertNode: {}";
+  public static final String CONFIG_SINK_BATCH_MEMORY_INSERT_NODE = "SinkBatchMemoryInsertNode: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_TSFILE = "SinkBatchMemoryTsFile: {}";
   public static final String CONFIG_SEND_TSFILE_READ_BUFFER = "SendTsFileReadBuffer: {}";
   public static final String CONFIG_PIPE_RESERVED_MEMORY_PERCENTAGE =
       "PipeReservedMemoryPercentage: {}";
-  public static final String CONFIG_PIPE_MINIMUM_RECEIVER_MEMORY =
-      "PipeMinimumReceiverMemory: {}";
+  public static final String CONFIG_PIPE_MINIMUM_RECEIVER_MEMORY = "PipeMinimumReceiverMemory: {}";
   public static final String CONFIG_PIPE_REALTIME_QUEUE_POLL_TSFILE_THRESHOLD =
       "PipeRealTimeQueuePollTsFileThreshold: {}";
   public static final String CONFIG_PIPE_REALTIME_QUEUE_POLL_HISTORICAL_TSFILE_THRESHOLD =
@@ -80,9 +76,8 @@ public final class PipeMessages {
           "PipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration: {}";
   public static final String CONFIG_PIPE_SUBTASK_EXECUTOR_PENDING_QUEUE_MAX_BLOCKING_TIME_MS =
       "PipeSubtaskExecutorPendingQueueMaxBlockingTimeMs: {}";
-  public static final String
-      CONFIG_PIPE_SUBTASK_EXECUTOR_CRON_HEARTBEAT_EVENT_INTERVAL_SECONDS =
-          "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}";
+  public static final String CONFIG_PIPE_SUBTASK_EXECUTOR_CRON_HEARTBEAT_EVENT_INTERVAL_SECONDS =
+      "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}";
   public static final String CONFIG_PIPE_MAX_WAIT_FINISH_TIME = "PipeMaxWaitFinishTime: {}";
   public static final String CONFIG_PIPE_SINK_SUBTASK_SLEEP_INTERVAL_INIT_MS =
       "PipeSinkSubtaskSleepIntervalInitMs: {}";
@@ -90,21 +85,18 @@ public final class PipeMessages {
       "PipeSinkSubtaskSleepIntervalMaxMs: {}";
   public static final String CONFIG_PIPE_SOURCE_ASSIGNER_DISRUPTOR_RING_BUFFER_SIZE =
       "PipeSourceAssignerDisruptorRingBufferSize: {}";
-  public static final String
-      CONFIG_PIPE_SOURCE_ASSIGNER_DISRUPTOR_RING_BUFFER_ENTRY_SIZE_IN_BYTES =
-          "PipeSourceAssignerDisruptorRingBufferEntrySizeInBytes: {}";
+  public static final String CONFIG_PIPE_SOURCE_ASSIGNER_DISRUPTOR_RING_BUFFER_ENTRY_SIZE_IN_BYTES =
+      "PipeSourceAssignerDisruptorRingBufferEntrySizeInBytes: {}";
   public static final String CONFIG_PIPE_SOURCE_MATCHER_CACHE_SIZE =
       "PipeSourceMatcherCacheSize: {}";
   public static final String CONFIG_PIPE_SINK_HANDSHAKE_TIMEOUT_MS =
       "PipeSinkHandshakeTimeoutMs: {}";
-  public static final String CONFIG_PIPE_SINK_TRANSFER_TIMEOUT_MS =
-      "PipeSinkTransferTimeoutMs: {}";
+  public static final String CONFIG_PIPE_SINK_TRANSFER_TIMEOUT_MS = "PipeSinkTransferTimeoutMs: {}";
   public static final String CONFIG_PIPE_SINK_READ_FILE_BUFFER_SIZE =
       "PipeSinkReadFileBufferSize: {}";
   public static final String CONFIG_PIPE_SINK_READ_FILE_BUFFER_MEMORY_CONTROL_ENABLED =
       "PipeSinkReadFileBufferMemoryControlEnabled: {}";
-  public static final String CONFIG_PIPE_SINK_RETRY_INTERVAL_MS =
-      "PipeSinkRetryIntervalMs: {}";
+  public static final String CONFIG_PIPE_SINK_RETRY_INTERVAL_MS = "PipeSinkRetryIntervalMs: {}";
   public static final String CONFIG_PIPE_SINK_RPC_THRIFT_COMPRESSION_ENABLED =
       "PipeSinkRPCThriftCompressionEnabled: {}";
   public static final String CONFIG_PIPE_LEADER_CACHE_MEMORY_USAGE_PERCENTAGE =
@@ -138,15 +130,12 @@ public final class PipeMessages {
   public static final String
       CONFIG_PIPE_THRESHOLD_ALLOCATION_STRATEGY_FIXED_MEMORY_HIGH_USAGE_THRESHOLD =
           "PipeThresholdAllocationStrategyFixedMemoryHighUsageThreshold: {}";
-  public static final String
-      CONFIG_PIPE_ASYNC_SINK_FORCED_RETRY_TSFILE_EVENT_QUEUE_SIZE_THRESHOLD =
-          "PipeAsyncSinkForcedRetryTsFileEventQueueSizeThreshold: {}";
-  public static final String
-      CONFIG_PIPE_ASYNC_SINK_FORCED_RETRY_TABLET_EVENT_QUEUE_SIZE_THRESHOLD =
-          "PipeAsyncSinkForcedRetryTabletEventQueueSizeThreshold: {}";
-  public static final String
-      CONFIG_PIPE_ASYNC_SINK_FORCED_RETRY_TOTAL_EVENT_QUEUE_SIZE_THRESHOLD =
-          "PipeAsyncSinkForcedRetryTotalEventQueueSizeThreshold: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_FORCED_RETRY_TSFILE_EVENT_QUEUE_SIZE_THRESHOLD =
+      "PipeAsyncSinkForcedRetryTsFileEventQueueSizeThreshold: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_FORCED_RETRY_TABLET_EVENT_QUEUE_SIZE_THRESHOLD =
+      "PipeAsyncSinkForcedRetryTabletEventQueueSizeThreshold: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_FORCED_RETRY_TOTAL_EVENT_QUEUE_SIZE_THRESHOLD =
+      "PipeAsyncSinkForcedRetryTotalEventQueueSizeThreshold: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_RETRY_EXECUTION_TIME_MS_PER_CALL =
       "PipeAsyncSinkMaxRetryExecutionTimeMsPerCall: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_MAX_DURATION_MS =
@@ -175,12 +164,10 @@ public final class PipeMessages {
       "PipeMetaSyncerInitialSyncDelayMinutes: {}";
   public static final String CONFIG_PIPE_META_SYNCER_SYNC_INTERVAL_MINUTES =
       "PipeMetaSyncerSyncIntervalMinutes: {}";
-  public static final String
-      CONFIG_PIPE_META_SYNCER_AUTO_RESTART_PIPE_CHECK_INTERVAL_ROUND =
-          "PipeMetaSyncerAutoRestartPipeCheckIntervalRound: {}";
+  public static final String CONFIG_PIPE_META_SYNCER_AUTO_RESTART_PIPE_CHECK_INTERVAL_ROUND =
+      "PipeMetaSyncerAutoRestartPipeCheckIntervalRound: {}";
   public static final String CONFIG_PIPE_AUTO_RESTART_ENABLED = "PipeAutoRestartEnabled: {}";
-  public static final String CONFIG_PIPE_AIR_GAP_RECEIVER_ENABLED =
-      "PipeAirGapReceiverEnabled: {}";
+  public static final String CONFIG_PIPE_AIR_GAP_RECEIVER_ENABLED = "PipeAirGapReceiverEnabled: {}";
   public static final String CONFIG_PIPE_AIR_GAP_RECEIVER_PORT = "PipeAirGapReceiverPort: {}";
   public static final String CONFIG_PIPE_AIR_GAP_SINK_TABLET_TIMEOUT_MS =
       "PipeAirGapSinkTabletTimeoutMs: {}";
@@ -232,8 +219,7 @@ public final class PipeMessages {
       "PipeEventReferenceTrackingEnabled: {}";
   public static final String CONFIG_PIPE_EVENT_REFERENCE_ELIMINATE_INTERVAL_SECONDS =
       "PipeEventReferenceEliminateIntervalSeconds: {}";
-  public static final String CONFIG_PIPE_AUTO_SPLIT_FULL_ENABLED =
-      "PipeAutoSplitFullEnabled: {}";
+  public static final String CONFIG_PIPE_AUTO_SPLIT_FULL_ENABLED = "PipeAutoSplitFullEnabled: {}";
 
   // ===================== PipePluginAgent =====================
 
@@ -282,8 +268,7 @@ public final class PipeMessages {
   public static final String FAILED_TO_HANDLE_SINGLE_PIPE_META_CHANGES_FORMAT =
       "Failed to handle single pipe meta changes for %s, because %s";
   public static final String FAILED_TO_DROP_PIPE = "Failed to drop pipe {}";
-  public static final String FAILED_TO_DROP_PIPE_FORMAT =
-      "Failed to drop pipe %s, because %s";
+  public static final String FAILED_TO_DROP_PIPE_FORMAT = "Failed to drop pipe %s, because %s";
   public static final String FAILED_TO_ACQUIRE_LOCK_DROPPING_ALL =
       "Failed to acquire lock when dropping all pipe tasks, will skip dropping";
   public static final String FAILED_TO_DROP_PIPE_WITH_CREATION_TIME =
@@ -370,15 +355,12 @@ public final class PipeMessages {
 
   // ===================== BlockingPendingQueue =====================
 
-  public static final String PENDING_QUEUE_PUT_INTERRUPTED =
-      "pending queue put is interrupted.";
-  public static final String PENDING_QUEUE_POLL_INTERRUPTED =
-      "pending queue poll is interrupted.";
+  public static final String PENDING_QUEUE_PUT_INTERRUPTED = "pending queue put is interrupted.";
+  public static final String PENDING_QUEUE_POLL_INTERRUPTED = "pending queue poll is interrupted.";
 
   // ===================== PipeSubtaskExecutor =====================
 
-  public static final String SUBTASK_ALREADY_REGISTERED =
-      "The subtask {} is already registered.";
+  public static final String SUBTASK_ALREADY_REGISTERED = "The subtask {} is already registered.";
   public static final String SUBTASK_NOT_REGISTERED = "The subtask {} is not registered.";
   public static final String SUBTASK_ALREADY_RUNNING = "The subtask {} is already running.";
   public static final String SUBTASK_STARTED = "The subtask {} is started to submit self.";
@@ -437,7 +419,8 @@ public final class PipeMessages {
       "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.";
   public static final String PIPE_CONNECTION_EXCEPTION_RETRYING =
       "PipeConnectionException occurred, %s retries to handshake with the target system. Root cause: %s.";
-  public static final String HANDSHAKE_SUCCESS = "{} handshakes with the target system successfully.";
+  public static final String HANDSHAKE_SUCCESS =
+      "{} handshakes with the target system successfully.";
   public static final String HANDSHAKE_FAILED_RETRYING =
       "{} failed to handshake with the target system for {} times, "
           + "will retry at most {} times. Root cause: {}.";
@@ -460,12 +443,10 @@ public final class PipeMessages {
   // ===================== PipeCompressorFactory =====================
 
   public static final String COMPRESSOR_CONFIG_NULL = "PipeCompressorConfig is null";
-  public static final String COMPRESSOR_CONFIG_NAME_NULL =
-      "PipeCompressorConfig.getName() is null";
+  public static final String COMPRESSOR_CONFIG_NAME_NULL = "PipeCompressorConfig.getName() is null";
   public static final String CREATE_ZSTD_COMPRESSOR =
       "Create new PipeZSTDCompressor with level: {}";
-  public static final String COMPRESSOR_NOT_FOUND_BY_NAME =
-      "PipeCompressor not found for name: %s";
+  public static final String COMPRESSOR_NOT_FOUND_BY_NAME = "PipeCompressor not found for name: %s";
   public static final String COMPRESSOR_NOT_FOUND_BY_INDEX =
       "PipeCompressor not found for index: %s";
 
@@ -473,10 +454,8 @@ public final class PipeMessages {
 
   public static final String INVALID_STATE_SLICE =
       "Invalid state: orderId={}, originReqType={}, originBodySize={}, sliceCount={}, sliceBodies.size={}";
-  public static final String ORDER_ID_MISMATCH =
-      "Order ID mismatch: expected {}, actual {}";
-  public static final String SLICE_COUNT_MISMATCH =
-      "Slice count mismatch: expected {}, actual {}";
+  public static final String ORDER_ID_MISMATCH = "Order ID mismatch: expected {}, actual {}";
+  public static final String SLICE_COUNT_MISMATCH = "Slice count mismatch: expected {}, actual {}";
 
   // ===================== IoTDBSink =====================
 
@@ -485,8 +464,7 @@ public final class PipeMessages {
       "IoTDBSink isTabletBatchModeEnabled: {}";
   public static final String IOTDB_SINK_MARK_AS_PIPE_REQUEST =
       "IoTDBSink shouldMarkAsPipeRequest: {}";
-  public static final String IOTDB_SINK_SKIP_IF_NO_PRIVILEGES =
-      "IoTDBSink skipIfNoPrivileges: {}";
+  public static final String IOTDB_SINK_SKIP_IF_NO_PRIVILEGES = "IoTDBSink skipIfNoPrivileges: {}";
   public static final String HOST_CANNOT_BE_EMPTY = "host cannot be empty";
   public static final String PORT_CANNOT_BE_EMPTY = "port cannot be empty";
 
@@ -543,8 +521,7 @@ public final class PipeMessages {
 
   // ===================== IoTDBTreePattern / TablePattern =====================
 
-  public static final String ILLEGAL_IOTDB_PIPE_PATTERN =
-      "Illegal IoTDBPipePattern: %s";
+  public static final String ILLEGAL_IOTDB_PIPE_PATTERN = "Illegal IoTDBPipePattern: %s";
   // ===================== ConcurrentIterableLinkedQueue =====================
 
   public static final String NULL_ELEMENT_NOT_ALLOWED = "Null element is not allowed.";
@@ -559,8 +536,7 @@ public final class PipeMessages {
 
   // ===================== AbstractSerializableListeningQueue =====================
 
-  public static final String UNKNOWN_SERIALIZER_TYPE =
-      "Unknown serializer type: %s";
+  public static final String UNKNOWN_SERIALIZER_TYPE = "Unknown serializer type: %s";
 
   // ===================== EnrichedEvent =====================
 
@@ -589,12 +565,10 @@ public final class PipeMessages {
 
   public static final String CLEAN_RECEIVER_DIR_SUCCESS =
       "Clean pipe receiver dir {} successfully.";
-  public static final String CLEAN_RECEIVER_DIR_FAILED =
-      "Clean pipe receiver dir {} failed.";
+  public static final String CLEAN_RECEIVER_DIR_FAILED = "Clean pipe receiver dir {} failed.";
   public static final String CREATE_RECEIVER_DIR_SUCCESS =
       "Create pipe receiver dir {} successfully.";
-  public static final String CREATE_RECEIVER_DIR_FAILED =
-      "Create pipe receiver dir {} failed.";
+  public static final String CREATE_RECEIVER_DIR_FAILED = "Create pipe receiver dir {} failed.";
 
   // ===================== PipeReceiverFilePathUtils =====================
 
@@ -603,8 +577,7 @@ public final class PipeMessages {
 
   // ===================== IoTDBFileReceiver =====================
 
-  public static final String RECEIVER_HANDSHAKE_FAILED =
-      "Handshake failed, response status = %s.";
+  public static final String RECEIVER_HANDSHAKE_FAILED = "Handshake failed, response status = %s.";
   public static final String RECEIVER_HANDSHAKE_FAILED_WITH_ID =
       "Receiver id = %s: Handshake failed, response status = %s.";
   public static final String RECEIVER_HANDSHAKE_FAILED_LOGIN =
@@ -613,8 +586,7 @@ public final class PipeMessages {
       "Temporarily out of memory when %s. Requested memory: %d bytes. Root cause: %s";
   public static final String RECEIVER_USER_LOGIN_SUCCESS =
       "Receiver id = {}: User {} login successfully.";
-  public static final String RECEIVER_EXITED =
-      "Receiver id = {}: Handling exit: Receiver exited.";
+  public static final String RECEIVER_EXITED = "Receiver id = {}: Handling exit: Receiver exited.";
   public static final String RECEIVER_ORIGINAL_DIR_DELETED =
       "Receiver id = {}: Original receiver file dir {} was deleted.";
   public static final String RECEIVER_FAILED_DELETE_ORIGINAL_DIR =
@@ -650,8 +622,7 @@ public final class PipeMessages {
       "Receiver id = %s: File offset reset requested by receiver, response status = %s.";
   public static final String RECEIVER_FAILED_WRITE_FILE_PIECE =
       "Receiver id = %s: Failed to write file piece from req %s.";
-  public static final String FAILED_TO_WRITE_FILE_PIECE =
-      "Failed to write file piece, because %s";
+  public static final String FAILED_TO_WRITE_FILE_PIECE = "Failed to write file piece, because %s";
   public static final String RECEIVER_WRITING_FILE_NOT_EXIST =
       "Receiver id = {}: Writing file {} is not existed or name is not correct, try to create it. "
           + "Current writing file is {}.";
@@ -708,8 +679,7 @@ public final class PipeMessages {
       "Receiver id = %s: Failed to seal file %s, status is %s.";
   public static final String RECEIVER_FAILED_SEAL_FILE_FROM_REQ =
       "Receiver id = %s: Failed to seal file %s from req %s.";
-  public static final String FAILED_TO_SEAL_FILE =
-      "Failed to seal file %s because %s";
+  public static final String FAILED_TO_SEAL_FILE = "Failed to seal file %s because %s";
   public static final String FAILED_TO_SEAL_FILE_MULTI =
       "Failed to seal file %s, because writing file %s is not available.";
   public static final String REQUEST_SENDER_RESET_OFFSET =
@@ -765,12 +735,17 @@ public final class PipeMessages {
 
   public static final String THROWING_EXCEPTION_IN_VALIDATE = "Throwing exception in validate";
   public static final String THROWING_EXCEPTION_IN_CUSTOMIZE = "Throwing exception in customize";
-  public static final String THROWING_EXCEPTION_IN_PROCESS_TABLET = "Throwing exception in process(TabletInsertionEvent, EventCollector)";
-  public static final String THROWING_EXCEPTION_IN_PROCESS_TSFILE = "Throwing exception in process(TsFileInsertionEvent, EventCollector)";
-  public static final String THROWING_EXCEPTION_IN_PROCESS_EVENT = "Throwing exception in process(Event, EventCollector)";
+  public static final String THROWING_EXCEPTION_IN_PROCESS_TABLET =
+      "Throwing exception in process(TabletInsertionEvent, EventCollector)";
+  public static final String THROWING_EXCEPTION_IN_PROCESS_TSFILE =
+      "Throwing exception in process(TsFileInsertionEvent, EventCollector)";
+  public static final String THROWING_EXCEPTION_IN_PROCESS_EVENT =
+      "Throwing exception in process(Event, EventCollector)";
   public static final String THROWING_EXCEPTION_IN_CLOSE = "Throwing exception in close";
-  public static final String ILLEGAL_DB_OR_TABLE_PATTERN = "Illegal database or table pattern. Detail: ";
-  public static final String EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX = "This event does not support binding progressIndex.";
+  public static final String ILLEGAL_DB_OR_TABLE_PATTERN =
+      "Illegal database or table pattern. Detail: ";
+  public static final String EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX =
+      "This event does not support binding progressIndex.";
   public static final String UNSUPPORTED_VERSION = "Unsupported version %s";
 
   // ===================== PipePluginAgent (additional) =====================
@@ -904,68 +879,131 @@ public final class PipeMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C = "Unsupported PipeRuntimeException type %s.";
+  public static final String EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C =
+      "Unsupported PipeRuntimeException type %s.";
   public static final String LOG_SUBSCRIPTIONENABLED_ARG_6F9EC0F9 = "SubscriptionEnabled: {}";
-  public static final String LOG_SUBSCRIPTIONCONSENSUSPREFETCHEXECUTORMAXTHREADNUM_ARG_94D0BD76 = "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}";
-  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXDELAYINMS_ARG_38C2CB8B = "SubscriptionConsensusBatchMaxDelayInMs: {}";
-  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXSIZEINBYTES_ARG_F8D28441 = "SubscriptionConsensusBatchMaxSizeInBytes: {}";
-  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXTABLETCOUNT_ARG_60BB1D6A = "SubscriptionConsensusBatchMaxTabletCount: {}";
-  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXWALENTRIES_ARG_9BF1CAE4 = "SubscriptionConsensusBatchMaxWalEntries: {}";
-  public static final String LOG_SUBSCRIPTIONCONSENSUSIDLESAFETIMEBARRIERINTERVALMS_ARG_A6944544 = "SubscriptionConsensusIdleSafeTimeBarrierIntervalMs: {}";
-  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_LENGTH_EBC10484 = "Unexpected EOF reading region progress key length";
-  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE = "Unexpected EOF reading region progress key";
-  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0 = "Unexpected EOF reading region progress value length";
-  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521 = "Unexpected EOF reading region progress value";
-  public static final String EXCEPTION_INVALID_REGION_PROGRESS_ENTRY_COUNT_B43DED2F = "Invalid region progress entry count: %d";
-  public static final String EXCEPTION_INVALID_REGION_PROGRESS_KEY_LENGTH_7C3A3C98 = "Invalid region progress key length: %d";
-  public static final String EXCEPTION_INVALID_REGION_PROGRESS_VALUE_LENGTH_6192D17F = "Invalid region progress value length: %d";
-  public static final String EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 =
-      "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer"
-      + " group %s";
-  public static final String EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 =
-      "Failed to remove subscription from consumer group meta: consumer %s does not exist in"
-      + " consumer group %s";
-  public static final String EXCEPTION_FAILED_TO_CREATE_CONSUMER_ARG_BECAUSE_INCONSISTENT_SQL_DIALECT_UNDER_THE_SAME_CONSUMER_GROUP_EXPECTED_ARG_ACTUAL_ARG_A7DA3FB9 = "Failed to create consumer %s because inconsistent sql dialect under the same consumer group, expected %s, actual %s";
-  public static final String EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 = "The path pattern %s is not valid for the source. Only prefix or full path is allowed.";
-  public static final String EXCEPTION_CAPTURE_TREE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_29A08445 = "capture.tree can not be specified to false when double living is enabled";
-  public static final String EXCEPTION_CAPTURE_TABLE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_8AEB8F7B = "capture.table can not be specified to false when double living is enabled";
-  public static final String EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1 = "forwarding-pipe-requests can not be specified to true when double living is enabled";
-  public static final String EXCEPTION_PARAMETERS_SET_ARG_NOT_ALLOWED_SKIPIF_2B9AA054 = "Parameters in set %s are not allowed in 'skipif'";
-  public static final String LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5 =
-      "User conflict exception: discarded data info because {}. data: {}. receiver message: {}."
-      + " status: {}";
-  public static final String LOG_RE_INCREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_B8DAAAEE = "re-increase reference count to event that has already been released: {}, stack trace: {}";
-  public static final String LOG_INCREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_94C472FC = "increase reference count failed, EnrichedEvent: {}, stack trace: {}";
-  public static final String LOG_DECREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_STACK_99FCAB8B = "decrease reference count to event that has already been released: {}, stack trace: {}";
-  public static final String LOG_RESOURCE_REFERENCE_COUNT_DECREASED_0_BUT_FAILED_RELEASE_RESOURCE_ENRICHEDEVENT_A02A86AF =
-      "resource reference count is decreased to 0, but failed to release the resource,"
-      + " EnrichedEvent: {}, stack trace: {}";
-  public static final String LOG_REFERENCE_COUNT_DECREASED_ARG_EVENT_ARG_STACK_TRACE_ARG_A4BF56FC = "reference count is decreased to {}, event: {}, stack trace: {}";
-  public static final String LOG_DECREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_6A2024AB = "decrease reference count failed, EnrichedEvent: {}, stack trace: {}";
-  public static final String LOG_BROKEN_INVARIANT_DETECT_INVISIBLE_EXTRACTOR_PARAMETERS_ARG_ADAD3038 = "BROKEN INVARIANT: DETECT INVISIBLE EXTRACTOR PARAMETERS {}";
-  public static final String LOG_UNKNOWN_PATTERN_FORMAT_ARG_USE_PREFIX_MATCHING_FORMAT_DEFAULT_E7B9EFEC = "Unknown pattern format: {}, use prefix matching format by default.";
-  public static final String LOG_PIPE_LISTENING_QUEUE_SNAPSHOT_CACHE_UPDATED_ARG_414EE914 = "Pipe listening queue snapshot cache is updated: {}";
-  public static final String LOG_FAILED_SERIALIZE_FILE_BECAUSE_FILE_ARG_ALREADY_EXIST_FACC5C4C = "Failed to serialize to file, because file {} is already exist.";
-  public static final String LOG_FAILED_DESERIALIZE_FILE_FILE_ARG_DOES_NOT_EXIST_2356708C = "Failed to deserialize from file, file {} does not exist.";
-  public static final String EXCEPTION_UNKNOWN_PIPE_RUNTIME_META_VERSION_C2F4B575 = "Unknown pipe runtime meta version: ";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSPREFETCHEXECUTORMAXTHREADNUM_ARG_94D0BD76 =
+      "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXDELAYINMS_ARG_38C2CB8B =
+      "SubscriptionConsensusBatchMaxDelayInMs: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXSIZEINBYTES_ARG_F8D28441 =
+      "SubscriptionConsensusBatchMaxSizeInBytes: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXTABLETCOUNT_ARG_60BB1D6A =
+      "SubscriptionConsensusBatchMaxTabletCount: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXWALENTRIES_ARG_9BF1CAE4 =
+      "SubscriptionConsensusBatchMaxWalEntries: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSIDLESAFETIMEBARRIERINTERVALMS_ARG_A6944544 =
+      "SubscriptionConsensusIdleSafeTimeBarrierIntervalMs: {}";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_LENGTH_EBC10484 =
+      "Unexpected EOF reading region progress key length";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE =
+      "Unexpected EOF reading region progress key";
+  public static final String
+      EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0 =
+          "Unexpected EOF reading region progress value length";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521 =
+      "Unexpected EOF reading region progress value";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_ENTRY_COUNT_B43DED2F =
+      "Invalid region progress entry count: %d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_KEY_LENGTH_7C3A3C98 =
+      "Invalid region progress key length: %d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_VALUE_LENGTH_6192D17F =
+      "Invalid region progress value length: %d";
+  public static final String
+      EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 =
+          "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer"
+              + " group %s";
+  public static final String
+      EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 =
+          "Failed to remove subscription from consumer group meta: consumer %s does not exist in"
+              + " consumer group %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_CONSUMER_ARG_BECAUSE_INCONSISTENT_SQL_DIALECT_UNDER_THE_SAME_CONSUMER_GROUP_EXPECTED_ARG_ACTUAL_ARG_A7DA3FB9 =
+          "Failed to create consumer %s because inconsistent sql dialect under the same consumer group, expected %s, actual %s";
+  public static final String
+      EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 =
+          "The path pattern %s is not valid for the source. Only prefix or full path is allowed.";
+  public static final String
+      EXCEPTION_CAPTURE_TREE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_29A08445 =
+          "capture.tree can not be specified to false when double living is enabled";
+  public static final String
+      EXCEPTION_CAPTURE_TABLE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_8AEB8F7B =
+          "capture.table can not be specified to false when double living is enabled";
+  public static final String
+      EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1 =
+          "forwarding-pipe-requests can not be specified to true when double living is enabled";
+  public static final String EXCEPTION_PARAMETERS_SET_ARG_NOT_ALLOWED_SKIPIF_2B9AA054 =
+      "Parameters in set %s are not allowed in 'skipif'";
+  public static final String
+      LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5 =
+          "User conflict exception: discarded data info because {}. data: {}. receiver message: {}."
+              + " status: {}";
+  public static final String
+      LOG_RE_INCREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_B8DAAAEE =
+          "re-increase reference count to event that has already been released: {}, stack trace: {}";
+  public static final String
+      LOG_INCREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_94C472FC =
+          "increase reference count failed, EnrichedEvent: {}, stack trace: {}";
+  public static final String
+      LOG_DECREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_STACK_99FCAB8B =
+          "decrease reference count to event that has already been released: {}, stack trace: {}";
+  public static final String
+      LOG_RESOURCE_REFERENCE_COUNT_DECREASED_0_BUT_FAILED_RELEASE_RESOURCE_ENRICHEDEVENT_A02A86AF =
+          "resource reference count is decreased to 0, but failed to release the resource,"
+              + " EnrichedEvent: {}, stack trace: {}";
+  public static final String LOG_REFERENCE_COUNT_DECREASED_ARG_EVENT_ARG_STACK_TRACE_ARG_A4BF56FC =
+      "reference count is decreased to {}, event: {}, stack trace: {}";
+  public static final String
+      LOG_DECREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_6A2024AB =
+          "decrease reference count failed, EnrichedEvent: {}, stack trace: {}";
+  public static final String
+      LOG_BROKEN_INVARIANT_DETECT_INVISIBLE_EXTRACTOR_PARAMETERS_ARG_ADAD3038 =
+          "BROKEN INVARIANT: DETECT INVISIBLE EXTRACTOR PARAMETERS {}";
+  public static final String
+      LOG_UNKNOWN_PATTERN_FORMAT_ARG_USE_PREFIX_MATCHING_FORMAT_DEFAULT_E7B9EFEC =
+          "Unknown pattern format: {}, use prefix matching format by default.";
+  public static final String LOG_PIPE_LISTENING_QUEUE_SNAPSHOT_CACHE_UPDATED_ARG_414EE914 =
+      "Pipe listening queue snapshot cache is updated: {}";
+  public static final String LOG_FAILED_SERIALIZE_FILE_BECAUSE_FILE_ARG_ALREADY_EXIST_FACC5C4C =
+      "Failed to serialize to file, because file {} is already exist.";
+  public static final String LOG_FAILED_DESERIALIZE_FILE_FILE_ARG_DOES_NOT_EXIST_2356708C =
+      "Failed to deserialize from file, file {} does not exist.";
+  public static final String EXCEPTION_UNKNOWN_PIPE_RUNTIME_META_VERSION_C2F4B575 =
+      "Unknown pipe runtime meta version: ";
   public static final String EXCEPTION_ROOT_CAUSE_A22E94DE = ", root cause: ";
-  public static final String LOG_SUCCESSFULLY_EXECUTED_SUBTASK_ARG_ARG_AFTER_ARG_RETRIES_70972F07 = "Successfully executed subtask {}({}) after {} retries.";
-  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGINMETAKEEPER_NULL_0C9BD2E2 = "Failed to reflect PipePlugin instance, because PipePluginMetaKeeper is null.";
-  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PLUGIN_NAME_NULL_416BD04D = "Failed to reflect PipePlugin instance, because plugin name is null.";
+  public static final String LOG_SUCCESSFULLY_EXECUTED_SUBTASK_ARG_ARG_AFTER_ARG_RETRIES_70972F07 =
+      "Successfully executed subtask {}({}) after {} retries.";
+  public static final String
+      EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGINMETAKEEPER_NULL_0C9BD2E2 =
+          "Failed to reflect PipePlugin instance, because PipePluginMetaKeeper is null.";
+  public static final String
+      EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PLUGIN_NAME_NULL_416BD04D =
+          "Failed to reflect PipePlugin instance, because plugin name is null.";
   public static final String LOG_IOTDBSINK_ARG_ARG_4E140C06 = "IoTDBSink {} = {}";
-  public static final String EXCEPTION_SOCKET_ARG_CLOSED_WILL_TRY_HANDSHAKE_02562BF1 = "Socket %s is closed, will try to handshake";
-  public static final String EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C = "Network error when transfer file %s, because %s.";
-  public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE = "Origin request type mismatch: expected {}, actual {}";
-  public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 = "Origin body size mismatch: expected {}, actual {}";
-  public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "Invalid slice index: expected {}, actual {}";
-  public static final String LOG_PIPE_ARG_ARG_ENCOUNTERED_AN_UNEXPECTED_HYBRIDPROGRESSINDEX_IN_ARG_PROGRESS_INDEX_ARG_7C578B17 =
-      "Pipe {}@{} encountered an unexpected HybridProgressIndex in {}. Progress index: {}.";
-  public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "Decompressed length should be between 0 and %d, but got %d.";
+  public static final String EXCEPTION_SOCKET_ARG_CLOSED_WILL_TRY_HANDSHAKE_02562BF1 =
+      "Socket %s is closed, will try to handshake";
+  public static final String EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C =
+      "Network error when transfer file %s, because %s.";
+  public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE =
+      "Origin request type mismatch: expected {}, actual {}";
+  public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 =
+      "Origin body size mismatch: expected {}, actual {}";
+  public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 =
+      "Invalid slice index: expected {}, actual {}";
+  public static final String
+      LOG_PIPE_ARG_ARG_ENCOUNTERED_AN_UNEXPECTED_HYBRIDPROGRESSINDEX_IN_ARG_PROGRESS_INDEX_ARG_7C578B17 =
+          "Pipe {}@{} encountered an unexpected HybridProgressIndex in {}. Progress index: {}.";
+  public static final String
+      EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 =
+          "Decompressed length should be between 0 and %d, but got %d.";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
-  public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "No DataPartitionTable generation task found";
-  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_IN_PROGRESS_ARGPCTPCT_F433CBA8 = "DataPartitionTable generation in progress: %.1f%%";
-  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable generation completed successfully";
-  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable generation failed: ";
+  public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 =
+      "No DataPartitionTable generation task found";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_IN_PROGRESS_ARGPCTPCT_F433CBA8 =
+      "DataPartitionTable generation in progress: %.1f%%";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 =
+      "DataPartitionTable generation completed successfully";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A =
+      "DataPartitionTable generation failed: ";
   public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "Unknown task status: ";
-
 }

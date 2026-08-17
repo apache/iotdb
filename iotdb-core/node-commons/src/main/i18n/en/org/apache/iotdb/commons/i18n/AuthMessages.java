@@ -74,8 +74,7 @@ public final class AuthMessages {
   public static final String WRONG_PATH_INIT = "Got a wrong path for {} to init";
   public static final String INTERNAL_USER_INITIALIZED = "Internal user {} initialized";
   public static final String LOAD_MAX_USER_ID_ERROR = "meet error in load max userId.";
-  public static final String PASSWORD_SAME_AS_USERNAME =
-      "Password cannot be the same as user name";
+  public static final String PASSWORD_SAME_AS_USERNAME = "Password cannot be the same as user name";
   public static final String BUILTIN_USERNAME_IN_USE =
       "Builtin username of admin is already in use";
   public static final String LOAD_USER_EXCEPTION = "Get exception when load user {}";
@@ -101,12 +100,10 @@ public final class AuthMessages {
 
   // ======================== LocalFileUserAccessor ========================
 
-  public static final String SAVE_USER_ROLES_ERROR =
-      "Get Exception when save user {}'s roles";
+  public static final String SAVE_USER_ROLES_ERROR = "Get Exception when save user {}'s roles";
   public static final String FAILED_TO_LOAD_USER_SNAPSHOT =
       "Failed to load user folder snapshot and rollback.";
-  public static final String CATCH_ERROR_DELETE_USER_ROLE =
-      "Catch error when delete %s 's role";
+  public static final String CATCH_ERROR_DELETE_USER_ROLE = "Catch error when delete %s 's role";
 
   // ======================== PrivilegeType ========================
 
@@ -120,7 +117,7 @@ public final class AuthMessages {
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_ACCESS_DENIED_E128C1A1 = "Access Denied: ";
-  public static final String EXCEPTION_ENCRYPT_DECRYPT_FAILED_163764B5 = "Encrypt or decrypt failed.";
+  public static final String EXCEPTION_ENCRYPT_DECRYPT_FAILED_163764B5 =
+      "Encrypt or decrypt failed.";
   public static final String EXCEPTION_BACKSLASH_QUOTE_D4C5D637 = "\"";
-
 }

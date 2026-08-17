@@ -617,18 +617,23 @@ public final class DataNodeSchemaMessages {
   public static final String ILLEGAL_PATH_LOG = "illegal path {}";
 
   private DataNodeSchemaMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional log messages
   // ---------------------------------------------------------------------------
-  public static final String SCHEMA_LOG_FLUSHING_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_IMMUTABLE_7B7CD373 =
-      "Flushing/Working MemTable - add current query context to immutable TVList's query list";
-  public static final String SCHEMA_LOG_FLUSHING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_BEB0D766 =
-      "Flushing MemTable - add current query context to mutable TVList's query list";
-  public static final String SCHEMA_LOG_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_8C937414 =
-      "Working MemTable - add current query context to mutable TVList's query list when it's "
-          + "sorted or no other query on it";
-  public static final String SCHEMA_LOG_WORKING_MEMTABLE_CLONE_MUTABLE_TVLIST_AND_REPLACE_OLD_TVLIST_FD1EAE22 =
-      "Working MemTable - clone mutable TVList and replace old TVList in working MemTable";
+  public static final String
+      SCHEMA_LOG_FLUSHING_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_IMMUTABLE_7B7CD373 =
+          "Flushing/Working MemTable - add current query context to immutable TVList's query list";
+  public static final String
+      SCHEMA_LOG_FLUSHING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_BEB0D766 =
+          "Flushing MemTable - add current query context to mutable TVList's query list";
+  public static final String
+      SCHEMA_LOG_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_8C937414 =
+          "Working MemTable - add current query context to mutable TVList's query list when it's "
+              + "sorted or no other query on it";
+  public static final String
+      SCHEMA_LOG_WORKING_MEMTABLE_CLONE_MUTABLE_TVLIST_AND_REPLACE_OLD_TVLIST_FD1EAE22 =
+          "Working MemTable - clone mutable TVList and replace old TVList in working MemTable";
   public static final String PATH_DOES_NOT_START_WITH_FMT = "%s doesn't start with %s";
   public static final String ALIAS_DUPLICATED_FULLPATH_OTHER_MEASUREMENT_FMT =
       "The alias is duplicated with the name or alias of other measurement, alias: %s, fullPath: %s, otherMeasurement: %s";
@@ -707,7 +712,8 @@ public final class DataNodeSchemaMessages {
   public static final String SEGMENT_NOT_ENOUGH_SPACE = "Segment not enough space";
   public static final String SEGMENT_NOT_ENOUGH_SPACE_AFTER_SPLIT_FMT =
       "Segment not enough space even after split and compact to insert: %s";
-  public static final String SEGMENT_NOT_FOUND_FMT = "Segment(index:%d) not found in page(index:%d).";
+  public static final String SEGMENT_NOT_FOUND_FMT =
+      "Segment(index:%d) not found in page(index:%d).";
   public static final String SEGMENT_IS_NOT_LAST_FMT =
       "Segment(index:%d) is not the last segment within the page";
   public static final String NO_SPLITTABLE_SEGMENT_FOUND_FMT =
@@ -733,11 +739,16 @@ public final class DataNodeSchemaMessages {
       "This view contains aggregation function(s) named [%s]";
   public static final String EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB = "operatorContext is null";
   public static final String EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C = "child operator is null";
-  public static final String EXCEPTION_FAILED_TO_CREATE_STATE_MACHINE_FOR_CONSENSUS_GROUP_ARG_BECAUSE_SCHEMA_REGION_DOES_NOT_EXIST_610DAE67 = "Failed to create state machine for consensus group %s, because schema region does not exist";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_STATE_MACHINE_FOR_CONSENSUS_GROUP_ARG_BECAUSE_SCHEMA_REGION_DOES_NOT_EXIST_610DAE67 =
+          "Failed to create state machine for consensus group %s, because schema region does not exist";
   public static final String EXCEPTION_DOT_9D9B854A = ".";
   public static final String EMPTY_MESSAGE = "";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
-  public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "Skip rollback renaming old table {}.{} because it has been handled.";
-  public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "Skip commit-update table {}.{} because it has been handled.";
-
+  public static final String
+      MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 =
+          "Skip rollback renaming old table {}.{} because it has been handled.";
+  public static final String
+      MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C =
+          "Skip commit-update table {}.{} because it has been handled.";
 }

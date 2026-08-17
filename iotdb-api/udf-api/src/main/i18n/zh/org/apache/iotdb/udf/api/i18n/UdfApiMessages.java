@@ -29,10 +29,8 @@ public final class UdfApiMessages {
   public static final String UNKNOWN_ARGUMENT_TYPE = "未知参数类型：";
 
   // TableFunctionProcessorProvider
-  public static final String TABLE_FUNCTION_DOES_NOT_PROCESS_INPUT_DATA =
-      "此表函数不处理输入数据";
-  public static final String TABLE_FUNCTION_DOES_NOT_PROCESS_LEAF_DATA =
-      "此表函数不处理叶子数据";
+  public static final String TABLE_FUNCTION_DOES_NOT_PROCESS_INPUT_DATA = "此表函数不处理输入数据";
+  public static final String TABLE_FUNCTION_DOES_NOT_PROCESS_LEAF_DATA = "此表函数不处理叶子数据";
 
   // DescribedSchema
   public static final String DESCRIBED_SCHEMA_HAS_NO_FIELDS = "DescribedSchema 没有字段";
@@ -45,8 +43,7 @@ public final class UdfApiMessages {
       "fieldNames 和 fieldTypes 必须具有相同的大小";
 
   // ParameterSpecification
-  public static final String NON_NULL_DEFAULT_VALUE_FOR_REQUIRED_ARG =
-      "必填参数不能有非 null 默认值";
+  public static final String NON_NULL_DEFAULT_VALUE_FOR_REQUIRED_ARG = "必填参数不能有非 null 默认值";
 
   // ScalarFunctionAnalysis
   public static final String SCALAR_FUNCTION_ANALYSIS_OUTPUT_DATA_TYPE_NOT_SET =

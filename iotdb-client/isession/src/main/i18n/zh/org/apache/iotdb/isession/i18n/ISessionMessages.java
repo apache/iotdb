@@ -22,19 +22,16 @@ package org.apache.iotdb.isession.i18n;
 public final class ISessionMessages {
 
   // --- SessionDataSet ---
-  public static final String OBJECT_TYPE_ONLY_SUPPORT_GET_STRING =
-      "OBJECT 类型仅支持 getString";
+  public static final String OBJECT_TYPE_ONLY_SUPPORT_GET_STRING = "OBJECT 类型仅支持 getString";
 
   // --- Template ---
-  public static final String DUPLICATED_CHILD_IN_TEMPLATE =
-      "模板中存在重复的子节点。";
-  public static final String NOT_DIRECT_CHILD_OF_TEMPLATE =
-      "这不是该模板的直接子节点：";
+  public static final String DUPLICATED_CHILD_IN_TEMPLATE = "模板中存在重复的子节点。";
+  public static final String NOT_DIRECT_CHILD_OF_TEMPLATE = "这不是该模板的直接子节点：";
 
   private ISessionMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "不支持数据类型 %s。";
-
 }

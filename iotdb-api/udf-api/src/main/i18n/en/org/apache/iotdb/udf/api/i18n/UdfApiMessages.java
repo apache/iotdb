@@ -63,8 +63,7 @@ public final class UdfApiMessages {
   public static final String UDF_OUTPUT_DATA_TYPE_NOT_SET = "UDF outputDataType is not set.";
 
   // SlidingTimeWindowAccessStrategy
-  public static final String METHOD_DEPRECATED_SINCE_V014 =
-      "The method is deprecated since v0.14.";
+  public static final String METHOD_DEPRECATED_SINCE_V014 = "The method is deprecated since v0.14.";
 
   // Type
   public static final String UNSUPPORTED_TYPE = "Unsupported type: ";

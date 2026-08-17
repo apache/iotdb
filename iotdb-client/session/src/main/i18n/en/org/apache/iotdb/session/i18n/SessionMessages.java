@@ -26,13 +26,10 @@ public final class SessionMessages {
   public static final String REDIRECT_TWICE_LOG = "redirect twice";
   public static final String REDIRECT_TWICE_LOG_WITH_SQL = "{} redirect twice";
   public static final String REDIRECT_TWICE_MSG = "redirect twice, please try again.";
-  public static final String REDIRECT_TWICE_MSG_WITH_SQL =
-      "%s redirect twice, please try again.";
+  public static final String REDIRECT_TWICE_MSG_WITH_SQL = "%s redirect twice, please try again.";
   public static final String FAILED_TO_EXECUTE_FOR_ENDPOINT = "failed to execute '{}' for {}";
-  public static final String ALL_VALUES_NULL =
-      "All values of the {} are null,null values are {}";
-  public static final String SOME_VALUES_NULL =
-      "Some values of {} are null,null values are {}";
+  public static final String ALL_VALUES_NULL = "All values of the {} are null,null values are {}";
+  public static final String SOME_VALUES_NULL = "Some values of {} are null,null values are {}";
   public static final String MEET_ERROR_WHEN_ASYNC_INSERT = "Meet error when async insert!";
   public static final String MEASUREMENT_NON_NULL = "measurement should be non null value";
   public static final String NO_TABLET_INSERTING = "No tablet is inserting!";
@@ -44,8 +41,7 @@ public final class SessionMessages {
   public static final String CLUSTER_NO_NODES = "Cluster has no nodes to connect";
   public static final String CLOSE_SESSION_ERROR =
       "Error occurs when closing session at server. Maybe server is down.";
-  public static final String REDIRECT_QUERY_ERROR =
-      "need to redirect query, should not see this.";
+  public static final String REDIRECT_QUERY_ERROR = "need to redirect query, should not see this.";
   public static final String RETRY_RECONNECTING =
       "Retry attempt #{}, Reconnecting to other datanode";
   public static final String NODE_DOWN_TRY_NEXT =
@@ -56,12 +52,10 @@ public final class SessionMessages {
       "Thread {} was interrupted during retry {} with wait time {} ms. Exiting retry loop.";
 
   // ThriftConnection
-  public static final String CLOSING_SESSION_FAILED =
-      "Closing Session-{} with {} failed.";
+  public static final String CLOSING_SESSION_FAILED = "Closing Session-{} with {} failed.";
 
   // NodesSupplier
-  public static final String FAILED_TO_CREATE_CONNECTION =
-      "Failed to create connection with {}.";
+  public static final String FAILED_TO_CREATE_CONNECTION = "Failed to create connection with {}.";
   public static final String FAILED_TO_FETCH_DATA_NODE_LIST =
       "Failed to fetch data node list from {}.";
 
@@ -71,14 +65,12 @@ public final class SessionMessages {
       "NodeUrl Incorrect format";
 
   // InternalNode (template)
-  public static final String DUPLICATED_CHILD_IN_TEMPLATE =
-      "Duplicated child of node in template.";
+  public static final String DUPLICATED_CHILD_IN_TEMPLATE = "Duplicated child of node in template.";
 
   // SessionPool
   public static final String SESSION_POOL_IS_CLOSED = "Session pool is closed";
   public static final String CLOSE_THE_SESSION_FAILED = "close the session failed.";
-  public static final String TIMEOUT_TO_GET_CONNECTION =
-      "timeout to get a connection from %s";
+  public static final String TIMEOUT_TO_GET_CONNECTION = "timeout to get a connection from %s";
   public static final String INTERRUPTED = "Interrupted!";
   public static final String CLOSING_SESSION_POOL = "closing the session pool, cleaning queues...";
 
@@ -112,8 +104,7 @@ public final class SessionMessages {
   public static final String CREATE_MULTI_TIMESERIES_FAILED = "createMultiTimeseries failed";
   public static final String CHECK_TIMESERIES_EXISTS_FAILED = "checkTimeseriesExists failed";
   public static final String EXECUTE_QUERY_STATEMENT_FAILED = "executeQueryStatement failed";
-  public static final String EXECUTE_NON_QUERY_STATEMENT_FAILED =
-      "executeNonQueryStatement failed";
+  public static final String EXECUTE_NON_QUERY_STATEMENT_FAILED = "executeNonQueryStatement failed";
   public static final String EXECUTE_RAW_DATA_QUERY_FAILED = "executeRawDataQuery failed";
   public static final String EXECUTE_LAST_DATA_QUERY_FAILED = "executeLastDataQuery failed";
   public static final String EXECUTE_AGGREGATION_QUERY_FAILED = "executeAggregationQuery failed";
@@ -134,31 +125,26 @@ public final class SessionMessages {
   public static final String DELETE_NODE_IN_TEMPLATE_FAILED = "deleteNodeInTemplate failed";
   public static final String COUNT_MEASUREMENTS_IN_TEMPLATE_FAILED =
       "countMeasurementsInTemplate failed";
-  public static final String IS_MEASUREMENT_IN_TEMPLATE_FAILED =
-      "isMeasurementInTemplate failed";
-  public static final String IS_PATH_EXIST_IN_TEMPLATE_FAILED =
-      "isPathExistInTemplata failed";
+  public static final String IS_MEASUREMENT_IN_TEMPLATE_FAILED = "isMeasurementInTemplate failed";
+  public static final String IS_PATH_EXIST_IN_TEMPLATE_FAILED = "isPathExistInTemplata failed";
   public static final String SHOW_MEASUREMENTS_IN_TEMPLATE_FAILED =
       "showMeasurementsInTemplate failed";
   public static final String SHOW_ALL_TEMPLATES_FAILED = "showAllTemplates failed";
-  public static final String SHOW_PATHS_TEMPLATE_SET_ON_FAILED =
-      "showPathsTemplateSetOn failed";
+  public static final String SHOW_PATHS_TEMPLATE_SET_ON_FAILED = "showPathsTemplateSetOn failed";
   public static final String SHOW_PATHS_TEMPLATE_USING_ON_FAILED =
       "showPathsTemplateUsingOn failed";
   public static final String SET_SCHEMA_TEMPLATE_ON_FAILED =
       "setSchemaTemplate [{}] on [{}] failed";
   public static final String UNSET_SCHEMA_TEMPLATE_ON_FAILED =
       "unsetSchemaTemplate [{}] on [{}] failed";
-  public static final String DROP_SCHEMA_TEMPLATE_FAILED =
-      "dropSchemaTemplate [{}] failed";
+  public static final String DROP_SCHEMA_TEMPLATE_FAILED = "dropSchemaTemplate [{}] failed";
   public static final String CREATE_TIMESERIES_OF_SCHEMA_TEMPLATE_FAILED =
       "createTimeseriesOfSchemaTemplate {} failed";
   public static final String SET_TIMEZONE_FAILED = "setTimeZone to [{}] failed";
   public static final String FETCH_ALL_CONNECTIONS_FAILED = "fetchAllConnections failed";
 
   // SessionPool - unexpected error (error)
-  public static final String UNEXPECTED_ERROR_IN_INSERT_TABLET =
-      "unexpected error in insertTablet";
+  public static final String UNEXPECTED_ERROR_IN_INSERT_TABLET = "unexpected error in insertTablet";
   public static final String UNEXPECTED_ERROR_IN_INSERT_ALIGNED_TABLET =
       "unexpected error in insertAlignedTablet";
   public static final String UNEXPECTED_ERROR_IN_INSERT_TABLETS =
@@ -169,8 +155,7 @@ public final class SessionMessages {
       "unexpected error in insertRecords";
   public static final String UNEXPECTED_ERROR_IN_INSERT_ALIGNED_RECORDS =
       "unexpected error in insertAlignedRecords";
-  public static final String UNEXPECTED_ERROR_IN_INSERT_RECORD =
-      "unexpected error in insertRecord";
+  public static final String UNEXPECTED_ERROR_IN_INSERT_RECORD = "unexpected error in insertRecord";
   public static final String UNEXPECTED_ERROR_IN_INSERT_ALIGNED_RECORD =
       "unexpected error in insertAlignedRecord";
   public static final String UNEXPECTED_ERROR_IN_INSERT_RECORDS_OF_ONE_DEVICE =
@@ -181,8 +166,7 @@ public final class SessionMessages {
       "unexpected error in insertAlignedRecordsOfOneDevice";
   public static final String UNEXPECTED_ERROR_IN_INSERT_ALIGNED_STRING_RECORDS_OF_ONE_DEVICE =
       "unexpected error in insertAlignedStringRecordsOfOneDevice";
-  public static final String UNEXPECTED_ERROR_IN_DELETE_DATA =
-      "unexpected error in deleteData";
+  public static final String UNEXPECTED_ERROR_IN_DELETE_DATA = "unexpected error in deleteData";
   public static final String UNEXPECTED_ERROR_IN_DELETE_TIMESERIES =
       "unexpected error in deleteTimeseries";
   public static final String UNEXPECTED_ERROR_IN_SET_STORAGE_GROUP =
@@ -261,29 +245,57 @@ public final class SessionMessages {
       "unexpected error in createTimeseriesUsingSchemaTemplate";
 
   private SessionMessages() {}
+
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_9C8EC583 = "Protocol differ, Client version is {}, but Server version is {}";
-  public static final String EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC = "Protocol not supported, Client version is %s, but Server version is %s";
-  public static final String LOG_RETRY_ATTEMPT_ARG_RESULT_ARG_EXCEPTION_ARG_20E5D9DA = "Retry attempt #{}, result {}, exception {}";
-  public static final String LOG_ALL_VALUES_NULL_SUBMISSION_IGNORED_DEVICEID_ARG_TIME_ARG_MEASUREMENTS_07AFDDFE =
-      "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements"
-      + " are [{}]";
-  public static final String EXCEPTION_DEVICEIDS_TIMES_MEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_EC87D88B = "deviceIds, times, measurementsList and valuesList's size should be equal";
-  public static final String EXCEPTION_PREFIXPATHS_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_1465011C = "prefixPaths, times, subMeasurementsList and valuesList's size should be equal";
-  public static final String EXCEPTION_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_002C539A = "times, subMeasurementsList and valuesList's size should be equal";
-  public static final String EXCEPTION_DIFFERENT_LENGTH_MEASUREMENTS_DATATYPES_ENCODINGS_ED354A24 = "Different length of measurements, datatypes, encodings ";
-  public static final String EXCEPTION_COMPRESSORS_CREATE_DEVICE_TEMPLATE_BBDBB28E = "or compressors when create device template.";
-  public static final String EXCEPTION_GIVEN_DEVICE_PATH_LIST_SHOULD_NOT_CONTAINS_NULL_E9132577 = "Given device path list should not be  or contains null.";
-  public static final String EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084 = "You should specify either nodeUrls or (host + rpcPort), but not both";
-  public static final String LOG_CANNOT_PUT_VALUES_MEASUREMENT_ARG_TYPE_ARG_27AFC67B = "Cannot put values for measurement {}, type={}";
-  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "Data type %s is not supported.";
-  public static final String LOG_FAILED_CHANGE_BACK_SQL_DIALECT_EXECUTING_SET_SQL_DIALECT_ARG_947F35E7 = "Failed to change back sql_dialect by executing: set sql_dialect={}";
-  public static final String LOG_FAILED_CHANGE_BACK_DATABASE_EXECUTING_USE_ARG_274541CA = "Failed to change back database by executing: use {}";
-  public static final String LOG_SESSIONPOOL_HAS_WAIT_ARG_SECONDS_GET_NEW_CONNECTION_ARG_ARG_D053274A = "the SessionPool has wait for {} seconds to get a new connection: {} with {}";
-  public static final String LOG_CURRENT_OCCUPIED_SIZE_ARG_QUEUE_SIZE_ARG_CONSIDERED_SIZE_ARG_DE97C14E = "current occupied size {}, queue size {}, considered size {} ";
-  public static final String EXCEPTION_RETRY_EXECUTE_STATEMENT_ARG_FAILED_ARG_TIMES_ARG_216C6873 = "retry to execute statement on %s failed %d times: %s";
-  public static final String EXCEPTION_SESSIONPOOL_DOESN_T_SUPPORT_EXECUTING_ARG_DIRECTLY_B778F701 = "SessionPool doesn't support executing %s directly";
-
+  public static final String
+      LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_9C8EC583 =
+          "Protocol differ, Client version is {}, but Server version is {}";
+  public static final String
+      EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC =
+          "Protocol not supported, Client version is %s, but Server version is %s";
+  public static final String LOG_RETRY_ATTEMPT_ARG_RESULT_ARG_EXCEPTION_ARG_20E5D9DA =
+      "Retry attempt #{}, result {}, exception {}";
+  public static final String
+      LOG_ALL_VALUES_NULL_SUBMISSION_IGNORED_DEVICEID_ARG_TIME_ARG_MEASUREMENTS_07AFDDFE =
+          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements"
+              + " are [{}]";
+  public static final String
+      EXCEPTION_DEVICEIDS_TIMES_MEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_EC87D88B =
+          "deviceIds, times, measurementsList and valuesList's size should be equal";
+  public static final String
+      EXCEPTION_PREFIXPATHS_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_1465011C =
+          "prefixPaths, times, subMeasurementsList and valuesList's size should be equal";
+  public static final String
+      EXCEPTION_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_002C539A =
+          "times, subMeasurementsList and valuesList's size should be equal";
+  public static final String EXCEPTION_DIFFERENT_LENGTH_MEASUREMENTS_DATATYPES_ENCODINGS_ED354A24 =
+      "Different length of measurements, datatypes, encodings ";
+  public static final String EXCEPTION_COMPRESSORS_CREATE_DEVICE_TEMPLATE_BBDBB28E =
+      "or compressors when create device template.";
+  public static final String EXCEPTION_GIVEN_DEVICE_PATH_LIST_SHOULD_NOT_CONTAINS_NULL_E9132577 =
+      "Given device path list should not be  or contains null.";
+  public static final String
+      EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084 =
+          "You should specify either nodeUrls or (host + rpcPort), but not both";
+  public static final String LOG_CANNOT_PUT_VALUES_MEASUREMENT_ARG_TYPE_ARG_27AFC67B =
+      "Cannot put values for measurement {}, type={}";
+  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 =
+      "Data type %s is not supported.";
+  public static final String
+      LOG_FAILED_CHANGE_BACK_SQL_DIALECT_EXECUTING_SET_SQL_DIALECT_ARG_947F35E7 =
+          "Failed to change back sql_dialect by executing: set sql_dialect={}";
+  public static final String LOG_FAILED_CHANGE_BACK_DATABASE_EXECUTING_USE_ARG_274541CA =
+      "Failed to change back database by executing: use {}";
+  public static final String
+      LOG_SESSIONPOOL_HAS_WAIT_ARG_SECONDS_GET_NEW_CONNECTION_ARG_ARG_D053274A =
+          "the SessionPool has wait for {} seconds to get a new connection: {} with {}";
+  public static final String
+      LOG_CURRENT_OCCUPIED_SIZE_ARG_QUEUE_SIZE_ARG_CONSIDERED_SIZE_ARG_DE97C14E =
+          "current occupied size {}, queue size {}, considered size {} ";
+  public static final String EXCEPTION_RETRY_EXECUTE_STATEMENT_ARG_FAILED_ARG_TIMES_ARG_216C6873 =
+      "retry to execute statement on %s failed %d times: %s";
+  public static final String EXCEPTION_SESSIONPOOL_DOESN_T_SUPPORT_EXECUTING_ARG_DIRECTLY_B778F701 =
+      "SessionPool doesn't support executing %s directly";
 }
