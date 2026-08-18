@@ -517,6 +517,13 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
     return false;
   }
 
+  private TimeWindowStateProgressIndex getTimeWindowStateProgressIndex(
+      final ProgressIndex progressIndex) {
+    return Objects.isNull(progressIndex)
+        ? null
+        : progressIndex.getProgressIndexByType(TimeWindowStateProgressIndex.class).orElse(null);
+  }
+
   private static class HistoricalTsFileExtractionStatistics {
 
     private int selectedByProgressUncoveredCount;
