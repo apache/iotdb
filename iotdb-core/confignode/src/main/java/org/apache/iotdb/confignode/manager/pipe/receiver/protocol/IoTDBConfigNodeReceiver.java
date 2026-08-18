@@ -559,6 +559,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             PrivilegeType.DELETE,
             ((CommitDeleteTablePlan) plan).getDatabase(),
             ((CommitDeleteTablePlan) plan).getTableName());
+      case PipeDeleteDevices:
+        return checkTableStatus(
+            userEntity,
+            PrivilegeType.DELETE,
+            ((PipeDeleteDevicesPlan) plan).getDatabase(),
+            ((PipeDeleteDevicesPlan) plan).getTableName());
       case GrantRole:
       case GrantUser:
       case RevokeUser:
