@@ -19,47 +19,173 @@
 
 package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertAirGapReqBytes;
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.assertVersionAndType;
+import static org.apache.iotdb.commons.pipe.sink.payload.thrift.PipeTransferReqTestUtils.copyOf;
 
 public class PipeTransferFileSealReqV2Test {
 
   @Test
-  public void testLegacyV13SnapshotSealCapturesTreeOnly() {
-    final Map<String, String> parameters = new HashMap<>();
-
-    Assert.assertTrue(PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters));
-    Assert.assertFalse(PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(parameters));
+  public void testSnapshotSealModelCaptureRules() {
+    assertCapture("legacy v1.3", Collections.emptyMap(), true, false);
+    assertCapture(
+        "non-model parameter only",
+        markerParameters(PipeTransferFileSealReqV2.DATABASE_PATTERN),
+        true,
+        false);
+    assertCapture("tree only", markerParameters(PipeTransferFileSealReqV2.TREE), true, false);
+    assertCapture("table only", markerParameters(PipeTransferFileSealReqV2.TABLE), false, true);
+    assertCapture(
+        "tree and table",
+        markerParameters(PipeTransferFileSealReqV2.TREE, PipeTransferFileSealReqV2.TABLE),
+        true,
+        true);
   }
 
   @Test
-  public void testExplicitTreeOnlySnapshotSealCapturesTreeOnly() {
-    final Map<String, String> parameters = new HashMap<>();
-    parameters.put(PipeTransferFileSealReqV2.TREE, "");
+  public void testSnapshotSealReqV2RoundTripKeepsFilesAndParameters() throws IOException {
+    final List<String> fileNames = Arrays.asList("schema.snapshot", "template.snapshot");
+    final List<Long> fileLengths = Arrays.asList(12L, 34L);
+    final Map<String, String> parameters = snapshotParameters();
 
-    Assert.assertTrue(PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters));
-    Assert.assertFalse(PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(parameters));
+    assertSnapshotSealReqRoundTrip(fileNames, fileLengths, parameters);
   }
 
   @Test
-  public void testExplicitTableOnlySnapshotSealCapturesTableOnly() {
-    final Map<String, String> parameters = new HashMap<>();
-    parameters.put(PipeTransferFileSealReqV2.TABLE, "");
-
-    Assert.assertFalse(PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters));
-    Assert.assertTrue(PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(parameters));
+  public void testEmptySnapshotSealReqV2RoundTripKeepsFilesAndParameters() throws IOException {
+    assertSnapshotSealReqRoundTrip(
+        Collections.emptyList(), Collections.emptyList(), Collections.emptyMap());
   }
 
   @Test
-  public void testExplicitTreeAndTableSnapshotSealCapturesBoth() {
-    final Map<String, String> parameters = new HashMap<>();
-    parameters.put(PipeTransferFileSealReqV2.TREE, "");
-    parameters.put(PipeTransferFileSealReqV2.TABLE, "");
+  public void testSnapshotSealAirGapBytesKeepSameBodyFormat() throws IOException {
+    final List<String> fileNames = Arrays.asList("schema.snapshot", "template.snapshot");
+    final List<Long> fileLengths = Arrays.asList(12L, 34L);
+    final Map<String, String> parameters = snapshotParameters();
 
-    Assert.assertTrue(PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters));
-    Assert.assertTrue(PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(parameters));
+    assertAirGapReqBytes(
+        new DummyFileSealReqV2()
+            .convertToTPipeTransferSnapshotSealBytes(fileNames, fileLengths, parameters),
+        IoTDBSinkRequestVersion.VERSION_1,
+        PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL,
+        body -> assertSnapshotSealBody(body, fileNames, fileLengths, parameters));
+  }
+
+  private static void assertSnapshotSealReqRoundTrip(
+      final List<String> expectedFileNames,
+      final List<Long> expectedFileLengths,
+      final Map<String, String> expectedParameters)
+      throws IOException {
+    final DummyFileSealReqV2 req =
+        DummyFileSealReqV2.toTPipeTransferReq(
+            expectedFileNames, expectedFileLengths, expectedParameters);
+
+    assertVersionAndType(
+        req, IoTDBSinkRequestVersion.VERSION_1, PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL);
+    Assert.assertEquals(expectedFileNames, req.getFileNames());
+    Assert.assertEquals(expectedFileLengths, req.getFileLengths());
+    Assert.assertEquals(expectedParameters, req.getParameters());
+    assertSnapshotSealBody(
+        req.body.duplicate(), expectedFileNames, expectedFileLengths, expectedParameters);
+
+    final DummyFileSealReqV2 deserializedReq =
+        (DummyFileSealReqV2) new DummyFileSealReqV2().translateFromTPipeTransferReq(copyOf(req));
+
+    Assert.assertEquals(req.version, deserializedReq.version);
+    Assert.assertEquals(req.type, deserializedReq.type);
+    Assert.assertEquals(expectedFileNames, deserializedReq.getFileNames());
+    Assert.assertEquals(expectedFileLengths, deserializedReq.getFileLengths());
+    Assert.assertEquals(expectedParameters, deserializedReq.getParameters());
+  }
+
+  private static void assertCapture(
+      final String caseName,
+      final Map<String, String> parameters,
+      final boolean expectedTreeCaptured,
+      final boolean expectedTableCaptured) {
+    Assert.assertEquals(
+        caseName,
+        expectedTreeCaptured,
+        PipeTransferFileSealReqV2.isTreeModelDataAllowedToBeCaptured(parameters));
+    Assert.assertEquals(
+        caseName,
+        expectedTableCaptured,
+        PipeTransferFileSealReqV2.isTableModelDataAllowedToBeCaptured(parameters));
+  }
+
+  private static void assertSnapshotSealBody(
+      final ByteBuffer body,
+      final List<String> expectedFileNames,
+      final List<Long> expectedFileLengths,
+      final Map<String, String> expectedParameters) {
+    final int fileNameSize = ReadWriteIOUtils.readInt(body);
+    Assert.assertEquals(expectedFileNames.size(), fileNameSize);
+    for (final String expectedFileName : expectedFileNames) {
+      Assert.assertEquals(expectedFileName, ReadWriteIOUtils.readString(body));
+    }
+
+    final int fileLengthSize = ReadWriteIOUtils.readInt(body);
+    Assert.assertEquals(expectedFileLengths.size(), fileLengthSize);
+    for (final Long expectedFileLength : expectedFileLengths) {
+      Assert.assertEquals(expectedFileLength.longValue(), ReadWriteIOUtils.readLong(body));
+    }
+
+    final Map<String, String> parameters = readStringMap(body);
+    Assert.assertEquals(expectedParameters, parameters);
+    Assert.assertFalse(body.hasRemaining());
+  }
+
+  private static Map<String, String> readStringMap(final ByteBuffer body) {
+    final int parameterSize = ReadWriteIOUtils.readInt(body);
+    final Map<String, String> parameters = new HashMap<>();
+    for (int i = 0; i < parameterSize; i++) {
+      parameters.put(ReadWriteIOUtils.readString(body), ReadWriteIOUtils.readString(body));
+    }
+    return parameters;
+  }
+
+  private static Map<String, String> markerParameters(final String... keys) {
+    final Map<String, String> parameters = new LinkedHashMap<>();
+    for (final String key : keys) {
+      parameters.put(key, "");
+    }
+    return parameters;
+  }
+
+  private static Map<String, String> snapshotParameters() {
+    final Map<String, String> parameters =
+        markerParameters(PipeTransferFileSealReqV2.TREE, PipeTransferFileSealReqV2.TABLE);
+    parameters.put(PipeTransferFileSealReqV2.DATABASE_PATTERN, "root.sg.*");
+    return parameters;
+  }
+
+  private static class DummyFileSealReqV2 extends PipeTransferFileSealReqV2 {
+
+    private static DummyFileSealReqV2 toTPipeTransferReq(
+        final List<String> fileNames,
+        final List<Long> fileLengths,
+        final Map<String, String> parameters)
+        throws IOException {
+      return (DummyFileSealReqV2)
+          new DummyFileSealReqV2().convertToTPipeTransferReq(fileNames, fileLengths, parameters);
+    }
+
+    @Override
+    protected PipeRequestType getPlanType() {
+      return PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_SEAL;
+    }
   }
 }

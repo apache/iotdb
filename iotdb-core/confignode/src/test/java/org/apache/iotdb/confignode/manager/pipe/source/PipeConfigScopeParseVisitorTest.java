@@ -30,7 +30,9 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class PipeConfigScopeParseVisitorTest {
@@ -44,36 +46,33 @@ public class PipeConfigScopeParseVisitorTest {
 
   private void testTreeScopeParsing(final ConfigPhysicalPlanType type, final boolean isUser) {
     Assert.assertEquals(
-        new AuthorTreePlan(
-            type,
-            isUser ? "user" : "",
-            isUser ? "" : "role",
-            "",
-            "",
-            new HashSet<>(
-                Arrays.stream(PrivilegeType.values())
-                    .filter(PrivilegeType::forRelationalSys)
-                    .map(Enum::ordinal)
-                    .collect(Collectors.toList())),
-            false,
-            Collections.singletonList(new PartialPath(new String[] {"root", "**"}))),
+        treeAuthorPlan(
+            type, isUser, privileges(PrivilegeType::forRelationalSys), false, rootPattern()),
         IoTDBConfigRegionSource.TREE_SCOPE_PARSE_VISITOR
             .process(
-                new AuthorTreePlan(
+                treeAuthorPlan(
                     type,
-                    isUser ? "user" : "",
-                    isUser ? "" : "role",
-                    "",
-                    "",
-                    new HashSet<>(
-                        Arrays.stream(PrivilegeType.values())
-                            .filter(privilegeType -> !privilegeType.isRelationalPrivilege())
-                            .map(Enum::ordinal)
-                            .collect(Collectors.toList())),
+                    isUser,
+                    privileges(privilegeType -> !privilegeType.isRelationalPrivilege()),
                     false,
-                    Collections.singletonList(new PartialPath(new String[] {"root", "**"}))),
+                    rootPattern()),
                 null)
             .orElseThrow(AssertionError::new));
+  }
+
+  @Test
+  public void testTreeScopeParsingSkipsWithoutRelationalSystemPrivilege() {
+    Assert.assertFalse(
+        IoTDBConfigRegionSource.TREE_SCOPE_PARSE_VISITOR
+            .process(
+                treeAuthorPlan(
+                    ConfigPhysicalPlanType.GrantUser,
+                    true,
+                    Collections.singleton(PrivilegeType.READ_DATA.ordinal()),
+                    false,
+                    rootPattern()),
+                null)
+            .isPresent());
   }
 
   @Test
@@ -93,24 +92,41 @@ public class PipeConfigScopeParseVisitorTest {
       final ConfigPhysicalPlanType inputType,
       final boolean isUser) {
     Assert.assertEquals(
-        new AuthorTreePlan(
+        treeAuthorPlan(
             outputType,
-            isUser ? "user" : "",
-            isUser ? "" : "role",
-            "",
-            "",
-            new HashSet<>(
-                Arrays.stream(PrivilegeType.values())
-                    .filter(PrivilegeType::forRelationalSys)
-                    .map(Enum::ordinal)
-                    .collect(Collectors.toList())),
+            isUser,
+            privileges(PrivilegeType::forRelationalSys),
             true,
             Collections.emptyList()),
         IoTDBConfigRegionSource.TABLE_SCOPE_PARSE_VISITOR
-            .process(
-                new AuthorRelationalPlan(
-                    inputType, isUser ? "user" : "", isUser ? "" : "role", "", "", -1, true),
-                null)
+            .process(relationalAuthorPlan(inputType, isUser, true), null)
             .orElseThrow(AssertionError::new));
+  }
+
+  private AuthorTreePlan treeAuthorPlan(
+      final ConfigPhysicalPlanType type,
+      final boolean isUser,
+      final Set<Integer> permissions,
+      final boolean grantOption,
+      final List<PartialPath> paths) {
+    return new AuthorTreePlan(
+        type, isUser ? "user" : "", isUser ? "" : "role", "", "", permissions, grantOption, paths);
+  }
+
+  private AuthorRelationalPlan relationalAuthorPlan(
+      final ConfigPhysicalPlanType type, final boolean isUser, final boolean grantOption) {
+    return new AuthorRelationalPlan(
+        type, isUser ? "user" : "", isUser ? "" : "role", "", "", -1, grantOption);
+  }
+
+  private Set<Integer> privileges(final Predicate<PrivilegeType> predicate) {
+    return Arrays.stream(PrivilegeType.values())
+        .filter(predicate)
+        .map(Enum::ordinal)
+        .collect(Collectors.toSet());
+  }
+
+  private List<PartialPath> rootPattern() {
+    return Collections.singletonList(new PartialPath(new String[] {"root", "**"}));
   }
 }

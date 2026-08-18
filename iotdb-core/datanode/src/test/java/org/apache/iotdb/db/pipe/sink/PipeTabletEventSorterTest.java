@@ -88,10 +88,7 @@ public class PipeTabletEventSorterTest {
     Assert.assertEquals(indices.size(), tablet.getRowSize());
 
     final long[] timestamps = Arrays.copyOfRange(tablet.getTimestamps(), 0, tablet.getRowSize());
-    for (int i = 0; i < 3; ++i) {
-      Assert.assertArrayEquals(
-          timestamps, Arrays.copyOfRange((long[]) tablet.getValues()[0], 0, tablet.getRowSize()));
-    }
+    assertLongColumnsEqualTimestamps(tablet, timestamps);
 
     for (int i = 1; i < tablet.getRowSize(); ++i) {
       Assert.assertTrue(timestamps[i] > timestamps[i - 1]);
@@ -179,10 +176,7 @@ public class PipeTabletEventSorterTest {
     Assert.assertFalse(tablet.isSorted());
 
     long[] timestamps = Arrays.copyOfRange(tablet.getTimestamps(), 0, tablet.getRowSize());
-    for (int i = 0; i < 3; ++i) {
-      Assert.assertArrayEquals(
-          timestamps, Arrays.copyOfRange((long[]) tablet.getValues()[0], 0, tablet.getRowSize()));
-    }
+    assertLongColumnsEqualTimestamps(tablet, timestamps);
 
     for (int i = 1; i < tablet.getRowSize(); ++i) {
       Assert.assertTrue(timestamps[i] != timestamps[i - 1]);
@@ -198,10 +192,7 @@ public class PipeTabletEventSorterTest {
     Assert.assertEquals(indices.size(), tablet.getRowSize());
 
     timestamps = Arrays.copyOfRange(tablet.getTimestamps(), 0, tablet.getRowSize());
-    for (int i = 0; i < 3; ++i) {
-      Assert.assertArrayEquals(
-          timestamps, Arrays.copyOfRange((long[]) tablet.getValues()[0], 0, tablet.getRowSize()));
-    }
+    assertLongColumnsEqualTimestamps(tablet, timestamps);
 
     for (int i = 1; i < tablet.getRowSize(); ++i) {
       Assert.assertTrue(timestamps[i] > timestamps[i - 1]);
@@ -227,53 +218,56 @@ public class PipeTabletEventSorterTest {
   }
 
   @Test
-  public void testTableModelSort1() {
-    doTableModelTest1();
+  public void testTableModelSortedDeduplicated() {
+    doTableModelTest(false, false);
   }
 
-  public void doTableModelTest(final boolean hasDuplicates, final boolean isUnSorted) {
+  @Test
+  public void testTableModelSortByTimestamp() {
+    doTableModelSortByTimestampTest();
+  }
+
+  private static void doTableModelTest(final boolean hasDuplicates, final boolean isUnSorted) {
     final Tablet tablet = generateTablet("test", 10, hasDuplicates, isUnSorted);
     new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
-    long[] timestamps = tablet.getTimestamps();
-    for (int i = 1; i < tablet.getRowSize(); i++) {
-      long time = timestamps[i];
-      Assert.assertTrue(time > timestamps[i - 1]);
-      Assert.assertEquals(
-          tablet.getValue(i, 0),
-          new Binary(String.valueOf(i / 100).getBytes(StandardCharsets.UTF_8)));
-      Assert.assertEquals(tablet.getValue(i, 1), (long) i);
-      Assert.assertEquals(tablet.getValue(i, 2), i * 1.0f);
-      Assert.assertEquals(
-          tablet.getValue(i, 3), new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
-      Assert.assertEquals(tablet.getValue(i, 4), (long) i);
-      Assert.assertEquals(tablet.getValue(i, 5), i);
-      Assert.assertEquals(tablet.getValue(i, 6), i * 0.1);
-      Assert.assertEquals(tablet.getValue(i, 7), getDate(i));
-      Assert.assertEquals(
-          tablet.getValue(i, 8), new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
+    assertSortedTableModelTablet(tablet);
+  }
+
+  private static void doTableModelSortByTimestampTest() {
+    final Tablet tablet = generateTablet("test", 10, false, true);
+    new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
+    assertSortedTableModelTablet(tablet);
+  }
+
+  private static void assertLongColumnsEqualTimestamps(
+      final Tablet tablet, final long[] timestamps) {
+    for (int i = 0; i < tablet.getSchemas().size(); ++i) {
+      Assert.assertArrayEquals(
+          timestamps, Arrays.copyOfRange((long[]) tablet.getValues()[i], 0, tablet.getRowSize()));
     }
   }
 
-  public void doTableModelTest1() {
-    final Tablet tablet = generateTablet("test", 10, false, true);
-    new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
-    long[] timestamps = tablet.getTimestamps();
-    for (int i = 1; i < tablet.getRowSize(); i++) {
-      long time = timestamps[i];
-      Assert.assertTrue(time > timestamps[i - 1]);
+  private static void assertSortedTableModelTablet(final Tablet tablet) {
+    final long[] timestamps = tablet.getTimestamps();
+    for (int i = 0; i < tablet.getRowSize(); i++) {
+      final long time = timestamps[i];
+      if (i > 0) {
+        Assert.assertTrue(time > timestamps[i - 1]);
+      }
+      Assert.assertEquals(i, time);
       Assert.assertEquals(
-          tablet.getValue(i, 0),
-          new Binary(String.valueOf(i / 100).getBytes(StandardCharsets.UTF_8)));
-      Assert.assertEquals(tablet.getValue(i, 1), (long) i);
-      Assert.assertEquals(tablet.getValue(i, 2), i * 1.0f);
+          new Binary(String.valueOf(i / 100).getBytes(StandardCharsets.UTF_8)),
+          tablet.getValue(i, 0));
+      Assert.assertEquals((long) i, tablet.getValue(i, 1));
+      Assert.assertEquals(i * 1.0f, tablet.getValue(i, 2));
       Assert.assertEquals(
-          tablet.getValue(i, 3), new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
-      Assert.assertEquals(tablet.getValue(i, 4), (long) i);
-      Assert.assertEquals(tablet.getValue(i, 5), i);
-      Assert.assertEquals(tablet.getValue(i, 6), i * 0.1);
-      Assert.assertEquals(tablet.getValue(i, 7), getDate(i));
+          new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)), tablet.getValue(i, 3));
+      Assert.assertEquals((long) i, tablet.getValue(i, 4));
+      Assert.assertEquals(i, tablet.getValue(i, 5));
+      Assert.assertEquals(i * 0.1, tablet.getValue(i, 6));
+      Assert.assertEquals(getDate(i), tablet.getValue(i, 7));
       Assert.assertEquals(
-          tablet.getValue(i, 8), new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
+          new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)), tablet.getValue(i, 8));
     }
   }
 

@@ -24,60 +24,81 @@ import org.apache.iotdb.pipe.api.type.Type;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class PipeDataTypeTransformerTest {
-  private List<TSDataType> nullTsDataTypeList;
-  private List<TSDataType> tsDataTypeList;
-  private List<Type> nullTypeList;
-  private List<Type> typeList;
 
-  @Before
-  public void setUp() {
-    createDataTypeList();
-  }
+  @Test
+  public void testTransformToPipeDataType() {
+    for (final DataTypeCase dataTypeCase : dataTypeCases()) {
+      Assert.assertEquals(
+          dataTypeCase.pipeDataType,
+          PipeDataTypeTransformer.transformToPipeDataType(dataTypeCase.tsDataType));
+    }
 
-  public void createDataTypeList() {
-    nullTsDataTypeList = null;
-    tsDataTypeList = new ArrayList<>();
-    tsDataTypeList.add(TSDataType.INT32);
-    tsDataTypeList.add(TSDataType.INT64);
-    tsDataTypeList.add(TSDataType.FLOAT);
-    tsDataTypeList.add(TSDataType.DOUBLE);
-    tsDataTypeList.add(TSDataType.BOOLEAN);
-    tsDataTypeList.add(TSDataType.TEXT);
-    tsDataTypeList.add(TSDataType.TIMESTAMP);
-    tsDataTypeList.add(TSDataType.DATE);
-    tsDataTypeList.add(TSDataType.BLOB);
-    tsDataTypeList.add(TSDataType.STRING);
-    tsDataTypeList.add(null);
-
-    nullTypeList = null;
-    typeList = new ArrayList<>();
-    typeList.add(Type.INT32);
-    typeList.add(Type.INT64);
-    typeList.add(Type.FLOAT);
-    typeList.add(Type.DOUBLE);
-    typeList.add(Type.BOOLEAN);
-    typeList.add(Type.TEXT);
-    typeList.add(Type.TIMESTAMP);
-    typeList.add(Type.DATE);
-    typeList.add(Type.BLOB);
-    typeList.add(Type.STRING);
-    typeList.add(null);
+    Assert.assertNull(PipeDataTypeTransformer.transformToPipeDataType(null));
   }
 
   @Test
-  public void testDataTypeTransformer() {
-    final List<Type> nullResultList =
-        PipeDataTypeTransformer.transformToPipeDataTypeList(nullTsDataTypeList);
-    final List<Type> resultList =
-        PipeDataTypeTransformer.transformToPipeDataTypeList(tsDataTypeList);
-    Assert.assertEquals(nullResultList, nullTypeList);
-    Assert.assertEquals(resultList, typeList);
+  public void testUnsupportedDataType() {
+    for (final TSDataType unsupportedDataType :
+        Arrays.asList(TSDataType.VECTOR, TSDataType.UNKNOWN)) {
+      try {
+        PipeDataTypeTransformer.transformToPipeDataType(unsupportedDataType);
+        Assert.fail("Should reject unsupported TSDataType " + unsupportedDataType);
+      } catch (final IllegalArgumentException ignored) {
+        // Expected exception
+      }
+    }
+  }
+
+  @Test
+  public void testTransformToPipeDataTypeList() {
+    Assert.assertNull(PipeDataTypeTransformer.transformToPipeDataTypeList(null));
+    Assert.assertEquals(
+        Collections.emptyList(),
+        PipeDataTypeTransformer.transformToPipeDataTypeList(Collections.emptyList()));
+
+    final List<TSDataType> tsDataTypes = new ArrayList<>();
+    final List<Type> pipeDataTypes = new ArrayList<>();
+    for (final DataTypeCase dataTypeCase : dataTypeCases()) {
+      tsDataTypes.add(dataTypeCase.tsDataType);
+      pipeDataTypes.add(dataTypeCase.pipeDataType);
+    }
+    tsDataTypes.add(null);
+    pipeDataTypes.add(null);
+
+    Assert.assertEquals(
+        pipeDataTypes, PipeDataTypeTransformer.transformToPipeDataTypeList(tsDataTypes));
+  }
+
+  private static List<DataTypeCase> dataTypeCases() {
+    return Arrays.asList(
+        new DataTypeCase(TSDataType.BOOLEAN, Type.BOOLEAN),
+        new DataTypeCase(TSDataType.INT32, Type.INT32),
+        new DataTypeCase(TSDataType.INT64, Type.INT64),
+        new DataTypeCase(TSDataType.FLOAT, Type.FLOAT),
+        new DataTypeCase(TSDataType.DOUBLE, Type.DOUBLE),
+        new DataTypeCase(TSDataType.TEXT, Type.TEXT),
+        new DataTypeCase(TSDataType.TIMESTAMP, Type.TIMESTAMP),
+        new DataTypeCase(TSDataType.DATE, Type.DATE),
+        new DataTypeCase(TSDataType.BLOB, Type.BLOB),
+        new DataTypeCase(TSDataType.STRING, Type.STRING));
+  }
+
+  private static class DataTypeCase {
+
+    private final TSDataType tsDataType;
+    private final Type pipeDataType;
+
+    private DataTypeCase(final TSDataType tsDataType, final Type pipeDataType) {
+      this.tsDataType = tsDataType;
+      this.pipeDataType = pipeDataType;
+    }
   }
 }

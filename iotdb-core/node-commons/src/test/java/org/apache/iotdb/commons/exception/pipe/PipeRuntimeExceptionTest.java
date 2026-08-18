@@ -24,60 +24,48 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMetaVersion;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
 
 public class PipeRuntimeExceptionTest {
   @Test
-  public void testPipeRuntimeNonCriticalException() {
-    long currentTime = System.currentTimeMillis();
-    PipeRuntimeNonCriticalException e = new PipeRuntimeNonCriticalException("test", currentTime);
-    Assert.assertEquals(new PipeRuntimeNonCriticalException("test", currentTime), e);
-    ByteBuffer buffer = ByteBuffer.allocate(32);
-    e.serialize(buffer);
-    buffer.position(0);
-    try {
-      PipeRuntimeNonCriticalException e1 =
-          (PipeRuntimeNonCriticalException)
-              PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, buffer);
-      Assert.assertEquals(e.hashCode(), e1.hashCode());
-    } catch (ClassCastException classCastException) {
-      Assert.fail();
+  public void testPipeRuntimeExceptionSerde() throws IOException {
+    final long currentTime = System.currentTimeMillis();
+    final List<PipeRuntimeException> exceptions =
+        Arrays.asList(
+            new PipeRuntimeNonCriticalException("non-critical", currentTime),
+            new PipeRuntimeCriticalException("critical", currentTime),
+            new PipeRuntimeSinkCriticalException("sink-critical", currentTime),
+            new PipeRuntimeOutOfMemoryCriticalException("out-of-memory", currentTime));
+
+    for (final PipeRuntimeException exception : exceptions) {
+      assertSerde(exception);
     }
   }
 
-  @Test
-  public void testPipeRuntimeCriticalException() {
-    long currentTime = System.currentTimeMillis();
-    PipeRuntimeCriticalException e = new PipeRuntimeCriticalException("test", currentTime);
-    Assert.assertEquals(new PipeRuntimeCriticalException("test", currentTime), e);
-    ByteBuffer buffer = ByteBuffer.allocate(32);
-    e.serialize(buffer);
-    buffer.position(0);
-    try {
-      PipeRuntimeCriticalException e1 =
-          (PipeRuntimeCriticalException)
-              PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, buffer);
-      Assert.assertEquals(e.hashCode(), e1.hashCode());
-    } catch (ClassCastException classCastException) {
-      Assert.fail();
-    }
+  private static void assertSerde(final PipeRuntimeException exception) throws IOException {
+    Assert.assertEquals(exception, deserializeFromByteBuffer(exception));
+    Assert.assertEquals(exception, deserializeFromInputStream(exception));
+    Assert.assertEquals(exception.hashCode(), deserializeFromByteBuffer(exception).hashCode());
   }
 
-  @Test
-  public void testPipeRuntimeConnectorCriticalException() {
-    long currentTime = System.currentTimeMillis();
-    PipeRuntimeSinkCriticalException e = new PipeRuntimeSinkCriticalException("test", currentTime);
-    Assert.assertEquals(new PipeRuntimeSinkCriticalException("test", currentTime), e);
-    ByteBuffer buffer = ByteBuffer.allocate(32);
-    e.serialize(buffer);
-    buffer.position(0);
-    try {
-      PipeRuntimeSinkCriticalException e1 =
-          (PipeRuntimeSinkCriticalException)
-              PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, buffer);
-      Assert.assertEquals(e.hashCode(), e1.hashCode());
-    } catch (ClassCastException classCastException) {
-      Assert.fail();
-    }
+  private static PipeRuntimeException deserializeFromByteBuffer(
+      final PipeRuntimeException exception) {
+    final ByteBuffer buffer = ByteBuffer.allocate(256);
+    exception.serialize(buffer);
+    buffer.flip();
+    return PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, buffer);
+  }
+
+  private static PipeRuntimeException deserializeFromInputStream(
+      final PipeRuntimeException exception) throws IOException {
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    exception.serialize(outputStream);
+    return PipeRuntimeExceptionType.deserializeFrom(
+        PipeRuntimeMetaVersion.VERSION_2, new ByteArrayInputStream(outputStream.toByteArray()));
   }
 }
