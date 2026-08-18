@@ -577,31 +577,29 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("insert into table1(time,device,s0,s1) values(1000,'d1',1000,1000)");
       statement.execute("insert into table1(time,device,s0,s1) values(10,'d0',10,10)");
 
-      List<ResultSet> resultSetList = new ArrayList<>();
+      try (ResultSet r1 =
+          statement.executeQuery("select * from table1 where device='d0' and time <= 1")) {
+        Assert.assertTrue(r1.next());
+        Assert.assertEquals(r1.getLong(1), 1L);
+        Assert.assertEquals(r1.getLong(3), 1L);
+        Assert.assertEquals(r1.getLong(4), 1L);
+      }
 
-      ResultSet r1 = statement.executeQuery("select * from table1 where device='d0' and time <= 1");
-      resultSetList.add(r1);
+      try (ResultSet r2 =
+          statement.executeQuery("select * from table1 where device='d1' and s0 = 1000")) {
+        Assert.assertTrue(r2.next());
+        Assert.assertEquals(r2.getLong(1), 1000L);
+        Assert.assertEquals(r2.getLong(3), 1000L);
+        Assert.assertEquals(r2.getLong(4), 1000L);
+      }
 
-      ResultSet r2 = statement.executeQuery("select * from table1 where device='d1' and s0 = 1000");
-      resultSetList.add(r2);
-
-      ResultSet r3 = statement.executeQuery("select * from table1 where device='d0' and s1 = 10");
-      resultSetList.add(r3);
-
-      r1.next();
-      Assert.assertEquals(r1.getLong(1), 1L);
-      Assert.assertEquals(r1.getLong(3), 1L);
-      Assert.assertEquals(r1.getLong(4), 1L);
-
-      r2.next();
-      Assert.assertEquals(r2.getLong(1), 1000L);
-      Assert.assertEquals(r2.getLong(3), 1000L);
-      Assert.assertEquals(r2.getLong(4), 1000L);
-
-      r3.next();
-      Assert.assertEquals(r3.getLong(1), 10L);
-      Assert.assertEquals(r3.getLong(3), 10L);
-      Assert.assertEquals(r3.getLong(4), 10L);
+      try (ResultSet r3 =
+          statement.executeQuery("select * from table1 where device='d0' and s1 = 10")) {
+        Assert.assertTrue(r3.next());
+        Assert.assertEquals(r3.getLong(1), 10L);
+        Assert.assertEquals(r3.getLong(3), 10L);
+        Assert.assertEquals(r3.getLong(4), 10L);
+      }
     }
   }
 

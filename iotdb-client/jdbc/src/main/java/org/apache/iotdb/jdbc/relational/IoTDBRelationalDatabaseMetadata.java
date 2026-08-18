@@ -225,10 +225,9 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         legacyMode = false;
       } catch (SQLException e1) {
         LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
+        close(null, stmt);
         throw e;
       }
-    } finally {
-      stmt.close();
     }
 
     // Setup Fields
@@ -257,43 +256,43 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       columnNameIndex.put(fields[i].getName(), i);
     }
 
-    // Extract Values
     boolean hasResultSet = false;
-    while (rs.next()) {
-      hasResultSet = true;
-      List<Object> valueInRow = new ArrayList<>();
-      for (int i = 0; i < fields.length; i++) {
-        if (i == 0) {
-          valueInRow.add(schemaPattern);
-        } else if (i == 1) {
-          // valueInRow.add(rs.getString(2));
-          valueInRow.add(legacyMode ? rs.getString("table_name") : rs.getString("TableName"));
-        } else if (i == 2) {
-          valueInRow.add("TABLE");
-        } else if (i == 3) {
-          // String tgtString = "";
-          // String ttl = rs.getString("ttl(ms)");
-          // tgtString += "TTL(ms): " + ttl;
-          String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
-          if (comment != null && !comment.isEmpty()) {
-            valueInRow.add(comment);
-          } else {
-            valueInRow.add("");
-          }
-        } else if (i == 4) {
-          valueInRow.add(getTypePrecision(fields[i].getSqlType()));
-        } else if (i == 5) {
-          valueInRow.add(getTypeScale(fields[i].getSqlType()));
-        } else {
-          valueInRow.add("TABLE");
-        }
-      }
-      valuesList.add(valueInRow);
-    }
-
-    // Convert Values to ByteBuffer
     ByteBuffer tsBlock = null;
     try {
+      // Extract Values
+      while (rs.next()) {
+        hasResultSet = true;
+        List<Object> valueInRow = new ArrayList<>();
+        for (int i = 0; i < fields.length; i++) {
+          if (i == 0) {
+            valueInRow.add(schemaPattern);
+          } else if (i == 1) {
+            // valueInRow.add(rs.getString(2));
+            valueInRow.add(legacyMode ? rs.getString("table_name") : rs.getString("TableName"));
+          } else if (i == 2) {
+            valueInRow.add("TABLE");
+          } else if (i == 3) {
+            // String tgtString = "";
+            // String ttl = rs.getString("ttl(ms)");
+            // tgtString += "TTL(ms): " + ttl;
+            String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
+            if (comment != null && !comment.isEmpty()) {
+              valueInRow.add(comment);
+            } else {
+              valueInRow.add("");
+            }
+          } else if (i == 4) {
+            valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+          } else if (i == 5) {
+            valueInRow.add(getTypeScale(fields[i].getSqlType()));
+          } else {
+            valueInRow.add("TABLE");
+          }
+        }
+        valuesList.add(valueInRow);
+      }
+
+      // Convert Values to ByteBuffer
       tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
@@ -358,11 +357,9 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         legacyMode = false;
       } catch (SQLException e1) {
         LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
+        close(null, stmt);
         throw e;
       }
-
-    } finally {
-      stmt.close();
     }
 
     // Setup Fields
@@ -428,85 +425,85 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       columnNameIndex.put(fields[i].getName(), i);
     }
 
-    // Extract Metadata
     int count = 1;
-    while (rs.next()) {
-      String columnName =
-          legacyMode ? rs.getString("column_name") : rs.getString("ColumnName"); // 3
-      String type = legacyMode ? rs.getString("datatype") : rs.getString("DataType"); // 4
-      List<Object> valueInRow = new ArrayList<>();
-      for (int i = 0; i < fields.length; i++) {
-        if (i == 0) {
-          valueInRow.add("");
-        } else if (i == 1) {
-          valueInRow.add(schemaPattern);
-        } else if (i == 2) {
-          valueInRow.add(tableNamePattern);
-        } else if (i == 3) {
-          valueInRow.add(columnName);
-        } else if (i == 4) {
-          valueInRow.add(getSQLType(type));
-        } else if (i == 5) {
-          valueInRow.add(type);
-        } else if (i == 6) {
-          valueInRow.add(0);
-        } else if (i == 7) {
-          valueInRow.add(65535);
-        } else if (i == 8) {
-          valueInRow.add(getTypeScale(fields[i].getSqlType()));
-        } else if (i == 9) {
-          valueInRow.add(0);
-        } else if (i == 10) {
-          if (!columnName.equals("time")) {
-            valueInRow.add(ResultSetMetaData.columnNullableUnknown);
-          } else {
-            valueInRow.add(ResultSetMetaData.columnNoNulls);
-          }
-        } else if (i == 11) {
-          String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
-          if (comment != null && !comment.isEmpty()) {
-            valueInRow.add(comment);
+    ByteBuffer tsBlock = null;
+    try {
+      // Extract Metadata
+      while (rs.next()) {
+        String columnName =
+            legacyMode ? rs.getString("column_name") : rs.getString("ColumnName"); // 3
+        String type = legacyMode ? rs.getString("datatype") : rs.getString("DataType"); // 4
+        List<Object> valueInRow = new ArrayList<>();
+        for (int i = 0; i < fields.length; i++) {
+          if (i == 0) {
+            valueInRow.add("");
+          } else if (i == 1) {
+            valueInRow.add(schemaPattern);
+          } else if (i == 2) {
+            valueInRow.add(tableNamePattern);
+          } else if (i == 3) {
+            valueInRow.add(columnName);
+          } else if (i == 4) {
+            valueInRow.add(getSQLType(type));
+          } else if (i == 5) {
+            valueInRow.add(type);
+          } else if (i == 6) {
+            valueInRow.add(0);
+          } else if (i == 7) {
+            valueInRow.add(65535);
+          } else if (i == 8) {
+            valueInRow.add(getTypeScale(fields[i].getSqlType()));
+          } else if (i == 9) {
+            valueInRow.add(0);
+          } else if (i == 10) {
+            if (!columnName.equals("time")) {
+              valueInRow.add(ResultSetMetaData.columnNullableUnknown);
+            } else {
+              valueInRow.add(ResultSetMetaData.columnNoNulls);
+            }
+          } else if (i == 11) {
+            String comment = legacyMode ? rs.getString("comment") : rs.getString("Comment");
+            if (comment != null && !comment.isEmpty()) {
+              valueInRow.add(comment);
+            } else {
+              valueInRow.add("");
+            }
+          } else if (i == 12) {
+            valueInRow.add("");
+          } else if (i == 13) {
+            valueInRow.add(0);
+          } else if (i == 14) {
+            valueInRow.add(0);
+          } else if (i == 15) {
+            valueInRow.add(65535);
+          } else if (i == 16) {
+            valueInRow.add(count++);
+          } else if (i == 17) {
+            if (!columnName.equals("time")) {
+              valueInRow.add("YES");
+            } else {
+              valueInRow.add("NO");
+            }
+          } else if (i == 18) {
+            valueInRow.add("");
+          } else if (i == 19) {
+            valueInRow.add("");
+          } else if (i == 20) {
+            valueInRow.add("");
+          } else if (i == 21) {
+            valueInRow.add(0);
+          } else if (i == 22) {
+            valueInRow.add("");
+          } else if (i == 23) {
+            valueInRow.add("");
           } else {
             valueInRow.add("");
           }
-        } else if (i == 12) {
-          valueInRow.add("");
-        } else if (i == 13) {
-          valueInRow.add(0);
-        } else if (i == 14) {
-          valueInRow.add(0);
-        } else if (i == 15) {
-          valueInRow.add(65535);
-        } else if (i == 16) {
-          valueInRow.add(count++);
-        } else if (i == 17) {
-          if (!columnName.equals("time")) {
-            valueInRow.add("YES");
-          } else {
-            valueInRow.add("NO");
-          }
-        } else if (i == 18) {
-          valueInRow.add("");
-        } else if (i == 19) {
-          valueInRow.add("");
-        } else if (i == 20) {
-          valueInRow.add("");
-        } else if (i == 21) {
-          valueInRow.add(0);
-        } else if (i == 22) {
-          valueInRow.add("");
-        } else if (i == 23) {
-          valueInRow.add("");
-        } else {
-          valueInRow.add("");
         }
+        valuesList.add(valueInRow);
       }
-      valuesList.add(valueInRow);
-    }
 
-    // Convert Values to ByteBuffer
-    ByteBuffer tsBlock = null;
-    try {
+      // Convert Values to ByteBuffer
       tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       LOGGER.error(CONVERT_ERROR_MSG, e.getMessage());
@@ -556,11 +553,9 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         legacyMode = false;
       } catch (SQLException e1) {
         LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
+        close(null, stmt);
         throw e;
       }
-
-    } finally {
-      stmt.close();
     }
 
     Field[] fields = new Field[6];
@@ -589,37 +584,37 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     }
 
     int count = 1;
-    while (rs.next()) {
-      String columnName = legacyMode ? rs.getString("column_name") : rs.getString("ColumnName");
-      String category = legacyMode ? rs.getString("category") : rs.getString("Category");
-      if (category.equals("TAG") || category.equals("TIME")) {
-        List<Object> valueInRow = new ArrayList<>();
-        for (int i = 0; i < fields.length; ++i) {
-          if (i == 0) {
-            valueInRow.add(schemaPattern);
-          } else if (i == 1) {
-            valueInRow.add(schemaPattern);
-          } else if (i == 2) {
-            valueInRow.add(tableNamePattern);
-          } else if (i == 3) {
-            valueInRow.add(columnName);
-          } else if (i == 4) {
-            valueInRow.add(count++);
-          } else {
-            valueInRow.add(PRIMARY);
-          }
-        }
-        valuesList.add(valueInRow);
-      }
-    }
-
     ByteBuffer tsBlock = null;
     try {
+      while (rs.next()) {
+        String columnName = legacyMode ? rs.getString("column_name") : rs.getString("ColumnName");
+        String category = legacyMode ? rs.getString("category") : rs.getString("Category");
+        if (category.equals("TAG") || category.equals("TIME")) {
+          List<Object> valueInRow = new ArrayList<>();
+          for (int i = 0; i < fields.length; ++i) {
+            if (i == 0) {
+              valueInRow.add(schemaPattern);
+            } else if (i == 1) {
+              valueInRow.add(schemaPattern);
+            } else if (i == 2) {
+              valueInRow.add(tableNamePattern);
+            } else if (i == 3) {
+              valueInRow.add(columnName);
+            } else if (i == 4) {
+              valueInRow.add(count++);
+            } else {
+              valueInRow.add(PRIMARY);
+            }
+          }
+          valuesList.add(valueInRow);
+        }
+      }
+
       tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
       LOGGER.error(JdbcMessages.RELATIONAL_GET_PRIMARY_KEYS_ERROR, e.getMessage());
     } finally {
-      close(null, stmt);
+      close(rs, stmt);
     }
 
     return new IoTDBJDBCResultSet(
