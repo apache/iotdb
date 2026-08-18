@@ -125,4 +125,9 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
+    return this;
+  }
 }

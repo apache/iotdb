@@ -30,8 +30,6 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
 
   private final boolean rawSegment;
   private DeviceEntryDiskSpiller spiller;
-  // Only be used in fetchDeviceSchema, manages memory itself
-  private long rawBufferedRamBytes;
 
   public DeviceEntryMaterializer(
       String queryId, PlanNodeId planNodeId, long thresholdInBytes, boolean rawSegment) {
@@ -56,17 +54,20 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
   }
 
   /** Returns the RAM bytes released when Coordinator Raw Fetch switches to spill mode. */
+  @Override
   public long appendWithMemoryControl(DeviceEntry entry) throws IOException {
     checkNotFinished();
-    long ramBytesUsed = entry.ramBytesUsed();
-    if (spiller == null && rawBufferedRamBytes + ramBytesUsed <= thresholdInBytes()) {
-      appendToBuffer(entry);
-      rawBufferedRamBytes += ramBytesUsed;
-      return 0;
+    if (spiller == null) {
+      long ramBytesUsed = entry.ramBytesUsed();
+      if (getBufferedRamBytes() + ramBytesUsed <= thresholdInBytes()) {
+        appendToBuffer(entry);
+        addBufferedRamBytes(ramBytesUsed);
+        return 0;
+      }
     }
-    long releasedRamBytes = rawBufferedRamBytes;
+    long releasedRamBytes = getBufferedRamBytes();
     ensureSpiller();
-    rawBufferedRamBytes = 0;
+    clearBufferedRamBytes();
     spiller.append(entry.serializeToBytes());
     incrementEntryCount();
     return releasedRamBytes;
@@ -78,9 +79,10 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
     if (spiller == null && !isBufferEmpty()) {
       ensureSpiller();
     }
-    rawBufferedRamBytes = 0;
+    clearBufferedRamBytes();
   }
 
+  @Override
   public boolean isSpilled() {
     return spiller != null;
   }

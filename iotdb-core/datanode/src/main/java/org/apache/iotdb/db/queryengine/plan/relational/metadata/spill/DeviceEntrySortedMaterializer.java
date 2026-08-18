@@ -38,6 +38,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
   private static final int MAX_MERGE_FAN_IN = 32;
 
   private final Comparator<DeviceEntry> comparator;
+  private final boolean distinct;
   private final List<List<Path>> sortedRuns = new ArrayList<>();
 
   private Path runDirectory;
@@ -47,8 +48,18 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       PlanNodeId planNodeId,
       long bufferSizeInBytes,
       Comparator<DeviceEntry> comparator) {
+    this(queryId, planNodeId, bufferSizeInBytes, comparator, false);
+  }
+
+  public DeviceEntrySortedMaterializer(
+      String queryId,
+      PlanNodeId planNodeId,
+      long bufferSizeInBytes,
+      Comparator<DeviceEntry> comparator,
+      boolean distinct) {
     super(queryId, planNodeId, bufferSizeInBytes);
     this.comparator = comparator;
+    this.distinct = distinct;
   }
 
   public DeviceEntrySortedMaterializer(
@@ -61,10 +72,42 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     setQueryContext(queryContext);
   }
 
+  public DeviceEntrySortedMaterializer(
+      String queryId,
+      PlanNodeId planNodeId,
+      long bufferSizeInBytes,
+      Comparator<DeviceEntry> comparator,
+      boolean distinct,
+      MPPQueryContext queryContext) {
+    this(queryId, planNodeId, bufferSizeInBytes, comparator, distinct);
+    setQueryContext(queryContext);
+  }
+
   @Override
   public void append(DeviceEntry entry) throws IOException {
     checkNotFinished();
     appendToBuffer(entry);
+  }
+
+  @Override
+  public long appendWithMemoryControl(DeviceEntry entry) throws IOException {
+    checkNotFinished();
+    long entryRamBytes = entry.ramBytesUsed();
+    if (!isBufferEmpty() && getBufferedRamBytes() + entryRamBytes > thresholdInBytes()) {
+      long releasedRamBytes = getBufferedRamBytes();
+      flushRun();
+      appendToBuffer(entry);
+      addBufferedRamBytes(entryRamBytes);
+      return releasedRamBytes;
+    }
+    appendToBuffer(entry);
+    addBufferedRamBytes(entryRamBytes);
+    return 0;
+  }
+
+  @Override
+  public boolean isSpilled() {
+    return !sortedRuns.isEmpty();
   }
 
   @Override
@@ -83,6 +126,9 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     }
     if (sortedRuns.isEmpty()) {
       sortBufferedEntries(comparator);
+      if (distinct) {
+        deduplicateBufferedEntries();
+      }
       DeviceEntryDataSet dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
       markFinished();
       return dataSet;
@@ -93,15 +139,17 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       List<List<Path>> finalRuns = compactRuns(new ArrayList<>(sortedRuns));
       Path finalDirectory = ownerDirectory().resolve("fi");
       List<Path> finalSegments;
+      int finalEntryCount;
       try (DeviceEntryDiskSpiller outputSpiller =
           new DeviceEntryDiskSpiller(finalDirectory, thresholdInBytes(), ioContext())) {
         if (finalRuns.size() == 1) {
-          copyRun(finalRuns.get(0), outputSpiller);
+          finalEntryCount = copyRun(finalRuns.get(0), outputSpiller);
         } else {
-          mergeRuns(finalRuns, outputSpiller);
+          finalEntryCount = mergeRuns(finalRuns, outputSpiller);
         }
         finalSegments = outputSpiller.finish();
       }
+      setEntryCount(finalEntryCount);
       DeviceEntryDataSet dataSet =
           new SpilledDeviceEntryDataSet(queryId(), ownerDirectory(), finalSegments, entryCount());
       markFinished();
@@ -132,6 +180,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       sortedRuns.add(runSpiller.finish());
     }
     clearBuffer();
+    clearBufferedRamBytes();
   }
 
   private void ensureSpillDirectory() throws IOException {
@@ -142,13 +191,21 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     runDirectory = ensureOwnerDirectory().resolve("sort-run");
   }
 
-  private void copyRun(List<Path> run, DeviceEntryDiskSpiller outputSpiller) throws IOException {
+  private int copyRun(List<Path> run, DeviceEntryDiskSpiller outputSpiller) throws IOException {
+    int outputCount = 0;
+    DeviceEntry previous = null;
     try (DeviceEntryFileSpillerReader reader =
         new DeviceEntryFileSpillerReader(run, true, ioContext())) {
       while (reader.hasNext()) {
-        outputSpiller.append(reader.next().serializeToBytes());
+        DeviceEntry entry = reader.next();
+        if (!distinct || previous == null || comparator.compare(previous, entry) != 0) {
+          outputSpiller.append(entry.serializeToBytes());
+          previous = entry;
+          outputCount++;
+        }
       }
     }
+    return outputCount;
   }
 
   private void deleteRunDirectoryBestEffort() {
@@ -186,7 +243,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     return runs;
   }
 
-  private void mergeRuns(List<List<Path>> runs, DeviceEntryDiskSpiller outputSpiller)
+  private int mergeRuns(List<List<Path>> runs, DeviceEntryDiskSpiller outputSpiller)
       throws IOException {
     List<DeviceEntryFileSpillerReader> readers = new ArrayList<>(runs.size());
     PriorityQueue<MergeElement> queue =
@@ -196,6 +253,8 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
               return result != 0 ? result : Integer.compare(left.readerIndex, right.readerIndex);
             });
     Throwable failure = null;
+    int outputCount = 0;
+    DeviceEntry previous = null;
     try {
       for (int i = 0; i < runs.size(); i++) {
         DeviceEntryFileSpillerReader reader =
@@ -207,7 +266,11 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       }
       while (!queue.isEmpty()) {
         MergeElement element = queue.poll();
-        outputSpiller.append(element.entry.serializeToBytes());
+        if (!distinct || previous == null || comparator.compare(previous, element.entry) != 0) {
+          outputSpiller.append(element.entry.serializeToBytes());
+          previous = element.entry;
+          outputCount++;
+        }
         DeviceEntryFileSpillerReader reader = readers.get(element.readerIndex);
         if (reader.hasNext()) {
           queue.add(new MergeElement(reader.next(), element.readerIndex));
@@ -237,6 +300,19 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
         }
       }
     }
+    return outputCount;
+  }
+
+  private void deduplicateBufferedEntries() {
+    List<DeviceEntry> distinctEntries = new ArrayList<>();
+    DeviceEntry previous = null;
+    for (DeviceEntry entry : bufferedEntries()) {
+      if (previous == null || comparator.compare(previous, entry) != 0) {
+        distinctEntries.add(entry);
+        previous = entry;
+      }
+    }
+    replaceBufferedEntries(distinctEntries);
   }
 
   private static final class MergeElement {

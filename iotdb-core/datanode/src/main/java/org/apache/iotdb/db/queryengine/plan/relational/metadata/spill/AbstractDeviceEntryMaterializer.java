@@ -36,9 +36,10 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   private final String queryId;
   private final PlanNodeId planNodeId;
   private final long thresholdInBytes;
-  private final List<DeviceEntry> bufferedEntries = new ArrayList<>();
+  private List<DeviceEntry> bufferedEntries = new ArrayList<>();
 
   private int entryCount;
+  private long bufferedRamBytes;
   private Path ownerDirectory;
   private boolean ownerRegistered;
   private boolean finished;
@@ -60,6 +61,19 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
    */
   public abstract void append(DeviceEntry entry) throws IOException;
 
+  /**
+   * Appends a DeviceEntry while controlling this materializer's in-memory buffer.
+   *
+   * @return RAM bytes released when buffered entries are spilled
+   */
+  public abstract long appendWithMemoryControl(DeviceEntry entry) throws IOException;
+
+  public abstract boolean isSpilled();
+
+  public final long getBufferedRamBytes() {
+    return bufferedRamBytes;
+  }
+
   public abstract DeviceEntryDataSet finish() throws IOException;
 
   protected final String queryId() {
@@ -73,6 +87,14 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   protected final void appendToBuffer(DeviceEntry entry) {
     bufferedEntries.add(entry);
     entryCount++;
+  }
+
+  protected final void addBufferedRamBytes(long ramBytes) {
+    bufferedRamBytes += ramBytes;
+  }
+
+  protected final void clearBufferedRamBytes() {
+    bufferedRamBytes = 0;
   }
 
   protected final void incrementEntryCount() {
@@ -89,6 +111,11 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   protected final List<DeviceEntry> copyBufferedEntries() {
     return new ArrayList<>(bufferedEntries);
+  }
+
+  protected final void replaceBufferedEntries(List<DeviceEntry> entries) {
+    bufferedEntries = entries;
+    entryCount = entries.size();
   }
 
   protected final void sortBufferedEntries(Comparator<DeviceEntry> comparator) {
@@ -114,6 +141,10 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   protected final int entryCount() {
     return entryCount;
+  }
+
+  protected final void setEntryCount(int entryCount) {
+    this.entryCount = entryCount;
   }
 
   protected final void clearBuffer() {

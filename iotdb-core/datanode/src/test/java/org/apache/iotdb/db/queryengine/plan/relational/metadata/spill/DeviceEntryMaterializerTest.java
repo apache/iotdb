@@ -196,6 +196,33 @@ public class DeviceEntryMaterializerTest {
     assertEquals(expected, actual);
   }
 
+  @Test
+  public void testDistinctSortedMaterializerDeduplicatesAcrossRuns() throws Exception {
+    List<DeviceEntry> expected = createEntries(20);
+    List<DeviceEntry> input = new ArrayList<>(expected);
+    input.addAll(expected);
+    Comparator<DeviceEntry> comparator =
+        Comparator.comparing(entry -> entry.getDeviceID().toString());
+    try (DeviceEntrySortedMaterializer materializer =
+        new DeviceEntrySortedMaterializer(
+            "q-distinct", new PlanNodeId("scan-0"), 128, comparator, true)) {
+      for (DeviceEntry entry : input) {
+        materializer.appendWithMemoryControl(entry);
+      }
+      List<DeviceEntry> actual = new ArrayList<>();
+      try (DeviceEntryDataSet dataSet = materializer.finish();
+          DeviceEntryReader reader = dataSet.openReader()) {
+        assertTrue(dataSet.isSpilled());
+        assertEquals(expected.size(), dataSet.getEntryCount());
+        while (reader.hasNext()) {
+          actual.add(reader.next());
+        }
+      }
+      expected.sort(comparator);
+      assertEquals(expected, actual);
+    }
+  }
+
   private static List<DeviceEntry> createEntries(int count) {
     List<DeviceEntry> entries = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {

@@ -3821,5 +3821,7 @@ public final class DataNodeQueryMessages {
   public static final String
       LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5 =
           "Failed to clean DeviceEntry data set asynchronously: queryId=%s, planNodeId=%s";
+  public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_QUERYID_ARG_ADF95D63 =
+      "Failed to clean DeviceEntry spill directory for query %s";
 
 }

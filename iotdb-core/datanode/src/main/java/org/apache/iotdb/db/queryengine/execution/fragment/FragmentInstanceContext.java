@@ -814,23 +814,30 @@ public class FragmentInstanceContext extends QueryContext {
         return unfinishedResultSupplier.get();
       }
       try {
+        // Subtract the time already spent acquiring the read lock from the remaining time slice.
         waitForLockTime -= (System.nanoTime() - startAcquireLockTime) / 1_000_000;
         if (waitForLockTime <= 0) {
+          // There is no remaining time slice for querying the DataRegion.
           return unfinishedResultSupplier.get();
         }
+        // When all selected series belong to the same device, the QueryDataSource can be
+        // filtered by the device's time index.
         QueryDataSource dataSource =
-            (QueryDataSource)
-                dataRegion.query(
-                    sourcePaths,
-                    singleDeviceId,
-                    this,
-                    globalTimeFilter != null ? globalTimeFilter.copy() : null,
-                    timePartitions,
-                    waitForLockTime);
+            dataRegion.query(
+                sourcePaths,
+                singleDeviceId,
+                this,
+                // The time filter may be stateful, so each QueryDataSource gets its own copy.
+                globalTimeFilter != null ? globalTimeFilter.copy() : null,
+                timePartitions,
+                waitForLockTime);
         if (dataSource == null) {
+          // The DataRegion could not be queried within the specified time slice.
           return unfinishedResultSupplier.get();
         }
         dataSource.setSingleDevice(singleDeviceId != null);
+        // The initializer retains referenced files while the DataRegion read lock is held;
+        // otherwise a concurrent merge may delete them after the lock is released.
         return initializer.apply(dataSource);
       } finally {
         dataRegion.readUnlock();

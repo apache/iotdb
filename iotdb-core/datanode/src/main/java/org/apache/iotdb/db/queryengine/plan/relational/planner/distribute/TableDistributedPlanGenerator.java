@@ -1311,6 +1311,7 @@ public class TableDistributedPlanGenerator
                   node.getTreeDBName(),
                   node.getMeasurementColumnNameMap());
           scanNode.setRegionReplicaSet(regionReplicaSet);
+          scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
           pair.left = scanNode;
         }
 
@@ -1333,6 +1334,7 @@ public class TableDistributedPlanGenerator
                   node.getTreeDBName(),
                   node.getMeasurementColumnNameMap());
           scanNode.setRegionReplicaSet(regionReplicaSet);
+          scanNode.setTopKRuntimeFilterSourceId(node.getTopKRuntimeFilterSourceId());
           pair.right = scanNode;
         }
 
@@ -1723,9 +1725,10 @@ public class TableDistributedPlanGenerator
     //  push down aggregation if the child of aggregation node only has the union Node
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
+      AggregationNode physicalAggregation = withRateFunctionInputOrdering(node, childOrdering);
 
       if (childrenNodes.get(0) instanceof UnionNode
-          && node.getAggregations().values().stream()
+          && physicalAggregation.getAggregations().values().stream()
               .noneMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
         UnionNode unionNode = (UnionNode) childrenNodes.get(0);
         List<PlanNode> children = unionNode.getChildren();
@@ -1746,7 +1749,8 @@ public class TableDistributedPlanGenerator
         }
 
         // 2. split the aggregation into partial and final
-        Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
+        Pair<AggregationNode, AggregationNode> splitResult =
+            split(physicalAggregation, symbolAllocator, queryId);
         AggregationNode intermediate = splitResult.right;
 
         // 3. add the aggregation node above the project node
@@ -1781,7 +1785,7 @@ public class TableDistributedPlanGenerator
         return Collections.singletonList(splitResult.left);
       }
 
-      return Collections.singletonList(node);
+      return Collections.singletonList(physicalAggregation);
     }
 
     // We cannot do multi-stage Aggregate if any aggregation-function is distinct.
@@ -1789,10 +1793,12 @@ public class TableDistributedPlanGenerator
     // MarkDistinctNode will merge all data from different child.
     if (node.getAggregations().values().stream()
         .anyMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
-      node.setChild(
+      PlanNode physicalChild =
           mergeChildrenViaCollectOrMergeSort(
-              nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
-      return Collections.singletonList(node);
+              nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes);
+      node.setChild(physicalChild);
+      return Collections.singletonList(
+          withRateFunctionInputOrdering(node, nodeOrderingMap.get(physicalChild.getPlanNodeId())));
     }
     Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
     AggregationNode intermediate = splitResult.right;
@@ -1824,6 +1830,58 @@ public class TableDistributedPlanGenerator
     return Collections.singletonList(splitResult.left);
   }
 
+  private static AggregationNode withRateFunctionInputOrdering(
+      AggregationNode node, OrderingScheme childOrdering) {
+    Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>();
+    node.getAggregations()
+        .forEach(
+            (symbol, aggregation) ->
+                aggregations.put(
+                    symbol,
+                    new AggregationNode.Aggregation(
+                        aggregation.getResolvedFunction(),
+                        aggregation.getArguments(),
+                        aggregation.isDistinct(),
+                        aggregation.getFilter(),
+                        aggregation.getOrderingScheme(),
+                        aggregation.getMask(),
+                        isInputOrderedByTimeAscending(
+                            aggregation, node.getStep(), node.getGroupingKeys(), childOrdering))));
+    return AggregationNode.builderFrom(node).setAggregations(aggregations).build();
+  }
+
+  static boolean isInputOrderedByTimeAscending(
+      AggregationNode.Aggregation aggregation,
+      AggregationNode.Step step,
+      List<Symbol> groupingKeys,
+      OrderingScheme childOrdering) {
+    String functionName = aggregation.getResolvedFunction().getSignature().getName();
+    if (step != SINGLE
+        || childOrdering == null
+        || aggregation.getArguments().size() < 2
+        || !("rate".equalsIgnoreCase(functionName)
+            || "increase".equalsIgnoreCase(functionName)
+            || "irate".equalsIgnoreCase(functionName)
+            || "delta".equalsIgnoreCase(functionName))) {
+      return false;
+    }
+
+    Symbol timeSymbol = Symbol.from(aggregation.getArguments().get(1));
+    List<Symbol> orderBy = childOrdering.getOrderBy();
+    int timeIndex = orderBy.indexOf(timeSymbol);
+    if (timeIndex < 0 || !childOrdering.getOrdering(timeSymbol).isAscending()) {
+      return false;
+    }
+
+    Set<Symbol> groupingKeySet = new HashSet<>(groupingKeys);
+    for (int i = 0; i < timeIndex; i++) {
+      if (!groupingKeySet.contains(orderBy.get(i))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private boolean prefixMatched(OrderingScheme childOrdering, List<Symbol> preGroupedSymbols) {
     List<Symbol> orderKeys = childOrdering.getOrderBy();
     if (orderKeys.size() < preGroupedSymbols.size()) {
@@ -1848,7 +1906,8 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    if (node.getCoordinatorDeviceEntryDataSet().isSpilled()) {
+    if (node.getCoordinatorDeviceEntryDataSet() != null
+        && node.getCoordinatorDeviceEntryDataSet().isSpilled()) {
       return constructSpilledAggregationTableScanByRegionReplicaSet(
           node, context, dataPartition, dbName);
     }
@@ -2113,7 +2172,8 @@ public class TableDistributedPlanGenerator
               node.getMeasurementColumnNameMap()));
     }
 
-    if (node.getCoordinatorDeviceEntryDataSet().isSpilled()) {
+    if (node.getCoordinatorDeviceEntryDataSet() != null
+        && node.getCoordinatorDeviceEntryDataSet().isSpilled()) {
       return constructSpilledAggregationTreeDeviceViewScanByRegionReplicaSet(
           node, context, dataPartition, dbName);
     }
