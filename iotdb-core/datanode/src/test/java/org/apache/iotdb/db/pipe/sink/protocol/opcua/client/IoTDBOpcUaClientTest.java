@@ -23,6 +23,11 @@ import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
@@ -43,7 +48,9 @@ import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class IoTDBOpcUaClientTest {
@@ -61,6 +68,28 @@ public class IoTDBOpcUaClientTest {
     Mockito.verify(miloClient)
         .writeValues(
             Mockito.argThat(nodeIds("root/db/d1/s1", "root/db/d1/s2")),
+            Mockito.argThat(listWithSize(2)));
+  }
+
+  @Test
+  public void testTransferLastValuesBatchesDevicesInOneRequest() throws Exception {
+    final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
+    Mockito.when(miloClient.writeValues(Mockito.anyList(), Mockito.anyList()))
+        .thenReturn(
+            CompletableFuture.completedFuture(Arrays.asList(StatusCode.GOOD, StatusCode.GOOD)));
+    final IoTDBOpcUaClient client = createClient(miloClient);
+    final Map<IDeviceID, List<Pair<MeasurementSchema, TimeValuePair>>> deviceLastValues =
+        new LinkedHashMap<>();
+    deviceLastValues.put(
+        new PlainDeviceID("root.db.d1"), Collections.singletonList(lastValue("s1", 1L, 11L)));
+    deviceLastValues.put(
+        new PlainDeviceID("root.db.d2"), Collections.singletonList(lastValue("s1", 2L, 22L)));
+
+    client.transferLastValues(deviceLastValues, createSink());
+
+    Mockito.verify(miloClient)
+        .writeValues(
+            Mockito.argThat(nodeIds("root/db/d1/s1", "root/db/d2/s1")),
             Mockito.argThat(listWithSize(2)));
   }
 
@@ -154,6 +183,13 @@ public class IoTDBOpcUaClientTest {
     tablet.addValue("s2", 0, 2.0D);
     tablet.rowSize = 1;
     return tablet;
+  }
+
+  private static Pair<MeasurementSchema, TimeValuePair> lastValue(
+      final String measurement, final long timestamp, final long value) {
+    return new Pair<>(
+        new MeasurementSchema(measurement, TSDataType.INT64),
+        new TimeValuePair(timestamp, TsPrimitiveType.getByType(TSDataType.INT64, value)));
   }
 
   private static ArgumentMatcher<List<NodeId>> nodeIds(final String... identifiers) {
