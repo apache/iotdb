@@ -105,6 +105,11 @@ public class ConvertPredicateToTimeFilterTest {
             parameter.getSlidingStep(),
             TimeZone.getTimeZone("+00:00"),
             TimestampPrecisionUtils.currPrecision));
+
+    GroupByTimeParameter rightClosedParameter =
+        new GroupByTimeParameter(
+            1, Long.MAX_VALUE, new TimeDuration(0, 10), new TimeDuration(0, 10), false);
+    Assert.assertThrows(IllegalArgumentException.class, () -> groupByTime(rightClosedParameter));
   }
 
   @Test

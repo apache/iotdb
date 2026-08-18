@@ -49,7 +49,18 @@ public class UDTFTimeDifference implements UDTF {
     }
 
     long currentTime = row.getTime();
-    collector.putLong(currentTime, currentTime - previousTime);
+    collector.putLong(currentTime, saturatingSubtract(currentTime, previousTime));
     previousTime = currentTime;
+  }
+
+  private static long saturatingSubtract(long left, long right) {
+    long result = left - right;
+    if (left >= right && result < 0) {
+      return Long.MAX_VALUE;
+    }
+    if (left < right && result > 0) {
+      return Long.MIN_VALUE;
+    }
+    return result;
   }
 }

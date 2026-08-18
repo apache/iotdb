@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
@@ -114,6 +115,25 @@ public class DateTimeUtilsTest {
         7L, DataNodeDateTimeUtils.convertDurationStrToLongForTest(7000, "us", "ms"));
     Assert.assertEquals(
         7L, DataNodeDateTimeUtils.convertDurationStrToLongForTest(7000000, "ns", "ms"));
+  }
+
+  @Test
+  public void convertDurationStrToLongOverflowTest() {
+    Assert.assertThrows(
+        ArithmeticException.class,
+        () -> DataNodeDateTimeUtils.convertDurationStrToLongForTest(Long.MAX_VALUE, "s", "ms"));
+    Assert.assertThrows(
+        ArithmeticException.class,
+        () -> DataNodeDateTimeUtils.convertDurationStrToLongForTest(Long.MAX_VALUE, "ms", "us"));
+    Assert.assertThrows(
+        ArithmeticException.class,
+        () -> DataNodeDateTimeUtils.convertDurationStrToLong("9223372036854775808ms"));
+    Assert.assertThrows(
+        ArithmeticException.class,
+        () -> DataNodeDateTimeUtils.convertDurationStrToLong(0, Long.MAX_VALUE, "mo", "ms"));
+    Assert.assertThrows(
+        ArithmeticException.class,
+        () -> DataNodeDateTimeUtils.convertDurationStrToLong(Long.MAX_VALUE, "1ms1s", "ms", false));
   }
 
   /** Test time precision is us. */
@@ -372,5 +392,26 @@ public class DateTimeUtilsTest {
 
     timeDuration = DataNodeDateTimeUtils.constructTimeDuration("10000000000ms");
     Assert.assertEquals(10000000000L, timeDuration.nonMonthDuration);
+  }
+
+  @Test
+  public void testConstructTimeDurationOverflow() {
+    Assert.assertThrows(
+        ArithmeticException.class, () -> DataNodeDateTimeUtils.constructTimeDuration("178956971y"));
+    Assert.assertThrows(
+        ArithmeticException.class,
+        () -> DataNodeDateTimeUtils.constructTimeDuration("9223372036854775808ms"));
+    Assert.assertThrows(
+        ArithmeticException.class,
+        () -> DataNodeDateTimeUtils.constructTimeDuration("9223372036854775807ms1ms"));
+  }
+
+  @Test
+  public void testParseDateTimeExpressionOverflow() {
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            DataNodeDateTimeUtils.parseDateTimeExpressionToLong(
+                "1970-01-01T00:00:00.001 + 9223372036854775807ms", ZoneOffset.UTC));
   }
 }

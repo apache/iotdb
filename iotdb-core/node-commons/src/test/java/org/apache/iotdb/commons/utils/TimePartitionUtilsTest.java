@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,12 +35,31 @@ public class TimePartitionUtilsTest {
   private static final long TEST_TIME_PARTITION_ORIGIN = 1000L;
   private static final long TEST_TIME_PARTITION_INTERVAL = 3600000L;
 
+  private long previousTimePartitionOrigin;
+  private long previousTimePartitionInterval;
+
   @Before
   public void setUp() {
+    previousTimePartitionOrigin =
+        CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
+    previousTimePartitionInterval =
+        CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
     CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(TEST_TIME_PARTITION_ORIGIN);
     CommonDescriptor.getInstance()
         .getConfig()
         .setTimePartitionInterval(TEST_TIME_PARTITION_INTERVAL);
+    TimePartitionUtils.setTimePartitionOrigin(TEST_TIME_PARTITION_ORIGIN);
+    TimePartitionUtils.setTimePartitionInterval(TEST_TIME_PARTITION_INTERVAL);
+  }
+
+  @After
+  public void tearDown() {
+    CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(previousTimePartitionOrigin);
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setTimePartitionInterval(previousTimePartitionInterval);
+    TimePartitionUtils.setTimePartitionOrigin(previousTimePartitionOrigin);
+    TimePartitionUtils.setTimePartitionInterval(previousTimePartitionInterval);
   }
 
   @Test
@@ -104,5 +125,127 @@ public class TimePartitionUtilsTest {
     Assert.assertTrue(actualSlot.getStartTime() > 0);
     long upperBound = TimePartitionUtils.getTimePartitionUpperBound(testTime);
     assertEquals(Long.MAX_VALUE, upperBound);
+  }
+
+  @Test
+  public void testIsTimePartitionStartTimeWithOrigin() {
+    Assert.assertTrue(TimePartitionUtils.isTimePartitionStartTime(TEST_TIME_PARTITION_ORIGIN));
+    Assert.assertFalse(TimePartitionUtils.isTimePartitionStartTime(TEST_TIME_PARTITION_ORIGIN + 1));
+    Assert.assertTrue(
+        TimePartitionUtils.isTimePartitionStartTime(
+            TEST_TIME_PARTITION_ORIGIN + TEST_TIME_PARTITION_INTERVAL));
+  }
+
+  @Test
+  public void testSatisfyPartitionStartTimeWithNormalPartitionEnd() {
+    Assert.assertFalse(
+        TimePartitionUtils.satisfyPartitionStartTime(
+            TimeFilterApi.gtEq(TEST_TIME_PARTITION_ORIGIN + TEST_TIME_PARTITION_INTERVAL),
+            TEST_TIME_PARTITION_ORIGIN));
+    Assert.assertFalse(
+        TimePartitionUtils.satisfyTimePartition(
+            TimeFilterApi.gtEq(TEST_TIME_PARTITION_ORIGIN + TEST_TIME_PARTITION_INTERVAL), 0));
+    Assert.assertTrue(
+        TimePartitionUtils.satisfyPartitionStartTime(
+            TimeFilterApi.gtEq(TEST_TIME_PARTITION_ORIGIN + TEST_TIME_PARTITION_INTERVAL - 1),
+            TEST_TIME_PARTITION_ORIGIN));
+  }
+
+  @Test
+  public void testSatisfyPartitionStartTimeWithOverflowPartitionEnd() {
+    long partitionStartTime = TimePartitionUtils.getTimePartitionSlot(Long.MAX_VALUE).startTime;
+
+    Assert.assertTrue(
+        TimePartitionUtils.satisfyPartitionStartTime(
+            TimeFilterApi.eq(Long.MAX_VALUE), partitionStartTime));
+  }
+
+  @Test
+  public void testPartitionEndTimeAndUpperBoundCheckWithOverflowPartitionEnd() {
+    long partitionStartTime = TimePartitionUtils.getTimePartitionSlot(Long.MAX_VALUE).startTime;
+    long upperBound = TimePartitionUtils.getTimePartitionUpperBound(partitionStartTime);
+
+    assertEquals(Long.MAX_VALUE, TimePartitionUtils.getTimePartitionEndTime(partitionStartTime));
+    assertEquals(Long.MAX_VALUE, upperBound);
+    Assert.assertFalse(
+        TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+            Long.MAX_VALUE, partitionStartTime, upperBound));
+    Assert.assertTrue(
+        TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+            TEST_TIME_PARTITION_ORIGIN + TEST_TIME_PARTITION_INTERVAL,
+            TEST_TIME_PARTITION_ORIGIN,
+            TimePartitionUtils.getTimePartitionUpperBound(TEST_TIME_PARTITION_ORIGIN)));
+  }
+
+  @Test
+  public void testExactLongMaxUpperBoundCheck() {
+    CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(0);
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(1);
+    TimePartitionUtils.setTimePartitionOrigin(0);
+    TimePartitionUtils.setTimePartitionInterval(1);
+
+    assertEquals(Long.MAX_VALUE, TimePartitionUtils.getTimePartitionUpperBound(Long.MAX_VALUE - 1));
+    assertEquals(
+        Long.MAX_VALUE - 1, TimePartitionUtils.getTimePartitionEndTime(Long.MAX_VALUE - 1));
+    assertEquals(Long.MAX_VALUE, TimePartitionUtils.getTimePartitionEndTime(Long.MAX_VALUE));
+    Assert.assertTrue(
+        TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+            Long.MAX_VALUE, Long.MAX_VALUE - 1, Long.MAX_VALUE));
+    Assert.assertFalse(
+        TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+            Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE));
+  }
+
+  @Test
+  public void testSatisfyTimePartitionWithOverflowPartitionStart() {
+    long partitionId = TimePartitionUtils.getTimePartitionIdWithoutOverflow(Long.MIN_VALUE);
+    long nextPartitionStartTime = TimePartitionUtils.getTimePartitionUpperBound(Long.MIN_VALUE);
+
+    Assert.assertTrue(
+        TimePartitionUtils.satisfyTimePartition(TimeFilterApi.eq(Long.MIN_VALUE), partitionId));
+    Assert.assertFalse(
+        TimePartitionUtils.satisfyTimePartition(
+            TimeFilterApi.eq(nextPartitionStartTime), partitionId));
+  }
+
+  @Test
+  public void testExactLongMinPartitionStartUpperBound() {
+    CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(0);
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(1);
+    TimePartitionUtils.setTimePartitionOrigin(0);
+    TimePartitionUtils.setTimePartitionInterval(1);
+
+    assertEquals(Long.MIN_VALUE, TimePartitionUtils.getTimePartitionLowerBound(Long.MIN_VALUE));
+    assertEquals(Long.MIN_VALUE + 1, TimePartitionUtils.getTimePartitionUpperBound(Long.MIN_VALUE));
+    assertEquals(Long.MIN_VALUE, TimePartitionUtils.getTimePartitionEndTime(Long.MIN_VALUE));
+    Assert.assertTrue(
+        TimePartitionUtils.satisfyPartitionStartTime(
+            TimeFilterApi.eq(Long.MIN_VALUE), Long.MIN_VALUE));
+    Assert.assertFalse(
+        TimePartitionUtils.satisfyPartitionStartTime(
+            TimeFilterApi.eq(Long.MIN_VALUE + 1), Long.MIN_VALUE));
+  }
+
+  @Test
+  public void testGetTimePartitionIdWithOverflowOrigin() {
+    assertEquals(
+        TimePartitionUtils.getTimePartitionIdWithoutOverflow(Long.MIN_VALUE),
+        TimePartitionUtils.getTimePartitionId(Long.MIN_VALUE));
+    assertEquals(
+        TimePartitionUtils.getTimePartitionIdWithoutOverflow(Long.MAX_VALUE),
+        TimePartitionUtils.getTimePartitionId(Long.MAX_VALUE));
+  }
+
+  @Test
+  public void testGetEstimateTimePartitionSizeWithOverflow() {
+    long previousTimePartitionInterval = TimePartitionUtils.getTimePartitionInterval();
+    try {
+      TimePartitionUtils.setTimePartitionInterval(1);
+      assertEquals(
+          Long.MAX_VALUE,
+          TimePartitionUtils.getEstimateTimePartitionSize(Long.MIN_VALUE, Long.MAX_VALUE));
+    } finally {
+      TimePartitionUtils.setTimePartitionInterval(previousTimePartitionInterval);
+    }
   }
 }

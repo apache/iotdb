@@ -217,11 +217,24 @@ public class ExpressionFactory {
   }
 
   public static GroupByTimeExpression groupByTime(GroupByTimeParameter parameter) {
+    if (!parameter.isLeftCRightO() && parameter.getEndTime() == Long.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          "Right-closed GROUP BY TIME with Long.MAX_VALUE end time cannot be represented as a single right-open time filter.");
+    }
     long startTime =
-        parameter.isLeftCRightO() ? parameter.getStartTime() : parameter.getStartTime() + 1;
-    long endTime = parameter.isLeftCRightO() ? parameter.getEndTime() : parameter.getEndTime() + 1;
+        parameter.isLeftCRightO()
+            ? parameter.getStartTime()
+            : saturatingIncrement(parameter.getStartTime());
+    long endTime =
+        parameter.isLeftCRightO()
+            ? parameter.getEndTime()
+            : saturatingIncrement(parameter.getEndTime());
     return new GroupByTimeExpression(
         startTime, endTime, parameter.getInterval(), parameter.getSlidingStep());
+  }
+
+  private static long saturatingIncrement(long value) {
+    return value == Long.MAX_VALUE ? Long.MAX_VALUE : value + 1;
   }
 
   public static GroupByTimeExpression groupByTime(
