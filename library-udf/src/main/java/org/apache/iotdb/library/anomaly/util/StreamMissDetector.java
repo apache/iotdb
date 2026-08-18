@@ -37,21 +37,23 @@ public class StreamMissDetector {
   private int minLength;
   private int state;
   private long startTime;
+  private boolean hasStartTime;
   private int missingStartIndex;
   private boolean horizon;
   private double standard;
 
   public StreamMissDetector(int minLength) {
     this.state = 0;
-    this.startTime = -1;
+    this.hasStartTime = false;
     this.minLength = minLength;
   }
 
   public void insert(long time, double value) {
     timeWindow.push(time);
     valueWindow.push(value);
-    if (startTime < 0) {
+    if (!hasStartTime) {
       startTime = time;
+      hasStartTime = true;
     }
     switch (state) {
       case 0:

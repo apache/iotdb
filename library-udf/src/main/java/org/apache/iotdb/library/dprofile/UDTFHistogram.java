@@ -50,8 +50,11 @@ public class UDTFHistogram implements UDTF {
             "parameter $count$ should be larger than 0",
             validator.getParameters().getIntOrDefault("count", 1))
         .validate(
-            params -> (double) params[0] <= (double) params[1],
-            "parameter $end$ should be larger than or equal to $start$",
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
+            "parameter $end$ should be finite and larger than $start$",
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
   }
@@ -65,11 +68,14 @@ public class UDTFHistogram implements UDTF {
     double end = parameters.getDoubleOrDefault("max", Double.MAX_VALUE);
     count = parameters.getIntOrDefault("count", 1);
     bucket = new int[count];
-    gap = (end - start) / count;
+    gap = end / count - start / count;
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
       int id = Math.min(Math.max((int) Math.floor((value - start) / gap), 0), count - 1);
