@@ -38,6 +38,8 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ActiveLoadTsFileLoaderTest {
 
@@ -45,13 +47,16 @@ public class ActiveLoadTsFileLoaderTest {
   private File tempDir;
   private String originalFailDir;
   private NodeStatus originalNodeStatus;
+  private int originalDataNodeId;
 
   @Before
   public void setUp() throws Exception {
     tempDir = Files.createTempDirectory("active-load-retry").toFile();
     originalFailDir = config.getLoadActiveListeningFailDir();
     originalNodeStatus = CommonDescriptor.getInstance().getConfig().getNodeStatus();
+    originalDataNodeId = config.getDataNodeId();
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
+    config.setDataNodeId(0);
     config.setLoadActiveListeningFailDir(new File(tempDir, "failed").getAbsolutePath());
   }
 
@@ -59,6 +64,7 @@ public class ActiveLoadTsFileLoaderTest {
   public void tearDown() {
     config.setLoadActiveListeningFailDir(originalFailDir);
     CommonDescriptor.getInstance().getConfig().setNodeStatus(originalNodeStatus);
+    config.setDataNodeId(originalDataNodeId);
     deleteRecursively(tempDir);
   }
 
@@ -127,6 +133,47 @@ public class ActiveLoadTsFileLoaderTest {
     Assert.assertTrue(pendingQueue.isEmpty());
   }
 
+  @Test
+  public void testMissingPendingFileIsRemovedFromLoading() throws Exception {
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final Field pendingQueueField = ActiveLoadTsFileLoader.class.getDeclaredField("pendingQueue");
+    pendingQueueField.setAccessible(true);
+    final ActiveLoadPendingQueue pendingQueue =
+        (ActiveLoadPendingQueue) pendingQueueField.get(loader);
+    final File missingTsFile = new File(tempDir, "missing.tsfile");
+    Assert.assertTrue(
+        pendingQueue.enqueue(
+            missingTsFile.getAbsolutePath(), tempDir.getAbsolutePath(), false, false));
+
+    final AtomicReference<Throwable> failure = new AtomicReference<>();
+    final Thread loadThread =
+        new Thread(
+            () -> {
+              try {
+                invokeTryLoadPendingTsFiles(loader);
+              } catch (final Throwable e) {
+                Throwable cause = e;
+                while (cause.getCause() != null) {
+                  cause = cause.getCause();
+                }
+                failure.set(cause);
+              }
+            });
+    loadThread.start();
+
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (loader.isFilePendingOrLoading(missingTsFile) && System.nanoTime() < deadline) {
+      Thread.yield();
+    }
+    loadThread.interrupt();
+    loadThread.join(TimeUnit.SECONDS.toMillis(5));
+
+    Assert.assertFalse(loadThread.isAlive());
+    Assert.assertNull(failure.get());
+    Assert.assertFalse(loader.isFilePendingOrLoading(missingTsFile));
+    Assert.assertTrue(pendingQueue.isEmpty());
+  }
+
   private File createTsFileWithCompanionFiles(final String fileName) throws Exception {
     final File tsFile = new File(tempDir, fileName);
     Assert.assertTrue(tsFile.createNewFile());
@@ -155,6 +202,12 @@ public class ActiveLoadTsFileLoaderTest {
             "handleLoadFailure", ActiveLoadPendingQueue.ActiveLoadEntry.class, TSStatus.class);
     method.setAccessible(true);
     method.invoke(loader, entry, status);
+  }
+
+  private void invokeTryLoadPendingTsFiles(final ActiveLoadTsFileLoader loader) throws Exception {
+    final Method method = ActiveLoadTsFileLoader.class.getDeclaredMethod("tryLoadPendingTsFiles");
+    method.setAccessible(true);
+    method.invoke(loader);
   }
 
   private static void deleteRecursively(final File file) {

@@ -50,9 +50,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -102,16 +100,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         new ArrayList<>(resource.getDevices().size() << 1);
     for (final IDeviceID device : resource.getDevices()) {
       // iterating the index, must present
-      final Optional<Long> startTime = resource.getStartTime(device);
-      if (!startTime.isPresent()) {
-        throw new NoSuchElementException("No value present");
-      }
-      final Optional<Long> endTime = resource.getEndTime(device);
-      if (!endTime.isPresent()) {
-        throw new NoSuchElementException("No value present");
-      }
-      final TTimePartitionSlot startSlot = TimePartitionUtils.getTimePartitionSlot(startTime.get());
-      final TTimePartitionSlot endSlot = TimePartitionUtils.getTimePartitionSlot(endTime.get());
+      final long startTime = resource.getStartTime(device).orElseThrow();
+      final long endTime = resource.getEndTime(device).orElseThrow();
+      final TTimePartitionSlot startSlot = TimePartitionUtils.getTimePartitionSlot(startTime);
+      final TTimePartitionSlot endSlot = TimePartitionUtils.getTimePartitionSlot(endTime);
       slotList.add(new Pair<>(device, startSlot));
       if (!startSlot.equals(endSlot)) {
         slotList.add(new Pair<>(device, endSlot));

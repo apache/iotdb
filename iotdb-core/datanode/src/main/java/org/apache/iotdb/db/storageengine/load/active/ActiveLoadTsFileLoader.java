@@ -203,7 +203,7 @@ public class ActiveLoadTsFileLoader {
         if (!loadEntry.isPresent()) {
           return;
         }
-        final ActiveLoadPendingQueue.ActiveLoadEntry activeLoadEntry = loadEntry.get();
+        final ActiveLoadPendingQueue.ActiveLoadEntry activeLoadEntry = loadEntry.orElseThrow();
 
         try {
           final TSStatus result = loadTsFile(activeLoadEntry, session);

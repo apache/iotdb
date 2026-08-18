@@ -25,9 +25,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -91,6 +93,20 @@ public class LoadTsFileNodeTest {
     node.serialize(buffer);
     LoadTsFilePieceNode node1 = (LoadTsFilePieceNode) LoadTsFilePieceNode.deserialize(buffer);
     Assert.assertEquals(node.getTsFile(), node1.getTsFile());
+  }
+
+  @Test
+  public void testNeedDecodeTsFileReadsDeviceTimeIndex() {
+    final TsFileResource resource = new TsFileResource(new File("load.tsfile"));
+    resource.setTimeIndex(new ArrayDeviceTimeIndex());
+    final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1");
+    resource.updateStartTime(device, 0L);
+    resource.updateEndTime(device, 1L);
+
+    final LoadSingleTsFileNode node =
+        new LoadSingleTsFileNode(new PlanNodeId(""), resource, false, null, false, 0L, false);
+
+    Assert.assertFalse(node.needDecodeTsFile(slotList -> Collections.emptyList()));
   }
 
   @Test
