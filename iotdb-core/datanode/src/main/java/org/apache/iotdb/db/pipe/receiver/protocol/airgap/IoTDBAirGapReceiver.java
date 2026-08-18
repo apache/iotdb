@@ -168,8 +168,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     currentDatagramSocket = datagramSocket;
     currentRemoteSocketAddress = packet.getSocketAddress();
     boolean requestHandlingStarted = false;
-    try {
-      final byte[] data = readData(new ByteArrayInputStream(buffer, 0, packet.getLength()));
+    try (final ByteArrayInputStream inputStream =
+        new ByteArrayInputStream(buffer, 0, packet.getLength())) {
+      final byte[] data = readData(inputStream);
       requestHandlingStarted = true;
       receive(data, receiverKey);
     } catch (final Exception e) {
@@ -194,11 +195,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
             .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
             .setType(ReadWriteIOUtils.readShort(byteBuffer))
             .setBody(byteBuffer.slice());
-  }
-
-  private void handleReq(final AirGapPseudoTPipeTransferRequest req, final long startTime)
-      throws IOException {
-    handleReq(req, startTime, null);
   }
 
   private void handleReq(
