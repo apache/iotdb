@@ -45,6 +45,8 @@ public final class ActiveLoadPathHelper {
 
   private static final String SEGMENT_SEPARATOR = "-";
   public static final String USER_KEY = "user";
+  public static final String PIPE_CONVERSION_TASK_ID_KEY = "pipe-conversion-task-id";
+  private static final String TRANSFER_STAGING_DIRECTORY_PREFIX = ".iotdb-load-staging-";
   // Keep a version in the user path segment so future encryption algorithms can be added safely.
   private static final String USER_VALUE_MASK_PREFIX = "v1-";
   private static final BaseEncoding USER_VALUE_ENCODING = BaseEncoding.base32().omitPadding();
@@ -53,6 +55,7 @@ public final class ActiveLoadPathHelper {
       Collections.unmodifiableList(
           Arrays.asList(
               USER_KEY,
+              PIPE_CONVERSION_TASK_ID_KEY,
               LoadTsFileConfigurator.DATABASE_NAME_KEY,
               LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
@@ -133,6 +136,32 @@ public final class ActiveLoadPathHelper {
     return attributes;
   }
 
+  public static Map<String, String> buildAttributes(
+      final String databaseName,
+      final Integer databaseLevel,
+      final Boolean convertOnTypeMismatch,
+      final Boolean verify,
+      final Boolean autoCreateSchema,
+      final Long tabletConversionThresholdBytes,
+      final Boolean pipeGenerated,
+      final String userName,
+      final String conversionTaskId) {
+    final Map<String, String> attributes =
+        buildAttributes(
+            databaseName,
+            databaseLevel,
+            convertOnTypeMismatch,
+            verify,
+            autoCreateSchema,
+            tabletConversionThresholdBytes,
+            pipeGenerated,
+            userName);
+    if (conversionTaskId != null && !conversionTaskId.isEmpty()) {
+      attributes.put(PIPE_CONVERSION_TASK_ID_KEY, conversionTaskId);
+    }
+    return attributes;
+  }
+
   public static File resolveTargetDir(final File baseDir, final Map<String, String> attributes) {
     File current = baseDir;
     for (final String key : KEY_ORDER) {
@@ -143,6 +172,48 @@ public final class ActiveLoadPathHelper {
       current = new File(current, formatSegment(key, value));
     }
     return current;
+  }
+
+  public static File resolvePipeTransferTargetDir(
+      final File baseDir, final Map<String, String> attributes) {
+    File current = baseDir;
+    for (final String key : KEY_ORDER) {
+      if (PIPE_CONVERSION_TASK_ID_KEY.equals(key)) {
+        continue;
+      }
+      final String value = attributes.get(key);
+      if (value == null) {
+        continue;
+      }
+      current = new File(current, formatSegment(key, value));
+    }
+    return current;
+  }
+
+  public static String formatPipeTaskTransferDirectoryName(final String conversionTaskId) {
+    return formatSegment(PIPE_CONVERSION_TASK_ID_KEY, conversionTaskId);
+  }
+
+  public static String formatTransferStagingDirectoryName(final String uniqueSuffix) {
+    return TRANSFER_STAGING_DIRECTORY_PREFIX + uniqueSuffix;
+  }
+
+  public static boolean isTransferStagingFile(final File file, final File pendingDir) {
+    if (file == null) {
+      return false;
+    }
+    final File normalizedPendingDir = pendingDir == null ? null : pendingDir.getAbsoluteFile();
+    File current = file.getAbsoluteFile();
+    while (current != null) {
+      if (normalizedPendingDir != null && current.equals(normalizedPendingDir)) {
+        return false;
+      }
+      if (current.getName().startsWith(TRANSFER_STAGING_DIRECTORY_PREFIX)) {
+        return true;
+      }
+      current = current.getParentFile();
+    }
+    return false;
   }
 
   public static Map<String, String> parseAttributes(final File file, final File pendingDir) {
@@ -297,6 +368,11 @@ public final class ActiveLoadPathHelper {
         break;
       case LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY:
         LoadTsFileConfigurator.validateAutoCreateSchemaParam(value);
+        break;
+      case PIPE_CONVERSION_TASK_ID_KEY:
+        if (value == null || value.isEmpty()) {
+          throw new SemanticException("Pipe conversion task id must not be empty.");
+        }
         break;
       case USER_KEY:
         if (value == null || value.isEmpty()) {

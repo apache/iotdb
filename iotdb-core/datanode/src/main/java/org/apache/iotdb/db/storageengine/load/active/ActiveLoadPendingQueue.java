@@ -35,8 +35,17 @@ public class ActiveLoadPendingQueue {
 
   public synchronized boolean enqueue(
       final String file, final String pendingDir, final boolean isGeneratedByPipe) {
+    return enqueue(file, pendingDir, isGeneratedByPipe, null);
+  }
+
+  public synchronized boolean enqueue(
+      final String file,
+      final String pendingDir,
+      final boolean isGeneratedByPipe,
+      final String conversionTaskId) {
     if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
-      pendingFileQueue.offer(new ActiveLoadEntry(file, pendingDir, isGeneratedByPipe));
+      pendingFileQueue.offer(
+          new ActiveLoadEntry(file, pendingDir, isGeneratedByPipe, conversionTaskId));
 
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(1);
       return true;
@@ -92,11 +101,18 @@ public class ActiveLoadPendingQueue {
     private final String file;
     private final String pendingDir;
     private final boolean isGeneratedByPipe;
+    private final String conversionTaskId;
 
     public ActiveLoadEntry(String file, String pendingDir, boolean isGeneratedByPipe) {
+      this(file, pendingDir, isGeneratedByPipe, null);
+    }
+
+    public ActiveLoadEntry(
+        String file, String pendingDir, boolean isGeneratedByPipe, String conversionTaskId) {
       this.file = file;
       this.pendingDir = pendingDir;
       this.isGeneratedByPipe = isGeneratedByPipe;
+      this.conversionTaskId = conversionTaskId;
     }
 
     public String getFile() {
@@ -109,6 +125,10 @@ public class ActiveLoadPendingQueue {
 
     public boolean isGeneratedByPipe() {
       return isGeneratedByPipe;
+    }
+
+    public String getConversionTaskId() {
+      return conversionTaskId;
     }
   }
 }

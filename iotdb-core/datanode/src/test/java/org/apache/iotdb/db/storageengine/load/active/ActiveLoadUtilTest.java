@@ -113,8 +113,105 @@ public class ActiveLoadUtilTest {
     }
   }
 
+  @Test
+  public void testDeterministicTransferFailsWhenSourceAndTargetAreMissing() throws Exception {
+    final List<File> sourceFiles = createTsFileAndCompanions();
+    for (final File sourceFile : sourceFiles) {
+      Assert.assertTrue(sourceFile.delete());
+    }
+
+    try {
+      ActiveLoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "missing-task");
+      Assert.fail("Expected IOException");
+    } catch (final IOException ignored) {
+      // A missing source and missing deterministic target cannot prove a durable handoff.
+    }
+  }
+
+  @Test
+  public void testDeterministicTransferIsIdempotentAfterSourcesAreDeleted() throws Exception {
+    final List<File> sourceFiles = createTsFileAndCompanions();
+    ActiveLoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "retry-task");
+
+    final File transferDir =
+        new File(targetDir, ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("retry-task"));
+    Assert.assertTrue(transferDir.isDirectory());
+    ActiveLoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "retry-task");
+
+    final File[] transferDirs = targetDir.listFiles(File::isDirectory);
+    Assert.assertNotNull(transferDirs);
+    Assert.assertEquals(1, transferDirs.length);
+    Assert.assertEquals(transferDir.getAbsolutePath(), transferDirs[0].getAbsolutePath());
+    for (final File sourceFile : sourceFiles) {
+      Assert.assertFalse(sourceFile.exists());
+    }
+  }
+
+  @Test
+  public void testDeterministicTransferUsesTaskIdentityWhenFileNameChanges() throws Exception {
+    final List<File> firstSourceFiles = createTsFileAndCompanions("1-0-0-0.tsfile");
+    ActiveLoadUtil.transferFilesToActiveDir(targetDir, firstSourceFiles, true, "stable-task");
+
+    final List<File> retrySourceFiles = createTsFileAndCompanions("2-0-0-0.tsfile");
+    ActiveLoadUtil.transferFilesToActiveDir(targetDir, retrySourceFiles, true, "stable-task");
+
+    final File transferDir =
+        new File(
+            targetDir, ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("stable-task"));
+    Assert.assertTrue(new File(transferDir, "1-0-0-0.tsfile").exists());
+    Assert.assertFalse(new File(transferDir, "2-0-0-0.tsfile").exists());
+    for (final File sourceFile : retrySourceFiles) {
+      Assert.assertFalse(sourceFile.exists());
+    }
+  }
+
+  @Test
+  public void testIncompleteDeterministicTargetIsNotDeleted() throws Exception {
+    final List<File> sourceFiles = createTsFileAndCompanions();
+    final File transferDir =
+        new File(
+            targetDir, ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("partial-task"));
+    Assert.assertTrue(transferDir.mkdirs());
+    Assert.assertTrue(new File(transferDir, sourceFiles.get(0).getName()).createNewFile());
+
+    try {
+      ActiveLoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "partial-task");
+      Assert.fail("Expected IOException");
+    } catch (final IOException ignored) {
+      // Do not remove a target which may already be visible to active load.
+    }
+    Assert.assertTrue(transferDir.exists());
+    for (final File sourceFile : sourceFiles) {
+      Assert.assertTrue(sourceFile.exists());
+    }
+  }
+
+  @Test
+  public void testDeterministicTargetWithOnlyTsFileIsIncomplete() throws Exception {
+    final List<File> sourceFiles = createTsFileAndCompanions();
+    final File transferDir =
+        new File(targetDir, ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("partial-ts"));
+    Assert.assertTrue(transferDir.mkdirs());
+    final File tsFile = sourceFiles.get(sourceFiles.size() - 1);
+    Files.copy(tsFile.toPath(), new File(transferDir, tsFile.getName()).toPath());
+
+    try {
+      ActiveLoadUtil.transferFilesToActiveDir(targetDir, sourceFiles, true, "partial-ts");
+      Assert.fail("Expected IOException");
+    } catch (final IOException ignored) {
+      // expected
+    }
+    for (final File sourceFile : sourceFiles) {
+      Assert.assertTrue(sourceFile.exists());
+    }
+  }
+
   private List<File> createTsFileAndCompanions() throws Exception {
-    final File tsFile = new File(sourceDir, "1-0-0-0.tsfile");
+    return createTsFileAndCompanions("1-0-0-0.tsfile");
+  }
+
+  private List<File> createTsFileAndCompanions(final String tsFileName) throws Exception {
+    final File tsFile = new File(sourceDir, tsFileName);
     final File resourceFile = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     final File modsFile = new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
     final List<File> sourceFiles = Arrays.asList(resourceFile, modsFile, tsFile);

@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -96,7 +97,8 @@ public class ActiveLoadUtil {
       return false;
     }
     final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
-    final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
+    final File targetDir =
+        ActiveLoadPathHelper.resolvePipeTransferTargetDir(targetFilePath, attributes);
 
     transferFilesToActiveDir(
         targetDir,
@@ -149,19 +151,33 @@ public class ActiveLoadUtil {
       return false;
     }
     final Map<String, String> attributes = appendCurrentUserIfAbsent(loadAttributes);
-    final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
+    final File targetDir =
+        ActiveLoadPathHelper.resolvePipeTransferTargetDir(targetFilePath, attributes);
 
     final List<File> sourceFiles = new ArrayList<>(files.size());
     for (final String file : files) {
       sourceFiles.add(new File(file));
     }
     sourceFiles.sort(Comparator.comparing(ActiveLoadUtil::isTsFile));
-    transferFilesToActiveDir(targetDir, sourceFiles, isDeleteAfterLoad);
+    transferFilesToActiveDir(
+        targetDir,
+        sourceFiles,
+        isDeleteAfterLoad,
+        attributes.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
     return true;
   }
 
   static void transferFilesToActiveDir(
       final File targetDir, final List<File> sourceFiles, final boolean isDeleteAfterLoad)
+      throws IOException {
+    transferFilesToActiveDir(targetDir, sourceFiles, isDeleteAfterLoad, null);
+  }
+
+  static void transferFilesToActiveDir(
+      final File targetDir,
+      final List<File> sourceFiles,
+      final boolean isDeleteAfterLoad,
+      final String conversionTaskId)
       throws IOException {
     final List<File> existingSourceFiles = new ArrayList<>(sourceFiles.size());
     for (final File sourceFile : sourceFiles) {
@@ -169,30 +185,110 @@ public class ActiveLoadUtil {
         existingSourceFiles.add(sourceFile);
       }
     }
-    if (existingSourceFiles.isEmpty()) {
+    final File transferDir =
+        new File(
+            targetDir,
+            conversionTaskId == null
+                ? UUID.randomUUID().toString()
+                : ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName(conversionTaskId));
+
+    if (conversionTaskId != null && transferDir.exists()) {
+      if (!isExistingTaskComplete(transferDir, sourceFiles)) {
+        throw new IOException("Failed to load TsFile to active directory.");
+      }
+      if (isDeleteAfterLoad) {
+        deleteSourceFiles(existingSourceFiles);
+      }
       return;
     }
 
-    final File transferDir = new File(targetDir, UUID.randomUUID().toString());
+    if (existingSourceFiles.isEmpty()) {
+      if (conversionTaskId != null) {
+        throw new IOException("Failed to load TsFile to active directory.");
+      }
+      return;
+    }
+
+    final File stagingDir =
+        new File(
+            targetDir,
+            ActiveLoadPathHelper.formatTransferStagingDirectoryName(UUID.randomUUID().toString()));
     try {
-      Files.createDirectories(transferDir.toPath());
+      Files.createDirectories(stagingDir.toPath());
       for (final File sourceFile : existingSourceFiles) {
-        final File targetFile = new File(transferDir, sourceFile.getName());
+        final File targetFile = new File(stagingDir, sourceFile.getName());
         RetryUtils.retryOnException(
             () -> {
               transferFile(sourceFile, targetFile, isDeleteAfterLoad);
               return null;
             });
       }
+      try {
+        publishTransferDirectory(stagingDir, transferDir);
+      } catch (final IOException e) {
+        if (conversionTaskId == null || !isExistingTaskComplete(transferDir, sourceFiles)) {
+          throw e;
+        }
+      }
     } catch (final IOException | RuntimeException e) {
-      if (transferDir.exists()) {
-        FileUtils.deleteFileOrDirectoryWithRetry(transferDir);
+      if (stagingDir.exists()) {
+        FileUtils.deleteFileOrDirectoryWithRetry(stagingDir);
       }
       throw e;
     }
 
+    if (stagingDir.exists()) {
+      FileUtils.deleteFileOrDirectoryWithRetry(stagingDir);
+    }
     if (isDeleteAfterLoad) {
       deleteSourceFiles(existingSourceFiles);
+    }
+  }
+
+  private static boolean isExistingTaskComplete(
+      final File transferDir, final List<File> sourceFiles) {
+    if (!transferDir.isDirectory()) {
+      return false;
+    }
+    final File[] targetFiles = transferDir.listFiles(File::isFile);
+    if (targetFiles == null || targetFiles.length == 0) {
+      return false;
+    }
+
+    final List<File> existingSourceFiles =
+        sourceFiles.stream().filter(File::isFile).collect(java.util.stream.Collectors.toList());
+    if (existingSourceFiles.isEmpty()) {
+      return Arrays.stream(targetFiles).anyMatch(ActiveLoadUtil::isTsFile);
+    }
+    if (targetFiles.length != existingSourceFiles.size()) {
+      return false;
+    }
+
+    final boolean[] matched = new boolean[targetFiles.length];
+    for (final File sourceFile : existingSourceFiles) {
+      boolean found = false;
+      for (int i = 0; i < targetFiles.length; i++) {
+        if (!matched[i]
+            && isTsFile(sourceFile) == isTsFile(targetFiles[i])
+            && sourceFile.length() == targetFiles[i].length()) {
+          matched[i] = true;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static void publishTransferDirectory(final File stagingDir, final File transferDir)
+      throws IOException {
+    try {
+      Files.move(stagingDir.toPath(), transferDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
+    } catch (final AtomicMoveNotSupportedException e) {
+      Files.move(stagingDir.toPath(), transferDir.toPath());
     }
   }
 

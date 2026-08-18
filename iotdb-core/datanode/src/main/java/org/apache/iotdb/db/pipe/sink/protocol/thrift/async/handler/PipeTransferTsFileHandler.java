@@ -80,6 +80,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   private final boolean transferMod;
   private final String dataBaseName;
+  private final String conversionTaskId;
 
   private final int readFileBufferSize;
   private PipeTsFileMemoryBlock memoryBlock;
@@ -103,6 +104,31 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final boolean transferMod,
       final String dataBaseName)
       throws InterruptedException {
+    this(
+        connector,
+        pipeName2WeightMap,
+        events,
+        eventsReferenceCount,
+        eventsHadBeenAddedToRetryQueue,
+        tsFile,
+        modFile,
+        transferMod,
+        dataBaseName,
+        0);
+  }
+
+  public PipeTransferTsFileHandler(
+      final IoTDBDataRegionAsyncSink connector,
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final List<EnrichedEvent> events,
+      final AtomicInteger eventsReferenceCount,
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue,
+      final File tsFile,
+      final File modFile,
+      final boolean transferMod,
+      final String dataBaseName,
+      final int outputIndex)
+      throws InterruptedException {
     super(connector);
 
     this.pipeName2WeightMap = pipeName2WeightMap;
@@ -115,6 +141,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.modFile = modFile;
     this.transferMod = transferMod;
     this.dataBaseName = dataBaseName;
+    conversionTaskId =
+        connector.shouldAsyncLoadTsFileOnTypeMismatch()
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                connector.getSinkTaskId(), events, dataBaseName, outputIndex, transferMod)
+            : null;
     currentFile = transferMod ? modFile : tsFile;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
@@ -189,23 +220,33 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
 
-        final TPipeTransferReq uncompressedReq =
-            transferMod
-                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName,
-                    sink.shouldWaitForSchemaBeforeLoad())
-                : dataBaseName == null && !sink.shouldWaitForSchemaBeforeLoad()
-                    ? PipeTransferTsFileSealReq.toTPipeTransferReq(
-                        tsFile.getName(), tsFile.length())
-                    : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        tsFile.getName(),
-                        tsFile.length(),
-                        dataBaseName,
-                        sink.shouldWaitForSchemaBeforeLoad());
+        final TPipeTransferReq uncompressedReq;
+        if (transferMod) {
+          uncompressedReq =
+              PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                      modFile.getName(),
+                      modFile.length(),
+                      tsFile.getName(),
+                      tsFile.length(),
+                      dataBaseName,
+                      sink.shouldWaitForSchemaBeforeLoad())
+                  .setConversionTaskInfo(
+                      conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch());
+        } else if (conversionTaskId != null
+            || dataBaseName != null
+            || sink.shouldWaitForSchemaBeforeLoad()) {
+          uncompressedReq =
+              PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                      tsFile.getName(),
+                      tsFile.length(),
+                      dataBaseName,
+                      sink.shouldWaitForSchemaBeforeLoad())
+                  .setConversionTaskInfo(
+                      conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch());
+        } else {
+          uncompressedReq =
+              PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+        }
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
