@@ -70,7 +70,7 @@ public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     try {
       memoryBlock =
           memoryManager.forceAllocateForTabletWithRetry(
-              PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes());
+              memoryManager.getTotalNonFloatingMemorySizeInBytes());
       Assert.assertFalse(memoryManager.isEnough4TabletParsing());
 
       final File tsFile =
