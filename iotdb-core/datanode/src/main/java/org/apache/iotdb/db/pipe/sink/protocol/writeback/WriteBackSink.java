@@ -354,10 +354,10 @@ public class WriteBackSink implements PipeConnector, PipeConnectorWithEventDisca
     // runtime model. Normalize one configured target database to both model names, and later use
     // the one matching the incoming event model.
     if (PathUtils.isTableModelDatabase(targetDatabase)) {
+      // Table-model database names are case-insensitive, while tree-model paths are case-sensitive.
       targetTableModelDatabaseName = targetDatabase.toLowerCase(Locale.ENGLISH);
       targetTreeModelDatabaseName =
-          validateAndNormalizeTreeModelDatabaseName(
-              PathUtils.qualifyDatabaseName(targetTableModelDatabaseName));
+          validateAndNormalizeTreeModelDatabaseName(PathUtils.qualifyDatabaseName(targetDatabase));
       return;
     }
 

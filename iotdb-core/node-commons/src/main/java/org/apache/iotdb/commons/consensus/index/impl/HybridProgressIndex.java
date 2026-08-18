@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -223,6 +224,30 @@ public class HybridProgressIndex extends ProgressIndex {
   @Override
   public ProgressIndexType getType() {
     return ProgressIndexType.HYBRID_PROGRESS_INDEX;
+  }
+
+  @Override
+  public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      final Class<T> progressIndexClass) {
+    if (progressIndexClass.isInstance(this)) {
+      return Optional.of(progressIndexClass.cast(this));
+    }
+
+    final Map<Short, ProgressIndex> type2Index = getType2Index();
+    // Prefer a direct component over one nested in another composite progress index.
+    for (final ProgressIndex progressIndex : type2Index.values()) {
+      if (progressIndexClass.isInstance(progressIndex)) {
+        return Optional.of(progressIndexClass.cast(progressIndex));
+      }
+    }
+    for (final ProgressIndex progressIndex : type2Index.values()) {
+      final Optional<T> extractedProgressIndex =
+          progressIndex.getProgressIndexByType(progressIndexClass);
+      if (extractedProgressIndex.isPresent()) {
+        return extractedProgressIndex;
+      }
+    }
+    return Optional.empty();
   }
 
   @Override

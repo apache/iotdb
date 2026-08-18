@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapshot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -29,6 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
+import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -90,6 +94,36 @@ public class IoTDBDataNodeReceiverTest {
       Assert.assertEquals("root.test.sg_0", statement.getDatabase());
       Assert.assertEquals(2, statement.getDatabaseLevel());
       Assert.assertTrue(statement.isVerifySchema());
+      Assert.assertTrue(statement.isAutoCreateSchema());
+    } finally {
+      Files.deleteIfExists(tsFile);
+    }
+  }
+
+  @Test
+  public void testLoadTsFileWaitsForSchemaInSyncAndAsyncModes() throws Exception {
+    final Path tsFile = Files.createTempFile("pipe-load-wait-for-schema", ".tsfile");
+    try {
+      final LoadTsFileStatement syncStatement =
+          IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
+              "root.test.sg_0", tsFile.toString(), false, false, true);
+      Assert.assertTrue(syncStatement.isVerifySchema());
+      Assert.assertFalse(syncStatement.isAutoCreateSchema());
+
+      final Map<String, String> asyncAttributes =
+          IoTDBDataNodeReceiver.buildLoadTsFileAttributesForAsync(
+              "root.test.sg_0", false, false, true, true);
+      Assert.assertEquals(
+          Boolean.TRUE.toString(), asyncAttributes.get(LoadTsFileConfigurator.VERIFY_KEY));
+      Assert.assertEquals(
+          Boolean.FALSE.toString(),
+          asyncAttributes.get(LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY));
+
+      final LoadTsFileStatement asyncStatement =
+          LoadTsFileStatement.createUnchecked(tsFile.toString());
+      ActiveLoadPathHelper.applyAttributesToStatement(asyncAttributes, asyncStatement, false);
+      Assert.assertTrue(asyncStatement.isVerifySchema());
+      Assert.assertFalse(asyncStatement.isAutoCreateSchema());
     } finally {
       Files.deleteIfExists(tsFile);
     }
@@ -317,6 +351,66 @@ public class IoTDBDataNodeReceiverTest {
 
     Assert.assertFalse(insertMultiTabletsStatement.getDatabaseName().isPresent());
     Assert.assertFalse(tabletStatement.getDatabaseName().isPresent());
+  }
+
+  @Test
+  public void testAsyncTakeoverDecisionPausesMemoryPressureLocally() {
+    final TSStatus conversionFailure = new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+    Assert.assertTrue(
+        IoTDBDataNodeReceiver.shouldTakeOverToAsyncLoad(
+            conversionFailure, false, true, true, true));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldTakeOverToAsyncLoad(
+            conversionFailure, false, true, false, true));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldTakeOverToAsyncLoad(
+            conversionFailure, false, true, true, false));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldTakeOverToAsyncLoad(conversionFailure, true, true, true, true));
+
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldTakeOverToAsyncLoad(
+            new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()),
+            false,
+            true,
+            true,
+            true));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldTakeOverToAsyncLoad(
+            new TSStatus(
+                TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()),
+            false,
+            true,
+            true,
+            true));
+  }
+
+  @Test
+  public void testRetryableTaskKeepsReceiverStagingFilesForDuplicateSeal() throws Exception {
+    final String taskId = "receiver-cleanup-" + System.nanoTime();
+    final PipeTransferTsFileSealWithModReq request =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq("1.tsfile", 1, "root.db")
+            .setConversionTaskInfo(taskId, false);
+    final ExposedReceiver receiver = new ExposedReceiver();
+    try {
+      Assert.assertNull(
+          PipeTsFileConversionTaskManager.registerAndGetDuplicateStatus(taskId, false));
+      PipeTsFileConversionTaskManager.markRunning(taskId);
+      Assert.assertFalse(receiver.shouldDelete(request, new TSStatus(1)));
+      PipeTsFileConversionTaskManager.markPaused(taskId, new TSStatus(2));
+      Assert.assertFalse(receiver.shouldDelete(request, new TSStatus(2)));
+      PipeTsFileConversionTaskManager.markSuccess(taskId);
+      Assert.assertTrue(receiver.shouldDelete(request, new TSStatus(0)));
+    } finally {
+      PipeTsFileConversionTaskManager.markSuccess(taskId);
+    }
+  }
+
+  private static final class ExposedReceiver extends IoTDBDataNodeReceiver {
+    private boolean shouldDelete(
+        final PipeTransferTsFileSealWithModReq req, final TSStatus status) {
+      return shouldDeleteSealedFilesOnFailure(req, status);
+    }
   }
 
   @SuppressWarnings("unchecked")

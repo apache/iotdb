@@ -781,7 +781,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return tmpFile.renameTo(snapshotFile);
     } finally {
       for (int retry = 0; retry < 5; retry++) {
-        if (!tmpFile.exists() || tmpFile.delete()) {
+        if (!tmpFile.exists()
+            || org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpFile)) {
           break;
         } else {
           LOGGER.warn(

@@ -453,7 +453,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // of the file. So the receiver should reset the offset of the writing file to the beginning
       // of the file.
       if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
-        writingFileWriter.setLength(req.getStartWritingOffset());
+        org.apache.iotdb.commons.utils.FileUtils.truncateFile(
+            writingFile, req.getStartWritingOffset());
+        writingFileWriter.seek(req.getStartWritingOffset());
       }
 
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
@@ -461,7 +463,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           // If the file is a tsFile, then the content will not be changed for a specific filename.
           // However, for other files (mod, snapshot, etc.) the content varies for the same name in
           // different times, then we must rewrite the file to apply the newest version.
-          writingFileWriter.setLength(0);
+          org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
+          writingFileWriter.seek(0);
         }
 
         final TSStatus status =
@@ -764,6 +767,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   // Support null in fileName list, which means that this file is optional and is currently absent
   protected final TPipeTransferResp handleTransferFileSealV2(final PipeTransferFileSealReqV2 req) {
     final List<String> fileNames = req.getFileNames();
+    TSStatus loadStatus = null;
     try {
       final List<File> files =
           fileNames.stream()
@@ -831,6 +835,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               .collect(Collectors.toList());
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
+      loadStatus = status;
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.debug(PipeMessages.RECEIVER_SEAL_FILE_SUCCESS, receiverId.get(), fileAbsolutePaths);
       } else {
@@ -865,8 +870,20 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       closeCurrentWritingFileWriter(false);
       // Clear the directory instead of only deleting the referenced files in seal request
       // to avoid previously undeleted file being redundant when transferring multi files
-      IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
+      if (shouldDeleteSealedFilesOnFailure(req, loadStatus)) {
+        IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
+      }
     }
+  }
+
+  /**
+   * Decides whether files in the receiver's staging directory should be removed after a V2 seal.
+   * The default keeps the historical behavior. A receiver may retain files when a conversion task
+   * is retryable so that a sender retry can resume the same task without losing its input.
+   */
+  protected boolean shouldDeleteSealedFilesOnFailure(
+      final PipeTransferFileSealReqV2 req, final TSStatus loadStatus) {
+    return true;
   }
 
   private TPipeTransferResp checkNonFinalFileSeal(

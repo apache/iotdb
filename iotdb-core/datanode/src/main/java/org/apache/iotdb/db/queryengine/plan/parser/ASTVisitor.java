@@ -4710,8 +4710,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRemoveDataNode(IoTDBSqlParser.RemoveDataNodeContext ctx) {
-    List<Integer> nodeIds =
-        ctx.dataNodeIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    List<Integer> nodeIds = Collections.singletonList(Integer.parseInt(ctx.dataNodeId.getText()));
     return new RemoveDataNodeStatement(nodeIds);
   }
 
