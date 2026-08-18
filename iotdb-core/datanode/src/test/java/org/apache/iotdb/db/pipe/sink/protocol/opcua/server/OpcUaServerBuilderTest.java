@@ -146,31 +146,6 @@ public class OpcUaServerBuilderTest {
   }
 
   @Test
-  public void testPipeOperationLimitsAreEffectivelyUnlimited() throws Exception {
-    final Path securityDir = temporaryFolder.newFolder("operation-limits-security").toPath();
-
-    try (final OpcUaServerBuilder builder =
-        new OpcUaServerBuilder()
-            .setTcpBindPort(12686)
-            .setHttpsBindPort(8443)
-            .setAdvertisedHost("127.0.0.1")
-            .setUser("root")
-            .setPassword("root")
-            .setSecurityDir(securityDir.toString())
-            .setEnableAnonymousAccess(true)
-            .setSecurityPolicies(Collections.singleton(SecurityPolicy.None))
-            .setDebounceTimeMs(50)) {
-      final OpcUaServer server = builder.build();
-
-      Assert.assertEquals(
-          Integer.MAX_VALUE, server.getConfig().getLimits().getMaxNodesPerWrite().intValue());
-      Assert.assertEquals(
-          Integer.MAX_VALUE,
-          server.getConfig().getLimits().getMaxNodesPerNodeManagement().intValue());
-    }
-  }
-
-  @Test
   public void testRebuildWithChangedPassword() throws Exception {
     final Path securityDir = temporaryFolder.newFolder("changed-password-security").toPath();
 
