@@ -92,17 +92,27 @@ public class TreeAggregator {
       checkArgument(
           inputLocationList.size() == 1,
           DataNodeQueryMessages.EXCEPTION_FINAL_OUTPUT_CAN_ONLY_BE_SINGLE_COLUMN_6D82F9E0);
+      InputLocation inputLocation = inputLocationList.get(0)[0];
+      if (tsBlock[inputLocation.getTsBlockIndex()] == null) {
+        return;
+      }
       Column finalResult =
-          tsBlock[inputLocationList.get(0)[0].getTsBlockIndex()].getColumn(
-              inputLocationList.get(0)[0].getValueColumnIndex());
+          tsBlock[inputLocation.getTsBlockIndex()].getColumn(inputLocation.getValueColumnIndex());
       accumulator.setFinal(finalResult);
     } else {
       for (InputLocation[] inputLocations : inputLocationList) {
         Column[] columns = new Column[inputLocations.length];
+        boolean hasMissingInput = false;
         for (int i = 0; i < inputLocations.length; i++) {
-          columns[i] =
-              tsBlock[inputLocations[i].getTsBlockIndex()].getColumn(
-                  inputLocations[i].getValueColumnIndex());
+          TsBlock inputTsBlock = tsBlock[inputLocations[i].getTsBlockIndex()];
+          if (inputTsBlock == null) {
+            hasMissingInput = true;
+            break;
+          }
+          columns[i] = inputTsBlock.getColumn(inputLocations[i].getValueColumnIndex());
+        }
+        if (hasMissingInput) {
+          continue;
         }
         accumulator.addIntermediate(columns);
       }
