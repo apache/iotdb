@@ -1192,6 +1192,30 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTsFileSealConversionTaskInfoIsStable() throws IOException {
+    final String taskId =
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", "1.tsfile.mod", 10, "1.tsfile", 100);
+    Assert.assertEquals(
+        taskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", "1.tsfile.mod", 10, "1.tsfile", 100));
+    Assert.assertNotEquals(
+        taskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", "1.tsfile.mod", 10, "1.tsfile", 101));
+
+    final PipeTransferTsFileSealWithModReq request =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                "1.tsfile.mod", 10, "1.tsfile", 100, "root.db")
+            .setConversionTaskInfo(taskId, false);
+    final PipeTransferTsFileSealWithModReq deserialized =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(request);
+    Assert.assertEquals(taskId, deserialized.getConversionTaskId());
+    Assert.assertFalse(deserialized.shouldAsyncLoadOnTypeMismatch());
+  }
+
+  @Test
   public void testPipeTransferTsFileSealWithModReqFromLegacyV13BodyWithoutDatabaseName()
       throws IOException {
     final String modFileName = "1.tsfile.mod";

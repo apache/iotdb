@@ -539,6 +539,10 @@ public final class StorageEngineMessages {
   public static final String ACTIVE_LOAD_METRIC_COLLECTOR_REGISTERED = "Active load metric collector periodical jobs registered";
   public static final String DATABASE_NAME_MUST_NOT_BE_EMPTY = "Database name must not be empty.";
   public static final String USER_NAME_MUST_NOT_BE_EMPTY = "User name must not be empty.";
+  public static final String EXCEPTION_CONVERSION_TASK_ID_MUST_NOT_BE_EMPTY_411D064E =
+      "Conversion task ID must not be empty.";
+  public static final String LOG_FAILED_TO_CLOSE_PIPE_TSFILE_CONVERSION_CONTEXT_8E4D886B =
+      "Failed to close Pipe TsFile conversion context.";
   public static final String ERROR_EXECUTING_ACTIVE_LOAD_JOB = "Error occurred when executing active load periodical job.";
   public static final String ACTIVE_LOAD_EXECUTOR_STARTED = "Active load periodical jobs executor is started successfully.";
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active load periodical jobs executor is stopped successfully.";
