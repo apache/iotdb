@@ -51,6 +51,19 @@ public class SubscriptionQueueRegistry {
     this.consensusGroupId = consensusGroupId;
   }
 
+  /**
+   * Registers a queue without a committed-progress constraint.
+   *
+   * <p>This overload keeps callers using the original queue-registration API source-compatible.
+   * {@link Long#MAX_VALUE} is the neutral value for the retention calculator and therefore does not
+   * add an extra WAL-retention constraint.
+   */
+  public synchronized void register(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy) {
+    register(queue, retentionPolicy, () -> Long.MAX_VALUE);
+  }
+
   public synchronized void register(
       final BlockingQueue<IndexedConsensusRequest> queue,
       final SubscriptionWalRetentionPolicy retentionPolicy,
