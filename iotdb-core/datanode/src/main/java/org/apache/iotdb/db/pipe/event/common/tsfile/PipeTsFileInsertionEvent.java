@@ -337,11 +337,16 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
+    final String pipeTsFileResourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     try {
-      tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
+      tsFile =
+          PipeDataNodeResourceManager.tsfile()
+              .increaseFileReference(tsFile, true, pipeTsFileResourcePipeName);
       if (isWithMod) {
         modFile =
-            PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
+            PipeDataNodeResourceManager.tsfile()
+                .increaseFileReference(modFile, false, pipeTsFileResourcePipeName);
       }
       return true;
     } catch (final Exception e) {
@@ -361,10 +366,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+    final String pipeTsFileResourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
     try {
-      PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
+      PipeDataNodeResourceManager.tsfile()
+          .decreaseFileReference(tsFile, pipeTsFileResourcePipeName);
       if (isWithMod) {
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
+        PipeDataNodeResourceManager.tsfile()
+            .decreaseFileReference(modFile, pipeTsFileResourcePipeName);
       }
       close();
       return true;
@@ -488,7 +497,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
           PipeDataNodeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
                   PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
-                      resource.getTsFile(), pipeName),
+                      resource.getTsFile(),
+                      PipeTsFileResourceManager.getPipeTsFileResourcePipeName(
+                          pipeName, creationTime)),
                   false);
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
@@ -940,10 +951,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
         PipeDataNodeResourceManager.memory()
             .cancelTsFileParserMemoryReservation(
                 pipeName, creationTime, dataRegionId, tsFileParserMemoryReservationKey);
+        final String pipeTsFileResourcePipeName =
+            PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
         // decrease reference count
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
+        PipeDataNodeResourceManager.tsfile()
+            .decreaseFileReference(tsFile, pipeTsFileResourcePipeName);
         if (isWithMod) {
-          PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
+          PipeDataNodeResourceManager.tsfile()
+              .decreaseFileReference(modFile, pipeTsFileResourcePipeName);
         }
 
         // close data container
