@@ -114,9 +114,9 @@ public class IoTDBAirGapReceiverTest {
 
       final Method handleReq =
           IoTDBAirGapReceiver.class.getDeclaredMethod(
-              "handleReq", AirGapPseudoTPipeTransferRequest.class, long.class);
+              "handleReq", AirGapPseudoTPipeTransferRequest.class, long.class, String.class);
       handleReq.setAccessible(true);
-      handleReq.invoke(receiver, req, System.currentTimeMillis() - 10_000L);
+      handleReq.invoke(receiver, req, System.currentTimeMillis() - 10_000L, null);
 
       Assert.assertArrayEquals(AirGapOneByteResponse.FAIL, socket.getWrittenBytes());
     } finally {
