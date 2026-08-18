@@ -77,6 +77,16 @@ public class SubscriptionReceiverAgent {
   }
 
   public TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
+    return handle(req, null);
+  }
+
+  public TPipeSubscribeResp handle(final TPipeSubscribeReq req, final String username) {
+    if (username == null) {
+      return new TPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.NO_PERMISSION),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+    }
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return SUBSCRIPTION_NOT_ENABLED_ERROR_RESP;
     }
@@ -84,6 +94,7 @@ public class SubscriptionReceiverAgent {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       final SubscriptionReceiver receiver = getReceiver(reqVersion);
+      receiver.setAuthenticatedUsername(username);
       activeReceivers.add(receiver);
       receiver.handleTimeout();
       return receiver.handle(req);
