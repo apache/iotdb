@@ -47,6 +47,45 @@ import java.util.function.LongConsumer;
  * info and so on.
  */
 public class MPPQueryContext {
+  private static final String RESULT_SET_COLUMN_METADATA_MEMORY_NOT_ENOUGH =
+      "Not enough memory while analyzing metadata for query result columns. "
+          + "The result set has too many columns. "
+          + "Before the failure, IoTDB had matched %,d source columns for result-column "
+          + "expansion, expanded %,d source columns, and generated %,d result-set columns. "
+          + "%s"
+          + "Current series pagination is %s. "
+          + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
+          + "or increase query memory%s. "
+          + "Memory details: source-column memory for result expansion %s, "
+          + "generated-result-column memory %s, requested this time %s, current free memory %s. "
+          + "Original error: %s";
+  private static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "The matched source columns exceed the estimated current memory capacity by "
+          + "at least %,d columns. ";
+  private static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
+      "Not enough memory while fetching metadata for query analysis. "
+          + "The result set may have too many columns. "
+          + "Before the failure, IoTDB had deserialized %,d time-series columns from schema "
+          + "fetch results. Schema fetch memory may be reserved before safely deserializing "
+          + "the whole fetched metadata, so this count can be lower than the matched schema "
+          + "columns. %s"
+          + "Current series pagination is %s. "
+          + "Use SLIMIT/SOFFSET to reduce returned series%s, narrow the path pattern, "
+          + "or increase query memory%s. "
+          + "Memory details: fetched schema tree estimated memory %s, "
+          + "fetched schema tree reserved memory %s, requested this time %s, "
+          + "current free memory %s. Original error: %s";
+  private static final String SCHEMA_FETCH_COLUMNS_EXCEED_MEMORY_CAPACITY =
+      "The fetched schema columns exceed the estimated current memory capacity by "
+          + "at least %,d columns. ";
+  private static final String USE_ALIGN_BY_DEVICE_TO_REDUCE_RESULT_COLUMNS =
+      ", use ALIGN BY DEVICE to reduce cross-device result columns";
+  private static final String BY_AT_LEAST_MEMORY_SIZE = " by at least %s";
+  private static final String FOR_QUERY_ENGINE_OPERATOR_MEMORY_POOL =
+      " for the query engine/operator memory pool";
+  private static final String SERIES_PAGINATION_FOR_DIAGNOSTICS = "SLIMIT=%s, SOFFSET=%,d";
+  private static final String NOT_SET = "not set";
+  private static final String UNKNOWN = "unknown";
   private String sql;
   private final QueryId queryId;
 
