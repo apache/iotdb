@@ -26,6 +26,7 @@ import com.google.common.net.InetAddresses;
 import org.eclipse.milo.opcua.sdk.server.EndpointConfig;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig;
+import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfigLimits;
 import org.eclipse.milo.opcua.sdk.server.diagnostics.SessionSecurityDiagnosticsAccessMode;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.CompositeValidator;
@@ -51,6 +52,7 @@ import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
 import org.eclipse.milo.opcua.stack.core.util.CertificateUtil;
@@ -78,6 +80,7 @@ import static org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig.USER_TOKEN_POL
 import static org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig.USER_TOKEN_POLICY_USERNAME;
 import static org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig.USER_TOKEN_POLICY_X509;
 import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.ubyte;
+import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 
 /**
  * OPC UA Server builder for IoTDB to send data. The coding style referenced ExampleServer.java in
@@ -87,6 +90,8 @@ public class OpcUaServerBuilder implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaServerBuilder.class);
 
   private static final String WILD_CARD_ADDRESS = "0.0.0.0";
+  // Milo interprets zero as a zero-sized limit, so use the largest Java list size instead.
+  private static final int UNLIMITED_OPERATION_LIMIT = Integer.MAX_VALUE;
   private static final int BACKSLASH = 0x5c;
 
   private int tcpBindPort;
@@ -310,6 +315,18 @@ public class OpcUaServerBuilder implements Closeable {
             .setSessionSecurityDiagnosticsAccessMode(
                 SessionSecurityDiagnosticsAccessMode.RESTRICTED)
             .setProductUri("urn:apache:iotdb:opc-ua-server")
+            .setLimits(
+                new OpcUaServerConfigLimits() {
+                  @Override
+                  public UInteger getMaxNodesPerWrite() {
+                    return uint(UNLIMITED_OPERATION_LIMIT);
+                  }
+
+                  @Override
+                  public UInteger getMaxNodesPerNodeManagement() {
+                    return uint(UNLIMITED_OPERATION_LIMIT);
+                  }
+                })
             .build();
 
     // Setup server to enable event posting
