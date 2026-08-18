@@ -117,7 +117,9 @@ class LoadTreeTsFileTabletIterator
         if (recoverFromIteratorFailure(e)) {
           continue;
         }
-        close();
+        if (!shouldRethrow(e)) {
+          close();
+        }
         throw toRuntimeException(e);
       }
     }
@@ -139,7 +141,9 @@ class LoadTreeTsFileTabletIterator
         if (recoverFromIteratorFailure(e)) {
           continue;
         }
-        close();
+        if (!shouldRethrow(e)) {
+          close();
+        }
         throw toRuntimeException(e);
       }
     }
@@ -167,6 +171,7 @@ class LoadTreeTsFileTabletIterator
         return;
       } catch (final Exception e) {
         if (shouldRethrow(e)) {
+          scanInitialized = false;
           throw toRuntimeException(e);
         }
         if (!switchFromScanToQuery(e)) {
@@ -366,6 +371,8 @@ class LoadTreeTsFileTabletIterator
         return true;
       } catch (final Exception e) {
         if (shouldRethrow(e)) {
+          pendingQueryTasks.addFirst(activeQueryTask);
+          activeQueryTask = null;
           throw toRuntimeException(e);
         }
         LOGGER.warn(
@@ -402,6 +409,9 @@ class LoadTreeTsFileTabletIterator
   }
 
   private boolean shouldRethrow(final Exception e) {
+    if (LoadTsFileDataTypeConverter.isMemoryPressureException(e)) {
+      return true;
+    }
     Throwable current = e;
     while (Objects.nonNull(current)) {
       if (current instanceof InterruptedException

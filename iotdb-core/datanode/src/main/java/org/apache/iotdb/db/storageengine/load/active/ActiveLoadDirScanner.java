@@ -107,6 +107,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
+              .filter(file -> !ActiveLoadPathHelper.isTransferStagingFile(file, listeningDirFile))
               .map(file -> new File(LoadUtil.getTsFilePath(file.getAbsolutePath())))
               .distinct()
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
@@ -131,7 +132,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
                         tsFile.getAbsolutePath(),
                         listeningDirFile.getAbsolutePath(),
                         isTableModel,
-                        isGeneratedByPipe);
+                        isGeneratedByPipe,
+                        attributes.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
                   });
         } catch (UncheckedIOException e) {
           LOGGER.debug(StorageEngineMessages.FILE_DELETED_IGNORE_EXCEPTION);

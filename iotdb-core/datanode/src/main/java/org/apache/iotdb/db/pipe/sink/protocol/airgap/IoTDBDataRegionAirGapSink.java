@@ -495,9 +495,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       throws IOException, WriteProcessException {
     final List<Pair<String, Pair<File, File>>> dbTsFilePairs = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
+    final List<EnrichedEvent> events = batchToTransfer.deepCopyEvents();
 
     try {
-      for (final Pair<String, Pair<File, File>> dbTsFile : dbTsFilePairs) {
+      for (int outputIndex = 0; outputIndex < dbTsFilePairs.size(); outputIndex++) {
+        final Pair<String, Pair<File, File>> dbTsFile = dbTsFilePairs.get(outputIndex);
         final File tsFile = dbTsFile.right.left;
         final File objectDir = dbTsFile.right.right;
         final String tsFileNameWithoutSuffix =
@@ -506,7 +508,15 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
             PipeObjectPathUtil.getObjectFileStream(objectDir == null ? null : objectDir.toPath())) {
           transferObjectBatches(pipe2WeightMap, tsFileNameWithoutSuffix, objectFileStream, socket);
         }
-        doTransfer(pipe2WeightMap, socket, tsFile, null, dbTsFile.left, tsFile.getName());
+        doTransfer(
+            pipe2WeightMap,
+            socket,
+            tsFile,
+            null,
+            dbTsFile.left,
+            tsFile.getName(),
+            events,
+            outputIndex);
       }
     } finally {
       for (final Pair<String, Pair<File, File>> dbTsFile : dbTsFilePairs) {
@@ -789,7 +799,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         pipeTsFileInsertionEvent.isTableModelEvent()
             ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
             : pipeTsFileInsertionEvent.getTreeModelDatabaseName(),
-        pipeTsFileInsertionEvent.toString());
+        pipeTsFileInsertionEvent.toString(),
+        Collections.singletonList(pipeTsFileInsertionEvent),
+        0);
   }
 
   private void doTransfer(
@@ -798,9 +810,16 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final File tsFile,
       final File modFile,
       final String dataBaseName,
-      final String receiverStatusContext)
+      final String receiverStatusContext,
+      final Iterable<? extends EnrichedEvent> events,
+      final int outputIndex)
       throws PipeException, IOException {
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
+    final String conversionTaskId =
+        shouldAsyncLoadTsFileOnTypeMismatch
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                getSinkTaskId(), events, dataBaseName, outputIndex, Objects.nonNull(modFile))
+            : null;
 
     if (Objects.nonNull(modFile)) {
       transferFilePieces(pipe2WeightMap, modFile, socket, true);
@@ -813,7 +832,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               tsFile.getName(),
               tsFile.length(),
               dataBaseName,
-              shouldWaitForSchemaBeforeLoad),
+              shouldWaitForSchemaBeforeLoad,
+              conversionTaskId,
+              shouldAsyncLoadTsFileOnTypeMismatch),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
@@ -828,7 +849,12 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       if (!sendWeighted(
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              tsFile.getName(), tsFile.length(), dataBaseName, shouldWaitForSchemaBeforeLoad),
+              tsFile.getName(),
+              tsFile.length(),
+              dataBaseName,
+              shouldWaitForSchemaBeforeLoad,
+              conversionTaskId,
+              shouldAsyncLoadTsFileOnTypeMismatch),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())

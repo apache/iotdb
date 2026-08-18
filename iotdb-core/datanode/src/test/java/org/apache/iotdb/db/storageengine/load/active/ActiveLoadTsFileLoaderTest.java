@@ -127,6 +127,20 @@ public class ActiveLoadTsFileLoaderTest {
     Assert.assertTrue(pendingQueue.isEmpty());
   }
 
+  @Test
+  public void testPendingEntryRetainsConversionTaskId() {
+    final ActiveLoadPendingQueue pendingQueue = new ActiveLoadPendingQueue();
+    final String tsFilePath = new File(tempDir, "task.tsfile").getAbsolutePath();
+    Assert.assertTrue(
+        pendingQueue.enqueue(
+            tsFilePath, tempDir.getAbsolutePath(), true, false, "conversion-task"));
+
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry = pendingQueue.dequeueFromPending();
+    Assert.assertNotNull(entry);
+    Assert.assertEquals("conversion-task", entry.getConversionTaskId());
+    pendingQueue.removeFromLoading(tsFilePath);
+  }
+
   private File createTsFileWithCompanionFiles(final String fileName) throws Exception {
     final File tsFile = new File(tempDir, fileName);
     Assert.assertTrue(tsFile.createNewFile());

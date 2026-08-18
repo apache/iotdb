@@ -92,6 +92,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private final boolean transferMod;
 
   private final String dataBaseName;
+  private final String conversionTaskId;
 
   private final int readFileBufferSize;
   private PipeTsFileMemoryBlock memoryBlock;
@@ -115,6 +116,33 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final File objectDir,
       final boolean transferMod,
       final String dataBaseName)
+      throws InterruptedException {
+    this(
+        connector,
+        pipeName2WeightMap,
+        events,
+        eventsReferenceCount,
+        eventsHadBeenAddedToRetryQueue,
+        tsFile,
+        modFile,
+        objectDir,
+        transferMod,
+        dataBaseName,
+        0);
+  }
+
+  public PipeTransferTsFileHandler(
+      final IoTDBDataRegionAsyncSink connector,
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final List<EnrichedEvent> events,
+      final AtomicInteger eventsReferenceCount,
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue,
+      final File tsFile,
+      final File modFile,
+      final File objectDir,
+      final boolean transferMod,
+      final String dataBaseName,
+      final int outputIndex)
       throws InterruptedException {
     super(connector);
 
@@ -148,6 +176,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.dataBaseName = dataBaseName;
     this.transferringModFile = false;
     this.transferringTsFile = false;
+    conversionTaskId =
+        connector.shouldAsyncLoadTsFileOnTypeMismatch()
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                connector.getSinkTaskId(), events, dataBaseName, outputIndex, transferMod)
+            : null;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
     // TsFile events are producing and consuming at the same time, and the memory of a TsFile
@@ -249,17 +282,21 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         final TPipeTransferReq uncompressedReq =
             transferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName,
-                    sink.shouldWaitForSchemaBeforeLoad())
+                        modFile.getName(),
+                        modFile.length(),
+                        tsFile.getName(),
+                        tsFile.length(),
+                        dataBaseName,
+                        sink.shouldWaitForSchemaBeforeLoad())
+                    .setConversionTaskInfo(
+                        conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch())
                 : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName,
-                    sink.shouldWaitForSchemaBeforeLoad());
+                        tsFile.getName(),
+                        tsFile.length(),
+                        dataBaseName,
+                        sink.shouldWaitForSchemaBeforeLoad())
+                    .setConversionTaskInfo(
+                        conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch());
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(

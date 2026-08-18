@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventP
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -426,6 +427,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
                 private TsFileInsertionEventTableParserTabletIterator tabletIterator;
                 private PipeRawTabletInsertionEvent nextEvent;
+                private Tablet currentTablet;
                 private Tablet bufferedTablet;
                 private boolean iterationClosed = false;
 
@@ -436,15 +438,21 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                       return true;
                     }
 
-                    final Tablet tablet = pollNextNonEmptyTablet();
-                    if (tablet == null) {
+                    if (currentTablet == null) {
+                      currentTablet = pollNextNonEmptyTablet();
+                    }
+                    if (currentTablet == null) {
                       return false;
                     }
 
-                    nextEvent = buildTabletInsertionEvent(tablet, !prepareNextNonEmptyTablet());
+                    nextEvent =
+                        buildTabletInsertionEvent(currentTablet, !prepareNextNonEmptyTablet());
+                    currentTablet = null;
                     return true;
                   } catch (Exception e) {
-                    close();
+                    if (!isMemoryPressureException(e)) {
+                      close();
+                    }
                     throw new PipeException(
                         DataNodePipeMessages.ERROR_WHILE_PARSING_TSFILE_INSERTION_EVENT, e);
                   }
@@ -616,6 +624,10 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     }
 
     return tabletInsertionIterable;
+  }
+
+  private static boolean isMemoryPressureException(final Throwable throwable) {
+    return LoadTsFileDataTypeConverter.isMemoryPressureException(throwable);
   }
 
   @Override
