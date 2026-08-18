@@ -53,6 +53,10 @@ public class PropertiesTest {
 
       Assert.assertEquals(3, commonConfig.getPipeTsFileParserInFlightMaxNum());
       Assert.assertEquals(2, commonConfig.getPipeTsFileParserInFlightMaxNumPerPipeRegion());
+
+      properties.setProperty("pipe_tsfile_parser_in_flight_max_num_per_pipe_region", "0");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(0, commonConfig.getPipeTsFileParserInFlightMaxNumPerPipeRegion());
     } finally {
       final TrimProperties properties = new TrimProperties();
       properties.setProperty(

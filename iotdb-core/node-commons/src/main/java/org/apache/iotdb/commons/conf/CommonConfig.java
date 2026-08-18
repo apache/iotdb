@@ -245,7 +245,9 @@ public class CommonConfig {
   // parser reserves pipeTsFileParserMemory bytes.
   private int pipeTsFileParserInFlightMaxNum =
       Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
-  private int pipeTsFileParserInFlightMaxNumPerPipeRegion = 1;
+  // A non-positive value means following the global parser limit. Parallel parsing is still
+  // disabled by default for every Pipe and must be explicitly enabled in processor attributes.
+  private int pipeTsFileParserInFlightMaxNumPerPipeRegion = 0;
 
   // Memory for Sink batch sending (InsertNode/TsFile, choose one)
   // 1. InsertNode: 15MB, used for batch sending data to the downstream system
@@ -927,12 +929,14 @@ public class CommonConfig {
 
   public void setPipeTsFileParserInFlightMaxNumPerPipeRegion(
       final int pipeTsFileParserInFlightMaxNumPerPipeRegion) {
-    final int validatedValue = Math.max(1, pipeTsFileParserInFlightMaxNumPerPipeRegion);
-    if (this.pipeTsFileParserInFlightMaxNumPerPipeRegion == validatedValue) {
+    if (this.pipeTsFileParserInFlightMaxNumPerPipeRegion
+        == pipeTsFileParserInFlightMaxNumPerPipeRegion) {
       return;
     }
-    this.pipeTsFileParserInFlightMaxNumPerPipeRegion = validatedValue;
-    logger.info("pipeTsFileParserInFlightMaxNumPerPipeRegion is set to {}.", validatedValue);
+    this.pipeTsFileParserInFlightMaxNumPerPipeRegion = pipeTsFileParserInFlightMaxNumPerPipeRegion;
+    logger.info(
+        "pipeTsFileParserInFlightMaxNumPerPipeRegion is set to {}.",
+        pipeTsFileParserInFlightMaxNumPerPipeRegion);
   }
 
   public long getPipeSinkBatchMemoryInsertNode() {

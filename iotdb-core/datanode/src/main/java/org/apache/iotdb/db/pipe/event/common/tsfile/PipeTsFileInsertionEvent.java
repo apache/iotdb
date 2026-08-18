@@ -96,6 +96,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       new AtomicReference<>();
   private final AtomicInteger parsedTabletInsertionEventCount = new AtomicInteger(0);
   private final AtomicBoolean isTsFileParsingCompleted = new AtomicBoolean(false);
+  private final AtomicBoolean isProgressReportManagedByTsFileParser = new AtomicBoolean(false);
+  private final AtomicBoolean isTsFileParserProgressReportAborted = new AtomicBoolean(false);
   private final AtomicLong parsedPointCountForCount = new AtomicLong(0);
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
@@ -760,7 +762,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     }
   }
 
-  private void releaseTsFileParserMemoryIfReserved() {
+  /**
+   * Tries to reserve a parser slot without blocking. This is used by the processor-side parser pool
+   * so that only admitted TsFiles occupy parser worker threads.
+   */
+  public boolean tryReserveTsFileParserMemory() {
+    return tryReserveTsFileParserMemory(PipeDataNodeResourceManager.memory());
+  }
+
+  public void releaseTsFileParserMemoryIfReserved() {
     synchronized (isTsFileParserMemoryReserved) {
       if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
         PipeDataNodeResourceManager.memory()
@@ -784,6 +794,27 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   public boolean isGeneratedByHistoricalExtractor() {
     return isGeneratedByHistoricalExtractor;
+  }
+
+  public void markProgressReportManagedByTsFileParser() {
+    isProgressReportManagedByTsFileParser.set(true);
+  }
+
+  public boolean isProgressReportManagedByTsFileParser() {
+    return isProgressReportManagedByTsFileParser.get();
+  }
+
+  public void abortProgressReportManagedByTsFileParser() {
+    if (isProgressReportManagedByTsFileParser.get()
+        && isTsFileParserProgressReportAborted.compareAndSet(false, true)) {
+      LOGGER.warn("Abort progress report for partially transferred parsed TsFile: {}", tsFile);
+    }
+  }
+
+  @Override
+  public boolean needToCommit() {
+    return !isProgressReportManagedByTsFileParser.get()
+        || !isTsFileParserProgressReportAborted.get();
   }
 
   private TsFileInsertionDataContainer initDataContainer() {
