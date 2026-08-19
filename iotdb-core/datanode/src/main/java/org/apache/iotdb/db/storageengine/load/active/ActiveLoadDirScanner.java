@@ -120,11 +120,18 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
                     final String conversionTaskId =
                         ActiveLoadPathHelper.parseAttributes(tsFile, listeningDirFile)
                             .get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY);
-                    activeLoadTsFileLoader.tryTriggerTsFileLoad(
-                        tsFile.getAbsolutePath(),
-                        listeningDirFile.getAbsolutePath(),
-                        isGeneratedByPipe,
-                        conversionTaskId);
+                    if (conversionTaskId == null) {
+                      activeLoadTsFileLoader.tryTriggerTsFileLoad(
+                          tsFile.getAbsolutePath(),
+                          listeningDirFile.getAbsolutePath(),
+                          isGeneratedByPipe);
+                    } else {
+                      activeLoadTsFileLoader.tryTriggerTsFileLoad(
+                          tsFile.getAbsolutePath(),
+                          listeningDirFile.getAbsolutePath(),
+                          isGeneratedByPipe,
+                          conversionTaskId);
+                    }
                   });
         } catch (UncheckedIOException e) {
           LOGGER.debug("The file has been deleted. Ignore this exception.");
