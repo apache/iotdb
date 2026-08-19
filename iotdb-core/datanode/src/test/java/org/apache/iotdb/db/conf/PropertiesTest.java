@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -36,6 +41,88 @@ import java.util.Properties;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 public class PropertiesTest {
+  /**
+   * Verifies that WAL file-list caching defaults on, supports startup override, and is
+   * restart-only.
+   */
+  @Test
+  public void testWalFileListCacheConfiguration() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final boolean originalValue = descriptor.getConfig().isWalFileListCacheEnabled();
+    final TrimProperties properties = new TrimProperties();
+
+    try {
+      Assert.assertTrue(new IoTDBConfig().isWalFileListCacheEnabled());
+      Assert.assertTrue(
+          Boolean.parseBoolean(
+              ConfigurationFileUtils.getConfigurationDefaultValue("wal_file_list_cache_enabled")));
+
+      properties.setProperty("wal_file_list_cache_enabled", "false");
+      descriptor.loadProperties(properties);
+      Assert.assertFalse(descriptor.getConfig().isWalFileListCacheEnabled());
+
+      properties.setProperty("wal_file_list_cache_enabled", "true");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertFalse(descriptor.getConfig().isWalFileListCacheEnabled());
+    } finally {
+      descriptor.getConfig().setWalFileListCacheEnabled(originalValue);
+    }
+  }
+
+  @Test
+  public void testHotReloadNegativeWalThrottleThresholdUsesDefault() throws Exception {
+    final String key = "wal_throttle_threshold_in_byte";
+    final long configuredThreshold = 1024 * 1024 * 1024L;
+    final long defaultThreshold =
+        Long.parseLong(ConfigurationFileUtils.getConfigurationDefaultValue(key));
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final long originalThreshold = descriptor.getConfig().getThrottleThreshold();
+
+    try {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty(key, Long.toString(configuredThreshold));
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(configuredThreshold, descriptor.getConfig().getThrottleThreshold());
+
+      properties.setProperty(key, "-1");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(defaultThreshold, descriptor.getConfig().getThrottleThreshold());
+      Assert.assertEquals(
+          Long.toString(defaultThreshold), ConfigurationFileUtils.getAppliedProperties().get(key));
+    } finally {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty(key, Long.toString(originalThreshold));
+      descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
+  @Test
+  public void testHotReloadTsFileParserInFlightLimits() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final int originalGlobalLimit = commonConfig.getPipeTsFileParserInFlightMaxNum();
+    final int originalPerPipeRegionLimit =
+        commonConfig.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+
+    try {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty("pipe_tsfile_parser_in_flight_max_num", "3");
+      properties.setProperty("pipe_tsfile_parser_in_flight_max_num_per_pipe_region", "2");
+      descriptor.loadHotModifiedProps(properties);
+
+      Assert.assertEquals(3, commonConfig.getPipeTsFileParserInFlightMaxNum());
+      Assert.assertEquals(2, commonConfig.getPipeTsFileParserInFlightMaxNumPerPipeRegion());
+    } finally {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty(
+          "pipe_tsfile_parser_in_flight_max_num", Integer.toString(originalGlobalLimit));
+      properties.setProperty(
+          "pipe_tsfile_parser_in_flight_max_num_per_pipe_region",
+          Integer.toString(originalPerPipeRegionLimit));
+      descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
   @Test
   public void testHotReloadRegionMigrationFileRemoveSpeedLimit() throws Exception {
     IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
@@ -62,6 +149,66 @@ public class PropertiesTest {
           "region_migration_file_remove_speed_limit_bytes_per_second",
           Long.toString(originalLimit));
       descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
+  @Test
+  public void testHotReloadRestRuntimeLimitProperties() throws Exception {
+    IoTDBRestServiceConfig restConfig = IoTDBRestServiceDescriptor.getInstance().getConfig();
+    int originalQueryDefaultRowSizeLimit = restConfig.getRestQueryDefaultRowSizeLimit();
+    long originalMaxRequestBodySizeInBytes = restConfig.getRestMaxRequestBodySizeInBytes();
+    long originalMaxTotalConcurrentRequestBodySizeInBytes =
+        restConfig.getRestMaxTotalConcurrentRequestBodySizeInBytes();
+    int originalMaxInsertRows = restConfig.getRestMaxInsertRows();
+    int originalMaxInsertColumns = restConfig.getRestMaxInsertColumns();
+    long originalMaxInsertValues = restConfig.getRestMaxInsertValues();
+    int originalRestServicePort = restConfig.getRestServicePort();
+    boolean originalEnableHttps = restConfig.isEnableHttps();
+    try {
+      TrimProperties properties = new TrimProperties();
+      properties.setProperty("rest_query_default_row_size_limit", "123");
+      properties.setProperty("rest_max_request_body_size_in_bytes", "456");
+      properties.setProperty("rest_max_total_concurrent_request_body_size_in_bytes", "789");
+      properties.setProperty("rest_max_insert_rows", "11");
+      properties.setProperty("rest_max_insert_columns", "12");
+      properties.setProperty("rest_max_insert_values", "13");
+      properties.setProperty("rest_service_port", Integer.toString(originalRestServicePort + 1));
+      properties.setProperty("enable_https", Boolean.toString(!originalEnableHttps));
+
+      IoTDBDescriptor.getInstance().loadHotModifiedProps(properties);
+
+      Assert.assertEquals(123, restConfig.getRestQueryDefaultRowSizeLimit());
+      Assert.assertEquals(456, restConfig.getRestMaxRequestBodySizeInBytes());
+      Assert.assertEquals(789, restConfig.getRestMaxTotalConcurrentRequestBodySizeInBytes());
+      Assert.assertEquals(11, restConfig.getRestMaxInsertRows());
+      Assert.assertEquals(12, restConfig.getRestMaxInsertColumns());
+      Assert.assertEquals(13, restConfig.getRestMaxInsertValues());
+      Assert.assertEquals(originalRestServicePort, restConfig.getRestServicePort());
+      Assert.assertEquals(originalEnableHttps, restConfig.isEnableHttps());
+
+      properties.setProperty("rest_max_total_concurrent_request_body_size_in_bytes", "0");
+      properties.setProperty("datanode_memory_proportion", "1:1:1:1:1:5");
+
+      IoTDBDescriptor.getInstance().loadHotModifiedProps(properties);
+
+      Assert.assertEquals(
+          Runtime.getRuntime().maxMemory() / 4,
+          restConfig.getRestMaxTotalConcurrentRequestBodySizeInBytes());
+      Assert.assertEquals(
+          Long.toString(Runtime.getRuntime().maxMemory() / 4),
+          ConfigurationFileUtils.getAppliedProperties()
+              .get("rest_max_total_concurrent_request_body_size_in_bytes"));
+    } finally {
+      restConfig.setRestQueryDefaultRowSizeLimit(originalQueryDefaultRowSizeLimit);
+      restConfig.setRestMaxRequestBodySizeInBytes(originalMaxRequestBodySizeInBytes);
+      restConfig.setRestMaxTotalConcurrentRequestBodySizeInBytes(
+          originalMaxTotalConcurrentRequestBodySizeInBytes);
+      restConfig.setRestMaxInsertRows(originalMaxInsertRows);
+      restConfig.setRestMaxInsertColumns(originalMaxInsertColumns);
+      restConfig.setRestMaxInsertValues(originalMaxInsertValues);
+      restConfig.setRestServicePort(originalRestServicePort);
+      restConfig.setEnableHttps(originalEnableHttps);
+      IoTDBRestServiceDescriptor.getInstance().overwriteAppliedRuntimeLimitProperties();
     }
   }
 

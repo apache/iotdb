@@ -365,7 +365,8 @@ public class IoTConsensusV2Receiver {
             // filename. However, for other files (mod, snapshot, etc.) the content varies for the
             // same name in different times, then we must rewrite the file to apply the newest
             // version.
-            writingFileWriter.setLength(0);
+            org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
+            writingFileWriter.seek(0);
           }
 
           final TSStatus status =

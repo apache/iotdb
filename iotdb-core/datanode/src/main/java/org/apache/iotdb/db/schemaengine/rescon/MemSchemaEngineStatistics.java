@@ -25,13 +25,18 @@ import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.metric.ISchemaEngineMetric;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to record the global statistics of SchemaEngine in Memory mode. */
@@ -50,6 +55,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   private final AtomicLong totalMeasurementNumber = new AtomicLong(0);
   private final AtomicLong totalViewNumber = new AtomicLong(0);
   private final AtomicLong totalDeviceNumber = new AtomicLong(0);
+  private final ConcurrentMap<String, Long> tableDeviceNumber = new ConcurrentHashMap<>();
   private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
   private volatile boolean allowToCreateNewSeries = true;
 
@@ -134,6 +140,11 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   @Override
+  public long getTableDeviceNumber(final String tableName) {
+    return tableDeviceNumber.getOrDefault(tableName, 0L);
+  }
+
+  @Override
   public int getSchemaRegionNumber() {
     return SchemaEngine.getInstance().getSchemaRegionNumber();
   }
@@ -188,6 +199,38 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   public void deleteDevice(long cnt) {
     totalDeviceNumber.addAndGet(-cnt);
+  }
+
+  public void addTableDevice(final String table) {
+    tableDeviceNumber.compute(
+        table,
+        (tableName, num) -> {
+          if (Objects.nonNull(num)) {
+            return num + 1;
+          }
+          final ISchemaEngineMetric metric = SchemaEngine.getInstance().getSchemaEngineMetric();
+          if (Objects.nonNull(metric)) {
+            metric.bindTableMetrics(table);
+          }
+          return 1L;
+        });
+  }
+
+  public void decreaseTableDevice(final String table, final long decrease) {
+    tableDeviceNumber.computeIfPresent(table, (tableName, num) -> num - decrease);
+  }
+
+  // Reset table device, will alter the schema statistics as well
+  public void resetTableDevice(final @Nonnull String table) {
+    final Long num = tableDeviceNumber.remove(table);
+    if (Objects.isNull(num)) {
+      return;
+    }
+    totalDeviceNumber.addAndGet(-num);
+    final ISchemaEngineMetric metric = SchemaEngine.getInstance().getSchemaEngineMetric();
+    if (Objects.nonNull(metric)) {
+      metric.unbindTableMetrics(table);
+    }
   }
 
   @Override

@@ -24,8 +24,9 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.stack.client.security.DefaultClientCertificateValidator;
-import org.eclipse.milo.opcua.stack.core.security.DefaultTrustListManager;
+import org.eclipse.milo.opcua.stack.core.security.DefaultClientCertificateValidator;
+import org.eclipse.milo.opcua.stack.core.security.FileBasedCertificateQuarantine;
+import org.eclipse.milo.opcua.stack.core.security.FileBasedTrustListManager;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
@@ -34,7 +35,8 @@ import org.eclipse.milo.opcua.stack.core.util.EndpointUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.io.Closeable;
+import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,7 +49,7 @@ import java.util.Optional;
 
 import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 
-public class ClientRunner {
+public class ClientRunner implements Closeable {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientRunner.class);
 
@@ -61,6 +63,7 @@ public class ClientRunner {
   private final String password;
   private final long timeoutSeconds;
   private final boolean allowEndpointRedirect;
+  private FileBasedTrustListManager trustListManager;
 
   // For conflict checking
   private final String user;
@@ -96,18 +99,20 @@ public class ClientRunner {
       throw new Exception(DataNodePipeMessages.UNABLE_TO_CREATE_SECURITY_DIR + securityDir);
     }
 
-    final File pkiDir = securityDir.resolve("pki").toFile();
+    final Path pkiDir = securityDir.resolve("pki");
 
     logger.info(DataNodePipeMessages.SECURITY_DIR, securityDir.toAbsolutePath());
-    logger.info(DataNodePipeMessages.SECURITY_PKI_DIR, pkiDir.getAbsolutePath());
+    logger.info(DataNodePipeMessages.SECURITY_PKI_DIR, pkiDir.toAbsolutePath());
 
     final IoTDBKeyStoreLoaderClient loader =
         new IoTDBKeyStoreLoaderClient().load(securityDir, password.toCharArray());
 
-    final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
+    trustListManager = FileBasedTrustListManager.createAndInitialize(pkiDir);
+    final FileBasedCertificateQuarantine certificateQuarantine =
+        FileBasedCertificateQuarantine.create(pkiDir.resolve("rejected").resolve("certs"));
 
     final DefaultClientCertificateValidator certificateValidator =
-        new DefaultClientCertificateValidator(trustListManager);
+        new DefaultClientCertificateValidator(trustListManager, certificateQuarantine);
 
     return OpcUaClient.create(
         configurableUaClient.getNodeUrl(),
@@ -117,6 +122,7 @@ public class ClientRunner {
                 configurableUaClient.getNodeUrl(),
                 configurableUaClient.getSecurityPolicy(),
                 allowEndpointRedirect),
+        transportBuilder -> transportBuilder.setConnectTimeout(uint(timeoutSeconds * 1000L)),
         configBuilder ->
             configBuilder
                 .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA client"))
@@ -127,9 +133,7 @@ public class ClientRunner {
                 .setCertificateValidator(certificateValidator)
                 .setIdentityProvider(configurableUaClient.getIdentityProvider())
                 .setRequestTimeout(uint(timeoutSeconds * 1000L))
-                .setConnectTimeout(uint(timeoutSeconds * 1000L))
-                .setMaxResponseMessageSize(uint(0))
-                .build());
+                .setMaxResponseMessageSize(uint(0)));
   }
 
   static Optional<EndpointDescription> selectEndpoint(
@@ -207,12 +211,32 @@ public class ClientRunner {
             e);
       }
     } catch (final Exception e) {
+      closeOnFailure(e);
       throw new PipeException(
           String.format(
               DataNodePipeMessages.ERROR_GETTING_OPC_CLIENT_FMT,
               e.getClass().getSimpleName(),
               e.getMessage()),
           e);
+    }
+  }
+
+  private void closeOnFailure(final Exception failure) {
+    try {
+      close();
+    } catch (final IOException closeException) {
+      failure.addSuppressed(closeException);
+    }
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (trustListManager != null) {
+      try {
+        trustListManager.close();
+      } finally {
+        trustListManager = null;
+      }
     }
   }
 

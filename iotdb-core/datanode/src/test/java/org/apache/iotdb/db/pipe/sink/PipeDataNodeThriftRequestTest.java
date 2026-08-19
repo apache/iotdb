@@ -1177,6 +1177,42 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(Arrays.asList(modFileName, tsFileName), deserializeReq.getFileNames());
     Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
     Assert.assertEquals("root.db", deserializeReq.getDatabaseNameByTsFileName());
+    Assert.assertFalse(deserializeReq.shouldWaitForSchemaBeforeLoad());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealWithModReqWaitsForSchema() throws IOException {
+    final PipeTransferTsFileSealWithModReq req =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+            "1.tsfile.mod", 10, "1.tsfile", 100, "root.db", true);
+    final PipeTransferTsFileSealWithModReq deserializeReq =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertTrue(deserializeReq.shouldWaitForSchemaBeforeLoad());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealConversionTaskInfoIsStable() throws IOException {
+    final String taskId =
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", "1.tsfile.mod", 10, "1.tsfile", 100);
+    Assert.assertEquals(
+        taskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", "1.tsfile.mod", 10, "1.tsfile", 100));
+    Assert.assertNotEquals(
+        taskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", "1.tsfile.mod", 10, "1.tsfile", 101));
+
+    final PipeTransferTsFileSealWithModReq request =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                "1.tsfile.mod", 10, "1.tsfile", 100, "root.db")
+            .setConversionTaskInfo(taskId, false);
+    final PipeTransferTsFileSealWithModReq deserialized =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(request);
+    Assert.assertEquals(taskId, deserialized.getConversionTaskId());
+    Assert.assertFalse(deserialized.shouldAsyncLoadOnTypeMismatch());
   }
 
   @Test
@@ -1201,6 +1237,7 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
     Assert.assertTrue(deserializeReq.getParameters().isEmpty());
     Assert.assertNull(deserializeReq.getDatabaseNameByTsFileName());
+    Assert.assertFalse(deserializeReq.shouldWaitForSchemaBeforeLoad());
   }
 
   @Test

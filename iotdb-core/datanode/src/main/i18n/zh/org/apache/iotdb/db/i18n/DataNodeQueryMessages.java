@@ -205,6 +205,27 @@ public final class DataNodeQueryMessages {
       "扫描文件时发生错误";
   public static final String ERROR_HAPPENED_WHILE_SCANNING_THE_FILE =
       "扫描文件时发生错误";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E =
+          "读取时间序列元数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_FROM_TSFILE_ARG_B07568F8 =
+      "从 TsFile 读取时间序列元数据失败：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_7F51AAB1 =
+          "读取 chunk 数据或加载 page reader 失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_CHUNK_DATA_OR_LOAD_PAGE_READER_FROM_TSFILE_ARG_79127C70 =
+          "从 TsFile 读取 chunk 数据或加载 page reader 失败：%s";
+  public static final String
+      EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_54D7C6D9 =
+          "解码 page 数据失败。TsFile 可能已损坏，请检查日志中的损坏文件路径。";
+  public static final String EXCEPTION_FAILED_TO_DECODE_PAGE_DATA_FROM_TSFILE_ARG_645F5377 =
+      "从 TsFile 解码 page 数据失败：%s";
+  public static final String EXCEPTION_FAILED_TO_READ_METADATA_INDEX_NODE_FROM_TSFILE_ARG_EC5B6633 =
+      "从 TsFile 读取元数据索引节点失败：%s";
+  public static final String
+      LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3 =
+          "查询执行期间 TsFile 可能已损坏，文件：{}，阶段：{}";
   public static final String ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST =
       "所有缓存的 chunk 应先被消费";
   public static final String OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST =
@@ -2778,6 +2799,14 @@ public final class DataNodeQueryMessages {
   public static final String UNSUPPORTED_COPY_TO_FORMAT_S_SUPPORTED_FORMATS_S =
 
       "不支持 COPY_TO 格式 '%s'。支持的格式：%s";
+  public static final String EXCEPTION_DUPLICATE_TAG_COLUMN_IN_TAGS_CLAUSE_ARG_61FD5422 =
+      "TAGS 子句中存在重复的 TAG 列：%s";
+  public static final String EXCEPTION_DUPLICATE_OPTION_IN_COPY_TO_STATEMENT_ARG_99CFE09F =
+      "COPY TO 语句中存在重复的选项：%s";
+  public static final String EXCEPTION_FAILED_TO_WRITE_THE_TARGET_FILE_ARG_5AC3025D =
+      "写入目标文件失败：%s";
+  public static final String LOG_FAILED_TO_WRITE_THE_TARGET_FILE_DURING_COPY_TO_EE25EF37 =
+      "COPY TO 写入目标文件失败";
   public static final String SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "不支持同时设置月级和非月级时间间隔。";
   public static final String DON_T_NEED_TO_SPECIFY_TIME_COLUMN_WHILE_EITHER_TIME_BOUND_OR_FILL_GROUP_PARAMETER_IS_NOT =
@@ -3633,6 +3662,9 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F =
 
       "加载 TsFile 的源路径 %s 位于允许目录 %s 之外。";
+  public static final String
+      QUERY_EXCEPTION_CANNOT_LOAD_FILES_BECAUSE_SPECIFIED_DIRECTORY_CONTAINS_IOTDB_DATA_B0A1B93D =
+          "指定目录包含 IoTDB 数据，无法加载文件。";
   public static final String QUERY_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_SOURCE_09CC9AC6 =
       "无法解析 load TsFile source %s 的 canonical path：%s";
   public static final String QUERY_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0 =
@@ -3683,9 +3715,10 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_GETOUTPUTCOLUMNNAMES_OF_ALTERLOGICALVIEWNODE_IS_NOT_IMPLEMENTED_D2294789 =
 
       "AlterLogicalViewNode 的 getOutputColumnNames 尚未实现";
-  public static final String QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE =
+  public static final String
+      EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7 =
 
-      "数据库 '%s' 为只读。";
+          "Apache IoTDB 不支持对数据库 '%s' 执行此操作。";
   public static final String QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66 =
 
       "数据库 '%s' 仅允许 AUDIT admin 查询。";
@@ -3960,18 +3993,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ID_IS_EMPTY_28C94FC0 =
       "id 为空";
   public static final String EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4 = "executor 不能为空";
-  public static final String EXCEPTION_INITIALSTATE_IS_NULL_8992A39F = "initialState 不能为空";
-  public static final String EXCEPTION_TERMINALSTATES_IS_NULL_E0FC2A93 = "terminalStates 不能为空";
-  public static final String EXCEPTION_EXPECTEDSTATE_IS_NULL_5E8C2F32 = "expectedState 不能为空";
   public static final String EXCEPTION_CURRENTSTATE_IS_NULL_AEDB20DB = "currentState 不能为空";
-  public static final String EXCEPTION_STATECHANGELISTENER_IS_NULL_635AE7D2 = "stateChangeListener 不能为空";
-  public static final String EXCEPTION_ARG_CANNOT_TRANSITION_FROM_ARG_TO_ARG_8C680D30 = "%s 无法从 %s 转换到 %s";
-  public static final String EXCEPTION_CANNOT_FIRE_STATE_CHANGE_EVENT_WHILE_HOLDING_THE_LOCK_35243BC4 =
-      "持有锁时无法触发状态变更事件。";
-  public static final String EXCEPTION_CANNOT_NOTIFY_WHILE_HOLDING_THE_LOCK_15625D48 =
-      "持有锁时无法通知。";
-  public static final String EXCEPTION_CANNOT_WAIT_FOR_STATE_CHANGE_WHILE_HOLDING_THE_LOCK_CBD9F784 =
-      "持有锁时无法等待状态变更。";
   public static final String EXCEPTION_DONESTATE_IS_NULL_D88F77E5 = "doneState 不能为空";
   public static final String EXCEPTION_DONESTATE_ARG_IS_NOT_A_DONE_STATE_8724C618 =
       "doneState %s 不是完成状态";
@@ -4402,6 +4424,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_UDFNAME_IS_NULL_83E9039B = "udfName 不能为空";
   public static final String EXCEPTION_URISTRING_IS_NULL_E7458C6A = "uriString 不能为空";
   public static final String EXCEPTION_FILEPATH_IS_NULL_84CE8A66 = "filePath 不能为空";
+  public static final String EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181 =
+      "LOAD TSFILE 路径不能为空。";
   public static final String EXCEPTION_DETAILS_IS_NULL_8EDEEA03 = "details 不能为空";
   public static final String EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B = "columnCategory 不能为空";
   public static final String EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F = "argumentName 不能为空";
@@ -4511,6 +4535,10 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD = "聚合函数 [%s] 应当只有两个参数";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87 = "聚合函数 [%s] 的值列应为数值类型 [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF = "聚合函数 [%s] 的百分比参数应为 decimal 类型";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_2_ARGUMENTS_VALUE_TIME_E2F55C08 = "聚合函数 [%s] 需要 2 个参数：value、time";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B = "聚合函数 [%s] 需要 4 个参数：value、time、window_start、window_end";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_ONLY_SUPPORTS_INT32_INT64_FLOAT_AND_DOUBLE_AS_THE_FIRST_ARGUMENT_8D201434 = "聚合函数 [%s] 的第一个参数仅支持 INT32、INT64、FLOAT 和 DOUBLE 类型";
+  public static final String EXCEPTION_THE_TIME_ARGUMENTS_OF_AGGREGATE_FUNCTION_ARG_SHOULD_BE_TIMESTAMP_OR_INT64_TYPE_9C736DE3 = "聚合函数 [%s] 的时间参数应为 TIMESTAMP 或 INT64 类型";
   public static final String EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4 = "不能在聚合 '%s' 中嵌套聚合：%s";
   public static final String EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897 = "不能在聚合 '%s' 中嵌套窗口函数：%s";
   public static final String EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6 = "PARTITION BY 表达式 '%s' 必须是聚合表达式或出现在 GROUP BY 子句中";
@@ -4545,5 +4573,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ALIAS_IS_NULL_862D23B1 = "alias 不能为空";
   public static final String EXCEPTION_REFERENCES_IS_NULL_25A7E3AF = "references 不能为空";
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
+  public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
+      "无权执行 %s，因为只有超级用户可以修改其自身。";
 
 }

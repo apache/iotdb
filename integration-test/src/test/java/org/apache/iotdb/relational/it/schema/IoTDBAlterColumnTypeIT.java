@@ -1397,8 +1397,7 @@ public class IoTDBAlterColumnTypeIT {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
       } catch (Exception e) {
-        log.error("{}", e.getStackTrace());
-        log.info(e.getMessage());
+        log.error(e.getMessage(), e);
       }
 
       // alter the type to "to"
@@ -1537,8 +1536,7 @@ public class IoTDBAlterColumnTypeIT {
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
       } catch (Exception e) {
-        log.error("{}", e.getStackTrace());
-        log.info(e.getMessage());
+        log.error(e.getMessage(), e);
       }
 
       if (from == TSDataType.DATE) {
@@ -1607,8 +1605,7 @@ public class IoTDBAlterColumnTypeIT {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
       } catch (Exception e) {
-        log.error("{}", e.getStackTrace());
-        log.info(e.getMessage());
+        log.error(e.getMessage(), e);
       }
 
       // alter the type to "to"

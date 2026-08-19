@@ -26,18 +26,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 
 public class FileTimeIndexCacheWriter implements ILogWriter {
   private static final Logger logger = LoggerFactory.getLogger(FileTimeIndexCacheWriter.class);
 
   private final File logFile;
-  private FileOutputStream fileOutputStream;
   private FileChannel channel;
   private final boolean forceEachWrite;
 
@@ -46,8 +45,7 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
     this.logFile = logFile;
     this.forceEachWrite = forceEachWrite;
 
-    fileOutputStream = new FileOutputStream(logFile, true);
-    channel = fileOutputStream.getChannel();
+    channel = openChannel(logFile);
   }
 
   @Override
@@ -82,8 +80,6 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
       if (channel.isOpen()) {
         channel.force(false);
       }
-      fileOutputStream.close();
-      fileOutputStream = null;
       channel.close();
       channel = null;
     }
@@ -96,8 +92,12 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
       logger.warn(
           StorageEngineMessages.PARTITION_LOG_FILE_ALREADY_EXISTS, logFile.getAbsolutePath());
     }
-    fileOutputStream = new FileOutputStream(logFile, true);
-    channel = fileOutputStream.getChannel();
+    channel =
+        FileChannel.open(
+            logFile.toPath(),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.WRITE,
+            StandardOpenOption.APPEND);
   }
 
   @Override
@@ -107,5 +107,19 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
 
   public File getLogFile() {
     return logFile;
+  }
+
+  private static FileChannel openChannel(File file) throws FileNotFoundException {
+    try {
+      return FileChannel.open(
+          file.toPath(),
+          StandardOpenOption.CREATE,
+          StandardOpenOption.WRITE,
+          StandardOpenOption.APPEND);
+    } catch (IOException e) {
+      FileNotFoundException exception = new FileNotFoundException(e.getMessage());
+      exception.initCause(e);
+      throw exception;
+    }
   }
 }

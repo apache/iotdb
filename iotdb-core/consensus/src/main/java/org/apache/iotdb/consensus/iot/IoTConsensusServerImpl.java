@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -84,21 +85,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -142,7 +144,7 @@ public class IoTConsensusServerImpl {
   private final ConcurrentHashMap<String, ConcurrentHashMap<String, String>>
       snapshotReceiveFolderMap = new ConcurrentHashMap<>();
 
-  private final TreeSet<Peer> configuration;
+  private final Set<Peer> configuration = ConcurrentHashMap.newKeySet();
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
   private IoTConsensusConfig config;
@@ -186,7 +188,7 @@ public class IoTConsensusServerImpl {
       List<String> recvSnapshotDirs,
       DirectoryStrategyType recvFolderStrategyType,
       Peer thisNode,
-      TreeSet<Peer> configuration,
+      Collection<Peer> configuration,
       IStateMachine stateMachine,
       ScheduledExecutorService backgroundTaskService,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
@@ -209,7 +211,7 @@ public class IoTConsensusServerImpl {
     this.stateMachine = stateMachine;
     this.cacheQueueMap = new ConcurrentHashMap<>();
     this.syncClientManager = syncClientManager;
-    this.configuration = configuration;
+    this.configuration.addAll(configuration);
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
@@ -312,14 +314,15 @@ public class IoTConsensusServerImpl {
         // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
         // in one transaction.
         synchronized (searchIndex) {
-          logDispatcher.offer(indexedConsensusRequest);
           // Deliver to subscription queues for real-time in-memory consumption.
           // Offer AFTER stateMachine.write() so that InsertNode has inferred types
           // and properly typed values (same timing as LogDispatcher).
-          final int sqCount = subscriptionQueueRegistry.size();
-          if (sqCount > 0) {
-            subscriptionQueueRegistry.offer(indexedConsensusRequest);
-          } else if (logger.isDebugEnabled()
+          final boolean offeredToSubscription =
+              subscriptionQueueRegistry.offer(indexedConsensusRequest);
+          logDispatcher.offer(indexedConsensusRequest, offeredToSubscription);
+          if (!offeredToSubscription
+              && subscriptionQueueRegistry.isEmpty()
+              && logger.isDebugEnabled()
               && indexedConsensusRequest.getSearchIndex() % 50 == 0) {
             // Log periodically when no subscription queues are registered
             logger.debug(
@@ -528,8 +531,9 @@ public class IoTConsensusServerImpl {
     if (!Files.exists(parentDir)) {
       Files.createDirectories(parentDir);
     }
-    try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
-        FileChannel channel = fos.getChannel()) {
+    try (FileChannel channel =
+        FileChannel.open(
+            targetFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
       channel.write(fileChunk.slice(), fileOffset);
     }
   }
@@ -1117,7 +1121,9 @@ public class IoTConsensusServerImpl {
   }
 
   public List<Peer> getConfiguration() {
-    return new ArrayList<>(configuration);
+    List<Peer> result = new ArrayList<>(configuration);
+    Collections.sort(result);
+    return result;
   }
 
   public long getSearchIndex() {
@@ -1432,16 +1438,40 @@ public class IoTConsensusServerImpl {
           } catch (InterruptedException e) {
             logger.warn(
                 IoTConsensusMessages.CURRENT_WAITING_INTERRUPTED, request.getStartSyncIndex(), e);
+            requestCache.remove(request);
+            queueSortCondition.signalAll();
             Thread.currentThread().interrupt();
-            break;
+            return new TSStatus()
+                .setSubStatus(
+                    Collections.nCopies(
+                        request.getInsertNodes().size(),
+                        RpcUtils.getStatus(
+                            TSStatusCode.INTERNAL_SERVER_ERROR,
+                            String.format(
+                                IoTConsensusMessages
+                                    .MESSAGE_SYNC_LOG_REQUEST_WITH_SYNC_INDEX_ARG_WAS_INTERRUPTED_WHILE_WAITING_81B4ABB2,
+                                request.getStartSyncIndex()))));
           }
         }
         long sortTime = System.nanoTime();
         ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
         List<TSStatus> subStatus = new LinkedList<>();
-        for (IConsensusRequest insertNode : request.getInsertNodes()) {
+        List<IConsensusRequest> insertNodes = request.getInsertNodes();
+        for (int i = 0; i < insertNodes.size(); i++) {
+          IConsensusRequest insertNode = insertNodes.get(i);
           insertNode.markAsGeneratedByRemoteConsensusLeader();
-          subStatus.add(stateMachine.write(insertNode));
+          TSStatus status = stateMachine.write(insertNode);
+          subStatus.add(status);
+          if (RetryUtils.needRetryForWrite(status.getCode())) {
+            for (int j = i + 1; j < insertNodes.size(); j++) {
+              subStatus.add(
+                  RpcUtils.getStatus(
+                      TSStatusCode.WRITE_PROCESS_REJECT,
+                      IoTConsensusMessages
+                          .MESSAGE_THE_REQUEST_MUST_WAIT_FOR_THE_PREVIOUS_REQUEST_TO_COMPLETE_470849A7));
+            }
+            break;
+          }
         }
         if (subStatus.stream()
             .allMatch(status -> status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {

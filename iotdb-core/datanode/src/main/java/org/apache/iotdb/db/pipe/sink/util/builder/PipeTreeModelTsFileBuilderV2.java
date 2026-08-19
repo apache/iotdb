@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
@@ -129,7 +128,9 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
         sealedFiles.add(new Pair<>(null, writer.getFile()));
       }
     } catch (final Exception e) {
-      FileUtils.deleteQuietly(file);
+      if (file != null) {
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
+      }
       LOGGER.warn(
           DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
           currentBatchId.get(),

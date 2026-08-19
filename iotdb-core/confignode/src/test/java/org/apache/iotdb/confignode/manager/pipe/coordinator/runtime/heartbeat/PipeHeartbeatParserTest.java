@@ -215,6 +215,42 @@ public class PipeHeartbeatParserTest {
   }
 
   @Test
+  public void testParseHeartbeatDoesNotOverwritePreDeleteStatus() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final String pipeName = "preDeletePipe";
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    createPipe(pipeTaskInfo, pipeName, PipeStatus.RUNNING);
+
+    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName);
+    final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+    runtimeMeta.getStatus().set(PipeStatus.PRE_DELETE);
+
+    final PipeTaskMeta agentTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, DATA_NODE_ID);
+    agentTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("fresh failure", 300L));
+    final ConcurrentMap<Integer, PipeTaskMeta> agentPipeTasks = new ConcurrentHashMap<>();
+    agentPipeTasks.put(DATA_NODE_ID, agentTaskMeta);
+    final PipeHeartbeat heartbeat =
+        new PipeHeartbeat(
+            Collections.singletonList(
+                new PipeMeta(pipeMeta.getStaticMeta(), new PipeRuntimeMeta(agentPipeTasks))
+                    .serialize()),
+            Collections.singletonList(false),
+            Collections.singletonList(0L),
+            Collections.singletonList(0D),
+            null);
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(DATA_NODE_ID, heartbeat);
+
+    Assert.assertEquals(PipeStatus.PRE_DELETE, runtimeMeta.getStatus().get());
+    Assert.assertFalse(
+        runtimeMeta.getConsensusGroupId2TaskMetaMap().get(DATA_NODE_ID).hasExceptionMessages());
+    verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
+  }
+
+  @Test
   public void testParseHeartbeatRecordsPipeDegradedStatus() throws Exception {
     CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
 
@@ -279,6 +315,49 @@ public class PipeHeartbeatParserTest {
 
     assertNull(getTemporaryMeta(pipeTaskInfo).getGlobalDegraded());
     verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
+  }
+
+  @Test
+  public void testParseHeartbeatAggregatesRecentFailuresFromAllDataNodes() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    final PipeMeta pipeMeta = createPipeMeta();
+    pipeTaskInfo.createPipe(
+        new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
+
+    final ParserTestContext context = createParserTestContext(2, pipeTaskInfo);
+    final Map<String, Long> firstNodeFailures = new HashMap<>();
+    firstNodeFailures.put("network_timeout", 10L);
+    final Map<String, Long> secondNodeFailures = new HashMap<>();
+    secondNodeFailures.put("network_timeout", 2L);
+    secondNodeFailures.put("memory_timeout", 15L);
+
+    context.parser.parseHeartbeat(1, createPipeHeartbeat(pipeMeta, false, firstNodeFailures));
+    context.parser.parseHeartbeat(2, createPipeHeartbeat(pipeMeta, false, secondNodeFailures));
+
+    Assert.assertEquals(
+        Long.valueOf(12),
+        getTemporaryMeta(pipeTaskInfo).getGlobalRecentFailures().get("network_timeout"));
+    Assert.assertEquals(
+        Long.valueOf(15),
+        getTemporaryMeta(pipeTaskInfo).getGlobalRecentFailures().get("memory_timeout"));
+    verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
+  }
+
+  @Test
+  public void testPipeHeartbeatTreatsNullRecentFailureMapAsEmpty() throws Exception {
+    final PipeMeta pipeMeta = createPipeMeta();
+    final PipeHeartbeat heartbeat =
+        new PipeHeartbeat(
+            Collections.singletonList(pipeMeta.serialize()),
+            Collections.singletonList(false),
+            Collections.singletonList(0L),
+            Collections.singletonList(0d),
+            Collections.singletonList(PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_UNKNOWN),
+            Collections.singletonList(null));
+
+    Assert.assertTrue(heartbeat.getRecentFailures(pipeMeta.getStaticMeta()).isEmpty());
   }
 
   private ParserTestContext createParserTestContext(final int registeredDataNodeCount) {
@@ -349,12 +428,19 @@ public class PipeHeartbeatParserTest {
 
   private PipeHeartbeat createPipeHeartbeat(final PipeMeta pipeMeta, final boolean isDegraded)
       throws Exception {
+    return createPipeHeartbeat(pipeMeta, isDegraded, Collections.emptyMap());
+  }
+
+  private PipeHeartbeat createPipeHeartbeat(
+      final PipeMeta pipeMeta, final boolean isDegraded, final Map<String, Long> recentFailures)
+      throws Exception {
     return new PipeHeartbeat(
         Collections.singletonList(pipeMeta.serialize()),
         Collections.singletonList(false),
         Collections.singletonList(0L),
         Collections.singletonList(0d),
-        Collections.singletonList(PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(isDegraded)));
+        Collections.singletonList(PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(isDegraded)),
+        Collections.singletonList(recentFailures));
   }
 
   private PipeTemporaryMetaInCoordinator getTemporaryMeta(final PipeTaskInfo pipeTaskInfo) {

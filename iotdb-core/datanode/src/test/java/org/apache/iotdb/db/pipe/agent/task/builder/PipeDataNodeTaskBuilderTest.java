@@ -31,6 +31,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -107,5 +108,83 @@ public class PipeDataNodeTaskBuilderTest {
     Assert.assertEquals(
         Boolean.TRUE.toString(),
         sinkParameters.getStringByKeys(PipeSinkConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY));
+  }
+
+  @Test
+  public void testPreprocessParametersWaitsForCompleteIoTDBSchemaHistory() {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(PipeSourceConstant.SOURCE_INCLUSION_KEY, "all");
+    final PipeParameters sinkParameters = new PipeParameters(new HashMap<>());
+
+    PipeDataNodeTaskBuilder.preprocessParameters(
+        new PipeParameters(sourceAttributes), sinkParameters);
+
+    Assert.assertEquals(
+        Boolean.TRUE.toString(),
+        sinkParameters.getStringByKeys(SystemConstant.SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY));
+  }
+
+  @Test
+  public void testPreprocessParametersDoesNotWaitForIncompleteSchemaHistory() {
+    for (final String excludedOption :
+        Arrays.asList("schema.timeseries.template.alter", "schema.timeseries.template.activate")) {
+      final Map<String, String> sourceAttributes = new HashMap<>();
+      sourceAttributes.put(PipeSourceConstant.SOURCE_INCLUSION_KEY, "all");
+      sourceAttributes.put(PipeSourceConstant.SOURCE_EXCLUSION_KEY, excludedOption);
+      final Map<String, String> sinkAttributes = new HashMap<>();
+      sinkAttributes.put(
+          SystemConstant.SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY, Boolean.TRUE.toString());
+      final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+
+      PipeDataNodeTaskBuilder.preprocessParameters(
+          new PipeParameters(sourceAttributes), sinkParameters);
+
+      Assert.assertEquals(
+          Boolean.FALSE.toString(),
+          sinkParameters.getStringByKeys(SystemConstant.SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY));
+    }
+  }
+
+  @Test
+  public void testPreprocessParametersDoesNotWaitForExternalSourceOrGeneralWrite() {
+    final Map<String, String> externalSourceAttributes = new HashMap<>();
+    externalSourceAttributes.put(PipeSourceConstant.SOURCE_KEY, "external-source");
+    externalSourceAttributes.put(PipeSourceConstant.SOURCE_INCLUSION_KEY, "all");
+    final PipeParameters externalSourceSinkParameters = new PipeParameters(new HashMap<>());
+
+    PipeDataNodeTaskBuilder.preprocessParameters(
+        new PipeParameters(externalSourceAttributes), externalSourceSinkParameters);
+
+    Assert.assertEquals(
+        Boolean.FALSE.toString(),
+        externalSourceSinkParameters.getStringByKeys(
+            SystemConstant.SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY));
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(PipeSourceConstant.SOURCE_INCLUSION_KEY, "all");
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sinkAttributes.put(
+        PipeSinkConstant.SINK_MARK_AS_GENERAL_WRITE_REQUEST_KEY, Boolean.TRUE.toString());
+    final PipeParameters generalWriteSinkParameters = new PipeParameters(sinkAttributes);
+
+    PipeDataNodeTaskBuilder.preprocessParameters(
+        new PipeParameters(sourceAttributes), generalWriteSinkParameters);
+
+    Assert.assertEquals(
+        Boolean.FALSE.toString(),
+        generalWriteSinkParameters.getStringByKeys(
+            SystemConstant.SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY));
+
+    final Map<String, String> nonPipeSinkAttributes = new HashMap<>();
+    nonPipeSinkAttributes.put(
+        PipeSinkConstant.SINK_MARK_AS_PIPE_REQUEST_KEY, Boolean.FALSE.toString());
+    final PipeParameters nonPipeSinkParameters = new PipeParameters(nonPipeSinkAttributes);
+
+    PipeDataNodeTaskBuilder.preprocessParameters(
+        new PipeParameters(sourceAttributes), nonPipeSinkParameters);
+
+    Assert.assertEquals(
+        Boolean.FALSE.toString(),
+        nonPipeSinkParameters.getStringByKeys(SystemConstant.SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY));
   }
 }

@@ -73,6 +73,7 @@ public final class ManagerMessages {
       "DataRegionGroupExtensionPolicy %s doesn't exist.";
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "Decrease reference count for snapshot {} error.";
+  public static final String DELETING_REGIONS_COSTS_MS = "Deleting regions costs {}ms";
   public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
       "Detected historical pipe completion report from DataNode {} for pipe {}. remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
@@ -440,6 +441,8 @@ public final class ManagerMessages {
       "Start to create Region: {} on DataNode: {}";
   public static final String START_TO_CREATE_UDF_ON_DATA_NODES_NEEDTOSAVEJAR =
       "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]";
+  public static final String START_TO_DELETE_REGION_ON_DATANODE =
+      "Start to delete Region: {} on DataNode: {}";
   public static final String START_TRANSFER_OF = "Start transfer of {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE = "Stop submitting CQ {} because {}";
   public static final String STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR =
@@ -522,8 +525,6 @@ public final class ManagerMessages {
       "Unexpected interruption during waiting for configNode leader ready.";
   public static final String UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID =
       "Unexpected interruption during waiting for get cluster id.";
-  public static final String UNEXPECTED_NON_CREATE_REGION_MAINTAIN_TASK_SKIPPED =
-      "Unexpected non-create task in the RegionMaintainer queue; skipping it (the queue only recreates region replicas now, and region deletion is handled by RemoveRegionGroupProcedure).";
   public static final String UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED =
       "Unexpected null procedure parameters for waitingProcedureFinished";
   public static final String UNKNOWN_DATAPARTITION_ALLOCATION_STRATEGY_USING_INHERIT_STRATEGY_BY_DEFAULT =
@@ -551,6 +552,9 @@ public final class ManagerMessages {
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER = "Remove ConfigNode failed because the ConfigNode not in current Cluster.";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE = "Successfully remove confignode.";
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "Remove ConfigNode failed because transfer ConfigNode leader failed.";
+  public static final String LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADER_FROM_ARG_TO_ARG_TRYING_ANOTHER_CANDIDATE_BA922E92 = "Failed to transfer ConfigNode leader from {} to {}, trying another candidate.";
+  public static final String LOG_COULD_NOT_CONFIRM_A_CONFIGNODE_LEADER_OTHER_THAN_ARG_AFTER_ATTEMPTING_TO_TRANSFER_LEADERSHIP_TO_ARG_TRYING_ANOTHER_CANDIDATE_91EF68C1 = "Could not confirm a ConfigNode leader other than {} after attempting to transfer leadership to {}, trying another candidate.";
+  public static final String LOG_STOPPED_RETRYING_CONFIGNODE_LEADER_TRANSFER_BECAUSE_THE_REMAINING_RPC_TIMEOUT_IS_INSUFFICIENT_6429A49C = "Stopped retrying ConfigNode leader transfer because the remaining RPC timeout is insufficient.";
 
   private ManagerMessages() {}
   // ---------------------------------------------------------------------------
@@ -694,5 +698,8 @@ public final class ManagerMessages {
   public static final String MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STOPPED_SUCCESSFULLY_11442F29 = "SubscriptionOwnerLeaseSyncer is stopped successfully.";
   public static final String MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49 =
       "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}";
+  public static final String
+      MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
+          "%s Please manually check later whether the procedure is executed successfully.";
 
 }
