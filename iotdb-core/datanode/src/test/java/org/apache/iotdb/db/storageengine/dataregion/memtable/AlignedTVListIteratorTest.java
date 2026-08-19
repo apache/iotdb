@@ -167,6 +167,40 @@ public class AlignedTVListIteratorTest {
   }
 
   @Test
+  public void testIteratorWithStaleRowCountAfterSort() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
+    for (int i = 100; i < 110; i++) {
+      tvList.putAlignedValue(i, new Object[] {i, i, i});
+    }
+    int staleRowCount = tvList.rowCount();
+    for (int i = 1; i <= 2; i++) {
+      tvList.putAlignedValue(i, new Object[] {i, i, i});
+    }
+    tvList.delete(1, 2);
+    tvList.sort();
+
+    AlignedTVList.AlignedTVListIterator iterator =
+        tvList.iterator(
+            Ordering.ASC,
+            staleRowCount,
+            null,
+            Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32),
+            Arrays.asList(0, 1, 2),
+            null,
+            null,
+            null,
+            100);
+    int count = 0;
+    while (iterator.hasNextTimeValuePair()) {
+      iterator.nextTimeValuePair();
+      count++;
+    }
+    Assert.assertEquals(staleRowCount - 2, count);
+  }
+
+  @Test
   public void testAlignedWithDeletionsInTVList() throws IOException {
     Map<TVList, Integer> tvListMap =
         buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 1000)));
