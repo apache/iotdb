@@ -133,6 +133,7 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
         }
         commitIds.sort(Comparator.naturalOrder());
         commitIds.forEach(id -> appendStablePart(eventIdentity, Long.toString(id)));
+        // Commit ids are local to a DataNode and may collide after a leader change.
         try {
           appendStablePart(eventIdentity, String.valueOf(event.getProgressIndex()));
         } catch (final UnsupportedOperationException e) {
