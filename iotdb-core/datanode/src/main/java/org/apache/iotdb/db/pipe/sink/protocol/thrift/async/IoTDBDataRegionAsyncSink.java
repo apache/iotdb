@@ -293,7 +293,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
       int transferredFileCount = 0;
       try {
-        for (final Pair<String, File> sealedFile : dbTsFilePairs) {
+        for (int outputIndex = 0; outputIndex < dbTsFilePairs.size(); outputIndex++) {
+          final Pair<String, File> sealedFile = dbTsFilePairs.get(outputIndex);
           transfer(
               new PipeTransferTsFileHandler(
                   this,
@@ -304,7 +305,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                   sealedFile.right,
                   null,
                   false,
-                  sealedFile.left));
+                  sealedFile.left,
+                  outputIndex));
           transferredFileCount++;
         }
       } catch (final Exception e) {

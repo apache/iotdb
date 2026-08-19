@@ -47,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
+import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -765,6 +766,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private void executeTabletConversionOnException(
       final IAnalysis analysis, final LoadAnalyzeException e) {
+    if (e instanceof LoadAnalyzeTypeMismatchException) {
+      PipeTsFileConversionTaskManager.markTypeMismatchDetected();
+    }
     if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
       return;
     }

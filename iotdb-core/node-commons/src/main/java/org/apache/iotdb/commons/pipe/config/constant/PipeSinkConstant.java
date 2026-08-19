@@ -145,6 +145,13 @@ public class PipeSinkConstant {
       "sink.exception.data.convert-on-type-mismatch";
   public static final boolean CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE =
       true;
+  public static final String
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY =
+          "connector.exception.data.convert-on-type-mismatch.tsfile.async-load";
+  public static final String SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_KEY =
+      "sink.exception.data.convert-on-type-mismatch.tsfile.async-load";
+  public static final boolean
+      CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_TSFILE_ASYNC_LOAD_DEFAULT_VALUE = true;
 
   public static final String CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY =
       "connector.exception.conflict.resolve-strategy";

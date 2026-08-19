@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -58,9 +59,12 @@ public class DataRegionListeningFilter {
   }
 
   public static boolean shouldDatabaseBeListened(
-      final PipeParameters parameters, final boolean isTableModel, final String databaseRawName)
+      final PipeParameters parameters,
+      final boolean isTableModel,
+      final String databaseRawName,
+      final PipeType pipeType)
       throws IllegalPathException {
-    if (isAuditDatabase(databaseRawName)) {
+    if (!PipeType.CONSENSUS.equals(pipeType) && isAuditDatabase(databaseRawName)) {
       return false;
     }
 
@@ -90,7 +94,8 @@ public class DataRegionListeningFilter {
   }
 
   public static boolean shouldDataRegionBeListened(
-      PipeParameters parameters, DataRegionId dataRegionId) throws IllegalPathException {
+      final PipeParameters parameters, final DataRegionId dataRegionId, final PipeType pipeType)
+      throws IllegalPathException {
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         parseInsertionDeletionListeningOptionPair(parameters);
     final boolean hasSpecificListeningOption =
@@ -106,7 +111,7 @@ public class DataRegionListeningFilter {
     }
 
     final String databaseRawName = dataRegion.getDatabaseName();
-    if (isAuditDatabase(databaseRawName)) {
+    if (!PipeType.CONSENSUS.equals(pipeType) && isAuditDatabase(databaseRawName)) {
       return false;
     }
 

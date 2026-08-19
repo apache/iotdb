@@ -202,6 +202,14 @@ final class AbstractSubscriptionProviders {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  int getAvailableProviderCount() {
+    return (int)
+        subscriptionProviders.values().stream()
+            .filter(AbstractSubscriptionProvider::isAvailable)
+            .count();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   boolean containsProvider(final int dataNodeId) {
     return subscriptionProviders.containsKey(dataNodeId);
   }
