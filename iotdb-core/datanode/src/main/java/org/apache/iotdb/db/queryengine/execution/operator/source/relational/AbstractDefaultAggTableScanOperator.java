@@ -47,13 +47,17 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
       return true;
     }
 
-    return timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange();
+    return prepareNextDeviceBatch()
+        && (timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange());
   }
 
   @Override
   public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
+    }
+    if (!prepareNextDeviceBatch()) {
+      return null;
     }
 
     // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)

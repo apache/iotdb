@@ -879,6 +879,17 @@ struct TKillQueryInstanceReq {
   2: optional string allowedUsername
 }
 
+struct TFetchDeviceEntrySegmentReq {
+  1: required string queryId
+  2: required string planNodeId
+  3: required i32 segmentId
+}
+
+struct TFetchDeviceEntrySegmentResp {
+  1: required common.TSStatus status
+  2: optional binary payload
+}
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
@@ -1439,6 +1450,10 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  TFetchDeviceEntrySegmentResp fetchDeviceEntrySegment(TFetchDeviceEntrySegmentReq req);
+
+  common.TSStatus finishDeviceEntrySegment(1: string queryId, 2: string planNodeId);
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
