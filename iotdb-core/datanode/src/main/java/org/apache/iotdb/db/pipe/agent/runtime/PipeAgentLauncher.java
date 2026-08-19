@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
@@ -39,14 +38,15 @@ import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 class PipeAgentLauncher {
@@ -70,6 +70,7 @@ class PipeAgentLauncher {
 
     final List<PipePluginMeta> uninstalledOrConflictedPipePluginMetaList =
         getUninstalledOrConflictedPipePluginMetaList(resourcesInformationHolder);
+    final Set<String> unavailablePipePluginNameSet = new HashSet<>();
     int index = 0;
     while (index < uninstalledOrConflictedPipePluginMetaList.size()) {
       List<PipePluginMeta> curList = new ArrayList<>();
@@ -80,7 +81,7 @@ class PipeAgentLauncher {
         offset++;
       }
       index += offset;
-      fetchAndSavePipePluginJars(curList);
+      unavailablePipePluginNameSet.addAll(fetchAndSavePipePluginJars(curList));
     }
 
     // create instances of pipe plugins and do registration
@@ -88,12 +89,15 @@ class PipeAgentLauncher {
       if (meta.isBuiltin()) {
         continue;
       }
+      if (unavailablePipePluginNameSet.contains(meta.getPluginName())) {
+        continue;
+      }
       try {
         PipeDataNodeAgent.plugin().doRegister(meta);
       } catch (Throwable e) {
         PipeDataNodeAgent.plugin().markPluginLoadFailure(meta, e);
         // Ignore a single broken plugin and continue startup.
-        LOGGER.warn(
+        LOGGER.error(
             DataNodePipeMessages.FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS,
             meta.getPluginName(),
             e);
@@ -137,27 +141,85 @@ class PipeAgentLauncher {
     return pipePluginMetaList;
   }
 
-  private static void fetchAndSavePipePluginJars(List<PipePluginMeta> pipePluginMetaList)
-      throws StartupException {
+  private static Set<String> fetchAndSavePipePluginJars(List<PipePluginMeta> pipePluginMetaList) {
+    final List<String> pluginNameList =
+        pipePluginMetaList.stream().map(PipePluginMeta::getPluginName).collect(Collectors.toList());
+    final List<String> jarNameList =
+        pipePluginMetaList.stream().map(PipePluginMeta::getJarName).collect(Collectors.toList());
+    final Set<String> unavailablePipePluginNameSet = new HashSet<>();
+
     try (ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final List<String> jarNameList =
-          pipePluginMetaList.stream().map(PipePluginMeta::getJarName).collect(Collectors.toList());
       final TGetJarInListResp resp =
           configNodeClient.getPipePluginJar(new TGetJarInListReq(jarNameList));
-      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
-        throw new StartupException(DataNodePipeMessages.FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM);
+      if (resp == null
+          || resp.getStatus() == null
+          || resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        final PipeException exception =
+            new PipeException(
+                String.format(
+                    "%s Plugins: %s, jars: %s, status: %s",
+                    DataNodePipeMessages.FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM,
+                    pluginNameList,
+                    jarNameList,
+                    resp == null ? null : resp.getStatus()));
+        markPipePluginLoadFailures(pipePluginMetaList, exception);
+        LOGGER.error(exception.getMessage(), exception);
+        unavailablePipePluginNameSet.addAll(pluginNameList);
+        return unavailablePipePluginNameSet;
       }
+
       final List<ByteBuffer> jarList = resp.getJarList();
-      for (int i = 0; i < pipePluginMetaList.size(); i++) {
-        PipePluginExecutableManager.getInstance()
-            .savePluginToInstallDir(
-                jarList.get(i),
-                pipePluginMetaList.get(i).getPluginName(),
-                pipePluginMetaList.get(i).getJarName());
+      if (jarList == null || jarList.size() != pipePluginMetaList.size()) {
+        final PipeException exception =
+            new PipeException(
+                String.format(
+                    "%s Response contains %d jars while %d were requested. Plugins: %s, jars: %s",
+                    DataNodePipeMessages.FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM,
+                    jarList == null ? 0 : jarList.size(),
+                    pipePluginMetaList.size(),
+                    pluginNameList,
+                    jarNameList));
+        markPipePluginLoadFailures(pipePluginMetaList, exception);
+        LOGGER.error(exception.getMessage(), exception);
+        unavailablePipePluginNameSet.addAll(pluginNameList);
+        return unavailablePipePluginNameSet;
       }
-    } catch (IOException | TException | ClientManagerException e) {
-      throw new StartupException(e);
+
+      for (int i = 0; i < pipePluginMetaList.size(); i++) {
+        final PipePluginMeta pipePluginMeta = pipePluginMetaList.get(i);
+        try {
+          PipePluginExecutableManager.getInstance()
+              .savePluginToInstallDir(
+                  jarList.get(i), pipePluginMeta.getPluginName(), pipePluginMeta.getJarName());
+        } catch (IOException e) {
+          PipeDataNodeAgent.plugin().markPluginLoadFailure(pipePluginMeta, e);
+          LOGGER.error(
+              "{} Failed to save jar {} for pipe plugin {}.",
+              DataNodePipeMessages.FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM,
+              pipePluginMeta.getJarName(),
+              pipePluginMeta.getPluginName(),
+              e);
+          unavailablePipePluginNameSet.add(pipePluginMeta.getPluginName());
+        }
+      }
+    } catch (Exception e) {
+      markPipePluginLoadFailures(pipePluginMetaList, e);
+      LOGGER.error(
+          "{} Plugins: {}, jars: {}.",
+          DataNodePipeMessages.FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM,
+          pluginNameList,
+          jarNameList,
+          e);
+      unavailablePipePluginNameSet.addAll(pluginNameList);
+    }
+    return unavailablePipePluginNameSet;
+  }
+
+  private static void markPipePluginLoadFailures(
+      List<PipePluginMeta> pipePluginMetaList, Throwable throwable) {
+    for (PipePluginMeta pipePluginMeta : pipePluginMetaList) {
+      PipeDataNodeAgent.plugin().markPluginLoadFailure(pipePluginMeta, throwable);
     }
   }
 
