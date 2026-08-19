@@ -45,7 +45,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -167,6 +166,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       String[] measurements = row.getMeasurements();
       TSDataType[] incomingDataTypes = row.getDataTypes();
       Object[] rowValues = row.getValues();
+      if (measurements == null || incomingDataTypes == null || rowValues == null) {
+        return;
+      }
       int[] tvListColumnIndexes = mapMeasurements(measurements);
       int columnCount =
           Math.min(measurements.length, Math.min(incomingDataTypes.length, rowValues.length));
@@ -174,12 +176,11 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         String measurement = measurements[column];
         TSDataType dataType = incomingDataTypes[column];
         Object value = rowValues[column];
+        if (measurement == null || dataType == null || value == null) {
+          continue;
+        }
         tvListEstimator.addValue(tvListColumnIndexes[column], dataType, value);
-        if (trackTextData
-            && measurement != null
-            && dataType != null
-            && dataType.isBinary()
-            && value != null) {
+        if (trackTextData && dataType.isBinary()) {
           textDataMemoryCost += MemUtils.getBinarySize((Binary) value);
         }
       }
@@ -1008,7 +1009,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     int size = 0;
     size += Integer.BYTES;
     for (IMeasurementSchema schema : schemaList) {
-      size += schema.serializedSize();
+      size += getSerializedSchemaSize(schema);
     }
     size += Integer.BYTES;
     for (AlignedTVList alignedTvList : sortedList) {
@@ -1022,9 +1023,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   public void serializeToWAL(IWALByteBufferView buffer) {
     WALWriteUtils.write(schemaList.size(), buffer);
     for (IMeasurementSchema schema : schemaList) {
-      byte[] bytes = new byte[schema.serializedSize()];
-      schema.serializeTo(ByteBuffer.wrap(bytes));
-      buffer.put(bytes);
+      buffer.put(serializeSchemaToWALBytes(schema));
     }
     buffer.putInt(sortedList.size());
     for (AlignedTVList alignedTvList : sortedList) {

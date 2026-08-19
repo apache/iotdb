@@ -627,9 +627,9 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
 
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       // Skip failed Measurements
-      if (dataTypes[i] == null || measurements[i] == null) {
+      if (!isWritableMeasurement(measurements, dataTypes, values, i)) {
         continue;
       }
       IWritableMemChunk memChunk = workMemTable.getWritableMemChunk(deviceId, measurements[i]);
@@ -645,7 +645,7 @@ public class TsFileProcessor {
         }
       }
       // TEXT data mem size
-      if (dataTypes[i].isBinary() && values[i] != null) {
+      if (dataTypes[i].isBinary()) {
         textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
       }
     }
@@ -667,9 +667,9 @@ public class TsFileProcessor {
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
       Object[] values = insertRowNode.getValues();
       String[] measurements = insertRowNode.getMeasurements();
-      for (int i = 0; i < dataTypes.length; i++) {
+      for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         // Skip failed Measurements
-        if (dataTypes[i] == null || measurements[i] == null) {
+        if (!isWritableMeasurement(measurements, dataTypes, values, i)) {
           continue;
         }
         IWritableMemChunk memChunk = workMemTable.getWritableMemChunk(deviceId, measurements[i]);
@@ -698,7 +698,7 @@ public class TsFileProcessor {
           increasingMemTableInfo.get(deviceId).computeIfPresent(measurements[i], (k, v) -> v + 1);
         }
         // TEXT data mem size
-        if (dataTypes[i].isBinary() && values[i] != null) {
+        if (dataTypes[i].isBinary()) {
           textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
         }
       }
@@ -723,31 +723,33 @@ public class TsFileProcessor {
       // ChunkMetadataIncrement
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
-              * dataTypes.length;
+              * countWritableMeasurements(measurements, dataTypes, values);
       memTableIncrement += estimateNewAlignedRowMemCost(measurements, dataTypes, values);
-      for (int i = 0; i < dataTypes.length; i++) {
+      for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         // Skip failed Measurements
-        if (dataTypes[i] == null || measurements[i] == null) {
+        if (!isWritableMeasurement(measurements, dataTypes, values, i)) {
           continue;
         }
         // TEXT data mem size
-        if (dataTypes[i].isBinary() && values[i] != null) {
+        if (dataTypes[i].isBinary()) {
           textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
         }
       }
     } else {
       // For existed device of this mem table
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
-      memTableIncrement +=
-          alignedMemChunk.alignedWriteRowMemCost(measurements, dataTypes, values, 0);
-      for (int i = 0; i < dataTypes.length; i++) {
+      if (measurements != null && dataTypes != null && values != null) {
+        memTableIncrement +=
+            alignedMemChunk.alignedWriteRowMemCost(measurements, dataTypes, values, 0);
+      }
+      for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         // Skip failed Measurements
-        if (dataTypes[i] == null || measurements[i] == null) {
+        if (!isWritableMeasurement(measurements, dataTypes, values, i)) {
           continue;
         }
 
         // TEXT data mem size
-        if (dataTypes[i].isBinary() && values[i] != null) {
+        if (dataTypes[i].isBinary()) {
           textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
         }
       }
@@ -775,7 +777,10 @@ public class TsFileProcessor {
           estimator = new NewAlignedRowsMemCostEstimator();
           chunkMetadataIncrement +=
               ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
-                  * insertRowNode.getDataTypes().length;
+                  * countWritableMeasurements(
+                      insertRowNode.getMeasurements(),
+                      insertRowNode.getDataTypes(),
+                      insertRowNode.getValues());
         } else {
           estimator = ((AlignedWritableMemChunk) memChunk).newAlignedWriteRowsMemCostEstimator();
         }
@@ -823,14 +828,18 @@ public class TsFileProcessor {
       String[] measurements = row.getMeasurements();
       TSDataType[] dataTypes = row.getDataTypes();
       Object[] values = row.getValues();
-      int[] measurementIndexes = mapKnownMeasurements(measurements);
-      int columnCount = Math.min(measurements.length, Math.min(dataTypes.length, values.length));
       int currentBlock = rowCount / PrimitiveArrayManager.ARRAY_SIZE;
       rowCount++;
+      if (measurements == null || dataTypes == null || values == null) {
+        return;
+      }
+      int[] measurementIndexes = mapKnownMeasurements(measurements);
+      int columnCount = Math.min(measurements.length, Math.min(dataTypes.length, values.length));
       for (int column = 0; column < columnCount; column++) {
         String measurement = measurements[column];
         TSDataType dataType = dataTypes[column];
-        if (measurement == null || dataType == null) {
+        Object value = values[column];
+        if (measurement == null || dataType == null || value == null) {
           continue;
         }
         int measurementIndex = measurementIndexes[column];
@@ -847,12 +856,11 @@ public class TsFileProcessor {
           }
           measurementIndexes[column] = measurementIndex;
         }
-        Object value = values[column];
-        if (value != null && materializedMeasurementBlocks[measurementIndex] != currentBlock) {
+        if (materializedMeasurementBlocks[measurementIndex] != currentBlock) {
           materializedMeasurementBlocks[measurementIndex] = currentBlock;
           materializedArrayMemCost += primitiveArrayMemCosts[measurementIndex];
         }
-        if (dataType.isBinary() && value != null) {
+        if (dataType.isBinary()) {
           textDataMemoryCost += MemUtils.getBinarySize((Binary) value);
         }
       }
@@ -925,9 +933,9 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       // Skip failed Measurements
-      if (dataTypes[i] == null || columns[i] == null || measurements[i] == null) {
+      if (!isWritableMeasurement(measurements, dataTypes, columns, i)) {
         continue;
       }
       updateMemCost(dataTypes[i], measurements[i], deviceId, start, end, memIncrements, columns[i]);
@@ -1013,15 +1021,13 @@ public class TsFileProcessor {
     if (memChunk == null) {
       // ChunkMetadataIncrement
       memIncrements[2] +=
-          dataTypes.length
+          countWritableMeasurements(measurementIds, dataTypes, columns)
               * ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR);
       memIncrements[0] +=
           estimateNewAlignedArrayMemCost(measurementIds, dataTypes, columns, start, end);
-      for (int i = 0; i < dataTypes.length; i++) {
+      for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         TSDataType dataType = dataTypes[i];
-        String measurement = measurementIds[i];
-        Object column = columns[i];
-        if (dataType == null || column == null || measurement == null) {
+        if (!isWritableMeasurement(measurementIds, dataTypes, columns, i)) {
           continue;
         }
         // TEXT data size
@@ -1033,11 +1039,9 @@ public class TsFileProcessor {
 
     } else {
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
-      for (int i = 0; i < dataTypes.length; i++) {
+      for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         TSDataType dataType = dataTypes[i];
-        String measurement = measurementIds[i];
-        Object column = columns[i];
-        if (dataType == null || column == null || measurement == null) {
+        if (!isWritableMeasurement(measurementIds, dataTypes, columns, i)) {
           continue;
         }
         // TEXT data size
@@ -1046,16 +1050,19 @@ public class TsFileProcessor {
           memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
         }
       }
-      memIncrements[0] +=
-          alignedMemChunk.alignedWriteArrayMemCost(measurementIds, dataTypes, columns, start, end);
+      if (measurementIds != null && dataTypes != null && columns != null) {
+        memIncrements[0] +=
+            alignedMemChunk.alignedWriteArrayMemCost(
+                measurementIds, dataTypes, columns, start, end);
+      }
     }
   }
 
   private long estimateNewAlignedRowMemCost(
       String[] measurements, TSDataType[] dataTypes, Object[] values) {
     List<TSDataType> validDataTypes = new ArrayList<>();
-    for (int i = 0; i < dataTypes.length; i++) {
-      if (measurements[i] != null && dataTypes[i] != null && values[i] != null) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
+      if (isWritableMeasurement(measurements, dataTypes, values, i)) {
         validDataTypes.add(dataTypes[i]);
       }
     }
@@ -1065,8 +1072,8 @@ public class TsFileProcessor {
   private long estimateNewAlignedArrayMemCost(
       String[] measurements, TSDataType[] dataTypes, Object[] columns, int start, int end) {
     List<TSDataType> validDataTypes = new ArrayList<>();
-    for (int i = 0; i < dataTypes.length; i++) {
-      if (measurements[i] != null && dataTypes[i] != null && columns[i] != null) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
+      if (isWritableMeasurement(measurements, dataTypes, columns, i)) {
         validDataTypes.add(dataTypes[i]);
       }
     }
@@ -1087,6 +1094,31 @@ public class TsFileProcessor {
         (rowCount + (long) PrimitiveArrayManager.ARRAY_SIZE - 1) / PrimitiveArrayManager.ARRAY_SIZE;
     return AlignedTVList.alignedTvListInitialMemCost(measurementColumnCount)
         + blockCount * blockMemCost;
+  }
+
+  private static boolean isWritableMeasurement(
+      String[] measurements, TSDataType[] dataTypes, Object[] valuesOrColumns, int index) {
+    return measurements != null
+        && index >= 0
+        && index < measurements.length
+        && measurements[index] != null
+        && dataTypes != null
+        && index < dataTypes.length
+        && dataTypes[index] != null
+        && valuesOrColumns != null
+        && index < valuesOrColumns.length
+        && valuesOrColumns[index] != null;
+  }
+
+  private static int countWritableMeasurements(
+      String[] measurements, TSDataType[] dataTypes, Object[] columns) {
+    int count = 0;
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
+      if (isWritableMeasurement(measurements, dataTypes, columns, i)) {
+        count++;
+      }
+    }
+    return count;
   }
 
   private void reconcileAlignedTVListRamCost(

@@ -43,7 +43,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -505,7 +504,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public int serializedSize() {
-    int serializedSize = schema.serializedSize() + list.serializedSize();
+    int serializedSize = getSerializedSchemaSize(schema) + list.serializedSize();
     serializedSize += Integer.BYTES;
     for (TVList tvList : sortedList) {
       serializedSize += tvList.serializedSize();
@@ -515,9 +514,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    byte[] bytes = new byte[schema.serializedSize()];
-    schema.serializeTo(ByteBuffer.wrap(bytes));
-    buffer.put(bytes);
+    buffer.put(serializeSchemaToWALBytes(schema));
     buffer.putInt(sortedList.size());
     for (TVList tvList : sortedList) {
       tvList.serializeToWAL(buffer);
