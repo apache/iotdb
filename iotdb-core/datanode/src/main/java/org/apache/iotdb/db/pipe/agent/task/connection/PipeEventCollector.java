@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOpera
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskExecutionGuard;
+import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskYieldException;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -56,6 +58,9 @@ public class PipeEventCollector implements EventCollector {
 
   private final boolean skipParsing;
 
+  private PipeProcessorSubtaskExecutionGuard processorExecutionGuard =
+      PipeProcessorSubtaskExecutionGuard.disabled();
+
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
   private boolean hasNoGeneratedEvent = true;
   private boolean isFailedToIncreaseReferenceCount = false;
@@ -71,6 +76,11 @@ public class PipeEventCollector implements EventCollector {
     this.regionId = regionId;
     this.forceTabletFormat = forceTabletFormat;
     this.skipParsing = skipParsing;
+  }
+
+  public void setProcessorExecutionGuard(
+      final PipeProcessorSubtaskExecutionGuard processorExecutionGuard) {
+    this.processorExecutionGuard = processorExecutionGuard;
   }
 
   @Override
@@ -91,6 +101,8 @@ public class PipeEventCollector implements EventCollector {
       } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
       }
+    } catch (final PipeProcessorSubtaskYieldException e) {
+      throw e;
     } catch (final PipeException e) {
       throw e;
     } catch (final Exception e) {
@@ -123,7 +135,7 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
-    if (!sourceEvent.waitForTsFileClose()) {
+    if (!sourceEvent.waitForTsFileClose(processorExecutionGuard)) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
           sourceEvent.getTsFile());
@@ -140,7 +152,9 @@ public class PipeEventCollector implements EventCollector {
     }
 
     sourceEvent.consumeTabletInsertionEventsWithRetry(
-        this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
+        this::collectParsedRawTableEvent,
+        "PipeEventCollector::parseAndCollectEvent",
+        processorExecutionGuard);
     sourceEvent.close();
     if (sourceEvent.isGeneratedByHistoricalExtractor()) {
       PipeTerminateEvent.markHistoricalTsFileSplit(
