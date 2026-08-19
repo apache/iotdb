@@ -106,6 +106,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
+  // False when generated tablet events should wait for an external progress report.
+  private volatile boolean shouldReportGeneratedEventsOnCommit = true;
   private String tsFileParser;
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
@@ -432,6 +434,23 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     return resource.getMaxProgressIndex();
   }
 
+  public PipeTsFileInsertionEvent skipReportOnCommitAndGeneratedEvents() {
+    return setShouldReportGeneratedEventsOnCommit(false);
+  }
+
+  public boolean shouldReportGeneratedEventsOnCommit() {
+    return shouldReportGeneratedEventsOnCommit;
+  }
+
+  private PipeTsFileInsertionEvent setShouldReportGeneratedEventsOnCommit(
+      final boolean shouldReportGeneratedEventsOnCommit) {
+    this.shouldReportGeneratedEventsOnCommit = shouldReportGeneratedEventsOnCommit;
+    if (!shouldReportGeneratedEventsOnCommit) {
+      skipReportOnCommit();
+    }
+    return this;
+  }
+
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(resource)) {
       PipeTsFileEpochProgressIndexKeeper.getInstance()
@@ -469,6 +488,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
             startTime,
             endTime,
             isTsFileSealed);
+    copiedEvent.setShouldReportGeneratedEventsOnCommit(shouldReportGeneratedEventsOnCommit);
     copiedEvent.setTsFileParser(tsFileParser);
     return copiedEvent;
   }
