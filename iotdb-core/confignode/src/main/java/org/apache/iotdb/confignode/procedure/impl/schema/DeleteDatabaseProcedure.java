@@ -112,38 +112,17 @@ public class DeleteDatabaseProcedure
               deleteDatabaseSchema.getName());
 
           // Submit RegionDeleteTasks
-          OfferRegionMaintainTasksPlan dataRegionDeleteTaskOfferPlan =
-              new OfferRegionMaintainTasksPlan();
           List<TRegionReplicaSet> regionReplicaSets =
               env.getAllReplicaSets(deleteDatabaseSchema.getName());
-          List<TRegionReplicaSet> schemaRegionReplicaSets = new ArrayList<>();
+          OfferRegionMaintainTasksPlan regionDeleteTaskOfferPlan =
+              buildDataRegionDeleteTaskOfferPlan(regionReplicaSets);
+          List<TRegionReplicaSet> schemaRegionReplicaSets =
+              getSchemaRegionReplicaSets(regionReplicaSets);
           regionReplicaSets.forEach(
-              regionReplicaSet -> {
-                // Clear heartbeat cache along the way
-                env.getConfigManager()
-                    .getLoadManager()
-                    .removeRegionGroupRelatedCache(regionReplicaSet.getRegionId());
-
-                if (regionReplicaSet
-                    .getRegionId()
-                    .getType()
-                    .equals(TConsensusGroupType.SchemaRegion)) {
-                  schemaRegionReplicaSets.add(regionReplicaSet);
-                } else {
-                  regionReplicaSet
-                      .getDataNodeLocations()
-                      .forEach(
-                          targetDataNode ->
-                              dataRegionDeleteTaskOfferPlan.appendRegionMaintainTask(
-                                  new RegionDeleteTask(
-                                      targetDataNode, regionReplicaSet.getRegionId())));
-                }
-              });
-
-          if (!dataRegionDeleteTaskOfferPlan.getRegionMaintainTaskList().isEmpty()) {
-            // submit async data region delete task
-            env.getConfigManager().getConsensusManager().write(dataRegionDeleteTaskOfferPlan);
-          }
+              regionReplicaSet ->
+                  env.getConfigManager()
+                      .getLoadManager()
+                      .removeRegionGroupRelatedCache(regionReplicaSet.getRegionId()));
 
           // try sync delete schemaengine region
           DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
@@ -166,7 +145,7 @@ public class DeleteDatabaseProcedure
                 .sendAsyncRequestWithRetry(asyncClientHandler);
             for (Map.Entry<Integer, TSStatus> entry :
                 asyncClientHandler.getResponseMap().entrySet()) {
-              if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              if (isRegionDeleteCompleted(entry.getValue())) {
                 LOG.info(
                     "[DeleteDatabaseProcedure] Successfully delete SchemaRegion[{}] on {}",
                     asyncClientHandler.getRequest(entry.getKey()),
@@ -181,14 +160,15 @@ public class DeleteDatabaseProcedure
             }
 
             if (!schemaRegionDeleteTaskMap.isEmpty()) {
-              // submit async schemaengine region delete task for failed sync execution
-              OfferRegionMaintainTasksPlan schemaRegionDeleteTaskOfferPlan =
-                  new OfferRegionMaintainTasksPlan();
-              schemaRegionDeleteTaskMap
-                  .values()
-                  .forEach(schemaRegionDeleteTaskOfferPlan::appendRegionMaintainTask);
-              env.getConfigManager().getConsensusManager().write(schemaRegionDeleteTaskOfferPlan);
+              // submit async schemaengine region delete tasks for failed sync executions
+              appendFailedSchemaRegionDeleteTasks(
+                  regionDeleteTaskOfferPlan, schemaRegionDeleteTaskMap);
             }
+          }
+
+          if (!offerRegionDeleteTasks(env, regionDeleteTaskOfferPlan)) {
+            setNextState(DeleteStorageGroupState.DELETE_DATABASE_SCHEMA);
+            return Flow.HAS_MORE_STATE;
           }
 
           env.getConfigManager()
@@ -212,6 +192,8 @@ public class DeleteDatabaseProcedure
           } else if (getCycles() > RETRY_THRESHOLD) {
             setFailure(
                 new ProcedureException("[DeleteDatabaseProcedure] Delete DatabaseSchema failed"));
+          } else {
+            setNextState(DeleteStorageGroupState.DELETE_DATABASE_SCHEMA);
           }
       }
     } catch (ConsensusException | TException | IOException e) {
@@ -230,10 +212,65 @@ public class DeleteDatabaseProcedure
             e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(new ProcedureException("[DeleteDatabaseProcedure] State stuck at " + state));
+        } else {
+          setNextState(state);
         }
       }
     }
     return Flow.HAS_MORE_STATE;
+  }
+
+  static boolean isRegionDeleteCompleted(TSStatus status) {
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || status.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode();
+  }
+
+  static OfferRegionMaintainTasksPlan buildDataRegionDeleteTaskOfferPlan(
+      List<TRegionReplicaSet> regionReplicaSets) {
+    OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
+    regionReplicaSets.stream()
+        .filter(
+            regionReplicaSet ->
+                regionReplicaSet.getRegionId().getType() == TConsensusGroupType.DataRegion)
+        .forEach(
+            regionReplicaSet ->
+                regionReplicaSet
+                    .getDataNodeLocations()
+                    .forEach(
+                        targetDataNode ->
+                            offerPlan.appendRegionMaintainTask(
+                                new RegionDeleteTask(
+                                    targetDataNode, regionReplicaSet.getRegionId()))));
+    return offerPlan;
+  }
+
+  private static List<TRegionReplicaSet> getSchemaRegionReplicaSets(
+      List<TRegionReplicaSet> regionReplicaSets) {
+    List<TRegionReplicaSet> schemaRegionReplicaSets = new ArrayList<>();
+    regionReplicaSets.stream()
+        .filter(
+            regionReplicaSet ->
+                regionReplicaSet.getRegionId().getType() == TConsensusGroupType.SchemaRegion)
+        .forEach(schemaRegionReplicaSets::add);
+    return schemaRegionReplicaSets;
+  }
+
+  static void appendFailedSchemaRegionDeleteTasks(
+      OfferRegionMaintainTasksPlan offerPlan,
+      Map<Integer, RegionDeleteTask> failedSchemaRegionDeleteTasks) {
+    failedSchemaRegionDeleteTasks.values().forEach(offerPlan::appendRegionMaintainTask);
+  }
+
+  private boolean offerRegionDeleteTasks(
+      ConfigNodeProcedureEnv env, OfferRegionMaintainTasksPlan offerPlan)
+      throws ConsensusException {
+    return offerPlan.getRegionMaintainTaskList().isEmpty()
+        || isRegionDeleteTaskOfferSuccessful(
+            env.getConfigManager().getConsensusManager().write(offerPlan));
+  }
+
+  static boolean isRegionDeleteTaskOfferSuccessful(TSStatus status) {
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   @Override

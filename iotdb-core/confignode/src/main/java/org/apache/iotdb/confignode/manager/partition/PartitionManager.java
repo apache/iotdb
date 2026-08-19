@@ -98,11 +98,13 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1222,202 +1224,198 @@ public class PartitionManager {
                   return;
                 }
 
-                // Group tasks by region id
-                Map<TConsensusGroupId, Queue<RegionMaintainTask>> regionMaintainTaskMap =
-                    new HashMap<>();
-                for (RegionMaintainTask regionMaintainTask : regionMaintainTaskList) {
-                  regionMaintainTaskMap
-                      .computeIfAbsent(regionMaintainTask.getRegionId(), k -> new LinkedList<>())
-                      .add(regionMaintainTask);
-                }
-
-                while (!regionMaintainTaskMap.isEmpty()) {
-                  // Select same type task from each region group
-                  List<RegionMaintainTask> selectedRegionMaintainTask = new ArrayList<>();
-                  RegionMaintainType currentType = null;
-                  for (Map.Entry<TConsensusGroupId, Queue<RegionMaintainTask>> entry :
-                      regionMaintainTaskMap.entrySet()) {
-                    RegionMaintainTask regionMaintainTask = entry.getValue().peek();
-                    if (regionMaintainTask == null) {
-                      continue;
-                    }
-
-                    if (currentType == null) {
-                      currentType = regionMaintainTask.getType();
-                      selectedRegionMaintainTask.add(entry.getValue().peek());
-                    } else {
-                      if (!currentType.equals(regionMaintainTask.getType())) {
-                        continue;
-                      }
-
-                      if (currentType.equals(RegionMaintainType.DELETE)
-                          || entry
-                              .getKey()
-                              .getType()
-                              .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
-                        // Delete or same create task
-                        selectedRegionMaintainTask.add(entry.getValue().peek());
-                      }
-                    }
+                Map<TConsensusGroupId, Queue<RegionMaintainTask>> tasksByRegion =
+                    groupRegionMaintainTasks(regionMaintainTaskList);
+                Set<TConsensusGroupId> deferredRegions = new HashSet<>();
+                while (!tasksByRegion.isEmpty()) {
+                  Map<RegionMaintainType, List<RegionMaintainTask>> headsByType =
+                      getRegionMaintainTaskHeads(tasksByRegion, deferredRegions);
+                  Set<TConsensusGroupId> completedRegions = new HashSet<>();
+                  for (Map.Entry<RegionMaintainType, List<RegionMaintainTask>> entry :
+                      headsByType.entrySet()) {
+                    completedRegions.addAll(
+                        submitRegionMaintainTasks(entry.getKey(), entry.getValue()));
                   }
 
-                  if (selectedRegionMaintainTask.isEmpty()) {
+                  if (completedRegions.isEmpty()) {
                     break;
                   }
 
-                  Set<TConsensusGroupId> successfulTask = new HashSet<>();
-                  switch (currentType) {
-                    case CREATE:
-                      // create region
-                      switch (selectedRegionMaintainTask.get(0).getRegionId().getType()) {
-                        case SchemaRegion:
-                          // create SchemaRegion
-                          DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus>
-                              createSchemaRegionHandler =
-                                  new DataNodeAsyncRequestContext<>(
-                                      CnToDnAsyncRequestType.CREATE_SCHEMA_REGION);
-                          for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
-                            RegionCreateTask schemaRegionCreateTask =
-                                (RegionCreateTask) regionMaintainTask;
-                            LOGGER.info(
-                                "Start to create Region: {} on DataNode: {}",
-                                schemaRegionCreateTask.getRegionReplicaSet().getRegionId(),
-                                schemaRegionCreateTask.getTargetDataNode());
-                            createSchemaRegionHandler.putRequest(
-                                schemaRegionCreateTask.getRegionId().getId(),
-                                new TCreateSchemaRegionReq(
-                                    schemaRegionCreateTask.getRegionReplicaSet(),
-                                    schemaRegionCreateTask.getStorageGroup()));
-                            createSchemaRegionHandler.putNodeLocation(
-                                schemaRegionCreateTask.getRegionId().getId(),
-                                schemaRegionCreateTask.getTargetDataNode());
-                          }
-
-                          CnToDnInternalServiceAsyncRequestManager.getInstance()
-                              .sendAsyncRequestWithRetry(createSchemaRegionHandler);
-
-                          for (Map.Entry<Integer, TSStatus> entry :
-                              createSchemaRegionHandler.getResponseMap().entrySet()) {
-                            if (entry.getValue().getCode()
-                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                              successfulTask.add(
-                                  new TConsensusGroupId(
-                                      TConsensusGroupType.SchemaRegion, entry.getKey()));
-                            }
-                          }
-                          break;
-                        case DataRegion:
-                          // Create DataRegion
-                          DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus>
-                              createDataRegionHandler =
-                                  new DataNodeAsyncRequestContext<>(
-                                      CnToDnAsyncRequestType.CREATE_DATA_REGION);
-                          for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
-                            RegionCreateTask dataRegionCreateTask =
-                                (RegionCreateTask) regionMaintainTask;
-                            LOGGER.info(
-                                "Start to create Region: {} on DataNode: {}",
-                                dataRegionCreateTask.getRegionReplicaSet().getRegionId(),
-                                dataRegionCreateTask.getTargetDataNode());
-                            createDataRegionHandler.putRequest(
-                                dataRegionCreateTask.getRegionId().getId(),
-                                new TCreateDataRegionReq(
-                                    dataRegionCreateTask.getRegionReplicaSet(),
-                                    dataRegionCreateTask.getStorageGroup()));
-                            createDataRegionHandler.putNodeLocation(
-                                dataRegionCreateTask.getRegionId().getId(),
-                                dataRegionCreateTask.getTargetDataNode());
-                          }
-
-                          CnToDnInternalServiceAsyncRequestManager.getInstance()
-                              .sendAsyncRequestWithRetry(createDataRegionHandler);
-
-                          for (Map.Entry<Integer, TSStatus> entry :
-                              createDataRegionHandler.getResponseMap().entrySet()) {
-                            if (entry.getValue().getCode()
-                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                              successfulTask.add(
-                                  new TConsensusGroupId(
-                                      TConsensusGroupType.DataRegion, entry.getKey()));
-                            }
-                          }
-                          break;
-                      }
-                      break;
-                    case DELETE:
-                      // delete region
-                      DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> deleteRegionHandler =
-                          new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_REGION);
-                      Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
-                      for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
-                        RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;
-                        LOGGER.info(
-                            "Start to delete Region: {} on DataNode: {}",
-                            regionDeleteTask.getRegionId(),
-                            regionDeleteTask.getTargetDataNode());
-                        deleteRegionHandler.putRequest(
-                            regionDeleteTask.getRegionId().getId(), regionDeleteTask.getRegionId());
-                        deleteRegionHandler.putNodeLocation(
-                            regionDeleteTask.getRegionId().getId(),
-                            regionDeleteTask.getTargetDataNode());
-                        regionIdMap.put(
-                            regionDeleteTask.getRegionId().getId(), regionDeleteTask.getRegionId());
-                      }
-
-                      long startTime = System.currentTimeMillis();
-                      CnToDnInternalServiceAsyncRequestManager.getInstance()
-                          .sendAsyncRequestWithRetry(deleteRegionHandler);
-
-                      LOGGER.info(
-                          "Deleting regions costs {}ms", (System.currentTimeMillis() - startTime));
-
-                      for (Map.Entry<Integer, TSStatus> entry :
-                          deleteRegionHandler.getResponseMap().entrySet()) {
-                        if (entry.getValue().getCode()
-                            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                          successfulTask.add(regionIdMap.get(entry.getKey()));
-                        }
-                      }
-                      break;
-                  }
-
-                  if (successfulTask.isEmpty()) {
-                    break;
-                  }
-
-                  for (TConsensusGroupId regionId : successfulTask) {
-                    regionMaintainTaskMap.compute(
-                        regionId,
-                        (k, v) -> {
-                          if (v == null) {
-                            throw new IllegalStateException();
-                          }
-                          v.poll();
-                          if (v.isEmpty()) {
-                            return null;
-                          } else {
-                            return v;
-                          }
-                        });
-                  }
-
-                  // Poll the head entry if success
                   try {
-                    getConsensusManager()
-                        .write(new PollSpecificRegionMaintainTaskPlan(successfulTask));
+                    TSStatus pollStatus =
+                        getConsensusManager()
+                            .write(new PollSpecificRegionMaintainTaskPlan(completedRegions));
+                    if (pollStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      break;
+                    }
                   } catch (ConsensusException e) {
                     LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-                  }
-
-                  if (successfulTask.size() < selectedRegionMaintainTask.size()) {
-                    // Here we just break and wait until next schedule task
-                    // due to all the RegionMaintainEntry should be executed by
-                    // the order of they were offered
                     break;
                   }
+
+                  pollCompletedRegionMaintainTaskHeads(tasksByRegion, completedRegions);
+
+                  // Failed heads remain persisted and block only their own regions until the next
+                  // scheduled retry.
+                  deferFailedRegionMaintainTasks(deferredRegions, headsByType, completedRegions);
                 }
               }
             });
+  }
+
+  static Map<TConsensusGroupId, Queue<RegionMaintainTask>> groupRegionMaintainTasks(
+      List<RegionMaintainTask> tasks) {
+    Map<TConsensusGroupId, Queue<RegionMaintainTask>> tasksByRegion = new LinkedHashMap<>();
+    for (RegionMaintainTask task : tasks) {
+      tasksByRegion.computeIfAbsent(task.getRegionId(), key -> new ArrayDeque<>()).add(task);
+    }
+    return tasksByRegion;
+  }
+
+  static Map<RegionMaintainType, List<RegionMaintainTask>> getRegionMaintainTaskHeads(
+      Map<TConsensusGroupId, Queue<RegionMaintainTask>> tasksByRegion) {
+    return getRegionMaintainTaskHeads(tasksByRegion, Collections.emptySet());
+  }
+
+  static Map<RegionMaintainType, List<RegionMaintainTask>> getRegionMaintainTaskHeads(
+      Map<TConsensusGroupId, Queue<RegionMaintainTask>> tasksByRegion,
+      Set<TConsensusGroupId> deferredRegions) {
+    Map<RegionMaintainType, List<RegionMaintainTask>> headsByType =
+        new EnumMap<>(RegionMaintainType.class);
+    for (Map.Entry<TConsensusGroupId, Queue<RegionMaintainTask>> entry : tasksByRegion.entrySet()) {
+      if (deferredRegions.contains(entry.getKey())) {
+        continue;
+      }
+      Queue<RegionMaintainTask> taskQueue = entry.getValue();
+      RegionMaintainTask task = taskQueue.peek();
+      if (task != null) {
+        headsByType.computeIfAbsent(task.getType(), key -> new ArrayList<>()).add(task);
+      }
+    }
+    return headsByType;
+  }
+
+  static void pollCompletedRegionMaintainTaskHeads(
+      Map<TConsensusGroupId, Queue<RegionMaintainTask>> tasksByRegion,
+      Set<TConsensusGroupId> completedRegions) {
+    for (TConsensusGroupId regionId : completedRegions) {
+      tasksByRegion.computeIfPresent(
+          regionId,
+          (key, queue) -> {
+            queue.poll();
+            return queue.isEmpty() ? null : queue;
+          });
+    }
+  }
+
+  static void deferFailedRegionMaintainTasks(
+      Set<TConsensusGroupId> deferredRegions,
+      Map<RegionMaintainType, List<RegionMaintainTask>> submittedTaskHeads,
+      Set<TConsensusGroupId> completedRegions) {
+    submittedTaskHeads.values().stream()
+        .flatMap(List::stream)
+        .map(RegionMaintainTask::getRegionId)
+        .filter(regionId -> !completedRegions.contains(regionId))
+        .forEach(deferredRegions::add);
+  }
+
+  private Set<TConsensusGroupId> submitRegionMaintainTasks(
+      RegionMaintainType taskType, List<RegionMaintainTask> tasks) {
+    return taskType == RegionMaintainType.CREATE
+        ? submitRegionCreateTasks(tasks)
+        : submitRegionDeleteTasks(tasks);
+  }
+
+  private Set<TConsensusGroupId> submitRegionCreateTasks(List<RegionMaintainTask> tasks) {
+    Map<TConsensusGroupType, List<RegionCreateTask>> tasksByRegionType =
+        new EnumMap<>(TConsensusGroupType.class);
+    for (RegionMaintainTask task : tasks) {
+      RegionCreateTask createTask = (RegionCreateTask) task;
+      tasksByRegionType
+          .computeIfAbsent(createTask.getRegionId().getType(), key -> new ArrayList<>())
+          .add(createTask);
+    }
+
+    Set<TConsensusGroupId> completedRegions = new HashSet<>();
+    for (Map.Entry<TConsensusGroupType, List<RegionCreateTask>> entry :
+        tasksByRegionType.entrySet()) {
+      completedRegions.addAll(submitRegionCreateTasks(entry.getKey(), entry.getValue()));
+    }
+    return completedRegions;
+  }
+
+  private Set<TConsensusGroupId> submitRegionCreateTasks(
+      TConsensusGroupType regionType, List<RegionCreateTask> tasks) {
+    DataNodeAsyncRequestContext<Object, TSStatus> requestContext =
+        new DataNodeAsyncRequestContext<>(
+            regionType == TConsensusGroupType.SchemaRegion
+                ? CnToDnAsyncRequestType.CREATE_SCHEMA_REGION
+                : CnToDnAsyncRequestType.CREATE_DATA_REGION);
+    Map<Integer, TConsensusGroupId> regionByRequestIndex = new HashMap<>();
+    for (int requestIndex = 0; requestIndex < tasks.size(); requestIndex++) {
+      RegionCreateTask task = tasks.get(requestIndex);
+      LOGGER.info(
+          "Start to create Region: {} on DataNode: {}",
+          task.getRegionReplicaSet().getRegionId(),
+          task.getTargetDataNode());
+      Object request =
+          regionType == TConsensusGroupType.SchemaRegion
+              ? new TCreateSchemaRegionReq(task.getRegionReplicaSet(), task.getStorageGroup())
+              : new TCreateDataRegionReq(task.getRegionReplicaSet(), task.getStorageGroup());
+      requestContext.putRequest(requestIndex, request);
+      requestContext.putNodeLocation(requestIndex, task.getTargetDataNode());
+      regionByRequestIndex.put(requestIndex, task.getRegionId());
+    }
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithRetry(requestContext);
+    return collectCompletedRegionMaintainTasks(
+        RegionMaintainType.CREATE, requestContext.getResponseMap(), regionByRequestIndex);
+  }
+
+  private Set<TConsensusGroupId> submitRegionDeleteTasks(List<RegionMaintainTask> tasks) {
+    DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> requestContext =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_REGION);
+    Map<Integer, TConsensusGroupId> regionByRequestIndex = new HashMap<>();
+    for (int requestIndex = 0; requestIndex < tasks.size(); requestIndex++) {
+      RegionDeleteTask task = (RegionDeleteTask) tasks.get(requestIndex);
+      LOGGER.info(
+          "Start to delete Region: {} on DataNode: {}",
+          task.getRegionId(),
+          task.getTargetDataNode());
+      requestContext.putRequest(requestIndex, task.getRegionId());
+      requestContext.putNodeLocation(requestIndex, task.getTargetDataNode());
+      regionByRequestIndex.put(requestIndex, task.getRegionId());
+    }
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithRetry(requestContext);
+    return collectCompletedRegionMaintainTasks(
+        RegionMaintainType.DELETE, requestContext.getResponseMap(), regionByRequestIndex);
+  }
+
+  static Set<TConsensusGroupId> collectCompletedRegionMaintainTasks(
+      RegionMaintainType taskType,
+      Map<Integer, TSStatus> responseMap,
+      Map<Integer, TConsensusGroupId> regionByRequestIndex) {
+    Set<TConsensusGroupId> completedRegions = new HashSet<>();
+    responseMap.forEach(
+        (requestIndex, status) -> {
+          if (isRegionMaintainTaskCompleted(taskType, status)) {
+            TConsensusGroupId regionId = regionByRequestIndex.get(requestIndex);
+            if (regionId != null) {
+              completedRegions.add(regionId);
+            }
+          }
+        });
+    return completedRegions;
+  }
+
+  static boolean isRegionMaintainTaskCompleted(RegionMaintainType taskType, TSStatus status) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
+    }
+    return taskType == RegionMaintainType.CREATE
+        ? status.getCode() == TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode()
+        : status.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode();
   }
 
   public void startRegionCleaner() {
