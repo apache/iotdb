@@ -130,6 +130,10 @@ public class TreeModelPlanner implements IPlanner {
             && ((PipeEnrichedStatement) statement).getInnerStatement()
                 instanceof LoadTsFileStatement;
     if (statement instanceof LoadTsFileStatement || isPipeEnrichedTsFileLoad) {
+      final LoadTsFileStatement loadTsFileStatement =
+          statement instanceof LoadTsFileStatement
+              ? (LoadTsFileStatement) statement
+              : (LoadTsFileStatement) ((PipeEnrichedStatement) statement).getInnerStatement();
       scheduler =
           new LoadTsFileScheduler(
               distributedPlan,
@@ -137,7 +141,8 @@ public class TreeModelPlanner implements IPlanner {
               stateMachine,
               syncInternalServiceClientManager,
               partitionFetcher,
-              isPipeEnrichedTsFileLoad);
+              isPipeEnrichedTsFileLoad,
+              loadTsFileStatement.getDatabase());
     } else {
       scheduler =
           new ClusterScheduler(

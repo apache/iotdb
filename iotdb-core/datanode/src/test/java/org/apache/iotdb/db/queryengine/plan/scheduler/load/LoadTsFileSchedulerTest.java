@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 
 import org.junit.Assert;
@@ -36,9 +37,11 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collections;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -56,6 +59,7 @@ public class LoadTsFileSchedulerTest {
     when(distributedQueryPlan.getRootSubPlan()).thenReturn(subPlan);
     when(subPlan.getPlanFragment()).thenReturn(planFragment);
     when(planFragment.getId()).thenReturn(new PlanFragmentId("test", 0));
+    when(distributedQueryPlan.getInstances()).thenReturn(Collections.emptyList());
   }
 
   @Test
@@ -68,10 +72,38 @@ public class LoadTsFileSchedulerTest {
                 mock(QueryStateMachine.class),
                 mock(IClientManager.class),
                 mock(IPartitionFetcher.class),
-                false));
+                false,
+                null));
     t.start();
     Assert.assertNull(t.getTotalCpuTime());
     Assert.assertNull(t.getFragmentInfo());
+  }
+
+  @Test
+  public void testBuildRetryTreeLoadStatementUpdatesDatabaseLevel() throws Exception {
+    final LoadTsFileScheduler scheduler =
+        new LoadTsFileScheduler(
+            distributedQueryPlan,
+            mock(MPPQueryContext.class),
+            mock(QueryStateMachine.class),
+            mock(IClientManager.class),
+            mock(IPartitionFetcher.class),
+            true,
+            "root.test.sg_0");
+    final Method method =
+        LoadTsFileScheduler.class.getDeclaredMethod(
+            "buildRetryTreeLoadStatement", String.class, boolean.class);
+    method.setAccessible(true);
+
+    final File tsFile = File.createTempFile("test", ".tsfile");
+    tsFile.deleteOnExit();
+
+    final LoadTsFileStatement statement =
+        (LoadTsFileStatement) method.invoke(scheduler, tsFile.getAbsolutePath(), true);
+
+    Assert.assertEquals("root.test.sg_0", statement.getDatabase());
+    Assert.assertEquals(2, statement.getDatabaseLevel());
+    Assert.assertTrue(statement.isGeneratedByPipe());
   }
 
   @Test
