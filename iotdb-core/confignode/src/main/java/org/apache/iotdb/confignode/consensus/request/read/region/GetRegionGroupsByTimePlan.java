@@ -46,8 +46,8 @@ public class GetRegionGroupsByTimePlan extends ConfigPhysicalReadPlan {
       final String database, final long startTime, final long endTime) {
     super(ConfigPhysicalPlanType.GetRegionGroupsByTime);
     this.database = database;
-    this.startTimeSlot = TimePartitionUtils.getTimePartitionSlot(startTime);
-    this.endTimeSlot = TimePartitionUtils.getTimePartitionSlot(endTime);
+    this.startTimeSlot = TimePartitionUtils.getTimePartitionSlot(startTime, database);
+    this.endTimeSlot = TimePartitionUtils.getTimePartitionSlot(endTime, database);
   }
 
   public String getDatabase() {
