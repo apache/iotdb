@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.meta;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -26,6 +28,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.Objects;
 
 public class PipePluginMeta {
@@ -52,22 +56,24 @@ public class PipePluginMeta {
       String jarName,
       String jarMD5,
       String pluginLoadingExceptionMessage) {
-    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this.pluginName =
+        validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
     this.className = Objects.requireNonNull(className);
 
     this.isBuiltin = isBuiltin;
     if (isBuiltin) {
-      this.jarName = jarName;
+      this.jarName = jarName == null ? null : validatePathSegment(jarName);
       this.jarMD5 = jarMD5;
     } else {
-      this.jarName = Objects.requireNonNull(jarName);
+      this.jarName = validatePathSegment(Objects.requireNonNull(jarName));
       this.jarMD5 = Objects.requireNonNull(jarMD5);
     }
     this.pluginLoadingExceptionMessage = pluginLoadingExceptionMessage;
   }
 
   public PipePluginMeta(String pluginName, String className) {
-    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this.pluginName =
+        validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
     this.className = Objects.requireNonNull(className);
 
     this.isBuiltin = true;
@@ -194,5 +200,14 @@ public class PipePluginMeta {
         + pluginLoadingExceptionMessage
         + '\''
         + '}';
+  }
+
+  private static String validatePathSegment(final String pathSegment) {
+    final String pathError = FileUtils.getIllegalError4Directory(pathSegment);
+    if (pathError != null) {
+      throw new IllegalArgumentException(pathError);
+    }
+    Paths.get(pathSegment);
+    return pathSegment;
   }
 }

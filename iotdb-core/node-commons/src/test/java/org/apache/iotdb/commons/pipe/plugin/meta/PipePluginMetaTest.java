@@ -58,4 +58,20 @@ public class PipePluginMetaTest {
         BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginClass(),
         keeper.getBuiltinPluginClass(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
   }
+
+  @Test
+  public void testRejectPathTraversalInPluginMetadata() {
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> new PipePluginMeta("../plugin", "test.Plugin", false, "test.jar", "md5"));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> new PipePluginMeta("plugin", "test.Plugin", false, "../test.jar", "md5"));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> new PipePluginMeta("plugin", "test.Plugin", false, "..\\test.jar", "md5"));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> new PipePluginMeta("plugin\0", "test.Plugin", false, "test.jar", "md5"));
+  }
 }
