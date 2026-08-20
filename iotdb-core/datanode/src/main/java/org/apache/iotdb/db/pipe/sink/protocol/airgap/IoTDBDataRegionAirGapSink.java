@@ -255,10 +255,13 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       throws IOException, WriteProcessException {
     final List<File> sealedFiles = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
+    final List<EnrichedEvent> events = batchToTransfer.deepCopyEvents();
 
     try {
-      for (final File tsFile : sealedFiles) {
-        doTransfer(pipe2WeightMap, socket, tsFile, null, null, tsFile.getName());
+      for (int outputIndex = 0; outputIndex < sealedFiles.size(); outputIndex++) {
+        final File tsFile = sealedFiles.get(outputIndex);
+        doTransfer(
+            pipe2WeightMap, socket, tsFile, null, null, tsFile.getName(), events, outputIndex);
       }
     } finally {
       for (final File tsFile : sealedFiles) {
@@ -387,7 +390,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
             ? pipeTsFileInsertionEvent.getModFile()
             : null,
         pipeTsFileInsertionEvent.getDatabaseName(),
-        pipeTsFileInsertionEvent.toString());
+        pipeTsFileInsertionEvent.toString(),
+        Collections.singletonList(pipeTsFileInsertionEvent),
+        0);
   }
 
   private void doTransfer(
@@ -396,9 +401,16 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final File tsFile,
       final File modFile,
       final String dataBaseName,
-      final String receiverStatusContext)
+      final String receiverStatusContext,
+      final Iterable<? extends EnrichedEvent> events,
+      final int outputIndex)
       throws PipeException, IOException {
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
+    final String conversionTaskId =
+        shouldAsyncLoadTsFileOnTypeMismatch
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                getSinkTaskId(), events, dataBaseName, outputIndex, Objects.nonNull(modFile))
+            : null;
 
     if (Objects.nonNull(modFile)) {
       transferFilePieces(pipe2WeightMap, modFile, socket, true);
@@ -411,7 +423,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               tsFile.getName(),
               tsFile.length(),
               dataBaseName,
-              shouldWaitForSchemaBeforeLoad),
+              shouldWaitForSchemaBeforeLoad,
+              conversionTaskId,
+              shouldAsyncLoadTsFileOnTypeMismatch),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
@@ -425,10 +439,15 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       transferFilePieces(pipe2WeightMap, tsFile, socket, false);
       if (!sendWeighted(
           socket,
-          dataBaseName == null && !shouldWaitForSchemaBeforeLoad
+          conversionTaskId == null && dataBaseName == null && !shouldWaitForSchemaBeforeLoad
               ? PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length())
               : PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-                  tsFile.getName(), tsFile.length(), dataBaseName, shouldWaitForSchemaBeforeLoad),
+                  tsFile.getName(),
+                  tsFile.length(),
+                  dataBaseName,
+                  shouldWaitForSchemaBeforeLoad,
+                  conversionTaskId,
+                  shouldAsyncLoadTsFileOnTypeMismatch),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())

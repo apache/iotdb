@@ -105,6 +105,10 @@ public class PipeSinkSubtaskManager {
       }
 
       for (int connectorIndex = 0; connectorIndex < sinkNum; connectorIndex++) {
+        final String taskID =
+            String.format(
+                "%s_%s_%s", attributeSortedString, environment.getCreationTime(), connectorIndex);
+        environment.setSinkTaskId(taskID);
         final PipeConnector pipeConnector =
             isDataRegionSink
                 ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeSinkParameters)
@@ -135,9 +139,7 @@ public class PipeSinkSubtaskManager {
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
         final PipeSinkSubtask pipeSinkSubtask =
             new PipeSinkSubtask(
-                String.format(
-                    "%s_%s_%s",
-                    attributeSortedString, environment.getCreationTime(), connectorIndex),
+                taskID,
                 environment.getCreationTime(),
                 attributeSortedString,
                 connectorIndex,

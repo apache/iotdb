@@ -104,7 +104,8 @@ public class IoTDBDataRegionAirGapSinkTest {
       }
 
       Assert.assertTrue(requestTypes.contains(PipeRequestType.TRANSFER_TS_FILE_PIECE.getType()));
-      Assert.assertTrue(requestTypes.contains(PipeRequestType.TRANSFER_TS_FILE_SEAL.getType()));
+      Assert.assertTrue(
+          requestTypes.contains(PipeRequestType.TRANSFER_TS_FILE_SEAL_WITH_MOD.getType()));
       Assert.assertFalse(requestTypes.contains(PipeRequestType.TRANSFER_TABLET_RAW.getType()));
       Assert.assertFalse(requestTypes.contains(PipeRequestType.TRANSFER_TABLET_BATCH.getType()));
       Assert.assertEquals(transferredTsFileBytes, sink.rateLimitedBytes.get());

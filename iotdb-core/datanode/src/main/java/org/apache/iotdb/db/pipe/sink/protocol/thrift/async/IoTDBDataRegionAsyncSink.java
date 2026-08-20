@@ -260,7 +260,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
       int transferredFileCount = 0;
       try {
-        for (final File sealedFile : sealedFiles) {
+        for (int outputIndex = 0; outputIndex < sealedFiles.size(); outputIndex++) {
+          final File sealedFile = sealedFiles.get(outputIndex);
           transfer(
               new PipeTransferTsFileHandler(
                   this,
@@ -271,7 +272,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   sealedFile,
                   null,
                   false,
-                  null));
+                  null,
+                  outputIndex));
           transferredFileCount++;
         }
       } catch (final Exception e) {
