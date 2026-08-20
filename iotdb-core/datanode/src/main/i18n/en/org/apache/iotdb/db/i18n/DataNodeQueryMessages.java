@@ -2780,8 +2780,8 @@ public final class DataNodeQueryMessages {
   public static final String QUERY_EXCEPTION_QUERY_IS_ABORTED_SINCE_IT_REQUESTS_MORE_MEMORY_THAN_CAN_D77C2921 =
       "Query is aborted since it requests more memory than can be allocated, bytesToReserve: %sB, "
           + "maxBytesCanReserve: %sB";
-  public static final String QUERY_EXCEPTION_RELATEDMEMORYRESERVED_CAN_T_BE_NULL_WHEN_FREEING_MEMORY_C80009F2 =
-      "RelatedMemoryReserved can't be null when freeing memory";
+  public static final String EXCEPTION_NO_MEMORY_RESERVATION_IS_REGISTERED_FOR_QUERY_ARG_AND_FRAGMENT_INSTANCE_ARG_06016520 =
+      "No memory reservation is registered for query %s and fragment instance %s.";
   public static final String QUERY_EXCEPTION_INTERRUPTED_BY_92FAED2D = "Interrupted By";
   public static final String QUERY_EXCEPTION_DRIVER_WAS_INTERRUPTED_737358E4 =
       "Driver was interrupted";
