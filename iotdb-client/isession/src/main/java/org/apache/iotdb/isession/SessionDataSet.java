@@ -349,7 +349,7 @@ public class SessionDataSet implements ISessionDataSet {
       return ioTDBRpcDataSet.getBinary(columnName);
     }
 
-    public int findColumn(String columnName) {
+    public int findColumn(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.findColumn(columnName);
     }
 

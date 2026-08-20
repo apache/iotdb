@@ -614,8 +614,12 @@ public class IoTDBRpcDataSet {
         : dataTypeForTsBlockColumn.get(tsBlockColumnIndex);
   }
 
-  public int findColumn(String columnName) {
-    return columnOrdinalMap.get(columnName);
+  public int findColumn(String columnName) throws StatementExecutionException {
+    Integer ordinal = columnOrdinalMap.get(columnName);
+    if (ordinal == null) {
+      throw new StatementExecutionException(RpcMessages.UNKNOWN_COLUMN_NAME + columnName);
+    }
+    return ordinal;
   }
 
   public String findColumnNameByIndex(int columnIndex) throws StatementExecutionException {
