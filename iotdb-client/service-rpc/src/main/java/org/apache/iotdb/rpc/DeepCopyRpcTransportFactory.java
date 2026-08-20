@@ -21,7 +21,13 @@ package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TTransportFactory;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
+
+  private static final Map<FactoryConfig, DeepCopyRpcTransportFactory> INSTANCES =
+      new ConcurrentHashMap<>();
 
   public static DeepCopyRpcTransportFactory INSTANCE;
 
@@ -34,13 +40,28 @@ public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
   }
 
   public static void reInit() {
-    INSTANCE =
-        USE_SNAPPY
-            ? new DeepCopyRpcTransportFactory(
-                new TimeoutChangeableTSnappyFramedTransport.Factory(
-                    thriftDefaultBufferSize, thriftMaxFrameSize, true))
-            : new DeepCopyRpcTransportFactory(
-                new TimeoutChangeableTFastFramedTransport.Factory(
-                    thriftDefaultBufferSize, thriftMaxFrameSize, true));
+    INSTANCE = create(USE_SNAPPY, thriftDefaultBufferSize, thriftMaxFrameSize);
   }
+
+  public static DeepCopyRpcTransportFactory getInstance(
+      int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    FactoryConfig config =
+        new FactoryConfig(USE_SNAPPY, thriftDefaultBufferSize, thriftMaxFrameSize);
+    return INSTANCES.computeIfAbsent(
+        config, key -> create(key.useSnappy, key.thriftDefaultBufferSize, key.thriftMaxFrameSize));
+  }
+
+  private static DeepCopyRpcTransportFactory create(
+      boolean useSnappy, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    return useSnappy
+        ? new DeepCopyRpcTransportFactory(
+            new TimeoutChangeableTSnappyFramedTransport.Factory(
+                thriftDefaultBufferSize, thriftMaxFrameSize, true))
+        : new DeepCopyRpcTransportFactory(
+            new TimeoutChangeableTFastFramedTransport.Factory(
+                thriftDefaultBufferSize, thriftMaxFrameSize, true));
+  }
+
+  private record FactoryConfig(
+      boolean useSnappy, int thriftDefaultBufferSize, int thriftMaxFrameSize) {}
 }
