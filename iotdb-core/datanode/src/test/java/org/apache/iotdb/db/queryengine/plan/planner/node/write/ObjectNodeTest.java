@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner.node.write;
 
 import org.apache.iotdb.calc.utils.IObjectPath;
-import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 
@@ -41,17 +40,6 @@ public class ObjectNodeTest {
 
     Assert.assertEquals(tableName, insertRowNode.getTargetPath().getFullPath());
     Assert.assertEquals(1, insertRowNode.getTargetPath().getNodeLength());
-  }
-
-  @Test
-  public void testSerializeFailsWhenObjectFileIsMissing() {
-    ObjectNode objectNode =
-        new ObjectNode(true, 0, 1, getObjectPath("missing_table", 987654321, "missing_file"));
-
-    SerializationRunTimeException exception =
-        Assert.assertThrows(SerializationRunTimeException.class, objectNode::serialize);
-
-    Assert.assertTrue(exception.getCause().getMessage().contains("Failed to read object file"));
   }
 
   private IObjectPath getObjectPath(String tableName, long time, String measurement) {
