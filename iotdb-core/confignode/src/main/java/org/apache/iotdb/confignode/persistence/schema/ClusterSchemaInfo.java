@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -55,6 +56,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
@@ -209,6 +211,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
           .setDatabaseSchema(databaseSchema);
+      TimePartitionUtils.updateDatabaseTimePartitionConfig(
+          databaseSchema.getName(), databaseSchema);
 
       if (databaseSchema.isIsTableModel()) {
         configSchemaStatistics.increaseTableDatabaseNum();
@@ -246,7 +250,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
 
-      // TODO: Support alter other fields
       if (alterSchema.isSetMaxSchemaRegionGroupNum()) {
         currentSchema.setMaxSchemaRegionGroupNum(alterSchema.getMaxSchemaRegionGroupNum());
         LOGGER.info(
@@ -270,10 +273,20 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.getTTL());
       }
 
+      if (alterSchema.isSetTimePartitionOrigin()) {
+        currentSchema.setTimePartitionOrigin(alterSchema.getTimePartitionOrigin());
+      }
+
+      if (alterSchema.isSetTimePartitionInterval()) {
+        currentSchema.setTimePartitionInterval(alterSchema.getTimePartitionInterval());
+      }
+
       mTree
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
+
+      TimePartitionUtils.updateDatabaseTimePartitionConfig(currentSchema.getName(), currentSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
@@ -299,6 +312,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       // Delete Database
       (isTableModel ? tableModelMTree : treeModelMTree)
           .deleteDatabase(getQualifiedDatabasePartialPath(plan.getName()));
+
+      // Remove database-specific time partition configuration from cache
+      TimePartitionUtils.removeDatabaseTimePartitionConfig(plan.getName());
 
       if (isTableModel) {
         configSchemaStatistics.decreaseTableDatabaseNum();
@@ -466,11 +482,35 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           PathUtils.isTableModelDatabase(plan.getDatabase()) ? tableModelMTree : treeModelMTree;
       final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
       if (mTree.isDatabaseAlreadySet(path)) {
-        mTree
-            .getDatabaseNodeByDatabasePath(path)
-            .getAsMNode()
-            .getDatabaseSchema()
-            .setTimePartitionInterval(plan.getTimePartitionInterval());
+        final TDatabaseSchema databaseSchema =
+            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+        databaseSchema.setTimePartitionInterval(plan.getTimePartitionInterval());
+        TimePartitionUtils.updateDatabaseTimePartitionConfig(plan.getDatabase(), databaseSchema);
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+      }
+    } catch (final MetadataException e) {
+      LOGGER.error(ERROR_NAME, e);
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  public TSStatus setTimePartitionOrigin(final SetTimePartitionOriginPlan plan) {
+    final TSStatus result = new TSStatus();
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      final ConfigMTree mTree =
+          PathUtils.isTableModelDatabase(plan.getDatabase()) ? tableModelMTree : treeModelMTree;
+      final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
+      if (mTree.isDatabaseAlreadySet(path)) {
+        final TDatabaseSchema databaseSchema =
+            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+        databaseSchema.setTimePartitionOrigin(plan.getTimePartitionOrigin());
+        TimePartitionUtils.updateDatabaseTimePartitionConfig(plan.getDatabase(), databaseSchema);
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
@@ -813,6 +853,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         });
     templateTable.processLoadSnapshot(snapshotDir);
     templatePreSetTable.processLoadSnapshot(snapshotDir);
+    rebuildTimePartitionUtilsCache();
   }
 
   public void processMTreeLoadSnapshot(
@@ -840,6 +881,28 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   @FunctionalInterface
   public interface SerDeFunction<T> {
     void apply(final T stream) throws IOException;
+  }
+
+  private void rebuildTimePartitionUtilsCache() {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
+      syncTimePartitionUtilsCache(treeModelMTree);
+      syncTimePartitionUtilsCache(tableModelMTree);
+    } catch (final MetadataException e) {
+      LOGGER.warn("Failed to rebuild time partition cache from database schema.", e);
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  private void syncTimePartitionUtilsCache(final ConfigMTree mTree) throws MetadataException {
+    for (final PartialPath databasePath : mTree.getAllDatabasePaths(null)) {
+      final TDatabaseSchema databaseSchema =
+          mTree.getDatabaseNodeByPath(databasePath).getAsMNode().getDatabaseSchema();
+      TimePartitionUtils.updateDatabaseTimePartitionConfig(
+          databaseSchema.getName(), databaseSchema);
+    }
   }
 
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
@@ -1651,6 +1714,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public void clear() {
     treeModelMTree.clear();
     tableModelMTree.clear();
+    TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
     configSchemaStatistics.clear();
   }
 }

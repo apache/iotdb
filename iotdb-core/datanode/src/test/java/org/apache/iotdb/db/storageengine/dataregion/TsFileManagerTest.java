@@ -49,6 +49,7 @@ public class TsFileManagerTest {
   private TsFileManager tsFileManager;
   private List<TsFileResource> seqResources;
   private List<TsFileResource> unseqResources;
+  private static final String databaseName = "test";
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
@@ -87,8 +88,8 @@ public class TsFileManagerTest {
       tsFileManager.add(tsFileResource, true);
     }
     tsFileManager.addAll(unseqResources, false);
-    assertEquals(5, tsFileManager.getTsFileList(true).size());
-    assertEquals(4, tsFileManager.getTsFileList(false).size());
+    assertEquals(5, tsFileManager.getTsFileList(true, databaseName).size());
+    assertEquals(4, tsFileManager.getTsFileList(false, databaseName).size());
     assertEquals(5, tsFileManager.size(true));
     assertEquals(4, tsFileManager.size(false));
     assertTrue(tsFileManager.contains(seqResources.get(0), true));
@@ -124,20 +125,20 @@ public class TsFileManagerTest {
             false));
     assertFalse(tsFileManager.isEmpty(true));
     assertFalse(tsFileManager.isEmpty(false));
-    tsFileManager.remove(tsFileManager.getTsFileList(true).get(0), true);
-    tsFileManager.remove(tsFileManager.getTsFileList(false).get(0), false);
-    assertEquals(4, tsFileManager.getTsFileList(true).size());
-    tsFileManager.removeAll(tsFileManager.getTsFileList(false), false);
-    assertEquals(0, tsFileManager.getTsFileList(false).size());
+    tsFileManager.remove(tsFileManager.getTsFileList(true, databaseName).get(0), true);
+    tsFileManager.remove(tsFileManager.getTsFileList(false, databaseName).get(0), false);
+    assertEquals(4, tsFileManager.getTsFileList(true, databaseName).size());
+    tsFileManager.removeAll(tsFileManager.getTsFileList(false, databaseName), false);
+    assertEquals(0, tsFileManager.getTsFileList(false, databaseName).size());
     long count = 0;
-    Iterator<TsFileResource> iterator = tsFileManager.getIterator(true);
+    Iterator<TsFileResource> iterator = tsFileManager.getIterator(true, databaseName);
     while (iterator.hasNext()) {
       iterator.next();
       count++;
     }
     assertEquals(4, count);
-    tsFileManager.removeAll(tsFileManager.getTsFileList(true), true);
-    assertEquals(0, tsFileManager.getTsFileList(true).size());
+    tsFileManager.removeAll(tsFileManager.getTsFileList(true, databaseName), true);
+    assertEquals(0, tsFileManager.getTsFileList(true, databaseName).size());
     assertTrue(tsFileManager.isEmpty(true));
     assertTrue(tsFileManager.isEmpty(false));
     tsFileManager.add(
@@ -181,16 +182,16 @@ public class TsFileManagerTest {
       tsFileManager.add(tsFileResource, true);
     }
     tsFileManager.addAll(seqResources, false);
-    assertEquals(5, tsFileManager.getTsFileList(true).size());
+    assertEquals(5, tsFileManager.getTsFileList(true, databaseName).size());
 
-    Iterator<TsFileResource> tsFileResourceIterator = tsFileManager.getIterator(true);
+    Iterator<TsFileResource> tsFileResourceIterator = tsFileManager.getIterator(true, databaseName);
     tsFileResourceIterator.next();
     try {
       tsFileResourceIterator.remove();
     } catch (UnsupportedOperationException e) {
       // pass
     }
-    assertEquals(5, tsFileManager.getTsFileList(true).size());
+    assertEquals(5, tsFileManager.getTsFileList(true, databaseName).size());
 
     TsFileResource tsFileResource1 =
         new TsFileResource(
@@ -232,7 +233,8 @@ public class TsFileManagerTest {
                         + 0
                         + ".tsfile")));
     tsFileManager.add(tsFileResource3, true);
-    Iterator<TsFileResource> tsFileResourceIterator2 = tsFileManager.getIterator(true);
+    Iterator<TsFileResource> tsFileResourceIterator2 =
+        tsFileManager.getIterator(true, databaseName);
     int count = 0;
     while (tsFileResourceIterator2.hasNext()) {
       count++;

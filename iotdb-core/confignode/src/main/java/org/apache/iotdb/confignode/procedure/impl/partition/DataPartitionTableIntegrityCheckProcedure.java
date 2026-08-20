@@ -402,7 +402,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       }
 
       if (localEarliestSlotStartTime
-          > TimePartitionUtils.getStartTimeByPartitionId(earliestTimeslot)) {
+          > TimePartitionUtils.getStartTimeByPartitionId(earliestTimeslot, database)) {
         databasesWithLostDataPartition.add(database);
         LOG.warn(
             ProcedureMessages

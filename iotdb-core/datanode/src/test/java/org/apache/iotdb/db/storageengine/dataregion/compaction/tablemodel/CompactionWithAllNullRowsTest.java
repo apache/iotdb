@@ -133,14 +133,19 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(10, target.getFileStartTime());
     Assert.assertEquals(12, target.getFileEndTime());
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, tsFileManager.getTsFileList(true), true, getPerformer(), 0);
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+            true,
+            getPerformer(),
+            0);
     Assert.assertTrue(task2.start());
-    TsFileResource target2 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target2 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(10, target2.getFileStartTime());
     Assert.assertEquals(12, target2.getFileEndTime());
   }
@@ -168,14 +173,19 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(1, target.getFileStartTime());
     Assert.assertEquals(12, target.getFileEndTime());
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, tsFileManager.getTsFileList(true), true, getPerformer(), 0);
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+            true,
+            getPerformer(),
+            0);
     Assert.assertTrue(task2.start());
-    TsFileResource target2 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target2 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(1, target2.getFileStartTime());
     Assert.assertEquals(12, target2.getFileEndTime());
   }
@@ -201,14 +211,19 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(10000, target.getFileStartTime());
     Assert.assertEquals(19999, target.getFileEndTime());
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, tsFileManager.getTsFileList(true), true, getPerformer(), 0);
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+            true,
+            getPerformer(),
+            0);
     Assert.assertTrue(task2.start());
-    TsFileResource target2 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target2 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(10000, target2.getFileStartTime());
     Assert.assertEquals(19999, target2.getFileEndTime());
   }
@@ -234,14 +249,19 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(100000, target.getFileStartTime());
     Assert.assertEquals(199999, target.getFileEndTime());
     InnerSpaceCompactionTask task2 =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, tsFileManager.getTsFileList(true), true, getPerformer(), 0);
+            0,
+            tsFileManager,
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+            true,
+            getPerformer(),
+            0);
     Assert.assertTrue(task2.start());
-    TsFileResource target2 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target2 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(100000, target2.getFileStartTime());
     Assert.assertEquals(199999, target2.getFileEndTime());
   }
@@ -274,7 +294,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
     Assert.assertTrue(task.start());
-    Assert.assertTrue(tsFileManager.getTsFileList(true).isEmpty());
+    Assert.assertTrue(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).isEmpty());
   }
 
   @Test
@@ -305,7 +325,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(12, target.getFileStartTime());
     Assert.assertEquals(12, target.getFileEndTime());
   }
@@ -368,7 +388,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(10, target.getFileStartTime());
     Assert.assertEquals(12, target.getFileEndTime());
   }

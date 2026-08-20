@@ -119,7 +119,7 @@ public class CompactionWithMinTimestampTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, Collections.singletonList(resource), false, performer, 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(false).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(
         Long.MIN_VALUE,
         target

@@ -490,7 +490,8 @@ public class ConfigPhysicalPlanSerDeTest {
     databaseTTLMap.put("root.db2", 3600L * 1000 * 24); // 1d_TTL
     databaseTTLMap.put("root.db3", 3600L * 1000 * 24 * 30); // 1m_TTL
     TTimePartitionSlot currentTimeSlot =
-        new TTimePartitionSlot(TimePartitionUtils.getTimePartitionSlot(System.currentTimeMillis()));
+        new TTimePartitionSlot(
+            TimePartitionUtils.getTimePartitionSlot(System.currentTimeMillis(), ""));
     AutoCleanPartitionTablePlan req0 =
         new AutoCleanPartitionTablePlan(databaseTTLMap, currentTimeSlot);
     AutoCleanPartitionTablePlan req1 =
@@ -2225,10 +2226,21 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetRegionGroupsByTimePlanTest() throws IOException {
-    GetRegionGroupsByTimePlan plan0 = new GetRegionGroupsByTimePlan("root.sg0", 0L, 604800000L);
-    GetRegionGroupsByTimePlan plan1 =
-        (GetRegionGroupsByTimePlan)
-            ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
-    Assert.assertEquals(plan0, plan1);
+    final String database = "root.sg0";
+    final TDatabaseSchema databaseSchema =
+        new TDatabaseSchema(database).setTimePartitionOrigin(100L).setTimePartitionInterval(10L);
+    try {
+      TimePartitionUtils.updateDatabaseTimePartitionConfig(database, databaseSchema);
+
+      GetRegionGroupsByTimePlan plan0 = new GetRegionGroupsByTimePlan(database, 105L, 125L);
+      Assert.assertEquals(100L, plan0.getStartTimeSlot().getStartTime());
+      Assert.assertEquals(120L, plan0.getEndTimeSlot().getStartTime());
+      GetRegionGroupsByTimePlan plan1 =
+          (GetRegionGroupsByTimePlan)
+              ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
+      Assert.assertEquals(plan0, plan1);
+    } finally {
+      TimePartitionUtils.removeDatabaseTimePartitionConfig(database);
+    }
   }
 }

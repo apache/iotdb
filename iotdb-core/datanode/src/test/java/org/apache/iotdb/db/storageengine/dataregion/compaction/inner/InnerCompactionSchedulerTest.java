@@ -103,7 +103,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     } catch (Exception e) {
 
     }
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -134,7 +134,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
         e.printStackTrace();
       }
     }
-    Assert.assertEquals(4, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(4, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -163,6 +163,6 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
         e.printStackTrace();
       }
     }
-    Assert.assertEquals(4, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(4, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 }

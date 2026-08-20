@@ -300,6 +300,7 @@ import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_SCHEMA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_ORIGIN_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -366,6 +367,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
       if (property.isSetToDefault()) {
         switch (key) {
+          case TIME_PARTITION_ORIGIN_KEY:
           case TIME_PARTITION_INTERVAL_KEY:
           case MAX_SCHEMA_REGION_GROUP_NUM_KEY:
           case MAX_DATA_REGION_GROUP_NUM_KEY:
@@ -398,6 +400,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
             break;
           }
           schema.setTTL(parseLongFromLiteral(value, TTL_KEY));
+          break;
+        case TIME_PARTITION_ORIGIN_KEY:
+          schema.setTimePartitionOrigin(parseLongFromLiteral(value, TIME_PARTITION_ORIGIN_KEY));
           break;
         case TIME_PARTITION_INTERVAL_KEY:
           schema.setTimePartitionInterval(parseLongFromLiteral(value, TIME_PARTITION_INTERVAL_KEY));

@@ -44,6 +44,7 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -128,12 +129,14 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, LastCach
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(time);
+    final IDeviceID deviceID = getDeviceID();
+    final String databaseName = getDatabaseName(analysis, deviceID);
+    TTimePartitionSlot timePartitionSlot =
+        TimePartitionUtils.getTimePartitionSlot(time, databaseName);
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()
-            .getDataRegionReplicaSetForWriting(
-                getDeviceID(), timePartitionSlot, analysis.getDatabaseName());
+            .getDataRegionReplicaSetForWriting(deviceID, timePartitionSlot, databaseName);
     // collect redirectInfo
     analysis.setRedirectNodeList(
         Collections.singletonList(
@@ -234,8 +237,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, LastCach
   }
 
   @TestOnly
-  public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(TimePartitionUtils.getTimePartitionSlot(time));
+  public List<TTimePartitionSlot> getTimePartitionSlots(String database) {
+    return Collections.singletonList(TimePartitionUtils.getTimePartitionSlot(time, database));
   }
 
   @Override

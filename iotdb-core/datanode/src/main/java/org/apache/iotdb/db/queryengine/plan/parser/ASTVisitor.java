@@ -3022,6 +3022,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else if (attributeKey.TIME_PARTITION_INTERVAL() != null) {
         final long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTimePartitionInterval(timePartitionInterval);
+      } else if (attributeKey.TIME_PARTITION_ORIGIN() != null) {
+        final long timePartitionOrigin = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        databaseSchemaStatement.setTimePartitionOrigin(timePartitionOrigin);
+      } else if (attributeKey.SCHEMA_REGION_GROUP_NUM() != null) {
+        final int schemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        databaseSchemaStatement.setSchemaRegionGroupNum(schemaRegionGroupNum);
+      } else if (attributeKey.DATA_REGION_GROUP_NUM() != null) {
+        final int dataRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+        databaseSchemaStatement.setDataRegionGroupNum(dataRegionGroupNum);
       } else if (attributeKey.MAX_SCHEMA_REGION_GROUP_NUM() != null) {
         final int maxSchemaRegionGroupNum = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setMaxSchemaRegionGroupNum(maxSchemaRegionGroupNum);

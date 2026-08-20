@@ -247,8 +247,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
+    final String databaseName;
     if (dataRegion != null) {
-      final String databaseName = dataRegion.getDatabaseName();
+      databaseName = dataRegion.getDatabaseName();
       if (databaseName != null) {
         if (PathUtils.isTableModelDatabase(databaseName)) {
           isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
@@ -256,16 +257,14 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
           isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
         }
       }
+    } else {
+      databaseName = null;
     }
 
     startTimePartitionIdLowerBound =
-        (realtimeDataExtractionStartTime % TimePartitionUtils.getTimePartitionInterval() == 0)
-            ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime)
-            : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime) + 1;
+        getStartTimePartitionIdLowerBound(realtimeDataExtractionStartTime, databaseName);
     endTimePartitionIdUpperBound =
-        (realtimeDataExtractionEndTime % TimePartitionUtils.getTimePartitionInterval() == 0)
-            ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
-            : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
+        getEndTimePartitionIdUpperBound(realtimeDataExtractionEndTime, databaseName);
 
     final boolean isDoubleLiving = PipeSourceConstant.isDoubleLiving(parameters);
     if (isDoubleLiving) {
@@ -622,6 +621,20 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public final String getTsFileParser() {
     return tsFileParser;
+  }
+
+  static long getStartTimePartitionIdLowerBound(final long time, final String database) {
+    final long partitionId = TimePartitionUtils.getTimePartitionId(time, database);
+    return TimePartitionUtils.getTimePartitionSlot(time, database).getStartTime() == time
+        ? partitionId
+        : partitionId + 1;
+  }
+
+  static long getEndTimePartitionIdUpperBound(final long time, final String database) {
+    final long partitionId = TimePartitionUtils.getTimePartitionId(time, database);
+    return TimePartitionUtils.getTimePartitionSlot(time, database).getStartTime() == time
+        ? partitionId
+        : partitionId - 1;
   }
 
   private void maySkipProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {

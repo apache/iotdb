@@ -72,6 +72,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeRegisterResp;
@@ -202,6 +203,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionOriginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -468,22 +470,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                       .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_DATAREPLICATIONFACTOR_YET_2E7FF6E7);
     }
 
-    if (databaseSchema.isSetTimePartitionOrigin()) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  ConfigNodeMessages
-                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONORIGIN_YET_B315F2E3);
-    }
-
-    if (databaseSchema.isSetTimePartitionInterval()) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  ConfigNodeMessages
-                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONINTERVAL_YET_F539A76F);
-    }
-
     if (errorResp != null) {
       LOGGER.warn(ConfigNodeMessages.EXECUTE_ALTERDATABASE_WITH_RESULT, databaseSchema, errorResp);
       return errorResp;
@@ -535,6 +521,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       throws TException {
     return configManager.setTimePartitionInterval(
         new SetTimePartitionIntervalPlan(req.getDatabase(), req.getTimePartitionInterval()));
+  }
+
+  @Override
+  public TSStatus setTimePartitionOrigin(final TSetTimePartitionOriginReq req) throws TException {
+    return configManager.setTimePartitionOrigin(
+        new SetTimePartitionOriginPlan(req.getDatabase(), req.getTimePartitionOrigin()));
   }
 
   @Override

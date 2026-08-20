@@ -48,6 +48,7 @@ public enum ConfigPhysicalPlanType {
   SetSchemaReplicationFactor((short) 202),
   SetDataReplicationFactor((short) 203),
   SetTimePartitionInterval((short) 204),
+  SetTimePartitionOrigin((short) 212),
   AdjustMaxRegionGroupNum((short) 205),
   DeleteDatabase((short) 206),
   PreDeleteDatabase((short) 207),

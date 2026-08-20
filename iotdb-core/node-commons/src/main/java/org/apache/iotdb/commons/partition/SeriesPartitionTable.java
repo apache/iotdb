@@ -22,8 +22,6 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
@@ -254,11 +252,8 @@ public class SeriesPartitionTable {
    * @param currentTimeSlot The current TimeSlot
    */
   public List<TTimePartitionSlot> autoCleanPartitionTable(
-      long TTL, TTimePartitionSlot currentTimeSlot) {
-    final long timePartitionInterval =
-        CommonDateTimeUtils.convertMilliTimeWithPrecision(
-            TimePartitionUtils.getTimePartitionInterval(),
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      long TTL, TTimePartitionSlot currentTimeSlot, String database) {
+    final long timePartitionInterval = TimePartitionUtils.getTimePartitionInterval(database);
     List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
     Iterator<Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
         seriesPartitionMap.entrySet().iterator();
