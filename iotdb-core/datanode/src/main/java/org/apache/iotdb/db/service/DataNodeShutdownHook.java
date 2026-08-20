@@ -151,7 +151,7 @@ public class DataNodeShutdownHook extends Thread {
     final long shutdownProgressPersistTimeoutInMs =
         PipeDataNodeAgent.task().getShutdownProgressPersistTimeoutInMs();
     logger.info(
-        "Persisting pipe progress indexes before shutdown, timeout {} ms.",
+        "Persisting pipe progress indexes before shutdown with timeout {} ms.",
         shutdownProgressPersistTimeoutInMs);
     if (!PipeDataNodeAgent.task().persistAllProgressIndex(shutdownProgressPersistTimeoutInMs)) {
       logger.warn("Pipe progress indexes were not confirmed during shutdown.");
