@@ -524,9 +524,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     if (completeDatabaseSchema == null) {
       TimePartitionUtils.removeDatabaseTimePartitionConfig(databaseSchema.getName());
-      LOGGER.warn(
-          "Failed to refresh time partition config for database {} after creation.",
-          databaseSchema.getName());
       return;
     }
     TimePartitionUtils.updateDatabaseTimePartitionConfig(
@@ -556,9 +553,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
         future.setException(new IoTDBException(tsStatus));
       } else {
+        if (databaseSchema.isSetTimePartitionOrigin()
+            || databaseSchema.isSetTimePartitionInterval()) {
+          ClusterPartitionFetcher.getInstance().invalidAllCache();
+        }
+        refreshDatabaseTimePartitionConfig(configNodeClient, databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final ClientManagerException | TException e) {
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -633,6 +635,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.setException(new IoTDBException(tsStatus));
         }
       } else {
+        ClusterPartitionFetcher.getInstance().invalidAllCache();
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final ClientManagerException | TException e) {
@@ -4697,6 +4700,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus tsStatus = client.deleteDatabases(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        ClusterPartitionFetcher.getInstance().invalidAllCache();
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         unsetDatabaseIfNotExist(dropDB.getDbName().getValue(), session);
       } else if (TSStatusCode.PATH_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
@@ -4782,6 +4786,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        if (databaseSchema.isSetTimePartitionOrigin()
+            || databaseSchema.isSetTimePartitionInterval()) {
+          ClusterPartitionFetcher.getInstance().invalidAllCache();
+        }
+        refreshDatabaseTimePartitionConfig(configNodeClient, databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
         if (ifNotExists) {
@@ -4799,7 +4808,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.setException(new IoTDBException(tsStatus));
       }
-    } catch (final ClientManagerException | TException e) {
+    } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;

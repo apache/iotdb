@@ -167,6 +167,41 @@ public class ClusterSchemaInfoTest {
   }
 
   @Test
+  public void testAlterDatabaseTimePartitionConfig() throws IllegalPathException {
+    final String database = "root.alter";
+    final TDatabaseSchema databaseSchema =
+        new TDatabaseSchema(database)
+            .setIsTableModel(false)
+            .setTimePartitionOrigin(100L)
+            .setTimePartitionInterval(200L);
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+
+    final TSStatus intervalStatus =
+        clusterSchemaInfo.alterDatabase(
+            new DatabaseSchemaPlan(
+                ConfigPhysicalPlanType.AlterDatabase,
+                new TDatabaseSchema(database)
+                    .setIsTableModel(false)
+                    .setTimePartitionInterval(400L)));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), intervalStatus.getCode());
+    Assert.assertEquals(100L, TimePartitionUtils.getTimePartitionOrigin(database));
+    Assert.assertEquals(400L, TimePartitionUtils.getTimePartitionInterval(database));
+
+    final GetDatabasePlan getDatabasePlan =
+        new GetDatabasePlan(
+            Arrays.asList(PathUtils.splitPathToDetachedNodes(database)),
+            ALL_MATCH_SCOPE,
+            false,
+            false,
+            false);
+    final TDatabaseSchema storedSchema =
+        clusterSchemaInfo.getMatchedDatabaseSchemas(getDatabasePlan).getSchemaMap().get(database);
+    Assert.assertEquals(100L, storedSchema.getTimePartitionOrigin());
+    Assert.assertEquals(400L, storedSchema.getTimePartitionInterval());
+  }
+
+  @Test
   public void testTableStatisticsRollbackAndDatabaseRecreation() {
     final String database = "database";
     final String table = "table";

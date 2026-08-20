@@ -470,22 +470,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                       .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_DATAREPLICATIONFACTOR_YET_2E7FF6E7);
     }
 
-    if (databaseSchema.isSetTimePartitionOrigin()) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  ConfigNodeMessages
-                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONORIGIN_YET_B315F2E3);
-    }
-
-    if (databaseSchema.isSetTimePartitionInterval()) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  ConfigNodeMessages
-                      .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONINTERVAL_YET_F539A76F);
-    }
-
     if (errorResp != null) {
       LOGGER.warn(ConfigNodeMessages.EXECUTE_ALTERDATABASE_WITH_RESULT, databaseSchema, errorResp);
       return errorResp;

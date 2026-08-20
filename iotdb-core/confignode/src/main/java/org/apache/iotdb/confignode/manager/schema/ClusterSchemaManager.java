@@ -246,6 +246,11 @@ public class ClusterSchemaManager {
       return result;
     }
 
+    result = validateTimePartitionConfig(databaseSchema);
+    if (result != null) {
+      return result;
+    }
+
     if (databaseSchema.isSetMaxSchemaRegionGroupNum()) {
       result =
           validateMaxRegionGroupNumOnAlter(
@@ -459,6 +464,13 @@ public class ClusterSchemaManager {
 
   public TSStatus setTimePartitionInterval(
       SetTimePartitionIntervalPlan setTimePartitionIntervalPlan) {
+    final TSStatus validationResult =
+        validateTimePartitionConfig(
+            new TDatabaseSchema(setTimePartitionIntervalPlan.getDatabase())
+                .setTimePartitionInterval(setTimePartitionIntervalPlan.getTimePartitionInterval()));
+    if (validationResult != null) {
+      return validationResult;
+    }
     // TODO: Inform DataNodes
     try {
       return getConsensusManager().write(setTimePartitionIntervalPlan);
@@ -471,6 +483,13 @@ public class ClusterSchemaManager {
   }
 
   public TSStatus setTimePartitionOrigin(SetTimePartitionOriginPlan setTimePartitionOriginPlan) {
+    final TSStatus validationResult =
+        validateTimePartitionConfig(
+            new TDatabaseSchema(setTimePartitionOriginPlan.getDatabase())
+                .setTimePartitionOrigin(setTimePartitionOriginPlan.getTimePartitionOrigin()));
+    if (validationResult != null) {
+      return validationResult;
+    }
     try {
       return getConsensusManager().write(setTimePartitionOriginPlan);
     } catch (ConsensusException e) {
@@ -479,6 +498,23 @@ public class ClusterSchemaManager {
       result.setMessage(e.getMessage());
       return result;
     }
+  }
+
+  private static TSStatus validateTimePartitionConfig(final TDatabaseSchema databaseSchema) {
+    if (databaseSchema.isSetTimePartitionOrigin() && databaseSchema.getTimePartitionOrigin() < 0) {
+      return RpcUtils.getStatus(
+          TSStatusCode.DATABASE_CONFIG_ERROR,
+          ManagerMessages
+              .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9);
+    }
+    if (databaseSchema.isSetTimePartitionInterval()
+        && databaseSchema.getTimePartitionInterval() <= 0) {
+      return RpcUtils.getStatus(
+          TSStatusCode.DATABASE_CONFIG_ERROR,
+          ManagerMessages
+              .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONINTERVAL_SHOULD_POSITIVE_BB1B473F);
+    }
+    return null;
   }
 
   /**

@@ -250,7 +250,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final TDatabaseSchema currentSchema =
           mTree.getDatabaseNodeByDatabasePath(partialPathName).getAsMNode().getDatabaseSchema();
 
-      // TODO: Support alter other fields
       if (alterSchema.isSetMaxSchemaRegionGroupNum()) {
         currentSchema.setMaxSchemaRegionGroupNum(alterSchema.getMaxSchemaRegionGroupNum());
         LOGGER.info(
@@ -274,10 +273,20 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.getTTL());
       }
 
+      if (alterSchema.isSetTimePartitionOrigin()) {
+        currentSchema.setTimePartitionOrigin(alterSchema.getTimePartitionOrigin());
+      }
+
+      if (alterSchema.isSetTimePartitionInterval()) {
+        currentSchema.setTimePartitionInterval(alterSchema.getTimePartitionInterval());
+      }
+
       mTree
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
+
+      TimePartitionUtils.updateDatabaseTimePartitionConfig(currentSchema.getName(), currentSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
