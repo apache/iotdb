@@ -62,7 +62,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -353,7 +353,7 @@ public class TestPlanBuilder {
 
   public TestPlanBuilder singleDeviceView(String id, String device, String measurement) {
     IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
-    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new LinkedHashMap<>();
     deviceToMeasurementIndexesMap.put(deviceID, Collections.singletonList(1));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
@@ -389,7 +389,7 @@ public class TestPlanBuilder {
   public TestPlanBuilder singleOrderedDeviceView(
       String id, String device, OrderByParameter orderByParameter, String... measurement) {
     IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
-    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    Map<IDeviceID, List<Integer>> deviceToMeasurementIndexesMap = new LinkedHashMap<>();
     deviceToMeasurementIndexesMap.put(
         deviceID, measurement.length == 1 ? Collections.singletonList(1) : Arrays.asList(1, 2));
     DeviceViewNode deviceViewNode =
@@ -456,7 +456,7 @@ public class TestPlanBuilder {
       List<String> devices,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       List<PlanNode> children) {
-    Map<IDeviceID, List<Integer>> map = new HashMap<>();
+    Map<IDeviceID, List<Integer>> map = new LinkedHashMap<>();
     deviceToMeasurementIndexesMap.forEach(
         (key, value) -> map.put(IDeviceID.Factory.DEFAULT_FACTORY.create(key), value));
     DeviceViewNode deviceViewNode =
