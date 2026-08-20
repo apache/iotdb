@@ -29,6 +29,8 @@ public class QueryPlanStatistics {
   private long dispatchCost = 0;
   private long diskIOSizeForDeviceEntryDuringFetchSchema;
   private long diskIOTimeCostForDeviceEntryDuringFetchSchema;
+  private long diskIOSizeForDeviceEntryDuringDistributionPlan;
+  private long diskIOTimeCostForDeviceEntryDuringDistributionPlan;
   private long deviceEntryCount;
 
   public void setAnalyzeCost(long analyzeCost) {
@@ -92,6 +94,11 @@ public class QueryPlanStatistics {
     diskIOTimeCostForDeviceEntryDuringFetchSchema += timeCost;
   }
 
+  public void recordDeviceEntryDiskIODuringDistributionPlan(long bytes, long timeCost) {
+    diskIOSizeForDeviceEntryDuringDistributionPlan += bytes;
+    diskIOTimeCostForDeviceEntryDuringDistributionPlan += timeCost;
+  }
+
   public void recordDeviceEntryCount(long count) {
     deviceEntryCount += count;
   }
@@ -102,6 +109,14 @@ public class QueryPlanStatistics {
 
   public long getDiskIOTimeCostForDeviceEntryDuringFetchSchema() {
     return diskIOTimeCostForDeviceEntryDuringFetchSchema;
+  }
+
+  public long getDiskIOSizeForDeviceEntryDuringDistributionPlan() {
+    return diskIOSizeForDeviceEntryDuringDistributionPlan;
+  }
+
+  public long getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() {
+    return diskIOTimeCostForDeviceEntryDuringDistributionPlan;
   }
 
   public long getDeviceEntryCount() {

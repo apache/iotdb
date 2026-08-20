@@ -57,7 +57,17 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       long bufferSizeInBytes,
       Comparator<DeviceEntry> comparator,
       boolean distinct) {
-    super(queryId, planNodeId, bufferSizeInBytes);
+    this(queryId, planNodeId, bufferSizeInBytes, comparator, distinct, false);
+  }
+
+  private DeviceEntrySortedMaterializer(
+      String queryId,
+      PlanNodeId planNodeId,
+      long bufferSizeInBytes,
+      Comparator<DeviceEntry> comparator,
+      boolean distinct,
+      boolean rawSegment) {
+    super(queryId, planNodeId, bufferSizeInBytes, rawSegment);
     this.comparator = comparator;
     this.distinct = distinct;
   }
@@ -80,6 +90,18 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       boolean distinct,
       MPPQueryContext queryContext) {
     this(queryId, planNodeId, bufferSizeInBytes, comparator, distinct);
+    setQueryContext(queryContext);
+  }
+
+  public DeviceEntrySortedMaterializer(
+      String queryId,
+      PlanNodeId planNodeId,
+      long bufferSizeInBytes,
+      Comparator<DeviceEntry> comparator,
+      boolean distinct,
+      boolean rawSegment,
+      MPPQueryContext queryContext) {
+    this(queryId, planNodeId, bufferSizeInBytes, comparator, distinct, rawSegment);
     setQueryContext(queryContext);
   }
 
@@ -119,17 +141,27 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
   @Override
   public DeviceEntryDataSet finish() throws IOException {
     checkNotFinished();
+    checkTimeout();
     if (entryCount() == 0) {
       DeviceEntryDataSet dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
+      recordDeviceEntryCount();
       markFinished();
       return dataSet;
     }
+
+    DeviceEntryDataSet dataSet;
     if (sortedRuns.isEmpty()) {
-      sortBufferedEntries(comparator);
       if (distinct) {
-        deduplicateBufferedEntries();
+        // Only need to deduplicate instead of sorting here
+        List<DeviceEntry> distinctEntries = distinctBufferedEntries();
+        setEntryCount(distinctEntries.size());
+        dataSet = new InMemoryDeviceEntryDataSet(distinctEntries);
+      } else {
+        sortBufferedEntries(comparator);
+        checkTimeout();
+        dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
       }
-      DeviceEntryDataSet dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
+      recordDeviceEntryCount();
       markFinished();
       return dataSet;
     }
@@ -137,11 +169,10 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     try {
       flushRun();
       List<List<Path>> finalRuns = compactRuns(new ArrayList<>(sortedRuns));
-      Path finalDirectory = ownerDirectory().resolve("fi");
+      Path finalDirectory = spillDirectory(ownerDirectory());
       List<Path> finalSegments;
       int finalEntryCount;
-      try (DeviceEntryDiskSpiller outputSpiller =
-          new DeviceEntryDiskSpiller(finalDirectory, thresholdInBytes(), ioContext())) {
+      try (DeviceEntryDiskSpiller outputSpiller = createSpiller(finalDirectory)) {
         if (finalRuns.size() == 1) {
           finalEntryCount = copyRun(finalRuns.get(0), outputSpiller);
         } else {
@@ -150,8 +181,9 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
         finalSegments = outputSpiller.finish();
       }
       setEntryCount(finalEntryCount);
-      DeviceEntryDataSet dataSet =
+      dataSet =
           new SpilledDeviceEntryDataSet(queryId(), ownerDirectory(), finalSegments, entryCount());
+      recordDeviceEntryCount();
       markFinished();
       deleteRunDirectoryBestEffort();
       return dataSet;
@@ -171,31 +203,28 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     }
     ensureSpillDirectory();
     sortBufferedEntries(comparator);
+    checkTimeout();
     Path currentRunDirectory = runDirectory.resolve(String.format("run-%06d", sortedRuns.size()));
-    try (DeviceEntryDiskSpiller runSpiller =
-        new DeviceEntryDiskSpiller(currentRunDirectory, thresholdInBytes(), ioContext())) {
+    try (DeviceEntryDiskSpiller runSpiller = createSpiller(currentRunDirectory)) {
       for (DeviceEntry entry : bufferedEntries()) {
         runSpiller.append(entry.serializeToBytes());
       }
       sortedRuns.add(runSpiller.finish());
     }
     clearBuffer();
-    clearBufferedRamBytes();
   }
 
   private void ensureSpillDirectory() throws IOException {
     if (ownerDirectory() != null) {
       return;
     }
-    createIOContextOnSpill(false);
     runDirectory = ensureOwnerDirectory().resolve("sort-run");
   }
 
   private int copyRun(List<Path> run, DeviceEntryDiskSpiller outputSpiller) throws IOException {
     int outputCount = 0;
     DeviceEntry previous = null;
-    try (DeviceEntryFileSpillerReader reader =
-        new DeviceEntryFileSpillerReader(run, true, ioContext())) {
+    try (DeviceEntryFileSpillerReader reader = createReader(run, true)) {
       while (reader.hasNext()) {
         DeviceEntry entry = reader.next();
         if (!distinct || previous == null || comparator.compare(previous, entry) != 0) {
@@ -231,8 +260,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
             runDirectory
                 .resolve(String.format("level-%06d", level))
                 .resolve(String.format("run-%06d", group));
-        try (DeviceEntryDiskSpiller outputSpiller =
-            new DeviceEntryDiskSpiller(outputDirectory, thresholdInBytes(), ioContext())) {
+        try (DeviceEntryDiskSpiller outputSpiller = createSpiller(outputDirectory)) {
           mergeRuns(runGroup, outputSpiller);
           nextRuns.add(outputSpiller.finish());
         }
@@ -257,8 +285,7 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     DeviceEntry previous = null;
     try {
       for (int i = 0; i < runs.size(); i++) {
-        DeviceEntryFileSpillerReader reader =
-            new DeviceEntryFileSpillerReader(runs.get(i), true, ioContext());
+        DeviceEntryFileSpillerReader reader = createReader(runs.get(i), true);
         readers.add(reader);
         if (reader.hasNext()) {
           queue.add(new MergeElement(reader.next(), i));
@@ -301,18 +328,6 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       }
     }
     return outputCount;
-  }
-
-  private void deduplicateBufferedEntries() {
-    List<DeviceEntry> distinctEntries = new ArrayList<>();
-    DeviceEntry previous = null;
-    for (DeviceEntry entry : bufferedEntries()) {
-      if (previous == null || comparator.compare(previous, entry) != 0) {
-        distinctEntries.add(entry);
-        previous = entry;
-      }
-    }
-    replaceBufferedEntries(distinctEntries);
   }
 
   private static final class MergeElement {

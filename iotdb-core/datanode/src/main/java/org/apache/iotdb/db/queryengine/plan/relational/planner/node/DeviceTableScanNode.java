@@ -311,10 +311,6 @@ public class DeviceTableScanNode extends TableScanNode {
     return Optional.ofNullable(deviceEntryDataSetHandle);
   }
 
-  public boolean hasSpilledDeviceEntries() {
-    return deviceEntryDataSetHandle != null;
-  }
-
   public <T extends DeviceTableScanNode> T copyDeviceEntryDataSetTo(final T target) {
     target.deviceEntryDataSetHandle = deviceEntryDataSetHandle;
     target.coordinatorDeviceEntryDataSet = coordinatorDeviceEntryDataSet;
@@ -322,9 +318,13 @@ public class DeviceTableScanNode extends TableScanNode {
   }
 
   public int getDeviceEntryCount() {
-    return deviceEntryDataSetHandle == null
-        ? deviceEntries.size()
-        : deviceEntryDataSetHandle.getEntryCount();
+    if (deviceEntryDataSetHandle != null) {
+      return deviceEntryDataSetHandle.getEntryCount();
+    }
+    if (coordinatorDeviceEntryDataSet != null) {
+      return coordinatorDeviceEntryDataSet.getEntryCount();
+    }
+    return deviceEntries.size();
   }
 
   public void setCoordinatorDeviceEntryDataSet(DeviceEntryDataSet dataSet) {

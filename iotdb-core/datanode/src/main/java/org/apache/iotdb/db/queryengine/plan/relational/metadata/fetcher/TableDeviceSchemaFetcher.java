@@ -339,6 +339,7 @@ public class TableDeviceSchemaFetcher {
           batchSize,
           Comparator.comparing(entry -> entry.getDeviceID().toString()),
           true,
+          true,
           queryContext);
     }
     return new DeviceEntryMaterializer(

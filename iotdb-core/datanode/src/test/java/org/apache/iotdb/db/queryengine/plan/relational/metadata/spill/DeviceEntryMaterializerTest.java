@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
@@ -87,6 +89,7 @@ public class DeviceEntryMaterializerTest {
       for (DeviceEntry entry : expected) {
         materializer.append(entry);
       }
+      materializer.forceSpill();
       dataSet = materializer.finish();
     }
 
@@ -112,6 +115,7 @@ public class DeviceEntryMaterializerTest {
       for (DeviceEntry entry : createEntries(20)) {
         materializer.append(entry);
       }
+      materializer.forceSpill();
       dataSet = materializer.finish();
     }
 
@@ -137,11 +141,11 @@ public class DeviceEntryMaterializerTest {
     try (DeviceEntryMaterializer materializer =
         new DeviceEntryMaterializer("q-format", new PlanNodeId("scan-0"), 1, true)) {
       materializer.append(entry);
+      materializer.forceSpill();
       dataSet = materializer.finish();
     }
 
-    Path segment =
-        DeviceEntrySpillManager.getInstance().listSegments("q-format", "scan-0/raw").get(0);
+    Path segment = ((SpilledDeviceEntryDataSet) dataSet).getSegments().get(0);
     byte[] fileBytes = Files.readAllBytes(segment);
     byte[] payload = entry.serializeToBytes();
     assertEquals(Integer.BYTES + payload.length, fileBytes.length);
@@ -165,6 +169,27 @@ public class DeviceEntryMaterializerTest {
 
       assertTrue(firstMaterializer.isSpilled() || secondMaterializer.isSpilled());
     }
+  }
+
+  @Test
+  public void testMemoryControllerPreservesEntriesAfterInitialSpill() throws Exception {
+    List<DeviceEntry> expected = createEntries(3);
+    List<DeviceEntry> actual = new ArrayList<>();
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer("q-controller-flush", new PlanNodeId("scan-0"), 1, false)) {
+      DeviceEntryMaterializationMemoryController controller =
+          new DeviceEntryMaterializationMemoryController(1);
+      for (DeviceEntry entry : expected) {
+        controller.append(materializer, entry);
+      }
+      try (DeviceEntryDataSet dataSet = materializer.finish();
+          DeviceEntryReader reader = dataSet.openReader()) {
+        while (reader.hasNext()) {
+          actual.add(reader.next());
+        }
+      }
+    }
+    assertEquals(expected, actual);
   }
 
   @Test
@@ -221,6 +246,51 @@ public class DeviceEntryMaterializerTest {
       expected.sort(comparator);
       assertEquals(expected, actual);
     }
+  }
+
+  @Test
+  public void testDistinctSortedMaterializerRecordsRawDeviceEntryCount() throws Exception {
+    MPPQueryContext queryContext = new MPPQueryContext(new QueryId("q_statistics"));
+    List<DeviceEntry> entries = createEntries(3);
+    entries.add(entries.get(0));
+    queryContext.setStartTime(System.currentTimeMillis());
+    queryContext.setTimeOut(Long.MAX_VALUE);
+    try (DeviceEntrySortedMaterializer materializer =
+        new DeviceEntrySortedMaterializer(
+            "q_statistics",
+            new PlanNodeId("scan-0"),
+            Long.MAX_VALUE,
+            Comparator.comparing(entry -> entry.getDeviceID().toString()),
+            true,
+            true,
+            queryContext)) {
+      for (DeviceEntry entry : entries) {
+        materializer.append(entry);
+      }
+      try (DeviceEntryDataSet ignored = materializer.finish()) {
+        assertEquals(3, ignored.getEntryCount());
+      }
+    }
+    assertEquals(3, queryContext.getDeviceEntryCount());
+  }
+
+  @Test
+  public void testDistributionMaterializerRecordsDiskIO() throws Exception {
+    MPPQueryContext queryContext = new MPPQueryContext(new QueryId("q_distribution"));
+    queryContext.setStartTime(System.currentTimeMillis());
+    queryContext.setTimeOut(Long.MAX_VALUE);
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer(
+            "q_distribution", new PlanNodeId("scan-0"), 128, false, queryContext)) {
+      for (DeviceEntry entry : createEntries(20)) {
+        materializer.append(entry);
+      }
+      try (DeviceEntryDataSet ignored = materializer.finish()) {
+        assertTrue(ignored.isSpilled());
+      }
+    }
+    assertTrue(queryContext.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() > 0);
+    assertEquals(0, queryContext.getDiskIOSizeForDeviceEntryDuringFetchSchema());
   }
 
   private static List<DeviceEntry> createEntries(int count) {

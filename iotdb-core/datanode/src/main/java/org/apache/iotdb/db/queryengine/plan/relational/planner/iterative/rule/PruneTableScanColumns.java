@@ -199,7 +199,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 deviceTableScanNode.isPushLimitToEachDevice(),
                 deviceTableScanNode.containsNonAlignedDevice());
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
-        return Optional.of(prunedNode);
+        return Optional.of(deviceTableScanNode.copyDeviceEntryDataSetTo(prunedNode));
       }
     } else if (node instanceof InformationSchemaTableScanNode) {
       // For the convenience of process in execution stage, column-prune for

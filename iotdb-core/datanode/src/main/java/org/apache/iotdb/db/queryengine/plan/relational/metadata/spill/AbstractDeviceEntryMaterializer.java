@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 
 public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
@@ -36,6 +37,7 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   private final String queryId;
   private final PlanNodeId planNodeId;
   private final long thresholdInBytes;
+  private final boolean rawSegment;
   private List<DeviceEntry> bufferedEntries = new ArrayList<>();
 
   private int entryCount;
@@ -43,17 +45,22 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   private Path ownerDirectory;
   private boolean ownerRegistered;
   private boolean finished;
-  private DeviceEntryIOContext ioContext;
   private MPPQueryContext queryContext;
 
   protected AbstractDeviceEntryMaterializer(
       String queryId, PlanNodeId planNodeId, long thresholdInBytes) {
+    this(queryId, planNodeId, thresholdInBytes, false);
+  }
+
+  protected AbstractDeviceEntryMaterializer(
+      String queryId, PlanNodeId planNodeId, long thresholdInBytes, boolean rawSegment) {
     if (thresholdInBytes <= 0) {
       throw new IllegalArgumentException();
     }
     this.queryId = queryId;
     this.planNodeId = planNodeId;
     this.thresholdInBytes = thresholdInBytes;
+    this.rawSegment = rawSegment;
   }
 
   /**
@@ -93,10 +100,6 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
     bufferedRamBytes += ramBytes;
   }
 
-  protected final void clearBufferedRamBytes() {
-    bufferedRamBytes = 0;
-  }
-
   protected final void incrementEntryCount() {
     entryCount++;
   }
@@ -111,6 +114,10 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   protected final List<DeviceEntry> copyBufferedEntries() {
     return new ArrayList<>(bufferedEntries);
+  }
+
+  protected final List<DeviceEntry> distinctBufferedEntries() {
+    return new ArrayList<>(new HashSet<>(bufferedEntries));
   }
 
   protected final void replaceBufferedEntries(List<DeviceEntry> entries) {
@@ -128,15 +135,34 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
     this.queryContext = queryContext;
   }
 
-  protected final DeviceEntryIOContext ioContext() {
-    return ioContext;
+  protected final DeviceEntryIOContext ioContextOnSpill() {
+    return queryContext == null ? null : queryContext.getOrCreateDeviceEntryIOContext();
   }
 
-  protected final DeviceEntryIOContext createIOContextOnSpill(boolean duringFetchSchema) {
-    if (ioContext == null && queryContext != null) {
-      ioContext = queryContext.getOrCreateDeviceEntryIOContext(duringFetchSchema);
+  protected final DeviceEntryDiskSpiller createSpiller(Path directory) throws IOException {
+    return new DeviceEntryDiskSpiller(directory, thresholdInBytes, ioContextOnSpill(), rawSegment);
+  }
+
+  protected final Path spillDirectory(Path ownerDirectory) {
+    return ownerDirectory.resolve(rawSegment ? "raw" : "fi");
+  }
+
+  protected final DeviceEntryFileSpillerReader createReader(
+      List<Path> segments, boolean deleteSegmentAfterRead) {
+    return new DeviceEntryFileSpillerReader(
+        segments, deleteSegmentAfterRead, ioContextOnSpill(), rawSegment);
+  }
+
+  protected final void recordDeviceEntryCount() {
+    if (rawSegment && queryContext != null) {
+      queryContext.recordDeviceEntryCount(entryCount);
     }
-    return ioContext;
+  }
+
+  protected final void checkTimeout() {
+    if (queryContext != null) {
+      queryContext.checkTimeOut();
+    }
   }
 
   protected final int entryCount() {
@@ -149,6 +175,7 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   protected final void clearBuffer() {
     bufferedEntries.clear();
+    bufferedRamBytes = 0;
   }
 
   protected final Path ownerDirectory() {

@@ -33,6 +33,7 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
   private final Path directory;
   private final long targetSegmentBytes;
   private final DeviceEntryIOContext ioContext;
+  private final boolean duringFetchSchema;
   private final List<Path> sealedSegments = new ArrayList<>();
 
   private DataOutputStream output;
@@ -40,15 +41,16 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
   private long currentBytes;
   private int nextSegmentId;
 
-  public DeviceEntryDiskSpiller(Path directory, long targetSegmentBytes) throws IOException {
-    this(directory, targetSegmentBytes, null);
-  }
-
   public DeviceEntryDiskSpiller(
-      Path directory, long targetSegmentBytes, DeviceEntryIOContext ioContext) throws IOException {
+      Path directory,
+      long targetSegmentBytes,
+      DeviceEntryIOContext ioContext,
+      boolean duringFetchSchema)
+      throws IOException {
     this.directory = directory;
     this.targetSegmentBytes = targetSegmentBytes;
     this.ioContext = ioContext;
+    this.duringFetchSchema = duringFetchSchema;
     Files.createDirectories(directory);
   }
 
@@ -109,7 +111,11 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
 
   private void recordDiskIO(long bytes, long startNanos) {
     if (ioContext != null) {
-      ioContext.recordDiskIO(bytes, startNanos);
+      if (duringFetchSchema) {
+        ioContext.recordDiskIODuringFetchSchema(bytes, startNanos);
+      } else {
+        ioContext.recordDiskIODuringDistributionPlan(bytes, startNanos);
+      }
     }
   }
 

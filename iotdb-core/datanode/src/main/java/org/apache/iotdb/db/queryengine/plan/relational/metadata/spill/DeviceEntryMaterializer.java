@@ -28,13 +28,11 @@ import java.nio.file.Path;
 
 public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializer {
 
-  private final boolean rawSegment;
   private DeviceEntryDiskSpiller spiller;
 
   public DeviceEntryMaterializer(
       String queryId, PlanNodeId planNodeId, long thresholdInBytes, boolean rawSegment) {
-    super(queryId, planNodeId, thresholdInBytes);
-    this.rawSegment = rawSegment;
+    super(queryId, planNodeId, thresholdInBytes, rawSegment);
   }
 
   public DeviceEntryMaterializer(
@@ -66,8 +64,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
       }
     }
     long releasedRamBytes = getBufferedRamBytes();
-    ensureSpiller();
-    clearBufferedRamBytes();
+    ensureSpiller(false);
     spiller.append(entry.serializeToBytes());
     incrementEntryCount();
     return releasedRamBytes;
@@ -76,10 +73,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
   @Override
   public void forceSpill() throws IOException {
     checkNotFinished();
-    if (spiller == null && !isBufferEmpty()) {
-      ensureSpiller();
-    }
-    clearBufferedRamBytes();
+    ensureSpiller(true);
   }
 
   @Override
@@ -94,28 +88,26 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
     if (spiller == null) {
       dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
     } else {
+      ensureSpiller(true);
       dataSet =
           new SpilledDeviceEntryDataSet(
               queryId(), ownerDirectory(), spiller.finish(), entryCount());
     }
-    if (rawSegment && getQueryContext() != null) {
-      getQueryContext().recordDeviceEntryCount(entryCount());
-    }
+    recordDeviceEntryCount();
     markFinished();
     return dataSet;
   }
 
-  private void ensureSpiller() throws IOException {
-    if (spiller != null) {
+  private void ensureSpiller(boolean skipIfBufferEmpty) throws IOException {
+    if (isBufferEmpty() && skipIfBufferEmpty) {
       return;
     }
-    Path ownerDirectory = ensureOwnerDirectory();
-    if (rawSegment) {
-      createIOContextOnSpill(true);
+
+    if (spiller == null) {
+      Path ownerDirectory = ensureOwnerDirectory();
+      spiller = createSpiller(spillDirectory(ownerDirectory));
     }
-    spiller =
-        new DeviceEntryDiskSpiller(
-            ownerDirectory.resolve(rawSegment ? "raw" : "fi"), thresholdInBytes(), ioContext());
+
     for (DeviceEntry entry : bufferedEntries()) {
       spiller.append(entry.serializeToBytes());
     }

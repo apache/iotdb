@@ -61,6 +61,7 @@ public class FragmentInstanceStatisticsJsonDrawerTest {
     context.setLogicalOptimizationCost(5000000L); // 5ms
     context.setDistributionPlanCost(6000000L); // 6ms
     context.recordDeviceEntryDiskIODuringFetchSchema(8192L, 7000000L); // 8 KiB, 7ms
+    context.recordDeviceEntryDiskIODuringDistributionPlan(2L, 8000000L); // 2 bytes, 8ms
     context.recordDeviceEntryCount(3);
 
     drawer.renderPlanStatistics(context);
@@ -84,6 +85,11 @@ public class FragmentInstanceStatisticsJsonDrawerTest {
     assertEquals(
         7.0, planStats.get("diskIOTimeCostForDeviceEntryDuringFetchSchemaMs").getAsDouble(), 0.01);
     assertEquals(3L, planStats.get("deviceEntryCount").getAsLong());
+    assertEquals(2L, planStats.get("diskIOSizeForDeviceEntryDuringDistributionPlan").getAsLong());
+    assertEquals(
+        8.0,
+        planStats.get("diskIOTimeCostForDeviceEntryDuringDistributionPlanMs").getAsDouble(),
+        0.01);
   }
 
   @Test

@@ -69,6 +69,13 @@ public class FragmentInstanceStatisticsJsonDrawer {
         formatMs(context.getLogicalOptimizationCost() * NS_TO_MS_FACTOR));
     planStatistics.addProperty(
         "distributionPlanCostMs", formatMs(context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
+    planStatistics.addProperty(
+        "diskIOSizeForDeviceEntryDuringDistributionPlan",
+        context.getDiskIOSizeForDeviceEntryDuringDistributionPlan());
+    planStatistics.addProperty(
+        "diskIOTimeCostForDeviceEntryDuringDistributionPlanMs",
+        formatMs(
+            context.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() * NS_TO_MS_FACTOR));
   }
 
   public void renderDispatchCost(MPPQueryContext context) {

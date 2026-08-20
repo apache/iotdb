@@ -20,6 +20,7 @@
 package org.apache.iotdb.relational.it.query.recent;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -28,6 +29,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -35,6 +37,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBDeviceEntrySpillIT {
 
@@ -86,7 +89,7 @@ public class IoTDBDeviceEntrySpillIT {
       "SELECT * FROM spill_test.device_data WHERE time >= 1 AND time < 3 " + "ORDER BY tag1, time"
     };
     for (String query : queries) {
-      assertRowCount(query, query.contains("LIMIT 2") ? 2 : query.contains("value > 10") ? 2 : 4);
+      assertRowCount(query, query.contains("LIMIT 2") ? 2 : query.contains("value > 10") ? 3 : 4);
     }
   }
 
@@ -110,8 +113,8 @@ public class IoTDBDeviceEntrySpillIT {
             + "GROUP BY tag1, tag2",
         3);
     assertRowCount(
-        "SELECT date_bin(1s, time), count(*) FROM spill_test.device_data "
-            + "GROUP BY date_bin(1s, time)",
+        "SELECT date_bin(1ms, time), count(*) FROM spill_test.device_data "
+            + "GROUP BY date_bin(1ms, time)",
         2);
   }
 

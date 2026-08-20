@@ -34,24 +34,29 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
   private final List<Path> segments;
   private final boolean deleteSegmentAfterRead;
   private final DeviceEntryIOContext ioContext;
+  private final boolean duringFetchSchema;
   private int segmentIndex;
   private DataInputStream input;
   private Path currentSegment;
   private DeviceEntry next;
 
   public DeviceEntryFileSpillerReader(List<Path> segments) {
-    this(segments, false, null);
+    this(segments, false, null, false);
   }
 
   public DeviceEntryFileSpillerReader(List<Path> segments, boolean deleteSegmentAfterRead) {
-    this(segments, deleteSegmentAfterRead, null);
+    this(segments, deleteSegmentAfterRead, null, false);
   }
 
   public DeviceEntryFileSpillerReader(
-      List<Path> segments, boolean deleteSegmentAfterRead, DeviceEntryIOContext ioContext) {
+      List<Path> segments,
+      boolean deleteSegmentAfterRead,
+      DeviceEntryIOContext ioContext,
+      boolean duringFetchSchema) {
     this.segments = segments;
     this.deleteSegmentAfterRead = deleteSegmentAfterRead;
     this.ioContext = ioContext;
+    this.duringFetchSchema = duringFetchSchema;
   }
 
   @Override
@@ -73,7 +78,11 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
       byte[] bytes = new byte[length];
       input.readFully(bytes);
       if (ioContext != null) {
-        ioContext.recordDiskIO(Integer.BYTES + length, startNanos);
+        if (duringFetchSchema) {
+          ioContext.recordDiskIODuringFetchSchema(Integer.BYTES + length, startNanos);
+        } else {
+          ioContext.recordDiskIODuringDistributionPlan(Integer.BYTES + length, startNanos);
+        }
       }
       next = DeviceEntry.deserialize(bytes);
       return true;

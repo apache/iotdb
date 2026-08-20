@@ -49,14 +49,6 @@ public final class DeviceEntryMaterializationMemoryController {
     enforceMemoryLimit();
   }
 
-  public long getRetainedBytes() {
-    return retainedBytes;
-  }
-
-  public long getMemoryLimitInBytes() {
-    return memoryLimitInBytes;
-  }
-
   private void enforceMemoryLimit() throws IOException {
     while (retainedBytes > memoryLimitInBytes) {
       AbstractDeviceEntryMaterializer largest = null;

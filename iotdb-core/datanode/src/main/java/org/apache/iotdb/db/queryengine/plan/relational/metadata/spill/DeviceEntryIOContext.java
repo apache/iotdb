@@ -23,22 +23,37 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 
 public final class DeviceEntryIOContext {
 
-  private final MPPQueryContext queryContext;
-  private final boolean duringFetchSchema;
+  private static final int IO_BATCH_SIZE = 1000;
 
-  public DeviceEntryIOContext(MPPQueryContext queryContext, boolean duringFetchSchema) {
+  private final MPPQueryContext queryContext;
+
+  private int checkTimeoutCount;
+
+  public DeviceEntryIOContext(MPPQueryContext queryContext) {
     this.queryContext = queryContext;
-    this.duringFetchSchema = duringFetchSchema;
   }
 
   public void checkTimeout() {
-    queryContext.checkTimeOut();
+    if (++checkTimeoutCount >= IO_BATCH_SIZE) {
+      queryContext.checkTimeOut();
+      checkTimeoutCount = 0;
+    }
   }
 
-  public void recordDiskIO(long bytes, long startNanos) {
+  public void recordDiskIODuringFetchSchema(long bytes, long startNanos) {
+    recordDiskIO(bytes, startNanos, true);
+  }
+
+  public void recordDiskIODuringDistributionPlan(long bytes, long startNanos) {
+    recordDiskIO(bytes, startNanos, false);
+  }
+
+  private void recordDiskIO(long bytes, long startNanos, boolean duringFetchSchema) {
     long timeCost = System.nanoTime() - startNanos;
     if (duringFetchSchema) {
       queryContext.recordDeviceEntryDiskIODuringFetchSchema(bytes, timeCost);
+    } else {
+      queryContext.recordDeviceEntryDiskIODuringDistributionPlan(bytes, timeCost);
     }
     checkTimeout();
   }

@@ -90,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource.DeviceTaskPartition;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.AbstractDeviceEntryMaterializer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryMaterializationMemoryController;
@@ -980,7 +981,8 @@ public class TableDistributedPlanGenerator
           String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
 
-    if (node.getCoordinatorDeviceEntryDataSet().isSpilled()) {
+    if (node.getCoordinatorDeviceEntryDataSet() != null
+        && node.getCoordinatorDeviceEntryDataSet().isSpilled()) {
       return constructSpilledDeviceTableScanByRegionReplicaSet(
           node, context, dataPartition, seriesSlotMap);
     }
@@ -1070,8 +1072,7 @@ public class TableDistributedPlanGenerator
     long batchSize =
         IoTDBDescriptor.getInstance().getConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     Map<TRegionReplicaSet, DeviceTableScanNode> scanNodes = new HashMap<>();
-    Map<TRegionReplicaSet, DeviceEntryMaterializer> materializers = new HashMap<>();
-    Map<TRegionReplicaSet, DeviceEntrySortedMaterializer> sortedMaterializers = new HashMap<>();
+    Map<TRegionReplicaSet, AbstractDeviceEntryMaterializer> materializers = new HashMap<>();
     Map<TRegionReplicaSet, Integer> regionEntryCounts = new HashMap<>();
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
     DeviceEntryMaterializationMemoryController memoryController =
@@ -1096,38 +1097,27 @@ public class TableDistributedPlanGenerator
                   regionReplicaSet,
                   ignored -> createRegionDeviceTableScanNode(node, regionReplicaSet));
           PlanNodeId ownerId = scanNode.getPlanNodeId();
-          if (comparator == null) {
-            DeviceEntryMaterializer materializer =
-                materializers.computeIfAbsent(
-                    regionReplicaSet,
-                    ignored ->
-                        new DeviceEntryMaterializer(
-                            queryId.getId(), ownerId, batchSize, false, queryContext));
-            memoryController.append(materializer, deviceEntry);
-          } else {
-            DeviceEntrySortedMaterializer sortedMaterializer =
-                sortedMaterializers.get(regionReplicaSet);
-            if (sortedMaterializer == null) {
-              sortedMaterializer =
-                  new DeviceEntrySortedMaterializer(
-                      queryId.getId(), ownerId, batchSize, comparator, queryContext);
-              sortedMaterializers.put(regionReplicaSet, sortedMaterializer);
-            }
-            memoryController.append(sortedMaterializer, deviceEntry);
-          }
+          AbstractDeviceEntryMaterializer materializer =
+              materializers.computeIfAbsent(
+                  regionReplicaSet,
+                  ignored ->
+                      comparator == null
+                          ? new org.apache.iotdb.db.queryengine.plan.relational.metadata.spill
+                              .DeviceEntryMaterializer(
+                              queryId.getId(), ownerId, batchSize, false, queryContext)
+                          : new DeviceEntrySortedMaterializer(
+                              queryId.getId(), ownerId, batchSize, comparator, queryContext));
+          memoryController.append(materializer, deviceEntry);
           regionEntryCounts.merge(regionReplicaSet, 1, Integer::sum);
         }
       }
 
       for (Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry : scanNodes.entrySet()) {
-        DeviceEntryDataSet dataSet =
-            comparator == null
-                ? materializers.get(entry.getKey()).finish()
-                : sortedMaterializers.get(entry.getKey()).finish();
+        DeviceEntryDataSet dataSet = materializers.get(entry.getKey()).finish();
         installDataSet(entry.getValue(), dataSet, comparator != null);
       }
     } catch (IOException e) {
-      closeSpillWriters(materializers.values(), sortedMaterializers.values());
+      closeSpillWriters(materializers.values());
       throw new UncheckedIOException(e);
     }
 
@@ -1194,17 +1184,8 @@ public class TableDistributedPlanGenerator
             ordered));
   }
 
-  private void closeSpillWriters(
-      Collection<DeviceEntryMaterializer> materializers,
-      Collection<DeviceEntrySortedMaterializer> sortedMaterializers) {
-    for (DeviceEntryMaterializer writer : materializers) {
-      try {
-        writer.close();
-      } catch (Exception ignored) {
-        // The original planning exception is more useful than a cleanup failure.
-      }
-    }
-    for (DeviceEntrySortedMaterializer writer : sortedMaterializers) {
+  private void closeSpillWriters(Collection<AbstractDeviceEntryMaterializer> materializers) {
+    for (AbstractDeviceEntryMaterializer writer : materializers) {
       try {
         writer.close();
       } catch (Exception ignored) {
@@ -1267,7 +1248,8 @@ public class TableDistributedPlanGenerator
           String.format(DataNodeQueryMessages.GIVEN_QUERIED_DATABASE_S_IS_NOT_EXIST, dbName));
     }
 
-    if (node.getCoordinatorDeviceEntryDataSet().isSpilled()) {
+    if (node.getCoordinatorDeviceEntryDataSet() != null
+        && node.getCoordinatorDeviceEntryDataSet().isSpilled()) {
       return constructSpilledTreeDeviceViewScanByRegionReplicaSet(
           node, context, dataPartition, seriesSlotMap);
     }
@@ -1405,8 +1387,7 @@ public class TableDistributedPlanGenerator
         IoTDBDescriptor.getInstance().getConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
         scanNodes = new HashMap<>();
-    Map<DeviceTableScanNode, DeviceEntryMaterializer> materializers = new HashMap<>();
-    Map<DeviceTableScanNode, DeviceEntrySortedMaterializer> sortedMaterializers = new HashMap<>();
+    Map<DeviceTableScanNode, AbstractDeviceEntryMaterializer> materializers = new HashMap<>();
     Map<TRegionReplicaSet, Integer> regionEntryCounts = new HashMap<>();
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
     DeviceEntryMaterializationMemoryController memoryController =
@@ -1442,13 +1423,7 @@ public class TableDistributedPlanGenerator
             scanNode = pair.right;
           }
           appendToRegionDataSet(
-              scanNode,
-              deviceEntry,
-              comparator,
-              batchSize,
-              materializers,
-              sortedMaterializers,
-              memoryController);
+              scanNode, deviceEntry, comparator, batchSize, materializers, memoryController);
           regionEntryCounts.merge(regionReplicaSet, 1, Integer::sum);
         }
       }
@@ -1456,14 +1431,14 @@ public class TableDistributedPlanGenerator
       for (Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair :
           scanNodes.values()) {
         if (pair.left != null) {
-          finishAndInstallDataSet(pair.left, comparator, materializers, sortedMaterializers);
+          finishAndInstallDataSet(pair.left, comparator, materializers);
         }
         if (pair.right != null) {
-          finishAndInstallDataSet(pair.right, comparator, materializers, sortedMaterializers);
+          finishAndInstallDataSet(pair.right, comparator, materializers);
         }
       }
     } catch (IOException e) {
-      closeSpillWriters(materializers.values(), sortedMaterializers.values());
+      closeSpillWriters(materializers.values());
       throw new UncheckedIOException(e);
     }
 
@@ -1551,39 +1526,32 @@ public class TableDistributedPlanGenerator
       DeviceEntry deviceEntry,
       Comparator<DeviceEntry> comparator,
       long batchSize,
-      Map<DeviceTableScanNode, DeviceEntryMaterializer> materializers,
-      Map<DeviceTableScanNode, DeviceEntrySortedMaterializer> sortedMaterializers,
+      Map<DeviceTableScanNode, AbstractDeviceEntryMaterializer> materializers,
       DeviceEntryMaterializationMemoryController memoryController)
       throws IOException {
-    if (comparator == null) {
-      materializers.computeIfAbsent(
-          scanNode,
-          ignored ->
-              new DeviceEntryMaterializer(
-                  queryId.getId(), scanNode.getPlanNodeId(), batchSize, false, queryContext));
-      memoryController.append(materializers.get(scanNode), deviceEntry);
-      return;
-    }
-    DeviceEntrySortedMaterializer sortedMaterializer = sortedMaterializers.get(scanNode);
-    if (sortedMaterializer == null) {
-      sortedMaterializer =
-          new DeviceEntrySortedMaterializer(
-              queryId.getId(), scanNode.getPlanNodeId(), batchSize, comparator, queryContext);
-      sortedMaterializers.put(scanNode, sortedMaterializer);
-    }
-    memoryController.append(sortedMaterializer, deviceEntry);
+    AbstractDeviceEntryMaterializer materializer =
+        materializers.computeIfAbsent(
+            scanNode,
+            ignored ->
+                comparator == null
+                    ? new org.apache.iotdb.db.queryengine.plan.relational.metadata.spill
+                        .DeviceEntryMaterializer(
+                        queryId.getId(), scanNode.getPlanNodeId(), batchSize, false, queryContext)
+                    : new DeviceEntrySortedMaterializer(
+                        queryId.getId(),
+                        scanNode.getPlanNodeId(),
+                        batchSize,
+                        comparator,
+                        queryContext));
+    memoryController.append(materializer, deviceEntry);
   }
 
   private void finishAndInstallDataSet(
       DeviceTableScanNode scanNode,
       Comparator<DeviceEntry> comparator,
-      Map<DeviceTableScanNode, DeviceEntryMaterializer> materializers,
-      Map<DeviceTableScanNode, DeviceEntrySortedMaterializer> sortedMaterializers)
+      Map<DeviceTableScanNode, AbstractDeviceEntryMaterializer> materializers)
       throws IOException {
-    DeviceEntryDataSet dataSet =
-        comparator == null
-            ? materializers.get(scanNode).finish()
-            : sortedMaterializers.get(scanNode).finish();
+    DeviceEntryDataSet dataSet = materializers.get(scanNode).finish();
     installDataSet(scanNode, dataSet, comparator != null);
   }
 
@@ -1979,7 +1947,7 @@ public class TableDistributedPlanGenerator
     Map<DeviceEntry, Integer> crossRegionDeviceCounts =
         node.mayUseLastCache() ? new HashMap<>() : Collections.emptyMap();
     Map<TRegionReplicaSet, PlanNodeId> regionPlanNodeIds = new HashMap<>();
-    Map<TRegionReplicaSet, DeviceEntryMaterializer> stagingMaterializers = new HashMap<>();
+    Map<TRegionReplicaSet, AbstractDeviceEntryMaterializer> stagingMaterializers = new HashMap<>();
     Map<TRegionReplicaSet, DeviceEntryDataSet> stagingDataSets = new HashMap<>();
     Map<TRegionReplicaSet, Integer> regionEntryCounts = new HashMap<>();
     DeviceEntryMaterializationMemoryController memoryController =
@@ -2014,15 +1982,15 @@ public class TableDistributedPlanGenerator
           regionEntryCounts.merge(region, 1, Integer::sum);
         }
       }
-      for (Map.Entry<TRegionReplicaSet, DeviceEntryMaterializer> entry :
+      for (Map.Entry<TRegionReplicaSet, AbstractDeviceEntryMaterializer> entry :
           stagingMaterializers.entrySet()) {
         stagingDataSets.put(entry.getKey(), entry.getValue().finish());
       }
     } catch (IOException e) {
-      closeSpillWriters(stagingMaterializers.values(), Collections.emptyList());
+      closeSpillWriters(stagingMaterializers.values());
       throw new UncheckedIOException(e);
     } catch (RuntimeException e) {
-      closeSpillWriters(stagingMaterializers.values(), Collections.emptyList());
+      closeSpillWriters(stagingMaterializers.values());
       throw e;
     }
 
@@ -2346,7 +2314,7 @@ public class TableDistributedPlanGenerator
     boolean hasCrossRegionDevice = false;
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
     Map<TRegionReplicaSet, Pair<PlanNodeId, PlanNodeId>> regionPlanNodeIds = new HashMap<>();
-    Map<PlanNodeId, DeviceEntryMaterializer> stagingMaterializers = new HashMap<>();
+    Map<PlanNodeId, AbstractDeviceEntryMaterializer> stagingMaterializers = new HashMap<>();
     Map<PlanNodeId, DeviceEntryDataSet> stagingDataSets = new HashMap<>();
     Map<TRegionReplicaSet, Integer> regionEntryCounts = new HashMap<>();
     DeviceEntryMaterializationMemoryController memoryController =
@@ -2390,14 +2358,15 @@ public class TableDistributedPlanGenerator
           regionEntryCounts.merge(region, 1, Integer::sum);
         }
       }
-      for (Map.Entry<PlanNodeId, DeviceEntryMaterializer> entry : stagingMaterializers.entrySet()) {
+      for (Map.Entry<PlanNodeId, AbstractDeviceEntryMaterializer> entry :
+          stagingMaterializers.entrySet()) {
         stagingDataSets.put(entry.getKey(), entry.getValue().finish());
       }
     } catch (IOException e) {
-      closeSpillWriters(stagingMaterializers.values(), Collections.emptyList());
+      closeSpillWriters(stagingMaterializers.values());
       throw new UncheckedIOException(e);
     } catch (RuntimeException e) {
-      closeSpillWriters(stagingMaterializers.values(), Collections.emptyList());
+      closeSpillWriters(stagingMaterializers.values());
       throw e;
     }
 
