@@ -137,6 +137,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
     try {
       if (Objects.isNull(event)) {
+        if (shouldStopSubmittingSelf.get()) {
+          return false;
+        }
         transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
         return false;
       }
@@ -454,6 +457,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       } finally {
         outputPipeSinkOperationLock.unlock();
       }
+    }
+  }
+
+  public void discardReceiverRuntimeSessions() {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).discardReceiverRuntimeSessions();
     }
   }
 
