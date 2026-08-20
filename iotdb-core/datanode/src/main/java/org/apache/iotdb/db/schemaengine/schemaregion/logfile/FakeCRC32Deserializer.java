@@ -22,8 +22,9 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jakarta.validation.constraints.NotNull;
+
 import javax.annotation.concurrent.NotThreadSafe;
-import javax.validation.constraints.NotNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;

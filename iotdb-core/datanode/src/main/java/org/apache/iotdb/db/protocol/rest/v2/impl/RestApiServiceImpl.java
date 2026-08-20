@@ -64,8 +64,8 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 
 import org.apache.tsfile.read.TimeValuePair;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
 import java.util.HashMap;

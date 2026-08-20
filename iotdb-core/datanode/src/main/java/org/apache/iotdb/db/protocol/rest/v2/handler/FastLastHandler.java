@@ -33,7 +33,7 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.TimeValuePair;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 
 import java.util.ArrayList;
 import java.util.Collections;
