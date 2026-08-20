@@ -33,6 +33,8 @@ public interface DataNodeConfig {
 
   DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
 
+  DataNodeConfig setDnDataDirs(String dnDataDirs);
+
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
 
