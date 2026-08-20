@@ -179,6 +179,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   public TPipeTransferResp receive(final TPipeTransferReq req) {
     try {
       final short rawRequestType = req.getType();
+      final PipeConfigNodeReceiverMetrics metrics = PipeConfigNodeReceiverMetrics.getInstance();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType type = PipeRequestType.valueOf(rawRequestType);
         if (needHandshake(type)) {
@@ -196,57 +197,84 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         final long startTime = System.nanoTime();
         switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:
-            resp = new TPipeTransferResp(getUnsupportedHandshakeV1Status());
-            PipeConfigNodeReceiverMetrics.getInstance()
-                .recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
-            return resp;
-          case HANDSHAKE_CONFIGNODE_V2:
-            resp =
-                handleTransferHandshakeV2(
-                    PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
-            if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                && Objects.nonNull(userEntity)) {
-              userEntity.setAuditLogOperation(AuditLogOperation.DDL);
-            }
-            PipeConfigNodeReceiverMetrics.getInstance()
-                .recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
-            return resp;
-          case TRANSFER_CONFIG_PLAN:
-            resp = handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
-            PipeConfigNodeReceiverMetrics.getInstance()
-                .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
-            return resp;
-          case TRANSFER_CONFIG_SNAPSHOT_PIECE:
-            try {
-              try (final AutoCloseable ignored =
-                  PipeConfigNodeResourceManager.memory()
-                      .tryAllocateReceiverMemory(getRequestBodySizeInBytes(req))) {
-                return handleTransferFilePiece(
-                    PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
-                    req instanceof AirGapPseudoTPipeTransferRequest,
-                    false);
-              } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-                return getReceiverTemporaryUnavailableResp(e);
+            {
+              try {
+                return new TPipeTransferResp(getUnsupportedHandshakeV1Status());
+              } finally {
+                metrics.recordHandshakeConfigNodeV1Timer(System.nanoTime() - startTime);
+                metrics.markHandshakeConfigNodeV1Size(req.body.limit());
               }
-            } finally {
-              PipeConfigNodeReceiverMetrics.getInstance()
-                  .recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
+            }
+          case HANDSHAKE_CONFIGNODE_V2:
+            {
+              try {
+                resp =
+                    handleTransferHandshakeV2(
+                        PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
+                if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                    && Objects.nonNull(userEntity)) {
+                  userEntity.setAuditLogOperation(AuditLogOperation.DDL);
+                }
+                return resp;
+              } finally {
+                metrics.recordHandshakeConfigNodeV2Timer(System.nanoTime() - startTime);
+                metrics.markHandshakeConfigNodeV2Size(req.body.limit());
+              }
+            }
+          case TRANSFER_CONFIG_PLAN:
+            {
+              try {
+                return handleTransferConfigPlan(
+                    PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
+              } finally {
+                metrics.recordTransferConfigPlanTimer(System.nanoTime() - startTime);
+                metrics.markTransferConfigPlanSize(req.body.limit());
+              }
+            }
+          case TRANSFER_CONFIG_SNAPSHOT_PIECE:
+            {
+              try {
+                try (final AutoCloseable ignored =
+                    PipeConfigNodeResourceManager.memory()
+                        .tryAllocateReceiverMemory(getRequestBodySizeInBytes(req))) {
+                  return handleTransferFilePiece(
+                      PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
+                      req instanceof AirGapPseudoTPipeTransferRequest,
+                      false);
+                } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+                  return getReceiverTemporaryUnavailableResp(e);
+                }
+              } finally {
+                metrics.recordTransferConfigSnapshotPieceTimer(System.nanoTime() - startTime);
+                metrics.markTransferConfigSnapshotPieceSize(req.body.limit());
+              }
             }
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
-            resp =
-                handleTransferFileSealV2(
+            {
+              try {
+                return handleTransferFileSealV2(
                     PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
-            PipeConfigNodeReceiverMetrics.getInstance()
-                .recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
-            return resp;
+              } finally {
+                metrics.recordTransferConfigSnapshotSealTimer(System.nanoTime() - startTime);
+                metrics.markTransferConfigSnapshotSealSize(req.body.limit());
+              }
+            }
           case TRANSFER_COMPRESSED:
-            try (final AutoCloseable ignored =
-                PipeConfigNodeResourceManager.memory()
-                    .tryAllocateReceiverMemory(
-                        PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(req))) {
-              return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
-            } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-              return getReceiverTemporaryUnavailableResp(e);
+            {
+              try {
+                try (final AutoCloseable ignored =
+                    PipeConfigNodeResourceManager.memory()
+                        .tryAllocateReceiverMemory(
+                            PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(
+                                req))) {
+                  return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+                } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+                  return getReceiverTemporaryUnavailableResp(e);
+                }
+              } finally {
+                metrics.recordTransferCompressedTimer(System.nanoTime() - startTime);
+                metrics.markTransferCompressedSize(req.body.limit());
+              }
             }
           default:
             break;
