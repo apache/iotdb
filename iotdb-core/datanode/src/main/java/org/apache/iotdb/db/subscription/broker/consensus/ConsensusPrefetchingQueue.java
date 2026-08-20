@@ -719,8 +719,11 @@ public class ConsensusPrefetchingQueue {
       if (pendingSeekRequest != null) {
         return null;
       }
+      if (shouldThrottlePollByInFlightEvents()) {
+        return null;
+      }
       final SubscriptionEvent event = pollInternal(consumerId);
-      if (Objects.nonNull(event) && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      if (Objects.nonNull(event) && hasAvailableEventSlot()) {
         requestPrefetch();
       } else if (Objects.isNull(event) && shouldRecoverPrefetchBindingAfterEmptyPoll()) {
         requestPrefetch();
@@ -729,6 +732,25 @@ public class ConsensusPrefetchingQueue {
     } finally {
       releaseReadLock();
     }
+  }
+
+  private boolean shouldThrottlePollByInFlightEvents() {
+    if (inFlightEvents.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      return false;
+    }
+
+    recycleInFlightEvents();
+    if (inFlightEvents.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      return false;
+    }
+
+    LOGGER.debug(
+        "ConsensusPrefetchingQueue {}: throttles poll because too many events are in flight", this);
+    return true;
+  }
+
+  private boolean hasAvailableEventSlot() {
+    return getSubscriptionRetainedEventCount() < MAX_PREFETCHING_QUEUE_SIZE;
   }
 
   private boolean initPrefetch(final RegionProgress regionProgress) {
@@ -1379,7 +1401,7 @@ public class ConsensusPrefetchingQueue {
       applyPendingSubscriptionWalReset(observedSeekGeneration);
       recycleInFlightEvents();
 
-      if (!isActive || prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+      if (!isActive || !hasAvailableEventSlot()) {
         blockRealtimeAdmission();
         return computeIdleRoundResult();
       }
@@ -1469,7 +1491,7 @@ public class ConsensusPrefetchingQueue {
         return PrefetchRoundResult.rescheduleNow();
       }
 
-      if (!lingerBatch.isEmpty() && lingerBatch.firstTabletTimeMs > 0L) {
+      if (!lingerBatch.isEmpty() && lingerBatch.firstTabletTimeMs > 0L && hasAvailableEventSlot()) {
         final long lingerElapsedMs = System.currentTimeMillis() - lingerBatch.firstTabletTimeMs;
         if (lingerElapsedMs >= batchMaxDelayMs) {
           if (seekGeneration.get() != observedSeekGeneration) {
@@ -1560,9 +1582,12 @@ public class ConsensusPrefetchingQueue {
     if (isClosed || !prefetchInitialized || !isActive) {
       return PrefetchRoundResult.dormant();
     }
-    if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+    if (!hasAvailableEventSlot()) {
       blockRealtimeAdmission();
-      return PrefetchRoundResult.dormant();
+      return inFlightEvents.isEmpty()
+          ? PrefetchRoundResult.dormant()
+          : PrefetchRoundResult.rescheduleAfter(
+              SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs());
     }
     if (hasImmediatePrefetchableWork()) {
       return PrefetchRoundResult.rescheduleNow();
@@ -1894,7 +1919,7 @@ public class ConsensusPrefetchingQueue {
     int entriesRead = 0;
     while (entriesRead < maxWalEntries
         && subscriptionWALIterator.hasNext()
-        && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+        && hasAvailableEventSlot()) {
       try {
         final IndexedConsensusRequest walEntry = subscriptionWALIterator.next();
         entriesRead++;
@@ -2400,7 +2425,7 @@ public class ConsensusPrefetchingQueue {
       }
 
       final int bufferedAfter = getRealtimeBufferedEntryCount();
-      if (bufferedAfter == 0 || prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
+      if (bufferedAfter == 0 || !hasAvailableEventSlot()) {
         return true;
       }
 
@@ -2643,7 +2668,7 @@ public class ConsensusPrefetchingQueue {
         result == InFlightAckResult.ACKED
             || (result == InFlightAckResult.MISSING
                 && ackMissingInFlightEvent(commitContext, false));
-    if (acked) {
+    if (acked && hasAvailableEventSlot()) {
       requestPrefetch();
     }
     return acked;
@@ -2735,7 +2760,7 @@ public class ConsensusPrefetchingQueue {
         result == InFlightAckResult.ACKED
             || (result == InFlightAckResult.MISSING
                 && ackMissingInFlightEvent(commitContext, true));
-    if (ackedResult) {
+    if (ackedResult && hasAvailableEventSlot()) {
       requestPrefetch();
     }
     return ackedResult;
@@ -3362,8 +3387,8 @@ public class ConsensusPrefetchingQueue {
     }
     final long intervalMs =
         SubscriptionConfig.getInstance().getSubscriptionConsensusWatermarkIntervalMs();
-    if (intervalMs <= 0) {
-      return; // Watermark disabled
+    if (intervalMs <= 0 || !hasAvailableEventSlot()) {
+      return; // Watermark disabled or the queue is full
     }
     final long now = System.currentTimeMillis();
     if (now - lastWatermarkEmitTimeMs >= intervalMs) {
@@ -3844,6 +3869,10 @@ public class ConsensusPrefetchingQueue {
 
   public long getSubscriptionUncommittedEventCount() {
     return inFlightEvents.size();
+  }
+
+  public long getSubscriptionRetainedEventCount() {
+    return prefetchingQueue.size() + inFlightEvents.size();
   }
 
   public long getRetainedTabletBytes() {
