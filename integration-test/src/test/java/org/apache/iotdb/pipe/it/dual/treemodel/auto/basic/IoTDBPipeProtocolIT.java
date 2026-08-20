@@ -353,11 +353,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
   }
 
-  @Test
-  public void testAirGapConnectorUseNodeUrls() throws Exception {
-    doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
-  }
-
   private void doTestUseNodeUrls(String sinkName) throws Exception {
     senderEnv
         .getConfig()
@@ -398,16 +393,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
     final StringBuilder nodeUrlsBuilder = new StringBuilder();
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
-      if (sinkName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
-        // Use default port for convenience
-        nodeUrlsBuilder
-            .append(wrapper.getIp())
-            .append(":")
-            .append(wrapper.getPipeAirGapReceiverPort())
-            .append(",");
-      } else {
-        nodeUrlsBuilder.append(wrapper.getIpAndPortString()).append(",");
-      }
+      nodeUrlsBuilder.append(wrapper.getIpAndPortString()).append(",");
     }
 
     try (final SyncConfigNodeIServiceClient client =
@@ -435,8 +421,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
       sourceAttributes.put("source.mods.enable", "true");
       sourceAttributes.put("user", "root");
 
-      // Test forced-log mode, in open releases this might be "file"
-      sourceAttributes.put("source.realtime.mode", "forced-log");
+      // Test batch mode
+      sourceAttributes.put("source.realtime.mode", "batch");
 
       TSStatus status =
           client.createPipe(
@@ -479,9 +465,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "count databases", "count,", Collections.singleton("2,"));
 
-      // Test file mode
+      // Test batch mode after metadata transfer
       sourceAttributes.put("source.inclusion", "data");
-      sourceAttributes.replace("source.realtime.mode", "file");
+      sourceAttributes.replace("source.realtime.mode", "batch");
 
       status =
           client.createPipe(

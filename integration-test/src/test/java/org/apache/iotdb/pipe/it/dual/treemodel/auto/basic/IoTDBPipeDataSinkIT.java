@@ -89,7 +89,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.realtime.mode", "log");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -151,7 +151,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.realtime.mode", "forced-log");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -251,7 +251,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
     testReceiverAutoCreate(
         new HashMap<String, String>() {
           {
-            put("source.realtime.mode", "forced-log");
+            put("source.realtime.mode", "batch");
             put("user", "root");
           }
         });
@@ -390,7 +390,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.realtime.mode", "forced-log");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
@@ -579,7 +579,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
             "flush",
             "delete timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.s0",
             String.format(
-                "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
+                "create pipe test with source ('source.realtime.mode'='batch','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
                 receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())));
 
     TestUtils.assertDataEventuallyOnEnv(
@@ -599,7 +599,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
         Arrays.asList(
             "delete timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.s1",
             String.format(
-                "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
+                "create pipe test with source ('source.realtime.mode'='batch','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
                 receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())));
 
     TestUtils.assertDataEventuallyOnEnv(

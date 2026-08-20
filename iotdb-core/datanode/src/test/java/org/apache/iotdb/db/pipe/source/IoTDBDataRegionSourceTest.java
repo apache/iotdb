@@ -53,6 +53,40 @@ public class IoTDBDataRegionSourceTest {
     }
   }
 
+  @Test(expected = PipeParameterNotValidException.class)
+  public void testIoTDBDataRegionExtractorRejectsForwardingPipeRequestsFalse() throws Exception {
+    try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
+      extractor.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY,
+                          Boolean.FALSE.toString());
+                    }
+                  })));
+    }
+  }
+
+  @Test
+  public void testIoTDBDataRegionExtractorIgnoresDoubleLiving() {
+    try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
+      extractor.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                          Boolean.TRUE.toString());
+                    }
+                  })));
+    } catch (final Exception e) {
+      Assert.fail();
+    }
+  }
+
   @Test
   public void testTsFileParserParameter() throws Exception {
     for (final String parser : new String[] {"query", "scan"}) {

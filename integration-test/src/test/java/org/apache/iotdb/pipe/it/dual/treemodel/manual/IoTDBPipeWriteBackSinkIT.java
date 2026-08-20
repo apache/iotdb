@@ -74,7 +74,7 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT 
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source.inclusion", "data.insert");
-      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("source.path", "root.source.**");
       sourceAttributes.put("user", "root");
 

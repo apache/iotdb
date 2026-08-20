@@ -72,7 +72,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
     // Create pipe
     final String sql =
         String.format(
-            "create pipe a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.realtime.mode'='stream') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
+            "create pipe a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.realtime.mode'='batch') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -94,8 +94,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=batch"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -148,8 +147,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test2"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=batch"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -187,7 +185,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test2"));
       Assert.assertFalse(
-          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
+          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=batch"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -249,7 +247,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "alter pipe a2b replace processor ('processor'='tumbling-time-sampling-processor')");
+          "alter pipe a2b replace processor ('processor'='iot-consensus-v2-processor')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -267,10 +265,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeProcessor
-              .contains("processor=tumbling-time-sampling-processor"));
+          showPipeResult.get(0).pipeProcessor.contains("processor=iot-consensus-v2-processor"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
       Assert.assertTrue(
           showPipeResult
@@ -306,10 +301,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeProcessor
-              .contains("processor=tumbling-time-sampling-processor"));
+          showPipeResult.get(0).pipeProcessor.contains("processor=iot-consensus-v2-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -344,10 +336,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeProcessor
-              .contains("processor=tumbling-time-sampling-processor"));
+          showPipeResult.get(0).pipeProcessor.contains("processor=iot-consensus-v2-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -382,10 +371,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeProcessor
-              .contains("processor=tumbling-time-sampling-processor"));
+          showPipeResult.get(0).pipeProcessor.contains("processor=iot-consensus-v2-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -420,10 +406,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source.path=root.test1.**"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertFalse(
-          showPipeResult
-              .get(0)
-              .pipeProcessor
-              .contains("processor=tumbling-time-sampling-processor"));
+          showPipeResult.get(0).pipeProcessor.contains("processor=iot-consensus-v2-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -456,10 +439,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
       // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertFalse(
-          showPipeResult
-              .get(0)
-              .pipeProcessor
-              .contains("processor=tumbling-time-sampling-processor"));
+          showPipeResult.get(0).pipeProcessor.contains("processor=iot-consensus-v2-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -499,85 +479,6 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
     } catch (SQLException e) {
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  public void testAlterPipeSourceAndProcessor() {
-    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
-    // Create pipe
-    final String sql =
-        String.format(
-            "create pipe a2b with source ('source' = 'iotdb-source','source.path' = 'root.db.d1.**') with processor ('processor'='tumbling-time-sampling-processor', 'processor.tumbling-time.interval-seconds'='1', 'processor.down-sampling.split-file'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
-            receiverDataNode.getIpAndPortString());
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute(sql);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
-
-    // Insert data on sender
-    TestUtils.executeNonQueries(
-        senderEnv,
-        Arrays.asList(
-            "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)",
-            "flush"),
-        null);
-
-    // Check data on receiver
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1000,1.0,");
-    expectedResSet.add("2000,3.0,");
-    expectedResSet.add("3000,5.0,");
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.db.**", "Time,root.db.d1.at1,", expectedResSet);
-
-    // Alter pipe (modify 'source.path', 'source.inclusion' and
-    // 'processor.tumbling-time.interval-seconds')
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute(
-          "alter pipe a2b modify source('source' = 'iotdb-source','source.path'='root.db.d2.**', 'source.inclusion'='all') modify processor ('processor.tumbling-time.interval-seconds'='2')");
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
-
-    // Insert data on sender
-    TestUtils.executeNonQueries(
-        senderEnv,
-        Arrays.asList(
-            "insert into root.db.d2 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
-            "flush"),
-        null);
-
-    // Insert data on sender
-    TestUtils.executeNonQueries(
-        senderEnv,
-        Arrays.asList(
-            "insert into root.db.d1 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
-            "flush"),
-        null);
-
-    // Check data on receiver
-    expectedResSet.clear();
-    expectedResSet.add("11000,null,1.0,");
-    expectedResSet.add("13000,null,5.0,");
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select * from root.db.** where time > 10000",
-        "Time,root.db.d1.at1,root.db.d2.at1,",
-        expectedResSet);
-
-    // Create database on sender
-    TestUtils.executeNonQuery(senderEnv, "create timeSeries root.db.d2.at2 int32", null);
-
-    // Check database on receiver
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count timeSeries root.db.**",
-        "count(timeseries),",
-        Collections.singleton("3,"));
   }
 
   @Test

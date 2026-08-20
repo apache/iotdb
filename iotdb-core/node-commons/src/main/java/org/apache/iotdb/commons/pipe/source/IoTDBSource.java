@@ -69,7 +69,7 @@ public abstract class IoTDBSource implements PipeExtractor {
   protected int regionId;
   protected PipeTaskMeta pipeTaskMeta;
 
-  protected boolean isForwardingPipeRequests;
+  protected boolean isForwardingPipeRequests = true;
 
   // The value is always true after the first start even the extractor is closed
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);

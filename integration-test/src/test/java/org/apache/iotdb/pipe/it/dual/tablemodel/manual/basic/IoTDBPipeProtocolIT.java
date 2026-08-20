@@ -219,8 +219,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
-      extractorAttributes.put("mode.streaming", "true");
-      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("source.realtime.mode", "batch");
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("user", "root");
 
@@ -263,8 +262,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test.*");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
-      extractorAttributes.put("mode.streaming", "true");
-      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("source.realtime.mode", "batch");
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("user", "root");
 
@@ -313,8 +311,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test.*");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
-      extractorAttributes.put("mode.streaming", "true");
-      extractorAttributes.put("mode.snapshot", "false");
+      extractorAttributes.put("source.realtime.mode", "batch");
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("user", "root");
 
@@ -356,11 +353,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testAsyncConnectorUseNodeUrls() throws Exception {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
-  }
-
-  @Test
-  public void testAirGapConnectorUseNodeUrls() throws Exception {
-    doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
   }
 
   private void doTestUseNodeUrls(String connectorName) throws Exception {
@@ -407,16 +399,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         };
 
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
-      if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
-        // Use default port for convenience
-        nodeUrlsBuilder
-            .append(wrapper.getIp())
-            .append(":")
-            .append(wrapper.getPipeAirGapReceiverPort())
-            .append(",");
-      } else {
-        nodeUrlsBuilder.append(wrapper.getIpAndPortString()).append(",");
-      }
+      nodeUrlsBuilder.append(wrapper.getIpAndPortString()).append(",");
     }
 
     try (final SyncConfigNodeIServiceClient client =
@@ -440,12 +423,11 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("database-name", "test.*");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
-      extractorAttributes.put("mode.snapshot", "false");
       extractorAttributes.put("mode.strict", "true");
       extractorAttributes.put("user", "root");
 
-      // Test forced-log mode, in open releases this might be "file"
-      extractorAttributes.put("realtime.mode", "forced-log");
+      // Test batch mode
+      extractorAttributes.put("realtime.mode", "batch");
 
       TSStatus status =
           client.createPipe(
@@ -465,7 +447,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
 
-      extractorAttributes.replace("realtime.mode", "file");
+      extractorAttributes.replace("realtime.mode", "batch");
 
       status =
           client.createPipe(

@@ -200,7 +200,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
                 + " with source ('source'='iotdb-source','realtime.mode'='%s','history.enable'='%s')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='%s')",
-            isTSFile ? "file" : "forced-log",
+            "batch",
             isTSFile,
             receiverEnv.getIP(),
             receiverEnv.getPort(),
