@@ -265,7 +265,7 @@ public class PipeTaskInfoAutoRestartTest {
   }
 
   @Test
-  public void testHandleSuccessfulRestartClearsRuntimeExceptionMessages() {
+  public void testHandleSuccessfulRestartKeepsRuntimeExceptionMessages() {
     final String pipeName = "restartPipe";
     createPipe(pipeName, PipeStatus.RUNNING);
 
@@ -288,7 +288,7 @@ public class PipeTaskInfoAutoRestartTest {
 
     Assert.assertEquals(PipeStatus.RUNNING, runtimeMeta.getStatus().get());
     Assert.assertFalse(runtimeMeta.getIsStoppedByRuntimeException());
-    Assert.assertTrue(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().isEmpty());
+    Assert.assertFalse(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().isEmpty());
     Assert.assertEquals(exceptionsClearTime, runtimeMeta.getExceptionsClearTime());
   }
 

@@ -1011,12 +1011,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Clear the exceptions of a pipe locally after it starts successfully.
+   * Mark the existing exceptions of a pipe as handled after it starts successfully.
    *
-   * <p>If there are exceptions cleared or flag changed, the messages will then be updated to all
-   * the nodes through {@link PipeHandleMetaChangeProcedure}.
+   * <p>The exception history is retained for user inspection. The clear time and runtime-stop flag
+   * are updated and then synchronized to all nodes through {@link PipeHandleMetaChangeProcedure},
+   * so agents can discard stale local exceptions without erasing the coordinator's history.
    *
-   * @param pipeName The name of the pipe to be clear exception
+   * @param pipeName the name of the restarted pipe
    */
   public void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(final String pipeName) {
     acquireWriteLock();
@@ -1089,23 +1090,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
     // To avoid unnecessary retries, we set the isStoppedByRuntimeException flag to false
     runtimeMeta.setIsStoppedByRuntimeException(false);
 
+    // Keep the exception history for user inspection. The clear time is still advanced so stale
+    // exceptions reported by agents from before this restart do not stop the pipe again.
     runtimeMeta.setExceptionsClearTime(exceptionsClearTime);
-
-    final Map<Integer, PipeRuntimeException> exceptionMap =
-        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
-    if (!exceptionMap.isEmpty()) {
-      exceptionMap.clear();
-    }
-
-    runtimeMeta
-        .getConsensusGroupId2TaskMetaMap()
-        .values()
-        .forEach(
-            pipeTaskMeta -> {
-              if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
-                pipeTaskMeta.clearExceptionMessages();
-              }
-            });
   }
 
   public void setIsStoppedByRuntimeExceptionToFalse(final String pipeName) {

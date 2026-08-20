@@ -212,6 +212,14 @@ public abstract class PipeTaskAgent {
 
   private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
       throws IllegalPathException {
+    // Exceptions stored by the coordinator are user-facing history. Do not feed them back into
+    // the local task runtime, otherwise a restarted pipe would immediately report stale failures.
+    metaFromCoordinator
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .values()
+        .forEach(PipeTaskMeta::clearExceptionMessages);
+
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
     final long creationTime = metaFromCoordinator.getStaticMeta().getCreationTime();
 

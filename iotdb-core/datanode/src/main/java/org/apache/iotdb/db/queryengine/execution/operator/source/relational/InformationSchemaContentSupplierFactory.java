@@ -156,6 +156,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_BUILTIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.ShowExternalServiceTask.appendServiceEntry;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask.suggestedActionParser;
 
 public class InformationSchemaContentSupplierFactory {
 
@@ -687,8 +688,13 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(tPipeInfo.getPipeProcessor(), TSFileConfig.STRING_CHARSET));
       columnBuilders[5].writeBinary(
           new Binary(tPipeInfo.getPipeConnector(), TSFileConfig.STRING_CHARSET));
+
+      final String exceptionMessage = tPipeInfo.getExceptionMessage();
       columnBuilders[6].writeBinary(
           new Binary(tPipeInfo.getExceptionMessage(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[7].writeBinary(
+          new Binary(
+              suggestedActionParser(exceptionMessage).toString(), TSFileConfig.STRING_CHARSET));
 
       // Optional, default 0/0.0
       long remainingEventCount = tPipeInfo.getRemainingEventCount();
@@ -702,14 +708,14 @@ public class InformationSchemaContentSupplierFactory {
         remainingTime = remainingEventAndTime.getRight();
       }
 
-      columnBuilders[7].writeLong(tPipeInfo.isSetRemainingEventCount() ? remainingEventCount : -1);
-      columnBuilders[8].writeDouble(tPipeInfo.isSetEstimatedRemainingTime() ? remainingTime : -1);
+      columnBuilders[8].writeLong(tPipeInfo.isSetRemainingEventCount() ? remainingEventCount : -1);
+      columnBuilders[9].writeDouble(tPipeInfo.isSetEstimatedRemainingTime() ? remainingTime : -1);
       if (tPipeInfo.isSetIsDegraded()) {
-        columnBuilders[9].writeBoolean(tPipeInfo.isIsDegraded());
+        columnBuilders[10].writeBoolean(tPipeInfo.isIsDegraded());
       } else {
-        columnBuilders[9].appendNull();
+        columnBuilders[10].appendNull();
       }
-      columnBuilders[10].writeBinary(
+      columnBuilders[11].writeBinary(
           new Binary(
               tPipeInfo.isSetRecentFailures()
                   ? new TreeMap<>(tPipeInfo.getRecentFailures()).toString()
