@@ -295,7 +295,8 @@ public class WritePlanNodeSplitTest {
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDeviceID(
         insertTabletNode.getTargetPath().getIDeviceIDAsFullDevice());
-    dataPartitionQueryParam.setTimePartitionSlotList(insertTabletNode.getTimePartitionSlots());
+    dataPartitionQueryParam.setTimePartitionSlotList(
+        insertTabletNode.getTimePartitionSlots("root.sg1"));
 
     DataPartition dataPartition =
         getDataPartition(Collections.singletonList(dataPartitionQueryParam));
