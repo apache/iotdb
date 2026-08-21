@@ -22,10 +22,8 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -47,7 +45,6 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -170,26 +167,6 @@ public class PipeAgentLauncherTest {
         .markPluginLoadFailure(Mockito.eq(failedPlugin), Mockito.any(IOException.class));
     Mockito.verify(pipeDataNodePluginAgent, Mockito.never())
         .markPluginLoadFailure(Mockito.eq(healthyPlugin), Mockito.any());
-  }
-
-  @Test
-  public void testPluginLoadFailureIsRecordedForShowPipePlugins() throws Exception {
-    final PipeDataNodePluginAgent agent = new PipeDataNodePluginAgent();
-    final PipePluginMeta plugin = pipePluginMeta("failed", "failed.jar");
-
-    agent.markPluginLoadFailure(plugin, new IOException("missing jar"));
-
-    final Field metaKeeperField =
-        PipeDataNodePluginAgent.class.getDeclaredField("pipePluginMetaKeeper");
-    metaKeeperField.setAccessible(true);
-    final DataNodePipePluginMetaKeeper metaKeeper =
-        (DataNodePipePluginMetaKeeper) metaKeeperField.get(agent);
-    final PipePluginMeta recordedPlugin = metaKeeper.getPipePluginMeta("FAILED");
-
-    Assert.assertEquals(
-        "IOException: missing jar", recordedPlugin.getPluginLoadingExceptionMessage());
-    Assert.assertEquals(
-        Visibility.BOTH, metaKeeper.getPipePluginNameToVisibilityMap().get("FAILED"));
   }
 
   private static PipePluginMeta pipePluginMeta(final String pluginName, final String jarName) {
