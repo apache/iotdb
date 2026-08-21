@@ -209,6 +209,7 @@ public enum PlanNodeType {
   RELATIONAL_INSERT_ROWS((short) 2002),
   RELATIONAL_DELETE_DATA((short) 2003),
   OBJECT_FILE_NODE((short) 2004),
+  LOAD_TSFILE_CONSENSUS((short) 2010),
   ;
 
   private static final IPlanNodeDeserializer DESERIALIZER;

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -56,6 +57,9 @@ public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqRead
   WALFlushListener log(long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode);
 
   WALFlushListener log(long memTableId, ObjectNode objectNode);
+
+  /** Log consensus-backed LOAD request. */
+  WALFlushListener log(long memTableId, LoadTsFileConsensusNode loadTsFileConsensusNode);
 
   /** Callback when memTable created. */
   void onMemTableCreated(IMemTable memTable, String targetTsFile);

@@ -29,6 +29,7 @@ import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -205,6 +206,12 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, ObjectNode objectNode) {
     WALEntry walEntry = new WALInfoEntry(memTableId, objectNode);
+    return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, LoadTsFileConsensusNode loadTsFileConsensusNode) {
+    WALEntry walEntry = new WALInfoEntry(memTableId, loadTsFileConsensusNode);
     return log(walEntry);
   }
 

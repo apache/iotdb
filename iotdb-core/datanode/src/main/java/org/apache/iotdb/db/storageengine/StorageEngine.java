@@ -171,6 +171,10 @@ public class StorageEngine implements IService {
 
   private final LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
 
+  public LoadTsFileManager getLoadTsFileManager() {
+    return loadTsFileManager;
+  }
+
   public final AtomicLong objectFileId = new AtomicLong(0);
 
   private StorageEngine() {}

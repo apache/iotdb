@@ -621,6 +621,12 @@ public interface PlanVisitor<R, C> extends ICoreQueryPlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  default R visitLoadTsFileConsensus(
+      org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode node,
+      C context) {
+    return visitPlan(node, context);
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Pipe Related Node
   /////////////////////////////////////////////////////////////////////////////////////////////////

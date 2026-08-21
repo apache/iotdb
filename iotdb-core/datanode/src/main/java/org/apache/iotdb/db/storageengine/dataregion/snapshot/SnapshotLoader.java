@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -156,6 +157,7 @@ public class SnapshotLoader {
         // IoTConsensus fragments arrive under different recv folders; do not map each
         // fragment back to the same disk as its recv path, rely on fileTarget instead.
         createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, fileTarget, false);
+        restoreLoadTasksFromSnapshotDir(snapshotDir);
         loadCompressionRatio(snapshotDir);
       }
       return loadSnapshot();
@@ -178,6 +180,7 @@ public class SnapshotLoader {
       LOGGER.info(StorageEngineMessages.MOVING_SNAPSHOT_FILE_TO_DATA_DIRS);
       File snapshotDir = new File(snapshotPath);
       createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, new HashMap<>(), true);
+      restoreLoadTasksFromSnapshotDir(snapshotDir);
       loadCompressionRatio(snapshotDir);
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
@@ -236,6 +239,7 @@ public class SnapshotLoader {
         deleteAllFilesInDataDirs();
         LOGGER.info(StorageEngineMessages.REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR);
         createLinksFromSnapshotDirToDataDirWithLog();
+        restoreLoadTasksFromSnapshotDir(new File(snapshotPath));
         loadCompressionRatio(new File(snapshotPath));
         return loadSnapshot();
       } catch (IOException e) {
@@ -245,6 +249,22 @@ public class SnapshotLoader {
     } finally {
       logAnalyzer.close();
     }
+  }
+
+  /**
+   * Restores the in-progress LOAD staging files carried by this snapshot's {@value
+   * LoadTsFileManager#LOAD_SNAPSHOT_DIR_NAME} directory, if any. A failure here must fail the whole
+   * snapshot load: silently dropping the staged files would let a later COMMIT replay hit a
+   * high-availability hole instead of continuing the load.
+   */
+  private void restoreLoadTasksFromSnapshotDir(File snapshotDir) throws IOException {
+    final File loadSnapshotDir = new File(snapshotDir, LoadTsFileManager.LOAD_SNAPSHOT_DIR_NAME);
+    if (!loadSnapshotDir.isDirectory()) {
+      return;
+    }
+    StorageEngine.getInstance()
+        .getLoadTsFileManager()
+        .restoreLoadTasksFromSnapshot(loadSnapshotDir);
   }
 
   private void deleteAllFilesInDataDirs() throws IOException {

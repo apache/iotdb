@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.CommonPlanNod
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DeviceSchemaFetchScanNode;
@@ -172,6 +173,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return RelationalDeleteDataNode.deserializeFromWAL(stream);
       case 2004:
         return ObjectNode.deserializeFromWAL(stream);
+      case 2010:
+        return LoadTsFileConsensusNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException(DataNodeQueryMessages.INVALID_NODE_TYPE + nodeType);
     }
@@ -201,6 +204,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return RelationalDeleteDataNode.deserializeFromWAL(buffer);
       case 2004:
         return ObjectNode.deserialize(buffer);
+      case 2010:
+        return LoadTsFileConsensusNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException(DataNodeQueryMessages.INVALID_NODE_TYPE + nodeType);
     }
@@ -481,6 +486,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return RelationalDeleteDataNode.deserialize(buffer);
       case 2004:
         return ObjectNode.deserialize(buffer);
+      case 2010:
+        return LoadTsFileConsensusNode.deserialize(buffer);
       default:
         return super.deserialize(buffer, nodeType);
     }
