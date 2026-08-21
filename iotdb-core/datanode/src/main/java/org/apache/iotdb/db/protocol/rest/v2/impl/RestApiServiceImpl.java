@@ -367,7 +367,9 @@ public class RestApiServiceImpl extends RestApiService {
       return responseGenerateHelper(result);
 
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertRowsStatement)
@@ -421,7 +423,9 @@ public class RestApiServiceImpl extends RestApiService {
               false);
       return responseGenerateHelper(result);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertTabletStatement)
