@@ -38,8 +38,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.audit.DNAuditLogger;
@@ -50,6 +48,7 @@ import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
+import org.apache.iotdb.db.queryengine.common.CteMaterializationContext;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
@@ -473,7 +472,7 @@ public class Coordinator {
       SessionInfo session,
       String sql,
       Metadata metadata,
-      Map<NodeRef<Table>, Query> cteQueries,
+      CteMaterializationContext cteMaterializationContext,
       ExplainType explainType,
       ExplainOutputFormat explainOutputFormat,
       long timeOut,
@@ -488,7 +487,10 @@ public class Coordinator {
         debug,
         ((queryContext, startTime) -> {
           queryContext.setInnerTriggeredQuery(true);
-          queryContext.setCteQueries(cteQueries);
+          // Inner queries are part of the same top-level execution, so they must see its
+          // materialized CTE data while remaining isolated from other EXECUTE commands that may
+          // reuse the same prepared AST.
+          queryContext.setCteMaterializationContext(cteMaterializationContext);
           queryContext.setExplainType(explainType);
           queryContext.setExplainOutputFormat(explainOutputFormat);
           queryContext.setVerbose(isVerbose);
