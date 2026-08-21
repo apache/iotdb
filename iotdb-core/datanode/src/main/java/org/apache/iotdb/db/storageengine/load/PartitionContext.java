@@ -211,6 +211,18 @@ final class PartitionContext {
     return currentWritingDevice;
   }
 
+  String getDatabaseName() {
+    return partitionInfo.getDataRegion().getDatabaseName();
+  }
+
+  String getRegionId() {
+    return partitionInfo.getDataRegion().getDataRegionIdString();
+  }
+
+  boolean isFinalized() {
+    return finalized;
+  }
+
   long getTimePartitionStart() {
     return partitionInfo.getTimePartitionSlot().getStartTime();
   }
@@ -428,6 +440,42 @@ final class PartitionContext {
     // itself is deleted later by close().
     if (modificationFile != null) {
       modificationFile.close();
+    }
+  }
+
+  /**
+   * Forces the staged file to disk. Called after every applied PIECE before the task meta is
+   * persisted, so the durable applied-piece prefix never covers bytes that could be lost by a
+   * machine crash.
+   */
+  void forceStagedFile() throws IOException {
+    writer.flush();
+    forceFile(writer.getFile());
+  }
+
+  /**
+   * Closes the writer channel and the modification file without deleting anything. Used by the
+   * graceful-shutdown path: an in-progress LOAD must survive a restart, so the staged files are
+   * kept on disk and rebuilt by the next startup's unsealed-file recovery.
+   */
+  void closeWriterOnly() {
+    if (writer.canWrite()) {
+      try {
+        writer.close();
+      } catch (IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.CLOSE_TSFILE_IO_WRITER_ERROR, writer.getFile().getPath(), e);
+      }
+    }
+    if (modificationFile != null) {
+      try {
+        modificationFile.close();
+      } catch (IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.CLOSE_MODIFICATION_FILE_ERROR,
+            modificationFile.getFile().getPath(),
+            e);
+      }
     }
   }
 

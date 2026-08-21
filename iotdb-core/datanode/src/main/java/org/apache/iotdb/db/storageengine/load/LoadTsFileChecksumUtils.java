@@ -42,10 +42,21 @@ public final class LoadTsFileChecksumUtils {
    * result.
    */
   public static long checksum(final List<TsFileData> dataList) {
+    return checksum(0L, dataList);
+  }
+
+  /**
+   * Computes the checksum of one consensus PIECE: the coordinator-assigned {@code pieceIndex} is
+   * part of the digest, so two identical payloads at different indexes (or a reordered payload)
+   * never produce the same checksum. Both the write node and every follower apply the same
+   * function, keeping per-piece dedup, conflict detection and the PREPARE aggregate consistent.
+   */
+  public static long checksum(final long pieceIndex, final List<TsFileData> dataList) {
     try {
       final MessageDigest digest = MessageDigest.getInstance("SHA-256");
       final DataOutputStream stream =
           new DataOutputStream(new DigestOutputStream(OutputStream.nullOutputStream(), digest));
+      ReadWriteIOUtils.write(pieceIndex, stream);
       for (TsFileData data : dataList) {
         ReadWriteIOUtils.write(data.getType().ordinal(), stream);
         data.serialize(stream);
@@ -60,5 +71,15 @@ public final class LoadTsFileChecksumUtils {
     } catch (NoSuchAlgorithmException | IOException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  /**
+   * Combines the next piece checksum into a running aggregate in a strictly order-sensitive way
+   * (rotate-then-XOR). XOR alone is commutative, so it cannot detect pieces applied in a different
+   * order; this rolling combination makes the PREPARE aggregate depend on the exact piece sequence,
+   * which is the minimum requirement for a "fast" final consistency check.
+   */
+  public static long combine(final long aggregate, final long pieceChecksum) {
+    return Long.rotateLeft(aggregate, 13) ^ pieceChecksum;
   }
 }

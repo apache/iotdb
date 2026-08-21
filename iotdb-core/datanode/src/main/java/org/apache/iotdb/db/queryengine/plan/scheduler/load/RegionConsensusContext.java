@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
+import org.apache.iotdb.db.storageengine.load.LoadTsFileChecksumUtils;
+
 import java.util.UUID;
 
 /**
@@ -84,6 +86,8 @@ public class RegionConsensusContext {
   public void accumulate(long bytes, long pieceChecksum) {
     pieceCount++;
     totalBytes += bytes;
-    checksum ^= pieceChecksum;
+    // Order-sensitive aggregation (rotate-then-XOR): the aggregate must depend on the exact piece
+    // order, because the plain XOR used before could not detect reordered or swapped pieces.
+    checksum = LoadTsFileChecksumUtils.combine(checksum, pieceChecksum);
   }
 }

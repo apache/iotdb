@@ -649,7 +649,9 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     if (ref.content != null) {
       return ref.content;
     }
-    final byte[] content = new byte[(int) Math.max(0, ref.size)];
+    // PieceRef construction already validated offset/size bounds (non-negative, no overflow,
+    // within int range), so the narrowing cast below is safe.
+    final byte[] content = new byte[(int) ref.size];
     if (content.length == 0) {
       return content;
     }
@@ -757,6 +759,21 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     }
 
     public PieceRef(String relativePath, long offset, long size, byte[] content) {
+      // Bounds/overflow guard before the legacy raw-ref path casts size to int and seeks the file:
+      // a malformed or hostile ref must fail here instead of truncating, overflowing or escaping
+      // into an arbitrary byte array.
+      if (offset < 0
+          || size < 0
+          || size > Integer.MAX_VALUE
+          || offset + size < 0
+          || offset + size > Integer.MAX_VALUE) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507,
+                relativePath,
+                offset,
+                size));
+      }
       this.relativePath = relativePath;
       this.offset = offset;
       this.size = size;

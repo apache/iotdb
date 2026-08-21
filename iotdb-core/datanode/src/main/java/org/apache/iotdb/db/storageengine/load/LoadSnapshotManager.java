@@ -47,15 +47,10 @@ final class LoadSnapshotManager {
   private static final String APPLIED_PIECES_PREFIX = "#applied ";
 
   private final LoadTaskRegistry registry;
-  private final LoadCleanupScheduler cleanupScheduler;
   private final TaskDirAllocator taskDirAllocator;
 
-  LoadSnapshotManager(
-      LoadTaskRegistry registry,
-      LoadCleanupScheduler cleanupScheduler,
-      TaskDirAllocator taskDirAllocator) {
+  LoadSnapshotManager(LoadTaskRegistry registry, TaskDirAllocator taskDirAllocator) {
     this.registry = registry;
-    this.cleanupScheduler = cleanupScheduler;
     this.taskDirAllocator = taskDirAllocator;
   }
 
@@ -148,7 +143,6 @@ final class LoadSnapshotManager {
           }
           throw e;
         }
-        cleanupScheduler.registerOrRefresh(uuid);
         taskCount++;
       } else {
         // A snapshot may be spread across several receive folders: merge the remaining files
@@ -157,7 +151,9 @@ final class LoadSnapshotManager {
       }
       writerManager.registerRestoredPartitions(taskSnapshot.stagedFiles);
       writerManager.restoreAppliedPieces(taskSnapshot.appliedPieces);
-      cleanupScheduler.markRunning(uuid);
+      // Persist the merged state into the task meta so a later restart rebuilds the same applied
+      // prefix and staged file list instead of discarding the load.
+      writerManager.persistTaskMeta();
       stagedFileCount += taskSnapshot.stagedFiles.size();
     }
     if (taskCount > 0) {

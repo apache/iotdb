@@ -41,6 +41,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileDataType;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -84,6 +85,21 @@ final class TsFileWriterManager {
   /** Sub-directory holding the retained serialized PIECE bytes (the backfill source). */
   private static final String RETAINED_PIECES_DIR_NAME = "pieces";
 
+  /**
+   * Durable per-task bookkeeping inside the task directory: the applied-piece prefix and the staged
+   * partition files (same format as the snapshot meta). Written on every applied PIECE and on
+   * PREPARE so a restart can rebuild this manager instead of discarding the load.
+   */
+  private static final String TASK_META_NAME = "task.meta";
+
+  /**
+   * Marker written right before the terminal cleanup of a load. It is the only restart-time cleanup
+   * exception: a task dir carrying this marker already reached COMMIT (files were loaded) or ABORT
+   * (files are intentionally discarded), so the leftover dir is garbage and can be deleted at
+   * startup. Any dir without it is an in-progress load and must be rebuilt, not cleaned.
+   */
+  private static final String TERMINAL_MARKER_NAME = "terminal.marker";
+
   private final File taskDir;
   private final ReentrantLock taskLock = new ReentrantLock();
 
@@ -126,6 +142,13 @@ final class TsFileWriterManager {
 
   private boolean isClosed;
 
+  /**
+   * Whether this manager was rebuilt from a durable task meta (or has nothing on disk yet). A task
+   * dir whose meta cannot be reconciled must not be resumed: applying further pieces into it could
+   * silently fork or drop data, so the coordinator is left to fail loudly and abort instead.
+   */
+  private boolean recoveredFromDisk = true;
+
   TsFileWriterManager(File taskDir) {
     this(taskDir, true);
   }
@@ -135,10 +158,11 @@ final class TsFileWriterManager {
     if (clearExistingDir) {
       clearDir(taskDir);
     } else {
-      // A task dir restored from a snapshot may already carry the retained PIECE bytes that were
-      // durable before the crash; reload them so marker replay can be backfilled locally instead
-      // of depending on a live write node.
+      // A task dir rebuilt after a restart or restored from a snapshot already carries the durable
+      // retained PIECE bytes and the task meta; reload them so marker replay can be backfilled
+      // locally and the already-applied prefix is respected instead of re-appending the data.
       loadRetainedPiecesFromDisk();
+      recoverFromDisk();
     }
   }
 
@@ -148,6 +172,39 @@ final class TsFileWriterManager {
 
   File getTaskDir() {
     return taskDir;
+  }
+
+  /**
+   * Marks this task as terminated (COMMIT/ABORT reached) so a restart can discard the leftovers.
+   */
+  void markTerminal() {
+    taskLock.lock();
+    try {
+      final File marker = new File(taskDir, TERMINAL_MARKER_NAME);
+      try {
+        Files.write(marker.toPath(), new byte[0]);
+        try (final FileChannel channel =
+            FileChannel.open(marker.toPath(), StandardOpenOption.WRITE)) {
+          channel.force(true);
+        }
+      } catch (IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433,
+            getTaskName(),
+            marker,
+            e.getMessage());
+      }
+    } finally {
+      taskLock.unlock();
+    }
+  }
+
+  boolean isTerminal() {
+    return new File(taskDir, TERMINAL_MARKER_NAME).isFile();
+  }
+
+  boolean isRecoveredFromDisk() {
+    return recoveredFromDisk;
   }
 
   private void clearDir(File dir) {
@@ -314,6 +371,7 @@ final class TsFileWriterManager {
     taskLock.lock();
     try {
       recordAppliedPieceUnlocked(pieceIndex, checksum);
+      persistTaskMeta();
     } finally {
       taskLock.unlock();
     }
@@ -329,15 +387,16 @@ final class TsFileWriterManager {
     }
   }
 
-  /** XOR of every applied piece checksum, for the PREPARE reconciliation. */
+  /**
+   * Order-sensitive aggregate of every applied piece checksum, for the PREPARE reconciliation. The
+   * pieces are folded in ascending piece-index order so a swapped or reordered piece changes the
+   * result, matching the coordinator's {@link
+   * org.apache.iotdb.db.queryengine.plan.scheduler.load.RegionConsensusContext} accumulation.
+   */
   long getAppliedPiecesChecksum() {
     taskLock.lock();
     try {
-      long checksum = 0;
-      for (final long pieceChecksum : appliedPieceIndex2Checksum.values()) {
-        checksum ^= pieceChecksum;
-      }
-      return checksum;
+      return computeAppliedPiecesChecksumUnlocked();
     } finally {
       taskLock.unlock();
     }
@@ -345,10 +404,10 @@ final class TsFileWriterManager {
 
   /**
    * Verifies that the pieces applied on this node match the PREPARE summary accumulated by the
-   * coordinator: the applied piece count and the XOR of every applied piece checksum must equal the
-   * expected values. A mismatch means a piece was lost or replaced on this node (e.g. the write
-   * node switched mid-load and this node never received some markers), so the staged file must not
-   * be sealed or loaded silently.
+   * coordinator: the applied piece count and the order-sensitive aggregate of every applied piece
+   * checksum must equal the expected values. A mismatch means a piece was lost, replaced or
+   * reordered on this node (e.g. the write node switched mid-load and this node never received some
+   * markers), so the staged file must not be sealed or loaded silently.
    */
   boolean verifyAppliedPieces(int expectedCount, long expectedChecksum) {
     taskLock.lock();
@@ -356,14 +415,28 @@ final class TsFileWriterManager {
       if (appliedPieceIndex2Checksum.size() != expectedCount) {
         return false;
       }
-      long checksum = 0;
-      for (final long pieceChecksum : appliedPieceIndex2Checksum.values()) {
-        checksum ^= pieceChecksum;
-      }
-      return checksum == expectedChecksum;
+      return computeAppliedPiecesChecksumUnlocked() == expectedChecksum;
     } finally {
       taskLock.unlock();
     }
+  }
+
+  /**
+   * Folds {@link #appliedPieceIndex2Checksum} in ascending piece-index order with {@link
+   * LoadTsFileChecksumUtils#combine(long, long)}. Caller must hold {@link #taskLock}.
+   */
+  private long computeAppliedPiecesChecksumUnlocked() {
+    long checksum = 0;
+    for (long pieceIndex = 0; pieceIndex < appliedPieceIndex2Checksum.size(); pieceIndex++) {
+      final Long pieceChecksum = appliedPieceIndex2Checksum.get(pieceIndex);
+      if (pieceChecksum == null) {
+        // A hole in the applied prefix: the aggregate cannot be computed, which is itself a
+        // mismatch (a non-contiguous task must never pass PREPARE).
+        return Long.MIN_VALUE;
+      }
+      checksum = LoadTsFileChecksumUtils.combine(checksum, pieceChecksum);
+    }
+    return checksum;
   }
 
   /** Whether this task was rebuilt from raw byte refs (legacy WAL format without piece records). */
@@ -627,6 +700,15 @@ final class TsFileWriterManager {
       checkNotClosed();
       appendChunkPieceUnlocked(dataRegion, dataList);
       recordAppliedPieceUnlocked(pieceIndex, checksum);
+      // Force every staged file before persisting the applied-piece prefix: a restart must never
+      // observe an applied prefix whose bytes are not durable, otherwise it would rebuild the task
+      // from a prefix that overstates the staged data.
+      for (final PartitionContext context : partitionContexts.values()) {
+        context.forceStagedFile();
+      }
+      // Persist the applied-piece prefix durably right after so a restart can rebuild this task
+      // from disk instead of discarding the load.
+      persistTaskMeta();
     } finally {
       taskLock.unlock();
     }
@@ -735,6 +817,9 @@ final class TsFileWriterManager {
       for (final PartitionContext context : partitionContexts.values()) {
         context.finalizeFile(pendingPieceRefs);
       }
+      // PREPARE sealed the staged files; persist the finalized flag so a restart can bind the
+      // sealed files at COMMIT instead of re-opening them as unsealed writers.
+      persistTaskMeta();
     } finally {
       taskLock.unlock();
     }
@@ -780,8 +865,23 @@ final class TsFileWriterManager {
                     currentLength));
           }
           channel.position(ref.getOffset());
-          channel.write(ByteBuffer.wrap(content));
+          final ByteBuffer buffer = ByteBuffer.wrap(content);
+          while (buffer.hasRemaining()) {
+            // FileChannel.write does not guarantee a full write on one call (short write under
+            // load); loop until every byte is written, then verify the resulting length.
+            channel.write(buffer);
+          }
           channel.force(true);
+          if (channel.size() != ref.getOffset() + content.length) {
+            throw new IOException(
+                String.format(
+                    StorageEngineMessages.EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_SHORT_WRITE_E7392FAD,
+                    targetFile,
+                    taskDir.getName(),
+                    ref.getOffset(),
+                    ref.getOffset() + content.length,
+                    channel.size()));
+          }
         }
         if (rawTsFilePaths.add(targetFile.getAbsolutePath())) {
           rawTsFiles.add(new RawTsFile(targetFile, dataRegion));
@@ -924,6 +1024,143 @@ final class TsFileWriterManager {
     }
   }
 
+  /**
+   * Collects the durable bookkeeping of this task in the same format as the snapshot meta: every
+   * staged partition file (live writers plus files restored from a snapshot) and the applied-piece
+   * prefix. Caller must hold {@link #taskLock}.
+   */
+  private LoadSnapshotManager.TaskSnapshot collectTaskMeta() {
+    final List<StagedFileSnapshot> stagedFiles = new ArrayList<>();
+    for (final PartitionContext context : partitionContexts.values()) {
+      stagedFiles.add(
+          new StagedFileSnapshot(
+              context.getWriter().getFile().getName(),
+              context.getDatabaseName(),
+              context.getRegionId(),
+              context.getTimePartitionStart(),
+              context.isFinalized()));
+    }
+    for (final Map.Entry<RestoredPartitionKey, RestoredLoadFile> entry :
+        restoredPartitions.entrySet()) {
+      final RestoredLoadFile restored = entry.getValue();
+      stagedFiles.add(
+          new StagedFileSnapshot(
+              restored.file.getName(),
+              restored.database,
+              restored.regionId,
+              entry.getKey().timePartitionStart,
+              restored.finalized));
+    }
+    final StringBuilder appliedPieces = new StringBuilder();
+    for (final Map.Entry<Long, Long> entry : appliedPieceIndex2Checksum.entrySet()) {
+      appliedPieces.append(entry.getKey()).append(':').append(entry.getValue()).append(',');
+    }
+    return new LoadSnapshotManager.TaskSnapshot(stagedFiles, appliedPieces.toString());
+  }
+
+  /**
+   * Persists the task meta ({@value #TASK_META_NAME}) next to the staged files. It is the source of
+   * truth for a restart: the applied-piece prefix makes marker replay idempotent and the staged
+   * file list lets the next startup rebuild the unsealed writers. A failure only costs the resume
+   * capability (the load then fails loudly at PREPARE and the coordinator aborts it); it never
+   * corrupts the staged data itself.
+   */
+  void persistTaskMeta() {
+    taskLock.lock();
+    try {
+      final File metaFile = new File(taskDir, TASK_META_NAME);
+      try {
+        LoadSnapshotManager.writeSnapshotMeta(metaFile, collectTaskMeta());
+        // Force the meta so the applied prefix is durable together with the forced staged bytes.
+        try (final FileChannel channel =
+            FileChannel.open(metaFile.toPath(), StandardOpenOption.WRITE)) {
+          channel.force(true);
+        }
+      } catch (IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.LOG_LOAD_CONSENSUS_TASK_META_WRITE_FAILED_5D2420BF,
+            getTaskName(),
+            metaFile,
+            e.getMessage());
+      }
+    } finally {
+      taskLock.unlock();
+    }
+  }
+
+  /**
+   * Rebuilds the in-memory applied-piece prefix and the restored-partition registry from the task
+   * meta left by the previous session, so an in-progress LOAD survives a restart: replayed markers
+   * are idempotent and the next PIECE re-opens the unsealed staged files at the exact durable
+   * boundary. Called by the constructor when the task dir is reused (restart or snapshot restore).
+   */
+  private void recoverFromDisk() {
+    final File metaFile = new File(taskDir, TASK_META_NAME);
+    if (!metaFile.isFile()) {
+      // No durable bookkeeping: the task is resumable only when nothing was staged yet. A dir with
+      // staged files but no meta (e.g. a torn first piece or a legacy raw-ref task) cannot be
+      // reconciled, so it must not be resumed.
+      recoveredFromDisk = !hasStagedFilesOnDisk();
+      return;
+    }
+    try {
+      final LoadSnapshotManager.TaskSnapshot snapshot =
+          LoadSnapshotManager.parseSnapshotMeta(metaFile);
+      restoreAppliedPieces(snapshot.getAppliedPieces());
+      registerRestoredPartitions(snapshot.getStagedFiles());
+      persistTaskMeta();
+      recoveredFromDisk = true;
+    } catch (IOException e) {
+      LOGGER.warn(
+          StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB,
+          getTaskName(),
+          e.getMessage());
+      recoveredFromDisk = false;
+    }
+  }
+
+  /** Whether the task dir already carries staged partition files that are not covered by a meta. */
+  private boolean hasStagedFilesOnDisk() {
+    final File[] files = taskDir.listFiles();
+    if (files == null) {
+      return false;
+    }
+    for (final File file : files) {
+      if (file.isFile() && file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Closes every writer channel and modification file without deleting the staged files. Used by
+   * the graceful-shutdown path so an in-progress LOAD survives a restart; the next startup's {@code
+   * recoverFromDisk()} re-opens the files with the unsealed-TsFile recovery mechanism.
+   */
+  void closeForShutdown() {
+    taskLock.lock();
+    try {
+      if (isClosed) {
+        return;
+      }
+      for (final PartitionContext context : partitionContexts.values()) {
+        context.closeWriterOnly();
+      }
+      partitionContexts.clear();
+      device2Partition.clear();
+      pendingPieceRefs.clear();
+      rawTsFiles.clear();
+      rawTsFilePaths.clear();
+      restoredPartitions.clear();
+      cachedPieces.clear();
+      retainedPieces.clear();
+      isClosed = true;
+    } finally {
+      taskLock.unlock();
+    }
+  }
+
   void loadAll(
       DataRegion dataRegion,
       boolean isGeneratedByPipe,
@@ -959,6 +1196,8 @@ final class TsFileWriterManager {
         }
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+        // Legacy raw-ref files carry no time-partition slot, so their progress cannot be mapped
+        // back to the coordinator's per-slot progress; fall back to MinimumProgressIndex.
         tsFileResource.setProgressIndex(MinimumProgressIndex.INSTANCE);
         rawTsFile.dataRegion.loadNewTsFile(
             tsFileResource, true, isGeneratedByPipe, false, Optional.empty());
@@ -980,6 +1219,10 @@ final class TsFileWriterManager {
           continue;
         }
         final TsFileResource tsFileResource = new TsFileResource(restored.file);
+        final ProgressIndex progressIndex =
+            timePartitionProgressIndexMap.getOrDefault(
+                new TTimePartitionSlot(entry.getKey().timePartitionStart),
+                MinimumProgressIndex.INSTANCE);
         try (final TsFileSequenceReader reader =
             new TsFileSequenceReader(restored.file.getAbsolutePath(), true)) {
           if (!reader.isComplete()) {
@@ -993,7 +1236,7 @@ final class TsFileWriterManager {
         }
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
-        tsFileResource.setProgressIndex(MinimumProgressIndex.INSTANCE);
+        tsFileResource.setProgressIndex(progressIndex);
         dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe, false, Optional.empty());
         rawTsFilePaths.add(restored.file.getAbsolutePath());
       }

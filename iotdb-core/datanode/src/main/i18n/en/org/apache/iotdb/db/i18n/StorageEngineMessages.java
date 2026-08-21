@@ -72,6 +72,23 @@ public final class StorageEngineMessages {
       "Staged file %s of load %s is not continuous: expected offset %d but current file length is %d.";
   public static final String MESSAGE_LOAD_CONSENSUS_PREPARE_WITHOUT_STAGED_DATA_FE8ADC37 =
       "Cannot prepare load %s because no staged data exists on this node.";
+  public static final String MESSAGE_LOAD_CONSENSUS_ABORT_MARKER_FAILED_16343CF5 =
+      "LOAD abort marker write failed for load %s, staged data is kept for retry: %s";
+  public static final String LOG_LOAD_CONSENSUS_RECOVERED_TASK_02824CE6 =
+      "Recovered in-progress LOAD task {} from disk; staged data is kept until COMMIT or ABORT.";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB =
+      "Failed to recover the task meta of LOAD task {}: {}";
+  public static final String LOG_LOAD_CONSENSUS_TASK_META_WRITE_FAILED_5D2420BF =
+      "Failed to persist the task meta of LOAD task {} to {}: {}";
+  public static final String LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433 =
+      "Failed to write the terminal marker of LOAD task {} to {}: {}";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_UNRESUMABLE_A159436C =
+      "Cannot resume LOAD task {} from disk: its durable task meta is missing or corrupt; the next "
+          + "command will re-create it.";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_SHORT_WRITE_E7392FAD =
+      "Staged file %s of load %s was not fully written: expected %d bytes at offset %d, wrote %d";
+  public static final String EXCEPTION_LOAD_CONSENSUS_PROGRESS_SERIALIZE_FAILED_28EFD091 =
+      "Failed to serialize LOAD progress index for time partition %d";
   public static final String MESSAGE_LOAD_CONSENSUS_PREPARE_VERIFICATION_FAILED_B3865A82 =
       "LOAD prepare verification failed for load %s: expected %d pieces with checksum %d, found %d pieces with checksum %d";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_INCOMPLETE_1CDE954B =

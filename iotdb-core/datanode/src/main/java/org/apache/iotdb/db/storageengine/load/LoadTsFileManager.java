@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
@@ -77,8 +77,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -106,13 +109,13 @@ import java.util.stream.Stream;
  *                   |   LoadTsFileManager (facade)      |
  *                   +-----------------+-----------------+
  *                                     |
- *        +----------------+-----------+-----------+----------------+
- *        |                |                       |                |
- *        v                v                       v                v
- * LoadTaskRegistry  TsFileWriterManager     LoadSnapshotManager LoadCleanupScheduler
- * (uuid -> manager) | per-task lock         (include LOAD       (abandoned-task
- * lifecycle)        | applied/cached/        staging in         eviction,
- *                    | retained pieces       snapshots)          delayed cleanup)
+ *        +----------------+-----------+----------------+
+ *        |                |           |                |
+ *        v                v           v                v
+ * LoadTaskRegistry  TsFileWriterManager  LoadSnapshotManager
+ * (uuid -> manager) | per-task lock      (include LOAD staging
+ * lifecycle)        | applied/cached/     in snapshots)
+ *                    | retained pieces
  *                    v
  *              PartitionContext (one per data partition)
  *              [TsFileIOWriter + TsFileResource + mods]
@@ -131,16 +134,28 @@ import java.util.stream.Stream;
  *                              captureRefs; write a WAL marker so followers seal their
  *                              own staged files at the same logical point
  * COMMIT                    -> write a WAL marker, load every staged file into the
- *                              DataRegion via loadNewTsFile(progress indexes), clean up
- * ABORT                     -> write a WAL marker, delete the staged files
+ *                              DataRegion via loadNewTsFile(progress indexes), then
+ *                              clean up (leader after the marker was sent, followers
+ *                              when they receive it)
+ * ABORT                     -> write a WAL marker, then delete the staged files (same
+ *                              gating: a failed marker write keeps the staged data for
+ *                              the coordinator's retry)
  * }</pre>
+ *
+ * <p>Cleanup of the replica information (the task registry entry and the staged files) happens
+ * <b>only</b> in COMMIT/ABORT after the terminal marker was durably sent or received. There is no
+ * idle-time eviction: a task directory left behind by a crash or a graceful restart is rebuilt from
+ * its durable task meta so the load can continue. The single restart-time exception is a task dir
+ * carrying the {@code terminal.marker} (COMMIT/ABORT was already reached and its data loaded or
+ * discarded); those leftovers are garbage and are deleted at startup.
  *
  * <h2>Startup recovery</h2>
  *
  * <pre>{@code
  * recover(): scan every configured load directory
- *   -> for each leftover task dir, rebuild a TsFileWriterManager (unsealed-file
- *      recovery) and register it with LoadCleanupScheduler for later eviction
+ *   -> terminal.marker present: the load already reached COMMIT/ABORT, delete the dir
+ *   -> otherwise: rebuild a TsFileWriterManager from the durable task meta (applied
+ *      piece prefix + staged file list) and re-register it so the load can continue
  * }</pre>
  *
  * <p>Staged files live under the configured load directories and are resolved by {@link
@@ -170,11 +185,8 @@ public class LoadTsFileManager {
           .build();
 
   private final LoadTaskRegistry taskRegistry = new LoadTaskRegistry();
-  private final LoadCleanupScheduler cleanupScheduler =
-      new LoadCleanupScheduler(
-          CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds(), this::forceCloseWriterManager);
   private final LoadSnapshotManager snapshotManager =
-      new LoadSnapshotManager(taskRegistry, cleanupScheduler, this::allocateTaskDir);
+      new LoadSnapshotManager(taskRegistry, this::allocateTaskDir);
   private final ActiveLoadAgent activeLoadAgent = new ActiveLoadAgent();
 
   /** DataNode-to-DataNode client used for the LOAD piece pull-back. */
@@ -187,8 +199,17 @@ public class LoadTsFileManager {
   private static final long PULL_WAIT_INTERVAL_MS = 100L;
   private static final int PULL_WAIT_RETRIES = 50;
 
+  /**
+   * Socket timeout applied to the PULL RPC itself. The pull happens on the consensus apply thread
+   * (marker replay is serialized per region), so the RPC must be bounded: an unreachable or slow
+   * write node may delay this marker, but it must not hang the region indefinitely. The bounded
+   * retries after the RPC plus this timeout cap the total blocking at a few seconds. Turning the
+   * payload fetch into a fully asynchronous MISSING_PAYLOAD staging state is a separate redesign
+   * (would require an apply queue per load task); this keeps the failure surface bounded meanwhile.
+   */
+  private static final int PULL_RPC_TIMEOUT_MS = 3000;
+
   public LoadTsFileManager() {
-    cleanupScheduler.start();
     recover();
   }
 
@@ -197,10 +218,30 @@ public class LoadTsFileManager {
     if (relativePath == null || relativePath.isEmpty()) {
       return Optional.empty();
     }
+    final Path relative = Paths.get(relativePath);
+    if (relative.isAbsolute() || relative.normalize().startsWith("..")) {
+      // Reject absolute paths and anything that climbs out of the load directory (e.g. ../..):
+      // the relative path is only ever used to address staged files under a configured load dir.
+      return Optional.empty();
+    }
     for (String baseDir : LOAD_BASE_DIRS.get()) {
-      final File file = new File(baseDir, relativePath);
-      if (file.isFile()) {
-        return Optional.of(file);
+      final Path basePath = Paths.get(baseDir).toAbsolutePath().normalize();
+      final Path resolved = basePath.resolve(relative).normalize();
+      if (!resolved.startsWith(basePath)) {
+        continue;
+      }
+      if (!Files.isRegularFile(resolved)) {
+        continue;
+      }
+      try {
+        // Resolve symlinks as well: a staged file must stay inside the configured load directory
+        // even if an intermediate component is a symlink pointing elsewhere.
+        final Path canonical = resolved.toRealPath();
+        if (canonical.startsWith(basePath.toRealPath())) {
+          return Optional.of(canonical.toFile());
+        }
+      } catch (IOException e) {
+        return Optional.empty();
       }
     }
     return Optional.empty();
@@ -212,12 +253,15 @@ public class LoadTsFileManager {
 
   public void stop() {
     activeLoadAgent.stop();
-    cleanupScheduler.shutdown();
     try {
-      taskRegistry.snapshot(TsFileWriterManager::close);
+      // Release the staged writers without deleting their files: an in-progress LOAD must survive
+      // a graceful restart, and cleanup is only allowed after COMMIT/ABORT. The next startup's
+      // recover() rebuilds every leftover task dir from disk.
+      taskRegistry.snapshot(TsFileWriterManager::closeForShutdown);
     } catch (IOException e) {
       LOGGER.warn(StorageEngineMessages.LOAD_CLEANUP_TASK_ERROR, "all", e);
     }
+    taskRegistry.clear();
   }
 
   private void recover() {
@@ -244,9 +288,38 @@ public class LoadTsFileManager {
         .parallel()
         .forEach(
             taskDir -> {
-              final TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
-              writerManager.close();
-              cleanupScheduler.registerOrRefresh(taskDir.getName());
+              try {
+                final TsFileWriterManager writerManager = new TsFileWriterManager(taskDir, false);
+                // A task dir that already reached COMMIT/ABORT (the load's data was loaded or is
+                // intentionally discarded) carries the terminal marker: its leftovers are garbage
+                // and can be deleted. Any other dir is an in-progress load and must be rebuilt.
+                if (writerManager.isTerminal()) {
+                  writerManager.close();
+                  return;
+                }
+                if (!writerManager.isRecoveredFromDisk()) {
+                  // The durable task meta is missing or corrupt (e.g. a torn first piece): resuming
+                  // would apply further pieces on top of unaccounted staged bytes. Leave the dir
+                  // untouched; the next consensus command for this load re-creates the task and the
+                  // coordinator fails loudly instead of forking the staged file.
+                  LOGGER.warn(
+                      StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVER_TASK_UNRESUMABLE_A159436C,
+                      taskDir.getName());
+                  return;
+                }
+                // Restart must not clean up an in-progress LOAD: rebuild the writer from the
+                // durable task meta (applied-piece prefix + staged files) so the load can continue
+                // and is removed only when COMMIT/ABORT arrives.
+                taskRegistry.getOrCreate(taskDir.getName(), id -> writerManager);
+                LOGGER.info(
+                    StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVERED_TASK_02824CE6,
+                    taskDir.getName());
+              } catch (Exception e) {
+                LOGGER.warn(
+                    StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB,
+                    taskDir.getName(),
+                    e.getMessage());
+              }
             });
   }
 
@@ -261,14 +334,8 @@ public class LoadTsFileManager {
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
       throws IOException, PageException, LoadFileException {
-    cleanupScheduler.registerOrRefresh(uuid);
-    cleanupScheduler.markRunning(uuid);
-    try {
-      final TsFileWriterManager writerManager = getOrCreateWriterManager(uuid);
-      writerManager.writePieceNode(dataRegion, pieceNode);
-    } finally {
-      cleanupScheduler.markIdle(uuid);
-    }
+    final TsFileWriterManager writerManager = getOrCreateWriterManager(uuid);
+    writerManager.writePieceNode(dataRegion, pieceNode);
   }
 
   private TsFileWriterManager getOrCreateWriterManager(String uuid) throws IOException {
@@ -306,93 +373,85 @@ public class LoadTsFileManager {
   }
 
   private TSStatus beginConsensus(LoadTsFileConsensusNode node) {
-    cleanupScheduler.registerOrRefresh(node.getLoadId());
     return StatusUtils.OK;
   }
 
   private TSStatus appendConsensusPiece(DataRegion dataRegion, LoadTsFileConsensusNode node)
       throws IOException, PageException, LoadFileException {
     final String uuid = node.getLoadId();
-    cleanupScheduler.registerOrRefresh(uuid);
-    cleanupScheduler.markRunning(uuid);
-    try {
-      if (!node.getPieceRefs().isEmpty()) {
-        // Legacy raw-ref PIECE (previous format): the refs are contiguous from offset 0, so a
-        // replica can rebuild the staged file from the WAL without a local writer. New entries no
-        // longer use this form, but entries logged by an older leader must stay applicable during a
-        // rolling upgrade.
-        final TsFileWriterManager writerManager = getOrCreateWriterManager(uuid);
-        writerManager.appendRawTsFilePieces(dataRegion, node.getPieceRefs());
-        writerManager.applyDeletion(dataRegion, node.getTsFileDataList());
-        return StatusUtils.OK;
-      }
-
-      if (!node.hasChunkData()) {
-        // Marker-only PIECE replicated through the WAL. The marker is the ordering authority of the
-        // load: a follower applies the chunk data (pulled back from the write node, or retained
-        // locally) only when its marker arrives (and only after every previous marker was
-        // applied), so consensus order and local apply order can never diverge.
-        return applyPieceMarker(dataRegion, node);
-      }
-
-      // Chunk-data PIECE submitted by the coordinator to the write node (or to a caught-up new
-      // leader after failover). Every node maintains its own applied-piece prefix, so the failover
-      // fence is continuity: pieceIndex is accepted only when 0..pieceIndex-1 were applied locally,
-      // which a follower-turned-leader satisfies automatically because it built its own writers
-      // while applying the markers. A node without the prefix must fail instead of silently
-      // rebuilding the file, which would fork the replicas.
-      if (!isContinuous(uuid, node.getPieceIndex())) {
-        return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-            .setMessage(
-                String.format(
-                    StorageEngineMessages
-                        .MESSAGE_LOAD_CONSENSUS_PIECE_NOT_CONTINUOUS_AFTER_FAILOVER_D6FFAC6C,
-                    node.getPieceIndex(),
-                    uuid));
-      }
-
+    if (!node.getPieceRefs().isEmpty()) {
+      // Legacy raw-ref PIECE (previous format): the refs are contiguous from offset 0, so a
+      // replica can rebuild the staged file from the WAL without a local writer. New entries no
+      // longer use this form, but entries logged by an older leader must stay applicable during a
+      // rolling upgrade.
       final TsFileWriterManager writerManager = getOrCreateWriterManager(uuid);
-      // Idempotent apply guard: a scheduler retry after a lost response may re-deliver the same
-      // piece. Without deduplication the chunk data would be appended twice and the staged file
-      // would diverge from the followers.
-      if (writerManager.isPieceAlreadyApplied(node.getPieceIndex(), node.getChecksum())) {
-        return StatusUtils.OK;
-      }
-      if (writerManager.isPieceConflicting(node.getPieceIndex(), node.getChecksum())) {
-        return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-            .setMessage(
-                String.format(
-                    StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675,
-                    uuid,
-                    node.getPieceIndex()));
-      }
-      if (node.getChecksum() != LoadTsFileChecksumUtils.checksum(node.getTsFileDataList())) {
-        return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-            .setMessage(
-                String.format(
-                    StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675,
-                    uuid,
-                    node.getPieceIndex()));
-      }
-
-      writerManager.appendChunkPieceAndRecord(
-          dataRegion, node.getTsFileDataList(), node.getPieceIndex(), node.getChecksum());
-      // Retain the serialized piece until COMMIT/ABORT as the backfill source for a follower that
-      // pulls it back on demand.
-      writerManager.retainPiece(node.getPieceIndex(), serializeNode(node));
-      // Only the write node logs the marker: the marker-only WAL entry is what IoTConsensus
-      // replicates to the followers, which then pull the retained chunk bytes back. A follower
-      // applying the same command through consensus log replication skips the local WAL write,
-      // exactly like ordinary writes on a follower.
-      if (!node.isGeneratedByRemoteConsensusLeader()) {
-        logPieceMarkerToWal(dataRegion, node, writerManager);
-      }
+      writerManager.appendRawTsFilePieces(dataRegion, node.getPieceRefs());
+      writerManager.applyDeletion(dataRegion, node.getTsFileDataList());
       return StatusUtils.OK;
-    } finally {
-      // An applied PIECE leaves the task idle again so an abandoned load (no COMMIT/ABORT ever
-      // arrives) is eventually reclaimed by the sweeper after the configured delay.
-      cleanupScheduler.markIdle(uuid);
     }
+
+    if (!node.hasChunkData()) {
+      // Marker-only PIECE replicated through the WAL. The marker is the ordering authority of the
+      // load: a follower applies the chunk data (pulled back from the write node, or retained
+      // locally) only when its marker arrives (and only after every previous marker was
+      // applied), so consensus order and local apply order can never diverge.
+      return applyPieceMarker(dataRegion, node);
+    }
+
+    // Chunk-data PIECE submitted by the coordinator to the write node (or to a caught-up new
+    // leader after failover). Every node maintains its own applied-piece prefix, so the failover
+    // fence is continuity: pieceIndex is accepted only when 0..pieceIndex-1 were applied locally,
+    // which a follower-turned-leader satisfies automatically because it built its own writers
+    // while applying the markers. A node without the prefix must fail instead of silently
+    // rebuilding the file, which would fork the replicas.
+    if (!isContinuous(uuid, node.getPieceIndex())) {
+      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  StorageEngineMessages
+                      .MESSAGE_LOAD_CONSENSUS_PIECE_NOT_CONTINUOUS_AFTER_FAILOVER_D6FFAC6C,
+                  node.getPieceIndex(),
+                  uuid));
+    }
+
+    final TsFileWriterManager writerManager = getOrCreateWriterManager(uuid);
+    // Idempotent apply guard: a scheduler retry after a lost response may re-deliver the same
+    // piece. Without deduplication the chunk data would be appended twice and the staged file
+    // would diverge from the followers.
+    if (writerManager.isPieceAlreadyApplied(node.getPieceIndex(), node.getChecksum())) {
+      return StatusUtils.OK;
+    }
+    if (writerManager.isPieceConflicting(node.getPieceIndex(), node.getChecksum())) {
+      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675,
+                  uuid,
+                  node.getPieceIndex()));
+    }
+    if (node.getChecksum()
+        != LoadTsFileChecksumUtils.checksum(node.getPieceIndex(), node.getTsFileDataList())) {
+      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675,
+                  uuid,
+                  node.getPieceIndex()));
+    }
+
+    writerManager.appendChunkPieceAndRecord(
+        dataRegion, node.getTsFileDataList(), node.getPieceIndex(), node.getChecksum());
+    // Retain the serialized piece until COMMIT/ABORT as the backfill source for a follower that
+    // pulls it back on demand.
+    writerManager.retainPiece(node.getPieceIndex(), serializeNode(node));
+    // Only the write node logs the marker: the marker-only WAL entry is what IoTConsensus
+    // replicates to the followers, which then pull the retained chunk bytes back. A follower
+    // applying the same command through consensus log replication skips the local WAL write,
+    // exactly like ordinary writes on a follower.
+    if (!node.isGeneratedByRemoteConsensusLeader()) {
+      logPieceMarkerToWal(dataRegion, node, writerManager);
+    }
+    return StatusUtils.OK;
   }
 
   /**
@@ -557,20 +616,37 @@ public class LoadTsFileManager {
             localEndPoint);
     try (final SyncDataNodeInternalServiceClient client =
         SYNC_DATANODE_CLIENT_MANAGER.borrowClient(leaderEndPoint)) {
-      final TLoadResp resp =
-          client.sendTsFilePieceNode(
-              new TTsFilePieceReq(
-                  pull.serializeToByteBuffer(),
-                  marker.getLoadId(),
-                  groupId.convertToTConsensusGroupId()));
-      if (!resp.isAccepted()) {
+      final int originalTimeout;
+      try {
+        originalTimeout = client.getTimeout();
+      } catch (SocketException e) {
         LOGGER.warn(
             StorageEngineMessages.LOG_LOAD_CONSENSUS_PULL_PIECE_FAILED_AFB003D5,
             marker.getPieceIndex(),
             marker.getLoadId(),
             leaderEndPoint,
-            resp.getMessage());
+            e.getMessage());
         return false;
+      }
+      client.setTimeout(PULL_RPC_TIMEOUT_MS);
+      try {
+        final TLoadResp resp =
+            client.sendTsFilePieceNode(
+                new TTsFilePieceReq(
+                    pull.serializeToByteBuffer(),
+                    marker.getLoadId(),
+                    groupId.convertToTConsensusGroupId()));
+        if (!resp.isAccepted()) {
+          LOGGER.warn(
+              StorageEngineMessages.LOG_LOAD_CONSENSUS_PULL_PIECE_FAILED_AFB003D5,
+              marker.getPieceIndex(),
+              marker.getLoadId(),
+              leaderEndPoint,
+              resp.getMessage());
+          return false;
+        }
+      } finally {
+        client.setTimeout(originalTimeout);
       }
     } catch (Exception e) {
       LOGGER.warn(
@@ -700,30 +776,24 @@ public class LoadTsFileManager {
   public TSStatus cacheConsensusPiece(DataRegion dataRegion, LoadTsFileConsensusNode node)
       throws IOException {
     final String uuid = node.getLoadId();
-    cleanupScheduler.registerOrRefresh(uuid);
-    cleanupScheduler.markRunning(uuid);
-    try {
-      if (!node.hasChunkData()) {
-        return StatusUtils.OK;
-      }
-      final TsFileWriterManager writerManager = getOrCreateWriterManager(uuid);
-      if (writerManager.isPieceAlreadyApplied(node.getPieceIndex(), node.getChecksum())) {
-        // The marker already applied this piece; the redundant delivery is dropped.
-        return StatusUtils.OK;
-      }
-      if (!writerManager.cachePiece(
-          node.getPieceIndex(), node.getChecksum(), node.getTsFileDataList())) {
-        return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-            .setMessage(
-                String.format(
-                    StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675,
-                    uuid,
-                    node.getPieceIndex()));
-      }
+    if (!node.hasChunkData()) {
       return StatusUtils.OK;
-    } finally {
-      cleanupScheduler.markIdle(uuid);
     }
+    final TsFileWriterManager writerManager = getOrCreateWriterManager(uuid);
+    if (writerManager.isPieceAlreadyApplied(node.getPieceIndex(), node.getChecksum())) {
+      // The marker already applied this piece; the redundant delivery is dropped.
+      return StatusUtils.OK;
+    }
+    if (!writerManager.cachePiece(
+        node.getPieceIndex(), node.getChecksum(), node.getTsFileDataList())) {
+      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_PIECE_CHECKSUM_MISMATCH_CF261675,
+                  uuid,
+                  node.getPieceIndex()));
+    }
+    return StatusUtils.OK;
   }
 
   private TEndPoint parseEndPoint(final String endPointString) {
@@ -760,36 +830,30 @@ public class LoadTsFileManager {
                   node.getLoadId()));
     }
     final String uuid = node.getLoadId();
-    cleanupScheduler.markRunning(uuid);
-    try {
-      final TsFileWriterManager writerManager = getOrCreateWriterManager(uuid);
-      // Reconcile before sealing: the staged file must contain exactly the pieces the coordinator
-      // sent. A write-node switch mid-load can leave this node with a hole in its applied prefix
-      // that the per-piece continuity fence cannot detect (no further PIECE arrives); sealing and
-      // loading such a file would silently fork the replicas, so fail loudly instead.
-      if (!writerManager.isLegacyRawRefTask()
-          && !writerManager.verifyAppliedPieces(node.getPieceCount(), node.getChecksum())) {
-        return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-            .setMessage(
-                String.format(
-                    StorageEngineMessages
-                        .MESSAGE_LOAD_CONSENSUS_PREPARE_VERIFICATION_FAILED_B3865A82,
-                    uuid,
-                    node.getPieceCount(),
-                    node.getChecksum(),
-                    writerManager.getAppliedPieceCount(),
-                    writerManager.getAppliedPiecesChecksum()));
-      }
-      writerManager.finalizeAll();
-      if (!node.isGeneratedByRemoteConsensusLeader()) {
-        // Replicate the PREPARE marker so every follower seals its own staged files at the same
-        // logical point before COMMIT.
-        logOpMarkerToWal(dataRegion, node);
-      }
-      return StatusUtils.OK;
-    } finally {
-      cleanupScheduler.markIdle(uuid);
+    final TsFileWriterManager writerManager = getOrCreateWriterManager(uuid);
+    // Reconcile before sealing: the staged file must contain exactly the pieces the coordinator
+    // sent. A write-node switch mid-load can leave this node with a hole in its applied prefix
+    // that the per-piece continuity fence cannot detect (no further PIECE arrives); sealing and
+    // loading such a file would silently fork the replicas, so fail loudly instead.
+    if (!writerManager.isLegacyRawRefTask()
+        && !writerManager.verifyAppliedPieces(node.getPieceCount(), node.getChecksum())) {
+      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_PREPARE_VERIFICATION_FAILED_B3865A82,
+                  uuid,
+                  node.getPieceCount(),
+                  node.getChecksum(),
+                  writerManager.getAppliedPieceCount(),
+                  writerManager.getAppliedPiecesChecksum()));
     }
+    writerManager.finalizeAll();
+    if (!node.isGeneratedByRemoteConsensusLeader()) {
+      // Replicate the PREPARE marker so every follower seals its own staged files at the same
+      // logical point before COMMIT.
+      logOpMarkerToWal(dataRegion, node);
+    }
+    return StatusUtils.OK;
   }
 
   private TSStatus commitConsensus(DataRegion dataRegion, LoadTsFileConsensusNode node)
@@ -797,7 +861,10 @@ public class LoadTsFileManager {
     final Map<TTimePartitionSlot, ProgressIndex> progressIndexes = new HashMap<>();
     for (Map.Entry<TTimePartitionSlot, byte[]> entry :
         node.getTimePartition2ProgressIndex().entrySet()) {
-      final ProgressIndex progressIndex = MinimumProgressIndex.INSTANCE;
+      // Restore the real per-time-partition progress collected by the coordinator instead of
+      // degrading it to MinimumProgressIndex, so Pipe dedup/progress stays consistent after LOAD.
+      final ProgressIndex progressIndex =
+          ProgressIndexType.deserializeFrom(ByteBuffer.wrap(entry.getValue()));
       progressIndexes.put(entry.getKey(), progressIndex);
     }
     if (!node.isGeneratedByRemoteConsensusLeader()) {
@@ -824,8 +891,19 @@ public class LoadTsFileManager {
             StorageEngineMessages.LOG_LOAD_CONSENSUS_ABORT_MARKER_FAILED_6A218023,
             node.getLoadId(),
             e.getMessage());
+        // The ABORT was not sent (or not durably replicated), so this node must NOT clean up yet:
+        // the coordinator will retry the ABORT, and a follower may still need to pull pieces or
+        // apply the marker. Cleanup is only allowed after the terminal marker was sent.
+        return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_ABORT_MARKER_FAILED_16343CF5,
+                    node.getLoadId(),
+                    "see previous log for the marker write failure"));
       }
     }
+    // The ABORT marker is durably logged (or this is a follower applying the replicated marker):
+    // now the staged data can be discarded.
     deleteAll(node.getLoadId());
     return StatusUtils.OK;
   }
@@ -882,15 +960,9 @@ public class LoadTsFileManager {
       return false;
     }
 
-    cleanupScheduler.registerOrRefresh(uuid);
-    cleanupScheduler.markRunning(uuid);
-    try {
-      writerManagerOptional
-          .get()
-          .loadAll(dataRegion, isGeneratedByPipe, timePartitionProgressIndexMap);
-    } finally {
-      cleanupScheduler.markIdle(uuid);
-    }
+    writerManagerOptional
+        .get()
+        .loadAll(dataRegion, isGeneratedByPipe, timePartitionProgressIndexMap);
 
     clean(uuid);
     return true;
@@ -905,7 +977,10 @@ public class LoadTsFileManager {
   }
 
   private void clean(String uuid) {
-    cleanupScheduler.remove(uuid);
+    // Mark the terminal phase before deleting: if the process dies between this point and the
+    // directory deletion, the next startup sees the marker and discards the leftover dir instead
+    // of rebuilding a load that already reached COMMIT/ABORT.
+    taskRegistry.get(uuid).ifPresent(TsFileWriterManager::markTerminal);
     forceCloseWriterManager(uuid);
   }
 

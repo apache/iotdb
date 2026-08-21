@@ -4575,5 +4575,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
   public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
       "无权执行 %s，因为只有超级用户可以修改其自身。";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
+      "无效的 LOAD 共识分片引用：路径 %s，偏移 %d，大小 %d";
 
 }

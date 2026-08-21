@@ -71,6 +71,22 @@ public final class StorageEngineMessages {
       "load %s 的暂存文件 %s 不连续：期望偏移 %d，但当前文件长度为 %d。";
   public static final String MESSAGE_LOAD_CONSENSUS_PREPARE_WITHOUT_STAGED_DATA_FE8ADC37 =
       "无法准备（PREPARE）load %s，因为该节点上不存在暂存数据。";
+  public static final String MESSAGE_LOAD_CONSENSUS_ABORT_MARKER_FAILED_16343CF5 =
+      "load %s 的 ABORT marker 写入失败，暂存数据已保留以便重试：%s";
+  public static final String LOG_LOAD_CONSENSUS_RECOVERED_TASK_02824CE6 =
+      "已从磁盘恢复进行中的 LOAD 任务 {}；暂存数据将保留至 COMMIT 或 ABORT。";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB =
+      "恢复 LOAD 任务 {} 的任务元数据失败：{}";
+  public static final String LOG_LOAD_CONSENSUS_TASK_META_WRITE_FAILED_5D2420BF =
+      "持久化 LOAD 任务 {} 的任务元数据到 {} 失败：{}";
+  public static final String LOG_LOAD_CONSENSUS_TERMINAL_MARKER_WRITE_FAILED_4D6D7433 =
+      "写入 LOAD 任务 {} 的终止标记到 {} 失败：{}";
+  public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_UNRESUMABLE_A159436C =
+      "无法从磁盘恢复 LOAD 任务 {}：其持久化任务元数据缺失或损坏，下一条命令将重新创建该任务。";
+  public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_SHORT_WRITE_E7392FAD =
+      "load %s 的暂存文件 %s 未完整写入：偏移 %d 处期望 %d 字节，实际写入 %d 字节";
+  public static final String EXCEPTION_LOAD_CONSENSUS_PROGRESS_SERIALIZE_FAILED_28EFD091 =
+      "时间分区 %d 的 LOAD 进度索引序列化失败";
   public static final String MESSAGE_LOAD_CONSENSUS_PREPARE_VERIFICATION_FAILED_B3865A82 =
       "LOAD PREPARE 校验失败，load %s：预期 %d 片、checksum %d，实际 %d 片、checksum %d";
   public static final String EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_INCOMPLETE_1CDE954B =
