@@ -386,7 +386,7 @@ public class CommonConfig {
 
   private boolean pipeAutoSplitFullEnabled = true;
 
-  private boolean subscriptionEnabled = true;
+  private boolean subscriptionEnabled = false;
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;

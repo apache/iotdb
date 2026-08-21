@@ -49,9 +49,17 @@ public abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT 
   protected void setUpConfig() {
     senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
 
-    // enable auto create schema
-    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    // enable subscription and auto create schema
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setSubscriptionEnabled(true)
+        .setAutoCreateSchemaEnabled(true);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setSubscriptionEnabled(true)
+        .setAutoCreateSchemaEnabled(true);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
