@@ -145,20 +145,21 @@ public class IoTDBOpcUaClient {
       maxNodesPerNodeManagement =
           getOperationLimit(operationLimits, 1, DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT);
       LOGGER.info(
-          "OPC UA server operation limits: maxNodesPerWrite={}, maxNodesPerNodeManagement={}",
+          DataNodePipeMessages
+              .LOG_OPC_UA_SERVER_OPERATION_LIMITS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_5D2BCC90,
           maxNodesPerWrite,
           maxNodesPerNodeManagement);
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
-          "Interrupted while reading OPC UA server operation limits, use defaults: "
-              + "maxNodesPerWrite={}, maxNodesPerNodeManagement={}",
+          DataNodePipeMessages
+              .LOG_INTERRUPTED_WHILE_READING_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_357D46A4,
           DEFAULT_MAX_NODES_PER_WRITE,
           DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to read OPC UA server operation limits, use defaults: "
-              + "maxNodesPerWrite={}, maxNodesPerNodeManagement={}",
+          DataNodePipeMessages
+              .LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871,
           DEFAULT_MAX_NODES_PER_WRITE,
           DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT,
           e);
