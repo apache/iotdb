@@ -97,7 +97,7 @@ public class PipeAgentLauncherTest {
         .thenAnswer(
             invocation -> {
               final List<String> jarNames =
-                  invocation.getArgument(0, TGetJarInListReq.class).getJarNameList();
+                  ((TGetJarInListReq) invocation.getArgument(0)).getJarNameList();
               if (jarNames.size() == 2 || "missing.jar".equals(jarNames.get(0))) {
                 return failedResponse;
               }
