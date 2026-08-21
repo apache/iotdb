@@ -36,6 +36,14 @@ public final class CommonMessages {
   public static final String NODE_STATUS_NOT_EXIST = "NodeStatus %s 不存在。";
   public static final String UNKNOWN_NODE_STATUS = "未知 NodeStatus %s。";
 
+  // --- disk health ---
+  public static final String DISK_FULL_SET_READ_ONLY =
+      "磁盘剩余空间比例低于配置阈值，将节点状态设为 ReadOnly(DiskFull)。";
+  public static final String DISK_CRASH_SET_READ_ONLY =
+      "检测到不可写的磁盘目录，将节点状态设为 ReadOnly(DiskCrash)。";
+  public static final String DISK_RECOVERED_SET_RUNNING =
+      "磁盘健康已恢复（先前原因：{}），将节点状态设为 Running。";
+
   // --- consensus ---
   public static final String UNRECOGNIZED_CONSENSUS_GROUP_ID =
       "无法识别的 ConsensusGroupId：%s";

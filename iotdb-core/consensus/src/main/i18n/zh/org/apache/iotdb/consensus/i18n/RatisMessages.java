@@ -34,6 +34,9 @@ public final class RatisMessages {
       "writeWithRetry 中收到空回复，请求为 ";
   public static final String LEADER_READ_ONLY_STEP_DOWN_FAILED =
       "leader {} 处于只读模式，强制降级失败，原因 ";
+  public static final String
+      LOG_DISK_FAILURE_OBSERVED_IN_RATIS_GROUP_ARG_MARKING_NODE_READONLY_DISKCRASH_31E461D2 =
+          "在 Ratis 组 {} 中发现磁盘故障，节点标记为 ReadOnly(DiskCrash)。";
   public static final String TRY_ADD_CONFLICTING_PEER =
       "{}：尝试添加 ID 或地址冲突的 peer {} 到 {}";
   public static final String IS_LEADER_REQUEST_FAILED =

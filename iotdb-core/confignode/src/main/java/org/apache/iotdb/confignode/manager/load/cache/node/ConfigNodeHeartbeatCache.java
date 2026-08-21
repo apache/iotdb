@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
@@ -49,28 +50,39 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
   @Override
   public synchronized void updateCurrentStatistics(boolean forceUpdate) {
-    // Skip itself and the Removing status can not be updated
-    if (nodeId == CURRENT_NODE_ID || NodeStatus.Removing.equals(getNodeStatus())) {
+    // Removing status can not be updated
+    if (NodeStatus.Removing.equals(getNodeStatus())) {
       return;
     }
 
-    NodeHeartbeatSample lastSample;
-    // Update Node status
-    NodeStatus status;
     long currentNanoTime = System.nanoTime();
-    final List<AbstractHeartbeatSample> heartbeatHistory;
-    synchronized (slidingWindow) {
-      lastSample = (NodeHeartbeatSample) getLastSample();
-      heartbeatHistory = Collections.unmodifiableList(slidingWindow);
+    NodeStatus status;
+    String statusReason;
 
-      if (lastSample == null) {
-        /* First heartbeat not received from this ConfigNode, status is UNKNOWN */
-        status = NodeStatus.Unknown;
-      } else if (!failureDetector.isAvailable(nodeId, heartbeatHistory)) {
-        /* Failure detector decides that this ConfigNode is UNKNOWN */
-        status = NodeStatus.Unknown;
-      } else {
-        status = lastSample.getStatus();
+    if (nodeId == CURRENT_NODE_ID) {
+      // Self entry: heartbeat loop never sends to itself, so mirror the status that
+      // this ConfigNode's local disk-check / startup wrote into CommonConfig.
+      status = CommonDescriptor.getInstance().getConfig().getNodeStatus();
+      statusReason = CommonDescriptor.getInstance().getConfig().getStatusReason();
+    } else {
+      NodeHeartbeatSample lastSample;
+      final List<AbstractHeartbeatSample> heartbeatHistory;
+      synchronized (slidingWindow) {
+        lastSample = (NodeHeartbeatSample) getLastSample();
+        heartbeatHistory = Collections.unmodifiableList(slidingWindow);
+
+        if (lastSample == null) {
+          /* First heartbeat not received from this ConfigNode, status is UNKNOWN */
+          status = NodeStatus.Unknown;
+          statusReason = null;
+        } else if (!failureDetector.isAvailable(nodeId, heartbeatHistory)) {
+          /* Failure detector decides that this ConfigNode is UNKNOWN */
+          status = NodeStatus.Unknown;
+          statusReason = null;
+        } else {
+          status = lastSample.getStatus();
+          statusReason = lastSample.getStatusReason();
+        }
       }
     }
 
@@ -79,6 +91,6 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     // TODO: Construct load score module
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
-    currentStatistics.set(new NodeStatistics(currentNanoTime, status, null, loadScore));
+    currentStatistics.set(new NodeStatistics(currentNanoTime, status, statusReason, loadScore));
   }
 }

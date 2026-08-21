@@ -40,6 +40,7 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
+import org.apache.iotdb.commons.cluster.DiskChecker;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -252,11 +253,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Iface {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRPCServiceProcessor.class);
+
+  private static final int DISK_CHECK_INTERVAL_IN_HEARTBEATS = 10;
+
+  private final AtomicLong heartbeatReceivedCounter = new AtomicLong(0);
 
   protected final CommonConfig commonConfig;
   protected final ConfigNodeConfig configNodeConfig;
@@ -1114,6 +1120,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq heartbeatReq) {
     TConfigNodeHeartbeatResp resp = new TConfigNodeHeartbeatResp();
     resp.setTimestamp(heartbeatReq.getTimestamp());
+    // Sample free-space on the same cadence DataNode samples its load. DiskCrash is observed
+    // passively from the Ratis write-path on this node, not polled here.
+    if (heartbeatReceivedCounter.getAndIncrement() % DISK_CHECK_INTERVAL_IN_HEARTBEATS == 0) {
+      DiskChecker.checkFreeRatioAndApply(
+          configNodeConfig.getCriticalDirs(), commonConfig.getDiskSpaceWarningThreshold());
+    }
+    resp.setStatus(commonConfig.getNodeStatus().getStatus());
+    if (commonConfig.getStatusReason() != null) {
+      resp.setStatusReason(commonConfig.getStatusReason());
+    }
     return resp;
   }
 

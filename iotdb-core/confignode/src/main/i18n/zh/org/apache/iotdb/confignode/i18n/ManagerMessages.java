@@ -237,6 +237,8 @@ public final class ManagerMessages {
       "心跳服务已成功启动。";
   public static final String HEARTBEAT_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "心跳服务已成功停止。";
+  public static final String RECONFIGURE_PEER_PRIORITIES_FAILED =
+      "重新配置 ConfigNode 节点优先级 {} 失败。";
   public static final String INCORRECT_VERSION_OF = "版本不正确：";
   public static final String INIT_CONSENSUSMANAGER_SUCCESSFULLY_WHEN_RESTARTED =
       "重启时成功初始化 ConsensusManager";
