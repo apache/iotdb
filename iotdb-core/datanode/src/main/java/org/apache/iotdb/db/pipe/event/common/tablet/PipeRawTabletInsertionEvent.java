@@ -118,11 +118,17 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
-    if (needToReport) {
+    if (needToReport || sourceEvent instanceof PipeTsFileInsertionEvent) {
       addOnCommittedHook(
           () -> {
-            if (shouldReportOnCommit) {
+            // The last generated tablet still owns the progress-index cleanup. Other generated
+            // tablets only contribute to the transfer completion of their source TsFile.
+            if (shouldReportOnCommit && needToReport) {
               eliminateProgressIndex();
+            }
+            if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+              ((PipeTsFileInsertionEvent) sourceEvent)
+                  .markGeneratedTabletInsertionEventAsTransferred();
             }
           });
     }
@@ -308,7 +314,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   protected void eliminateProgressIndex() {
     if (sourceEvent instanceof PipeTsFileInsertionEvent) {
-      ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
+      final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) sourceEvent;
+      tsFileInsertionEvent.eliminateProgressIndex();
     }
   }
 
@@ -391,7 +398,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   public void markAsNeedToReport() {
-    if (!needToReport) {
+    if (!needToReport && !(sourceEvent instanceof PipeTsFileInsertionEvent)) {
       addOnCommittedHook(
           () -> {
             if (shouldReportOnCommit) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
@@ -38,12 +40,16 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionHybridSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionLogSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionTsFileSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -56,6 +62,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -68,8 +76,10 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -99,11 +109,14 @@ public class PipeRealtimeExtractTest {
   private ExecutorService writeService;
   private ExecutorService listenerService;
   private int dataNodeId;
+  private double pipeTotalFloatingMemoryProportion;
 
   @Before
   public void setUp() throws Exception {
     dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
+    pipeTotalFloatingMemoryProportion =
+        CommonDescriptor.getInstance().getConfig().getPipeTotalFloatingMemoryProportion();
     removeTestPipeMeta();
     writeService = Executors.newFixedThreadPool(2);
     listenerService = Executors.newFixedThreadPool(4);
@@ -120,6 +133,9 @@ public class PipeRealtimeExtractTest {
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeTotalFloatingMemoryProportion(pipeTotalFloatingMemoryProportion);
     writeService.shutdownNow();
     listenerService.shutdownNow();
     FileUtils.deleteFileOrDirectory(tmpDir);
@@ -379,6 +395,598 @@ public class PipeRealtimeExtractTest {
     Assert.assertNull(getGlobalTsFileEpochDegraded());
   }
 
+  @Test
+  public void testHybridSourceRegionLevelDowngradingIsPipeSpecific() throws Exception {
+    try (final PipeRealtimeDataRegionHybridSource disabledExtractor =
+            new PipeRealtimeDataRegionHybridSource();
+        final PipeRealtimeDataRegionHybridSource enabledExtractor =
+            new PipeRealtimeDataRegionHybridSource()) {
+      final PipeParameters disabledParameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                }
+              });
+      final PipeParameters enabledParameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.EXTRACTOR_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
+                }
+              });
+
+      final PipeTaskRuntimeConfiguration disabledConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  "region-level-downgrading-disabled",
+                  TEST_PIPE_CREATION_TIME,
+                  dataRegion1,
+                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
+      final PipeTaskRuntimeConfiguration enabledConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  "region-level-downgrading-enabled",
+                  TEST_PIPE_CREATION_TIME,
+                  dataRegion1,
+                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
+
+      disabledExtractor.validate(new PipeParameterValidator(disabledParameters));
+      disabledExtractor.customize(disabledParameters, disabledConfiguration);
+      enabledExtractor.validate(new PipeParameterValidator(enabledParameters));
+      enabledExtractor.customize(enabledParameters, enabledConfiguration);
+
+      Assert.assertFalse(isRegionLevelDowngradingEnabled(disabledExtractor));
+      Assert.assertTrue(isRegionLevelDowngradingEnabled(enabledExtractor));
+    }
+  }
+
+  @Test
+  public void testHybridSourceRegionLevelDowngradingWaitsForTsFileCommit() throws Exception {
+    registerTestPipeMeta();
+
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    try (final PipeRealtimeDataRegionHybridSource extractor =
+        new PipeRealtimeDataRegionHybridSource()) {
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
+                }
+              });
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      final PipeTaskRuntimeConfiguration configuration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+
+      extractor.validate(new PipeParameterValidator(parameters));
+      extractor.customize(parameters, configuration);
+
+      final TsFileResource firstResource = createTsFileResource(dataRegion1, "101-101-0-0.tsfile");
+      final PipeRealtimeEvent firstTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("first-degraded-tablet", "a"),
+                  firstResource),
+              extractor,
+              pipeTaskMeta);
+
+      Assert.assertTrue(firstTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(firstTabletEvent);
+      Assert.assertEquals(Boolean.FALSE, getGlobalTsFileEpochDegraded());
+
+      firstTabletEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+
+      // Queue a tablet from another epoch before the first epoch triggers region-level
+      // downgrading. It should be buffered while the degraded TsFile is being sent.
+      final TsFileResource secondResource = createTsFileResource(dataRegion1, "102-102-0-0.tsfile");
+      final PipeRealtimeEvent secondTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("second-degraded-tablet", "a"),
+                  secondResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(secondTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(secondTabletEvent);
+      Assert.assertEquals(
+          TsFileEpoch.State.USING_TABLET, secondTabletEvent.getTsFileEpoch().getState(extractor));
+
+      Assert.assertNull(extractor.supply());
+      Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
+      Assert.assertEquals(
+          TsFileEpoch.State.USING_TABLET, secondTabletEvent.getTsFileEpoch().getState(extractor));
+      Assert.assertFalse(secondTabletEvent.getEvent().isReleased());
+
+      // Simulate that the buffered tablet is evicted before the previous degraded TsFile is
+      // committed. The second epoch should then continue region-level downgrading with its TsFile.
+      secondTabletEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+
+      final PipeRealtimeEvent firstTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", firstResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(firstTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(firstTsFileEvent);
+      Assert.assertEquals(
+          TsFileEpoch.State.USING_TSFILE, firstTsFileEvent.getTsFileEpoch().getState(extractor));
+
+      final Event firstSuppliedTsFile = extractor.supply();
+      Assert.assertTrue(firstSuppliedTsFile instanceof TsFileInsertionEvent);
+      Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
+
+      final PipeRealtimeEvent secondTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", secondResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(secondTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(secondTsFileEvent);
+
+      // The second TsFile stays in the source until the first TsFile is committed downstream.
+      Assert.assertNull(extractor.supply());
+      final PipeTsFileInsertionEvent suppliedFirstTsFile =
+          (PipeTsFileInsertionEvent) firstSuppliedTsFile;
+      suppliedFirstTsFile.registerGeneratedTabletInsertionEvent();
+      suppliedFirstTsFile.registerGeneratedTabletInsertionEvent();
+      suppliedFirstTsFile.markGeneratedTabletInsertionEventsParsingCompleted();
+      final PipeRawTabletInsertionEvent firstGeneratedTabletEvent =
+          createGeneratedTabletEvent(suppliedFirstTsFile, pipeTaskMeta, "first-generated");
+      final PipeRawTabletInsertionEvent secondGeneratedTabletEvent =
+          createGeneratedTabletEvent(suppliedFirstTsFile, pipeTaskMeta, "second-generated");
+      Assert.assertTrue(firstGeneratedTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      Assert.assertTrue(secondGeneratedTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      Assert.assertTrue(suppliedFirstTsFile.decreaseReferenceCount(TEST_REFERENCE_HOLDER, false));
+      commitSuppliedEvent(firstGeneratedTabletEvent, commitManager);
+      Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
+      Assert.assertEquals(2, getActiveTsFileEpochCount(extractor));
+      Assert.assertEquals(1, getInFlightTsFileCount(extractor));
+      commitSuppliedEvent(secondGeneratedTabletEvent, commitManager);
+      Assert.assertEquals(1, getActiveTsFileEpochCount(extractor));
+      Assert.assertEquals(0, getInFlightTsFileCount(extractor));
+      Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
+
+      final Event secondSuppliedTsFile = extractor.supply();
+      Assert.assertTrue(secondSuppliedTsFile instanceof TsFileInsertionEvent);
+      Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
+
+      commitSuppliedEvent(secondSuppliedTsFile, commitManager);
+      Assert.assertEquals(0, getActiveTsFileEpochCount(extractor));
+      Assert.assertEquals(0, getInFlightTsFileCount(extractor));
+      Assert.assertNull(getGlobalTsFileEpochDegraded());
+      Assert.assertNull(extractor.supply());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
+  public void testGeneratedTabletTransferWaitsForAllTabletCommits() throws Exception {
+    registerTestPipeMeta();
+
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    final String dedupScopeId = "generated-tablet-transfer-test";
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    try {
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      final TsFileResource resource = createTsFileResource(dataRegion1, "110-110-0-0.tsfile");
+      final PipeTsFileInsertionEvent tsFileEvent =
+          new PipeTsFileInsertionEvent(false, "root.sg", resource, false)
+              .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                  TEST_PIPE_NAME,
+                  TEST_PIPE_CREATION_TIME,
+                  pipeTaskMeta,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  true,
+                  Long.MIN_VALUE,
+                  Long.MAX_VALUE);
+      tsFileEvent.bindTsFileDedupScopeID(dedupScopeId);
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
+          .registerProgressIndex(dataRegion1, dedupScopeId, resource);
+
+      final AtomicBoolean transferred = new AtomicBoolean(false);
+      tsFileEvent.addOnTransferredHook(() -> transferred.set(true));
+      tsFileEvent.registerGeneratedTabletInsertionEvent();
+      tsFileEvent.registerGeneratedTabletInsertionEvent();
+
+      // The default PipeProcessor path iterates toTabletInsertionEvents() directly and does not
+      // report parser completion. The source TsFile commit is still the boundary before generated
+      // tablet commits.
+      tsFileEvent.skipReportOnCommit();
+      tsFileEvent.getOnCommittedHooks().forEach(Runnable::run);
+
+      final PipeRawTabletInsertionEvent firstGeneratedTabletEvent =
+          createGeneratedTabletEvent(tsFileEvent, pipeTaskMeta, "first", false);
+      final PipeRawTabletInsertionEvent secondGeneratedTabletEvent =
+          createGeneratedTabletEvent(tsFileEvent, pipeTaskMeta, "second", true);
+      Assert.assertTrue(firstGeneratedTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      Assert.assertTrue(secondGeneratedTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+
+      commitSuppliedEvent(firstGeneratedTabletEvent, commitManager);
+      Assert.assertFalse(transferred.get());
+      Assert.assertTrue(
+          PipeTsFileEpochProgressIndexKeeper.getInstance()
+              .containsTsFile(dataRegion1, dedupScopeId, resource.getTsFilePath()));
+
+      commitSuppliedEvent(secondGeneratedTabletEvent, commitManager);
+      Assert.assertTrue(transferred.get());
+      Assert.assertFalse(
+          PipeTsFileEpochProgressIndexKeeper.getInstance()
+              .containsTsFile(dataRegion1, dedupScopeId, resource.getTsFilePath()));
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
+          .clearProgressIndex(dataRegion1, dedupScopeId);
+    }
+  }
+
+  @Test
+  public void testHybridSourceRegionLevelDowngradingResumesCompleteBufferedTablets()
+      throws Exception {
+    registerTestPipeMeta();
+
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    try (final PipeRealtimeDataRegionHybridSource extractor =
+        new PipeRealtimeDataRegionHybridSource()) {
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
+                }
+              });
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      final PipeTaskRuntimeConfiguration configuration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+
+      extractor.validate(new PipeParameterValidator(parameters));
+      extractor.customize(parameters, configuration);
+
+      final TsFileResource firstResource = createTsFileResource(dataRegion1, "103-103-0-0.tsfile");
+      final PipeRealtimeEvent firstTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("first-degraded-tablet", "a"),
+                  firstResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(firstTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(firstTabletEvent);
+      firstTabletEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+
+      final TsFileResource secondResource = createTsFileResource(dataRegion1, "104-104-0-0.tsfile");
+      final PipeRealtimeEvent secondTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("fully-buffered-tablet", "a"),
+                  secondResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(secondTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(secondTabletEvent);
+
+      Assert.assertNull(extractor.supply());
+      Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
+      Assert.assertEquals(
+          TsFileEpoch.State.USING_TABLET, secondTabletEvent.getTsFileEpoch().getState(extractor));
+      Assert.assertFalse(secondTabletEvent.getEvent().isReleased());
+
+      final PipeRealtimeEvent firstTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", firstResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(firstTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(firstTsFileEvent);
+      final Event firstSuppliedTsFile = extractor.supply();
+      Assert.assertTrue(firstSuppliedTsFile instanceof TsFileInsertionEvent);
+
+      commitLastGeneratedTabletEvent(
+          (PipeTsFileInsertionEvent) firstSuppliedTsFile, commitManager, pipeTaskMeta);
+      Assert.assertEquals(Boolean.FALSE, getGlobalTsFileEpochDegraded());
+
+      // The latest TsFile is still open. Since all of its requests survived in memory at the
+      // commit boundary above, later writes of the same TsFile should immediately continue on the
+      // realtime path instead of waiting for another flush.
+      final PipeRealtimeEvent newRealtimeTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("new-realtime-tablet", "a"),
+                  secondResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(newRealtimeTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(newRealtimeTabletEvent);
+
+      final Event resumedTabletEvent = extractor.supply();
+      Assert.assertTrue(resumedTabletEvent instanceof TabletInsertionEvent);
+      Assert.assertSame(secondTabletEvent.getEvent(), resumedTabletEvent);
+      Assert.assertEquals(Boolean.FALSE, getGlobalTsFileEpochDegraded());
+      commitSuppliedEvent(resumedTabletEvent, commitManager);
+
+      final Event newSuppliedTabletEvent = extractor.supply();
+      Assert.assertTrue(newSuppliedTabletEvent instanceof TabletInsertionEvent);
+      Assert.assertSame(newRealtimeTabletEvent.getEvent(), newSuppliedTabletEvent);
+      Assert.assertEquals(Boolean.FALSE, getGlobalTsFileEpochDegraded());
+      commitSuppliedEvent(newSuppliedTabletEvent, commitManager);
+
+      final PipeRealtimeEvent secondTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", secondResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(secondTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(secondTsFileEvent);
+
+      // The second TsFile is no longer needed because all of its tablets survived buffering.
+      Assert.assertNull(extractor.supply());
+      Assert.assertNull(getGlobalTsFileEpochDegraded());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
+  public void testHybridSourceRegionLevelDowngradingOnlyCachesLatestTsFile() throws Exception {
+    registerTestPipeMeta();
+
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    try (final PipeRealtimeDataRegionHybridSource extractor =
+        new PipeRealtimeDataRegionHybridSource()) {
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
+                }
+              });
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      final PipeTaskRuntimeConfiguration configuration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+
+      extractor.validate(new PipeParameterValidator(parameters));
+      extractor.customize(parameters, configuration);
+
+      final TsFileResource firstResource = createTsFileResource(dataRegion1, "107-107-0-0.tsfile");
+      final PipeRealtimeEvent firstTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("first-degraded-tablet", "a"),
+                  firstResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(firstTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(firstTabletEvent);
+      firstTabletEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+
+      Assert.assertNull(extractor.supply());
+      Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
+
+      final TsFileResource secondResource = createTsFileResource(dataRegion1, "108-108-0-0.tsfile");
+      final PipeRealtimeEvent secondTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("second-buffered-tablet", "a"),
+                  secondResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(secondTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(secondTabletEvent);
+
+      final PipeRealtimeEvent secondTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", secondResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(secondTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(secondTsFileEvent);
+
+      final TsFileResource thirdResource = createTsFileResource(dataRegion1, "109-109-0-0.tsfile");
+      final PipeRealtimeEvent thirdTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("latest-buffered-tablet", "a"),
+                  thirdResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(thirdTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(thirdTabletEvent);
+
+      // Once a newer epoch appears, the former tail is downgraded even if all its tablets are
+      // still available. This bounds the region-level cache to the latest TsFile.
+      Assert.assertEquals(
+          TsFileEpoch.State.USING_TSFILE, secondTabletEvent.getTsFileEpoch().getState(extractor));
+      Assert.assertTrue(secondTabletEvent.getEvent().isReleased());
+      Assert.assertEquals(
+          TsFileEpoch.State.USING_TABLET, thirdTabletEvent.getTsFileEpoch().getState(extractor));
+      Assert.assertFalse(thirdTabletEvent.getEvent().isReleased());
+
+      // Extract the first TsFile after the second one to verify that downgrade order, rather than
+      // flush completion order, decides which file can pass downstream.
+      final PipeRealtimeEvent firstTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", firstResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(firstTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(firstTsFileEvent);
+
+      final Event firstSuppliedTsFile = extractor.supply();
+      Assert.assertTrue(firstSuppliedTsFile instanceof TsFileInsertionEvent);
+      Assert.assertSame(firstTsFileEvent.getEvent(), firstSuppliedTsFile);
+      commitSuppliedEvent(firstSuppliedTsFile, commitManager);
+
+      final Event secondSuppliedTsFile = extractor.supply();
+      Assert.assertTrue(secondSuppliedTsFile instanceof TsFileInsertionEvent);
+      Assert.assertSame(secondTsFileEvent.getEvent(), secondSuppliedTsFile);
+      commitSuppliedEvent(secondSuppliedTsFile, commitManager);
+
+      Assert.assertEquals(Boolean.FALSE, getGlobalTsFileEpochDegraded());
+      final Event resumedLatestTablet = extractor.supply();
+      Assert.assertTrue(resumedLatestTablet instanceof TabletInsertionEvent);
+      Assert.assertSame(thirdTabletEvent.getEvent(), resumedLatestTablet);
+      commitSuppliedEvent(resumedLatestTablet, commitManager);
+
+      final PipeRealtimeEvent thirdTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", thirdResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(thirdTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(thirdTsFileEvent);
+
+      Assert.assertNull(extractor.supply());
+      Assert.assertNull(getGlobalTsFileEpochDegraded());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
+  public void testHybridSourceRegionLevelDowngradingPreservesPreviouslyQueuedEvents()
+      throws Exception {
+    registerTestPipeMeta();
+
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    try (final PipeRealtimeDataRegionHybridSource extractor =
+        new PipeRealtimeDataRegionHybridSource()) {
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
+                }
+              });
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      final PipeTaskRuntimeConfiguration configuration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+
+      extractor.validate(new PipeParameterValidator(parameters));
+      extractor.customize(parameters, configuration);
+
+      final TsFileResource olderResource = createTsFileResource(dataRegion1, "105-105-0-0.tsfile");
+      final PipeRealtimeEvent olderTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("queued-before-downgrading", "a"),
+                  olderResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(olderTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(olderTabletEvent);
+
+      // Seal the older epoch while leaving its tablet queued in the source.
+      final PipeRealtimeEvent olderTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", olderResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(olderTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(olderTsFileEvent);
+
+      final TsFileResource degradedResource =
+          createTsFileResource(dataRegion1, "106-106-0-0.tsfile");
+      final PipeRealtimeEvent degradedTabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("trigger-region-downgrading", "a"),
+                  degradedResource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(degradedTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+
+      CommonDescriptor.getInstance().getConfig().setPipeTotalFloatingMemoryProportion(0);
+      try {
+        extractor.extract(degradedTabletEvent);
+      } finally {
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setPipeTotalFloatingMemoryProportion(pipeTotalFloatingMemoryProportion);
+      }
+      Assert.assertEquals(
+          TsFileEpoch.State.USING_TSFILE, degradedTabletEvent.getTsFileEpoch().getState(extractor));
+      Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
+
+      final PipeRealtimeEvent degradedTsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false, "root.sg", degradedResource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(degradedTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(degradedTsFileEvent);
+
+      // The tablet that was already queued before downgrading must not be overtaken by the later
+      // degraded TsFile.
+      final Event firstSuppliedEvent = extractor.supply();
+      Assert.assertTrue(firstSuppliedEvent instanceof TabletInsertionEvent);
+      Assert.assertSame(olderTabletEvent.getEvent(), firstSuppliedEvent);
+      commitSuppliedEvent(firstSuppliedEvent, commitManager);
+
+      final Event secondSuppliedEvent = extractor.supply();
+      Assert.assertTrue(secondSuppliedEvent instanceof TsFileInsertionEvent);
+      Assert.assertSame(degradedTsFileEvent.getEvent(), secondSuppliedEvent);
+      commitSuppliedEvent(secondSuppliedEvent, commitManager);
+
+      Assert.assertNull(getGlobalTsFileEpochDegraded());
+      Assert.assertNull(extractor.supply());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
   private Future<?> write2DataRegion(
       final int writeNum, final int dataRegionId, final int startNum) {
     final File dataRegionDir =
@@ -575,6 +1183,101 @@ public class PipeRealtimeExtractTest {
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).clearReferenceCount(TEST_REFERENCE_HOLDER);
     }
+  }
+
+  private PipeRealtimeEvent bindToTestPipe(
+      final PipeRealtimeEvent event,
+      final PipeRealtimeDataRegionSource extractor,
+      final PipeTaskMeta pipeTaskMeta) {
+    return event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+        TEST_PIPE_NAME,
+        TEST_PIPE_CREATION_TIME,
+        pipeTaskMeta,
+        extractor.getTreePattern(),
+        extractor.getTablePattern(),
+        String.valueOf(extractor.getUserId()),
+        extractor.getUserName(),
+        extractor.getCliHostname(),
+        extractor.isSkipIfNoPrivileges(),
+        extractor.getRealtimeDataExtractionStartTime(),
+        extractor.getRealtimeDataExtractionEndTime());
+  }
+
+  private void commitSuppliedEvent(final Event event, final PipeEventCommitManager commitManager) {
+    final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+    commitManager.enrichWithCommitterKeyAndCommitId(
+        enrichedEvent, TEST_PIPE_CREATION_TIME, dataRegion1);
+    Assert.assertTrue(enrichedEvent.decreaseReferenceCount(TEST_REFERENCE_HOLDER, true));
+  }
+
+  private void commitLastGeneratedTabletEvent(
+      final PipeTsFileInsertionEvent tsFileEvent,
+      final PipeEventCommitManager commitManager,
+      final PipeTaskMeta pipeTaskMeta) {
+    tsFileEvent.registerGeneratedTabletInsertionEvent();
+    tsFileEvent.markGeneratedTabletInsertionEventsParsingCompleted();
+    final PipeRawTabletInsertionEvent generatedTabletEvent =
+        createGeneratedTabletEvent(tsFileEvent, pipeTaskMeta, "generated");
+
+    Assert.assertTrue(generatedTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+    Assert.assertTrue(tsFileEvent.decreaseReferenceCount(TEST_REFERENCE_HOLDER, false));
+    commitSuppliedEvent(generatedTabletEvent, commitManager);
+  }
+
+  private PipeRawTabletInsertionEvent createGeneratedTabletEvent(
+      final PipeTsFileInsertionEvent tsFileEvent,
+      final PipeTaskMeta pipeTaskMeta,
+      final String deviceId) {
+    return createGeneratedTabletEvent(tsFileEvent, pipeTaskMeta, deviceId, true);
+  }
+
+  private PipeRawTabletInsertionEvent createGeneratedTabletEvent(
+      final PipeTsFileInsertionEvent tsFileEvent,
+      final PipeTaskMeta pipeTaskMeta,
+      final String deviceId,
+      final boolean needToReport) {
+    final Tablet tablet =
+        new Tablet(
+            "root.sg.d." + deviceId,
+            Collections.singletonList(new MeasurementSchema("s", TSDataType.INT32)),
+            1);
+    return new PipeRawTabletInsertionEvent(
+        false,
+        "root.sg",
+        null,
+        null,
+        tablet,
+        false,
+        TEST_PIPE_NAME,
+        TEST_PIPE_CREATION_TIME,
+        pipeTaskMeta,
+        tsFileEvent,
+        needToReport);
+  }
+
+  private int getActiveTsFileEpochCount(final PipeRealtimeDataRegionHybridSource extractor)
+      throws Exception {
+    final Field activeTsFileEpochsField =
+        PipeRealtimeDataRegionHybridSource.class.getDeclaredField("activeTsFileEpochs");
+    activeTsFileEpochsField.setAccessible(true);
+    return ((Set<?>) activeTsFileEpochsField.get(extractor)).size();
+  }
+
+  private int getInFlightTsFileCount(final PipeRealtimeDataRegionHybridSource extractor)
+      throws Exception {
+    final Field inFlightTsFileCountField =
+        PipeRealtimeDataRegionHybridSource.class.getDeclaredField("inFlightTsFileCount");
+    inFlightTsFileCountField.setAccessible(true);
+    return inFlightTsFileCountField.getInt(extractor);
+  }
+
+  private boolean isRegionLevelDowngradingEnabled(
+      final PipeRealtimeDataRegionHybridSource extractor) throws Exception {
+    final Field isRegionLevelDowngradingEnabledField =
+        PipeRealtimeDataRegionHybridSource.class.getDeclaredField(
+            "isRegionLevelDowngradingEnabled");
+    isRegionLevelDowngradingEnabledField.setAccessible(true);
+    return isRegionLevelDowngradingEnabledField.getBoolean(extractor);
   }
 
   private PipeRealtimeEvent createProgressReportRealtimeEvent() {
