@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -38,16 +39,55 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class SubscriptionReceiverAgentTest {
+
+  @Test
+  public void testTimeoutCheckerIsNotScheduledWhenSubscriptionIsDisabled() throws Exception {
+    final boolean subscriptionEnabled =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionEnabled();
+    try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(false);
+
+      final SubscriptionReceiverAgent agent = new SubscriptionReceiverAgent();
+
+      Assert.assertNull(getReceiverTimeoutChecker(agent));
+    } finally {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(subscriptionEnabled);
+    }
+  }
+
+  @Test
+  public void testTimeoutCheckerIsScheduledWhenSubscriptionIsEnabled() throws Exception {
+    final boolean subscriptionEnabled =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionEnabled();
+    SubscriptionReceiverAgent agent = null;
+    try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(true);
+
+      agent = new SubscriptionReceiverAgent();
+
+      Assert.assertNotNull(getReceiverTimeoutChecker(agent));
+    } finally {
+      if (agent != null) {
+        final ScheduledExecutorService receiverTimeoutChecker = getReceiverTimeoutChecker(agent);
+        if (receiverTimeoutChecker != null) {
+          receiverTimeoutChecker.shutdownNow();
+        }
+      }
+      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(subscriptionEnabled);
+    }
+  }
 
   @Test
   public void testDisconnectedReceiverIsRetainedUntilTimeout() throws IOException {
@@ -174,6 +214,13 @@ public class SubscriptionReceiverAgentTest {
           return receiver;
         };
     return new SubscriptionReceiverAgent(constructor, false);
+  }
+
+  private ScheduledExecutorService getReceiverTimeoutChecker(final SubscriptionReceiverAgent agent)
+      throws Exception {
+    final Field field = SubscriptionReceiverAgent.class.getDeclaredField("receiverTimeoutChecker");
+    field.setAccessible(true);
+    return (ScheduledExecutorService) field.get(agent);
   }
 
   private TPipeSubscribeReq createHandshakeRequest(
