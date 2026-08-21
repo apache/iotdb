@@ -60,6 +60,8 @@ public final class StorageEngineMessages {
       "Failed to push LOAD piece %d of load %s back to %s: %s";
   public static final String LOG_LOAD_CONSENSUS_ABORT_MARKER_FAILED_6A218023 =
       "Failed to log the LOAD ABORT marker of load {}: {}";
+  public static final String LOG_LOAD_CONSENSUS_COMMIT_MARKER_FAILED_5353A4E5 =
+      "Failed to log the LOAD COMMIT marker of load {}: {}";
   public static final String EXCEPTION_LOAD_CONSENSUS_PIECE_DATA_MISSING_OR_CHECKSUM_MISMATCH_AFTER_PULL_35F4972E =
       "LOAD task %s piece %d data is missing or its checksum mismatches after pull.";
   public static final String LOG_LOAD_CONSENSUS_RETAINED_PIECE_READ_FAILED_0659D19B =
@@ -74,6 +76,8 @@ public final class StorageEngineMessages {
       "Cannot prepare load %s because no staged data exists on this node.";
   public static final String MESSAGE_LOAD_CONSENSUS_ABORT_MARKER_FAILED_16343CF5 =
       "LOAD abort marker write failed for load %s, staged data is kept for retry: %s";
+  public static final String MESSAGE_LOAD_CONSENSUS_COMMIT_MARKER_FAILED_184F9E59 =
+      "LOAD commit marker write failed for load %s, staged data is kept for retry: %s";
   public static final String LOG_LOAD_CONSENSUS_RECOVERED_TASK_02824CE6 =
       "Recovered in-progress LOAD task {} from disk; staged data is kept until COMMIT or ABORT.";
   public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB =

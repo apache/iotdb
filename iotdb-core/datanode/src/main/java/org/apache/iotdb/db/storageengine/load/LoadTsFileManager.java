@@ -868,9 +868,28 @@ public class LoadTsFileManager {
       progressIndexes.put(entry.getKey(), progressIndex);
     }
     if (!node.isGeneratedByRemoteConsensusLeader()) {
-      // Replicate the COMMIT marker before loading so followers import their own staged files too.
-      logOpMarkerToWal(dataRegion, node);
+      try {
+        // Replicate the COMMIT marker before loading so followers import their own staged files
+        // too.
+        logOpMarkerToWal(dataRegion, node);
+      } catch (IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.LOG_LOAD_CONSENSUS_COMMIT_MARKER_FAILED_5353A4E5,
+            node.getLoadId(),
+            e.getMessage());
+        // The COMMIT was not sent (or not durably replicated), so this node must NOT clean up yet,
+        // exactly like ABORT: the coordinator will retry the COMMIT, and followers may still need
+        // the staged files. Cleanup is only allowed after the terminal marker was sent.
+        return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    StorageEngineMessages.MESSAGE_LOAD_CONSENSUS_COMMIT_MARKER_FAILED_184F9E59,
+                    node.getLoadId(),
+                    "see previous log for the marker write failure"));
+      }
     }
+    // The COMMIT marker is durably logged (or this is a follower applying the replicated marker):
+    // only now may the staged files be loaded and the task cleaned up.
     if (!loadAll(node.getLoadId(), dataRegion, node.isGeneratedByPipe(), progressIndexes)) {
       return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
           .setMessage(

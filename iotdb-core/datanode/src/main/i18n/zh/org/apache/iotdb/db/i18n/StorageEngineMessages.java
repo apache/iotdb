@@ -59,6 +59,8 @@ public final class StorageEngineMessages {
       "将 LOAD 分片 %d（load %s）推回给 %s 失败：%s";
   public static final String LOG_LOAD_CONSENSUS_ABORT_MARKER_FAILED_6A218023 =
       "写入 LOAD 中止（ABORT）标记（load {}）失败：{}";
+  public static final String LOG_LOAD_CONSENSUS_COMMIT_MARKER_FAILED_5353A4E5 =
+      "写入 LOAD 提交（COMMIT）标记（load {}）失败：{}";
   public static final String EXCEPTION_LOAD_CONSENSUS_PIECE_DATA_MISSING_OR_CHECKSUM_MISMATCH_AFTER_PULL_35F4972E =
       "回补后 LOAD 任务 %s 的分片 %d 数据仍缺失或校验和不一致。";
   public static final String LOG_LOAD_CONSENSUS_RETAINED_PIECE_READ_FAILED_0659D19B =
@@ -73,6 +75,8 @@ public final class StorageEngineMessages {
       "无法准备（PREPARE）load %s，因为该节点上不存在暂存数据。";
   public static final String MESSAGE_LOAD_CONSENSUS_ABORT_MARKER_FAILED_16343CF5 =
       "load %s 的 ABORT marker 写入失败，暂存数据已保留以便重试：%s";
+  public static final String MESSAGE_LOAD_CONSENSUS_COMMIT_MARKER_FAILED_184F9E59 =
+      "load %s 的 COMMIT marker 写入失败，暂存数据已保留以便重试：%s";
   public static final String LOG_LOAD_CONSENSUS_RECOVERED_TASK_02824CE6 =
       "已从磁盘恢复进行中的 LOAD 任务 {}；暂存数据将保留至 COMMIT 或 ABORT。";
   public static final String LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB =
