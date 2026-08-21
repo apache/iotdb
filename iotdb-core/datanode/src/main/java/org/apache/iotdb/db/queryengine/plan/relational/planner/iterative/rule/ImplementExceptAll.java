@@ -36,14 +36,14 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.LongType;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression.Operator.SUBTRACT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.Except.distinct;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class ImplementExceptAll implements Rule<ExceptNode> {
 

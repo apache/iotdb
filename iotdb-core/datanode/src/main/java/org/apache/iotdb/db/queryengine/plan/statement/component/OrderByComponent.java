@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 /** The order of query result set */
 public class OrderByComponent extends StatementNode {

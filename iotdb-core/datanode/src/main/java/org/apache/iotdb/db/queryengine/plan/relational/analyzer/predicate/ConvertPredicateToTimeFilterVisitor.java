@@ -37,8 +37,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCase
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
@@ -52,7 +52,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 /** The caller must make sure that the Expression only contains valid time predicate */
 public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter, Void> {

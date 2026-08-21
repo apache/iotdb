@@ -81,10 +81,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
@@ -106,9 +106,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
@@ -144,6 +141,9 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processLimitedOuterJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.extractCardinality;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.collect.ImmutableMap.toImmutableMap;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.

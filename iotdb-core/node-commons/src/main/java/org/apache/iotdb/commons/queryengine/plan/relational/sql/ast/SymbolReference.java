@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
 

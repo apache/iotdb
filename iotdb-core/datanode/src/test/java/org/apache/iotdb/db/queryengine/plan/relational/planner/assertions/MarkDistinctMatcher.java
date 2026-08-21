@@ -23,19 +23,18 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 
 public class MarkDistinctMatcher implements Matcher {
   private final PlanTestSymbol markerSymbol;

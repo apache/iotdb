@@ -31,8 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.NoOpSymbolResolve
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Map;

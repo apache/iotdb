@@ -30,10 +30,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.SettableFuture;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -48,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.apache.iotdb.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements SourceOperator {
 

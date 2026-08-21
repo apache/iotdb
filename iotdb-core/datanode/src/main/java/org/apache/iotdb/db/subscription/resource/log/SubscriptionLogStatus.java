@@ -21,9 +21,9 @@ package org.apache.iotdb.db.subscription.resource.log;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.github.benmanes.caffeine.cache.Cache;
+import org.apache.iotdb.github.benmanes.caffeine.cache.Caffeine;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

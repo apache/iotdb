@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
 import java.util.Optional;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class AssignUniqueIdMatcher implements RvalueMatcher {
   @Override

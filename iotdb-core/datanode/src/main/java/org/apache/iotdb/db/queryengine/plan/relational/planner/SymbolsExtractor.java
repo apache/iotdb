@@ -34,19 +34,18 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Set;
 
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ExpressionExtractor.extractExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ExpressionExtractor.extractExpressionsNonRecursive;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanNodeSearcher.searchFrom;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup.noLookup;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 
 public final class SymbolsExtractor {
   private SymbolsExtractor() {}

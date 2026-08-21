@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import com.google.common.collect.MinMaxPriorityQueue;
+import org.apache.iotdb.google.common.collect.MinMaxPriorityQueue;
 
 import java.util.ArrayList;
 import java.util.Comparator;

@@ -25,9 +25,9 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 /**
  * This class returns a set of positions to aggregate over for an aggregate function in row pattern

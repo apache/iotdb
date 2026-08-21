@@ -39,9 +39,9 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.UNSUPPORTED_TYPE_MESSAGE;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.serializeBinaryValue;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.utils.BytesUtils.bytesToBool;
 import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
 import static org.apache.tsfile.utils.TsPrimitiveType.getByType;

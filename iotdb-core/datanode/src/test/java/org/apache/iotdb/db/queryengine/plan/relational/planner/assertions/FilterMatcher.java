@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterN
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 final class FilterMatcher implements Matcher {
   private final Expression predicate;

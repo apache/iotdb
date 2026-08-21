@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class RuleStatsRecorder {
   private final Map<Class<?>, RuleStats> stats = new HashMap<>();

@@ -20,8 +20,8 @@
 package org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash;
 
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
+import org.apache.iotdb.google.common.annotations.VisibleForTesting;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.type.Type;

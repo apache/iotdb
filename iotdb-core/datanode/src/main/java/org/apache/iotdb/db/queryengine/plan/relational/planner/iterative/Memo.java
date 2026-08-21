@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
+import org.apache.iotdb.google.common.collect.HashMultiset;
+import org.apache.iotdb.google.common.collect.Multiset;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,10 +33,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Plans.resolveGroupReferences;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 /**
  * Stores a plan in a form that's efficient to mutate locally (i.e. without having to do full

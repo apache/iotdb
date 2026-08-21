@@ -30,7 +30,7 @@ import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * The {@link SubscriptionPrefetchingQueueStates} manages the state of a {@link

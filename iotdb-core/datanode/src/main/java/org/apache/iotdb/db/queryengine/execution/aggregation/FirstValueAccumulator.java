@@ -34,7 +34,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.charset.StandardCharsets;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class FirstValueAccumulator implements Accumulator {
 

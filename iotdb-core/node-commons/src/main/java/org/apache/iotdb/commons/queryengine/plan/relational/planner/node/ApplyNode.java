@@ -27,8 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -36,8 +35,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class ApplyNode extends TwoChildProcessNode {
 

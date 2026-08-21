@@ -31,7 +31,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 

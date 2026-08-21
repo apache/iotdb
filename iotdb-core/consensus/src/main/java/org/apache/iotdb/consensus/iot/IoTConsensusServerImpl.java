@@ -75,10 +75,10 @@ import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourc
 import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;

@@ -347,6 +347,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTask
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
@@ -365,8 +367,6 @@ import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;

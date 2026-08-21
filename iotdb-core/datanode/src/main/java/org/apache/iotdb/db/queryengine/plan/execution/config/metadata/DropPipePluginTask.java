@@ -24,8 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
-
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
 public class DropPipePluginTask implements IConfigTask {
 

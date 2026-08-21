@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.google.common.util.concurrent.AbstractFuture;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.AbstractFuture;
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
-import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 /** A thread-safe memory pool. */
 public class MemoryPool {

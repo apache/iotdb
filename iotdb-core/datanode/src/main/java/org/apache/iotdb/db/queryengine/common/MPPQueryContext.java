@@ -50,8 +50,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryRe
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;

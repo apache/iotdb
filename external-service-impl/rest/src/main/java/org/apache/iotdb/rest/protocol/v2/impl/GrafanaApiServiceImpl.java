@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.google.common.base.Joiner;
 import org.apache.iotdb.rest.protocol.handler.AuthorizationHandler;
 import org.apache.iotdb.rest.protocol.handler.QueryRowLimitUtils;
 import org.apache.iotdb.rest.protocol.v2.GrafanaApiService;
@@ -47,7 +48,6 @@ import org.apache.iotdb.rest.protocol.v2.model.ExpressionRequest;
 import org.apache.iotdb.rest.protocol.v2.model.SQL;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.base.Joiner;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import jakarta.ws.rs.core.Response;

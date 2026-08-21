@@ -29,9 +29,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class BooleanLiteral extends Literal {
 

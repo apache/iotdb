@@ -64,8 +64,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
 public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext {

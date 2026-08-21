@@ -33,11 +33,11 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.Iterables;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -53,12 +53,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Iterables.concat;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.collect.Iterables.concat;
 
 public class WindowNode extends SingleChildProcessNode {
   private final Set<Symbol> prePartitionedInputs;

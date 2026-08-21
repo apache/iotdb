@@ -26,8 +26,8 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.MoreCollectors.toOptional;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.collect.MoreCollectors.toOptional;
 
 public interface Lookup {
   /**

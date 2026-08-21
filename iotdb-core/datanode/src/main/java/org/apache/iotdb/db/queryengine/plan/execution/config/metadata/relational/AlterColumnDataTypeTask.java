@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 
 public class AlterColumnDataTypeTask extends AbstractAlterOrDropTableTask {

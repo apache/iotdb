@@ -25,8 +25,8 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.join.merge.comparator.JoinKeyComparator;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -37,8 +37,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.MAX_RESERVED_MEMORY;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.successfulAsList;
 
 public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
   protected boolean leftFinished;

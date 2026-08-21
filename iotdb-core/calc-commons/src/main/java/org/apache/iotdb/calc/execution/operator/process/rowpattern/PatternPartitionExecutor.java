@@ -31,8 +31,8 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowsPerMatch;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SkipToPosition;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -44,8 +44,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.lang.Math.max;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public final class PatternPartitionExecutor {
   private final int partitionStart;

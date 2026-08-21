@@ -55,9 +55,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeCoercion;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
@@ -71,12 +71,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Predicates.instanceOf;
-import static com.google.common.base.Throwables.throwIfInstanceOf;
-import static com.google.common.base.Verify.verify;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.transformation.dag.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.MINUS;
@@ -84,6 +78,12 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Arith
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Predicates.instanceOf;
+import static org.apache.iotdb.google.common.base.Throwables.throwIfInstanceOf;
+import static org.apache.iotdb.google.common.base.Verify.verify;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.Iterables.getOnlyElement;
 
 public class IrExpressionInterpreter {
 

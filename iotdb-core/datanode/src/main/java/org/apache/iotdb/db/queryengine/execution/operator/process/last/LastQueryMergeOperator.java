@@ -23,8 +23,8 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -36,9 +36,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
 
-import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil.appendLastValue;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil.getTimeSeries;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.successfulAsList;
 
 // merge all last query result from different data regions, it will select max time for the same
 // time-series

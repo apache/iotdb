@@ -23,10 +23,10 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 final class PlanNodeMatcher implements Matcher {
   private final Class<? extends PlanNode> nodeClass;

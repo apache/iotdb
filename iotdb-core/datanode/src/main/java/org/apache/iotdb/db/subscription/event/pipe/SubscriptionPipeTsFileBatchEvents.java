@@ -23,7 +23,7 @@ import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventB
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents {
 

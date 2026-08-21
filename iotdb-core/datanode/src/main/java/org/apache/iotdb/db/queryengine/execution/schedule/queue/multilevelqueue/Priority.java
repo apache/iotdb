@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue
 
 import javax.annotation.concurrent.Immutable;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * This class is inspired by Trino <a

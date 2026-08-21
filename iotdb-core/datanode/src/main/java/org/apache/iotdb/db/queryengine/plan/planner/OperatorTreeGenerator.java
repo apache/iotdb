@@ -252,9 +252,9 @@ import org.apache.iotdb.db.utils.columngenerator.ColumnGeneratorType;
 import org.apache.iotdb.db.utils.columngenerator.SlidingTimeColumnGenerator;
 import org.apache.iotdb.db.utils.columngenerator.parameter.ColumnGeneratorParameter;
 import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
@@ -290,8 +290,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
@@ -305,6 +303,8 @@ import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOper
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
 public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecutionPlanContext> {

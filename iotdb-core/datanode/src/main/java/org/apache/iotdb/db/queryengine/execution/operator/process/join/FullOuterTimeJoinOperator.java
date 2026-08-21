@@ -29,8 +29,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Col
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -41,8 +41,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.successfulAsList;
 
 public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
 

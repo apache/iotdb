@@ -24,7 +24,7 @@ import org.apache.iotdb.calc.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class RowsFrame implements Frame {
   private final Partition partition;

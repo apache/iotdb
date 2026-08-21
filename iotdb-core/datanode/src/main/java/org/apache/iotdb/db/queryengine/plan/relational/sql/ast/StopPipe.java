@@ -27,8 +27,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class StopPipe extends PipeStatement {
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(StopPipe.class);

@@ -28,8 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;

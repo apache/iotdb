@@ -21,8 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.utils;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Optional;

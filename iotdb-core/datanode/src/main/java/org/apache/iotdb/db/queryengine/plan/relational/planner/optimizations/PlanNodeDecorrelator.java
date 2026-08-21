@@ -42,14 +42,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeCoercion;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Sets;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.collect.ImmutableMultimap;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.Iterables;
+import org.apache.iotdb.google.common.collect.Multimap;
+import org.apache.iotdb.google.common.collect.Sets;
 
 import java.util.List;
 import java.util.Map;
@@ -57,9 +56,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
@@ -69,6 +65,9 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SymbolMapper.symbolMapper;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.ImmutableMap.toImmutableMap;
 
 public class PlanNodeDecorrelator {
   private final PlannerContext plannerContext;

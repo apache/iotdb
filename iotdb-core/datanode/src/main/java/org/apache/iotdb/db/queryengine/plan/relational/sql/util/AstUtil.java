@@ -29,9 +29,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
-
-import com.google.common.graph.SuccessorsFunction;
-import com.google.common.graph.Traverser;
+import org.apache.iotdb.google.common.graph.SuccessorsFunction;
+import org.apache.iotdb.google.common.graph.Traverser;
 
 import java.time.ZoneId;
 import java.util.List;
@@ -40,9 +39,9 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static com.google.common.collect.Streams.stream;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
+import static org.apache.iotdb.google.common.collect.Streams.stream;
 
 public final class AstUtil {
 

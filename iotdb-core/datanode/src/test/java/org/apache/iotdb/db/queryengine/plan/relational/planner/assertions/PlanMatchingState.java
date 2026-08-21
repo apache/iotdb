@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.util.List;
 

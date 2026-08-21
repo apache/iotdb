@@ -20,8 +20,7 @@
 package org.apache.iotdb.calc.execution.schedule.queue;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
-
-import com.google.common.base.Preconditions;
+import org.apache.iotdb.google.common.base.Preconditions;
 
 /**
  * The base class of a special kind of blocking queue, which has these characters:

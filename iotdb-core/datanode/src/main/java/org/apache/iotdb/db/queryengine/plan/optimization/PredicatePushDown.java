@@ -60,8 +60,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 /** <b>Optimization phase:</b> Logical plan planning. */
 public class PredicatePushDown implements PlanOptimizer {

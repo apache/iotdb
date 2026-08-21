@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation
 
 import org.antlr.v4.runtime.RecognitionException;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class ParsingException extends RuntimeException {
   private final int line;

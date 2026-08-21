@@ -21,13 +21,13 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
+import org.apache.iotdb.google.common.util.concurrent.RateLimiter;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
-import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ColumnSchema;

@@ -28,9 +28,9 @@ import javax.annotation.Nullable;
 
 import java.util.Arrays;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public final class AggregationMask {
   private static final int[] NO_SELECTED_POSITIONS = new int[0];

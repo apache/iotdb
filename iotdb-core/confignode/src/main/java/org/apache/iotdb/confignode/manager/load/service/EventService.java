@@ -34,9 +34,9 @@ import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatist
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
+import org.apache.iotdb.google.common.eventbus.AsyncEventBus;
+import org.apache.iotdb.google.common.eventbus.EventBus;
 
-import com.google.common.eventbus.AsyncEventBus;
-import com.google.common.eventbus.EventBus;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

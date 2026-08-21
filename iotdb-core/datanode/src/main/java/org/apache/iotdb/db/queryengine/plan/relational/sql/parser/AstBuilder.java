@@ -281,8 +281,8 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -314,7 +314,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.Long.parseLong;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -354,6 +353,7 @@ import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseString
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.selectList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.table;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 

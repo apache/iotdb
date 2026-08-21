@@ -24,8 +24,8 @@ import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -38,7 +38,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.successfulAsList;
 
 public class LeftOuterTimeJoinOperator implements ProcessOperator {
 

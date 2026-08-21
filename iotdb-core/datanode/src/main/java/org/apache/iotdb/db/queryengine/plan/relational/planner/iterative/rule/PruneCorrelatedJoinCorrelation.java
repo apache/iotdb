@@ -28,9 +28,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import java.util.List;
 import java.util.Set;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor.extractUnique;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.correlatedJoin;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 public class PruneCorrelatedJoinCorrelation implements Rule<CorrelatedJoinNode> {
   private static final Pattern<CorrelatedJoinNode> PATTERN = correlatedJoin();

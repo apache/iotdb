@@ -33,21 +33,21 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.Sets;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Pattern.empty;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.CorrelatedJoin.correlation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.correlatedJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.extractCardinality;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class TransformUncorrelatedSubqueryToJoin implements Rule<CorrelatedJoinNode> {
   private static final Pattern<CorrelatedJoinNode> PATTERN =

@@ -23,8 +23,8 @@ import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -33,8 +33,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Verify.verify;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Verify.verify;
 
 public class AssignUniqueIdOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =

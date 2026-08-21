@@ -38,10 +38,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Collections2.orderedPermutations;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.collect.Collections2.orderedPermutations;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 public class IrRowPatternToProgramRewriter {
   private IrRowPatternToProgramRewriter() {}

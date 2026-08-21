@@ -32,11 +32,11 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Verify.verify;
 import static java.lang.Math.min;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.FlatHash.sumExact;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Verify.verify;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOf;
 
 // This implementation assumes arrays used in the hash are always a power of 2

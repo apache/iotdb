@@ -20,8 +20,7 @@
 package org.apache.iotdb.calc.execution.schedule.queue;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
-
-import com.google.common.base.Preconditions;
+import org.apache.iotdb.google.common.base.Preconditions;
 
 /**
  * This class is different from <class>IndexedBlockingQueue</class> in that it will reserve space

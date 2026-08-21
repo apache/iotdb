@@ -21,9 +21,9 @@ package org.apache.iotdb.commons.log;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.github.benmanes.caffeine.cache.Cache;
+import org.apache.iotdb.github.benmanes.caffeine.cache.Caffeine;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

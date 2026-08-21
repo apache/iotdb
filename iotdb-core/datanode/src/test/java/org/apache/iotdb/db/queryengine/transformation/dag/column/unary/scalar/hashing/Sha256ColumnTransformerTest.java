@@ -24,8 +24,8 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.h
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.GenericCodecColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
+import org.apache.iotdb.google.common.hash.Hashing;
 
-import com.google.common.hash.Hashing;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;

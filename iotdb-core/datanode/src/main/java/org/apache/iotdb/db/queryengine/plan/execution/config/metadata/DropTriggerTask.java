@@ -23,8 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatement;
-
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
 public class DropTriggerTask implements IConfigTask {
   private final String triggerName;

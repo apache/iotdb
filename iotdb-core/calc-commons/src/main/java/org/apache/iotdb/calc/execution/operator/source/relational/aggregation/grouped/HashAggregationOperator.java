@@ -28,9 +28,9 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -38,9 +38,9 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.CURRENT_USED_MEMORY;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class HashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =

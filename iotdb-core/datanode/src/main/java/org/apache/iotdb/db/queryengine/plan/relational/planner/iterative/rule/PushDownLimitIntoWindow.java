@@ -27,12 +27,10 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.util.Optional;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.toIntExact;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode.RankingType.ROW_NUMBER;
@@ -41,6 +39,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Child
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.window;
+import static org.apache.iotdb.google.common.collect.Iterables.getOnlyElement;
 
 public class PushDownLimitIntoWindow implements Rule<LimitNode> {
   private static final Capture<WindowNode> childCapture = newCapture();

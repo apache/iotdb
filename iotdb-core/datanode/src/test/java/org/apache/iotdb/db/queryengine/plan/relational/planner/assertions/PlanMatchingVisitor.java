@@ -30,11 +30,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments.identity;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 final class PlanMatchingVisitor implements PlanVisitor<MatchResult, PlanMatchPattern> {
 

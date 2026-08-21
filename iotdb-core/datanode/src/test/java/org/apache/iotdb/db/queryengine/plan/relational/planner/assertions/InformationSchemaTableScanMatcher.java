@@ -30,9 +30,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class InformationSchemaTableScanMatcher extends TableScanMatcher {
   private final Optional<Integer> dataNodeId;

@@ -38,9 +38,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class SlidingWindowAggregationOperator extends SingleInputAggregationOperator {
 

@@ -31,9 +31,9 @@ import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.queryengine.execution.schedule.ExecutionContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.Priority;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.SettableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
 
 import java.util.Comparator;

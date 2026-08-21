@@ -72,8 +72,7 @@ import org.apache.iotdb.commons.udf.builtin.UDTFTimeDifference;
 import org.apache.iotdb.commons.udf.builtin.UDTFTopK;
 import org.apache.iotdb.commons.udf.builtin.UDTFZeroCount;
 import org.apache.iotdb.commons.udf.builtin.UDTFZeroDuration;
-
-import com.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
 
 import java.util.Arrays;
 import java.util.HashSet;

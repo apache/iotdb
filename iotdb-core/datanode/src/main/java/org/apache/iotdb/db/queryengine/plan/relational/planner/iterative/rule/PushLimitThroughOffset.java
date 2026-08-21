@@ -25,8 +25,7 @@ import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import static java.lang.Math.addExact;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;

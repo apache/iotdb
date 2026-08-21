@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowPipePlugins extends PipeStatement {
 

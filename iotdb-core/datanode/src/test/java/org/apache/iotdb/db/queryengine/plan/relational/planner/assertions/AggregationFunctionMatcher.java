@@ -29,8 +29,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class AggregationFunctionMatcher implements RvalueMatcher {
   private final ExpectedValueProvider<AggregationFunction> callMaker;

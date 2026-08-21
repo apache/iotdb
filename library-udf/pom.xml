@@ -31,6 +31,7 @@
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <guava.version>32.1.2-jre</guava.version>
     </properties>
     <dependencies>
         <dependency>
@@ -73,6 +74,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

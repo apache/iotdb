@@ -52,10 +52,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsDrawer;
 import org.apache.iotdb.db.queryengine.statistics.QueryStatisticsFetcher;
 import org.apache.iotdb.db.queryengine.statistics.StatisticLine;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.TypeFactory;

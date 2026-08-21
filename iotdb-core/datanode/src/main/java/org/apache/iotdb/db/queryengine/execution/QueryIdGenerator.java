@@ -27,13 +27,13 @@ import javax.annotation.concurrent.GuardedBy;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 import static java.lang.String.format;
 import static java.time.ZoneOffset.UTC;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 
 public class QueryIdGenerator {
 

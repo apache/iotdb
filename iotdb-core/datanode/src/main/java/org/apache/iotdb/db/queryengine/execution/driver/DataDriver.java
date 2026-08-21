@@ -27,16 +27,15 @@ import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
-
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.iotdb.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.List;
 
-import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
+import static org.apache.iotdb.google.common.base.Throwables.throwIfUnchecked;
 
 /**
  * One {@link DataDriver} is responsible for one {@link FragmentInstance} which is for data query,

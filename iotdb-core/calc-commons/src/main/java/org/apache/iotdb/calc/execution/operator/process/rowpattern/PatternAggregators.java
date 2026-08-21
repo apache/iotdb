@@ -24,7 +24,7 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class PatternAggregators {
   private PatternAggregator[][] values;

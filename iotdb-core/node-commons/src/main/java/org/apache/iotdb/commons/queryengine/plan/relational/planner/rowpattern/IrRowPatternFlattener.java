@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 /**
  * Optimize row pattern: - remove nested exclusions - flatten alternations and concatenations -

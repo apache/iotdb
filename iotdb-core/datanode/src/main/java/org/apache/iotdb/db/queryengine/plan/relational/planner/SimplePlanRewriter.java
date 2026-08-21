@@ -21,11 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
-
-import static com.google.common.base.Verify.verifyNotNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChildReplacer.replaceChildren;
+import static org.apache.iotdb.google.common.base.Verify.verifyNotNull;
 
 public abstract class SimplePlanRewriter<C>
     implements PlanVisitor<PlanNode, SimplePlanRewriter.RewriteContext<C>> {

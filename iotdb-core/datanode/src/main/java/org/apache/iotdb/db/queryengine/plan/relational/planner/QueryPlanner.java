@@ -80,12 +80,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.Iterables;
+import org.apache.iotdb.google.common.collect.Sets;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
 import org.apache.tsfile.read.common.type.Type;
 
 import javax.annotation.Nonnull;
@@ -106,10 +106,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.ImmutableMap.toImmutableMap;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
@@ -130,6 +126,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllo
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor.CAN_NOT_INFER_TIME_RANGE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.ImmutableMap.toImmutableMap;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class QueryPlanner {

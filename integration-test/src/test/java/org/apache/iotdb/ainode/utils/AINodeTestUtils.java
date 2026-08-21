@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.ainode.utils;
 
+import org.apache.iotdb.google.common.collect.ImmutableSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

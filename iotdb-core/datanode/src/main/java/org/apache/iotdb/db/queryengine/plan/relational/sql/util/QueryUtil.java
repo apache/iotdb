@@ -47,8 +47,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowDefinition;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Optional;

@@ -30,9 +30,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.SettableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -43,7 +43,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.apache.iotdb.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
   private static final long MAX_SIZE =
