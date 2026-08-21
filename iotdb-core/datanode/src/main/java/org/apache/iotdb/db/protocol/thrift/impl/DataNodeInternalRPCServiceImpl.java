@@ -119,6 +119,7 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.partition.DataPartitionTableGenerator;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -162,6 +163,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
@@ -625,15 +627,53 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     final ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
-    final LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
-    if (pieceNode == null) {
+    final PlanNode planNode = PlanNodeType.deserialize(req.body);
+    if (planNode == null) {
       return createTLoadResp(
           new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
     }
+    if (planNode instanceof LoadTsFileConsensusNode) {
+      // LOAD consensus piece delivery outside the consensus log: a PULL makes the write node push
+      // one retained piece back to the requester (a follower that applied the WAL marker without
+      // having the chunk bytes); the pushed PIECE is cached until the marker's apply order allows
+      // it to be written.
+      final LoadTsFileConsensusNode loadNode = (LoadTsFileConsensusNode) planNode;
+      final DataRegion dataRegion =
+          StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
+      if (dataRegion == null) {
+        return createTLoadResp(
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+                .setMessage(
+                    StorageEngineMessages
+                            .STORAGE_LOG_DATAREGION_NOT_FOUND_ON_THIS_DATANODE_WHEN_WRITING_PIECE_E5B5A888
+                        + groupId));
+      }
+      try {
+        switch (loadNode.getOp()) {
+          case PULL:
+            return createTLoadResp(
+                StorageEngine.getInstance()
+                    .getLoadTsFileManager()
+                    .handlePullPiece(dataRegion, loadNode));
+          case PIECE:
+            return createTLoadResp(
+                StorageEngine.getInstance()
+                    .getLoadTsFileManager()
+                    .cacheConsensusPiece(dataRegion, loadNode));
+          default:
+            return createTLoadResp(
+                new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+                    .setMessage(String.valueOf(loadNode.getOp())));
+        }
+      } catch (Exception e) {
+        return createTLoadResp(
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+      }
+    }
+    final LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) planNode;
     final TSStatus resultStatus =
         StorageEngine.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
-
     return createTLoadResp(resultStatus);
   }
 

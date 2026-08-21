@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -104,10 +105,14 @@ public class SnapshotTaker {
         }
         success = createSnapshot(seqFiles, tempSnapshotId);
         success = success && createSnapshot(unseqFiles, tempSnapshotId);
-        success = success && snapshotCompressionRatio(snapshotDirPath);
       } finally {
         readUnlockTheFile();
       }
+      // The LOAD staging files are independent of the TsFileManager, and snapshotting them while
+      // holding the TsFileManager read lock would invert the lock order against a COMMIT apply
+      // (loadLock read -> TsFileManager write), so they are copied after the lock is released.
+      success = success && snapshotLoadTasks(snapshotDir);
+      success = success && snapshotCompressionRatio(snapshotDirPath);
 
       if (!success) {
         LOGGER.warn(
@@ -138,6 +143,24 @@ public class SnapshotTaker {
       } catch (Exception e) {
         LOGGER.error(StorageEngineMessages.FAILED_TO_CLOSE_SNAPSHOT_LOGGER, e);
       }
+    }
+  }
+
+  /**
+   * Includes the in-progress LOAD staging files of this DataRegion into the snapshot so that a
+   * replica restored from it can continue (or at least explicitly fail) the pending load instead of
+   * replaying COMMIT as a silent no-op. Only the already-synced byte prefix of every staged file is
+   * copied; the remaining bytes are delivered by the following PIECE refs.
+   */
+  private boolean snapshotLoadTasks(File snapshotDir) {
+    try {
+      StorageEngine.getInstance()
+          .getLoadTsFileManager()
+          .snapshotLoadTasksForRegion(dataRegion, snapshotDir);
+      return true;
+    } catch (Exception e) {
+      LOGGER.error(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
+      return false;
     }
   }
 
