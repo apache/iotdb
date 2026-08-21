@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -76,8 +75,7 @@ public class PipeSinkSubtaskManagerTest {
     final Map<String, String> singleThreadAttributes = new HashMap<>();
     singleThreadAttributes.put(
         PipeSinkConstant.CONNECTOR_SERIALIZE_BY_REGION_KEY, Boolean.FALSE.toString());
-    singleThreadAttributes.put(
-        PipeSinkConstant.CONNECTOR_KEY, BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName());
+    singleThreadAttributes.put(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.OPC_UA_SINK_NAME);
     Assert.assertEquals(
         1,
         PipeSinkSubtaskManager.calculateSinkSubtaskNum(

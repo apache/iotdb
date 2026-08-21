@@ -256,6 +256,12 @@
             <!--We will integrate rest-jar-with-dependencies into lib by assembly plugin-->
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>opc-ua-sink</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -330,6 +336,7 @@
                             <reuseForks>false</reuseForks>
                             <systemPropertyVariables>
                                 <TestEnv>${integrationTest.testEnv}</TestEnv>
+                                <OpcUaSinkPluginJar>${maven.multiModuleProjectDirectory}/library-pipe/opc-ua-sink/target/opc-ua-sink-${project.version}-jar-with-dependencies.jar</OpcUaSinkPluginJar>
                                 <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
                                 <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>
                                 <DataRegionPerDataNode>${integrationTest.dataRegionPerDataNode}</DataRegionPerDataNode>
