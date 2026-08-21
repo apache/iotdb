@@ -57,6 +57,9 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public static final String BLOOM_FILTER = "bloom_filter";
   public static final String TIMESERIES_METADATA = "timeseries_metadata";
   public static final String CHUNK = "chunk";
+  private static final String DEVICE_ENTRY = "device_entry";
+  private static final String FETCH_SCHEMA = "fetch_schema";
+  private static final String DISTRIBUTION_PLAN = "distribution_plan";
 
   private Histogram loadBloomFilterFromCacheCountHistogram =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -64,6 +67,93 @@ public class SeriesScanCostMetricSet implements IMetricSet {
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Counter loadBloomFilterActualIOSizeCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Timer loadBloomFilterTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  private Counter deviceEntryFetchSchemaDiskIOSize = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter deviceEntryDistributionPlanDiskIOSize = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Timer deviceEntryFetchSchemaDiskIOTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer deviceEntryDistributionPlanDiskIOTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public void recordDeviceEntryDiskIOMetrics(
+      long fetchSchemaBytes,
+      long fetchSchemaTime,
+      long distributionPlanBytes,
+      long distributionPlanTime) {
+    deviceEntryFetchSchemaDiskIOSize.inc(fetchSchemaBytes);
+    deviceEntryFetchSchemaDiskIOTime.updateNanos(fetchSchemaTime);
+    deviceEntryDistributionPlanDiskIOSize.inc(distributionPlanBytes);
+    deviceEntryDistributionPlanDiskIOTime.updateNanos(distributionPlanTime);
+  }
+
+  private void bindDeviceEntryDiskIO(AbstractMetricService metricService) {
+    deviceEntryFetchSchemaDiskIOSize =
+        metricService.getOrCreateCounter(
+            Metric.QUERY_DISK_READ.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            DEVICE_ENTRY,
+            Tag.STAGE.toString(),
+            FETCH_SCHEMA);
+    deviceEntryDistributionPlanDiskIOSize =
+        metricService.getOrCreateCounter(
+            Metric.QUERY_DISK_READ.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            DEVICE_ENTRY,
+            Tag.STAGE.toString(),
+            DISTRIBUTION_PLAN);
+    deviceEntryFetchSchemaDiskIOTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            DEVICE_ENTRY,
+            Tag.TYPE.toString(),
+            FETCH_SCHEMA,
+            Tag.FROM.toString(),
+            DISK);
+    deviceEntryDistributionPlanDiskIOTime =
+        metricService.getOrCreateTimer(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            DEVICE_ENTRY,
+            Tag.TYPE.toString(),
+            DISTRIBUTION_PLAN,
+            Tag.FROM.toString(),
+            DISK);
+  }
+
+  private void unbindDeviceEntryDiskIO(AbstractMetricService metricService) {
+    deviceEntryFetchSchemaDiskIOSize = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    deviceEntryDistributionPlanDiskIOSize = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    deviceEntryFetchSchemaDiskIOTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+    deviceEntryDistributionPlanDiskIOTime = DoNothingMetricManager.DO_NOTHING_TIMER;
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.QUERY_DISK_READ.toString(),
+        Tag.TYPE.toString(),
+        DEVICE_ENTRY,
+        Tag.STAGE.toString(),
+        FETCH_SCHEMA);
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.QUERY_DISK_READ.toString(),
+        Tag.TYPE.toString(),
+        DEVICE_ENTRY,
+        Tag.STAGE.toString(),
+        DISTRIBUTION_PLAN);
+    for (String type : Arrays.asList(FETCH_SCHEMA, DISTRIBUTION_PLAN)) {
+      metricService.remove(
+          MetricType.TIMER,
+          Metric.SERIES_SCAN_COST.toString(),
+          Tag.STAGE.toString(),
+          DEVICE_ENTRY,
+          Tag.TYPE.toString(),
+          type,
+          Tag.FROM.toString(),
+          DISK);
+    }
+  }
 
   public void recordBloomFilterMetrics(
       long loadBloomFilterFromCacheCount,
@@ -1507,6 +1597,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     bindBloomFilter(metricService);
+    bindDeviceEntryDiskIO(metricService);
     bindTimeseriesMetadata(metricService);
     bindAlignedTimeseriesMetadata(metricService);
     bindTimeSeriesMetadataCache(metricService);
@@ -1526,6 +1617,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     unbindBloomFilter(metricService);
+    unbindDeviceEntryDiskIO(metricService);
     unbindTimeseriesMetadata(metricService);
     unbindTimeSeriesMetadataCache(metricService);
     unbindReadTimeseriesMetadata(metricService);

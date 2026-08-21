@@ -55,6 +55,18 @@ public class FragmentInstanceStatisticsDrawer {
             "Fetch Schema Cost: %.3f ms", context.getFetchSchemaCost() * NS_TO_MS_FACTOR));
     addLine(
         planHeader,
+        1,
+        String.format(
+            "Disk IO Size: %d bytes", context.getDiskIOSizeForDeviceEntryDuringFetchSchema()));
+    addLine(
+        planHeader,
+        1,
+        String.format(
+            "Disk IO Time Cost: %.3f ms",
+            context.getDiskIOTimeCostForDeviceEntryDuringFetchSchema() * NS_TO_MS_FACTOR));
+    addLine(planHeader, 1, String.format("DeviceEntry Count: %d", context.getDeviceEntryCount()));
+    addLine(
+        planHeader,
         0,
         String.format(
             "Logical Plan Cost: %.3f ms", context.getLogicalPlanCost() * NS_TO_MS_FACTOR));
@@ -70,6 +82,17 @@ public class FragmentInstanceStatisticsDrawer {
         String.format(
             "Distribution Plan Cost: %.3f ms",
             context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
+    addLine(
+        planHeader,
+        1,
+        String.format(
+            "Disk IO Size: %d bytes", context.getDiskIOSizeForDeviceEntryDuringDistributionPlan()));
+    addLine(
+        planHeader,
+        1,
+        String.format(
+            "Disk IO Time Cost: %.3f ms",
+            context.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() * NS_TO_MS_FACTOR));
   }
 
   public void renderDispatchCost(MPPQueryContext context) {

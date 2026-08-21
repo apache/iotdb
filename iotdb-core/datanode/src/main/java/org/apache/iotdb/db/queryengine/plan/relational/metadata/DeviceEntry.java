@@ -29,6 +29,7 @@ import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -98,6 +99,14 @@ public abstract class DeviceEntry implements Accountable {
         stream);
   }
 
+  public byte[] serializeToBytes() throws IOException {
+    final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+    try (DataOutputStream output = new DataOutputStream(byteStream)) {
+      serialize(output);
+    }
+    return byteStream.toByteArray();
+  }
+
   public static DeviceEntry deserialize(final ByteBuffer byteBuffer) {
     final IDeviceID iDeviceID = StringArrayDeviceID.deserialize(byteBuffer);
     int size = readInt(byteBuffer);
@@ -107,6 +116,10 @@ public abstract class DeviceEntry implements Accountable {
           deserializeBinary(byteBuffer);
     }
     return constructDeviceEntry(iDeviceID, attributeColumnValues, readInt(byteBuffer));
+  }
+
+  public static DeviceEntry deserialize(final byte[] bytes) {
+    return deserialize(ByteBuffer.wrap(bytes));
   }
 
   public static void serializeBinary(final ByteBuffer byteBuffer, final Binary binary) {

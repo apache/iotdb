@@ -180,4 +180,10 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("dn_multi_dir_strategy", multiDirStrategy);
     return this;
   }
+
+  @Override
+  public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
+    setProperty("table_query_device_entry_batch_size_in_bytes", String.valueOf(batchSizeInBytes));
+    return this;
+  }
 }

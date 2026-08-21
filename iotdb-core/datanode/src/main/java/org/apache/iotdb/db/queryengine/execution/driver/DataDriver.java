@@ -27,6 +27,7 @@ import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -36,6 +37,7 @@ import java.util.List;
 
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 
 /**
@@ -111,6 +113,16 @@ public class DataDriver extends Driver {
       List<DataSourceOperator> sourceOperators =
           ((DataDriverContext) driverContext).getSourceOperators();
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
+        if (((DataDriverContext) driverContext)
+            .getQueryDataSourceType()
+            .filter(type -> type == QueryDataSourceType.BATCH_SERIES_SCAN)
+            .isPresent()) {
+          sourceOperators.forEach(
+              sourceOperator ->
+                  sourceOperator.initQueryDataSource(EMPTY_QUERY_DATA_SOURCE.clone()));
+          this.init = true;
+          return true;
+        }
         IQueryDataSource dataSource = initQueryDataSource();
         if (dataSource == null) {
           // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
