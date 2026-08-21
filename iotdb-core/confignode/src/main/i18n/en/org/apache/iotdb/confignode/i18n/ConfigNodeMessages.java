@@ -367,6 +367,9 @@ public final class ConfigNodeMessages {
       "schema_region_consensus_protocol_class";
   public static final String SEND_RPC_TO_DATA_NODE_FOR_CHANGING_REGIONS_LEADER_ON =
       "Send RPC to data node: {} for changing regions leader on it";
+  public static final String
+      LOG_SETNEEDLASTCACHE_THE_NEED_LAST_CACHE_FLAG_OF_DATABASE_ARG_IS_ADJUSTED_TO_ARG_C7CFFABC =
+          "[SetNeedLastCache] The need last cache flag of Database: {} is adjusted to: {}";
   public static final String SETTTL_THE_TTL_OF_DATABASE_IS_ADJUSTED_TO =
       "[SetTTL] The ttl of Database: {} is adjusted to: {}";
   public static final String SNAPSHOT_DIRECTORY_CAN_NOT_BE_CREATED =
