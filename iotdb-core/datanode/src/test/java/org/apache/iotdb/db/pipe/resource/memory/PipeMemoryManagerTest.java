@@ -125,6 +125,17 @@ public class PipeMemoryManagerTest {
   }
 
   @Test
+  public void testNonPositivePerPipeRegionLimitFollowsGlobalLimit() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(2);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(0);
+
+    final Reservation first = new Reservation("pipe", 1, "1");
+    final Reservation second = new Reservation("pipe", 1, "1");
+    Assert.assertTrue(tryAcquire(first));
+    Assert.assertTrue(tryAcquire(second));
+  }
+
+  @Test
   public void testDifferentRegionsOfSamePipeCanRunConcurrently() {
     commonConfig.setPipeTsFileParserInFlightMaxNum(2);
     commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
