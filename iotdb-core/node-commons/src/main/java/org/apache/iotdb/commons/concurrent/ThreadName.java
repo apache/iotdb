@@ -194,6 +194,8 @@ public enum ThreadName {
   REPAIR_DATA("RepairData"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
+  FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL("FindEarliestTimeSlot-Parallel-Pool"),
+  DATA_PARTITION_RECOVER_PARALLEL_POOL("DataPartitionRecover-Parallel-Pool"),
 
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");

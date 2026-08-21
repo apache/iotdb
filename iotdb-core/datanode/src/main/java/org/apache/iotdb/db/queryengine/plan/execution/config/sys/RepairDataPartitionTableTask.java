@@ -17,39 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.sync;
+package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 
-public enum CnToDnSyncRequestType {
-  // Node Maintenance
-  CLEAN_DATA_NODE_CACHE,
-  STOP_AND_CLEAR_DATA_NODE,
-  SET_SYSTEM_STATUS,
-  SHOW_CONFIGURATION,
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 
-  // Region Maintenance
-  CREATE_DATA_REGION,
-  CREATE_SCHEMA_REGION,
-  DELETE_REGION,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  RESET_PEER_LIST,
+import com.google.common.util.concurrent.ListenableFuture;
 
-  // Data Partition Table Maintenance
-  COLLECT_EARLIEST_TIMESLOTS,
-  GENERATE_DATA_PARTITION_TABLE,
-  GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
-  GET_DATA_PARTITION_TABLE_GENERATOR_PROGRESS,
+public class RepairDataPartitionTableTask implements IConfigTask {
 
-  // PartitionCache
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
+  public RepairDataPartitionTableTask() {}
 
-  // Template
-  UPDATE_TEMPLATE,
-
-  // Schema
-  KILL_QUERY_INSTANCE,
+  @Override
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.repairDataPartitionTable();
+  }
 }
