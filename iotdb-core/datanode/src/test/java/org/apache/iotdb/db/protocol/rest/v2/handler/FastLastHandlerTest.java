@@ -30,7 +30,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.junit.Test;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 
 import java.util.HashMap;
 import java.util.Map;

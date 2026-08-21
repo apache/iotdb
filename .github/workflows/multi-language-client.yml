@@ -51,6 +51,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: 17
       - name: Install CPP Dependencies (Ubuntu)
         if: runner.os == 'Linux'
         shell: bash
@@ -136,6 +141,11 @@ jobs:
         with:
           token: ${{secrets.GITHUB_TOKEN}}
           submodules: recursive
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -166,6 +176,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
