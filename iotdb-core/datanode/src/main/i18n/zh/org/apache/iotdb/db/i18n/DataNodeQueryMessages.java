@@ -3162,6 +3162,8 @@ public final class DataNodeQueryMessages {
       "LoadTsFileScheduler：加载 TsFile {} 期间检测到 Region 迁移，将转换为 insertion 以避免数据丢失。";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "成功加载 TsFile {}，加载进度 [{}/{}]";
+  public static final String LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_D5EE56E9 =
+      "LOAD 批次结束，删除 %d 个源 TsFile";
   public static final String CAN_NOT_LOAD_TSFILE_ARG_LOAD_PROCESS_ARG_ARG =
 
       "无法加载 TsFile {}，加载进度 [{}/{}]。";

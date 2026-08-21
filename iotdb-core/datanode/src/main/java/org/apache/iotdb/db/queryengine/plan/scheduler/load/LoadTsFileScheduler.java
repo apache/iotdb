@@ -42,8 +42,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -76,12 +78,15 @@ import java.util.Set;
  *     |                       or ABORT, via RegionConsensusContext +
  *     |                       LoadConsensusSubmitter
  *     |
- *     +--> success -> node.clean() + log
+ *     +--> success -> register pending deletion (the source file is kept
+ *     |               until the whole LOAD batch ends) + log
  *     |       failure -> record failed index
  *     |
  *     `--> all success -> FINISHED
  *             else -> LoadFallbackHandler (convert to tablets, retry)
  *                      -> FINISHED / FAILED
+ *
+ *     finally -> deletePendingDeletionFiles()
  * }</pre>
  *
  * <h2>Consensus pipeline (phase 1)</h2>
@@ -131,10 +136,13 @@ import java.util.Set;
  *
  * <h2>Result handling</h2>
  *
- * Successful files are cleaned up and logged (debug for pipe-generated loads, info otherwise).
- * Failed indexes are collected; when all files are done the scheduler either transitions to
- * FINISHED or hands the failures to {@link LoadFallbackHandler}, which converts the failed TsFiles
- * into tablets, retries the insertion and finally transitions to FINISHED or FAILED.
+ * Successful files are only registered for deferred deletion and logged (debug for pipe-generated
+ * loads, info otherwise). Failed indexes are collected; when all files are done the scheduler
+ * either transitions to FINISHED or hands the failures to {@link LoadFallbackHandler}, which
+ * converts the failed TsFiles into tablets, retries the insertion and finally transitions to
+ * FINISHED or FAILED. Only then - in the finally block - are the registered source TsFiles
+ * physically deleted, so a file with deleteAfterLoad is never removed before the whole LOAD batch
+ * has ended.
  *
  * <h2>Component responsibilities</h2>
  *
@@ -209,6 +217,13 @@ public class LoadTsFileScheduler implements IScheduler {
   private final LoadTsFileDataCacheMemoryBlock block;
   private final LoadConsensusSubmitter consensusSubmitter;
 
+  /**
+   * Source TsFiles whose COMMIT has already been sent and applied, but whose physical deletion must
+   * wait until the whole LOAD batch has finished (all nodes resolved or fallback done). Keyed by
+   * the absolute TsFile path so the same file is never registered twice.
+   */
+  private final Map<String, LoadSingleTsFileNode> pendingDeletionFiles = new HashMap<>();
+
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
       MPPQueryContext queryContext,
@@ -251,7 +266,10 @@ public class LoadTsFileScheduler implements IScheduler {
           continue;
         }
 
-        node.clean();
+        // The COMMIT marker has been sent (or the file was loaded locally); the source file is no
+        // longer needed by the write path, but it must survive until the whole LOAD batch ends -
+        // record it in memory and delete it together in the finally block.
+        registerPendingDeletion(node);
         if (isGeneratedByPipe) {
           LOGGER.debug(
               DataNodeQueryMessages.LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG,
@@ -279,9 +297,41 @@ public class LoadTsFileScheduler implements IScheduler {
             .convertFailedTsFilesToTablets();
       }
     } finally {
+      deletePendingDeletionFiles();
       dispatcher.close();
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
+  }
+
+  /**
+   * Records a successfully loaded TsFile for deferred deletion. Only files with {@code
+   * deleteAfterLoad} are tracked; they are physically removed by {@link
+   * #deletePendingDeletionFiles()} after the whole LOAD batch finishes.
+   */
+  private void registerPendingDeletion(final LoadSingleTsFileNode node) {
+    if (node.isDeleteAfterLoad()) {
+      pendingDeletionFiles.put(node.getTsFileResource().getTsFilePath(), node);
+    }
+  }
+
+  /**
+   * Deletes every source TsFile whose load has finished (COMMIT sent and applied). This runs when
+   * the whole LOAD batch has ended - after the state machine resolved to FINISHED/FAILED - instead
+   * of right after each individual COMMIT, so a source file is never removed while the batch may
+   * still need it.
+   */
+  private void deletePendingDeletionFiles() {
+    if (pendingDeletionFiles.isEmpty()) {
+      return;
+    }
+    LOGGER.info(
+        DataNodeQueryMessages
+            .LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_D5EE56E9,
+        pendingDeletionFiles.size());
+    for (final LoadSingleTsFileNode node : pendingDeletionFiles.values()) {
+      node.clean();
+    }
+    pendingDeletionFiles.clear();
   }
 
   /**
