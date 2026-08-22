@@ -288,6 +288,8 @@ public enum ConfigPhysicalPlanType {
   /** Quota. */
   setSpaceQuota((short) 1400),
   setThrottleQuota((short) 1401),
+  setUserResourceQuota((short) 1402),
+  deleteUserResourceQuota((short) 1403),
 
   /** Pipe Task. */
   CreatePipeV2((short) 1500),

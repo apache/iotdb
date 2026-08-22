@@ -1312,6 +1312,8 @@ service IDataNodeRPCService {
    **/
   common.TSStatus setThrottleQuota(common.TSetThrottleQuotaReq req)
 
+  common.TSStatus setUserResourceQuota(common.TSetUserResourceQuotaReq req)
+
   /**
   * Fetch fragment instance statistics for EXPLAIN ANALYZE
   */

@@ -153,10 +153,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.DeleteUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowUserResourceQuotaStatement;
 
 /**
  * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor
@@ -775,6 +778,21 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowThrottleQuota(
       ShowThrottleQuotaStatement showThrottleQuotaStatement, C context) {
     return visitStatement(showThrottleQuotaStatement, context);
+  }
+
+  public R visitSetUserResourceQuota(
+      SetUserResourceQuotaStatement setUserResourceQuotaStatement, C context) {
+    return visitStatement(setUserResourceQuotaStatement, context);
+  }
+
+  public R visitShowUserResourceQuota(
+      ShowUserResourceQuotaStatement showUserResourceQuotaStatement, C context) {
+    return visitStatement(showUserResourceQuotaStatement, context);
+  }
+
+  public R visitDeleteUserResourceQuota(
+      DeleteUserResourceQuotaStatement deleteUserResourceQuotaStatement, C context) {
+    return visitStatement(deleteUserResourceQuotaStatement, context);
   }
 
   public R visitShowCurrentTimestamp(

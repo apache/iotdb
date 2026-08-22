@@ -72,6 +72,7 @@ ddlStatement
     | callInference | loadModel | unloadModel
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
+    | setUserResourceQuota | showUserResourceQuota | deleteUserResourceQuota
     // View
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     // Table View
@@ -398,6 +399,18 @@ setThrottleQuota
 // Show Throttle Quota
 showThrottleQuota
     : SHOW THROTTLE QUOTA (userName=identifier)?
+    ;
+
+setUserResourceQuota
+    : SET USER QUOTA ON userName=identifier WITH attributePair (COMMA attributePair)*
+    ;
+
+showUserResourceQuota
+    : SHOW USER QUOTA (userName=identifier)? (SUMMARY)? (ON DATANODE dataNodeId=INTEGER_LITERAL)?
+    ;
+
+deleteUserResourceQuota
+    : DELETE USER QUOTA ON userName=identifier
     ;
 
 // Trigger =========================================================================================

@@ -593,6 +593,10 @@ public final class ManagerMessages {
   public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "database_limit_threshold";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "Unexpected error happened while setting space quota on database: %s ";
   public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "Unexpected error happened while setting throttle quota on user: %s ";
+  public static final String LOG_UNEXPECTED_ERROR_SETTING_USER_RESOURCE_QUOTA_91A4C2E8 =
+      "Unexpected error happened when setting user resource quota";
+  public static final String LOG_FAILED_TO_AGGREGATE_RUNNING_DATANODE_USAGE_FOR_SHOW_USER_QUOTA_00017902 =
+      "Failed to aggregate Running DataNode usage for SHOW USER QUOTA";
   public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template need two files";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "Got IOException when deserialize use&role file, type:{}";
   public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "Got IOException when deserialize roleList";

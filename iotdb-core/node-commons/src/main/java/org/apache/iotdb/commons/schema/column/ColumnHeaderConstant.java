@@ -318,7 +318,10 @@ public class ColumnHeaderConstant {
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";
+  public static final String MIN_LIMIT = "Min";
+  public static final String MAX_LIMIT = "Max";
   public static final String USED = "Used";
+  public static final String MIN_GAP = "MinGap";
 
   // column names for show throttle quota
   public static final String USER = "User";
@@ -711,6 +714,17 @@ public class ColumnHeaderConstant {
           new ColumnHeader(QUOTA_TYPE, TSDataType.TEXT),
           new ColumnHeader(LIMIT, TSDataType.TEXT),
           new ColumnHeader(READ_WRITE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showUserResourceQuotaColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(USER, TSDataType.TEXT),
+          new ColumnHeader(NODE_ID, TSDataType.TEXT),
+          new ColumnHeader(READ_WRITE, TSDataType.TEXT),
+          new ColumnHeader(QUOTA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(MIN_LIMIT, TSDataType.TEXT),
+          new ColumnHeader(MAX_LIMIT, TSDataType.TEXT),
+          new ColumnHeader(USED, TSDataType.TEXT),
+          new ColumnHeader(MIN_GAP, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showModelsColumnHeaders =
       ImmutableList.of(
