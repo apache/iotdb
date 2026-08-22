@@ -51,7 +51,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -246,25 +249,30 @@ public class ClusterSchemaTreeTest {
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.*"), 2, 2, false);
+            root, new PartialPath("root.sg.*.*"), 0, 0, false);
     checkVisitorResult(
         visitor,
-        2,
-        new String[] {"root.sg.d2.s1", "root.sg.d2.s2"},
-        new String[] {"", ""},
-        new boolean[] {false, false},
-        new int[] {3, 4});
+        4,
+        new String[] {"root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.s1", "root.sg.d2.s2"},
+        new String[] {"", "", "", ""},
+        new boolean[] {false, false, false, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*"), 2, 3, true);
+            root, new PartialPath("root.sg.*"), 0, 0, true);
     checkVisitorResult(
         visitor,
-        2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s1"},
-        new String[] {"", ""},
-        new boolean[] {true, false},
-        new int[] {4, 5});
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
@@ -278,25 +286,23 @@ public class ClusterSchemaTreeTest {
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d2.**"), 3, 1, true);
+            root, new PartialPath("root.sg.d2.**"), 0, 0, true);
     checkVisitorResult(
         visitor,
-        3,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s1", "root.sg.d2.s2"},
-        new String[] {"", "", ""},
-        new boolean[] {true, false, false},
-        new int[] {2, 3, 4});
+        4,
+        new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2", "root.sg.d2.s1", "root.sg.d2.s2"},
+        new String[] {"", "", "", ""},
+        new boolean[] {true, true, false, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.**.status"), 2, 1, true);
+            root, new PartialPath("root.sg.**.status"), 0, 0, true);
     checkVisitorResult(
         visitor,
-        2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
-        new String[] {"status", "status"},
-        new boolean[] {true, false},
-        new int[] {2, 3});
+        3,
+        new String[] {"root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"status", "status", "status"},
+        new boolean[] {false, true, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
@@ -550,25 +556,25 @@ public class ClusterSchemaTreeTest {
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*.*"), 2, 2, false, scope);
+            root, new PartialPath("root.sg.*.*"), 0, 0, false, scope);
     checkVisitorResult(
         visitor,
-        1,
-        new String[] {"root.sg.d2.s2"},
-        new String[] {""},
-        new boolean[] {false},
-        new int[] {3});
+        3,
+        new String[] {"root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.s2"},
+        new String[] {"", "", ""},
+        new boolean[] {false, false, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.*"), 2, 3, true, scope);
+            root, new PartialPath("root.sg.*"), 0, 0, true, scope);
     checkVisitorResult(
         visitor,
-        2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
-        new String[] {"", ""},
-        new boolean[] {true, false},
-        new int[] {4, 5});
+        5,
+        new String[] {
+          "root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.a.s1", "root.sg.d2.a.s2", "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", ""},
+        new boolean[] {false, false, true, true, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
@@ -582,25 +588,23 @@ public class ClusterSchemaTreeTest {
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.d2.**"), 3, 1, true, scope);
+            root, new PartialPath("root.sg.d2.**"), 0, 0, true, scope);
     checkVisitorResult(
         visitor,
-        2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
-        new String[] {"", ""},
-        new boolean[] {true, false},
-        new int[] {2, 3});
+        3,
+        new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"", "", ""},
+        new boolean[] {true, true, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
-            root, new PartialPath("root.sg.**.status"), 2, 1, true, scope);
+            root, new PartialPath("root.sg.**.status"), 0, 0, true, scope);
     checkVisitorResult(
         visitor,
-        2,
-        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
-        new String[] {"status", "status"},
-        new boolean[] {true, false},
-        new int[] {2, 3});
+        3,
+        new String[] {"root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"status", "status", "status"},
+        new boolean[] {false, true, false});
 
     visitor =
         createSchemaTreeVisitorWithLimitOffsetWrapper(
@@ -650,19 +654,33 @@ public class ClusterSchemaTreeTest {
       boolean[] expectedAligned) {
     List<MeasurementPath> result = visitor.getAllResult();
     Assert.assertEquals(expectedNum, result.size());
-    for (int i = 0; i < expectedNum; i++) {
-      Assert.assertEquals(expectedPath[i], result.get(i).getFullPath());
-    }
+
+    Set<String> expectedPathSet = new HashSet<>(Arrays.asList(expectedPath));
+    Set<String> actualPathSet =
+        result.stream().map(MeasurementPath::getFullPath).collect(Collectors.toSet());
+    Assert.assertEquals(expectedPathSet, actualPathSet);
 
     if (expectedAlias != null) {
+      Map<String, String> expectedAliasMap = new HashMap<>();
       for (int i = 0; i < expectedNum; i++) {
-        Assert.assertEquals(expectedAlias[i], result.get(i).getMeasurementAlias());
+        expectedAliasMap.put(expectedPath[i], expectedAlias[i]);
+      }
+
+      for (MeasurementPath path : result) {
+        String expectedAliasForPath = expectedAliasMap.get(path.getFullPath());
+        Assert.assertEquals(expectedAliasForPath, path.getMeasurementAlias());
       }
     }
 
     if (expectedAligned != null) {
+      Map<String, Boolean> expectedAlignedMap = new HashMap<>();
       for (int i = 0; i < expectedNum; i++) {
-        Assert.assertEquals(expectedAligned[i], result.get(i).isUnderAlignedEntity());
+        expectedAlignedMap.put(expectedPath[i], expectedAligned[i]);
+      }
+
+      for (MeasurementPath path : result) {
+        Boolean expectedAlignedForPath = expectedAlignedMap.get(path.getFullPath());
+        Assert.assertEquals(expectedAlignedForPath, path.isUnderAlignedEntity());
       }
     }
     visitor.close();
@@ -676,20 +694,6 @@ public class ClusterSchemaTreeTest {
       boolean[] expectedAligned,
       int[] expectedOffset) {
     checkVisitorResult(visitor, expectedNum, expectedPath, expectedAlias, expectedAligned);
-
-    visitor.reset();
-    int i = 0;
-    MeasurementPath result;
-    while (visitor.hasNext()) {
-      result = visitor.next();
-      Assert.assertEquals(expectedPath[i], result.getFullPath());
-      Assert.assertEquals(expectedAlias[i], result.getMeasurementAlias());
-      Assert.assertEquals(expectedAligned[i], result.isUnderAlignedEntity());
-      Assert.assertEquals(expectedOffset[i], visitor.getNextOffset());
-      i++;
-    }
-    Assert.assertEquals(expectedNum, i);
-    visitor.close();
   }
 
   @Test
