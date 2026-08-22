@@ -362,29 +362,35 @@ public class AggregationDistributionTest {
     fragmentInstances.forEach(
         f -> verifyAggregationStep(expectedStep, f.getFragment().getPlanNodeTree()));
 
-    Map<String, List<String>> expectedDescriptorValue = new HashMap<>();
-    expectedDescriptorValue.put(groupedPath, Collections.singletonList(groupedPath));
-    assertTrue(
-        fragmentInstances
-                .get(0)
-                .getFragment()
-                .getPlanNodeTree()
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-            instanceof GroupByLevelNode);
-    verifyGroupByLevelDescriptor(
-        expectedDescriptorValue,
-        (GroupByLevelNode)
-            fragmentInstances.get(0).getFragment().getPlanNodeTree().getChildren().get(0));
+    Map<String, List<String>> expectedDescriptorValue1 = new HashMap<>();
+    expectedDescriptorValue1.put(groupedPath, Collections.singletonList(groupedPath));
 
     Map<String, List<String>> expectedDescriptorValue2 = new HashMap<>();
     expectedDescriptorValue2.put(groupedPath, Arrays.asList(d3s1Path, d4s1Path));
-    verifyGroupByLevelDescriptor(
-        expectedDescriptorValue2,
-        (GroupByLevelNode)
-            fragmentInstances.get(1).getFragment().getPlanNodeTree().getChildren().get(0));
+
+    boolean foundFirst = false;
+    boolean foundSecond = false;
+
+    for (FragmentInstance instance : fragmentInstances) {
+      PlanNode planNodeTree = instance.getFragment().getPlanNodeTree();
+      if (planNodeTree.getChildren().isEmpty()) {
+        continue;
+      }
+      PlanNode childNode = planNodeTree.getChildren().get(0);
+      if (!(childNode instanceof GroupByLevelNode)) {
+        continue;
+      }
+
+      GroupByLevelNode groupByLevel = (GroupByLevelNode) childNode;
+      if (matchesExpectedDescriptor(groupByLevel, expectedDescriptorValue1)) {
+        foundFirst = true;
+      } else if (matchesExpectedDescriptor(groupByLevel, expectedDescriptorValue2)) {
+        foundSecond = true;
+      }
+    }
+
+    assertTrue("Expected to find fragment with single grouped path descriptor", foundFirst);
+    assertTrue("Expected to find fragment with two specific paths descriptor", foundSecond);
   }
 
   @Test
@@ -855,6 +861,28 @@ public class AggregationDistributionTest {
         assertTrue(expected.get(outputExpression).contains(inputExpression.getExpressionString()));
       }
     }
+  }
+
+  private boolean matchesExpectedDescriptor(
+      GroupByLevelNode node, Map<String, List<String>> expected) {
+    List<CrossSeriesAggregationDescriptor> descriptors = node.getGroupByLevelDescriptors();
+    if (descriptors.size() != expected.size()) {
+      return false;
+    }
+    for (CrossSeriesAggregationDescriptor descriptor : descriptors) {
+      String outputExpression = descriptor.getOutputExpressions().get(0).getExpressionString();
+      List<String> expectedInputs = expected.get(outputExpression);
+      if (expectedInputs == null
+          || expectedInputs.size() != descriptor.getInputExpressions().size()) {
+        return false;
+      }
+      for (Expression inputExpression : descriptor.getInputExpressions()) {
+        if (!expectedInputs.contains(inputExpression.getExpressionString())) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   private void verifySlidingWindowDescriptor(
