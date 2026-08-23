@@ -157,6 +157,10 @@ import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.DELTA;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INCREASE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.IRATE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.RATE;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind.AGGREGATE;
 import static org.apache.iotdb.commons.queryengine.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
@@ -1737,7 +1741,7 @@ public class TableDistributedPlanGenerator
                               intermediate.getStep(),
                               intermediate.getHashSymbol(),
                               intermediate.getGroupIdSymbol());
-                      if (node.isStreamable() && childOrdering != null) {
+                      if (physicalAggregation.isStreamable() && childOrdering != null) {
                         nodeOrderingMap.put(planNodeId, expectedOrderingSchema);
                       }
                       return aggregationNode;
@@ -1827,10 +1831,10 @@ public class TableDistributedPlanGenerator
     if (step != SINGLE
         || childOrdering == null
         || aggregation.getArguments().size() < 2
-        || !("rate".equalsIgnoreCase(functionName)
-            || "increase".equalsIgnoreCase(functionName)
-            || "irate".equalsIgnoreCase(functionName)
-            || "delta".equalsIgnoreCase(functionName))) {
+        || !(RATE.equalsIgnoreCase(functionName)
+            || INCREASE.equalsIgnoreCase(functionName)
+            || IRATE.equalsIgnoreCase(functionName)
+            || DELTA.equalsIgnoreCase(functionName))) {
       return false;
     }
 
