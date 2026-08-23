@@ -421,35 +421,12 @@ public class DataNodeTableOperatorGenerator
   @Override
   public Operator visitTreeNonAlignedDeviceViewScan(
       TreeNonAlignedDeviceViewScanNode node, LocalExecutionPlanContext context) {
-
-    boolean containsFieldColumn = false;
-    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
-      if (entry.getValue().getColumnCategory() == FIELD) {
-        containsFieldColumn = true;
-        break;
-      }
-    }
     TsTable tsTable =
         DataNodeTableCache.getInstance()
             .getTable(
                 node.getQualifiedObjectName().getDatabaseName(),
                 node.getQualifiedObjectName().getObjectName());
-    if (!containsFieldColumn) {
-      Map<Symbol, ColumnSchema> newAssignments = new LinkedHashMap<>(node.getAssignments());
-      for (TsTableColumnSchema columnSchema : tsTable.getColumnList()) {
-        if (columnSchema.getColumnCategory() == FIELD) {
-          newAssignments.put(
-              new Symbol(columnSchema.getColumnName()),
-              new ColumnSchema(
-                  columnSchema.getColumnName(),
-                  TypeFactory.getType(columnSchema.getDataType()),
-                  false,
-                  columnSchema.getColumnCategory()));
-          containsFieldColumn = true;
-        }
-      }
-      node.setAssignments(newAssignments);
-    }
+    boolean containsFieldColumn = ensureFieldColumnForTreeNonAlignedDeviceViewScan(node, tsTable);
     // For non-aligned series, scan cannot be performed when no field columns
     // can be obtained, so an empty result set is returned.
     if (!containsFieldColumn || node.getDeviceEntryCount() == 0) {
@@ -1495,6 +1472,7 @@ public class DataNodeTableOperatorGenerator
     TsTable tsTable =
         DataNodeTableCache.getInstance()
             .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
+    ensureFieldColumnForTreeNonAlignedDeviceViewScan(node, tsTable);
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
         createTreeDeviceIdColumnValueExtractor(DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable));
 
@@ -1527,6 +1505,7 @@ public class DataNodeTableOperatorGenerator
     TsTable tsTable =
         DataNodeTableCache.getInstance()
             .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
+    ensureFieldColumnForTreeNonAlignedDeviceViewScan(node, tsTable);
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
         createTreeDeviceIdColumnValueExtractor(DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable));
 
@@ -1560,7 +1539,8 @@ public class DataNodeTableOperatorGenerator
             node.getMeasurementColumnNameMap());
     node.copyDeviceEntryDataSetTo(scanNode);
 
-    if (node.getDeviceEntryCount() == 0) {
+    if (!ensureFieldColumnForTreeNonAlignedDeviceViewScan(scanNode, tsTable)
+        || node.getDeviceEntryCount() == 0) {
       return new EmptyDataOperator(
           addOperatorContext(
               context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName()));
@@ -1587,6 +1567,32 @@ public class DataNodeTableOperatorGenerator
         parameter.getAllSensors(),
         NonAlignedAggregationTreeDeviceViewScanNode.class.getSimpleName());
     return aggTableScanOperator;
+  }
+
+  private boolean ensureFieldColumnForTreeNonAlignedDeviceViewScan(
+      DeviceTableScanNode node, TsTable tsTable) {
+    for (ColumnSchema columnSchema : node.getAssignments().values()) {
+      if (columnSchema.getColumnCategory() == FIELD) {
+        return true;
+      }
+    }
+
+    Map<Symbol, ColumnSchema> newAssignments = new LinkedHashMap<>(node.getAssignments());
+    boolean containsFieldColumn = false;
+    for (TsTableColumnSchema columnSchema : tsTable.getColumnList()) {
+      if (columnSchema.getColumnCategory() == FIELD) {
+        newAssignments.put(
+            new Symbol(columnSchema.getColumnName()),
+            new ColumnSchema(
+                columnSchema.getColumnName(),
+                TypeFactory.getType(columnSchema.getDataType()),
+                false,
+                columnSchema.getColumnCategory()));
+        containsFieldColumn = true;
+      }
+    }
+    node.setAssignments(newAssignments);
+    return containsFieldColumn;
   }
 
   private AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter

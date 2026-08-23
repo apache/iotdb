@@ -584,6 +584,9 @@ public class TableDeviceSchemaFetcher {
       return false;
     }
     database = ((TreeDeviceNormalSchema) schema).getDatabase();
+    // Keep the database key even when entries are written directly to the materializer. Tree view
+    // queries use this map to return the actual source database to the partition fetcher.
+    deviceEntryMap.computeIfAbsent(database, k -> new ArrayList<>());
     final DeviceEntry deviceEntry =
         ((TreeDeviceNormalSchema) schema).isAligned()
             ? new AlignedDeviceEntry(deviceID, new Binary[0])

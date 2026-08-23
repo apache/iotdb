@@ -103,8 +103,9 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     this.columnsIndexArray = parameter.columnsIndexArray;
     this.deviceEntrySource = parameter.deviceEntrySource;
     this.batchQueryDataSource = parameter.batchQueryDataSource;
-    this.deviceEntries = new ArrayList<>();
-    this.deviceCount = 0;
+    this.deviceEntries =
+        parameter.batchQueryDataSource ? new ArrayList<>() : parameter.deviceEntries;
+    this.deviceCount = parameter.batchQueryDataSource ? 0 : parameter.deviceCount;
     this.scanOrder = parameter.scanOrder;
     this.seriesScanOptions = parameter.seriesScanOptions;
     this.measurementColumnNames = parameter.measurementColumnNames;
@@ -235,6 +236,12 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     if (seriesScanOptions.limitConsumedUp()) {
       return true;
     }
+    if (!batchQueryDataSource) {
+      if (currentDeviceIndex >= deviceCount) {
+        return true;
+      }
+      return shouldStopScanByRuntimeFilter();
+    }
     return currentDeviceIndex >= deviceCount && !deviceEntrySource.hasNextBatch();
   }
 
@@ -259,6 +266,9 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   public void initQueryDataSource(IQueryDataSource dataSource) {
     if (!batchQueryDataSource) {
       this.queryDataSource = (QueryDataSource) dataSource;
+      if (this.seriesScanUtil != null) {
+        this.seriesScanUtil.initQueryDataSource(this.queryDataSource);
+      }
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
@@ -297,6 +307,15 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     if (currentBatchInitialized) {
       return currentDeviceIndex < deviceCount;
     }
+    if (!batchQueryDataSource) {
+      if (currentDeviceIndex >= deviceCount) {
+        return false;
+      }
+      constructAlignedSeriesScanUtil();
+      seriesScanUtil.initQueryDataSource(queryDataSource);
+      currentBatchInitialized = true;
+      return true;
+    }
     while (deviceEntries.isEmpty()) {
       if (!deviceEntrySource.hasNextBatch()) {
         return false;
@@ -327,10 +346,13 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private void releaseCurrentBatch() {
     currentBatchInitialized = false;
+    if (!batchQueryDataSource) {
+      return;
+    }
     deviceEntries = new ArrayList<>();
     deviceCount = 0;
     currentDeviceIndex = 0;
-    queryDataSource = batchQueryDataSource ? null : queryDataSource;
+    queryDataSource = null;
     if (currentLease != null) {
       currentLease.close();
       currentLease = null;

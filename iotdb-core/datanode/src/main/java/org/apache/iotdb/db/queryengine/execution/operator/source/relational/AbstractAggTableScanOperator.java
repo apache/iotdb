@@ -743,6 +743,11 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       return;
     }
 
+    if (!batchQueryDataSource) {
+      timeIterator.setFinished();
+      return;
+    }
+
     boolean nextBatchReady = false;
     if (currentDeviceIndex >= deviceCount) {
       releaseCurrentBatch();
@@ -836,6 +841,9 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   public void initQueryDataSource(IQueryDataSource dataSource) {
     if (!batchQueryDataSource) {
       this.queryDataSource = (QueryDataSource) dataSource;
+      if (this.seriesScanUtil != null) {
+        this.seriesScanUtil.initQueryDataSource(this.queryDataSource);
+      }
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
   }

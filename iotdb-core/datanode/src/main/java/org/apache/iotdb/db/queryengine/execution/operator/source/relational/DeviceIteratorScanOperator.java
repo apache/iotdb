@@ -90,7 +90,9 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
       List<DeviceEntry> deviceEntries,
       DeviceChildOperatorTreeGenerator childOperatorTreeGenerator) {
     this.operatorContext = operatorContext;
-    this.deviceEntries = new ArrayList<>();
+    // Keep the original non-batch lifecycle: the child tree is constructed before the
+    // DataDriver (or the caller) initializes the shared QueryDataSource.
+    this.deviceEntries = deviceEntries;
     this.deviceEntrySource = new InMemoryDeviceEntrySource(deviceEntries);
     this.measurementColumnNames = java.util.Collections.emptyList();
     this.measurementSchemas = java.util.Collections.emptyList();
@@ -99,10 +101,24 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     this.deviceChildOperatorTreeGenerator = childOperatorTreeGenerator;
     this.operatorContext.recordSpecifiedInfo(
         CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
+    constructCurrentDeviceOperatorTree();
   }
 
   @Override
   public boolean hasNext() throws Exception {
+    if (!batchQueryDataSource) {
+      if (currentDeviceRootOperator != null && currentDeviceRootOperator.hasNext()) {
+        return true;
+      }
+      if (!currentDeviceInit) {
+        return true;
+      }
+      if (currentDeviceIndex + 1 >= deviceEntries.size()) {
+        return false;
+      }
+      nextDevice();
+      return true;
+    }
     if (currentDeviceRootOperator == null) {
       return prepareNextDeviceBatch();
     }
@@ -130,7 +146,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
       deviceEntries = deviceEntrySource.nextBatch();
     }
 
-    if (batchQueryDataSource) {
+    if (batchQueryDataSource && !hasExternallyInitializedDataSource()) {
       List<IFullPath> paths = new ArrayList<>();
       for (DeviceEntry deviceEntry : deviceEntries) {
         if (deviceEntry instanceof NonAlignedDeviceEntry) {
@@ -158,7 +174,21 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     return true;
   }
 
+  private boolean hasExternallyInitializedDataSource() {
+    return queryDataSource != null
+        && (queryDataSource.getSeqResourcesSize() > 0
+            || queryDataSource.getUnseqResourcesSize() > 0);
+  }
+
   private void releaseCurrentBatch() throws Exception {
+    if (!batchQueryDataSource) {
+      if (currentDeviceRootOperator != null) {
+        currentDeviceRootOperator.close();
+      }
+      currentDeviceRootOperator = null;
+      dataSourceOperators = null;
+      return;
+    }
     if (currentDeviceRootOperator != null) {
       deviceChildOperatorTreeGenerator.getCurrentDeviceStartCloseOperator().close();
     }

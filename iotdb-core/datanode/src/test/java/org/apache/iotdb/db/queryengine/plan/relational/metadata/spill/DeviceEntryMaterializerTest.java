@@ -283,7 +283,7 @@ public class DeviceEntryMaterializerTest {
         new DeviceEntryMaterializer(
             "q_distribution", new PlanNodeId("scan-0"), 128, false, queryContext)) {
       for (DeviceEntry entry : createEntries(20)) {
-        materializer.append(entry);
+        materializer.appendWithMemoryControl(entry);
       }
       try (DeviceEntryDataSet ignored = materializer.finish()) {
         assertTrue(ignored.isSpilled());
