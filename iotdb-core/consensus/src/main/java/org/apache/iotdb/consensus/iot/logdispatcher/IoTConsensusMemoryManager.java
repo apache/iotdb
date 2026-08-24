@@ -33,8 +33,8 @@ public class IoTConsensusMemoryManager {
   private final AtomicLong memorySizeInByte = new AtomicLong(0);
   private final AtomicLong queueMemorySizeInByte = new AtomicLong(0);
   private final AtomicLong syncMemorySizeInByte = new AtomicLong(0);
-  private Long maxMemorySizeInByte = Runtime.getRuntime().maxMemory() / 10;
-  private Long maxMemorySizeForQueueInByte = Runtime.getRuntime().maxMemory() / 100 * 6;
+  private volatile long maxMemorySizeInByte = Runtime.getRuntime().maxMemory() / 10;
+  private volatile long maxMemorySizeForQueueInByte = Runtime.getRuntime().maxMemory() / 100 * 6;
 
   private IoTConsensusMemoryManager() {
     MetricService.getInstance().addMetricSet(new IoTConsensusMemoryManagerMetrics(this));

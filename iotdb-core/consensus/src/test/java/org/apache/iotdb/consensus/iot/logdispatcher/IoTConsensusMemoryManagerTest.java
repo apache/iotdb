@@ -38,6 +38,20 @@ import static org.junit.Assert.assertTrue;
 public class IoTConsensusMemoryManagerTest {
 
   @Test
+  public void testInitUpdatesMemoryLimits() {
+    IoTConsensusMemoryManager memoryManager = IoTConsensusMemoryManager.getInstance();
+    long previousMaxMemory = memoryManager.getMaxMemorySizeInByte();
+    long previousMaxQueueMemory = memoryManager.getMaxMemorySizeForQueueInByte();
+    try {
+      memoryManager.init(1024, 512);
+      assertEquals(1024L, memoryManager.getMaxMemorySizeInByte().longValue());
+      assertEquals(512L, memoryManager.getMaxMemorySizeForQueueInByte().longValue());
+    } finally {
+      memoryManager.init(previousMaxMemory, previousMaxQueueMemory);
+    }
+  }
+
+  @Test
   public void testAllocateQueue() {
     IoTConsensusMemoryManager memoryManager = IoTConsensusMemoryManager.getInstance();
     long maxMemory = memoryManager.getMaxMemorySizeForQueueInByte();
