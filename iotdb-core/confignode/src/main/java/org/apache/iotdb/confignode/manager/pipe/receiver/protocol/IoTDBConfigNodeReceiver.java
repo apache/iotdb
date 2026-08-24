@@ -308,6 +308,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 username, Collections.emptyList(), PrivilegeType.EXTEND_TEMPLATE.ordinal())
             .getStatus();
       case CreateSchemaTemplate:
+      case DropSchemaTemplate:
       case CommitSetSchemaTemplate:
       case PipeUnsetTemplate:
         return CommonDescriptor.getInstance().getConfig().getAdminName().equals(username)
@@ -411,7 +412,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 username, Collections.emptyList(), PrivilegeType.MANAGE_ROLE.ordinal())
             .getStatus();
       default:
-        return StatusUtils.OK;
+        return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
     }
   }
 
@@ -517,10 +518,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case CreateUser:
       case CreateRole:
       case CreateUserWithRawPassword:
-      default:
+      case DropSchemaTemplate:
+        // Only explicitly supported config-region pipe plans may be written to consensus. New plan
+        // types must be added to an explicit case after their authorization is implemented.
         return configManager
             .getConsensusManager()
             .write(shouldMarkAsPipeRequest.get() ? new PipeEnrichedPlan(plan) : plan);
+      default:
+        return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
     }
   }
 

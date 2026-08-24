@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.agent.plugin.service;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -34,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 
 public class PipePluginExecutableManager extends ExecutableManager {
 
@@ -44,7 +46,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
   }
 
   public boolean isLocalJarMatched(PipePluginMeta pipePluginMeta) throws PipeException {
-    final String pluginName = pipePluginMeta.getPluginName();
+    final String pluginName = FileUtils.validatePathSegment(pipePluginMeta.getPluginName());
     final String md5FilePath = pluginName + ".txt";
 
     if (hasFileUnderTemporaryRoot(md5FilePath)) {
@@ -60,7 +62,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
       final String md5 =
           DigestUtils.md5Hex(
               Files.newInputStream(
-                  Paths.get(getPluginInstallPathV2(pluginName, pipePluginMeta.getJarName()))));
+                  getPluginInstallPathV2Path(pluginName, pipePluginMeta.getJarName())));
       // Save the md5 in a txt under trigger temporary lib
       saveTextAsFileUnderTemporaryRoot(md5, md5FilePath);
       return md5.equals(pipePluginMeta.getJarMD5());
@@ -95,32 +97,33 @@ public class PipePluginExecutableManager extends ExecutableManager {
   }
 
   public boolean hasPluginFileUnderInstallDir(String pluginName, String fileName) {
-    return Files.exists(Paths.get(getPluginInstallPathV2(pluginName, fileName)));
+    return Files.exists(getPluginInstallPathV2Path(pluginName, fileName));
   }
 
   public String getPluginsDirPath(String pluginName) {
-    return this.libRoot + File.separator + INSTALL_DIR + File.separator + pluginName.toUpperCase();
+    return getPluginDirectoryPath(pluginName).toString();
   }
 
   public void removePluginFileUnderLibRoot(String pluginName, String fileName) throws IOException {
-    String pluginPath = getPluginInstallPathV2(pluginName, fileName);
-    Path path = Paths.get(pluginPath);
+    final Path path = getPluginInstallPathV2Path(pluginName, fileName);
     Files.deleteIfExists(path);
     Files.deleteIfExists(path.getParent());
   }
 
   public String getPluginInstallPathV2(String pluginName, String fileName) {
-    return this.libRoot
-        + File.separator
-        + INSTALL_DIR
-        + File.separator
-        + pluginName.toUpperCase()
-        + File.separator
-        + fileName;
+    return getPluginInstallPathV2Path(pluginName, fileName).toString();
   }
 
   public String getPluginInstallPathV1(String fileName) {
-    return this.libRoot + File.separator + INSTALL_DIR + File.separator + fileName;
+    return resolvePathUnderDirectory(getInstallDirectoryPath(), fileName).toString();
+  }
+
+  public void linkExistedPlugin(
+      final String oldPluginName, final String newPluginName, final String fileName)
+      throws IOException {
+    FileUtils.createHardLink(
+        getPluginInstallPathV2Path(oldPluginName, fileName).toFile(),
+        getPluginInstallPathV2Path(newPluginName, fileName).toFile());
   }
 
   /**
@@ -131,7 +134,38 @@ public class PipePluginExecutableManager extends ExecutableManager {
    */
   public void savePluginToInstallDir(ByteBuffer byteBuffer, String pluginName, String fileName)
       throws IOException {
-    String destination = getPluginInstallPathV2(pluginName, fileName);
-    saveToDir(byteBuffer, destination);
+    saveToDir(byteBuffer, getPluginInstallPathV2Path(pluginName, fileName).toString());
+  }
+
+  private Path getPluginInstallPathV2Path(final String pluginName, final String fileName) {
+    return resolvePathUnderDirectory(getPluginDirectoryPath(pluginName), fileName);
+  }
+
+  private Path getPluginDirectoryPath(final String pluginName) {
+    final String validatedPluginName = FileUtils.validatePathSegment(pluginName);
+    return resolvePathUnderDirectory(
+        getInstallDirectoryPath(), validatedPluginName.toUpperCase(Locale.ROOT));
+  }
+
+  private Path getInstallDirectoryPath() {
+    return Paths.get(libRoot, INSTALL_DIR).toAbsolutePath().normalize();
+  }
+
+  /**
+   * Resolves a single untrusted path segment below {@code baseDirectory}.
+   *
+   * <p>The segment validation rejects separators and dot segments, while the normalized containment
+   * check remains as a defense in depth for absolute paths and future callers.
+   */
+  private Path resolvePathUnderDirectory(final Path baseDirectory, final String pathSegment) {
+    FileUtils.validatePathSegment(pathSegment);
+
+    final Path normalizedBaseDirectory = baseDirectory.toAbsolutePath().normalize();
+    final Path normalizedTargetPath =
+        normalizedBaseDirectory.resolve(pathSegment).toAbsolutePath().normalize();
+    if (!normalizedTargetPath.startsWith(normalizedBaseDirectory)) {
+      throw new IllegalArgumentException("Path traversal detected: " + pathSegment);
+    }
+    return normalizedTargetPath;
   }
 }

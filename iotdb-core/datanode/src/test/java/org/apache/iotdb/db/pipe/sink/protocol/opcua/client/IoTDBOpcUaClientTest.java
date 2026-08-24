@@ -35,8 +35,12 @@ import org.eclipse.milo.opcua.sdk.client.api.UaClient;
 import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
 import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResponse;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResult;
@@ -52,6 +56,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+
+import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 
 public class IoTDBOpcUaClientTest {
 
@@ -132,6 +138,78 @@ public class IoTDBOpcUaClientTest {
   }
 
   @Test
+  public void testTransferSplitsWritesAtServerLimit() throws Exception {
+    final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
+    Mockito.when(miloClient.writeValues(Mockito.anyList(), Mockito.anyList()))
+        .thenAnswer(
+            invocation -> {
+              final int size = ((List<?>) invocation.getArguments()[0]).size();
+              return CompletableFuture.completedFuture(Collections.nCopies(size, StatusCode.GOOD));
+            });
+    final IoTDBOpcUaClient client = createClient(miloClient, 1, 250);
+
+    client.transfer(createTablet(), createSink());
+
+    final InOrder inOrder = Mockito.inOrder(miloClient);
+    inOrder
+        .verify(miloClient)
+        .writeValues(Mockito.argThat(nodeIds("root/db/d1/s1")), Mockito.argThat(listWithSize(1)));
+    inOrder
+        .verify(miloClient)
+        .writeValues(Mockito.argThat(nodeIds("root/db/d1/s2")), Mockito.argThat(listWithSize(1)));
+  }
+
+  @Test
+  public void testTransferSplitsMissingNodeCreationAtServerLimit() throws Exception {
+    final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
+    Mockito.when(miloClient.writeValues(Mockito.anyList(), Mockito.anyList()))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                Arrays.asList(
+                    new StatusCode(StatusCodes.Bad_NodeIdUnknown),
+                    new StatusCode(StatusCodes.Bad_NodeIdUnknown))))
+        .thenReturn(
+            CompletableFuture.completedFuture(Arrays.asList(StatusCode.GOOD, StatusCode.GOOD)));
+
+    final AddNodesResponse addNodesResponse = Mockito.mock(AddNodesResponse.class);
+    final AddNodesResult addNodesResult = Mockito.mock(AddNodesResult.class);
+    Mockito.when(addNodesResult.getStatusCode()).thenReturn(StatusCode.GOOD);
+    Mockito.when(addNodesResponse.getResults()).thenReturn(new AddNodesResult[] {addNodesResult});
+    Mockito.when(miloClient.addNodes(Mockito.anyList()))
+        .thenReturn(CompletableFuture.completedFuture(addNodesResponse));
+
+    final IoTDBOpcUaClient client = Mockito.spy(createClient(miloClient, 10_000, 1));
+    final AddNodesItem firstNode = Mockito.mock(AddNodesItem.class);
+    final AddNodesItem secondNode = Mockito.mock(AddNodesItem.class);
+    final ExpandedNodeId firstNodeId = new NodeId(2, "root/db/d1/s1").expanded();
+    final ExpandedNodeId secondNodeId = new NodeId(2, "root/db/d1/s2").expanded();
+    Mockito.when(firstNode.getRequestedNewNodeId()).thenReturn(firstNodeId);
+    Mockito.when(secondNode.getRequestedNewNodeId()).thenReturn(secondNodeId);
+    Mockito.doAnswer(
+            invocation ->
+                Collections.singletonList(
+                    "s1".equals(invocation.getArguments()[1]) ? firstNode : secondNode))
+        .when(client)
+        .getNodesToAdd(
+            Mockito.any(String[].class),
+            Mockito.anyString(),
+            Mockito.any(NodeId.class),
+            Mockito.any());
+
+    client.transfer(createTablet(), createSink());
+
+    Mockito.verify(miloClient, Mockito.times(2)).addNodes(Mockito.argThat(listWithSize(1)));
+    final InOrder inOrder = Mockito.inOrder(miloClient);
+    inOrder
+        .verify(miloClient)
+        .writeValues(Mockito.argThat(listWithSize(2)), Mockito.argThat(listWithSize(2)));
+    inOrder.verify(miloClient, Mockito.times(2)).addNodes(Mockito.argThat(listWithSize(1)));
+    inOrder
+        .verify(miloClient)
+        .writeValues(Mockito.argThat(listWithSize(2)), Mockito.argThat(listWithSize(2)));
+  }
+
+  @Test
   public void testTransferFailsOnNonRecoverableStatus() throws Exception {
     final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
     Mockito.when(miloClient.writeValues(Mockito.anyList(), Mockito.anyList()))
@@ -152,6 +230,12 @@ public class IoTDBOpcUaClientTest {
   }
 
   private static IoTDBOpcUaClient createClient(final OpcUaClient miloClient) throws Exception {
+    return createClient(miloClient, 10_000, 250);
+  }
+
+  private static IoTDBOpcUaClient createClient(
+      final OpcUaClient miloClient, final int maxNodesPerWrite, final int maxNodesPerNodeManagement)
+      throws Exception {
     final IoTDBOpcUaClient client =
         new IoTDBOpcUaClient(
             "opc.tcp://127.0.0.1:12686", SecurityPolicy.None, new AnonymousProvider(), false);
@@ -160,6 +244,14 @@ public class IoTDBOpcUaClientTest {
     client.setRunner(runner);
     final CompletableFuture<UaClient> connectFuture = CompletableFuture.completedFuture(miloClient);
     Mockito.when(miloClient.connect()).thenReturn(connectFuture);
+    Mockito.when(
+            miloClient.readValues(
+                Mockito.anyDouble(), Mockito.eq(TimestampsToReturn.Neither), Mockito.anyList()))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                Arrays.asList(
+                    new DataValue(new Variant(uint(maxNodesPerWrite))),
+                    new DataValue(new Variant(uint(maxNodesPerNodeManagement))))));
     client.run(miloClient);
     return client;
   }
