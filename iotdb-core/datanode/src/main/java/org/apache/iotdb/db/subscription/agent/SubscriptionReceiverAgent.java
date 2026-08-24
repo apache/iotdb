@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -46,6 +47,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 public class SubscriptionReceiverAgent {
@@ -56,7 +58,7 @@ public class SubscriptionReceiverAgent {
       new TPipeSubscribeResp(
           RpcUtils.getStatus(
               TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR,
-              "Subscription not enabled, please set config `subscription_enabled` to true."),
+              DataNodeQueryMessages.QUERY_EXCEPTION_SUBSCRIPTION_IS_NOT_ENABLED_7F43DCBB),
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
@@ -72,15 +74,21 @@ public class SubscriptionReceiverAgent {
   private final ConcurrentHashMap<ConsumerIdentity, SubscriptionReceiver> consumerReceivers =
       new ConcurrentHashMap<>();
 
+  private final BooleanSupplier subscriptionEnabledSupplier;
   private final ScheduledExecutorService receiverTimeoutChecker;
 
   SubscriptionReceiverAgent() {
-    this(SubscriptionReceiverV1::new, true);
+    this(
+        SubscriptionReceiverV1::new,
+        true,
+        () -> SubscriptionConfig.getInstance().getSubscriptionEnabled());
   }
 
   SubscriptionReceiverAgent(
       final Supplier<SubscriptionReceiver> receiverConstructor,
-      final boolean scheduleTimeoutChecker) {
+      final boolean scheduleTimeoutChecker,
+      final BooleanSupplier subscriptionEnabledSupplier) {
+    this.subscriptionEnabledSupplier = subscriptionEnabledSupplier;
     receiverConstructors.put(
         PipeSubscribeRequestVersion.VERSION_1.getVersion(), receiverConstructor);
     if (scheduleTimeoutChecker) {
@@ -111,7 +119,7 @@ public class SubscriptionReceiverAgent {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
     }
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!subscriptionEnabledSupplier.getAsBoolean()) {
       return SUBSCRIPTION_NOT_ENABLED_ERROR_RESP;
     }
 

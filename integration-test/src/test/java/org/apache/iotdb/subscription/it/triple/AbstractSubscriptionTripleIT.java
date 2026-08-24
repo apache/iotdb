@@ -55,22 +55,10 @@ public abstract class AbstractSubscriptionTripleIT extends AbstractSubscriptionI
   }
 
   protected void setUpConfig() {
-    // enable subscription and auto create schema
-    sender
-        .getConfig()
-        .getCommonConfig()
-        .setSubscriptionEnabled(true)
-        .setAutoCreateSchemaEnabled(true);
-    receiver1
-        .getConfig()
-        .getCommonConfig()
-        .setSubscriptionEnabled(true)
-        .setAutoCreateSchemaEnabled(true);
-    receiver2
-        .getConfig()
-        .getCommonConfig()
-        .setSubscriptionEnabled(true)
-        .setAutoCreateSchemaEnabled(true);
+    // enable auto create schema
+    sender.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    receiver1.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    receiver2.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
     // 10 min, assert that the operations will not time out
     sender.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);

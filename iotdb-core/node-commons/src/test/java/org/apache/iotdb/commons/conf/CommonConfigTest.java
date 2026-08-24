@@ -23,20 +23,19 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
 public class CommonConfigTest {
 
   @Test
-  public void testSubscriptionDisabledByDefaultInCommonConfig() {
+  public void testSubscriptionDisabledInCommonConfig() {
+    assertFalse(CommonConfig.SUBSCRIPTION_ENABLED);
     assertFalse(new CommonConfig().getSubscriptionEnabled());
   }
 
   @Test
-  public void testSubscriptionDisabledByDefaultInConfigurationTemplate() throws IOException {
-    assertEquals(
-        Boolean.FALSE.toString(),
-        ConfigurationFileUtils.getConfigurationDefaultValue("subscription_enabled"));
+  public void testSubscriptionIsNotExposedInConfigurationTemplate() throws IOException {
+    assertNull(ConfigurationFileUtils.getConfigurationDefaultValue("subscription_enabled"));
   }
 }
