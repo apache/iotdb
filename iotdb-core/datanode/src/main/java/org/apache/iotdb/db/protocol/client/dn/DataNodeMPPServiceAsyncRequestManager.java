@@ -69,7 +69,7 @@ public class DataNodeMPPServiceAsyncRequestManager
       int requestId,
       TDataNodeLocation targetNode) {
     return DataNodeAsyncRequestRPCHandler.createAsyncRPCHandler(
-        requestContext, requestId, targetNode, targetNode.getMPPDataExchangeEndPoint());
+        requestContext, requestId, targetNode);
   }
 
   private static class ClientPoolHolder {

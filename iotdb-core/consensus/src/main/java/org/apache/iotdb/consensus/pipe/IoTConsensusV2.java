@@ -108,8 +108,6 @@ public class IoTConsensusV2 implements IConsensus {
     this.storageDir = new File(config.getStorageDir());
     this.config = config.getIoTConsensusV2Config();
     this.registry = registry;
-    IoTV2GlobalComponentContainer.getInstance()
-        .configureTrustedChannelFailureHandler(thisNode, config.getTrustedChannelFailureHandler());
     this.rpcService =
         new IoTConsensusV2RPCService(
             thisNode, config.getIoTConsensusV2Config(), config.getTrustedChannelFailureHandler());

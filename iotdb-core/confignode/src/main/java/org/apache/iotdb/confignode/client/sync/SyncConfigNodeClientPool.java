@@ -32,7 +32,6 @@ import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -56,9 +55,7 @@ public class SyncConfigNodeClientPool {
   private SyncConfigNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-            .createClientManager(
-                new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory(
-                    this::recordTrustedChannelFailureAuditLogIfNecessary));
+            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     configNodeLeader = new TEndPoint();
   }
 
@@ -162,17 +159,6 @@ public class SyncConfigNodeClientPool {
       LOGGER.error(ConfigNodeMessages.RETRY_WAIT_FAILED, e);
       Thread.currentThread().interrupt();
     }
-  }
-
-  private void recordTrustedChannelFailureAuditLogIfNecessary(
-      Throwable failure, TEndPoint targetEndPoint) {
-    if (ConfigNode.getInstance() == null || ConfigNode.getInstance().getConfigManager() == null) {
-      return;
-    }
-    ConfigNode.getInstance()
-        .getConfigManager()
-        .getAuditLogger()
-        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
   }
 
   private static class SyncConfigNodeClientPoolHolder {

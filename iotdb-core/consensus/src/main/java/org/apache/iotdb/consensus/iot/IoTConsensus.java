@@ -138,17 +138,11 @@ public class IoTConsensus implements IConsensus {
     this.clientManager =
         new IClientManager.Factory<TEndPoint, AsyncIoTConsensusServiceClient>()
             .createClientManager(
-                new AsyncIoTConsensusServiceClientPoolFactory(
-                    config.getIotConsensusConfig(),
-                    thisNode,
-                    config.getTrustedChannelFailureHandler()));
+                new AsyncIoTConsensusServiceClientPoolFactory(config.getIotConsensusConfig()));
     this.syncClientManager =
         new IClientManager.Factory<TEndPoint, SyncIoTConsensusServiceClient>()
             .createClientManager(
-                new SyncIoTConsensusServiceClientPoolFactory(
-                    config.getIotConsensusConfig(),
-                    thisNode,
-                    config.getTrustedChannelFailureHandler()));
+                new SyncIoTConsensusServiceClientPoolFactory(config.getIotConsensusConfig()));
     this.backgroundTaskService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.IOT_CONSENSUS_BACKGROUND_TASK_EXECUTOR.getName());

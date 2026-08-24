@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.audit.TrustedChannelFailureHandler;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
@@ -106,22 +105,10 @@ public class SyncIoTConsensusServiceClient extends IoTConsensusIService.Client
   public static class Factory
       extends ThriftClientFactory<TEndPoint, SyncIoTConsensusServiceClient> {
 
-    private final TrustedChannelFailureReporter trustedChannelFailureReporter;
-
     public Factory(
         ClientManager<TEndPoint, SyncIoTConsensusServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty) {
-      this(clientManager, thriftClientProperty, null, TrustedChannelFailureHandler.NO_OP);
-    }
-
-    public Factory(
-        ClientManager<TEndPoint, SyncIoTConsensusServiceClient> clientManager,
-        ThriftClientProperty thriftClientProperty,
-        TEndPoint initiator,
-        TrustedChannelFailureHandler trustedChannelFailureHandler) {
       super(clientManager, thriftClientProperty);
-      this.trustedChannelFailureReporter =
-          new TrustedChannelFailureReporter(initiator, trustedChannelFailureHandler);
     }
 
     @Override
@@ -133,20 +120,14 @@ public class SyncIoTConsensusServiceClient extends IoTConsensusIService.Client
     @Override
     public PooledObject<SyncIoTConsensusServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
-      try {
-        return new DefaultPooledObject<>(
-            SyncThriftClientWithErrorHandler.newErrorHandlerWithFailureHandler(
-                SyncIoTConsensusServiceClient.class,
-                SyncIoTConsensusServiceClient.class.getConstructor(
-                    thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
-                (failure, client) -> trustedChannelFailureReporter.report(failure, client.endpoint),
-                thriftClientProperty,
-                endpoint,
-                clientManager));
-      } catch (final Exception e) {
-        trustedChannelFailureReporter.report(e, endpoint);
-        throw e;
-      }
+      return new DefaultPooledObject<>(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
+              SyncIoTConsensusServiceClient.class,
+              SyncIoTConsensusServiceClient.class.getConstructor(
+                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
+              thriftClientProperty,
+              endpoint,
+              clientManager));
     }
 
     @Override

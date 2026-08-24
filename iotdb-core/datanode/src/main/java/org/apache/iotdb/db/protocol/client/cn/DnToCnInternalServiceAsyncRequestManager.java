@@ -20,13 +20,11 @@
 package org.apache.iotdb.db.protocol.client.cn;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.ConfigNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.commons.client.request.TestConnectionUtils;
-import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
@@ -66,12 +64,6 @@ public class DnToCnInternalServiceAsyncRequestManager
     if (DnToCnRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(dnToCnRequestType)) {
       client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllNodeMaxTime());
     }
-  }
-
-  @Override
-  protected void onRequestFailure(Exception failure, TEndPoint targetEndPoint) {
-    DNAuditLogger.getInstance()
-        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
   }
 
   private static class ClientPoolHolder {

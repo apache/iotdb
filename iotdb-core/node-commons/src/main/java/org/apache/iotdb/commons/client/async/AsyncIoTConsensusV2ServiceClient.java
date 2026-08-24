@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.IoTConsensusV2IService;
 import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
@@ -90,7 +89,6 @@ public class AsyncIoTConsensusV2ServiceClient extends IoTConsensusV2IService.Asy
 
   @Override
   public void onError(Exception e) {
-    IoTV2GlobalComponentContainer.getInstance().reportTrustedChannelFailure(e, endpoint);
     super.onError(e);
     ThriftClient.resolveException(e, this);
     returnSelf();
@@ -169,17 +167,12 @@ public class AsyncIoTConsensusV2ServiceClient extends IoTConsensusV2IService.Asy
     @Override
     public PooledObject<AsyncIoTConsensusV2ServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
-      try {
-        return new DefaultPooledObject<>(
-            new AsyncIoTConsensusV2ServiceClient(
-                thriftClientProperty,
-                endPoint,
-                tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
-                clientManager));
-      } catch (final Exception e) {
-        IoTV2GlobalComponentContainer.getInstance().reportTrustedChannelFailure(e, endPoint);
-        throw e;
-      }
+      return new DefaultPooledObject<>(
+          new AsyncIoTConsensusV2ServiceClient(
+              thriftClientProperty,
+              endPoint,
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
+              clientManager));
     }
 
     @Override

@@ -42,36 +42,14 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
-import java.util.Objects;
-import java.util.function.BiConsumer;
-
 public class ClientPoolFactory {
 
   private static final CommonConfig conf = CommonDescriptor.getInstance().getConfig();
-  private static final BiConsumer<Throwable, TEndPoint> NO_OP_FAILURE_REPORTER =
-      (failure, target) -> {
-        // Do nothing.
-      };
-  private static final BiConsumer<Exception, TEndPoint> NO_OP_ASYNC_FAILURE_REPORTER =
-      (failure, target) -> {
-        // Do nothing.
-      };
 
   private ClientPoolFactory() {}
 
   public static class SyncConfigNodeIServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncConfigNodeIServiceClient> {
-
-    private final BiConsumer<Throwable, TEndPoint> failureReporter;
-
-    public SyncConfigNodeIServiceClientPoolFactory() {
-      this(NO_OP_FAILURE_REPORTER);
-    }
-
-    public SyncConfigNodeIServiceClientPoolFactory(
-        BiConsumer<Throwable, TEndPoint> failureReporter) {
-      this.failureReporter = Objects.requireNonNull(failureReporter);
-    }
 
     @Override
     public GenericKeyedObjectPool<TEndPoint, SyncConfigNodeIServiceClient> createClientPool(
@@ -83,8 +61,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .build(),
-                  failureReporter),
+                      .build()),
               new ClientPoolProperty.Builder<SyncConfigNodeIServiceClient>().build().getConfig());
       ClientManagerMetrics.getInstance()
           .registerClientManager(this.getClass().getSimpleName(), clientPool);
@@ -96,16 +73,9 @@ public class ClientPoolFactory {
       implements IClientPoolFactory<TEndPoint, AsyncConfigNodeInternalServiceClient> {
 
     private final int selectorNumOfAsyncClientManager;
-    private final BiConsumer<Exception, TEndPoint> failureReporter;
 
     public AsyncConfigNodeInternalServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
-      this(selectorNumOfAsyncClientManager, NO_OP_ASYNC_FAILURE_REPORTER);
-    }
-
-    public AsyncConfigNodeInternalServiceClientPoolFactory(
-        int selectorNumOfAsyncClientManager, BiConsumer<Exception, TEndPoint> failureReporter) {
       this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
-      this.failureReporter = Objects.requireNonNull(failureReporter);
     }
 
     @Override
@@ -120,8 +90,7 @@ public class ClientPoolFactory {
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .build(),
-                  ThreadName.ASYNC_CONFIGNODE_CLIENT_POOL.getName(),
-                  failureReporter),
+                  ThreadName.ASYNC_CONFIGNODE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncConfigNodeInternalServiceClient>()
                   .build()
                   .getConfig());
@@ -134,17 +103,6 @@ public class ClientPoolFactory {
   public static class SyncDataNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
 
-    private final BiConsumer<Throwable, TEndPoint> failureReporter;
-
-    public SyncDataNodeInternalServiceClientPoolFactory() {
-      this(NO_OP_FAILURE_REPORTER);
-    }
-
-    public SyncDataNodeInternalServiceClientPoolFactory(
-        BiConsumer<Throwable, TEndPoint> failureReporter) {
-      this.failureReporter = Objects.requireNonNull(failureReporter);
-    }
-
     @Override
     public GenericKeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
@@ -155,8 +113,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .build(),
-                  failureReporter),
+                      .build()),
               new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
                   .build()
                   .getConfig());
@@ -170,16 +127,9 @@ public class ClientPoolFactory {
       implements IClientPoolFactory<TEndPoint, AsyncDataNodeInternalServiceClient> {
 
     private final int selectorNumOfAsyncClientManager;
-    private final BiConsumer<Exception, TEndPoint> failureReporter;
 
     public AsyncDataNodeInternalServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
-      this(selectorNumOfAsyncClientManager, NO_OP_ASYNC_FAILURE_REPORTER);
-    }
-
-    public AsyncDataNodeInternalServiceClientPoolFactory(
-        int selectorNumOfAsyncClientManager, BiConsumer<Exception, TEndPoint> failureReporter) {
       this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
-      this.failureReporter = Objects.requireNonNull(failureReporter);
     }
 
     @Override
@@ -195,8 +145,7 @@ public class ClientPoolFactory {
                       .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .setPrintLogWhenEncounterException(false)
                       .build(),
-                  ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName(),
-                  failureReporter),
+                  ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()
                   .build()
                   .getConfig());
@@ -241,16 +190,9 @@ public class ClientPoolFactory {
       implements IClientPoolFactory<TEndPoint, AsyncConfigNodeInternalServiceClient> {
 
     private final int selectorNumOfAsyncClientManager;
-    private final BiConsumer<Exception, TEndPoint> failureReporter;
 
     public AsyncConfigNodeHeartbeatServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
-      this(selectorNumOfAsyncClientManager, NO_OP_ASYNC_FAILURE_REPORTER);
-    }
-
-    public AsyncConfigNodeHeartbeatServiceClientPoolFactory(
-        int selectorNumOfAsyncClientManager, BiConsumer<Exception, TEndPoint> failureReporter) {
       this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
-      this.failureReporter = Objects.requireNonNull(failureReporter);
     }
 
     @Override
@@ -267,8 +209,7 @@ public class ClientPoolFactory {
                       .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .setPrintLogWhenEncounterException(false)
                       .build(),
-                  ThreadName.ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL.getName(),
-                  failureReporter),
+                  ThreadName.ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncConfigNodeInternalServiceClient>()
                   .build()
                   .getConfig());
@@ -282,16 +223,9 @@ public class ClientPoolFactory {
       implements IClientPoolFactory<TEndPoint, AsyncDataNodeInternalServiceClient> {
 
     private final int selectorNumOfAsyncClientManager;
-    private final BiConsumer<Exception, TEndPoint> failureReporter;
 
     public AsyncDataNodeHeartbeatServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
-      this(selectorNumOfAsyncClientManager, NO_OP_ASYNC_FAILURE_REPORTER);
-    }
-
-    public AsyncDataNodeHeartbeatServiceClientPoolFactory(
-        int selectorNumOfAsyncClientManager, BiConsumer<Exception, TEndPoint> failureReporter) {
       this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
-      this.failureReporter = Objects.requireNonNull(failureReporter);
     }
 
     @Override
@@ -307,26 +241,13 @@ public class ClientPoolFactory {
                       .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .setPrintLogWhenEncounterException(false)
                       .build(),
-                  ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName(),
-                  failureReporter),
+                  ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
           .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
-    }
-  }
-
-  /**
-   * Uses a dedicated pool for writing audit logs so a failure on the audit channel does not trigger
-   * another audit-log write.
-   */
-  public static class AsyncDataNodeAuditServiceClientPoolFactory
-      extends AsyncDataNodeHeartbeatServiceClientPoolFactory {
-
-    public AsyncDataNodeAuditServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
-      super(selectorNumOfAsyncClientManager);
     }
   }
 

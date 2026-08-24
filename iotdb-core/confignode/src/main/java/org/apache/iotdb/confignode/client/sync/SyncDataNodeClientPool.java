@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
-import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
@@ -76,8 +75,7 @@ public class SyncDataNodeClientPool {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory(
-                    this::recordTrustedChannelFailureAuditLogIfNecessary));
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
     buildActionMap();
     checkActionMapCompleteness();
   }
@@ -258,17 +256,6 @@ public class SyncDataNodeClientPool {
       status.setMessage(e.getMessage());
     }
     return new TRegionLeaderChangeResp(status, -1L);
-  }
-
-  private void recordTrustedChannelFailureAuditLogIfNecessary(
-      Throwable failure, TEndPoint targetEndPoint) {
-    if (ConfigNode.getInstance() == null || ConfigNode.getInstance().getConfigManager() == null) {
-      return;
-    }
-    ConfigNode.getInstance()
-        .getConfigManager()
-        .getAuditLogger()
-        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
   }
 
   private static class ClientPoolHolder {

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.protocol.client.dn;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
@@ -66,15 +65,6 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       final AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation> context,
       final int requestId,
       final TDataNodeLocation targetDataNode) {
-    return createAsyncRPCHandler(
-        context, requestId, targetDataNode, targetDataNode.getInternalEndPoint());
-  }
-
-  public static DataNodeAsyncRequestRPCHandler<?> createAsyncRPCHandler(
-      final AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation> context,
-      final int requestId,
-      final TDataNodeLocation targetDataNode,
-      final TEndPoint targetEndPoint) {
     final DnToDnRequestType requestType = context.getRequestType();
     final Map<Integer, TDataNodeLocation> nodeLocationMap = context.getNodeLocationMap();
     final Map<Integer, ?> responseMap = context.getResponseMap();
@@ -98,7 +88,6 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
         nodeLocationMap,
         (Map<Integer, TSStatus>) responseMap,
         countDownLatch,
-        keepSilent,
-        targetEndPoint);
+        keepSilent);
   }
 }

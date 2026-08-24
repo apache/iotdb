@@ -45,7 +45,7 @@ public class DataNodeIntraHeartbeatManager
       int requestId,
       TDataNodeLocation targetNode) {
     return DataNodeAsyncRequestRPCHandler.createAsyncRPCHandler(
-        requestContext, requestId, targetNode, targetNode.getInternalEndPoint());
+        requestContext, requestId, targetNode);
   }
 
   private static class ClientPoolHolder {

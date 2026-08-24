@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.consensus.iotv2.container;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.audit.TrustedChannelFailureHandler;
 import org.apache.iotdb.commons.client.ClientPoolFactory.AsyncIoTConsensusV2ServiceClientPoolFactory;
 import org.apache.iotdb.commons.client.ClientPoolFactory.SyncIoTConsensusV2ServiceClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -37,10 +36,8 @@ import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This class is used to hold the global component such as syncClientManager and asyncClientManager
@@ -57,9 +54,6 @@ public class IoTV2GlobalComponentContainer {
   private final IClientManager<TEndPoint, AsyncIoTConsensusV2ServiceClient> asyncClientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusV2ServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
-  private final AtomicReference<TrustedChannelFailureContext> trustedChannelFailureContext =
-      new AtomicReference<>(
-          new TrustedChannelFailureContext(null, TrustedChannelFailureHandler.NO_OP));
   private PipeSubtaskExecutor consensusExecutor;
 
   private IoTV2GlobalComponentContainer() {
@@ -93,29 +87,6 @@ public class IoTV2GlobalComponentContainer {
     return this.backgroundTaskService;
   }
 
-  public void configureTrustedChannelFailureHandler(
-      final TEndPoint thisNode, final TrustedChannelFailureHandler trustedChannelFailureHandler) {
-    trustedChannelFailureContext.set(
-        new TrustedChannelFailureContext(
-            Objects.requireNonNull(thisNode),
-            Objects.requireNonNull(trustedChannelFailureHandler)));
-  }
-
-  public void reportTrustedChannelFailure(final Throwable failure, final TEndPoint targetEndPoint) {
-    final TrustedChannelFailureContext context = trustedChannelFailureContext.get();
-    final TEndPoint initiatorEndPoint = context.thisNode;
-    if (failure == null || initiatorEndPoint == null || targetEndPoint == null) {
-      return;
-    }
-    try {
-      context.failureHandler.onFailure(failure, initiatorEndPoint, targetEndPoint);
-    } catch (final RuntimeException reportingFailure) {
-      if (reportingFailure != failure) {
-        failure.addSuppressed(reportingFailure);
-      }
-    }
-  }
-
   public void stopBackgroundTaskService() {
     backgroundTaskService.shutdownNow();
     try {
@@ -137,31 +108,27 @@ public class IoTV2GlobalComponentContainer {
   }
 
   private static class IoTV2GlobalComponentContainerHolder {
-    private static final IoTV2GlobalComponentContainer INSTANCE =
-        new IoTV2GlobalComponentContainer();
+    private static IoTV2GlobalComponentContainer INSTANCE;
 
     private IoTV2GlobalComponentContainerHolder() {}
+
+    public static void build() {
+      if (INSTANCE == null) {
+        INSTANCE = new IoTV2GlobalComponentContainer();
+      }
+    }
   }
 
   public static IoTV2GlobalComponentContainer getInstance() {
+    if (IoTV2GlobalComponentContainerHolder.INSTANCE == null) {
+      IoTV2GlobalComponentContainer.build();
+    }
     return IoTV2GlobalComponentContainerHolder.INSTANCE;
   }
 
   // Only when consensus protocol is IoTConsensusV2, this method will be called once when construct
   // consensus class.
   public static void build() {
-    getInstance();
-  }
-
-  private static final class TrustedChannelFailureContext {
-
-    private final TEndPoint thisNode;
-    private final TrustedChannelFailureHandler failureHandler;
-
-    private TrustedChannelFailureContext(
-        TEndPoint thisNode, TrustedChannelFailureHandler failureHandler) {
-      this.thisNode = thisNode;
-      this.failureHandler = failureHandler;
-    }
+    IoTV2GlobalComponentContainerHolder.build();
   }
 }

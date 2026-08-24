@@ -217,16 +217,14 @@ public class Coordinator {
       SYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory(
-                      DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary));
+                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   private static final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
               .createClientManager(
                   new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory(
-                      CONFIG.getSelectorNumOfClientManager(),
-                      DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary));
+                      CONFIG.getSelectorNumOfClientManager()));
 
   private final ExecutorService executor;
   private final ScheduledExecutorService scheduledExecutor;

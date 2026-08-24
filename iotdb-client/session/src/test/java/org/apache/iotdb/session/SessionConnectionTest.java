@@ -68,7 +68,6 @@ import org.powermock.reflect.Whitebox;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -178,10 +177,8 @@ public class SessionConnectionTest {
             null);
   }
 
-  @Test
+  @Test(expected = IoTDBConnectionException.class)
   public void testBuildSessionConnection2() throws IoTDBConnectionException {
-    AtomicReference<Throwable> reportedFailure = new AtomicReference<>();
-    AtomicReference<TEndPoint> reportedEndPoint = new AtomicReference<>();
     session =
         new Session.Builder()
             .host("local")
@@ -189,47 +186,17 @@ public class SessionConnectionTest {
             .username("root")
             .password("root")
             .enableAutoFetch(false)
-            .useSSL(true)
-            .connectionFailureReporter(
-                (failure, endPoint) -> {
-                  reportedFailure.set(failure);
-                  reportedEndPoint.set(endPoint);
-                })
             .build();
-    TEndPoint targetEndPoint = new TEndPoint("localhost", 0);
-
-    Assert.assertThrows(
-        IoTDBConnectionException.class,
-        () ->
-            new SessionConnection(
-                session,
-                targetEndPoint,
-                ZoneId.systemDefault(),
-                () -> Collections.singletonList(new TEndPoint("local", 12)),
-                SessionConfig.MAX_RETRY_COUNT,
-                SessionConfig.RETRY_INTERVAL_IN_MS,
-                "tree",
-                null));
-
-    Assert.assertNotNull(reportedFailure.get());
-    Assert.assertEquals(targetEndPoint, reportedEndPoint.get());
-  }
-
-  @Test
-  public void testConnectionFailureReporterDoesNotReplaceOriginalFailure() {
-    RuntimeException reportingFailure = new RuntimeException("reporting failure");
-    session =
-        new Session.Builder()
-            .connectionFailureReporter(
-                (failure, endPoint) -> {
-                  throw reportingFailure;
-                })
-            .build();
-    TException connectionFailure = new TException("connection failure");
-
-    session.reportConnectionFailure(connectionFailure, new TEndPoint("localhost", 0));
-
-    Assert.assertArrayEquals(new Throwable[] {reportingFailure}, connectionFailure.getSuppressed());
+    SessionConnection sessionConnection1 =
+        new SessionConnection(
+            session,
+            new TEndPoint("localhost", 1234),
+            ZoneId.systemDefault(),
+            () -> Collections.singletonList(new TEndPoint("local", 12)),
+            SessionConfig.MAX_RETRY_COUNT,
+            SessionConfig.RETRY_INTERVAL_IN_MS,
+            "tree",
+            null);
   }
 
   @Test

@@ -21,10 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
@@ -85,7 +83,6 @@ public class AsyncPlanNodeSender {
     this.pendingNumber = new AtomicLong(batchRequests.keySet().size());
   }
 
-  @SuppressWarnings("unchecked")
   public void sendAll() {
     for (Map.Entry<TEndPoint, BatchRequestWithIndex> entry : batchRequests.entrySet()) {
       AsyncSendPlanNodeHandler handler =
@@ -95,26 +92,12 @@ public class AsyncPlanNodeSender {
               instanceId2RespMap,
               needRetryInstanceIndex,
               startSendTime);
-      AsyncDataNodeInternalServiceClient client = null;
-      boolean dispatched = false;
       try {
-        client = asyncInternalServiceClientManager.borrowClient(entry.getKey());
+        AsyncDataNodeInternalServiceClient client =
+            asyncInternalServiceClientManager.borrowClient(entry.getKey());
         client.sendBatchPlanNode(entry.getValue().getBatchRequest(), handler);
-        dispatched = true;
       } catch (Exception e) {
-        if (client != null) {
-          DNAuditLogger.getInstance()
-              .recordTrustedChannelFailureAuditLogIfNecessary(e, entry.getKey());
-        }
         handler.onError(e);
-      } finally {
-        if (!dispatched
-            && client != null
-            && asyncInternalServiceClientManager instanceof ClientManager) {
-          ((ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>)
-                  asyncInternalServiceClientManager)
-              .returnClient(entry.getKey(), client);
-        }
       }
     }
   }

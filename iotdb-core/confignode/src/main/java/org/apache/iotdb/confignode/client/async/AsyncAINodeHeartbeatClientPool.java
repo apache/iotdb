@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.client.async;
 
 import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
-import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
@@ -28,9 +27,6 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncAINodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.service.ConfigNode;
-
-import org.apache.thrift.async.AsyncMethodCallback;
 
 /** Asynchronously send RPC requests to AINodes. */
 public class AsyncAINodeHeartbeatClientPool {
@@ -56,10 +52,9 @@ public class AsyncAINodeHeartbeatClientPool {
     boolean dispatched = false;
     try {
       client = clientManager.borrowClient(endPoint);
-      client.getAIHeartbeat(req, wrapHandler(endPoint, handler));
+      client.getAIHeartbeat(req, handler);
       dispatched = true;
     } catch (Exception e) {
-      recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
       handleError(handler, e);
     } finally {
       // After the async call is dispatched, the client's onComplete/onError callback is
@@ -72,39 +67,12 @@ public class AsyncAINodeHeartbeatClientPool {
     }
   }
 
-  private AsyncMethodCallback<TAIHeartbeatResp> wrapHandler(
-      final TEndPoint targetEndPoint, final AINodeHeartbeatHandler handler) {
-    return new AsyncMethodCallback<TAIHeartbeatResp>() {
-      @Override
-      public void onComplete(final TAIHeartbeatResp response) {
-        handler.onComplete(response);
-      }
-
-      @Override
-      public void onError(final Exception failure) {
-        recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
-        handleError(handler, failure);
-      }
-    };
-  }
-
   private void handleError(final AINodeHeartbeatHandler handler, final Exception e) {
     try {
       handler.onError(e);
     } catch (final Exception ignore) {
       // Ignore handler failures in heartbeat best-effort path.
     }
-  }
-
-  private void recordTrustedChannelFailureAuditLogIfNecessary(
-      final Throwable failure, final TEndPoint targetEndPoint) {
-    if (ConfigNode.getInstance() == null || ConfigNode.getInstance().getConfigManager() == null) {
-      return;
-    }
-    ConfigNode.getInstance()
-        .getConfigManager()
-        .getAuditLogger()
-        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
   }
 
   private static class AsyncAINodeHeartbeatClientPoolHolder {

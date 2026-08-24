@@ -37,16 +37,9 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 import java.net.SocketException;
-import java.util.Objects;
-import java.util.function.BiConsumer;
 
 public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
     implements ThriftClient, AutoCloseable {
-
-  private static final BiConsumer<Throwable, TEndPoint> NO_OP_FAILURE_REPORTER =
-      (failure, target) -> {
-        // Do nothing.
-      };
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
@@ -122,20 +115,10 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
 
   public static class Factory extends ThriftClientFactory<TEndPoint, SyncConfigNodeIServiceClient> {
 
-    private final BiConsumer<Throwable, TEndPoint> failureReporter;
-
     public Factory(
         ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty) {
-      this(clientManager, thriftClientProperty, NO_OP_FAILURE_REPORTER);
-    }
-
-    public Factory(
-        ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager,
-        ThriftClientProperty thriftClientProperty,
-        BiConsumer<Throwable, TEndPoint> failureReporter) {
       super(clientManager, thriftClientProperty);
-      this.failureReporter = Objects.requireNonNull(failureReporter);
     }
 
     @Override
@@ -147,39 +130,20 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
     @Override
     public PooledObject<SyncConfigNodeIServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
-      try {
-        return new DefaultPooledObject<>(
-            SyncThriftClientWithErrorHandler.newErrorHandlerWithFailureHandler(
-                SyncConfigNodeIServiceClient.class,
-                SyncConfigNodeIServiceClient.class.getConstructor(
-                    thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
-                (failure, client) -> reportFailure(failure, endpoint, failureReporter),
-                thriftClientProperty,
-                endpoint,
-                clientManager));
-      } catch (final Exception e) {
-        reportFailure(e, endpoint, failureReporter);
-        throw e;
-      }
+      return new DefaultPooledObject<>(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
+              SyncConfigNodeIServiceClient.class,
+              SyncConfigNodeIServiceClient.class.getConstructor(
+                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
+              thriftClientProperty,
+              endpoint,
+              clientManager));
     }
 
     @Override
     public boolean validateObject(
         TEndPoint endpoint, PooledObject<SyncConfigNodeIServiceClient> pooledObject) {
       return pooledObject.getObject().getInputProtocol().getTransport().isOpen();
-    }
-  }
-
-  private static void reportFailure(
-      final Throwable failure,
-      final TEndPoint target,
-      final BiConsumer<Throwable, TEndPoint> failureReporter) {
-    try {
-      failureReporter.accept(failure, target);
-    } catch (final RuntimeException reportingFailure) {
-      if (reportingFailure != failure) {
-        failure.addSuppressed(reportingFailure);
-      }
     }
   }
 }

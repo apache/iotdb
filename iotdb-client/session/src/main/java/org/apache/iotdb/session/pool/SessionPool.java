@@ -55,13 +55,11 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.function.BiConsumer;
 
 import static org.apache.iotdb.rpc.RpcUtils.isSetSqlDialect;
 import static org.apache.iotdb.rpc.RpcUtils.isUseDatabase;
@@ -115,8 +113,6 @@ public class SessionPool implements ISessionPool {
   private int fetchSize;
 
   private boolean useSSL;
-
-  private BiConsumer<Throwable, TEndPoint> connectionFailureReporter = (failure, endPoint) -> {};
 
   private String trustStore;
 
@@ -547,7 +543,6 @@ public class SessionPool implements ISessionPool {
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
     this.enableAutoFetch = builder.enableAutoFetch;
     this.useSSL = builder.useSSL;
-    this.connectionFailureReporter = Objects.requireNonNull(builder.connectionFailureReporter);
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
     this.keyStore = builder.keyStore;
@@ -613,7 +608,6 @@ public class SessionPool implements ISessionPool {
               .keyStore(keyStore)
               .keyStorePwd(keyStorePwd)
               .sslProtocol(sslProtocol)
-              .connectionFailureReporter(connectionFailureReporter)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
@@ -642,7 +636,6 @@ public class SessionPool implements ISessionPool {
               .keyStore(keyStore)
               .keyStorePwd(keyStorePwd)
               .sslProtocol(sslProtocol)
-              .connectionFailureReporter(connectionFailureReporter)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
@@ -691,8 +684,7 @@ public class SessionPool implements ISessionPool {
             keyStorePwd,
             sslProtocol,
             enableThriftCompression,
-            version.toString(),
-            connectionFailureReporter);
+            version.toString());
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
@@ -3687,12 +3679,6 @@ public class SessionPool implements ISessionPool {
 
     public Builder sslProtocol(String sslProtocol) {
       this.sslProtocol = sslProtocol;
-      return this;
-    }
-
-    public Builder connectionFailureReporter(
-        BiConsumer<Throwable, TEndPoint> connectionFailureReporter) {
-      this.connectionFailureReporter = Objects.requireNonNull(connectionFailureReporter);
       return this;
     }
 

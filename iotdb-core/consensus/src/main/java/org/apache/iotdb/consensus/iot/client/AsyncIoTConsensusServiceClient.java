@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.audit.TrustedChannelFailureHandler;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
@@ -50,28 +49,12 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
-  private final TrustedChannelFailureReporter trustedChannelFailureReporter;
 
   public AsyncIoTConsensusServiceClient(
       ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tAsyncClientManager,
       ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager)
-      throws IOException {
-    this(
-        property,
-        endpoint,
-        tAsyncClientManager,
-        clientManager,
-        new TrustedChannelFailureReporter(null, TrustedChannelFailureHandler.NO_OP));
-  }
-
-  AsyncIoTConsensusServiceClient(
-      ThriftClientProperty property,
-      TEndPoint endpoint,
-      TAsyncClientManager tAsyncClientManager,
-      ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
-      TrustedChannelFailureReporter trustedChannelFailureReporter)
       throws IOException {
     super(
         property.getProtocolFactory(),
@@ -91,7 +74,6 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
-    this.trustedChannelFailureReporter = trustedChannelFailureReporter;
   }
 
   @Override
@@ -102,7 +84,6 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
 
   @Override
   public void onError(Exception e) {
-    trustedChannelFailureReporter.report(e, endpoint);
     super.onError(e);
     ThriftClient.resolveException(e, this);
     returnSelf();
@@ -159,29 +140,11 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
   public static class Factory
       extends AsyncThriftClientFactory<TEndPoint, AsyncIoTConsensusServiceClient> {
 
-    private final TrustedChannelFailureReporter trustedChannelFailureReporter;
-
     public Factory(
         ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
         String threadName) {
-      this(
-          clientManager,
-          thriftClientProperty,
-          threadName,
-          null,
-          TrustedChannelFailureHandler.NO_OP);
-    }
-
-    public Factory(
-        ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
-        ThriftClientProperty thriftClientProperty,
-        String threadName,
-        TEndPoint initiator,
-        TrustedChannelFailureHandler trustedChannelFailureHandler) {
       super(clientManager, thriftClientProperty, threadName);
-      this.trustedChannelFailureReporter =
-          new TrustedChannelFailureReporter(initiator, trustedChannelFailureHandler);
     }
 
     @Override
@@ -193,18 +156,12 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
     @Override
     public PooledObject<AsyncIoTConsensusServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
-      try {
-        return new DefaultPooledObject<>(
-            new AsyncIoTConsensusServiceClient(
-                thriftClientProperty,
-                endPoint,
-                tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
-                clientManager,
-                trustedChannelFailureReporter));
-      } catch (final Exception e) {
-        trustedChannelFailureReporter.report(e, endPoint);
-        throw e;
-      }
+      return new DefaultPooledObject<>(
+          new AsyncIoTConsensusServiceClient(
+              thriftClientProperty,
+              endPoint,
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
+              clientManager));
     }
 
     @Override

@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.audit.TrustedChannelFailureHandler;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
@@ -42,20 +41,9 @@ public class IoTConsensusClientPool {
       implements IClientPoolFactory<TEndPoint, SyncIoTConsensusServiceClient> {
 
     private final IoTConsensusConfig config;
-    private final TEndPoint initiator;
-    private final TrustedChannelFailureHandler trustedChannelFailureHandler;
 
     public SyncIoTConsensusServiceClientPoolFactory(IoTConsensusConfig config) {
-      this(config, null, TrustedChannelFailureHandler.NO_OP);
-    }
-
-    public SyncIoTConsensusServiceClientPoolFactory(
-        IoTConsensusConfig config,
-        TEndPoint initiator,
-        TrustedChannelFailureHandler trustedChannelFailureHandler) {
       this.config = config;
-      this.initiator = initiator;
-      this.trustedChannelFailureHandler = trustedChannelFailureHandler;
     }
 
     @Override
@@ -74,9 +62,7 @@ public class IoTConsensusClientPool {
                           config.getRpc().isRpcThriftCompressionEnabled())
                       .setPrintLogWhenEncounterException(
                           config.getRpc().isPrintLogWhenThriftClientEncounterException())
-                      .build(),
-                  initiator,
-                  trustedChannelFailureHandler),
+                      .build()),
               new ClientPoolProperty.Builder<SyncIoTConsensusServiceClient>()
                   .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
                   .build()
@@ -91,20 +77,9 @@ public class IoTConsensusClientPool {
       implements IClientPoolFactory<TEndPoint, AsyncIoTConsensusServiceClient> {
 
     private final IoTConsensusConfig config;
-    private final TEndPoint initiator;
-    private final TrustedChannelFailureHandler trustedChannelFailureHandler;
 
     public AsyncIoTConsensusServiceClientPoolFactory(IoTConsensusConfig config) {
-      this(config, null, TrustedChannelFailureHandler.NO_OP);
-    }
-
-    public AsyncIoTConsensusServiceClientPoolFactory(
-        IoTConsensusConfig config,
-        TEndPoint initiator,
-        TrustedChannelFailureHandler trustedChannelFailureHandler) {
       this.config = config;
-      this.initiator = initiator;
-      this.trustedChannelFailureHandler = trustedChannelFailureHandler;
     }
 
     @Override
@@ -126,9 +101,7 @@ public class IoTConsensusClientPool {
                       .setPrintLogWhenEncounterException(
                           config.getRpc().isPrintLogWhenThriftClientEncounterException())
                       .build(),
-                  ThreadName.ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL.getName(),
-                  initiator,
-                  trustedChannelFailureHandler),
+                  ThreadName.ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncIoTConsensusServiceClient>()
                   .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
                   .build()

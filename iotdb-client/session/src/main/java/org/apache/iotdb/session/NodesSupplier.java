@@ -32,12 +32,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 
 public class NodesSupplier implements INodeSupplier, Runnable {
 
@@ -82,8 +80,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private final String version;
 
-  private final BiConsumer<Throwable, TEndPoint> connectionFailureReporter;
-
   private final QueryEndPointPolicy policy = new RoundRobinPolicy();
 
   private ThriftConnection client;
@@ -109,46 +105,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       boolean enableRPCCompression,
       String version) {
 
-    return createNodeSupplier(
-        endPointList,
-        executorService,
-        userName,
-        password,
-        zoneId,
-        thriftDefaultBufferSize,
-        thriftMaxFrameSize,
-        connectionTimeoutInMs,
-        useSSL,
-        trustStore,
-        trustStorePwd,
-        keyStore,
-        keyStorePwd,
-        sslProtocol,
-        enableRPCCompression,
-        version,
-        (failure, endPoint) -> {});
-  }
-
-  @SuppressWarnings("unsafeThreadSchedule")
-  public static NodesSupplier createNodeSupplier(
-      List<TEndPoint> endPointList,
-      ScheduledExecutorService executorService,
-      String userName,
-      String password,
-      ZoneId zoneId,
-      int thriftDefaultBufferSize,
-      int thriftMaxFrameSize,
-      int connectionTimeoutInMs,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd,
-      String keyStore,
-      String keyStorePwd,
-      String sslProtocol,
-      boolean enableRPCCompression,
-      String version,
-      BiConsumer<Throwable, TEndPoint> connectionFailureReporter) {
-
     NodesSupplier nodesSupplier =
         new NodesSupplier(
             endPointList,
@@ -165,8 +121,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
             keyStorePwd,
             sslProtocol,
             enableRPCCompression,
-            version,
-            connectionFailureReporter);
+            version);
 
     // call executorService.scheduleAtFixedRate here in a separate line
     // instead of the constructor to prevent leaking the "this" reference to
@@ -191,8 +146,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       String keyStorePwd,
       String sslProtocol,
       boolean enableRPCCompression,
-      String version,
-      BiConsumer<Throwable, TEndPoint> connectionFailureReporter) {
+      String version) {
     this.availableNodes.addAll(new HashSet<>(endPointList));
     this.userName = userName;
     this.password = password;
@@ -208,7 +162,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.version = version;
-    this.connectionFailureReporter = Objects.requireNonNull(connectionFailureReporter);
   }
 
   // the method will only be called while reconnecting, so it's ok to copy set each time
@@ -261,7 +214,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           version);
       return true;
     } catch (Exception e) {
-      reportConnectionFailure(e, endPoint);
       LOGGER.warn(SessionMessages.FAILED_TO_CREATE_CONNECTION, endPoint);
       destroyCurrentClient();
       return false;
@@ -295,24 +247,10 @@ public class NodesSupplier implements INodeSupplier, Runnable {
         client.executeQueryStatement(SHOW_AVAILABLE_URLS_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
       updateAvailableNodes(sessionDataSet);
     } catch (Exception e1) {
-      reportConnectionFailure(e1, client.endPoint);
       LOGGER.warn(SessionMessages.FAILED_TO_FETCH_DATA_NODE_LIST, client.endPoint);
       return false;
     }
     return true;
-  }
-
-  private void reportConnectionFailure(final Throwable failure, final TEndPoint endPoint) {
-    if (!useSSL) {
-      return;
-    }
-    try {
-      connectionFailureReporter.accept(failure, endPoint);
-    } catch (final RuntimeException reporterFailure) {
-      if (failure != reporterFailure) {
-        failure.addSuppressed(reporterFailure);
-      }
-    }
   }
 
   private void updateAvailableNodes(SessionDataSet sessionDataSet) throws Exception {

@@ -110,9 +110,7 @@ public class RegionMaintainHandler {
     dataNodeClientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory(
-                    configManager.getAuditLogger()
-                        ::recordTrustedChannelFailureAuditLogIfNecessary));
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
   public static String getIdWithRpcEndpoint(TDataNodeLocation location) {

@@ -39,8 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Objects;
-import java.util.function.BiConsumer;
 
 public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.AsyncClient
     implements ThriftClient {
@@ -48,10 +46,6 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncDataNodeInternalServiceClient.class);
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-  private static final BiConsumer<Exception, TEndPoint> NO_OP_FAILURE_REPORTER =
-      (failure, target) -> {
-        // Do nothing.
-      };
 
   public long originalTimeout = -1;
 
@@ -59,23 +53,12 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
-  private final BiConsumer<Exception, TEndPoint> failureReporter;
 
   public AsyncDataNodeInternalServiceClient(
       ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
       ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager)
-      throws IOException {
-    this(property, endpoint, tClientManager, clientManager, NO_OP_FAILURE_REPORTER);
-  }
-
-  public AsyncDataNodeInternalServiceClient(
-      ThriftClientProperty property,
-      TEndPoint endpoint,
-      TAsyncClientManager tClientManager,
-      ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager,
-      BiConsumer<Exception, TEndPoint> failureReporter)
       throws IOException {
     super(
         property.getProtocolFactory(),
@@ -95,7 +78,6 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
-    this.failureReporter = Objects.requireNonNull(failureReporter);
   }
 
   @TestOnly
@@ -116,7 +98,6 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
 
   @Override
   public void onError(Exception e) {
-    reportFailure(e, endpoint);
     super.onError(e);
     ThriftClient.resolveException(e, this);
     returnSelf();
@@ -198,22 +179,11 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
   public static class Factory
       extends AsyncThriftClientFactory<TEndPoint, AsyncDataNodeInternalServiceClient> {
 
-    private final BiConsumer<Exception, TEndPoint> failureReporter;
-
     public Factory(
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
         String threadName) {
-      this(clientManager, thriftClientProperty, threadName, NO_OP_FAILURE_REPORTER);
-    }
-
-    public Factory(
-        ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager,
-        ThriftClientProperty thriftClientProperty,
-        String threadName,
-        BiConsumer<Exception, TEndPoint> failureReporter) {
       super(clientManager, thriftClientProperty, threadName);
-      this.failureReporter = Objects.requireNonNull(failureReporter);
     }
 
     @Override
@@ -225,41 +195,18 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
     @Override
     public PooledObject<AsyncDataNodeInternalServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
-      try {
-        return new DefaultPooledObject<>(
-            new AsyncDataNodeInternalServiceClient(
-                thriftClientProperty,
-                endPoint,
-                tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
-                clientManager,
-                failureReporter));
-      } catch (final Exception e) {
-        reportFailure(e, endPoint, failureReporter);
-        throw e;
-      }
+      return new DefaultPooledObject<>(
+          new AsyncDataNodeInternalServiceClient(
+              thriftClientProperty,
+              endPoint,
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
+              clientManager));
     }
 
     @Override
     public boolean validateObject(
         TEndPoint endPoint, PooledObject<AsyncDataNodeInternalServiceClient> pooledObject) {
       return pooledObject.getObject().isReady();
-    }
-  }
-
-  private void reportFailure(final Exception failure, final TEndPoint target) {
-    reportFailure(failure, target, failureReporter);
-  }
-
-  private static void reportFailure(
-      final Exception failure,
-      final TEndPoint target,
-      final BiConsumer<Exception, TEndPoint> failureReporter) {
-    try {
-      failureReporter.accept(failure, target);
-    } catch (final RuntimeException reportingFailure) {
-      if (reportingFailure != failure) {
-        failure.addSuppressed(reportingFailure);
-      }
     }
   }
 }

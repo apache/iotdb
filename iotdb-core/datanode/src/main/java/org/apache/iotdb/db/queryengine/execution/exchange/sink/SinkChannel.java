@@ -23,10 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
-import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
@@ -602,9 +600,6 @@ public class SinkChannel implements ISinkChannel {
             client.onNewDataBlockEvent(newDataBlockEvent);
             break;
           } catch (Exception e) {
-            DNAuditLogger.getInstance()
-                .recordTrustedChannelFailureAuditLogIfNecessary(
-                    e, DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT, remoteEndpoint);
             LOGGER.warn(
                 DataNodeQueryMessages.FAILED_TO_SEND_NEW_DATA_BLOCK_EVENT_ATTEMPT, attempt, e);
             if (containsTApplicationException(e) || attempt == MAX_ATTEMPT_TIMES) {
@@ -654,9 +649,6 @@ public class SinkChannel implements ISinkChannel {
             client.onEndOfDataBlockEvent(endOfDataBlockEvent);
             break;
           } catch (Exception e) {
-            DNAuditLogger.getInstance()
-                .recordTrustedChannelFailureAuditLogIfNecessary(
-                    e, DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT, remoteEndpoint);
             LOGGER.warn(DataNodeQueryMessages.FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT, attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               LOGGER.warn(DataNodeQueryMessages.FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT_2, e);

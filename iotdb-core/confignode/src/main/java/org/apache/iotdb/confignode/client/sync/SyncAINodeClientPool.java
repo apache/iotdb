@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncAINodeClient;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
-import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableMap;
@@ -89,7 +88,6 @@ public class SyncAINodeClientPool {
         return executeSyncRequest(requestType, client, req);
       } catch (Exception e) {
         lastException = e;
-        recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
         if (retry != DEFAULT_RETRY_NUM - 1) {
           LOGGER.warn(
               ConfigNodeMessages.FAILED_ON_AINODE_RETRYING, requestType, endPoint, retry + 1);
@@ -110,7 +108,6 @@ public class SyncAINodeClientPool {
         return executeSyncRequest(requestType, client, req);
       } catch (Exception e) {
         lastException = e;
-        recordTrustedChannelFailureAuditLogIfNecessary(e, endPoint);
         if (retry != retryNum - 1) {
           LOGGER.warn(
               ConfigNodeMessages.FAILED_ON_AINODE_RETRYING, requestType, endPoint, retry + 1);
@@ -126,17 +123,6 @@ public class SyncAINodeClientPool {
   private Object executeSyncRequest(
       CnToAnSyncRequestType requestType, SyncAINodeClient client, Object req) throws Exception {
     return Objects.requireNonNull(actionMap.get(requestType)).apply(req, client);
-  }
-
-  private void recordTrustedChannelFailureAuditLogIfNecessary(
-      final Throwable failure, final TEndPoint targetEndPoint) {
-    if (ConfigNode.getInstance() == null || ConfigNode.getInstance().getConfigManager() == null) {
-      return;
-    }
-    ConfigNode.getInstance()
-        .getConfigManager()
-        .getAuditLogger()
-        .recordTrustedChannelFailureAuditLogIfNecessary(failure, targetEndPoint);
   }
 
   private void doRetryWait(int retryNum) {

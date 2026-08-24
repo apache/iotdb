@@ -34,7 +34,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class AsyncRequestManagerTest {
 
@@ -84,23 +83,6 @@ public class AsyncRequestManagerTest {
     Assert.assertEquals(Collections.singletonList(1), context.getRequestIndices());
   }
 
-  @Test
-  public void reportingFailureShouldNotReplaceDispatchFailure() {
-    final TestAsyncRequestManager manager = new TestAsyncRequestManager(true, false, false, true);
-    final AsyncRequestContext<String, String, TestRequestType, TestNodeLocation> context =
-        new AsyncRequestContext<>(
-            TestRequestType.TEST,
-            "request",
-            Collections.singletonMap(1, new TestNodeLocation(new TEndPoint("localhost", 6667))));
-
-    manager.sendAsyncRequest(context, 1, null, true);
-
-    Assert.assertEquals("borrow failed", context.getResponseMap().get(1));
-    Assert.assertEquals(1, manager.getReportedFailure().getSuppressed().length);
-    Assert.assertEquals(
-        "reporting failed", manager.getReportedFailure().getSuppressed()[0].getMessage());
-  }
-
   private enum TestRequestType {
     TEST
   }
@@ -121,36 +103,21 @@ public class AsyncRequestManagerTest {
     private boolean failOnBorrow;
     private boolean failOnDispatch;
     private boolean failOnError;
-    private boolean failOnReporting;
-    private final AtomicReference<Throwable> reportedFailure = new AtomicReference<>();
 
     private TestAsyncRequestManager() {
-      this(true, false, false, false);
+      this(true, false, false);
     }
 
     private TestAsyncRequestManager(
         final boolean failOnBorrow, final boolean failOnDispatch, final boolean failOnError) {
-      this(failOnBorrow, failOnDispatch, failOnError, false);
-    }
-
-    private TestAsyncRequestManager(
-        final boolean failOnBorrow,
-        final boolean failOnDispatch,
-        final boolean failOnError,
-        final boolean failOnReporting) {
       super(1);
       this.failOnBorrow = failOnBorrow;
       this.failOnDispatch = failOnDispatch;
       this.failOnError = failOnError;
-      this.failOnReporting = failOnReporting;
     }
 
     private int getBorrowAttempts() {
       return borrowAttempts.get();
-    }
-
-    private Throwable getReportedFailure() {
-      return reportedFailure.get();
     }
 
     @Override
@@ -199,14 +166,6 @@ public class AsyncRequestManagerTest {
     @Override
     protected TEndPoint nodeLocationToEndPoint(final TestNodeLocation location) {
       return location.endPoint;
-    }
-
-    @Override
-    protected void onRequestFailure(final Exception failure, final TEndPoint targetEndPoint) {
-      reportedFailure.set(failure);
-      if (failOnReporting) {
-        throw new RuntimeException("reporting failed");
-      }
     }
 
     @SuppressWarnings("unchecked")

@@ -33,7 +33,6 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -201,10 +200,22 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   private boolean initClientAndStatus(
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus, final TEndPoint endPoint) {
     try {
-      clientAndStatus.setLeft(createClient(endPoint));
+      clientAndStatus.setLeft(
+          new IoTDBSyncClient(
+              new ThriftClientProperty.Builder()
+                  .setConnectionTimeoutMs(PIPE_CONFIG.getPipeSinkHandshakeTimeoutMs())
+                  .setRpcThriftCompressionEnabled(
+                      PIPE_CONFIG.isPipeSinkRPCThriftCompressionEnabled())
+                  .build(),
+              endPoint.getIp(),
+              endPoint.getPort(),
+              useSSL,
+              trustStorePath,
+              trustStorePwd,
+              keyStorePath,
+              keyStorePwd));
       return true;
     } catch (Exception e) {
-      notifyClientConnectionFailure(e, endPoint);
       endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());
       PipeLogger.log(
           LOGGER::warn,
@@ -215,21 +226,6 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
           e.getMessage());
       return false;
     }
-  }
-
-  protected IoTDBSyncClient createClient(final TEndPoint endPoint) throws TTransportException {
-    return new IoTDBSyncClient(
-        new ThriftClientProperty.Builder()
-            .setConnectionTimeoutMs(PIPE_CONFIG.getPipeSinkHandshakeTimeoutMs())
-            .setRpcThriftCompressionEnabled(PIPE_CONFIG.isPipeSinkRPCThriftCompressionEnabled())
-            .build(),
-        endPoint.getIp(),
-        endPoint.getPort(),
-        useSSL,
-        trustStorePath,
-        trustStorePwd,
-        keyStorePath,
-        keyStorePwd);
   }
 
   public void sendHandshakeReq(final Pair<IoTDBSyncClient, Boolean> clientAndStatus) {
@@ -293,7 +289,6 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         LOGGER.info(PipeMessages.HANDSHAKE_SUCCESS_TARGET, client.getIpAddress(), client.getPort());
       }
     } catch (Exception e) {
-      notifyClientConnectionFailure(e, client.getEndPoint());
       LOGGER.warn(
           PipeMessages.HANDSHAKE_ERROR_WITH_TARGET_SERVER,
           client.getIpAddress(),
@@ -302,22 +297,6 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
           e);
       endPoint2HandshakeErrorMessage.put(client.getEndPoint(), e.getMessage());
     }
-  }
-
-  private void notifyClientConnectionFailure(
-      final Exception failure, final TEndPoint targetEndPoint) {
-    try {
-      onClientConnectionFailure(failure, targetEndPoint);
-    } catch (final RuntimeException reportingFailure) {
-      if (reportingFailure != failure) {
-        failure.addSuppressed(reportingFailure);
-      }
-    }
-  }
-
-  protected void onClientConnectionFailure(
-      final Exception failure, final TEndPoint targetEndPoint) {
-    // In default, no need to do this
   }
 
   protected abstract PipeTransferHandshakeV1Req buildHandshakeV1Req() throws IOException;

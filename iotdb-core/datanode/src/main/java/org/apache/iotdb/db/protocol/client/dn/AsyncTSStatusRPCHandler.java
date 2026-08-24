@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.protocol.client.dn;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -37,7 +35,6 @@ import java.util.concurrent.CountDownLatch;
 public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSStatus> {
 
   private final boolean keepSilent;
-  private final TEndPoint targetEndPoint;
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler.class);
 
   public AsyncTSStatusRPCHandler(
@@ -48,29 +45,8 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
       Map<Integer, TSStatus> responseMap,
       CountDownLatch countDownLatch,
       boolean keepSilent) {
-    this(
-        requestType,
-        requestId,
-        targetDataNode,
-        dataNodeLocationMap,
-        responseMap,
-        countDownLatch,
-        keepSilent,
-        targetDataNode.getInternalEndPoint());
-  }
-
-  public AsyncTSStatusRPCHandler(
-      DnToDnRequestType requestType,
-      int requestId,
-      TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      Map<Integer, TSStatus> responseMap,
-      CountDownLatch countDownLatch,
-      boolean keepSilent,
-      TEndPoint targetEndPoint) {
     super(requestType, requestId, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
     this.keepSilent = keepSilent;
-    this.targetEndPoint = targetEndPoint;
   }
 
   @Override
@@ -101,7 +77,6 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
 
   @Override
   public void onError(Exception e) {
-    DNAuditLogger.getInstance().recordTrustedChannelFailureAuditLogIfNecessary(e, targetEndPoint);
     String errorMsg =
         "Failed to "
             + requestType
