@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.calc.execution.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
@@ -41,6 +45,7 @@ public class VarianceAccumulator implements Accumulator {
   }
 
   private final TSDataType seriesDataType;
+  private final TypeServices.ColumnToDoubleConverter doubleValueConverter;
 
   private final VarianceType varianceType;
 
@@ -50,34 +55,33 @@ public class VarianceAccumulator implements Accumulator {
 
   public VarianceAccumulator(TSDataType seriesDataType, VarianceType varianceType) {
     this.seriesDataType = seriesDataType;
+    this.doubleValueConverter =
+        TypeServices.NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+            .call(Type.fromTsDataType(seriesDataType))
+            .create(
+                () ->
+                    new UnSupportedDataTypeException(
+                        String.format(
+                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_VARIANCE,
+                            seriesDataType)));
     this.varianceType = varianceType;
   }
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(columns, bitMap);
-        return;
-      case INT64:
-        addLongInput(columns, bitMap);
-        return;
-      case FLOAT:
-        addFloatInput(columns, bitMap);
-        return;
-      case DOUBLE:
-        addDoubleInput(columns, bitMap);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case STRING:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation variance : %s", seriesDataType));
+    checkInputDataType();
+    int size = columns[0].getPositionCount();
+    for (int i = 0; i < size; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
+        continue;
+      }
+      if (!columns[1].isNull(i)) {
+        double value = doubleValueConverter.convert(columns[1], i);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
     }
   }
 
@@ -216,67 +220,11 @@ public class VarianceAccumulator implements Accumulator {
     return TSDataType.DOUBLE;
   }
 
-  private void addIntInput(Column[] columns, BitMap bitmap) {
-    int size = columns[0].getPositionCount();
-    for (int i = 0; i < size; i++) {
-      if (bitmap != null && !bitmap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[1].isNull(i)) {
-        int value = columns[1].getInt(i);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    }
-  }
-
-  private void addLongInput(Column[] columns, BitMap bitmap) {
-    int size = columns[0].getPositionCount();
-    for (int i = 0; i < size; i++) {
-      if (bitmap != null && !bitmap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[1].isNull(i)) {
-        long value = columns[1].getLong(i);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    }
-  }
-
-  private void addFloatInput(Column[] columns, BitMap bitmap) {
-    int size = columns[0].getPositionCount();
-    for (int i = 0; i < size; i++) {
-      if (bitmap != null && !bitmap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[1].isNull(i)) {
-        float value = columns[1].getFloat(i);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    }
-  }
-
-  private void addDoubleInput(Column[] columns, BitMap bitmap) {
-    int size = columns[0].getPositionCount();
-    for (int i = 0; i < size; i++) {
-      if (bitmap != null && !bitmap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[1].isNull(i)) {
-        double value = columns[1].getDouble(i);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
+  private void checkInputDataType() {
+    if (!seriesDataType.isNumeric()) {
+      throw new UnSupportedDataTypeException(
+          String.format(
+              CalcMessages.UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_VARIANCE, seriesDataType));
     }
   }
 }

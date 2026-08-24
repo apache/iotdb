@@ -135,6 +135,10 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
   public static final String UNSUPPORTED_DATA_TYPE_IN_CENTRAL_MOMENT_AGGREGATION =
       "Unsupported data type in CentralMoment Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_VARIANCE =
+      "Unsupported data type in aggregation variance : %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_VARIANCE_AGGREGATION =
+      "Unsupported data type in VARIANCE Aggregation: %s";
   public static final String UNSUPPORTED_DEFAULT_VALUE_DATA_TYPE_IN_LAG =
       "Unsupported default value's data type in Lag: ";
   public static final String UNSUPPORTED_DATA_TYPE_LOWER = "unsupported data type: ";

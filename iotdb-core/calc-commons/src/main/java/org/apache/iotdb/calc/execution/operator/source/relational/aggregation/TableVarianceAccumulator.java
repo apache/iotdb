@@ -20,6 +20,8 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.VarianceAccumulator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -28,6 +30,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -40,6 +43,7 @@ public class TableVarianceAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableVarianceAccumulator.class);
   private final TSDataType seriesDataType;
+  private final TypeServices.ColumnToDoubleConverter doubleValueConverter;
   private final VarianceAccumulator.VarianceType varianceType;
 
   private long count;
@@ -49,6 +53,10 @@ public class TableVarianceAccumulator implements TableAccumulator {
   public TableVarianceAccumulator(
       TSDataType seriesDataType, VarianceAccumulator.VarianceType varianceType) {
     this.seriesDataType = seriesDataType;
+    this.doubleValueConverter =
+        TypeServices.NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+            .call(Type.fromTsDataType(seriesDataType))
+            .create(this::unsupportedDataTypeException);
     this.varianceType = varianceType;
   }
 
@@ -64,57 +72,18 @@ public class TableVarianceAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(arguments[0], mask);
-        return;
-      case INT64:
-        addLongInput(arguments[0], mask);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], mask);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case STRING:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in VARIANCE Aggregation: %s", seriesDataType));
-    }
+    checkInputDataType();
+    updateStateByAdd(arguments[0], mask);
   }
 
   @Override
   public void removeInput(Column[] arguments) {
-    switch (seriesDataType) {
-      case INT32:
-        removeIntInput(arguments[0]);
-        return;
-      case INT64:
-        removeLongInput(arguments[0]);
-        return;
-      case FLOAT:
-        removeFloatInput(arguments[0]);
-        return;
-      case DOUBLE:
-        removeDoubleInput(arguments[0]);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case STRING:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in VARIANCE Aggregation: %s", seriesDataType));
+    checkInputDataType();
+    Column column = arguments[0];
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        updateStateByRemove(doubleValueConverter.convert(column, i));
+      }
     }
   }
 
@@ -222,7 +191,7 @@ public class TableVarianceAccumulator implements TableAccumulator {
     return true;
   }
 
-  private void addIntInput(Column column, AggregationMask mask) {
+  private void updateStateByAdd(Column column, AggregationMask mask) {
     int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
@@ -231,7 +200,7 @@ public class TableVarianceAccumulator implements TableAccumulator {
           continue;
         }
 
-        int value = column.getInt(i);
+        double value = doubleValueConverter.convert(column, i);
         count++;
         double delta = value - mean;
         mean += delta / count;
@@ -246,155 +215,12 @@ public class TableVarianceAccumulator implements TableAccumulator {
           continue;
         }
 
-        int value = column.getInt(position);
+        double value = doubleValueConverter.convert(column, position);
         count++;
         double delta = value - mean;
         mean += delta / count;
         m2 += delta * (value - mean);
       }
-    }
-  }
-
-  private void addLongInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (column.isNull(i)) {
-          continue;
-        }
-
-        long value = column.getLong(i);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (column.isNull(position)) {
-          continue;
-        }
-
-        long value = column.getLong(position);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    }
-  }
-
-  private void addFloatInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (column.isNull(i)) {
-          continue;
-        }
-
-        float value = column.getFloat(i);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (column.isNull(position)) {
-          continue;
-        }
-
-        float value = column.getFloat(position);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    }
-  }
-
-  private void addDoubleInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (column.isNull(i)) {
-          continue;
-        }
-
-        double value = column.getDouble(i);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (column.isNull(position)) {
-          continue;
-        }
-
-        double value = column.getDouble(position);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    }
-  }
-
-  private void removeIntInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (column.isNull(i)) {
-        continue;
-      }
-
-      int value = column.getInt(i);
-      updateStateByRemove(value);
-    }
-  }
-
-  private void removeLongInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (column.isNull(i)) {
-        continue;
-      }
-
-      long value = column.getLong(i);
-      updateStateByRemove(value);
-    }
-  }
-
-  private void removeFloatInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (column.isNull(i)) {
-        continue;
-      }
-
-      float value = column.getFloat(i);
-      updateStateByRemove(value);
-    }
-  }
-
-  private void removeDoubleInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (column.isNull(i)) {
-        continue;
-      }
-
-      double value = column.getDouble(i);
-      updateStateByRemove(value);
     }
   }
 
@@ -406,5 +232,16 @@ public class TableVarianceAccumulator implements TableAccumulator {
     m2 = m2 - delta * delta * count / newCount;
     count = newCount;
     mean = newMean;
+  }
+
+  private void checkInputDataType() {
+    if (!seriesDataType.isNumeric()) {
+      throw unsupportedDataTypeException();
+    }
+  }
+
+  private UnSupportedDataTypeException unsupportedDataTypeException() {
+    return new UnSupportedDataTypeException(
+        String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_VARIANCE_AGGREGATION, seriesDataType));
   }
 }

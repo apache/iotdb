@@ -128,6 +128,10 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_DATA_TYPE = "不支持的数据类型：";
   public static final String UNSUPPORTED_DATA_TYPE_IN_CENTRAL_MOMENT_AGGREGATION =
       "CentralMoment 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_VARIANCE =
+      "variance 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_VARIANCE_AGGREGATION =
+      "VARIANCE 聚合中不支持的数据类型：%s";
   public static final String UNSUPPORTED_DEFAULT_VALUE_DATA_TYPE_IN_LAG =
       "Lag 中不支持的默认值数据类型：";
   public static final String UNSUPPORTED_DATA_TYPE_LOWER = "不支持的数据类型：";
