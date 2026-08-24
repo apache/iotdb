@@ -33,6 +33,7 @@ import org.mockito.InOrder;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSocket;
 
+import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicReference;
@@ -107,6 +108,33 @@ public class TrustedChannelAuditServerEventHandlerTest {
 
     handler.deleteContext(null, input, output);
     verify(delegate, never()).deleteContext(isNull(), any(), any());
+  }
+
+  @Test
+  public void testWrappedSslFailureReachesCallback() throws Exception {
+    TServerEventHandler delegate = mock(TServerEventHandler.class);
+    TProtocol input = mock(TProtocol.class);
+    SSLSocket socket = mock(SSLSocket.class);
+    TProtocol output = createProtocol(socket);
+    IOException failure =
+        new IOException(
+            "wrapped handshake failure", new SSLHandshakeException("handshake failure"));
+    AtomicReference<Throwable> reportedFailure = new AtomicReference<>();
+    when(socket.getRemoteSocketAddress()).thenReturn(new InetSocketAddress("192.0.2.10", 45123));
+    org.mockito.Mockito.doThrow(failure).when(socket).startHandshake();
+
+    TrustedChannelAuditServerEventHandler handler =
+        new TrustedChannelAuditServerEventHandler(
+            delegate,
+            new TEndPoint("10.0.0.2", 10730),
+            (throwable, initiator, endpoint) -> reportedFailure.set(throwable));
+
+    UncheckedIOException thrown =
+        assertThrows(UncheckedIOException.class, () -> handler.createContext(input, output));
+
+    assertSame(failure, thrown.getCause());
+    assertSame(failure, reportedFailure.get());
+    verify(delegate, never()).createContext(any(), any());
   }
 
   @Test

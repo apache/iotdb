@@ -29,7 +29,6 @@ import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 
-import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSocket;
 
 import java.io.IOException;
@@ -103,9 +102,7 @@ public class TrustedChannelAuditServerEventHandler implements TServerEventHandle
     try {
       ((SSLSocket) socket).startHandshake();
     } catch (IOException e) {
-      if (e instanceof SSLException) {
-        notifyFailure(e, socket.getRemoteSocketAddress(), socket.getLocalSocketAddress());
-      }
+      notifyFailure(e, socket.getRemoteSocketAddress(), socket.getLocalSocketAddress());
       try {
         socket.close();
       } catch (IOException closeFailure) {
