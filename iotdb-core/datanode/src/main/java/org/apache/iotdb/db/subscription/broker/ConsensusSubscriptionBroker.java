@@ -278,13 +278,25 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         }
       }
       if (!handled) {
-        LOGGER.warn(
-            DataNodePipeMessages
-                .PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_COMMIT_CONTEXT_NOT_FOUND_IN_46DF62A6,
-            brokerId,
-            commitContext,
-            queues.size(),
-            topicName);
+        // SubscriptionReceiverV1 summarizes rejected ACKs once per request. Keep the context-level
+        // detail at DEBUG to avoid one WARN per context, while preserving WARN for internal NACKs.
+        if (nack) {
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_COMMIT_CONTEXT_NOT_FOUND_IN_46DF62A6,
+              brokerId,
+              commitContext,
+              queues.size(),
+              topicName);
+        } else {
+          LOGGER.debug(
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_COMMIT_CONTEXT_NOT_FOUND_IN_46DF62A6,
+              brokerId,
+              commitContext,
+              queues.size(),
+              topicName);
+        }
       }
     }
     return successfulCommitContexts;
