@@ -351,6 +351,8 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[6].writeInt(currentDatabase.getMaxSchemaRegionNum());
       columnBuilders[7].writeInt(currentDatabase.getDataRegionNum());
       columnBuilders[8].writeInt(currentDatabase.getMaxDataRegionNum());
+      columnBuilders[9].writeBoolean(
+          !currentDatabase.isSetNeedLastCache() || currentDatabase.isNeedLastCache());
       resultBuilder.declarePosition();
       currentDatabase = null;
     }
@@ -405,6 +407,7 @@ public class InformationSchemaContentSupplierFactory {
                               table.getTableName(),
                               table.getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
                       info.setState(TableNodeStatus.USING.ordinal());
+                      info.setNeedLastCache(false);
                       return info;
                     })
                 .collect(Collectors.toList()));
@@ -445,6 +448,8 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[6].appendNull();
       }
+      columnBuilders[7].writeBoolean(
+          !currentTable.isSetNeedLastCache() || currentTable.isNeedLastCache());
       resultBuilder.declarePosition();
       currentTable = null;
     }

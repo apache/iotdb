@@ -64,6 +64,7 @@ import static org.apache.iotdb.rpc.TSStatusCode.TABLE_NOT_EXISTS;
 
 public class CreateWritableViewProcedure extends CreateTableViewProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateWritableViewProcedure.class);
+  private static final String NEED_LAST_CACHE_ENABLED = Boolean.TRUE.toString();
 
   // Only populated for schema_cascade=true. "Original" follows the AbstractTablePlan naming:
   // originalDatabase locates the source table, and originalTable carries the source-table snapshot
@@ -196,6 +197,18 @@ public class CreateWritableViewProcedure extends CreateTableViewProcedure {
           initOriginalTableForCascade(source);
           originalTable.addProp(
               TsTable.TTL_PROPERTY, table.getPropValue(TsTable.TTL_PROPERTY).orElse(TTL_INFINITE));
+        }
+        if (!table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).isPresent()) {
+          table.addProp(
+              TsTable.NEED_LAST_CACHE_PROPERTY,
+              source
+                  .getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY)
+                  .orElse(NEED_LAST_CACHE_ENABLED));
+        } else if (((WritableView) table).isSchemaCascade()) {
+          initOriginalTableForCascade(source);
+          originalTable.addProp(
+              TsTable.NEED_LAST_CACHE_PROPERTY,
+              table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).orElse(NEED_LAST_CACHE_ENABLED));
         }
         setNextState(CreateTableState.PRE_CREATE);
       }

@@ -113,6 +113,10 @@ public class ShowTablesDetailsTask implements IConfigTask {
               } else {
                 builder.getColumnBuilder(5).appendNull();
               }
+              builder
+                  .getColumnBuilder(6)
+                  .writeBoolean(!tableInfo.isSetNeedLastCache() || tableInfo.isNeedLastCache());
+
               builder.declarePosition();
             });
 

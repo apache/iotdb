@@ -1890,7 +1890,8 @@ public class DataNodeTableOperatorGenerator
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
                   updateColumns,
-                  false);
+                  false,
+                  node.getOriginalWritableViewName().orElse(node.getQualifiedObjectName()));
         } else {
           hitCachesIndexes.add(i);
           lastRowCacheResults.add(lastByResult.get());
@@ -1978,7 +1979,8 @@ public class DataNodeTableOperatorGenerator
                   needInitTime || node.getGroupingKeys().isEmpty()
                       ? targetColumns
                       : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
-                  false);
+                  false,
+                  node.getOriginalWritableViewName().orElse(node.getQualifiedObjectName()));
         } else {
           hitCachesIndexes.add(i);
           lastValuesCacheResults.add(lastResult);
@@ -2322,7 +2324,11 @@ public class DataNodeTableOperatorGenerator
 
   private OptimizeType canUseLastCacheOptimize(
       List<TableAggregator> aggregators, AggregationTableScanNode node, String timeColumnName) {
-    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable() || aggregators.isEmpty()) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+        || aggregators.isEmpty()
+        || !TableDeviceSchemaCache.getInstance()
+            .isLastCacheEnabled(
+                node.getOriginalWritableViewName().orElse(node.getQualifiedObjectName()))) {
       return OptimizeType.NOOP;
     }
 

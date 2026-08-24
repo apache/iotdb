@@ -33,6 +33,7 @@ import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.MeasurementSchemaInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -428,6 +429,10 @@ public class TreeDeviceSchemaCacheManager {
       final @Nonnull TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
+    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
+      return;
+    }
+
     final int firstQueryGeneratedIndex = findFirstQueryGeneratedIndex(measurementSchemas);
     tableDeviceSchemaCache.updateLastCache(
         database,
@@ -471,6 +476,10 @@ public class TreeDeviceSchemaCacheManager {
    * @param measurementPath the fetched {@link MeasurementPath}
    */
   public void declareLastCache(final String database, final MeasurementPath measurementPath) {
+    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
+      return;
+    }
+
     tableDeviceSchemaCache.updateLastCache(
         database,
         measurementPath.getIDeviceID(),

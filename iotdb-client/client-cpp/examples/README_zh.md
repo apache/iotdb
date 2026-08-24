@@ -146,9 +146,9 @@ iotdb_session.dll
 **目标机器前置条件**
 
 - **64 位 Windows**（示例为 x64 构建）。
-- 安装 **[Microsoft Visual C++ 2015–2022 可再发行组件包（x64）](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)**。  
+- 安装 **[Microsoft Visual C++ 2015–2022 可再发行组件包（x64）](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)**。
   SDK 与示例均使用 **`/MD`**（动态 CRT），该安装包提供 `vcruntime140.dll`、
-  `msvcp140.dll` 等运行时。  
+  `msvcp140.dll` 等运行时。
   **仅安装此 Redistributable 即可**，目标机 **不需要** Visual Studio，也
   **不需要** IoTDB SDK 头文件或 Thrift/Boost。
 

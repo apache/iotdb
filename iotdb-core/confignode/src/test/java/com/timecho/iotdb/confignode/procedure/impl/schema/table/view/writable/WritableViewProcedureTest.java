@@ -304,6 +304,7 @@ public class WritableViewProcedureTest {
       throws Exception {
     final Map<String, String> properties = new HashMap<>();
     properties.put(TsTable.TTL_PROPERTY, "300");
+    properties.put(TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.FALSE.toString());
     properties.put(WritableView.SCHEMA_CASCADE, "false");
     final SetWritableViewPropertiesProcedure procedure =
         new SetWritableViewPropertiesProcedure("database1", "view1", "0", properties, false);
@@ -347,6 +348,9 @@ public class WritableViewProcedureTest {
               sourcePropertiesCaptor.capture(),
               eq(TableType.BASE_TABLE));
       Assert.assertEquals("300", sourcePropertiesCaptor.getValue().get(TsTable.TTL_PROPERTY));
+      Assert.assertEquals(
+          Boolean.FALSE.toString(),
+          sourcePropertiesCaptor.getValue().get(TsTable.NEED_LAST_CACHE_PROPERTY));
       Assert.assertFalse(
           sourcePropertiesCaptor.getValue().containsKey(WritableView.SCHEMA_CASCADE));
     } finally {

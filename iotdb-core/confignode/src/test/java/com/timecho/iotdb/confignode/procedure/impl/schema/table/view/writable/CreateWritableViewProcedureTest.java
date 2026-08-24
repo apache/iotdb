@@ -129,6 +129,64 @@ public class CreateWritableViewProcedureTest {
   }
 
   @Test
+  public void checkTableExistenceShouldInheritSourceNeedLastCache() throws Exception {
+    final TsTable sourceTable = createSourceTable("source-table-comment", "source-column-comment");
+    sourceTable.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.FALSE.toString());
+    final WritableView view = new WritableView(VIEW_NAME, DATABASE, SOURCE_TABLE_NAME, false);
+    final CreateWritableViewProcedure procedure =
+        new CreateWritableViewProcedure(DATABASE, view, true, false);
+
+    procedure.checkTableExistence(mockEnv(sourceTable));
+
+    Assert.assertFalse(procedure.isFailed());
+    Assert.assertEquals(
+        Boolean.FALSE.toString(), view.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).orElse(null));
+    Assert.assertNull(procedure.getOriginalTable());
+  }
+
+  @Test
+  public void checkTableExistenceShouldCascadeExplicitNeedLastCache() throws Exception {
+    final TsTable sourceTable = createSourceTable("source-table-comment", "source-column-comment");
+    sourceTable.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.FALSE.toString());
+    final WritableView view = new WritableView(VIEW_NAME, DATABASE, SOURCE_TABLE_NAME, true);
+    view.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.TRUE.toString());
+    final CreateWritableViewProcedure procedure =
+        new CreateWritableViewProcedure(DATABASE, view, true, false);
+
+    procedure.checkTableExistence(mockEnv(sourceTable));
+
+    Assert.assertFalse(procedure.isFailed());
+    Assert.assertEquals(
+        Boolean.TRUE.toString(), view.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).orElse(null));
+    Assert.assertEquals(
+        Boolean.TRUE.toString(),
+        procedure.getOriginalTable().getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).orElse(null));
+    Assert.assertEquals(
+        Boolean.FALSE.toString(),
+        sourceTable.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).orElse(null));
+  }
+
+  @Test
+  public void checkTableExistenceShouldNotCascadeNeedLastCacheWhenDisabled() throws Exception {
+    final TsTable sourceTable = createSourceTable("source-table-comment", "source-column-comment");
+    sourceTable.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.FALSE.toString());
+    final WritableView view = new WritableView(VIEW_NAME, DATABASE, SOURCE_TABLE_NAME, false);
+    view.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, Boolean.TRUE.toString());
+    final CreateWritableViewProcedure procedure =
+        new CreateWritableViewProcedure(DATABASE, view, true, false);
+
+    procedure.checkTableExistence(mockEnv(sourceTable));
+
+    Assert.assertFalse(procedure.isFailed());
+    Assert.assertEquals(
+        Boolean.TRUE.toString(), view.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).orElse(null));
+    Assert.assertNull(procedure.getOriginalTable());
+    Assert.assertEquals(
+        Boolean.FALSE.toString(),
+        sourceTable.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).orElse(null));
+  }
+
+  @Test
   public void checkTableExistenceShouldApplyExplicitCommentsAndCascadeToSource() throws Exception {
     final TsTable sourceTable = createSourceTable("source-table-comment", "source-column-comment");
     final WritableView view = new WritableView(VIEW_NAME, DATABASE, SOURCE_TABLE_NAME, true);

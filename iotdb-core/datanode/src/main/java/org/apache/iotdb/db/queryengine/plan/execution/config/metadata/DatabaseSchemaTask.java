@@ -73,6 +73,9 @@ public class DatabaseSchemaTask implements IConfigTask {
     if (databaseSchemaStatement.getMaxDataRegionGroupNum() != null) {
       databaseSchema.setMaxDataRegionGroupNum(databaseSchemaStatement.getMaxDataRegionGroupNum());
     }
+    if (databaseSchemaStatement.isSetNeedLastCache()) {
+      databaseSchema.setNeedLastCache(databaseSchemaStatement.isNeedLastCache());
+    }
     databaseSchema.setIsTableModel(false);
     return databaseSchema;
   }

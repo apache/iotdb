@@ -42,6 +42,8 @@ public class TreeViewSchema {
   // Transient marker used only by ALTER VIEW ADD COLUMN requests to distinguish explicit FROM
   // syntax from implicit source-name preservation.
   public static final String EXPLICIT_FROM = "__explicit_from";
+  public static final String UNSUPPORTED_NEED_LAST_CACHE_PROPERTY =
+      "The tree view does not support need_last_cache property.";
 
   public static boolean isTreeViewTable(final TsTable table) {
     return table.getPropValue(TREE_PATH_PATTERN).isPresent();

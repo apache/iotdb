@@ -74,6 +74,7 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.timecho.iotdb.db.queryengine.plan.relational.metadata.WritableViewUtils;
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.Type;
@@ -1960,6 +1961,7 @@ public class TableMetadataImpl implements Metadata {
     return partitionFetcher.getOrCreateSchemaPartition(database, deviceIDList, userName);
   }
 
+  @TableModel
   @Override
   public SchemaPartition getSchemaPartition(
       final String database, final List<IDeviceID> deviceIDList) {

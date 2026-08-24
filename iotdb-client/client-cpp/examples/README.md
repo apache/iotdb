@@ -149,9 +149,9 @@ iotdb_session.dll
 **Prerequisites on the target PC**
 
 - **64-bit Windows** (examples are built x64).
-- **[Microsoft Visual C++ Redistributable for Visual Studio 2015–2022](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)**  
+- **[Microsoft Visual C++ Redistributable for Visual Studio 2015–2022](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)**
   (x64). The SDK and examples are built with **`/MD`**; the redistributable
-  supplies `vcruntime140.dll`, `msvcp140.dll`, etc.  
+  supplies `vcruntime140.dll`, `msvcp140.dll`, etc.
   Installing this package is enough—you do **not** need Visual Studio or the
   IoTDB SDK on the target machine.
 

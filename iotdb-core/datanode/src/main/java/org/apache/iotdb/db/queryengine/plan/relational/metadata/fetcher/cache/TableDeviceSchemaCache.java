@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
@@ -109,24 +110,44 @@ public class TableDeviceSchemaCache {
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
-  private final IMemoryBlock memoryBlock;
+  @Nullable private final IMemoryBlock memoryBlock;
 
   private TableDeviceSchemaCache() {
-    memoryBlock =
+    this(
         memoryConfig
             .getSchemaCacheMemoryManager()
-            .exactAllocate(DataNodeMemoryConfig.SCHEMA_CACHE, MemoryBlockType.STATIC);
+            .exactAllocate(DataNodeMemoryConfig.SCHEMA_CACHE, MemoryBlockType.STATIC),
+        true);
+  }
+
+  private TableDeviceSchemaCache(final IMemoryBlock memoryBlock, final boolean bindMetrics) {
+    this(memoryBlock.getTotalMemorySizeInBytes(), memoryBlock, bindMetrics);
+  }
+
+  private TableDeviceSchemaCache(
+      final long memoryCapacity,
+      final @Nullable IMemoryBlock memoryBlock,
+      final boolean bindMetrics) {
+    this.memoryBlock = memoryBlock;
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
                 DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
-            .memoryCapacity(memoryBlock.getTotalMemorySizeInBytes())
+            .memoryCapacity(memoryCapacity)
             .firstKeySizeComputer(TableId::estimateSize)
             .secondKeySizeComputer(deviceID -> (int) deviceID.ramBytesUsed())
             .valueSizeComputer(TableDeviceCacheEntry::estimateSize)
             .build();
-    memoryBlock.allocate(memoryBlock.getTotalMemorySizeInBytes());
-    MetricService.getInstance().addMetricSet(new TableDeviceSchemaCacheMetrics(this));
+    if (Objects.nonNull(this.memoryBlock)) {
+      this.memoryBlock.allocate(this.memoryBlock.getTotalMemorySizeInBytes());
+    }
+    if (bindMetrics) {
+      MetricService.getInstance().addMetricSet(new TableDeviceSchemaCacheMetrics(this));
+    }
+  }
+
+  static TableDeviceSchemaCache createForTest(final long memoryCapacity) {
+    return new TableDeviceSchemaCache(memoryCapacity, null, false);
   }
 
   public static TableDeviceSchemaCache getInstance() {
@@ -236,11 +257,23 @@ public class TableDeviceSchemaCache {
       final IDeviceID deviceId,
       final String[] measurements,
       final boolean isInvalidate) {
+    initOrInvalidateLastCache(
+        database,
+        deviceId,
+        measurements,
+        isInvalidate,
+        new QualifiedObjectName(database, deviceId.getTableName()));
+  }
+
+  public void initOrInvalidateLastCache(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final boolean isInvalidate,
+      final QualifiedObjectName accessedTable) {
     readWriteLock.readLock().lock();
     try {
-      // Avoid stale table
-      if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
+      if (!isLastCacheEnabled(accessedTable)) {
         return;
       }
       dualKeyCache.update(
@@ -254,6 +287,13 @@ public class TableDeviceSchemaCache {
     } finally {
       readWriteLock.readLock().unlock();
     }
+  }
+
+  public boolean isLastCacheEnabled(final QualifiedObjectName accessedTable) {
+    final TsTable table =
+        DataNodeTableCache.getInstance()
+            .getTable(accessedTable.getDatabaseName(), accessedTable.getObjectName(), false);
+    return Objects.nonNull(table) && table.getCachedNeedLastCache();
   }
 
   /**
