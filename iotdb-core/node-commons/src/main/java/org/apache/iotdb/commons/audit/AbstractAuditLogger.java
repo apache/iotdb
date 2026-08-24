@@ -125,7 +125,7 @@ public abstract class AbstractAuditLogger {
                   INTERNAL_AUDIT_LOG_USER_ID,
                   User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME,
                   initiatorIdentifier)
-              .setPrivilegeType(PrivilegeType.AUDIT),
+              .setPrivilegeType(PrivilegeType.SECURITY),
           () -> initiatorIdentifier,
           () -> targetIdentifier);
     } catch (RuntimeException auditFailure) {
