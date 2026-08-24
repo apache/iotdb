@@ -781,11 +781,10 @@ public class ConsensusPrefetchingQueue {
     }
 
     this.nextExpectedSearchIndex.set(resolvedStart.getStartSearchIndex());
-    if (consensusReqReader instanceof WALNode) {
-      this.subscriptionWALIterator =
-          new ProgressWALIterator(
-              (WALNode) consensusReqReader, resolvedStart.getStartSearchIndex());
-    }
+    // Use the same factory as cursor resets; the default implementation still returns null for
+    // readers without WAL support.
+    this.subscriptionWALIterator =
+        createSubscriptionWALIterator(resolvedStart.getStartSearchIndex());
     this.prefetchInitialized = true;
     this.observedSeekGeneration = seekGeneration.get();
     discardBatch(this.lingerBatch);
