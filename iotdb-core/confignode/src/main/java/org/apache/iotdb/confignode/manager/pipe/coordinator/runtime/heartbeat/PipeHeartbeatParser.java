@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -156,40 +157,48 @@ public class PipeHeartbeatParser {
       final PipeTemporaryMetaInCoordinator temporaryMeta =
           (PipeTemporaryMetaInCoordinator) pipeMetaFromCoordinator.getTemporaryMeta();
 
+      final Set<Integer> expectedDataNodeIds = getExpectedDataNodeIds(pipeMetaFromCoordinator);
+
       // Remove completed pipes
       final Boolean isPipeCompletedFromAgent = pipeHeartbeat.isCompleted(staticMeta);
       if (Boolean.TRUE.equals(isPipeCompletedFromAgent)) {
 
-        temporaryMeta.markDataNodeCompleted(nodeId);
-        PipeLogger.log(
-            LOGGER::info,
-            ManagerMessages.DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE,
-            nodeId,
-            staticMeta.getPipeName(),
-            pipeHeartbeat.getRemainingEventCount(staticMeta),
-            pipeHeartbeat.getRemainingTime(staticMeta),
-            temporaryMeta.getCompletedDataNodeIds());
+        if (expectedDataNodeIds.contains(nodeId)) {
+          temporaryMeta.markDataNodeCompleted(nodeId);
+          PipeLogger.log(
+              LOGGER::info,
+              ManagerMessages.DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE,
+              nodeId,
+              staticMeta.getPipeName(),
+              pipeHeartbeat.getRemainingEventCount(staticMeta),
+              pipeHeartbeat.getRemainingTime(staticMeta),
+              temporaryMeta.getCompletedDataNodeIds());
+        }
 
-        final Set<Integer> uncompletedDataNodeIds =
-            configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
-        uncompletedDataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
-        if (uncompletedDataNodeIds.isEmpty()) {
-          PipeLogger.log(
-              LOGGER::info,
-              ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
-              staticMeta.getPipeName(),
-              temporaryMeta.getGlobalRemainingEvents(),
-              temporaryMeta.getGlobalRemainingTime(),
-              staticMeta);
-          pipeTaskInfo.get().removePipeMeta(staticMeta);
-          PipeLogger.log(
-              LOGGER::info,
-              ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
-              staticMeta.getPipeName(),
-              staticMeta);
-          needWriteConsensusOnConfigNodes.set(true);
-          needPushPipeMetaToDataNodes.set(true);
-          continue;
+        // Only DataNodes that are expected to run this Pipe participate in the completion
+        // judgment. A DataNode that does not own any target region should not block the Pipe
+        // from being automatically dropped after all expected DataNodes complete.
+        if (!expectedDataNodeIds.isEmpty()) {
+          final Set<Integer> uncompletedDataNodeIds = new HashSet<>(expectedDataNodeIds);
+          uncompletedDataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
+          if (uncompletedDataNodeIds.isEmpty()) {
+            PipeLogger.log(
+                LOGGER::info,
+                ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
+                staticMeta.getPipeName(),
+                temporaryMeta.getGlobalRemainingEvents(),
+                temporaryMeta.getGlobalRemainingTime(),
+                staticMeta);
+            pipeTaskInfo.get().removePipeMeta(staticMeta);
+            PipeLogger.log(
+                LOGGER::info,
+                ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
+                staticMeta.getPipeName(),
+                staticMeta);
+            needWriteConsensusOnConfigNodes.set(true);
+            needPushPipeMetaToDataNodes.set(true);
+            continue;
+          }
         }
       }
 
@@ -330,5 +339,23 @@ public class PipeHeartbeatParser {
         }
       }
     }
+  }
+
+  // Returns the DataNodes that must complete this Pipe. It derives the expected set from the pipe's
+  // runtime metadata instead of all registered DataNodes, so DataNodes that do not own any target
+  // region are ignored during the auto-drop completion check.
+  private Set<Integer> getExpectedDataNodeIds(final PipeMeta pipeMeta) {
+    final Set<Integer> registeredDataNodeIds =
+        configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
+    final Set<Integer> expectedDataNodeIds = new HashSet<>();
+    for (final Map.Entry<Integer, PipeTaskMeta> entry :
+        pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+      // The ConfigRegion task is led by a ConfigNode, not by a DataNode.
+      if (entry.getKey() != Integer.MIN_VALUE
+          && registeredDataNodeIds.contains(entry.getValue().getLeaderNodeId())) {
+        expectedDataNodeIds.add(entry.getValue().getLeaderNodeId());
+      }
+    }
+    return expectedDataNodeIds;
   }
 }

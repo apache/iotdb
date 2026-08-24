@@ -542,11 +542,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
 
         final Map<Integer, PipeTask> pipeTaskMap = pipeTaskManager.getPipeTasks(staticMeta);
+        final Set<Integer> expectedDataRegionIds = getExpectedDataRegionIds(pipeMeta);
         final boolean isAllDataRegionCompleted =
-            pipeTaskMap == null
-                || pipeTaskMap.entrySet().stream()
-                    .filter(entry -> dataRegionIds.contains(entry.getKey()))
-                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
+            isAllExpectedDataRegionCompleted(pipeTaskMap, expectedDataRegionIds);
         final boolean isCompleted =
             isAllDataRegionCompleted && includeDataAndNeedDrop(pipeMeta, includeQueryMode);
         final Pair<Long, Double> remainingEventAndTime =
@@ -582,6 +580,58 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       throw new TException(e);
     }
     return report;
+  }
+
+  // Returns whether every expected DataRegion has a completed local PipeTask on this DataNode.
+  // An empty expected set means this DataNode does not need to transfer history and is completed.
+  // A missing PipeTaskMap or a missing expected DataRegion means initialization failed.
+  static boolean isAllExpectedDataRegionCompleted(
+      final Map<Integer, PipeTask> pipeTaskMap, final Set<Integer> expectedDataRegionIds) {
+    if (expectedDataRegionIds.isEmpty()) {
+      // This DataNode does not own any target DataRegion for the pipe, so there is no local
+      // history transfer to wait for.
+      return true;
+    }
+    return pipeTaskMap != null
+        && expectedDataRegionIds.stream()
+            .allMatch(
+                dataRegionId -> {
+                  final PipeTask pipeTask = pipeTaskMap.get(dataRegionId);
+                  return pipeTask instanceof PipeDataNodeTask
+                      && ((PipeDataNodeTask) pipeTask).isCompleted();
+                });
+  }
+
+  // Returns the DataRegion ids that this DataNode is expected to transfer for the given pipe.
+  // A region is included only when it is owned by this DataNode, is led by this DataNode according
+  // to the pipe's runtime metadata, and is selected by the pipe's source parameters. This expected
+  // set is used instead of the already-created PipeTask map so that a failed task initialization is
+  // not silently treated as a completed region.
+  private Set<Integer> getExpectedDataRegionIds(final PipeMeta pipeMeta) {
+    final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+    final PipeParameters sourceParameters = staticMeta.getSourceParameters();
+    final Set<Integer> localDataRegionIds =
+        StorageEngine.getInstance().getAllDataRegionIds().stream()
+            .map(DataRegionId::getId)
+            .collect(Collectors.toSet());
+    final Set<Integer> expectedDataRegionIds = new HashSet<>();
+    for (final Map.Entry<Integer, PipeTaskMeta> entry :
+        pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+      final int regionId = entry.getKey();
+      if (entry.getValue().getLeaderNodeId() != CONFIG.getDataNodeId()
+          || !localDataRegionIds.contains(regionId)) {
+        continue;
+      }
+      try {
+        if (DataRegionListeningFilter.shouldDataRegionBeListened(
+            sourceParameters, new DataRegionId(regionId), staticMeta.getPipeType())) {
+          expectedDataRegionIds.add(regionId);
+        }
+      } catch (final IllegalPathException e) {
+        throw new PipeException(e.toString());
+      }
+    }
+    return expectedDataRegionIds;
   }
 
   private boolean includeDataAndNeedDrop(final PipeMeta pipeMeta, final boolean includeQueryMode)
