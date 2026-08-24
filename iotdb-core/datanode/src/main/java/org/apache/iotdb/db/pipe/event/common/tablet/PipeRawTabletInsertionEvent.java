@@ -64,6 +64,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
 
   private final EnrichedEvent sourceEvent;
+  private final AtomicBoolean generatedEventRegisteredWithSource = new AtomicBoolean(false);
+  private final AtomicBoolean generatedEventOutcomeReported = new AtomicBoolean(false);
   private boolean needToReport;
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
@@ -126,7 +128,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
             if (shouldReportOnCommit && needToReport) {
               eliminateProgressIndex();
             }
-            if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+            if (sourceEvent instanceof PipeTsFileInsertionEvent
+                && generatedEventOutcomeReported.compareAndSet(false, true)) {
               ((PipeTsFileInsertionEvent) sourceEvent)
                   .markGeneratedTabletInsertionEventAsTransferred();
             }
@@ -310,6 +313,22 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     }
 
     return true;
+  }
+
+  /** Marks this generated tablet as accepted by the processor output collector. */
+  public void markAsGeneratedEventRegisteredWithSource() {
+    generatedEventRegisteredWithSource.set(true);
+  }
+
+  @Override
+  public boolean clearReferenceCount(final String holderMessage) {
+    final boolean cleared = super.clearReferenceCount(holderMessage);
+    if (generatedEventRegisteredWithSource.get()
+        && generatedEventOutcomeReported.compareAndSet(false, true)
+        && sourceEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) sourceEvent).markGeneratedTabletInsertionEventAsDiscarded();
+    }
+    return cleared;
   }
 
   protected void eliminateProgressIndex() {

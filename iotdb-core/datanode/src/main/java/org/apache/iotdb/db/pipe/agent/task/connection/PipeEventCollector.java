@@ -260,14 +260,17 @@ public class PipeEventCollector implements EventCollector {
       ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
     }
 
+    if (event instanceof PipeRawTabletInsertionEvent
+        && ((PipeRawTabletInsertionEvent) event).getSourceEvent()
+            instanceof PipeTsFileInsertionEvent) {
+      // Register before publishing to the queue so a concurrent queue cleanup can report a
+      // generated tablet as discarded instead of racing with registration.
+      ((PipeTsFileInsertionEvent) ((PipeRawTabletInsertionEvent) event).getSourceEvent())
+          .registerGeneratedTabletInsertionEvent((PipeRawTabletInsertionEvent) event);
+    }
+
     if (pendingQueue.offer(event)) {
       collectInvocationCount.incrementAndGet();
-      if (event instanceof PipeRawTabletInsertionEvent
-          && ((PipeRawTabletInsertionEvent) event).getSourceEvent()
-              instanceof PipeTsFileInsertionEvent) {
-        ((PipeTsFileInsertionEvent) ((PipeRawTabletInsertionEvent) event).getSourceEvent())
-            .registerGeneratedTabletInsertionEvent();
-      }
       return;
     }
   }

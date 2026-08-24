@@ -809,8 +809,12 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName())) {
       if (isRegionLevelDowngradingEnabled) {
         ++inFlightTsFileCount;
-        ((PipeTsFileInsertionEvent) event.getEvent())
-            .addOnTransferredHook(() -> clearTsFileEpochAfterCommit(event.getTsFileEpoch()));
+        final PipeTsFileInsertionEvent tsFileInsertionEvent =
+            (PipeTsFileInsertionEvent) event.getEvent();
+        final Runnable clearTsFileEpochHook =
+            () -> clearTsFileEpochAfterCommit(event.getTsFileEpoch());
+        tsFileInsertionEvent.addOnTransferredHook(clearTsFileEpochHook);
+        tsFileInsertionEvent.addOnDiscardedHook(clearTsFileEpochHook);
       } else {
         clearTsFileEpoch(event.getTsFileEpoch());
       }

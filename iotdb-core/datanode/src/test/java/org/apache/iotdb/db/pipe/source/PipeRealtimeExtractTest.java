@@ -639,6 +639,190 @@ public class PipeRealtimeExtractTest {
   }
 
   @Test
+  public void testGeneratedTabletTransferWaitsForDeferredGeneration() throws Exception {
+    registerTestPipeMeta();
+
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    final String dedupScopeId = "deferred-generated-tablet-transfer-test";
+    try {
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      final TsFileResource resource = createTsFileResource(dataRegion1, "111-111-0-0.tsfile");
+      final PipeTsFileInsertionEvent tsFileEvent =
+          new PipeTsFileInsertionEvent(false, "root.sg", resource, false)
+              .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                  TEST_PIPE_NAME,
+                  TEST_PIPE_CREATION_TIME,
+                  pipeTaskMeta,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  true,
+                  Long.MIN_VALUE,
+                  Long.MAX_VALUE);
+      tsFileEvent.bindTsFileDedupScopeID(dedupScopeId);
+
+      final AtomicBoolean transferred = new AtomicBoolean(false);
+      tsFileEvent.addOnTransferredHook(() -> transferred.set(true));
+      tsFileEvent.markGeneratedTabletInsertionEventsParsingStarted();
+      tsFileEvent.skipReportOnCommit();
+      tsFileEvent.getOnCommittedHooks().forEach(Runnable::run);
+      Assert.assertFalse(transferred.get());
+
+      tsFileEvent.registerGeneratedTabletInsertionEvent();
+      tsFileEvent.markGeneratedTabletInsertionEventsParsingCompleted();
+      final PipeRawTabletInsertionEvent generatedTabletEvent =
+          createGeneratedTabletEvent(tsFileEvent, pipeTaskMeta, "deferred");
+      Assert.assertTrue(generatedTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      commitSuppliedEvent(generatedTabletEvent, commitManager);
+      Assert.assertTrue(transferred.get());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
+          .clearProgressIndex(dataRegion1, dedupScopeId);
+    }
+  }
+
+  @Test
+  public void testHybridSourceClearsInFlightTsFileWhenSuppliedEventIsDiscarded() throws Exception {
+    registerTestPipeMeta();
+
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    try (final PipeRealtimeDataRegionHybridSource extractor =
+        new PipeRealtimeDataRegionHybridSource()) {
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      final PipeTaskRuntimeConfiguration configuration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
+                }
+              });
+      extractor.validate(new PipeParameterValidator(parameters));
+      extractor.customize(parameters, configuration);
+
+      final TsFileResource resource = createTsFileResource(dataRegion1, "112-112-0-0.tsfile");
+      final PipeRealtimeEvent tabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false, "root.sg", createInsertRowNode("discarded-tsfile-tablet", "a"), resource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(tabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(tabletEvent);
+      tabletEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+      Assert.assertNull(extractor.supply());
+      Assert.assertEquals(Boolean.TRUE, getGlobalTsFileEpochDegraded());
+
+      final PipeRealtimeEvent tsFileEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", resource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(tsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(tsFileEvent);
+
+      final Event suppliedTsFile = extractor.supply();
+      Assert.assertTrue(suppliedTsFile instanceof TsFileInsertionEvent);
+      Assert.assertEquals(1, getInFlightTsFileCount(extractor));
+
+      ((EnrichedEvent) suppliedTsFile).clearReferenceCount(TEST_REFERENCE_HOLDER);
+      Assert.assertEquals(0, getInFlightTsFileCount(extractor));
+      Assert.assertNull(getGlobalTsFileEpochDegraded());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
+  public void testHybridSourceCompensatesForDiscardedGeneratedTabletEvents() throws Exception {
+    registerTestPipeMeta();
+
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    try (final PipeRealtimeDataRegionHybridSource extractor =
+        new PipeRealtimeDataRegionHybridSource()) {
+      final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+      final PipeTaskRuntimeConfiguration configuration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                  put(
+                      PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY,
+                      Boolean.TRUE.toString());
+                }
+              });
+      extractor.validate(new PipeParameterValidator(parameters));
+      extractor.customize(parameters, configuration);
+
+      final TsFileResource resource = createTsFileResource(dataRegion1, "113-113-0-0.tsfile");
+      final PipeRealtimeEvent tabletEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(
+                  false,
+                  "root.sg",
+                  createInsertRowNode("discarded-generated-tablet", "a"),
+                  resource),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(tabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(tabletEvent);
+      tabletEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+      Assert.assertNull(extractor.supply());
+
+      final PipeRealtimeEvent tsFileRealtimeEvent =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", resource, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(tsFileRealtimeEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(tsFileRealtimeEvent);
+      final PipeTsFileInsertionEvent suppliedTsFile = (PipeTsFileInsertionEvent) extractor.supply();
+      Assert.assertNotNull(suppliedTsFile);
+      Assert.assertEquals(1, getInFlightTsFileCount(extractor));
+
+      suppliedTsFile.registerGeneratedTabletInsertionEvent();
+      suppliedTsFile.registerGeneratedTabletInsertionEvent();
+      suppliedTsFile.markGeneratedTabletInsertionEventsParsingCompleted();
+      final PipeRawTabletInsertionEvent firstGeneratedTablet =
+          createGeneratedTabletEvent(suppliedTsFile, pipeTaskMeta, "discarded-first");
+      final PipeRawTabletInsertionEvent secondGeneratedTablet =
+          createGeneratedTabletEvent(suppliedTsFile, pipeTaskMeta, "discarded-second");
+      firstGeneratedTablet.markAsGeneratedEventRegisteredWithSource();
+      secondGeneratedTablet.markAsGeneratedEventRegisteredWithSource();
+      Assert.assertTrue(firstGeneratedTablet.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      Assert.assertTrue(secondGeneratedTablet.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+
+      commitManager.enrichWithCommitterKeyAndCommitId(
+          suppliedTsFile, TEST_PIPE_CREATION_TIME, dataRegion1);
+      Assert.assertTrue(suppliedTsFile.decreaseReferenceCount(TEST_REFERENCE_HOLDER, false));
+      firstGeneratedTablet.clearReferenceCount(TEST_REFERENCE_HOLDER);
+      Assert.assertEquals(1, getInFlightTsFileCount(extractor));
+      secondGeneratedTablet.clearReferenceCount(TEST_REFERENCE_HOLDER);
+
+      Assert.assertEquals(0, getInFlightTsFileCount(extractor));
+      Assert.assertNull(getGlobalTsFileEpochDegraded());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
   public void testHybridSourceRegionLevelDowngradingResumesCompleteBufferedTablets()
       throws Exception {
     registerTestPipeMeta();
