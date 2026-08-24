@@ -1628,7 +1628,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
-      return new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+      return new TPullCommitProgressResp(RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION))
           .setCommitRegionProgress(Collections.emptyMap());
     }
 
@@ -1649,7 +1649,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus syncSubscriptionProgress(TSyncSubscriptionProgressReq req) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
     }
 
     try {
@@ -1674,7 +1674,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus pushSubscriptionRuntime(TPushSubscriptionRuntimeReq req) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
     }
 
     try {

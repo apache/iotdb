@@ -48,14 +48,14 @@ public class DataNodeInternalRPCServiceImplSubscriptionDisabledTest {
 
       final TPullCommitProgressResp pullResp = service.pullCommitProgress(null);
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), pullResp.getStatus().getCode());
+          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(), pullResp.getStatus().getCode());
       Assert.assertTrue(pullResp.isSetCommitRegionProgress());
       Assert.assertTrue(pullResp.getCommitRegionProgress().isEmpty());
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
           service.syncSubscriptionProgress(null).getCode());
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
           service.pushSubscriptionRuntime(null).getCode());
     } finally {
       CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(subscriptionEnabled);
