@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.persistence.schema.mnode.container;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.AbstractMap;
 import java.util.Collection;
