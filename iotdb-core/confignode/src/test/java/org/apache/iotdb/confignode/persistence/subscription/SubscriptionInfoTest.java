@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
@@ -27,6 +28,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -46,6 +48,39 @@ import java.util.Set;
 import java.util.UUID;
 
 public class SubscriptionInfoTest {
+
+  @Test
+  public void testSameNameTreeAndTableTopicsCanBeManagedIndependently() {
+    final String topicName = "same-name-topic";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final TopicMeta treeTopicMeta =
+        new TopicMeta(
+            topicName,
+            1L,
+            Collections.singletonMap(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE));
+    final TopicMeta tableTopicMeta =
+        new TopicMeta(
+            topicName,
+            2L,
+            Collections.singletonMap(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE));
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(treeTopicMeta)).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(tableTopicMeta)).getCode());
+    Assert.assertSame(treeTopicMeta, subscriptionInfo.getTopicMeta(topicName, false));
+    Assert.assertSame(tableTopicMeta, subscriptionInfo.getTopicMeta(topicName, true));
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.dropTopic(new DropTopicPlan(topicName, false)).getCode());
+    Assert.assertFalse(subscriptionInfo.isTopicExisted(topicName, false));
+    Assert.assertTrue(subscriptionInfo.isTopicExisted(topicName, true));
+  }
 
   @Test
   public void testAlterTopicRejectsOwnerEpochRollback() {
@@ -129,6 +164,37 @@ public class SubscriptionInfoTest {
     Assert.assertEquals(5L, entry.getOwnerEpoch());
     // Relative remaining duration equals the configured lease duration; read-only, no mutation.
     Assert.assertEquals(ownerLeaseDurationMs, entry.getLeaseRemainingMs());
+  }
+
+  @Test
+  public void testCollectTopicOwnerLeaseEntriesIsolatedByModel() {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final long ownerLeaseDurationMs = 60000;
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final TopicMeta treeTopicMeta =
+        createTopicMeta(topicName, "tree-owner", 5L, ownerLeaseDurationMs);
+    final TopicMeta tableTopicMeta =
+        createTopicMeta(topicName, "table-owner", 6L, ownerLeaseDurationMs);
+    tableTopicMeta
+        .getConfig()
+        .getAttribute()
+        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(treeTopicMeta)).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(tableTopicMeta)).getCode());
+
+    final List<TTopicOwnerLeaseEntry> entries =
+        subscriptionInfo.collectTopicOwnerLeaseEntries(
+            Collections.singleton(topicName), Collections.emptySet());
+
+    Assert.assertEquals(1, entries.size());
+    Assert.assertEquals(topicName, entries.get(0).getTopicName());
+    Assert.assertEquals("table-owner", entries.get(0).getOwnerId());
+    Assert.assertTrue(entries.get(0).isIsTableModel());
   }
 
   @Test

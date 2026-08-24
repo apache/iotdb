@@ -3233,7 +3233,7 @@ public class DataRegion implements IDataRegionForQuery {
               } catch (IOException e) {
                 logger.error(StorageEngineMessages.FAILED_TO_CHECK_OBJECT_FILES, e.getMessage());
               }
-              FileUtils.deleteQuietly(objectTableDir);
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(objectTableDir, true);
             }
             FileMetrics.getInstance().decreaseObjectFileNum(count.get());
             FileMetrics.getInstance().decreaseObjectFileSize(totalSize.get());
