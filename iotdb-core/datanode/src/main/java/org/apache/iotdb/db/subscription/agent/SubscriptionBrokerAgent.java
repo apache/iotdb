@@ -125,12 +125,23 @@ public class SubscriptionBrokerAgent {
       }
       final List<SubscriptionEvent> events =
           broker.poll(consumerId, topicNames, remainingBytes, progressByTopic);
-      allEvents.addAll(events);
       for (final SubscriptionEvent event : events) {
         try {
-          remainingBytes -= event.getCurrentResponseSize();
+          final long currentSize = event.getCurrentResponseSize();
+          // Each broker preserves the existing handling for its first oversized event. If another
+          // broker already used part of this response, put the event back so it can be retried with
+          // the full budget on the next poll.
+          if (!allEvents.isEmpty()
+              && currentSize > remainingBytes
+              && broker.requeue(consumerId, event.getCommitContext())) {
+            remainingBytes = 0;
+            break;
+          }
+          allEvents.add(event);
+          remainingBytes -= currentSize;
         } catch (final IOException ignored) {
           // best effort
+          allEvents.add(event);
         }
       }
     }
@@ -202,6 +213,18 @@ public class SubscriptionBrokerAgent {
     }
 
     return allSuccessful;
+  }
+
+  public boolean requeue(
+      final ConsumerConfig consumerConfig, final SubscriptionCommitContext commitContext) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final String consumerId = consumerConfig.getConsumerId();
+    for (final ISubscriptionBroker broker : getBrokers(consumerGroupId)) {
+      if (broker.acceptsCommitContext(commitContext) && broker.requeue(consumerId, commitContext)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public int refreshInFlightEventLeases(

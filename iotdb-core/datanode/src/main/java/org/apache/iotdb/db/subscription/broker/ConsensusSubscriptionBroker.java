@@ -124,6 +124,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     final List<SubscriptionEvent> eventsToPoll = new ArrayList<>();
     final List<SubscriptionEvent> eventsToNack = new ArrayList<>();
     long totalSize = 0;
+    boolean responseFull = false;
 
     for (final String topicName : topicNames) {
       final List<ConsensusPrefetchingQueue> queues =
@@ -169,6 +170,15 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           continue;
         }
 
+        // Preserve the existing handling for a single oversized event. Once this response already
+        // contains data, defer an event that does not fit instead of returning an oversized batch.
+        if (totalSize > 0
+            && currentSize > maxBytes - totalSize
+            && consensusQueue.requeue(consumerId, event.getCommitContext())) {
+          responseFull = true;
+          break;
+        }
+
         eventsToPoll.add(event);
         totalSize += currentSize;
 
@@ -176,7 +186,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           break;
         }
       }
-      if (totalSize >= maxBytes) {
+      if (responseFull || totalSize >= maxBytes) {
         break;
       }
     }
@@ -278,6 +288,17 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       }
     }
     return successfulCommitContexts;
+  }
+
+  @Override
+  public boolean requeue(final String consumerId, final SubscriptionCommitContext commitContext) {
+    final List<ConsensusPrefetchingQueue> queues =
+        topicNameToConsensusPrefetchingQueues.get(commitContext.getTopicName());
+    if (Objects.isNull(queues) || queues.isEmpty()) {
+      return false;
+    }
+    final ConsensusPrefetchingQueue queue = getQueueForCommitContext(queues, commitContext);
+    return Objects.nonNull(queue) && queue.requeue(consumerId, commitContext);
   }
 
   @Override

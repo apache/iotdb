@@ -166,6 +166,14 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         continue;
       }
 
+      // Preserve the existing handling for a single oversized event. Once this response already
+      // contains data, defer an event that does not fit instead of returning an oversized batch.
+      if (totalSize > 0
+          && currentSize > maxBytes - totalSize
+          && prefetchingQueue.requeue(consumerId, event.getCommitContext())) {
+        break;
+      }
+
       // Add the event to the poll list
       eventsToPoll.add(event);
 
@@ -175,8 +183,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
       // Update the total size
       totalSize += currentSize;
 
-      // If adding this event exceeds the maxBytes (pessimistic estimation), break the loop
-      if (totalSize + currentSize > maxBytes) {
+      // If the response has reached maxBytes, stop polling more events.
+      if (totalSize >= maxBytes) {
         break;
       }
     }
@@ -373,6 +381,15 @@ public class SubscriptionBroker implements ISubscriptionBroker {
       }
     }
     return successfulCommitContexts;
+  }
+
+  @Override
+  public boolean requeue(final String consumerId, final SubscriptionCommitContext commitContext) {
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(commitContext.getTopicName());
+    return Objects.nonNull(prefetchingQueue)
+        && !prefetchingQueue.isClosed()
+        && prefetchingQueue.requeue(consumerId, commitContext);
   }
 
   @Override

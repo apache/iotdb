@@ -818,6 +818,39 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   /**
+   * Returns an event to the prefetching queue without modifying its response or nack count.
+   *
+   * <p>This is used when the server polled the event but cannot fit it in the current response.
+   */
+  public boolean requeue(final String consumerId, final SubscriptionCommitContext commitContext) {
+    acquireReadLock();
+    try {
+      if (isClosed()) {
+        return false;
+      }
+      final AtomicBoolean requeued = new AtomicBoolean(false);
+      inFlightEvents.compute(
+          new Pair<>(consumerId, commitContext),
+          (key, ev) -> {
+            if (Objects.isNull(ev)) {
+              return null;
+            }
+            if (ev.isCommitted()) {
+              ev.cleanUp(false);
+              return null;
+            }
+            ev.resetLastPolledTimestamp();
+            prefetchEvent(ev);
+            requeued.set(true);
+            return null;
+          });
+      return requeued.get();
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  /**
    * @return {@code true} if ack successfully
    */
   public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {
