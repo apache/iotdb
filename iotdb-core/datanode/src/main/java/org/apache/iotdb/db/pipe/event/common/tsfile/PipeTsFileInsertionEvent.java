@@ -596,7 +596,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     final boolean generationBoundaryReached =
         !generatedTabletInsertionEventsParsingStarted.get()
             || generatedTabletInsertionEventsParsingCompleted.get();
-    if (isTsFileEventCommitted.get()
+    // The normal processor path does not retain a tablet iterable unless parsing has explicitly
+    // been marked as started.  In that path, registering the generated tablets and reaching the
+    // generation boundary is sufficient to establish the transfer boundary (the source TsFile
+    // commit may be reported separately or may be intentionally skipped).  Once an iterable has
+    // been retained, however, the source TsFile commit must also be observed before the generated
+    // tablet counts can release the TsFile.  This distinction keeps deferred parsing safe without
+    // delaying the established non-deferred path.
+    if ((isTsFileEventCommitted.get() || !generatedTabletInsertionEventsParsingStarted.get())
         && generationBoundaryReached
         && transferredGeneratedTabletInsertionEventCount.get()
                 + discardedGeneratedTabletInsertionEventCount.get()
