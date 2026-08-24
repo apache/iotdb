@@ -39,10 +39,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.zip.CRC32;
@@ -101,7 +103,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   }
 
   private void receive() throws IOException {
-    final InputStream inputStream = new BufferedInputStream(socket.getInputStream());
+    final ReadProgressInputStream readProgressInputStream =
+        new ReadProgressInputStream(socket.getInputStream());
+    final InputStream inputStream = new BufferedInputStream(readProgressInputStream);
 
     try {
       final byte[] data = readData(inputStream);
@@ -134,6 +138,18 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
                   .setType(ReadWriteIOUtils.readShort(byteBuffer))
                   .setBody(byteBuffer.slice());
       handleReq(req, System.currentTimeMillis());
+    } catch (final SocketTimeoutException e) {
+      // It is normal for an air gap sender to remain idle. Only close the connection when the
+      // timeout occurs after a request has started, because the stream can no longer be decoded
+      // reliably in that case. Do not send FAIL without receiving a complete request.
+      if (readProgressInputStream.hasReadAnyByte()) {
+        LOGGER.warn(
+            "Pipe air gap receiver {}: Exception during handling receiving. Socket: {}",
+            receiverId,
+            socket,
+            e);
+        socket.close();
+      }
     } catch (final PipeConnectionException e) {
       LOGGER.info(
           "Pipe air gap receiver {}: Socket {} closed when listening to data. Because: {}",
@@ -325,6 +341,37 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         throw new PipeConnectionException("Socket closed when executing skipTillEnough.");
       }
       currentSkippedBytes += skippedBytes;
+    }
+  }
+
+  private static class ReadProgressInputStream extends FilterInputStream {
+
+    private boolean hasReadAnyByte;
+
+    private ReadProgressInputStream(final InputStream inputStream) {
+      super(inputStream);
+    }
+
+    @Override
+    public int read() throws IOException {
+      final int result = super.read();
+      if (result >= 0) {
+        hasReadAnyByte = true;
+      }
+      return result;
+    }
+
+    @Override
+    public int read(final byte[] buffer, final int offset, final int length) throws IOException {
+      final int result = super.read(buffer, offset, length);
+      if (result > 0) {
+        hasReadAnyByte = true;
+      }
+      return result;
+    }
+
+    private boolean hasReadAnyByte() {
+      return hasReadAnyByte;
     }
   }
 }
