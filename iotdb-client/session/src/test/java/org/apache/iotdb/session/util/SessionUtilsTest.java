@@ -146,6 +146,27 @@ public class SessionUtilsTest {
     }
   }
 
+  // Covers DATE/TIMESTAMP conversion and STRING/BLOB payloads, including mixed fixed/variable
+  // widths; the encoded buffer must account for each type marker, length prefix, and payload.
+  @Test
+  public void testRecordValueTypeServices() throws IoTDBConnectionException {
+    List<TSDataType> types =
+        Arrays.asList(TSDataType.DATE, TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.BLOB);
+    List<Object> values =
+        Arrays.asList(
+            LocalDate.of(2024, 4, 1),
+            123L,
+            new Binary(new byte[] {1, 2}),
+            new Binary(new byte[] {3, 4, 5}));
+    List<String> measurements = Arrays.asList("date", "timestamp", "string", "blob");
+
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values, measurements);
+
+    Assert.assertEquals(
+        1 + Integer.BYTES + 1 + Long.BYTES + 1 + Integer.BYTES + 2 + 1 + Integer.BYTES + 3,
+        buffer.limit());
+  }
+
   @Test
   public void testGetValueBuffer3() {
     List<IMeasurementSchema> schemas = new ArrayList<>();

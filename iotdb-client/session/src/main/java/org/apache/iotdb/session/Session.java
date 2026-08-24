@@ -69,10 +69,8 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -82,12 +80,10 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -107,6 +103,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntToLongFunction;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
@@ -2492,11 +2489,7 @@ public class Session implements ISession {
 
     if (!checkSorted(times)) {
       // sort
-      Integer[] index = new Integer[times.size()];
-      for (int i = 0; i < times.size(); i++) {
-        index[i] = i;
-      }
-      Arrays.sort(index, Comparator.comparingLong(times::get));
+      int[] index = sortedIndex(times);
       times.sort(Long::compareTo);
       // sort measurementList
       measurementsList = sortList(measurementsList, index);
@@ -2549,11 +2542,7 @@ public class Session implements ISession {
     }
 
     if (!checkSorted(times)) {
-      Integer[] index = new Integer[times.size()];
-      for (int i = 0; i < index.length; i++) {
-        index[i] = i;
-      }
-      Arrays.sort(index, Comparator.comparingLong(times::get));
+      int[] index = sortedIndex(times);
       times.sort(Long::compareTo);
       // sort measurementsList
       measurementsList = sortList(measurementsList, index);
@@ -2580,7 +2569,7 @@ public class Session implements ISession {
    * @param <T> Input type
    * @return ordered list
    */
-  private static <T> List<T> sortList(List<T> source, Integer[] index) {
+  private static <T> List<T> sortList(List<T> source, int[] index) {
     List<T> sortedList = new ArrayList<>(index.length);
     for (int position : index) {
       sortedList.add(source.get(position));
@@ -3669,11 +3658,7 @@ public class Session implements ISession {
     long[] timestamps = tablet.getTimestamps();
     Object[] values = tablet.getValues();
     BitMap[] bitMaps = tablet.getBitMaps();
-    Integer[] index = new Integer[tablet.getRowSize()];
-    for (int i = 0; i < tablet.getRowSize(); i++) {
-      index[i] = i;
-    }
-    Arrays.sort(index, Comparator.comparingLong(o -> timestamps[o]));
+    int[] index = sortedIndex(timestamps, tablet.getRowSize());
     Arrays.sort(timestamps, 0, tablet.getRowSize());
     int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
@@ -3707,64 +3692,8 @@ public class Session implements ISession {
    * @param index index
    * @return sorted list
    */
-  private Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        boolean[] sortedValues = new boolean[boolValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedValues[i] = boolValues[index[i]];
-        }
-        return sortedValues;
-      case INT32:
-        int[] intValues = (int[]) valueList;
-        int[] sortedIntValues = new int[intValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedIntValues[i] = intValues[index[i]];
-        }
-        return sortedIntValues;
-      case DATE:
-        LocalDate[] date = (LocalDate[]) valueList;
-        LocalDate[] sortedDateValues = new LocalDate[date.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDateValues[i] = date[index[i]];
-        }
-        return sortedDateValues;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) valueList;
-        long[] sortedLongValues = new long[longValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedLongValues[i] = longValues[index[i]];
-        }
-        return sortedLongValues;
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        float[] sortedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedFloatValues[i] = floatValues[index[i]];
-        }
-        return sortedFloatValues;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        double[] sortedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDoubleValues[i] = doubleValues[index[i]];
-        }
-        return sortedDoubleValues;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedBinaryValues[i] = binaryValues[index[i]];
-        }
-        return sortedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException(MSG_UNSUPPORTED_DATA_TYPE + dataType);
-    }
+  private Object sortList(Object valueList, TSDataType dataType, int[] index) {
+    return SessionUtils.sortValueList(valueList, dataType, index);
   }
 
   /**
@@ -3774,7 +3703,7 @@ public class Session implements ISession {
    * @param index index
    * @return sorted bitMap
    */
-  private BitMap sortBitMap(BitMap bitMap, Integer[] index) {
+  private BitMap sortBitMap(BitMap bitMap, int[] index) {
     BitMap sortedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < index.length; i++) {
       if (bitMap.isMarked(index[i])) {
@@ -3782,6 +3711,52 @@ public class Session implements ISession {
       }
     }
     return sortedBitMap;
+  }
+
+  private static int[] sortedIndex(List<Long> values) {
+    return sortedIndex(values.size(), index -> values.get(index));
+  }
+
+  private static int[] sortedIndex(long[] values, int size) {
+    return sortedIndex(size, index -> values[index]);
+  }
+
+  private static int[] sortedIndex(int size, IntToLongFunction valueProvider) {
+    int[] index = new int[size];
+    int[] scratch = new int[size];
+    for (int i = 0; i < size; i++) {
+      index[i] = i;
+    }
+    sortIndexes(index, scratch, 0, size, valueProvider);
+    return index;
+  }
+
+  private static void sortIndexes(
+      int[] index, int[] scratch, int from, int to, IntToLongFunction valueProvider) {
+    if (to - from < 2) {
+      return;
+    }
+    int middle = (from + to) >>> 1;
+    sortIndexes(index, scratch, from, middle, valueProvider);
+    sortIndexes(index, scratch, middle, to, valueProvider);
+
+    int left = from;
+    int right = middle;
+    int destination = from;
+    while (left < middle && right < to) {
+      if (valueProvider.applyAsLong(index[left]) <= valueProvider.applyAsLong(index[right])) {
+        scratch[destination++] = index[left++];
+      } else {
+        scratch[destination++] = index[right++];
+      }
+    }
+    while (left < middle) {
+      scratch[destination++] = index[left++];
+    }
+    while (right < to) {
+      scratch[destination++] = index[right++];
+    }
+    System.arraycopy(scratch, from, index, from, to - from);
   }
 
   @Override
