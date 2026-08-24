@@ -275,6 +275,11 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
     }
   }
 
+  /** Makes this event pollable again without treating local response-size control as a nack. */
+  public void resetLastPolledTimestamp() {
+    lastPolledTimestamp.set(INVALID_TIMESTAMP);
+  }
+
   /** Returns the current nack count for this event. */
   public long getNackCount() {
     return nackCount.get();

@@ -21,11 +21,15 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
@@ -56,6 +60,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -99,6 +104,78 @@ public class ConsensusPrefetchingQueueTest {
             ConsensusPrefetchingQueue.class
                 .getDeclaredMethod("setActive", boolean.class)
                 .getModifiers()));
+  }
+
+  @Test
+  public void testReplayStartPreservesUncoveredFollowerEntries() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("replay-start-with-follower-entry");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final DataRegionId regionId = new DataRegionId(1);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      reader.currentSearchIndex = 1L;
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              mock(ConsensusLogToTabletConverter.class),
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      final WriterId formerLeader = new WriterId(regionId.toString(), 8);
+      final WriterProgress committedProgress = new WriterProgress(100L, 10L);
+      final RegionProgress regionProgress =
+          new RegionProgress(Collections.singletonMap(formerLeader, committedProgress));
+      final List<IndexedConsensusRequest> requests =
+          Arrays.asList(
+              createRequest(-1L, 10L, 100L, 8),
+              createRequest(-1L, 11L, 101L, 8),
+              createRequest(1L, 1L, 200L, 7));
+
+      final ConsensusPrefetchingQueue.ReplayLocateDecision decision =
+          queue.scanReplayStartForRequests(requests.iterator(), regionProgress, true);
+
+      assertEquals(ConsensusPrefetchingQueue.ReplayLocateStatus.FOUND, decision.getStatus());
+      assertEquals(1L, decision.getStartSearchIndex());
+      assertEquals(
+          committedProgress,
+          decision.getRecoveryRegionProgress().getWriterPositions().get(formerLeader));
+
+      // With no uncovered local request, keep the local cursor at the tail without advancing the
+      // recovery progress past the still-uncovered follower request.
+      reader.currentSearchIndex = 5L;
+      final ConsensusPrefetchingQueue.ReplayLocateDecision tailDecision =
+          queue.scanReplayStartForRequests(
+              Collections.singletonList(createRequest(-1L, 11L, 101L, 8)).iterator(),
+              regionProgress,
+              true);
+
+      assertEquals(ConsensusPrefetchingQueue.ReplayLocateStatus.AT_END, tailDecision.getStatus());
+      assertEquals(5L, tailDecision.getStartSearchIndex());
+      assertEquals(
+          committedProgress,
+          tailDecision.getRecoveryRegionProgress().getWriterPositions().get(formerLeader));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
   }
 
   @Test
@@ -189,6 +266,54 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  public void testPendingQueueUsesSharedConsensusMemoryBudgetAndClearReleasesIt() throws Exception {
+    final Class<?> queueClass =
+        Class.forName(ConsensusPrefetchingQueue.class.getName() + "$WakeableIndexedConsensusQueue");
+    final Constructor<?> constructor =
+        queueClass.getDeclaredConstructor(int.class, Runnable.class, BooleanSupplier.class);
+    constructor.setAccessible(true);
+    final Method retainedBytesMethod = queueClass.getDeclaredMethod("getRetainedRequestBytes");
+    retainedBytesMethod.setAccessible(true);
+
+    final IoTConsensusMemoryManager memoryManager = IoTConsensusMemoryManager.getInstance();
+    final IMemoryBlock previousMemoryBlock = memoryManager.getMemoryBlock();
+    final double previousQueueRatio = memoryManager.getMaxMemoryRatioForQueue();
+    final AtomicLongMemoryBlock testMemoryBlock =
+        new AtomicLongMemoryBlock("SubscriptionPendingTest", null, 100L);
+    final BlockingQueue<IndexedConsensusRequest> firstQueue =
+        (BlockingQueue<IndexedConsensusRequest>)
+            constructor.newInstance(8, (Runnable) () -> {}, (BooleanSupplier) () -> true);
+    final BlockingQueue<IndexedConsensusRequest> secondQueue =
+        (BlockingQueue<IndexedConsensusRequest>)
+            constructor.newInstance(8, (Runnable) () -> {}, (BooleanSupplier) () -> true);
+
+    memoryManager.init(testMemoryBlock, 0.6);
+    try {
+      final IndexedConsensusRequest sharedRequest = createSizedRequest(1L, 10L, 30);
+      assertTrue(firstQueue.offer(sharedRequest));
+      assertTrue(secondQueue.offer(sharedRequest));
+      assertEquals(40L, testMemoryBlock.getUsedMemoryInBytes());
+      assertEquals(40L, retainedBytesMethod.invoke(firstQueue));
+      assertEquals(40L, retainedBytesMethod.invoke(secondQueue));
+
+      assertFalse(firstQueue.offer(createSizedRequest(2L, 10L, 30)));
+      assertEquals(40L, testMemoryBlock.getUsedMemoryInBytes());
+
+      firstQueue.clear();
+      assertEquals(40L, testMemoryBlock.getUsedMemoryInBytes());
+      assertEquals(0L, retainedBytesMethod.invoke(firstQueue));
+      secondQueue.clear();
+      assertEquals(0L, testMemoryBlock.getUsedMemoryInBytes());
+      assertEquals(0L, retainedBytesMethod.invoke(secondQueue));
+    } finally {
+      firstQueue.clear();
+      secondQueue.clear();
+      memoryManager.init(previousMemoryBlock, previousQueueRatio);
+    }
+  }
+
+  @Test
   public void testLagIncludesLingeringBatchUntilCommitted() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final int originalBatchMaxDelay =
@@ -230,8 +355,13 @@ public class ConsensusPrefetchingQueueTest {
               .setNodeId(7);
 
       assertNull(queue.poll("consumer"));
-      pendingEntries(queue).offer(request);
+      assertTrue(pendingEntries(queue).offer(request));
+      assertEquals(request.getRetainedMemorySize(), queue.getRetainedRequestBytes());
+      assertEquals(
+          String.valueOf(request.getRetainedMemorySize()),
+          queue.coreReportMessage().get("retainedRequestBytes"));
       queue.drivePrefetchOnce();
+      assertEquals(0L, queue.getRetainedRequestBytes());
 
       assertEquals(0, queue.getPrefetchedEventCount());
       assertEquals(1L, queue.getLag());
@@ -1648,6 +1778,68 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testRequeueDoesNotIncrementNackCount() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("system-requeue-without-nack");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final DataRegionId regionId = new DataRegionId(1);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenReturn(Collections.singletonList(createTablet()), Collections.emptyList());
+      when(converter.getDatabaseName()).thenReturn("db");
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      reader.currentSearchIndex = 2L;
+      assertTrue(pendingEntries(queue).offer(createRequest(1L)));
+      assertTrue(pendingEntries(queue).offer(createRequest(2L)));
+      assertNull(queue.poll("consumer"));
+      queue.drivePrefetchOnce();
+
+      final SubscriptionEvent event = queue.poll("consumer");
+      assertNotNull(event);
+      assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
+
+      assertTrue(queue.requeue("consumer", event.getCommitContext()));
+      assertEquals(0L, event.getNackCount());
+      assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
+      assertEquals(1, queue.getPrefetchedEventCount());
+
+      final SubscriptionEvent redeliveredEvent = queue.poll("consumer");
+      assertSame(event, redeliveredEvent);
+      assertEquals(0L, redeliveredEvent.getNackCount());
+      assertTrue(queue.ack("consumer", redeliveredEvent.getCommitContext()));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testDeactivationReleasesMaterializedTabletMemory() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("system-deactivation-memory-release");
@@ -1800,6 +1992,31 @@ public class ConsensusPrefetchingQueueTest {
         .setNodeId(7);
   }
 
+  private static IndexedConsensusRequest createRequest(
+      final long searchIndex,
+      final long localSeq,
+      final long physicalTime,
+      final int writerNodeId) {
+    return new IndexedConsensusRequest(
+            searchIndex,
+            localSeq,
+            Collections.singletonList(
+                StatementTestUtils.genInsertRowNode(Math.toIntExact(localSeq))))
+        .setPhysicalTime(physicalTime)
+        .setNodeId(writerNodeId);
+  }
+
+  private static IndexedConsensusRequest createSizedRequest(
+      final long searchIndex, final long rawMemorySize, final int serializedMemorySize) {
+    final IndexedConsensusRequest request =
+        new IndexedConsensusRequest(
+            searchIndex,
+            Collections.singletonList(
+                new SizedConsensusRequest(rawMemorySize, serializedMemorySize)));
+    request.buildSerializedRequests();
+    return request;
+  }
+
   private static ConsensusSubscriptionCommitManager newCommitManager(final File systemDir)
       throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
@@ -1848,6 +2065,27 @@ public class ConsensusPrefetchingQueueTest {
     @Override
     public Pair<Long, Long> getDeletionBoundToFreeAtLeast(final long bytesToFree) {
       return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
+    }
+  }
+
+  private static final class SizedConsensusRequest implements IConsensusRequest {
+
+    private final long rawMemorySize;
+    private final int serializedMemorySize;
+
+    private SizedConsensusRequest(final long rawMemorySize, final int serializedMemorySize) {
+      this.rawMemorySize = rawMemorySize;
+      this.serializedMemorySize = serializedMemorySize;
+    }
+
+    @Override
+    public ByteBuffer serializeToByteBuffer() {
+      return ByteBuffer.allocate(serializedMemorySize);
+    }
+
+    @Override
+    public long getMemorySize() {
+      return rawMemorySize;
     }
   }
 }

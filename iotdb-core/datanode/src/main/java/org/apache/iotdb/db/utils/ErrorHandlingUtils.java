@@ -136,7 +136,10 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()
             || status.getCode() == TSStatusCode.CANNOT_READ_TSFILE.getStatusCode()
-            || status.getCode() == TSStatusCode.COPY_TO_WRITE_ERROR.getStatusCode()) {
+            || status.getCode() == TSStatusCode.COPY_TO_WRITE_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.METADATA_LEASE_FENCED.getStatusCode()
+            || status.getCode()
+                == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);

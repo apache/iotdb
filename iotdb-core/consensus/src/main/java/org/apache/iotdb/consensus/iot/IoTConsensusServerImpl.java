@@ -147,7 +147,7 @@ public class IoTConsensusServerImpl {
   private final Set<Peer> configuration = ConcurrentHashMap.newKeySet();
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
-  private IoTConsensusConfig config;
+  private volatile IoTConsensusConfig config;
   private final ConsensusReqReader consensusReqReader;
   private volatile boolean active;
   private String newSnapshotDirName;
@@ -314,14 +314,15 @@ public class IoTConsensusServerImpl {
         // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
         // in one transaction.
         synchronized (searchIndex) {
-          logDispatcher.offer(indexedConsensusRequest);
           // Deliver to subscription queues for real-time in-memory consumption.
           // Offer AFTER stateMachine.write() so that InsertNode has inferred types
           // and properly typed values (same timing as LogDispatcher).
-          final int sqCount = subscriptionQueueRegistry.size();
-          if (sqCount > 0) {
-            subscriptionQueueRegistry.offer(indexedConsensusRequest);
-          } else if (logger.isDebugEnabled()
+          final boolean offeredToSubscription =
+              subscriptionQueueRegistry.offer(indexedConsensusRequest);
+          logDispatcher.offer(indexedConsensusRequest, offeredToSubscription);
+          if (!offeredToSubscription
+              && subscriptionQueueRegistry.isEmpty()
+              && logger.isDebugEnabled()
               && indexedConsensusRequest.getSearchIndex() % 50 == 0) {
             // Log periodically when no subscription queues are registered
             logger.debug(
@@ -1349,6 +1350,7 @@ public class IoTConsensusServerImpl {
   /** This method is used for hot reload of IoTConsensusConfig. */
   public void reloadConsensusConfig(IoTConsensusConfig config) {
     this.config = config;
+    logDispatcher.reloadConfig(config);
   }
 
   /**

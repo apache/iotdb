@@ -58,6 +58,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import static org.apache.iotdb.commons.schema.table.Audit.isAuditDatabase;
+import static org.apache.iotdb.commons.utils.PathUtils.isTableModelDatabase;
+
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
  *
@@ -182,8 +185,7 @@ public class ConsensusSubscriptionSetupHandler {
           final String dbRaw = dataRegion.getDatabaseName();
           final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
 
-          // For table topics, skip if this region's database doesn't match the topic filter.
-          if (!matchesTopicDatabase(topicConfig, dbTableModel)) {
+          if (!matchesTopicDataRegion(dbRaw, topicConfig, isTableModel)) {
             continue;
           }
 
@@ -462,10 +464,11 @@ public class ConsensusSubscriptionSetupHandler {
    * <p>This method discovers local DataRegion consensus groups that match the topic filter and
    * binds one consensus subscription queue to each matching region.
    *
-   * <p>For table-model topics, only regions whose database matches the topic's {@code DATABASE_KEY}
-   * filter are bound. For tree-model topics, all local data regions are candidates. Additionally,
-   * the {@link #onNewRegionCreated} callback ensures that regions created after this method runs
-   * are also automatically bound.
+   * <p>Only regions whose database names identify the same data model as the consumer group are
+   * candidates. A database name with the {@code root.} prefix identifies a tree-model region. For
+   * table-model topics, the candidate region's database must also match the topic's {@code
+   * DATABASE_KEY} filter. Additionally, the {@link #onNewRegionCreated} callback ensures that
+   * regions created after this method runs are also automatically bound.
    */
   private static void setupConsensusQueueForTopic(
       final String consumerGroupId,
@@ -525,16 +528,19 @@ public class ConsensusSubscriptionSetupHandler {
       }
       final String dbRaw = dataRegion.getDatabaseName();
       final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
+      final boolean dataRegionIsTableModel = isTableModelDatabase(dbRaw);
 
-      if (!matchesTopicDatabase(topicConfig, dbTableModel)) {
-        LOGGER.info(
-            DataNodePipeMessages
-                .PIPE_LOG_SKIPPING_REGION_DATABASE_FOR_TABLE_TOPIC_DATABASE_KEY_2DA27A84,
-            groupId,
-            dbTableModel,
-            topicName,
-            topicConfig.getStringOrDefault(
-                TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE));
+      if (!matchesTopicDataRegion(dbRaw, topicConfig, isTableModel)) {
+        if (isTableModel && dataRegionIsTableModel && topicConfig.isTableTopic()) {
+          LOGGER.info(
+              DataNodePipeMessages
+                  .PIPE_LOG_SKIPPING_REGION_DATABASE_FOR_TABLE_TOPIC_DATABASE_KEY_2DA27A84,
+              groupId,
+              dbTableModel,
+              topicName,
+              topicConfig.getStringOrDefault(
+                  TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE));
+        }
         continue;
       }
 
@@ -645,10 +651,24 @@ public class ConsensusSubscriptionSetupHandler {
     return new ConsensusLogToTabletConverter(treePattern, tablePattern, null, actualDatabaseName);
   }
 
-  private static boolean matchesTopicDatabase(
+  static boolean matchesTopicDatabase(
       final TopicConfig topicConfig, final String actualDatabaseName) {
-    return !topicConfig.isTableTopic()
-        || buildTablePattern(topicConfig).matchesDatabase(actualDatabaseName);
+    return !isAuditDatabase(actualDatabaseName)
+        && (!topicConfig.isTableTopic()
+            || buildTablePattern(topicConfig).matchesDatabase(actualDatabaseName));
+  }
+
+  static boolean matchesTopicDataRegion(
+      final String databaseName, final TopicConfig topicConfig, final boolean isTableModel) {
+    if (databaseName == null
+        || topicConfig == null
+        || isTableModelDatabase(databaseName) != isTableModel
+        || topicConfig.isTableTopic() != isTableModel) {
+      return false;
+    }
+    final String actualDatabaseName =
+        databaseName.startsWith("root.") ? databaseName.substring(5) : databaseName;
+    return matchesTopicDatabase(topicConfig, actualDatabaseName);
   }
 
   private static TablePattern buildTablePattern(final TopicConfig topicConfig) {

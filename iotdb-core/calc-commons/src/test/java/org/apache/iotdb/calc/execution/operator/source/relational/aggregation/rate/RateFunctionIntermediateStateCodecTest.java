@@ -129,6 +129,11 @@ public class RateFunctionIntermediateStateCodecTest {
     }
 
     @Override
+    public void releaseMemoryImmediately(long size) {
+      outstandingReservation -= size;
+    }
+
+    @Override
     public void releaseAllReservedMemory() {
       outstandingReservation = 0;
     }

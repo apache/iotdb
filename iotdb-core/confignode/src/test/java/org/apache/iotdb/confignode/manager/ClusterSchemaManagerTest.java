@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
@@ -47,6 +48,20 @@ public class ClusterSchemaManagerTest {
 
     // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
     Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
+  }
+
+  @Test
+  public void testNeedLastCacheDefaultsToTrueWhenUnset() {
+    final TDatabaseSchema unsetSchema = new TDatabaseSchema();
+    Assert.assertTrue(ClusterSchemaManager.isNeedLastCacheEnabled(unsetSchema));
+
+    final TDatabaseSchema enabledSchema = new TDatabaseSchema();
+    enabledSchema.setNeedLastCache(true);
+    Assert.assertTrue(ClusterSchemaManager.isNeedLastCacheEnabled(enabledSchema));
+
+    final TDatabaseSchema disabledSchema = new TDatabaseSchema();
+    disabledSchema.setNeedLastCache(false);
+    Assert.assertFalse(ClusterSchemaManager.isNeedLastCacheEnabled(disabledSchema));
   }
 
   @Test
