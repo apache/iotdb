@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.utils;
 
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedMaxMinByBaseAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BinaryBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BooleanBigArray;
@@ -152,6 +153,74 @@ public class TypeServices {
                           throw exceptionSupplier.get();
                         };
               };
+
+  // RANGE frame offsets must retain each primitive type's native overflow and precision rules.
+  public static final TypeService<RangeFrameComparator> RANGE_FRAME_COMPARATOR_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                (column,
+                    partition,
+                    currentIndex,
+                    recentIndex,
+                    channel,
+                    offsetOperation,
+                    comparison) -> {
+                  int current = column.getInt(currentIndex);
+                  int offset = partition.getInt(channel, currentIndex);
+                  int boundary = offsetOperation.apply(current, offset);
+                  return comparison.compare(column.getInt(recentIndex), boundary);
+                };
+            case INT64, TIMESTAMP ->
+                (column,
+                    partition,
+                    currentIndex,
+                    recentIndex,
+                    channel,
+                    offsetOperation,
+                    comparison) -> {
+                  long current = column.getLong(currentIndex);
+                  long offset = partition.getLong(channel, currentIndex);
+                  long boundary = offsetOperation.apply(current, offset);
+                  return comparison.compare(column.getLong(recentIndex), boundary);
+                };
+            case FLOAT ->
+                (column,
+                    partition,
+                    currentIndex,
+                    recentIndex,
+                    channel,
+                    offsetOperation,
+                    comparison) -> {
+                  float current = column.getFloat(currentIndex);
+                  float offset = partition.getFloat(channel, currentIndex);
+                  float boundary = offsetOperation.apply(current, offset);
+                  return comparison.compare(column.getFloat(recentIndex), boundary);
+                };
+            case DOUBLE ->
+                (column,
+                    partition,
+                    currentIndex,
+                    recentIndex,
+                    channel,
+                    offsetOperation,
+                    comparison) -> {
+                  double current = column.getDouble(currentIndex);
+                  double offset = partition.getDouble(channel, currentIndex);
+                  double boundary = offsetOperation.apply(current, offset);
+                  return comparison.compare(column.getDouble(recentIndex), boundary);
+                };
+            case BOOLEAN, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                (column,
+                    partition,
+                    currentIndex,
+                    recentIndex,
+                    channel,
+                    offsetOperation,
+                    comparison) -> {
+                  throw new UnSupportedDataTypeException(CalcMessages.UNSUPPORTED_DATA_TYPE + type);
+                };
+          };
 
   public static final TypeService<Function<DefaultEncodingProvider, TSEncoding>>
       DEFAULT_ENCODING_BY_TYPE_SERVICE =
@@ -290,6 +359,7 @@ public class TypeServices {
     MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE.check();
     PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE.check();
     NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE.check();
+    RANGE_FRAME_COMPARATOR_SERVICE.check();
     DEFAULT_ENCODING_BY_TYPE_SERVICE.check();
     DEFAULT_VALUE_WRITER_SERVICE.check();
     INTERMEDIATE_VALUE_WRITER_SERVICE.check();
@@ -322,6 +392,166 @@ public class TypeServices {
   @FunctionalInterface
   public interface ColumnToDoubleConverterFactory {
     ColumnToDoubleConverter create(Supplier<? extends RuntimeException> exceptionSupplier);
+  }
+
+  @FunctionalInterface
+  public interface RangeFrameComparator {
+    boolean compare(
+        ColumnList column,
+        Partition partition,
+        int currentIndex,
+        int recentIndex,
+        int channel,
+        RangeFrameOffsetOperation offsetOperation,
+        RangeFrameComparison comparison);
+  }
+
+  public enum RangeFrameOffsetOperation {
+    ADD {
+      @Override
+      int apply(int value, int offset) {
+        return value + offset;
+      }
+
+      @Override
+      long apply(long value, long offset) {
+        return value + offset;
+      }
+
+      @Override
+      float apply(float value, float offset) {
+        return value + offset;
+      }
+
+      @Override
+      double apply(double value, double offset) {
+        return value + offset;
+      }
+    },
+    SUBTRACT {
+      @Override
+      int apply(int value, int offset) {
+        return value - offset;
+      }
+
+      @Override
+      long apply(long value, long offset) {
+        return value - offset;
+      }
+
+      @Override
+      float apply(float value, float offset) {
+        return value - offset;
+      }
+
+      @Override
+      double apply(double value, double offset) {
+        return value - offset;
+      }
+    };
+
+    abstract int apply(int value, int offset);
+
+    abstract long apply(long value, long offset);
+
+    abstract float apply(float value, float offset);
+
+    abstract double apply(double value, double offset);
+  }
+
+  public enum RangeFrameComparison {
+    GREATER_THAN_OR_EQUAL {
+      @Override
+      boolean compare(int left, int right) {
+        return left >= right;
+      }
+
+      @Override
+      boolean compare(long left, long right) {
+        return left >= right;
+      }
+
+      @Override
+      boolean compare(float left, float right) {
+        return left >= right;
+      }
+
+      @Override
+      boolean compare(double left, double right) {
+        return left >= right;
+      }
+    },
+    GREATER_THAN {
+      @Override
+      boolean compare(int left, int right) {
+        return left > right;
+      }
+
+      @Override
+      boolean compare(long left, long right) {
+        return left > right;
+      }
+
+      @Override
+      boolean compare(float left, float right) {
+        return left > right;
+      }
+
+      @Override
+      boolean compare(double left, double right) {
+        return left > right;
+      }
+    },
+    LESS_THAN_OR_EQUAL {
+      @Override
+      boolean compare(int left, int right) {
+        return left <= right;
+      }
+
+      @Override
+      boolean compare(long left, long right) {
+        return left <= right;
+      }
+
+      @Override
+      boolean compare(float left, float right) {
+        return left <= right;
+      }
+
+      @Override
+      boolean compare(double left, double right) {
+        return left <= right;
+      }
+    },
+    LESS_THAN {
+      @Override
+      boolean compare(int left, int right) {
+        return left < right;
+      }
+
+      @Override
+      boolean compare(long left, long right) {
+        return left < right;
+      }
+
+      @Override
+      boolean compare(float left, float right) {
+        return left < right;
+      }
+
+      @Override
+      boolean compare(double left, double right) {
+        return left < right;
+      }
+    };
+
+    abstract boolean compare(int left, int right);
+
+    abstract boolean compare(long left, long right);
+
+    abstract boolean compare(float left, float right);
+
+    abstract boolean compare(double left, double right);
   }
 
   @FunctionalInterface
