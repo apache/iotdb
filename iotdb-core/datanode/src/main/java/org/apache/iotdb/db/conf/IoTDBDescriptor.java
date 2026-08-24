@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -2061,6 +2062,9 @@ public class IoTDBDescriptor {
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
+
+      // update REST request limits
+      IoTDBRestServiceDescriptor.getInstance().loadHotModifiedProps(properties);
 
       // tvlist_sort_threshold
       conf.setTVListSortThreshold(
