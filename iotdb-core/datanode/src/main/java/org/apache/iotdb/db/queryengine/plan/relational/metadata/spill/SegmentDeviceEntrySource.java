@@ -38,7 +38,9 @@ public abstract class SegmentDeviceEntrySource implements BatchDeviceEntrySource
   }
 
   public static SegmentDeviceEntrySource create(DeviceEntryDataSetHandle handle) {
-    return handle.getCoordinatorEndPoint().equals(DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT)
+    return handle
+            .getCoordinatorMppDataExchangeEndPoint()
+            .equals(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT)
         ? new LocalSegmentDeviceEntrySource(handle)
         : new RemoteSegmentDeviceEntrySource(handle);
   }

@@ -33,7 +33,7 @@ public final class DeviceEntryDataSetHandle {
 
   private final String queryId;
   private final PlanNodeId planNodeId;
-  private final TEndPoint coordinatorEndPoint;
+  private final TEndPoint coordinatorMppDataExchangeEndPoint;
   private final int segmentCount;
   private final int entryCount;
   private final boolean ordered;
@@ -41,13 +41,13 @@ public final class DeviceEntryDataSetHandle {
   public DeviceEntryDataSetHandle(
       String queryId,
       PlanNodeId planNodeId,
-      TEndPoint coordinatorEndPoint,
+      TEndPoint coordinatorMppDataExchangeEndPoint,
       int segmentCount,
       int entryCount,
       boolean ordered) {
     this.queryId = queryId;
     this.planNodeId = planNodeId;
-    this.coordinatorEndPoint = coordinatorEndPoint;
+    this.coordinatorMppDataExchangeEndPoint = coordinatorMppDataExchangeEndPoint;
     this.segmentCount = segmentCount;
     this.entryCount = entryCount;
     this.ordered = ordered;
@@ -61,8 +61,8 @@ public final class DeviceEntryDataSetHandle {
     return planNodeId;
   }
 
-  public TEndPoint getCoordinatorEndPoint() {
-    return coordinatorEndPoint;
+  public TEndPoint getCoordinatorMppDataExchangeEndPoint() {
+    return coordinatorMppDataExchangeEndPoint;
   }
 
   public int getSegmentCount() {
@@ -80,7 +80,7 @@ public final class DeviceEntryDataSetHandle {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(queryId, byteBuffer);
     ReadWriteIOUtils.write(planNodeId.getId(), byteBuffer);
-    ThriftCommonsSerDeUtils.serializeTEndPoint(coordinatorEndPoint, byteBuffer);
+    ThriftCommonsSerDeUtils.serializeTEndPoint(coordinatorMppDataExchangeEndPoint, byteBuffer);
     ReadWriteIOUtils.write(segmentCount, byteBuffer);
     ReadWriteIOUtils.write(entryCount, byteBuffer);
     ReadWriteIOUtils.write(ordered, byteBuffer);
@@ -89,7 +89,7 @@ public final class DeviceEntryDataSetHandle {
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(queryId, stream);
     ReadWriteIOUtils.write(planNodeId.getId(), stream);
-    ThriftCommonsSerDeUtils.serializeTEndPoint(coordinatorEndPoint, stream);
+    ThriftCommonsSerDeUtils.serializeTEndPoint(coordinatorMppDataExchangeEndPoint, stream);
     ReadWriteIOUtils.write(segmentCount, stream);
     ReadWriteIOUtils.write(entryCount, stream);
     ReadWriteIOUtils.write(ordered, stream);

@@ -1182,7 +1182,7 @@ public class TableDistributedPlanGenerator
         new DeviceEntryDataSetHandle(
             queryId.getId(),
             scanNode.getPlanNodeId(),
-            DataNodeEndPoints.getLocalDataNodeLocation().getInternalEndPoint(),
+            queryContext.getLocalDataBlockEndpoint(),
             spilled.getSegments().size(),
             spilled.getEntryCount(),
             ordered));

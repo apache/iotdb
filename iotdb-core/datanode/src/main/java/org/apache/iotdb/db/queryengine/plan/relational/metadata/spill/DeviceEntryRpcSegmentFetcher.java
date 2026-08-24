@@ -63,7 +63,7 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
       TFetchDeviceEntrySegmentResp response;
       try {
         try (SyncDataNodeMPPDataExchangeServiceClient client =
-            clientManager.borrowClient(handle.getCoordinatorEndPoint())) {
+            clientManager.borrowClient(handle.getCoordinatorMppDataExchangeEndPoint())) {
           response = client.fetchDeviceEntrySegment(createFetchRequest(handle, segmentId));
         }
       } catch (ClientManagerException | TException e) {
@@ -83,7 +83,7 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
     for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {
         try (SyncDataNodeMPPDataExchangeServiceClient client =
-            clientManager.borrowClient(handle.getCoordinatorEndPoint())) {
+            clientManager.borrowClient(handle.getCoordinatorMppDataExchangeEndPoint())) {
           org.apache.iotdb.common.rpc.thrift.TSStatus status =
               client.finishDeviceEntrySegment(handle.getQueryId(), handle.getPlanNodeId().getId());
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
