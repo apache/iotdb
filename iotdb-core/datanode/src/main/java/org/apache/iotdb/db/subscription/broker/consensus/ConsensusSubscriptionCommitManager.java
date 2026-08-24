@@ -1783,7 +1783,9 @@ public class ConsensusSubscriptionCommitManager {
 
         final ProgressKey outstandingKey = outstandingKeys.remove(ProgressSlot.from(incomingKey));
         if (Objects.isNull(outstandingKey)) {
-          LOGGER.warn(
+          // Late or duplicate ACKs are reported by the queue or summarized by the receiver. Logging
+          // every missing mapping at WARN would amplify one commit request by its context count.
+          LOGGER.debug(
               DataNodePipeMessages
                   .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_REJECT_DIRECT_COMMIT_WITHOUT_5B975E49,
               incomingKey.physicalTime,
