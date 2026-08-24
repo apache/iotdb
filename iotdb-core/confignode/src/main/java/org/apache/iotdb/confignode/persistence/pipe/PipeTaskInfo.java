@@ -536,6 +536,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
+  public boolean isPipeBeingDropped(final String pipeName, final boolean isTableModel) {
+    acquireReadLock();
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, isTableModel);
+      return pipeMeta != null
+          && PipeStatus.PRE_DELETE.equals(pipeMeta.getRuntimeMeta().getStatus().get());
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   private PipeStatus getPipeStatus(final String pipeName) {
     acquireReadLock();
     try {

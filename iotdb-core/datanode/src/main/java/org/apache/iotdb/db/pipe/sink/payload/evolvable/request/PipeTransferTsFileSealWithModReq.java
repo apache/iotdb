@@ -162,12 +162,11 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
         } catch (final UnsupportedOperationException ignored) {
           appendStablePart(eventIdentity, UNSUPPORTED_REPLICATE_INDEX);
         }
-        if (event.getCommitterKey() == null) {
-          try {
-            appendStablePart(eventIdentity, String.valueOf(event.getProgressIndex()));
-          } catch (final UnsupportedOperationException ignored) {
-            appendStablePart(eventIdentity, UNSUPPORTED_PROGRESS_INDEX);
-          }
+        // Commit ids are local to a DataNode and may collide after a leader change.
+        try {
+          appendStablePart(eventIdentity, String.valueOf(event.getProgressIndex()));
+        } catch (final UnsupportedOperationException ignored) {
+          appendStablePart(eventIdentity, UNSUPPORTED_PROGRESS_INDEX);
         }
         eventIdentities.add(eventIdentity.toString());
       }
