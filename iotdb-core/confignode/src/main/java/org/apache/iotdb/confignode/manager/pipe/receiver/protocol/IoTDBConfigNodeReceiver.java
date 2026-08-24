@@ -88,6 +88,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCom
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
@@ -413,6 +414,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case CreateSchemaTemplate:
         templateName = ((CreateSchemaTemplatePlan) plan).getTemplate().getName();
         return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, templateName, true);
+      case DropSchemaTemplate:
+        return checkGlobalStatus(
+            userEntity,
+            PrivilegeType.SYSTEM,
+            ((DropSchemaTemplatePlan) plan).getTemplateName(),
+            true);
       case CommitSetSchemaTemplate:
         templateName = ((CommitSetSchemaTemplatePlan) plan).getName();
         return checkGlobalStatus(userEntity, PrivilegeType.SYSTEM, templateName, true);
@@ -552,6 +559,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             PrivilegeType.DELETE,
             ((CommitDeleteTablePlan) plan).getDatabase(),
             ((CommitDeleteTablePlan) plan).getTableName());
+      case PipeDeleteDevices:
+        return checkTableStatus(
+            userEntity,
+            PrivilegeType.DELETE,
+            ((PipeDeleteDevicesPlan) plan).getDatabase(),
+            ((PipeDeleteDevicesPlan) plan).getTableName());
       case GrantRole:
       case GrantUser:
       case RevokeUser:
@@ -747,7 +760,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return checkGlobalStatus(
             userEntity, PrivilegeType.MANAGE_ROLE, ((AuthorPlan) plan).getRoleName(), true);
       default:
-        return StatusUtils.OK;
+        return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
     }
   }
 
@@ -1204,10 +1217,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             .getPermissionManager()
             .operatePermission((AuthorPlan) plan, shouldMarkAsPipeRequest.get());
       case CreateSchemaTemplate:
-      default:
+      case DropSchemaTemplate:
+        // Only explicitly supported config-region pipe plans may be written to consensus. New plan
+        // types must be added to an explicit case after their authorization is implemented.
         return configManager
             .getConsensusManager()
             .write(shouldMarkAsPipeRequest.get() ? new PipeEnrichedPlan(plan) : plan);
+      default:
+        return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
     }
   }
 
