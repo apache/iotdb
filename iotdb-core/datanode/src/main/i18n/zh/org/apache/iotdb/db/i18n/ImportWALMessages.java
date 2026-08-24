@@ -41,6 +41,9 @@ public final class ImportWALMessages {
   public static final String
       MESSAGE_WHEN_ALL_WAL_FILES_ARE_REPLAYED_SUCCESSFULLY_DO_OPERATION_ON_SOURCE_WAL_FILES_OPTIONAL_PARAMETERS_ARE_NONE_DEFAULT_AND_DELETE_41963A66 =
           "所有 WAL 文件成功重放后，对源 WAL 文件执行操作。可选参数为 none（默认）和 delete。";
+  public static final String
+      MESSAGE_NUMBER_OF_THREADS_USED_TO_REPLAY_WAL_DIRECTORIES_IN_PARALLEL_DEFAULT_1_6AEF4F50 =
+          "并行重放 WAL 目录所用的线程数。默认：1。";
   public static final String MESSAGE_PRINT_THIS_HELP_MESSAGE_E800AF7A = "打印帮助信息。";
   public static final String MESSAGE_ARGUMENT_ERROR_ARG_A9767F62 = "参数错误：%s";
   public static final String MESSAGE_WAL_IMPORT_FAILED_ARG_55C014BA = "WAL 导入失败：%s";
@@ -51,6 +54,11 @@ public final class ImportWALMessages {
   public static final String EXCEPTION_NO_WAL_FILES_FOUND_UNDER_ARG_45F7FA22 =
       "路径下未找到 WAL 文件：%s";
   public static final String EXCEPTION_INVALID_PORT_ARG_A7CDD5AC = "无效端口：%s";
+  public static final String
+      EXCEPTION_INVALID_THREAD_COUNT_ARG_EXPECTED_A_POSITIVE_INTEGER_F3AE2CFD =
+          "无效线程数：%s。应为正整数。";
+  public static final String EXCEPTION_WAL_REPLAY_WAS_INTERRUPTED_770BA8AD =
+      "WAL 重放被中断。";
   public static final String
       MESSAGE_REPLAYED_ARG_OPERATIONS_FROM_ARG_WAL_FILES_SKIPPED_ARG_ENTRIES_F0D37E3A =
           "已重放 %d 个操作（来自 %d 个 WAL 文件）；跳过 %d 个条目。";

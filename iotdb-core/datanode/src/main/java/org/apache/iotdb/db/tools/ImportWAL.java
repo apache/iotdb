@@ -75,10 +75,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -89,7 +96,9 @@ public class ImportWAL {
   private static final String DEFAULT_HOST = "127.0.0.1";
   private static final int DEFAULT_PORT = 6667;
   private static final String DEFAULT_USER = "root";
+  private static final int DEFAULT_THREAD_NUM = 1;
   private static final int SNAPSHOT_TABLET_ROW_LIMIT = 1024;
+  private static final Object CONSOLE_PROMPT_LOCK = new Object();
 
   private ImportWAL() {}
 
@@ -120,53 +129,38 @@ public class ImportWAL {
       final String database = commandLine.getOptionValue("database");
       final boolean deleteSource =
           shouldDeleteSource(commandLine.getOptionValue("on_success", "none"));
+      final int threadNum =
+          parseThreadNum(
+              commandLine.getOptionValue("thread_num", String.valueOf(DEFAULT_THREAD_NUM)));
       final String password = getPassword(commandLine);
-      final Session treeSession =
-          createSession(
-              commandLine.getOptionValue("host", DEFAULT_HOST),
-              parsePort(commandLine.getOptionValue("port", String.valueOf(DEFAULT_PORT))),
-              commandLine.getOptionValue("username", DEFAULT_USER),
-              password,
-              null);
-      final Session tableSession =
-          database == null
-              ? null
-              : createSession(
-                  commandLine.getOptionValue("host", DEFAULT_HOST),
-                  parsePort(commandLine.getOptionValue("port", String.valueOf(DEFAULT_PORT))),
-                  commandLine.getOptionValue("username", DEFAULT_USER),
-                  password,
-                  database);
-      try {
-        treeSession.open(false);
-        if (tableSession != null) {
-          tableSession.open(false);
-        }
-        final ReplayStatistics statistics =
-            replayWALFiles(
-                walFiles, new WALReplayer(treeSession, tableSession, database), out, deleteSource);
+      final String host = commandLine.getOptionValue("host", DEFAULT_HOST);
+      final int port = parsePort(commandLine.getOptionValue("port", String.valueOf(DEFAULT_PORT)));
+      final String username = commandLine.getOptionValue("username", DEFAULT_USER);
+      final ReplayStatistics statistics =
+          replayWALDirectories(
+              walFiles,
+              threadNum,
+              () -> createWALReplayWorker(host, port, username, password, database),
+              out,
+              deleteSource);
+      out.printf(
+          ImportWALMessages
+              .MESSAGE_REPLAYED_ARG_OPERATIONS_FROM_ARG_WAL_FILES_SKIPPED_ARG_ENTRIES_F0D37E3A,
+          statistics.replayedOperationCount,
+          walFiles.size(),
+          statistics.skippedEntryCount);
+      out.println();
+      out.printf(
+          ImportWALMessages
+              .MESSAGE_IMPORT_DURATION_ARG_SECONDS_TOTAL_SIZE_ARG_BYTES_AVERAGE_RATE_ARG_MB_PER_SECOND_4B4EA58D,
+          statistics.getElapsedSeconds(),
+          statistics.getTotalBytes(),
+          statistics.getAverageRateMbPerSecond());
+      out.println();
+      if (deleteSource) {
         out.printf(
-            ImportWALMessages
-                .MESSAGE_REPLAYED_ARG_OPERATIONS_FROM_ARG_WAL_FILES_SKIPPED_ARG_ENTRIES_F0D37E3A,
-            statistics.replayedOperationCount,
-            walFiles.size(),
-            statistics.skippedEntryCount);
+            ImportWALMessages.MESSAGE_DELETED_ARG_SOURCE_WAL_FILES_C7A5AA1B, walFiles.size());
         out.println();
-        out.printf(
-            ImportWALMessages
-                .MESSAGE_IMPORT_DURATION_ARG_SECONDS_TOTAL_SIZE_ARG_BYTES_AVERAGE_RATE_ARG_MB_PER_SECOND_4B4EA58D,
-            statistics.getElapsedSeconds(),
-            statistics.getTotalBytes(),
-            statistics.getAverageRateMbPerSecond());
-        out.println();
-        if (deleteSource) {
-          out.printf(
-              ImportWALMessages.MESSAGE_DELETED_ARG_SOURCE_WAL_FILES_C7A5AA1B, walFiles.size());
-          out.println();
-        }
-      } finally {
-        closeSession(tableSession);
-        closeSession(treeSession);
       }
       return CODE_OK;
     } catch (final Exception e) {
@@ -227,6 +221,15 @@ public class ImportWAL {
             .desc(
                 ImportWALMessages
                     .MESSAGE_WHEN_ALL_WAL_FILES_ARE_REPLAYED_SUCCESSFULLY_DO_OPERATION_ON_SOURCE_WAL_FILES_OPTIONAL_PARAMETERS_ARE_NONE_DEFAULT_AND_DELETE_41963A66)
+            .build());
+    options.addOption(
+        Option.builder("tn")
+            .longOpt("thread_num")
+            .argName("thread_num")
+            .hasArg()
+            .desc(
+                ImportWALMessages
+                    .MESSAGE_NUMBER_OF_THREADS_USED_TO_REPLAY_WAL_DIRECTORIES_IN_PARALLEL_DEFAULT_1_6AEF4F50)
             .build());
     options.addOption(
         Option.builder()
@@ -314,6 +317,23 @@ public class ImportWAL {
     }
   }
 
+  static int parseThreadNum(final String threadNum) {
+    try {
+      final int value = Integer.parseInt(threadNum);
+      if (value <= 0) {
+        throw new NumberFormatException(threadNum);
+      }
+      return value;
+    } catch (final NumberFormatException e) {
+      throw new IllegalArgumentException(
+          String.format(
+              ImportWALMessages
+                  .EXCEPTION_INVALID_THREAD_COUNT_ARG_EXPECTED_A_POSITIVE_INTEGER_F3AE2CFD,
+              threadNum),
+          e);
+    }
+  }
+
   private static Session createSession(
       final String host,
       final int port,
@@ -326,6 +346,29 @@ public class ImportWAL {
       builder.sqlDialect("table").database(database);
     }
     return builder.build();
+  }
+
+  private static WALReplayWorker createWALReplayWorker(
+      final String host,
+      final int port,
+      final String username,
+      final String password,
+      final String database)
+      throws IOException {
+    final Session treeSession = createSession(host, port, username, password, null);
+    final Session tableSession =
+        database == null ? null : createSession(host, port, username, password, database);
+    try {
+      treeSession.open(false);
+      if (tableSession != null) {
+        tableSession.open(false);
+      }
+      return new SessionWALReplayer(treeSession, tableSession, database);
+    } catch (final IoTDBConnectionException e) {
+      closeSession(tableSession);
+      closeSession(treeSession);
+      throw new IOException(e.getMessage(), e);
+    }
   }
 
   private static void closeSession(final Session session) {
@@ -409,78 +452,219 @@ public class ImportWAL {
       final PrintStream progressStream,
       final boolean deleteSource)
       throws IOException {
-    final ReplayStatistics statistics = new ReplayStatistics();
     final long startNanos = System.nanoTime();
+    final ReplayStatistics statistics = createReplayStatistics(walFiles);
     for (final Path walFile : walFiles) {
-      statistics.totalBytes += Files.size(walFile);
-    }
-    for (final Path walFile : walFiles) {
-      try (WALReader reader = new WALReader(walFile.toFile())) {
-        long offset = reader.getWALCurrentReadOffset();
-        while (reader.hasNext()) {
-          final WALEntry entry = reader.next();
-          try {
-            if (replayer.replay(entry)) {
-              statistics.replayedOperationCount++;
-            } else {
-              statistics.skippedEntryCount++;
-            }
-          } catch (final IoTDBConnectionException | StatementExecutionException e) {
-            throw new WALReplayException(
-                String.format(
-                    ImportWALMessages
-                        .EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9,
-                    walFile,
-                    offset,
-                    e.getMessage()),
-                e);
-          }
-          offset = reader.getWALCurrentReadOffset();
-        }
-        if (reader.isFileCorrupted()) {
-          throw new WALReplayException(
-              String.format(
-                  ImportWALMessages
-                      .EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9,
-                  walFile,
-                  reader.getWALCurrentReadOffset(),
-                  ImportWALMessages.EXCEPTION_THE_WAL_FILE_IS_TRUNCATED_OR_CORRUPTED_6B0734C5),
-              null);
-        }
-        statistics.completedFileCount++;
-        statistics.processedBytes += Files.size(walFile);
-        statistics.elapsedNanos = System.nanoTime() - startNanos;
-        if (progressStream != null) {
-          progressStream.printf(
-              ImportWALMessages
-                  .MESSAGE_PROGRESS_ARG_COMPLETED_FILES_ARG_TOTAL_FILES_ARG_PROCESSED_BYTES_ARG_TOTAL_BYTES_ARG_PERCENT_ARG_ELAPSED_SECONDS_ARG_RATE_ARG_MB_PER_SECOND_F1C1356F,
-              statistics.completedFileCount,
-              walFiles.size(),
-              statistics.processedBytes,
-              statistics.totalBytes,
-              statistics.getProgressPercent(),
-              statistics.getElapsedSeconds(),
-              statistics.getAverageRateMbPerSecond());
-          progressStream.println();
-        }
-      } catch (final IOException e) {
-        if (e instanceof WALReplayException walReplayException) {
-          throw walReplayException;
-        }
-        throw new WALReplayException(
-            String.format(
-                ImportWALMessages
-                    .EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9,
-                walFile,
-                0,
-                e.getMessage()),
-            e);
-      }
+      recordCompletedFile(
+          statistics,
+          replayWALFile(walFile, replayer),
+          walFiles.size(),
+          startNanos,
+          progressStream);
     }
     if (deleteSource) {
       deleteSourceWALFiles(walFiles);
     }
     return statistics;
+  }
+
+  static ReplayStatistics replayWALDirectories(
+      final List<Path> walFiles,
+      final int threadNum,
+      final WALReplayWorkerFactory workerFactory,
+      final PrintStream progressStream,
+      final boolean deleteSource)
+      throws IOException {
+    if (threadNum <= 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              ImportWALMessages
+                  .EXCEPTION_INVALID_THREAD_COUNT_ARG_EXPECTED_A_POSITIVE_INTEGER_F3AE2CFD,
+              threadNum));
+    }
+    final long startNanos = System.nanoTime();
+    final ReplayStatistics statistics = createReplayStatistics(walFiles);
+    final List<List<Path>> walDirectories = groupWALFilesByDirectory(walFiles);
+    if (walDirectories.isEmpty()) {
+      statistics.elapsedNanos = System.nanoTime() - startNanos;
+      return statistics;
+    }
+
+    final int workerCount = Math.min(threadNum, walDirectories.size());
+    final AtomicInteger nextDirectoryIndex = new AtomicInteger();
+    final AtomicReference<Throwable> replayFailure = new AtomicReference<>();
+    final ExecutorService executor = Executors.newFixedThreadPool(workerCount);
+    final List<Future<?>> futures = new ArrayList<>(workerCount);
+    for (int i = 0; i < workerCount; i++) {
+      futures.add(
+          executor.submit(
+              () -> {
+                try (WALReplayWorker worker = workerFactory.create()) {
+                  int directoryIndex;
+                  // A worker owns one directory at a time so WAL files from that directory remain
+                  // ordered, while independent directories can make progress concurrently.
+                  while (replayFailure.get() == null
+                      && (directoryIndex = nextDirectoryIndex.getAndIncrement())
+                          < walDirectories.size()) {
+                    for (final Path walFile : walDirectories.get(directoryIndex)) {
+                      recordCompletedFile(
+                          statistics,
+                          replayWALFile(walFile, worker),
+                          walFiles.size(),
+                          startNanos,
+                          progressStream);
+                    }
+                  }
+                } catch (final Exception e) {
+                  replayFailure.compareAndSet(null, e);
+                }
+              }));
+    }
+    executor.shutdown();
+
+    boolean interrupted = false;
+    for (final Future<?> future : futures) {
+      boolean completed = false;
+      // Wait for every worker even after a failure so sessions are closed before source deletion or
+      // the failure is reported to the caller.
+      while (!completed) {
+        try {
+          future.get();
+          completed = true;
+        } catch (final InterruptedException e) {
+          interrupted = true;
+          replayFailure.compareAndSet(
+              null,
+              new IOException(ImportWALMessages.EXCEPTION_WAL_REPLAY_WAS_INTERRUPTED_770BA8AD, e));
+        } catch (final ExecutionException e) {
+          replayFailure.compareAndSet(null, e.getCause());
+          completed = true;
+        }
+      }
+    }
+    if (interrupted) {
+      Thread.currentThread().interrupt();
+    }
+    statistics.elapsedNanos = System.nanoTime() - startNanos;
+    rethrowReplayFailure(replayFailure.get());
+    if (deleteSource) {
+      deleteSourceWALFiles(walFiles);
+    }
+    return statistics;
+  }
+
+  static List<List<Path>> groupWALFilesByDirectory(final List<Path> walFiles) {
+    final List<Path> sortedWALFiles = new ArrayList<>(walFiles);
+    sortedWALFiles.sort(WAL_FILE_COMPARATOR);
+    final Map<Path, List<Path>> filesByDirectory = new LinkedHashMap<>();
+    for (final Path walFile : sortedWALFiles) {
+      filesByDirectory
+          .computeIfAbsent(walFile.getParent(), ignored -> new ArrayList<>())
+          .add(walFile);
+    }
+    return new ArrayList<>(filesByDirectory.values());
+  }
+
+  private static ReplayStatistics createReplayStatistics(final List<Path> walFiles)
+      throws IOException {
+    final ReplayStatistics statistics = new ReplayStatistics();
+    for (final Path walFile : walFiles) {
+      statistics.totalBytes += Files.size(walFile);
+    }
+    return statistics;
+  }
+
+  private static ReplayStatistics replayWALFile(final Path walFile, final WALReplayWorker replayer)
+      throws IOException {
+    final ReplayStatistics statistics = new ReplayStatistics();
+    try (WALReader reader = new WALReader(walFile.toFile())) {
+      long offset = reader.getWALCurrentReadOffset();
+      while (reader.hasNext()) {
+        final WALEntry entry = reader.next();
+        try {
+          if (replayer.replay(entry)) {
+            statistics.replayedOperationCount++;
+          } else {
+            statistics.skippedEntryCount++;
+          }
+        } catch (final IoTDBConnectionException | StatementExecutionException e) {
+          throw new WALReplayException(
+              String.format(
+                  ImportWALMessages
+                      .EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9,
+                  walFile,
+                  offset,
+                  e.getMessage()),
+              e);
+        }
+        offset = reader.getWALCurrentReadOffset();
+      }
+      if (reader.isFileCorrupted()) {
+        throw new WALReplayException(
+            String.format(
+                ImportWALMessages
+                    .EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9,
+                walFile,
+                reader.getWALCurrentReadOffset(),
+                ImportWALMessages.EXCEPTION_THE_WAL_FILE_IS_TRUNCATED_OR_CORRUPTED_6B0734C5),
+            null);
+      }
+      statistics.completedFileCount++;
+      statistics.processedBytes += Files.size(walFile);
+      return statistics;
+    } catch (final IOException e) {
+      if (e instanceof WALReplayException walReplayException) {
+        throw walReplayException;
+      }
+      throw new WALReplayException(
+          String.format(
+              ImportWALMessages.EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9,
+              walFile,
+              0,
+              e.getMessage()),
+          e);
+    }
+  }
+
+  private static void recordCompletedFile(
+      final ReplayStatistics statistics,
+      final ReplayStatistics completedFileStatistics,
+      final int totalFileCount,
+      final long startNanos,
+      final PrintStream progressStream) {
+    synchronized (statistics) {
+      statistics.add(completedFileStatistics);
+      statistics.elapsedNanos = System.nanoTime() - startNanos;
+      if (progressStream != null) {
+        progressStream.printf(
+            ImportWALMessages
+                .MESSAGE_PROGRESS_ARG_COMPLETED_FILES_ARG_TOTAL_FILES_ARG_PROCESSED_BYTES_ARG_TOTAL_BYTES_ARG_PERCENT_ARG_ELAPSED_SECONDS_ARG_RATE_ARG_MB_PER_SECOND_F1C1356F,
+            statistics.completedFileCount,
+            totalFileCount,
+            statistics.processedBytes,
+            statistics.totalBytes,
+            statistics.getProgressPercent(),
+            statistics.getElapsedSeconds(),
+            statistics.getAverageRateMbPerSecond());
+        progressStream.println();
+      }
+    }
+  }
+
+  private static void rethrowReplayFailure(final Throwable failure) throws IOException {
+    if (failure == null) {
+      return;
+    }
+    if (failure instanceof IOException ioException) {
+      throw ioException;
+    }
+    if (failure instanceof RuntimeException runtimeException) {
+      throw runtimeException;
+    }
+    if (failure instanceof Error error) {
+      throw error;
+    }
+    throw new IOException(failure);
   }
 
   private static void deleteSourceWALFiles(final List<Path> walFiles) throws IOException {
@@ -498,7 +682,40 @@ public class ImportWAL {
     }
   }
 
-  static class WALReplayer {
+  @FunctionalInterface
+  interface WALReplayWorkerFactory {
+
+    WALReplayWorker create() throws Exception;
+  }
+
+  interface WALReplayWorker extends AutoCloseable {
+
+    boolean replay(WALEntry entry) throws IoTDBConnectionException, StatementExecutionException;
+
+    @Override
+    default void close() {}
+  }
+
+  private static class SessionWALReplayer extends WALReplayer {
+
+    private final Session treeSession;
+    private final Session tableSession;
+
+    private SessionWALReplayer(
+        final Session treeSession, final Session tableSession, final String tableDatabaseName) {
+      super(treeSession, tableSession, tableDatabaseName);
+      this.treeSession = treeSession;
+      this.tableSession = tableSession;
+    }
+
+    @Override
+    public void close() {
+      closeSession(tableSession);
+      closeSession(treeSession);
+    }
+  }
+
+  static class WALReplayer implements WALReplayWorker {
 
     private final Session treeSession;
     private final Session tableSession;
@@ -528,7 +745,8 @@ public class ImportWAL {
               null, null, ColumnFilterMatcher.matchAll(), tableDatabaseName);
     }
 
-    boolean replay(final WALEntry entry)
+    @Override
+    public boolean replay(final WALEntry entry)
         throws IoTDBConnectionException, StatementExecutionException {
       if (entry.getType() == WALEntryType.MEMORY_TABLE_SNAPSHOT
           || entry.getType() == WALEntryType.OLD_MEMORY_TABLE_SNAPSHOT) {
@@ -558,12 +776,14 @@ public class ImportWAL {
         return null;
       }
       return entry -> {
-        final String answer =
-            console.readLine(
-                ImportWALMessages
-                    .MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_SKIP_THIS_ENTRY_Y_N_DAFBE650,
-                entry.getType());
-        return isSkipConfirmation(answer);
+        synchronized (CONSOLE_PROMPT_LOCK) {
+          final String answer =
+              console.readLine(
+                  ImportWALMessages
+                      .MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_SKIP_THIS_ENTRY_Y_N_DAFBE650,
+                  entry.getType());
+          return isSkipConfirmation(answer);
+        }
       };
     }
 
@@ -997,6 +1217,13 @@ public class ImportWAL {
     private long processedBytes;
     private long completedFileCount;
     private long elapsedNanos;
+
+    private void add(final ReplayStatistics statistics) {
+      replayedOperationCount += statistics.replayedOperationCount;
+      skippedEntryCount += statistics.skippedEntryCount;
+      processedBytes += statistics.processedBytes;
+      completedFileCount += statistics.completedFileCount;
+    }
 
     long getReplayedOperationCount() {
       return replayedOperationCount;

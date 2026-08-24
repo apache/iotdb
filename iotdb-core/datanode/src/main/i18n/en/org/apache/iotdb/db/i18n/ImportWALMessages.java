@@ -41,6 +41,9 @@ public final class ImportWALMessages {
   public static final String
       MESSAGE_WHEN_ALL_WAL_FILES_ARE_REPLAYED_SUCCESSFULLY_DO_OPERATION_ON_SOURCE_WAL_FILES_OPTIONAL_PARAMETERS_ARE_NONE_DEFAULT_AND_DELETE_41963A66 =
           "When all WAL files are replayed successfully, do operation on source WAL files. Optional parameters are none (default) and delete.";
+  public static final String
+      MESSAGE_NUMBER_OF_THREADS_USED_TO_REPLAY_WAL_DIRECTORIES_IN_PARALLEL_DEFAULT_1_6AEF4F50 =
+          "Number of threads used to replay WAL directories in parallel. Default: 1.";
   public static final String MESSAGE_PRINT_THIS_HELP_MESSAGE_E800AF7A =
       "Print this help message.";
   public static final String MESSAGE_ARGUMENT_ERROR_ARG_A9767F62 = "Argument error: %s";
@@ -52,6 +55,11 @@ public final class ImportWALMessages {
   public static final String EXCEPTION_NO_WAL_FILES_FOUND_UNDER_ARG_45F7FA22 =
       "No WAL files found under: %s";
   public static final String EXCEPTION_INVALID_PORT_ARG_A7CDD5AC = "Invalid port: %s";
+  public static final String
+      EXCEPTION_INVALID_THREAD_COUNT_ARG_EXPECTED_A_POSITIVE_INTEGER_F3AE2CFD =
+          "Invalid thread count: %s. Expected a positive integer.";
+  public static final String EXCEPTION_WAL_REPLAY_WAS_INTERRUPTED_770BA8AD =
+      "WAL replay was interrupted.";
   public static final String
       MESSAGE_REPLAYED_ARG_OPERATIONS_FROM_ARG_WAL_FILES_SKIPPED_ARG_ENTRIES_F0D37E3A =
           "Replayed %d operations from %d WAL files; skipped %d entries.";

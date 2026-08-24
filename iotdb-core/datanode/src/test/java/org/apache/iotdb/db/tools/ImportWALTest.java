@@ -62,6 +62,12 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -70,6 +76,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -104,7 +111,7 @@ public class ImportWALTest {
         files);
   }
 
-  /** Covers CLI discovery of the source-file operation without opening a Session. */
+  /** Covers CLI discovery of source-file and parallel replay options without opening a Session. */
   @Test
   public void testHelpDescribesDeleteSourceOption() {
     final ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -114,6 +121,79 @@ public class ImportWALTest {
 
     assertEquals(0, exitCode);
     assertTrue(output.toString().contains("--on_success"));
+    assertTrue(output.toString().contains("--thread_num"));
+  }
+
+  /** Covers valid thread counts and rejects zero, negative, and non-numeric values. */
+  @Test
+  public void testParseThreadNumOption() {
+    assertEquals(1, ImportWAL.parseThreadNum("1"));
+    assertEquals(4, ImportWAL.parseThreadNum("4"));
+    assertThrows(IllegalArgumentException.class, () -> ImportWAL.parseThreadNum("0"));
+    assertThrows(IllegalArgumentException.class, () -> ImportWAL.parseThreadNum("-1"));
+    assertThrows(IllegalArgumentException.class, () -> ImportWAL.parseThreadNum("invalid"));
+  }
+
+  /**
+   * Covers directory-level parallel replay with two WAL files per directory. Different directories
+   * must overlap, while versions within each directory must retain ascending replay order.
+   */
+  @Test
+  public void testReplayWALDirectoriesInParallelAndPreserveDirectoryOrder() throws Exception {
+    final Path source = temporaryFolder.newFolder("parallel-wal-root").toPath();
+    final Path nodeA = Files.createDirectory(source.resolve("node-a"));
+    final Path nodeB = Files.createDirectory(source.resolve("node-b"));
+    final Path a1 = createWALFile(nodeA, 1);
+    final Path a2 = createWALFile(nodeA, 2);
+    final Path b1 = createWALFile(nodeB, 1);
+    final Path b2 = createWALFile(nodeB, 2);
+    writeWAL(a1.toFile(), new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.a", 1)));
+    writeWAL(a2.toFile(), new WALInfoEntry(2, WALTestUtils.getInsertRowNode("root.sg.a", 2)));
+    writeWAL(b1.toFile(), new WALInfoEntry(3, WALTestUtils.getInsertRowNode("root.sg.b", 1)));
+    writeWAL(b2.toFile(), new WALInfoEntry(4, WALTestUtils.getInsertRowNode("root.sg.b", 2)));
+    final List<Path> walFiles = ImportWAL.collectWALFiles(source);
+    final CyclicBarrier replayBarrier = new CyclicBarrier(2);
+    final AtomicInteger activeReplays = new AtomicInteger();
+    final AtomicInteger maxActiveReplays = new AtomicInteger();
+    final AtomicInteger createdWorkers = new AtomicInteger();
+    final Map<String, List<Long>> replayedTimestamps = new ConcurrentHashMap<>();
+
+    final ImportWAL.ReplayStatistics statistics =
+        ImportWAL.replayWALDirectories(
+            walFiles,
+            2,
+            () -> {
+              createdWorkers.incrementAndGet();
+              final Session session = mock(Session.class);
+              doAnswer(
+                      invocation -> {
+                        final Tablet tablet = invocation.getArgument(0);
+                        final int active = activeReplays.incrementAndGet();
+                        maxActiveReplays.accumulateAndGet(active, Math::max);
+                        try {
+                          replayBarrier.await(5, TimeUnit.SECONDS);
+                          replayedTimestamps
+                              .computeIfAbsent(
+                                  tablet.getDeviceId(), ignored -> new CopyOnWriteArrayList<>())
+                              .add(tablet.getTimestamp(0));
+                        } finally {
+                          activeReplays.decrementAndGet();
+                        }
+                        return null;
+                      })
+                  .when(session)
+                  .insertTablet(any(Tablet.class));
+              return new ImportWAL.WALReplayer(session, null, null);
+            },
+            null,
+            false);
+
+    assertEquals(2, createdWorkers.get());
+    assertTrue(maxActiveReplays.get() >= 2);
+    assertEquals(Arrays.asList(1L, 2L), replayedTimestamps.get("root.sg.a"));
+    assertEquals(Arrays.asList(1L, 2L), replayedTimestamps.get("root.sg.b"));
+    assertEquals(4, statistics.getReplayedOperationCount());
+    assertEquals(4, statistics.getCompletedFileCount());
   }
 
   /** Covers the default retention value, deletion value, normalization, and invalid input. */
@@ -189,6 +269,36 @@ public class ImportWALTest {
 
     assertTrue(validWALFile.exists());
     assertTrue(corruptedWALFile.exists());
+  }
+
+  /**
+   * Covers all-or-nothing deletion during directory-level parallel replay. A corrupted directory
+   * must retain WAL files from both the failed directory and another concurrently replayed one.
+   */
+  @Test
+  public void testParallelReplayRetainsAllSourceFilesWhenAnyDirectoryFails() throws Exception {
+    final Path source = temporaryFolder.newFolder("parallel-retain-wal-root").toPath();
+    final Path validDirectory = Files.createDirectory(source.resolve("valid"));
+    final Path corruptedDirectory = Files.createDirectory(source.resolve("corrupted"));
+    final Path validWALFile = createWALFile(validDirectory, 0);
+    final Path corruptedWALFile = createWALFile(corruptedDirectory, 0);
+    writeWAL(
+        validWALFile.toFile(),
+        new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.parallel.retain", 1)));
+    Files.write(corruptedWALFile, new byte[] {WALEntryType.INSERT_ROW_NODE.getCode()});
+
+    assertThrows(
+        IOException.class,
+        () ->
+            ImportWAL.replayWALDirectories(
+                ImportWAL.collectWALFiles(source),
+                2,
+                () -> new ImportWAL.WALReplayer(mock(Session.class), null, null),
+                null,
+                true));
+
+    assertTrue(Files.exists(validWALFile));
+    assertTrue(Files.exists(corruptedWALFile));
   }
 
   @Test
