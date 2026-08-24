@@ -2424,6 +2424,14 @@ public final class DataNodeQueryMessages {
       "Note that the syntax for 'set configuration' in the tree model is not exactly the same as that in the table model.";
   public static final String UNSUPPORTED_COPY_TO_FORMAT_S_SUPPORTED_FORMATS_S =
       "Unsupported COPY TO format '%s'. Supported formats: %s";
+  public static final String EXCEPTION_DUPLICATE_TAG_COLUMN_IN_TAGS_CLAUSE_ARG_61FD5422 =
+      "Duplicate tag column in TAGS clause: %s";
+  public static final String EXCEPTION_DUPLICATE_OPTION_IN_COPY_TO_STATEMENT_ARG_99CFE09F =
+      "Duplicate option in COPY TO statement: %s";
+  public static final String EXCEPTION_FAILED_TO_WRITE_THE_TARGET_FILE_ARG_5AC3025D =
+      "Failed to write the target file: %s";
+  public static final String LOG_FAILED_TO_WRITE_THE_TARGET_FILE_DURING_COPY_TO_EE25EF37 =
+      "Failed to write the target file during COPY TO";
   public static final String SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "Simultaneous setting of monthly and non-monthly intervals is not supported.";
   public static final String DON_T_NEED_TO_SPECIFY_TIME_COLUMN_WHILE_EITHER_TIME_BOUND_OR_FILL_GROUP_PARAMETER_IS_NOT =
@@ -3673,6 +3681,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_UDFNAME_IS_NULL_83E9039B = "udfName is null";
   public static final String EXCEPTION_URISTRING_IS_NULL_E7458C6A = "uriString is null";
   public static final String EXCEPTION_FILEPATH_IS_NULL_84CE8A66 = "filePath is null";
+  public static final String EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181 =
+      "The LOAD TSFILE path cannot be empty.";
   public static final String EXCEPTION_DETAILS_IS_NULL_8EDEEA03 = "details is null";
   public static final String EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B = "columnCategory is null";
   public static final String EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F = "argumentName is null";
@@ -3769,6 +3779,10 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD = "Aggregation functions [%s] should only have two arguments";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87 = "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF = "Aggregation functions [%s] should have percentage as decimal type";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_2_ARGUMENTS_VALUE_TIME_E2F55C08 = "Aggregate function [%s] requires 2 arguments: value, time";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B = "Aggregate function [%s] requires 4 arguments: value, time, window_start, window_end";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_ONLY_SUPPORTS_INT32_INT64_FLOAT_AND_DOUBLE_AS_THE_FIRST_ARGUMENT_8D201434 = "Aggregate function [%s] only supports INT32, INT64, FLOAT and DOUBLE as the first argument";
+  public static final String EXCEPTION_THE_TIME_ARGUMENTS_OF_AGGREGATE_FUNCTION_ARG_SHOULD_BE_TIMESTAMP_OR_INT64_TYPE_9C736DE3 = "The time arguments of aggregate function [%s] should be TIMESTAMP or INT64 type";
   public static final String EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4 = "Cannot nest aggregations inside aggregation '%s': %s";
   public static final String EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897 = "Cannot nest window functions inside aggregation '%s': %s";
   public static final String EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6 = "PARTITION BY expression '%s' must be an aggregate expression or appear in GROUP BY clause";

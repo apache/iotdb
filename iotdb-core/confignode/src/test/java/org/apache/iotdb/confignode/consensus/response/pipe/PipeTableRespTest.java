@@ -170,6 +170,25 @@ public class PipeTableRespTest {
   }
 
   @Test
+  public void testConvertToTShowPipeRespAggregatesRecentFailures() {
+    final PipeTableResp pipeTableResp = constructPipeTableResp();
+    final PipeTemporaryMetaInCoordinator temporaryMeta =
+        (PipeTemporaryMetaInCoordinator) pipeTableResp.getAllPipeMeta().get(0).getTemporaryMeta();
+    final Map<String, Long> firstNodeFailures = new HashMap<>();
+    firstNodeFailures.put("network_timeout", 10L);
+    firstNodeFailures.put("memory_timeout", 15L);
+    temporaryMeta.setRecentFailures(1, firstNodeFailures);
+    final Map<String, Long> secondNodeFailures = new HashMap<>();
+    secondNodeFailures.put("network_timeout", 2L);
+    temporaryMeta.setRecentFailures(2, secondNodeFailures);
+
+    final TShowPipeInfo showPipeInfo =
+        pipeTableResp.convertToTShowPipeResp().getPipeInfoList().get(0);
+    Assert.assertEquals(Long.valueOf(12), showPipeInfo.getRecentFailures().get("network_timeout"));
+    Assert.assertEquals(Long.valueOf(15), showPipeInfo.getRecentFailures().get("memory_timeout"));
+  }
+
+  @Test
   public void testConvertToTShowPipeRespIncludesPreDeleteStatus() {
     final PipeTableResp pipeTableResp = constructPipeTableResp();
     pipeTableResp.getAllPipeMeta().get(0).getRuntimeMeta().getStatus().set(PipeStatus.PRE_DELETE);

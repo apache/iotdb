@@ -47,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
+import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -55,7 +56,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -489,7 +489,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           DataNodeQueryMessages.EMPTY_FILE_DETECTED_WILL_SKIP_LOADING_THIS_FILE,
           tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
-        FileUtils.deleteQuietly(tsFile);
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
       }
     } finally {
       // reset the session info to the original one
@@ -766,6 +766,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private void executeTabletConversionOnException(
       final IAnalysis analysis, final LoadAnalyzeException e) {
+    if (e instanceof LoadAnalyzeTypeMismatchException) {
+      PipeTsFileConversionTaskManager.markTypeMismatchDetected();
+    }
     if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
       return;
     }

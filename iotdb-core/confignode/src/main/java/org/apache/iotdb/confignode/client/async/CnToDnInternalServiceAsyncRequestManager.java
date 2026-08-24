@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.client.async;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -83,6 +84,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateTableCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
@@ -144,6 +146,10 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.createDataRegion(
                 (TCreateDataRegionReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.DELETE_REGION,
+        (req, client, handler) ->
+            client.deleteRegion((TConsensusGroupId) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CREATE_SCHEMA_REGION,
         (req, client, handler) ->
@@ -524,6 +530,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.GET_BUILTIN_SERVICE,
         (req, client, handler) ->
             client.getBuiltInService((GetBuiltInExternalServiceRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.INVALIDATE_PERMISSION_CACHE,
+        (req, client, handler) ->
+            client.invalidatePermissionCache(
+                (TInvalidatePermissionCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override

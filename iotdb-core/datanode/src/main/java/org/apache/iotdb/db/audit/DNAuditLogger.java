@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
@@ -229,6 +230,32 @@ public class DNAuditLogger extends AbstractAuditLogger {
         status);
   }
 
+  public void logUserRoleModificationAuthorizationFailure(
+      Statement statement, IAuditEntity auditEntity, @Nullable TSStatus status) {
+    if (isSuccessful(status)) {
+      // Successful authorization only allows the role modification to proceed. The actual
+      // modification result is audited by AuthorizerTask after execution.
+      return;
+    }
+    logUserRoleModification(getUserRoleTarget(statement), auditEntity, status);
+  }
+
+  public void logUserRoleModification(
+      Statement statement,
+      SessionInfo sessionInfo,
+      @Nullable String sql,
+      @Nullable TSStatus status) {
+    logUserRoleModification(getUserRoleTarget(statement), sessionInfo, sql, status);
+  }
+
+  public void logUserRoleModification(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      SessionInfo sessionInfo,
+      @Nullable String sql,
+      @Nullable TSStatus status) {
+    logUserRoleModification(getUserRoleTarget(statement), sessionInfo, sql, status);
+  }
+
   public void logRevokeFailure(
       Statement statement,
       SessionInfo sessionInfo,
@@ -288,6 +315,65 @@ public class DNAuditLogger extends AbstractAuditLogger {
         () -> targetName);
   }
 
+  private void logUserRoleModification(
+      @Nullable UserRoleTarget target,
+      @Nullable SessionInfo sessionInfo,
+      @Nullable String sql,
+      @Nullable TSStatus status) {
+    if (target == null || sessionInfo == null || isRedirected(status)) {
+      return;
+    }
+    logUserRoleModification(
+        target,
+        sessionInfo.getUserId(),
+        sessionInfo.getUserName(),
+        sessionInfo.getCliHostname(),
+        sessionInfo.getDatabaseName().orElse(null),
+        sql,
+        status);
+  }
+
+  private void logUserRoleModification(
+      @Nullable UserRoleTarget target, IAuditEntity auditEntity, @Nullable TSStatus status) {
+    if (target == null || isRedirected(status)) {
+      return;
+    }
+    logUserRoleModification(
+        target,
+        auditEntity.getUserId(),
+        auditEntity.getUsername(),
+        auditEntity.getCliHostname(),
+        auditEntity.getDatabase(),
+        auditEntity.getSqlString(),
+        status);
+  }
+
+  private void logUserRoleModification(
+      UserRoleTarget target,
+      long userId,
+      String username,
+      String clientAddress,
+      @Nullable String database,
+      @Nullable String sql,
+      @Nullable TSStatus status) {
+    log(
+        new AuditLogFields(
+            userId,
+            username,
+            clientAddress,
+            AuditEventType.MODIFY_ROLE_MEMBERSHIP,
+            AuditLogOperation.CONTROL,
+            PrivilegeType.SECURITY,
+            isSuccessful(status),
+            database,
+            sql),
+        () ->
+            String.format(
+                DataNodeMiscMessages.LOG_USER_ARG_ROLE_ARG_422D48D3,
+                target.username,
+                target.roleName));
+  }
+
   @Nullable
   private static String getTargetName(Statement statement) {
     if (!(statement instanceof AuthorStatement)) {
@@ -330,10 +416,52 @@ public class DNAuditLogger extends AbstractAuditLogger {
     return null;
   }
 
+  @Nullable
+  private static UserRoleTarget getUserRoleTarget(Statement statement) {
+    if (!(statement instanceof AuthorStatement)) {
+      return null;
+    }
+    AuthorStatement authorStatement = (AuthorStatement) statement;
+    if (authorStatement.getAuthorType() != AuthorType.GRANT_USER_ROLE
+        && authorStatement.getAuthorType() != AuthorType.REVOKE_USER_ROLE) {
+      return null;
+    }
+    return new UserRoleTarget(authorStatement.getUserName(), authorStatement.getRoleName());
+  }
+
+  @Nullable
+  private static UserRoleTarget getUserRoleTarget(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement) {
+    if (!(statement instanceof RelationalAuthorStatement)) {
+      return null;
+    }
+    RelationalAuthorStatement authorStatement = (RelationalAuthorStatement) statement;
+    if (authorStatement.getAuthorType() != AuthorRType.GRANT_USER_ROLE
+        && authorStatement.getAuthorType() != AuthorRType.REVOKE_USER_ROLE) {
+      return null;
+    }
+    return new UserRoleTarget(authorStatement.getUserName(), authorStatement.getRoleName());
+  }
+
   private static boolean isSuccessful(@Nullable TSStatus status) {
     return status != null
         && (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+  }
+
+  private static boolean isRedirected(@Nullable TSStatus status) {
+    return status != null && status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+  }
+
+  private static class UserRoleTarget {
+
+    private final String username;
+    private final String roleName;
+
+    private UserRoleTarget(String username, String roleName) {
+      this.username = username;
+      this.roleName = roleName;
+    }
   }
 
   private static class DNAuditLoggerHolder {

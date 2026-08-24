@@ -821,9 +821,9 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void deleteDataRegion(DataRegionId regionId) {
+  public TSStatus deleteDataRegion(DataRegionId regionId) {
     if (!dataRegionMap.containsKey(regionId) || deletingDataRegionMap.containsKey(regionId)) {
-      return;
+      return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
     }
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
@@ -880,10 +880,13 @@ public class StorageEngine implements IService {
             region.getDatabaseName(),
             region.getDataRegionIdString(),
             e);
+        return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
       } finally {
         deletingDataRegionMap.remove(regionId);
       }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
+    return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
   }
 
   /**

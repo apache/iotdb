@@ -41,6 +41,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.thrift.TApplicationException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -525,6 +526,26 @@ public class SinkChannel implements ISinkChannel {
 
   // endregion
 
+  /**
+   * A {@link TApplicationException} means the downstream received the RPC but failed while handling
+   * it. Retrying the same data-block notification cannot recover that failure. The sync client may
+   * wrap it in multiple {@code TException}s, so inspect the complete cause chain.
+   */
+  private static boolean containsTApplicationException(Throwable throwable) {
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof TApplicationException) {
+        return true;
+      }
+      Throwable cause = current.getCause();
+      if (cause == current) {
+        return false;
+      }
+      current = cause;
+    }
+    return false;
+  }
+
   // region ============ TestOnly ============
   @TestOnly
   public void setRetryIntervalInMs(long retryIntervalInMs) {
@@ -586,8 +607,9 @@ public class SinkChannel implements ISinkChannel {
                     e, DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT, remoteEndpoint);
             LOGGER.warn(
                 DataNodeQueryMessages.FAILED_TO_SEND_NEW_DATA_BLOCK_EVENT_ATTEMPT, attempt, e);
-            if (attempt == MAX_ATTEMPT_TIMES) {
+            if (containsTApplicationException(e) || attempt == MAX_ATTEMPT_TIMES) {
               sinkListener.onFailure(SinkChannel.this, e);
+              return;
             }
             try {
               Thread.sleep(retryIntervalInMs);

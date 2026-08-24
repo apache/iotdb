@@ -102,7 +102,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   @Override
   public boolean acceptsTopic(final String topicName) {
     return Objects.nonNull(topicName)
-        && !ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName);
+        && !ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName, isTableModel());
   }
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
@@ -166,6 +166,14 @@ public class SubscriptionBroker implements ISubscriptionBroker {
         continue;
       }
 
+      // Preserve the existing handling for a single oversized event. Once this response already
+      // contains data, defer an event that does not fit instead of returning an oversized batch.
+      if (totalSize > 0
+          && currentSize > maxBytes - totalSize
+          && prefetchingQueue.requeue(consumerId, event.getCommitContext())) {
+        break;
+      }
+
       // Add the event to the poll list
       eventsToPoll.add(event);
 
@@ -175,8 +183,8 @@ public class SubscriptionBroker implements ISubscriptionBroker {
       // Update the total size
       totalSize += currentSize;
 
-      // If adding this event exceeds the maxBytes (pessimistic estimation), break the loop
-      if (totalSize + currentSize > maxBytes) {
+      // If the response has reached maxBytes, stop polling more events.
+      if (totalSize >= maxBytes) {
         break;
       }
     }
@@ -376,6 +384,15 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   }
 
   @Override
+  public boolean requeue(final String consumerId, final SubscriptionCommitContext commitContext) {
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(commitContext.getTopicName());
+    return Objects.nonNull(prefetchingQueue)
+        && !prefetchingQueue.isClosed()
+        && prefetchingQueue.requeue(consumerId, commitContext);
+  }
+
+  @Override
   public int refreshInFlightEventLeases(
       final String consumerId, final List<SubscriptionCommitContext> commitContexts) {
     int refreshedCount = 0;
@@ -436,7 +453,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
           brokerId);
       return;
     }
-    final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
+    final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName, isTableModel());
     final SubscriptionPrefetchingQueue prefetchingQueue;
     if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(topicFormat)) {
       prefetchingQueue =
@@ -465,7 +482,7 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   public void updateCompletedTopicNames(final String topicName) {
     // mark topic name completed only for topic of snapshot mode
     if (SubscriptionAgent.topic()
-        .getTopicMode(topicName)
+        .getTopicMode(topicName, isTableModel())
         .equals(TopicConstant.MODE_SNAPSHOT_VALUE)) {
       completedTopicNames.put(topicName, topicName);
     }
@@ -487,7 +504,9 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     prefetchingQueue.markClosed();
 
     // mark topic name completed only for topic of snapshot mode
-    if (SubscriptionAgent.topic().getTopicMode(topicName).equals(TopicConstant.MODE_SNAPSHOT_VALUE)
+    if (SubscriptionAgent.topic()
+            .getTopicMode(topicName, isTableModel())
+            .equals(TopicConstant.MODE_SNAPSHOT_VALUE)
         && prefetchingQueue.isCompleted()) {
       completedTopicNames.put(topicName, topicName);
     }
@@ -506,6 +525,10 @@ public class SubscriptionBroker implements ISubscriptionBroker {
             .PIPE_LOG_SUBSCRIPTION_DROP_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_21F313CB,
         topicName,
         brokerId);
+  }
+
+  private boolean isTableModel() {
+    return SubscriptionAgent.consumer().isTableModel(brokerId);
   }
 
   @Override

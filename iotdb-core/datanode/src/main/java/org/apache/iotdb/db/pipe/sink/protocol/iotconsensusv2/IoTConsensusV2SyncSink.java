@@ -156,7 +156,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                   .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_S_BECAUSE_S_9710318F,
               tabletInsertionEvent,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
   }
 
@@ -181,7 +182,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                   .PIPE_EXCEPTION_FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_S_BECAUSE_S_21AD3263,
               tsFileInsertionEvent,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
   }
 
@@ -230,7 +232,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               getFollowerUrl().getPort(),
               TABLET_BATCH_SCENARIO,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
   }
 
@@ -278,7 +281,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               getFollowerUrl().getPort(),
               DELETION_SCENARIO,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
 
     final TSStatus status = resp.getStatus();
@@ -346,7 +350,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               getFollowerUrl().getPort(),
               TABLET_INSERTION_NODE_SCENARIO,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
 
     final TSStatus status = resp.getStatus();
@@ -420,7 +425,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               getFollowerUrl().getPort(),
               TSFILE_SCENARIO,
               e.getMessage()),
-          Integer.MAX_VALUE);
+          Integer.MAX_VALUE,
+          e);
     }
 
     final TSStatus status = resp.getStatus();
@@ -487,7 +493,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                       .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_FILE_S_BECAUSE_S_3C673B7A,
                   file,
                   e.getMessage()),
-              Integer.MAX_VALUE);
+              Integer.MAX_VALUE,
+              e);
         }
 
         position += readLength;

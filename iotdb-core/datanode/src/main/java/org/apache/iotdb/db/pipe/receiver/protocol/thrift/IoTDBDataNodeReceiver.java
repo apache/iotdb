@@ -109,6 +109,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
+import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
@@ -610,7 +611,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws IOException {
     return isUsingAsyncLoadTsFileStrategy.get()
-        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath), false)
+        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath), false, null)
         : loadTsFileSync(null, fileAbsolutePath, false);
   }
 
@@ -625,19 +626,101 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final PipeTransferTsFileSealWithModReq tsFileSealReq = (PipeTransferTsFileSealWithModReq) req;
     final String databaseName = tsFileSealReq.getDatabaseNameByTsFileName();
     final boolean shouldWaitForSchemaBeforeLoad = tsFileSealReq.shouldWaitForSchemaBeforeLoad();
-    // TsFile's absolute path will be the second element when the request contains a mod file.
-    return isUsingAsyncLoadTsFileStrategy.get()
-        ? loadTsFileAsync(databaseName, fileAbsolutePaths, shouldWaitForSchemaBeforeLoad)
-        : loadTsFileSync(
-            databaseName,
-            fileAbsolutePaths.get(req.getFileNames().size() - 1),
-            shouldWaitForSchemaBeforeLoad);
+    final String taskId = tsFileSealReq.getConversionTaskId();
+    final boolean asyncLoadOnTypeMismatch = tsFileSealReq.shouldAsyncLoadOnTypeMismatch();
+    final TSStatus duplicateStatus =
+        PipeTsFileConversionTaskManager.registerAndGetDuplicateStatus(
+            taskId, asyncLoadOnTypeMismatch);
+    if (duplicateStatus != null) {
+      return duplicateStatus;
+    }
+    PipeTsFileConversionTaskManager.enter(taskId);
+    try {
+      final TSStatus status;
+      if (isUsingAsyncLoadTsFileStrategy.get()) {
+        status =
+            loadTsFileAsync(databaseName, fileAbsolutePaths, shouldWaitForSchemaBeforeLoad, taskId);
+      } else {
+        PipeTsFileConversionTaskManager.markRunning(taskId);
+        status =
+            loadTsFileSync(
+                databaseName,
+                fileAbsolutePaths.get(req.getFileNames().size() - 1),
+                shouldWaitForSchemaBeforeLoad);
+      }
+
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (!isUsingAsyncLoadTsFileStrategy.get()) {
+          PipeTsFileConversionTaskManager.markSuccess(taskId);
+        }
+        return status;
+      }
+
+      if (shouldTakeOverToAsyncLoad(
+          status,
+          isUsingAsyncLoadTsFileStrategy.get(),
+          shouldConvertDataTypeOnTypeMismatch,
+          asyncLoadOnTypeMismatch,
+          PipeTsFileConversionTaskManager.isTypeMismatchDetected(taskId))) {
+        PipeTsFileConversionTaskManager.clearCurrentContext();
+        PipeTsFileConversionTaskManager.prepareForActiveLoad(taskId);
+        try {
+          final TSStatus takeoverStatus =
+              loadTsFileAsync(
+                  databaseName, fileAbsolutePaths, shouldWaitForSchemaBeforeLoad, taskId);
+          if (takeoverStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return takeoverStatus;
+          }
+        } catch (final Exception ignored) {
+          // Retry only the durable handoff on the next seal of the same logical task.
+        }
+        PipeTsFileConversionTaskManager.markRetryable(taskId, status);
+        return status;
+      }
+
+      // Before active-load ownership, pipe loads have always been retried by the sender after any
+      // load failure (for example, while the receiver's schema or permissions are being
+      // established). Keep that behavior with the task manager: a duplicate seal claims the same
+      // task again instead of receiving a terminal copy of the first transient error.
+      // markRetryable deliberately has no effect after active load owns the task; its worker then
+      // decides whether a failure is retryable or terminal.
+      PipeTsFileConversionTaskManager.markRetryable(taskId, status);
+      return status;
+    } catch (final Exception e) {
+      final TSStatus status =
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
+      PipeTsFileConversionTaskManager.markRetryable(taskId, status);
+      throw e;
+    } finally {
+      PipeTsFileConversionTaskManager.leave();
+    }
+  }
+
+  static boolean shouldTakeOverToAsyncLoad(
+      final TSStatus status,
+      final boolean usingAsyncLoadStrategy,
+      final boolean shouldConvertOnTypeMismatch,
+      final boolean asyncLoadOnTypeMismatch,
+      final boolean typeMismatchDetected) {
+    return !usingAsyncLoadStrategy
+        && shouldConvertOnTypeMismatch
+        && asyncLoadOnTypeMismatch
+        && !isLoadTemporarilyUnavailable(status)
+        && typeMismatchDetected;
+  }
+
+  private static boolean isLoadTemporarilyUnavailable(final TSStatus status) {
+    return status != null
+        && (status.getCode() == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
+            || status.getCode()
+                == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode());
   }
 
   private TSStatus loadTsFileAsync(
       final String dataBaseName,
       final List<String> absolutePaths,
-      final boolean shouldWaitForSchemaBeforeLoad)
+      final boolean shouldWaitForSchemaBeforeLoad,
+      final String conversionTaskId)
       throws IOException {
     final Map<String, String> loadAttributes =
         buildLoadTsFileAttributesForAsync(
@@ -645,12 +728,33 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             shouldConvertDataTypeOnTypeMismatch,
             validateTsFile.get(),
             shouldMarkAsPipeRequest.get(),
-            shouldWaitForSchemaBeforeLoad);
+            shouldWaitForSchemaBeforeLoad,
+            conversionTaskId);
 
     if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException(DataNodePipeMessages.LOAD_ACTIVE_LISTENING_PIPE_DIR_IS_NOT);
     }
+    PipeTsFileConversionTaskManager.markReceiverOwned(conversionTaskId);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  protected boolean shouldDeleteSealedFilesOnFailure(
+      final PipeTransferFileSealReqV2 req, final TSStatus loadStatus) {
+    if (!(req instanceof PipeTransferTsFileSealWithModReq)) {
+      return true;
+    }
+
+    final String taskId = ((PipeTransferTsFileSealWithModReq) req).getConversionTaskId();
+    final PipeTsFileConversionTaskManager.Task task = PipeTsFileConversionTaskManager.get(taskId);
+    // Keep a retryable, receiver-local task's input in the staging directory. This is required for
+    // both memory-pressure pauses and a failed durable handoff; a subsequent seal with the same
+    // stable task id can then observe the task or re-attempt the handoff without losing its input.
+    return task == null
+        || task.isReceiverOwned()
+        || (task.getState() != PipeTsFileConversionTaskManager.State.PENDING
+            && task.getState() != PipeTsFileConversionTaskManager.State.RUNNING
+            && task.getState() != PipeTsFileConversionTaskManager.State.PAUSED);
   }
 
   static Map<String, String> buildLoadTsFileAttributesForAsync(
@@ -663,7 +767,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         shouldConvertDataTypeOnTypeMismatch,
         validateTsFile,
         shouldMarkAsPipeRequest,
-        false);
+        false,
+        null);
   }
 
   static Map<String, String> buildLoadTsFileAttributesForAsync(
@@ -672,6 +777,22 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
       final boolean shouldWaitForSchemaBeforeLoad) {
+    return buildLoadTsFileAttributesForAsync(
+        dataBaseName,
+        shouldConvertDataTypeOnTypeMismatch,
+        validateTsFile,
+        shouldMarkAsPipeRequest,
+        shouldWaitForSchemaBeforeLoad,
+        null);
+  }
+
+  static Map<String, String> buildLoadTsFileAttributesForAsync(
+      final String dataBaseName,
+      final boolean shouldConvertDataTypeOnTypeMismatch,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest,
+      final boolean shouldWaitForSchemaBeforeLoad,
+      final String conversionTaskId) {
     return ActiveLoadPathHelper.buildAttributes(
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
@@ -680,7 +801,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         !shouldWaitForSchemaBeforeLoad,
         null,
         shouldMarkAsPipeRequest,
-        AuthorityChecker.SUPER_USER);
+        AuthorityChecker.SUPER_USER,
+        conversionTaskId);
   }
 
   private TSStatus loadTsFileSync(

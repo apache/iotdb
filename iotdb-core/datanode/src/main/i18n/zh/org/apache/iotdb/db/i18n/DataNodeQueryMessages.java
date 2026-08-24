@@ -2799,6 +2799,14 @@ public final class DataNodeQueryMessages {
   public static final String UNSUPPORTED_COPY_TO_FORMAT_S_SUPPORTED_FORMATS_S =
 
       "不支持 COPY_TO 格式 '%s'。支持的格式：%s";
+  public static final String EXCEPTION_DUPLICATE_TAG_COLUMN_IN_TAGS_CLAUSE_ARG_61FD5422 =
+      "TAGS 子句中存在重复的 TAG 列：%s";
+  public static final String EXCEPTION_DUPLICATE_OPTION_IN_COPY_TO_STATEMENT_ARG_99CFE09F =
+      "COPY TO 语句中存在重复的选项：%s";
+  public static final String EXCEPTION_FAILED_TO_WRITE_THE_TARGET_FILE_ARG_5AC3025D =
+      "写入目标文件失败：%s";
+  public static final String LOG_FAILED_TO_WRITE_THE_TARGET_FILE_DURING_COPY_TO_EE25EF37 =
+      "COPY TO 写入目标文件失败";
   public static final String SIMULTANEOUS_SETTING_OF_MONTHLY_AND_NON_MONTHLY_INTERVALS_IS_NOT_SUPPORTED =
       "不支持同时设置月级和非月级时间间隔。";
   public static final String DON_T_NEED_TO_SPECIFY_TIME_COLUMN_WHILE_EITHER_TIME_BOUND_OR_FILL_GROUP_PARAMETER_IS_NOT =
@@ -4416,6 +4424,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_UDFNAME_IS_NULL_83E9039B = "udfName 不能为空";
   public static final String EXCEPTION_URISTRING_IS_NULL_E7458C6A = "uriString 不能为空";
   public static final String EXCEPTION_FILEPATH_IS_NULL_84CE8A66 = "filePath 不能为空";
+  public static final String EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181 =
+      "LOAD TSFILE 路径不能为空。";
   public static final String EXCEPTION_DETAILS_IS_NULL_8EDEEA03 = "details 不能为空";
   public static final String EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B = "columnCategory 不能为空";
   public static final String EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F = "argumentName 不能为空";
@@ -4525,6 +4535,10 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_ONLY_HAVE_TWO_ARGUMENTS_3D12DCFD = "聚合函数 [%s] 应当只有两个参数";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_VALUE_COLUMN_AS_NUMERIC_TYPE_INT32_INT64_FLOAT_DOUBLE_TIMESTAMP_97A6CA87 = "聚合函数 [%s] 的值列应为数值类型 [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
   public static final String EXCEPTION_AGGREGATION_FUNCTIONS_ARG_SHOULD_HAVE_PERCENTAGE_AS_DECIMAL_TYPE_57033ADF = "聚合函数 [%s] 的百分比参数应为 decimal 类型";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_2_ARGUMENTS_VALUE_TIME_E2F55C08 = "聚合函数 [%s] 需要 2 个参数：value、time";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B = "聚合函数 [%s] 需要 4 个参数：value、time、window_start、window_end";
+  public static final String EXCEPTION_AGGREGATE_FUNCTION_ARG_ONLY_SUPPORTS_INT32_INT64_FLOAT_AND_DOUBLE_AS_THE_FIRST_ARGUMENT_8D201434 = "聚合函数 [%s] 的第一个参数仅支持 INT32、INT64、FLOAT 和 DOUBLE 类型";
+  public static final String EXCEPTION_THE_TIME_ARGUMENTS_OF_AGGREGATE_FUNCTION_ARG_SHOULD_BE_TIMESTAMP_OR_INT64_TYPE_9C736DE3 = "聚合函数 [%s] 的时间参数应为 TIMESTAMP 或 INT64 类型";
   public static final String EXCEPTION_CANNOT_NEST_AGGREGATIONS_INSIDE_AGGREGATION_ARG_ARG_6E5073A4 = "不能在聚合 '%s' 中嵌套聚合：%s";
   public static final String EXCEPTION_CANNOT_NEST_WINDOW_FUNCTIONS_INSIDE_AGGREGATION_ARG_ARG_8F94A897 = "不能在聚合 '%s' 中嵌套窗口函数：%s";
   public static final String EXCEPTION_PARTITION_BY_EXPRESSION_ARG_MUST_BE_AN_AGGREGATE_EXPRESSION_OR_APPEAR_IN_GROUP_BY_CLAUSE_E3C696D6 = "PARTITION BY 表达式 '%s' 必须是聚合表达式或出现在 GROUP BY 子句中";
