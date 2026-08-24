@@ -19,6 +19,10 @@
 
 package com.timecho.iotdb.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.i18n.UtilMessages;
+import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -63,5 +67,35 @@ public class TimechoConfigManagerTest {
     List<String> licenses = Collections.singletonList("02");
 
     Assert.assertFalse(TimechoConfigManager.useOneLicenseForAllConfigNodes(licenses));
+  }
+
+  @Test
+  public void schemaWritesAreRejectedWhenConfigNodeIsReadOnly() {
+    TSStatus status = TimechoConfigManager.checkSchemaWritePermission(true, true);
+
+    Assert.assertEquals(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), status.getCode());
+  }
+
+  @Test
+  public void schemaWritesAreRejectedWhenConfigNodeIsNotActivated() {
+    TSStatus status = TimechoConfigManager.checkSchemaWritePermission(false, false);
+
+    Assert.assertEquals(TSStatusCode.LICENSE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        UtilMessages
+            .MESSAGE_SCHEMA_WRITE_OPERATIONS_ARE_NOT_ALLOWED_UNTIL_THIS_NODE_IS_ACTIVATED_860A4054,
+        status.getMessage());
+  }
+
+  @Test
+  public void unactivatedStatusTakesPrecedenceOverReadOnlyStatus() {
+    TSStatus status = TimechoConfigManager.checkSchemaWritePermission(true, false);
+
+    Assert.assertEquals(TSStatusCode.LICENSE_ERROR.getStatusCode(), status.getCode());
+  }
+
+  @Test
+  public void schemaWritesAreAllowedWhenConfigNodeIsActivatedAndWritable() {
+    Assert.assertNull(TimechoConfigManager.checkSchemaWritePermission(false, true));
   }
 }

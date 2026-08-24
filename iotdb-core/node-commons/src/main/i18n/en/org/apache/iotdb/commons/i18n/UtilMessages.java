@@ -247,6 +247,9 @@ public final class UtilMessages {
   public static final String MESSAGE_INTERNAL_SERVER_ERROR_12F61DF7 = "Internal server error.";
   public static final String MESSAGE_MEET_ERROR_CLOSE_OPERATION_1C7D0589 = "Meet error in close operation.";
   public static final String MESSAGE_FAIL_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_READ_ONLY_10CA1ED2 = "Fail to do non-query operations because system is read-only.";
+  public static final String
+      MESSAGE_SCHEMA_WRITE_OPERATIONS_ARE_NOT_ALLOWED_UNTIL_THIS_NODE_IS_ACTIVATED_860A4054 =
+          "Schema write operations are not allowed until this node is activated.";
   public static final String MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0 = "Disk space is insufficient.";
   public static final String MESSAGE_FAILED_TO_WRITE_THE_TARGET_FILE_4C48CE25 =
       "Failed to write the target file.";

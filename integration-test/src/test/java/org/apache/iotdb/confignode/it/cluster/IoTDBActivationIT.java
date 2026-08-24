@@ -22,7 +22,9 @@ package org.apache.iotdb.confignode.it.cluster;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.LicenseException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllActivationStatusResp;
@@ -129,6 +131,9 @@ public class IoTDBActivationIT {
   private static final int baseTest = 0;
   private static final int normalTest = 0;
   private static final int bigSlowTest = 0;
+
+  private static final String TREE_SCHEMA_WRITE_DATABASE = "root.schema_write_guard";
+  private static final String TABLE_SCHEMA_WRITE_DATABASE = "schema_write_guard_table";
 
   @BeforeClass
   public static void setUpClass() throws IOException {
@@ -1261,6 +1266,63 @@ public class IoTDBActivationIT {
   }
 
   @Test
+  public void schemaWritesShouldBeRejectedWhenReadOnly() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment(1, 0);
+    try (SyncConfigNodeIServiceClient leaderClient =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      leaderClient.setLicenseFile(LICENSE_FILE_NAME, baseLicenseContent);
+      testStatusWithRetry(leaderClient, Collections.singletonList(ACTIVE_ACTIVATED));
+      EnvFactory.getEnv().registerNewDataNode(true);
+      testStatusWithRetry(leaderClient, Arrays.asList(ACTIVE_ACTIVATED, ACTIVATED));
+
+      try (Connection treeConnection = EnvFactory.getEnv().getConnection();
+          Statement treeStatement = treeConnection.createStatement();
+          Connection tableConnection = EnvFactory.getEnv().getTableConnection();
+          Statement tableStatement = tableConnection.createStatement()) {
+        prepareSchemaWriteGuardTestData(treeStatement, tableStatement);
+
+        treeStatement.execute("SET SYSTEM TO READONLY ON LOCAL");
+        EnvFactory.getEnv()
+            .ensureNodeStatus(
+                Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(0)),
+                Collections.singletonList(NodeStatus.ReadOnly));
+        assertSchemaWritesRejected(
+            treeStatement,
+            tableStatement,
+            TSStatusCode.SYSTEM_READ_ONLY,
+            UtilMessages.MESSAGE_FAIL_DO_NON_QUERY_OPERATIONS_BECAUSE_SYSTEM_READ_ONLY_10CA1ED2);
+      }
+    }
+
+    allCheckPass();
+  }
+
+  @Test
+  public void schemaWritesShouldBeRejectedWhenUnactivated() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment(1, 0);
+    try (SyncConfigNodeIServiceClient leaderClient =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      leaderClient.setLicenseFile(LICENSE_FILE_NAME, baseLicenseContent);
+      testStatusWithRetry(leaderClient, Collections.singletonList(ACTIVE_ACTIVATED));
+      EnvFactory.getEnv().registerNewDataNode(true);
+      testStatusWithRetry(leaderClient, Arrays.asList(ACTIVE_ACTIVATED, ACTIVATED));
+
+      try (Connection treeConnection = EnvFactory.getEnv().getConnection();
+          Statement treeStatement = treeConnection.createStatement();
+          Connection tableConnection = EnvFactory.getEnv().getTableConnection();
+          Statement tableStatement = tableConnection.createStatement()) {
+        prepareSchemaWriteGuardTestData(treeStatement, tableStatement);
+
+        leaderClient.deleteLicenseFile(LICENSE_FILE_NAME);
+        testPassiveUnactivated(leaderClient, 1, 1);
+        assertConfigNodeSchemaWritesRejectedWhenUnactivated(treeStatement, tableStatement);
+      }
+    }
+
+    allCheckPass();
+  }
+
+  @Test
   public void timeHackTest() throws Exception {
     final String specialLicenseContent =
         buildLicenseFromBase(LICENSE_ISSUE_TIMESTAMP_NAME, "2701243842000");
@@ -1299,6 +1361,155 @@ public class IoTDBActivationIT {
   // endregion
 
   // region Helpers
+
+  private void prepareSchemaWriteGuardTestData(
+      final Statement treeStatement, final Statement tableStatement) throws SQLException {
+    treeStatement.execute("CREATE DATABASE " + TREE_SCHEMA_WRITE_DATABASE);
+    treeStatement.execute("CREATE TIMESERIES " + TREE_SCHEMA_WRITE_DATABASE + ".d1.s1 INT32");
+    treeStatement.execute("CREATE TIMESERIES " + TREE_SCHEMA_WRITE_DATABASE + ".d1.s2 INT32");
+    treeStatement.execute(
+        "CREATE VIEW "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.v1 AS "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.s1");
+    treeStatement.execute(
+        "CREATE VIEW "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.v2 AS "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.s2");
+
+    tableStatement.execute("CREATE DATABASE " + TABLE_SCHEMA_WRITE_DATABASE);
+    tableStatement.execute("USE " + TABLE_SCHEMA_WRITE_DATABASE);
+    tableStatement.execute(
+        "CREATE TABLE base_table("
+            + "device_id STRING TAG, attr STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT32 FIELD)");
+    tableStatement.execute(
+        "INSERT INTO base_table(time, device_id, attr, s1, s2) " + "VALUES(1, 'd1', 'a1', 1, 2)");
+    tableStatement.execute("CREATE TABLE table_to_drop(device_id STRING TAG, s1 INT32 FIELD)");
+    tableStatement.execute(
+        "CREATE WRITABLE VIEW writable_view AS "
+            + "SELECT device_id AS dev, attr, s1, s2 FROM base_table");
+  }
+
+  private void assertSchemaWritesRejected(
+      final Statement treeStatement,
+      final Statement tableStatement,
+      final TSStatusCode expectedStatusCode,
+      final String expectedMessage) {
+    assertSchemaWritesRejected(
+        treeStatement,
+        tableStatement,
+        treeModelSchemaWrites(),
+        tableModelSchemaWrites(),
+        expectedStatusCode,
+        expectedMessage);
+  }
+
+  private void assertConfigNodeSchemaWritesRejectedWhenUnactivated(
+      final Statement treeStatement, final Statement tableStatement) {
+    // CREATE TIMESERIES and tree-model CREATE VIEW are executed directly by the DataNode. They
+    // retain the DataNode-side behavior when the RegionWriteExecutor activation guard is absent;
+    // the remaining statements are rejected by ConfigNode with the activation-specific message.
+    final List<String> configNodeTreeModelSchemaWrites =
+        treeModelSchemaWrites().stream()
+            .filter(sql -> !sql.startsWith("CREATE TIMESERIES") && !sql.startsWith("CREATE VIEW"))
+            .collect(Collectors.toList());
+    assertSchemaWritesRejected(
+        treeStatement,
+        tableStatement,
+        configNodeTreeModelSchemaWrites,
+        tableModelSchemaWrites(),
+        TSStatusCode.LICENSE_ERROR,
+        UtilMessages
+            .MESSAGE_SCHEMA_WRITE_OPERATIONS_ARE_NOT_ALLOWED_UNTIL_THIS_NODE_IS_ACTIVATED_860A4054);
+  }
+
+  private void assertSchemaWritesRejected(
+      final Statement treeStatement,
+      final Statement tableStatement,
+      final List<String> treeModelSchemaWrites,
+      final List<String> tableModelSchemaWrites,
+      final TSStatusCode expectedStatusCode,
+      final String expectedMessage) {
+    treeModelSchemaWrites.forEach(
+        sql -> assertSchemaWriteRejected(treeStatement, sql, expectedStatusCode, expectedMessage));
+    tableModelSchemaWrites.forEach(
+        sql -> assertSchemaWriteRejected(tableStatement, sql, expectedStatusCode, expectedMessage));
+  }
+
+  private List<String> treeModelSchemaWrites() {
+    return Arrays.asList(
+        "CREATE DATABASE root.schema_write_guard_new",
+        "ALTER DATABASE " + TREE_SCHEMA_WRITE_DATABASE + " WITH MAX_SCHEMA_REGION_GROUP_NUM=2",
+        "DELETE DATABASE " + TREE_SCHEMA_WRITE_DATABASE,
+        "CREATE TIMESERIES " + TREE_SCHEMA_WRITE_DATABASE + ".d1.s_new INT32",
+        "ALTER TIMESERIES "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.s1 RENAME TO "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.s1_alias",
+        "ALTER TIMESERIES " + TREE_SCHEMA_WRITE_DATABASE + ".d1.s2 SET DATA TYPE INT64",
+        "ALTER TIMESERIES "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.s1 SET STORAGE_PROPERTIES encoding=PLAIN, compressor=LZMA2",
+        "DELETE TIMESERIES " + TREE_SCHEMA_WRITE_DATABASE + ".d1.s1",
+        "CREATE VIEW "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.v_new AS "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.s1",
+        "ALTER VIEW "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.v2 AS "
+            + TREE_SCHEMA_WRITE_DATABASE
+            + ".d1.s1",
+        "DELETE VIEW " + TREE_SCHEMA_WRITE_DATABASE + ".d1.v1",
+        "SET TTL TO " + TREE_SCHEMA_WRITE_DATABASE + " 1000",
+        "UNSET TTL TO " + TREE_SCHEMA_WRITE_DATABASE);
+  }
+
+  private List<String> tableModelSchemaWrites() {
+    return Arrays.asList(
+        "CREATE DATABASE schema_write_guard_table_new",
+        "ALTER DATABASE " + TABLE_SCHEMA_WRITE_DATABASE + " SET PROPERTIES TTL=1000",
+        "DROP DATABASE " + TABLE_SCHEMA_WRITE_DATABASE,
+        "CREATE TABLE table_new(device_id STRING TAG, s1 INT32 FIELD)",
+        "ALTER TABLE base_table ADD COLUMN s3 INT64 FIELD",
+        "ALTER TABLE base_table ALTER COLUMN s1 SET DATA TYPE INT64",
+        "ALTER TABLE base_table DROP COLUMN s2",
+        "ALTER TABLE base_table SET PROPERTIES TTL=1000",
+        "COMMENT ON TABLE base_table IS 'blocked'",
+        "COMMENT ON COLUMN base_table.s1 IS 'blocked'",
+        "DROP TABLE table_to_drop",
+        "DELETE DEVICES FROM base_table WHERE device_id = 'd1'",
+        "CREATE WRITABLE VIEW writable_view_new AS "
+            + "SELECT device_id AS dev, attr, s1, s2 FROM base_table",
+        "ALTER VIEW writable_view RENAME TO writable_view_renamed",
+        "ALTER VIEW writable_view ADD COLUMN s3 INT64 FIELD",
+        "ALTER VIEW writable_view ALTER COLUMN s1 SET DATA TYPE INT64",
+        "ALTER VIEW writable_view RENAME COLUMN s1 TO s1_renamed",
+        "ALTER VIEW writable_view DROP COLUMN s2",
+        "ALTER VIEW writable_view SET PROPERTIES TTL=1000",
+        "COMMENT ON VIEW writable_view IS 'blocked'",
+        "COMMENT ON COLUMN writable_view.s1 IS 'blocked'",
+        "DROP VIEW writable_view");
+  }
+
+  private void assertSchemaWriteRejected(
+      final Statement statement,
+      final String sql,
+      final TSStatusCode expectedStatusCode,
+      final String expectedMessage) {
+    final SQLException exception =
+        Assert.assertThrows(SQLException.class, () -> statement.execute(sql));
+    Assert.assertEquals(sql, expectedStatusCode.getStatusCode(), exception.getErrorCode());
+    Assert.assertTrue(
+        sql + " returned unexpected message: " + exception.getMessage(),
+        exception.getMessage().contains(expectedMessage));
+  }
+
   private static void waitLicenseReload() {
     saferSleep(RegulateManager.FILE_MONITOR_INTERVAL * 2);
   }

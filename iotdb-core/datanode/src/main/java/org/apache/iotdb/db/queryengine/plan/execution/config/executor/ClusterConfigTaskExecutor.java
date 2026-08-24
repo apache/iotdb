@@ -66,6 +66,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -109,6 +110,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
@@ -477,6 +479,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setDatabase(
       final DatabaseSchemaStatement databaseSchemaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
 
     final String databaseName = databaseSchemaStatement.getDatabasePath().getFullPath();
     if (databaseName.length() > MAX_DATABASE_NAME_LENGTH
@@ -531,6 +536,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterDatabase(
       final DatabaseSchemaStatement databaseSchemaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     // Construct request using statement
     final TDatabaseSchema databaseSchema =
         DatabaseSchemaTask.constructDatabaseSchema(databaseSchemaStatement);
@@ -609,6 +617,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deleteDatabase(
       final DeleteDatabaseStatement deleteDatabaseStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     final TDeleteDatabasesReq req =
         new TDeleteDatabasesReq(deleteDatabaseStatement.getPrefixPath()).setIsTableModel(false);
     try (final ConfigNodeClient client =
@@ -1265,7 +1276,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     List<String> pathPattern = Arrays.asList(setTTLStatement.getPath().getNodes());
     TSetTTLReq setTTLReq = new TSetTTLReq(pathPattern, setTTLStatement.getTTL(), false);
     try (ConfigNodeClient configNodeClient =
@@ -3493,6 +3507,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String queryId,
       final AlterEncodingCompressorStatement alterEncodingCompressorStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     // Will only occur if no permission
     if (alterEncodingCompressorStatement.getPatternTree().isEmpty()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -3551,6 +3568,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deleteTimeSeries(
       final String queryId, final DeleteTimeSeriesStatement deleteTimeSeriesStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     final TDeleteTimeSeriesReq req =
         new TDeleteTimeSeriesReq(
             queryId,
@@ -3594,6 +3614,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deleteLogicalView(
       final String queryId, final DeleteLogicalViewStatement deleteLogicalViewStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     final TDeleteLogicalViewReq req =
         new TDeleteLogicalViewReq(
             queryId,
@@ -3631,6 +3654,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> renameLogicalView(
       final String queryId, final RenameLogicalViewStatement renameLogicalViewStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
 
     // check path
     final PartialPath oldName = renameLogicalViewStatement.getOldName();
@@ -3717,6 +3743,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterLogicalView(
       final AlterLogicalViewStatement alterLogicalViewStatement, final MPPQueryContext context) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     final CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
     createLogicalViewStatement.setTargetPaths(alterLogicalViewStatement.getTargetPaths());
     createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
@@ -3795,6 +3824,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> renameTimeSeries(
       final RenameTimeSeriesStatement renameTimeSeriesStatement, final MPPQueryContext context) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
 
     // Serialize the old path and new path
     final ByteArrayOutputStream oldPathStream = new ByteArrayOutputStream();
@@ -3866,6 +3898,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public TSStatus alterLogicalViewByPipe(
       final AlterLogicalViewNode alterLogicalViewNode, final boolean shouldMarkAsPipeRequest) {
+    final TSStatus schemaWriteRejection = getSchemaWriteRejectionStatus();
+    if (schemaWriteRejection != null) {
+      return schemaWriteRejection;
+    }
     final Map<PartialPath, ViewExpression> viewPathToSourceMap =
         alterLogicalViewNode.getViewPathToSourceMap();
 
@@ -3920,6 +3956,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterTimeSeriesDataType(
       final String queryId, final AlterTimeSeriesStatement alterTimeSeriesStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     // Will only occur if no permission
     if (alterTimeSeriesStatement.getPath() == null) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -5074,6 +5113,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> dropDatabase(
       final DropDB dropDB, final IClientSession session) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     final TDeleteDatabasesReq req =
         new TDeleteDatabasesReq(Collections.singletonList(dropDB.getDbName().getValue()))
             .setIsTableModel(true);
@@ -5124,6 +5166,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createDatabase(
       final TDatabaseSchema databaseSchema, final boolean ifExists) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
 
     // Construct request using statement
     try (final ConfigNodeClient configNodeClient =
@@ -5157,6 +5202,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterDatabase(
       final TDatabaseSchema databaseSchema, final boolean ifNotExists) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
 
     // Construct request using statement
     try (final ConfigNodeClient configNodeClient =
@@ -5192,6 +5240,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createTable(
       final TsTable table, final String database, final boolean ifNotExists) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5226,6 +5277,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private boolean isSchemaWriteRejected(final SettableFuture<ConfigTaskResult> future) {
+    final TSStatus status = getSchemaWriteRejectionStatus();
+    if (status == null) {
+      return false;
+    }
+    future.setException(new IoTDBException(status));
+    return true;
+  }
+
+  private TSStatus getSchemaWriteRejectionStatus() {
+    if (CommonDescriptor.getInstance().getConfig().isUnactivated()) {
+      return new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode())
+          .setMessage(
+              UtilMessages
+                  .MESSAGE_SCHEMA_WRITE_OPERATIONS_ARE_NOT_ALLOWED_UNTIL_THIS_NODE_IS_ACTIVATED_860A4054);
+    }
+    if (!CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      return null;
+    }
+    return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
   }
 
   @Override
@@ -5323,6 +5396,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final boolean tableIfExists,
       final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5367,6 +5443,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final boolean columnIfExists,
       final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5406,6 +5485,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       boolean ifColumnExists,
       final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5445,6 +5527,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final boolean columnIfExists,
       final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5491,6 +5576,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final boolean columnIfExists,
       final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5535,6 +5623,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final boolean ifExists,
       final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5577,6 +5668,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String comment,
       final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5621,6 +5715,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final String comment,
       final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5665,6 +5762,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final boolean ifExists,
       final boolean isView) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 
@@ -5695,6 +5795,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> deleteDevice(
       final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     if (!deleteDevice.isMayDeleteDevice()) {
       DeleteDeviceTask.buildTSBlock(0, future);
       return future;
@@ -5790,6 +5893,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final boolean replace,
       final Map<String, String> viewColumnCommentMap) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (isSchemaWriteRejected(future)) {
+      return future;
+    }
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
 

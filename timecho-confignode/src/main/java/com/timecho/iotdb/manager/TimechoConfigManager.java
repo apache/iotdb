@@ -34,17 +34,33 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.LicenseException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckMaxClientNumResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeActivateInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRenameTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowActivationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -67,6 +83,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -143,6 +160,114 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
   @Override
   public RegulateManager getActivationManager() {
     return regulateManager;
+  }
+
+  private TSStatus checkSchemaWritePermission() {
+    return checkSchemaWritePermission(
+        CommonDescriptor.getInstance().getConfig().isReadOnly(), regulateManager.isActivated());
+  }
+
+  static TSStatus checkSchemaWritePermission(boolean readOnly, boolean activated) {
+    if (!activated) {
+      return new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode())
+          .setMessage(
+              UtilMessages
+                  .MESSAGE_SCHEMA_WRITE_OPERATIONS_ARE_NOT_ALLOWED_UNTIL_THIS_NODE_IS_ACTIVATED_860A4054);
+    }
+    if (readOnly) {
+      return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
+    }
+    return null;
+  }
+
+  @Override
+  public TSStatus setDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.setDatabase(databaseSchemaPlan) : status;
+  }
+
+  @Override
+  public TSStatus alterDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.alterDatabase(databaseSchemaPlan) : status;
+  }
+
+  @Override
+  public synchronized TSStatus deleteDatabases(final TDeleteDatabasesReq tDeleteReq) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.deleteDatabases(tDeleteReq) : status;
+  }
+
+  @Override
+  public synchronized TSStatus dangerDeleteDatabase(final String database) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.dangerDeleteDatabase(database) : status;
+  }
+
+  @Override
+  public TSStatus setTTL(final SetTTLPlan setTTLPlan) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.setTTL(setTTLPlan) : status;
+  }
+
+  @Override
+  public TSStatus createTable(final ByteBuffer tableInfo) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.createTable(tableInfo) : status;
+  }
+
+  @Override
+  public TSStatus createTableView(final TCreateTableViewReq req) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.createTableView(req) : status;
+  }
+
+  @Override
+  public TSStatus alterOrDropTable(final TAlterOrDropTableReq req) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.alterOrDropTable(req) : status;
+  }
+
+  @Override
+  public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.deleteDevice(req) : new TDeleteTableDeviceResp(status);
+  }
+
+  @Override
+  public TSStatus deleteLogicalView(final TDeleteLogicalViewReq req) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.deleteLogicalView(req) : status;
+  }
+
+  @Override
+  public TSStatus alterLogicalView(final TAlterLogicalViewReq req) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.alterLogicalView(req) : status;
+  }
+
+  @Override
+  public TSStatus alterEncodingCompressor(final TAlterEncodingCompressorReq req) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.alterEncodingCompressor(req) : status;
+  }
+
+  @Override
+  public TSStatus renameTimeSeries(final TRenameTimeSeriesReq req) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.renameTimeSeries(req) : status;
+  }
+
+  @Override
+  public TSStatus deleteTimeSeries(final TDeleteTimeSeriesReq req) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.deleteTimeSeries(req) : status;
+  }
+
+  @Override
+  public TSStatus alterTimeSeriesDataType(final TAlterTimeSeriesReq req) {
+    final TSStatus status = checkSchemaWritePermission();
+    return status == null ? super.alterTimeSeriesDataType(req) : status;
   }
 
   public synchronized void startApiKeyFileAutoActivationIfConfigured() {
