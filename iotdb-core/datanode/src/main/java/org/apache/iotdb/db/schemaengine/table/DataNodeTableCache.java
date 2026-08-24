@@ -41,6 +41,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -196,6 +197,12 @@ public class DataNodeTableCache implements ITableCache {
                 }
               });
       LOGGER.info(DataNodeSchemaMessages.PRE_UPDATE_TABLE_SUCCESS, database, table.getTableName());
+      // Since a pre-updated table can be used for query planning before commit-release, stale
+      // last cache should stop serving as soon as need_last_cache turns off.
+      if (!table.getCachedNeedLastCache()) {
+        TableDeviceSchemaCache.getInstance().invalidateLastCache(database, table.getTableName());
+      }
+
       if (table instanceof PreDeleteTsTable) {
         if (databaseTableMap.containsKey(database)) {
           databaseTableMap.get(database).remove(table.getTableName());
@@ -280,6 +287,18 @@ public class DataNodeTableCache implements ITableCache {
     return Objects.nonNull(tableVersionPair) ? tableVersionPair.getLeft() : null;
   }
 
+  private @Nullable TsTable getTableFromCache(final String database, final String tableName) {
+    final Map<String, TsTable> tableMap = databaseTableMap.get(database);
+    return Objects.nonNull(tableMap) ? tableMap.get(tableName) : null;
+  }
+
+  private void invalidateLastCacheIfDisabled(
+      final String database, final String tableName, final TsTable currentTable) {
+    if (Objects.nonNull(currentTable) && !currentTable.getCachedNeedLastCache()) {
+      TableDeviceSchemaCache.getInstance().invalidateLastCache(database, tableName);
+    }
+  }
+
   private void removeTableFromSpecialStatusMap(final String database, final String tableName) {
     specialStatusMap.computeIfPresent(
         database,
@@ -329,6 +348,7 @@ public class DataNodeTableCache implements ITableCache {
           databaseTableMap
               .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
               .put(tableName, newTable);
+      invalidateLastCacheIfDisabled(database, tableName, newTable);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL,
@@ -613,6 +633,7 @@ public class DataNodeTableCache implements ITableCache {
                       databaseTableMap
                           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
                           .put(tableName, tsTable);
+                      invalidateLastCacheIfDisabled(database, tableName, tsTable);
                     } else if (databaseTableMap.containsKey(database)) {
                       databaseTableMap.get(database).remove(tableName);
                     }
