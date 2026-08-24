@@ -143,6 +143,12 @@ public class TimechoNodeManager extends NodeManager {
     Lottery lottery = configManager.getActivationManager().getLicense();
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setConfigNodeList(getRegisteredConfigNodes());
+    // Keep the restart path available while the cluster is unactivated so operators can install or
+    // replace the license. New DataNode registration keeps its existing activation policy.
+    if (!configManager.getActivationManager().isActivated()) {
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      return resp;
+    }
     // check DataNode's cpu core num limit
     final int previousNodeCpuCores =
         nodeInfo.getDataNodeCpuCoreCount(

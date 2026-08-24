@@ -824,6 +824,12 @@ public class IoTDBActivationIT {
       dataNodeWrappers.get(0).start();
       testStatusWithRetry(leaderClient, Arrays.asList(PASSIVE_UNACTIVATED, UNACTIVATED));
 
+      // An unactivated cluster must still allow an already registered DataNode to restart. This
+      // is required to make the CLI available for installing or replacing the license.
+      dataNodeWrappers.get(0).stopForcibly();
+      dataNodeWrappers.get(0).start();
+      testStatusWithRetry(leaderClient, Arrays.asList(PASSIVE_UNACTIVATED, UNACTIVATED));
+
       // 2. set license, then second datanode failed to start
       leaderClient.setLicenseFile(LICENSE_FILE_NAME, cpuCoreLimit1);
       testStatusWithRetry(leaderClient, Arrays.asList(ACTIVE_ACTIVATED, ACTIVATED));
