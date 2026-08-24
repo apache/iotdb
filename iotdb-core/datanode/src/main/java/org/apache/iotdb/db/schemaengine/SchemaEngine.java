@@ -45,6 +45,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
@@ -55,6 +58,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -74,6 +78,9 @@ public class SchemaEngine {
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final PartialPath AUDIT_LOG_PATH_PATTERN =
+      new PartialPath(new String[] {"root", "__system", "audit", "**"});
 
   private final SchemaRegionLoader schemaRegionLoader;
 
@@ -394,16 +401,54 @@ public class SchemaEngine {
         .filter(
             entry ->
                 targetSchemaIds.contains(entry.getKey().getId())
-                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey())
-                    // Audit logs are stored under the internal system database in dev/1.3.
-                    && !SchemaConstant.SYSTEM_DATABASE.equals(
-                        entry.getValue().getDatabaseFullPath()))
+                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
         .forEach(
             entry ->
                 timeSeriesNum.put(
-                    entry.getKey().getId(),
-                    entry.getValue().getSchemaRegionStatistics().getSeriesNumber(false)));
+                    entry.getKey().getId(), getTimeSeriesNumberForQuota(entry.getValue())));
     return timeSeriesNum;
+  }
+
+  /**
+   * Returns the series count used by schema quota. Audit series are stored below {@code
+   * root.__system.audit} in dev/1.3, while other internal series may share the same system database
+   * and must remain counted.
+   */
+  private long getTimeSeriesNumberForQuota(final ISchemaRegion schemaRegion) {
+    final long totalSeriesNumber = schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false);
+    if (!SchemaConstant.SYSTEM_DATABASE.equals(schemaRegion.getDatabaseFullPath())) {
+      return totalSeriesNumber;
+    }
+
+    long auditSeriesNumber = 0;
+    try {
+      try (ISchemaReader<ITimeSeriesSchemaInfo> reader =
+          schemaRegion.getTimeSeriesReader(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  AUDIT_LOG_PATH_PATTERN,
+                  Collections.emptyMap(),
+                  -1,
+                  0,
+                  false,
+                  null,
+                  false,
+                  SchemaConstant.ALL_MATCH_SCOPE))) {
+        while (reader.hasNext()) {
+          if (!reader.next().isLogicalView()) {
+            auditSeriesNumber++;
+          }
+        }
+        if (!reader.isSuccess()) {
+          logger.warn("Failed to count audit time series for schema quota", reader.getFailure());
+          return totalSeriesNumber;
+        }
+      }
+    } catch (Exception e) {
+      // Keep the heartbeat available if the audit-only scan fails; the next heartbeat retries it.
+      logger.warn("Failed to exclude audit time series from schema quota count", e);
+      return totalSeriesNumber;
+    }
+    return Math.max(0, totalSeriesNumber - auditSeriesNumber);
   }
 
   /**
@@ -446,23 +491,13 @@ public class SchemaEngine {
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
-                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId)
-                      && Optional.ofNullable(schemaRegionMap.get((SchemaRegionId) consensusGroupId))
-                          .map(
-                              schemaRegion ->
-                                  // Audit logs are stored under the internal system database in
-                                  // dev/1.3.
-                                  !SchemaConstant.SYSTEM_DATABASE.equals(
-                                      schemaRegion.getDatabaseFullPath()))
-                          .orElse(false))
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
           .forEach(
               consensusGroupId ->
                   tmp.put(
                       consensusGroupId.getId(),
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
-                          .map(
-                              schemaRegion ->
-                                  schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false))
+                          .map(this::getTimeSeriesNumberForQuota)
                           .orElse(0L)));
     }
   }
