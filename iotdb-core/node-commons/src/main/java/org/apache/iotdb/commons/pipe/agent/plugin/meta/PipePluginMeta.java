@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.meta;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -26,6 +28,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Locale;
 import java.util.Objects;
 
 public class PipePluginMeta {
@@ -41,21 +44,23 @@ public class PipePluginMeta {
 
   public PipePluginMeta(
       String pluginName, String className, boolean isBuiltin, String jarName, String jarMD5) {
-    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this.pluginName =
+        FileUtils.validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
     this.className = Objects.requireNonNull(className);
 
     this.isBuiltin = isBuiltin;
     if (isBuiltin) {
-      this.jarName = jarName;
+      this.jarName = jarName == null ? null : FileUtils.validatePathSegment(jarName);
       this.jarMD5 = jarMD5;
     } else {
-      this.jarName = Objects.requireNonNull(jarName);
+      this.jarName = FileUtils.validatePathSegment(Objects.requireNonNull(jarName));
       this.jarMD5 = Objects.requireNonNull(jarMD5);
     }
   }
 
   public PipePluginMeta(String pluginName, String className) {
-    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this.pluginName =
+        FileUtils.validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
     this.className = Objects.requireNonNull(className);
 
     this.isBuiltin = true;
