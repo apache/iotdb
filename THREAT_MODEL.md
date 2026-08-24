@@ -41,7 +41,7 @@ limitations under the License.
 | --- | --- | --- | --- |
 | Client RPC / session + SQL/query engine | Thrift session protocol (`iotdb-protocol/thrift-datanode`), JDBC, SQL | network (listens), filesystem (TsFile) | **In** *(documented: Thrift modules exist; maintainer: main in-model boundary)* |
 | Authentication / RBAC | login + privilege checks (Users/Roles/Privileges) | — | **In** *(documented)* |
-| Cluster control + consensus + AINode RPC | ConfigNode RPC, ConfigNode/DataNode↔AINode RPC, inter-node consensus (`thrift-confignode`, `thrift-ainode`, `thrift-consensus`) | network (inter-node/control plane) | **In** *(documented: modules exist; trust posture inferred)* |
+| Cluster control + data exchange + consensus + AINode RPC | ConfigNode/DataNode internal RPC, DataNode MPP data exchange, ConfigNode/DataNode↔AINode RPC, inter-node consensus (`thrift-confignode`, `thrift-ainode`, `thrift-consensus`) | network (inter-node/control plane) | **In** *(documented: modules exist; trust posture inferred)* |
 | Extension / server-side execution | UDF (`USE_UDF`), Triggers (`USE_TRIGGER`), Pipe (`USE_PIPE`), Models/AINode (`USE_MODEL`), templates | runs user-supplied logic/JARs; Pipe opens network | **In, but see §9** *(documented: privileges exist; maintainer: grantable system privileges, RBAC is the boundary)* |
 | REST API / MQTT ingestion | HTTP REST service, MQTT broker (if enabled) | network (listens) | **In if enabled; both disabled by default** *(maintainer — HTHou: `enable_rest_service=false`, `enable_mqtt_service=false`)* |
 | TsFile on-disk format | `apache/tsfile` (separate repo) | filesystem | **Out** — separate repo, model separately *(documented: TsFile is a separate project)* |
@@ -60,12 +60,27 @@ limitations under the License.
 ## §4 Trust boundaries and data flow
 
 - **Primary trust boundary: the authenticated client RPC surface.** This is the main in-model boundary. Bytes arriving over the Thrift session protocol (and any enabled REST/MQTT endpoint) from a client are untrusted; a client is constrained to its RBAC-granted privileges. The query engine, schema engine, and storage layer sit behind this boundary. *(maintainer — HTHou: "the client RPC surface as the main in-model boundary")*
-- **Secondary boundary: the cluster/inter-node surface.** ConfigNode↔DataNode RPC, ConfigNode/DataNode↔AINode RPC, and the consensus channel are assumed to run on a **trusted network**. The AINode RPC service listens on port `10810` by default. These channels currently have **no transport encryption**; a finding that requires direct access to, or interception/modification of, these internal RPC channels is therefore `OUT-OF-MODEL: adversary-not-in-scope` under this posture, and operators are responsible for network segmentation (§10). *(maintainer — JackieTien97; AINode RPC classification clarified here)*
+- **Secondary boundary: the cluster/inter-node surface.** ConfigNode/DataNode internal RPC, DataNode MPP data exchange, ConfigNode/DataNode↔AINode RPC, and the consensus channels are assumed to run on a **trusted network**. These channels currently have **no transport encryption**; a finding that requires direct access to, or interception/modification of, these internal channels is therefore `OUT-OF-MODEL: adversary-not-in-scope` under this posture, and operators are responsible for network segmentation (§10). *(maintainer — JackieTien97; AINode RPC classification clarified here)*
+
+  The core internal endpoints covered by this boundary are:
+
+  | Node | Configuration | Default port | Purpose |
+  | --- | --- | --- | --- |
+  | ConfigNode | `cn_internal_port` | `10710` | ConfigNode internal RPC and node registration/control |
+  | ConfigNode | `cn_consensus_port` | `10720` | ConfigNode consensus communication |
+  | DataNode | `dn_internal_port` | `10730` | DataNode internal RPC |
+  | DataNode | `dn_mpp_data_exchange_port` | `10740` | Distributed-query data exchange between DataNodes |
+  | DataNode | `dn_schema_region_consensus_port` | `10750` | SchemaRegion consensus communication |
+  | DataNode | `dn_data_region_consensus_port` | `10760` | DataRegion consensus communication |
+  | AINode | `ain_rpc_port` | `10810` | AINode internal RPC used by ConfigNode/DataNode clients |
+
+  `dn_rpc_port=6667` remains the client-facing Thrift/session endpoint and is part of the primary boundary, not this internal boundary. `ain_cluster_ingress_port=6667` configures the DataNode endpoint that AINode connects to; it does not create another AINode listener. Optional REST, MQTT, Prometheus, Pipe Air Gap, and extension-provided listeners are separate surfaces and are not included in this core internal-port list. *(documented — `iotdb-system.properties.template`, `iotdb-ainode.properties`)*
+
 - **Reachability preconditions per component** (the test a triager applies before anything else):
   - A finding in the query/SQL/schema engine is **in-model** only if reachable from a client operating *within its granted privileges* (or from an unauthenticated pre-login surface). *(inferred)*
   - A finding requiring an already-`root`/admin session is **out-of-model: trusted-input** unless it crosses into host compromise the operator didn't already have. *(inferred)*
   - A finding in UDF/Trigger/Pipe/Model execution is in-model only subject to the §9 ruling: these are grantable system privileges, so the question is whether the principal granted them is trusted for that server-side execution capability (RBAC is the boundary, not a sandbox). *(maintainer — HTHou: see §9)*
-  - A finding requiring direct access to a ConfigNode, DataNode, or AINode internal RPC port is **out-of-model**: these endpoints run on the trusted cluster/control-plane network by posture, so direct exposure to an untrusted network is an unsupported deployment configuration. *(maintainer — JackieTien97; AINode RPC classification clarified here)*
+  - A finding requiring direct access to a core internal endpoint listed above is **out-of-model**: these endpoints run on the trusted cluster/control-plane network by posture, so direct exposure to an untrusted network is an unsupported deployment configuration. *(maintainer — JackieTien97; AINode RPC classification clarified here)*
   - A finding on the inter-node channel is **out-of-model**: the channel runs on a trusted network by posture (no transport encryption today), so a finding requiring interception/modification of inter-node traffic is `OUT-OF-MODEL: adversary-not-in-scope`. *(maintainer — JackieTien97)*
 
 ## §5 Assumptions about the environment
@@ -85,7 +100,7 @@ Knobs that change which security properties hold:
 - **REST API — disabled by default** (`enable_rest_service=false`). In-model only when the operator has explicitly enabled it. *(maintainer — HTHou)*
 - **MQTT — disabled by default** (`enable_mqtt_service=false`). In-model only when explicitly enabled. *(maintainer — HTHou)*
 - **Client Thrift SSL — available but disabled by default** (`enable_thrift_ssl=false`). Transport confidentiality/integrity on the client channel is therefore off unless the operator turns it on; see §9/§10. *(maintainer — HTHou)*
-- **Inter-node/internal RPC TLS / wire encryption** — **none today**; the ConfigNode↔DataNode, AINode RPC, and consensus channels have no transport encryption, so operators rely on network segmentation (§10). *(maintainer — JackieTien97)*
+- **Inter-node/internal RPC TLS / wire encryption** — **none today**; the ConfigNode/DataNode internal RPC, MPP data exchange, AINode RPC, and consensus channels have no transport encryption, so operators rely on network segmentation (§10). *(maintainer — JackieTien97)*
 - **AINode RPC bind/port** — the default AINode configuration binds `ain_rpc_address=127.0.0.1` and `ain_rpc_port=10810`; the container entrypoint may configure `0.0.0.0:10810` for cluster networking. This is an internal cluster/control-plane endpoint, not a client-facing surface. Exposing it to an untrusted network changes the deployment posture and is out-of-model under §3/§7. *(documented — `iotdb-core/ainode/resources/conf/iotdb-ainode.properties`, `docker/src/main/ainode-entrypoint.sh`)*
 - **UDF / Trigger / Pipe / AINode-model execution** — gated by grantable system privileges (`USE_UDF`/`USE_TRIGGER`/`USE_PIPE`/`USE_MODEL`); see §9. *(maintainer — HTHou)*
 - **Whitelist / network bind** (bind address, client allow-list) defaults. *(inferred)*
@@ -102,7 +117,7 @@ Per-surface trust table *(inferred unless noted; REST/MQTT rows apply only when 
 | MQTT (only if enabled; default off) | topic, payload | **yes** | auth, network exposure |
 | UDF / Trigger / Pipe / Model registration | JAR / class / model artifact | **yes if the relevant grantable system privilege is held** | who may hold `USE_UDF`/`USE_TRIGGER`/`USE_PIPE`/`USE_MODEL` — those principals are trusted for server-side execution |
 | AINode internal RPC | model registration, loading, and control/inference requests | **yes if the trusted cluster/control-plane network is exposed** | trusted network, cluster membership, and network segmentation |
-| Inter-node RPC / consensus | peer messages | **yes if the cluster network is exposed** | trusted network or mutual auth |
+| Inter-node RPC / MPP data exchange / consensus | peer messages and distributed-query data | **yes if the cluster network is exposed** | trusted network or mutual auth |
 | Config files, JVM flags, data dir | local | no — operator-trusted | filesystem permissions |
 
 - **Shape/rate:** whether the server bounds per-query CPU/memory, result-set size, or concurrent sessions — and the line between a bug and operator-managed capacity — is set in §8 (resource line) and confirmed by the PMC; see §8/§9. *(maintainer — HTHou: see resource line)*
@@ -111,7 +126,7 @@ Per-surface trust table *(inferred unless noted; REST/MQTT rows apply only when 
 
 - **Primary adversary:** a network client that can reach the IoTDB RPC port (or an enabled REST/MQTT port) **from within the trusted-network deployment posture** — either **unauthenticated** (pre-login) or **authenticated with limited privileges** — trying to read/write data outside its grants, escalate privilege, execute code on the server beyond its granted extension privileges, crash/exhaust the server via malformed/pre-auth input, or move laterally to peer nodes. *(maintainer for the posture — HTHou; the per-vector detail remains inferred)*
 - **Capabilities assumed:** can open connections, send arbitrary protocol/SQL bytes, supply large/malformed payloads, and (if granted the relevant privilege) register extensions. *(inferred)*
-- **Out of scope:** anyone with `root`/admin session or host/process/filesystem control (already authoritative); an attacker who only reaches the server because it was directly publicly exposed (non-supported posture, §3); an attacker who reaches ConfigNode, DataNode, or AINode internal RPC ports from outside the trusted cluster/control-plane network; side-channel/timing adversaries (unless the PMC wants them in). *(maintainer for public-exposure exclusion — HTHou; AINode RPC classification clarified here; rest inferred)*
+- **Out of scope:** anyone with `root`/admin session or host/process/filesystem control (already authoritative); an attacker who only reaches the server because it was directly publicly exposed (non-supported posture, §3); an attacker who reaches a core internal endpoint listed in §4 from outside the trusted cluster/control-plane network; side-channel/timing adversaries (unless the PMC wants them in). *(maintainer for public-exposure exclusion — HTHou; AINode RPC classification clarified here; rest inferred)*
 - **Cluster — authenticated-but-Byzantine peer:** cluster membership is assumed **fully trusted**. IoTDB does **not** claim Byzantine fault tolerance — there is no safety/liveness guarantee against an authenticated-but-malicious peer node. A finding that requires a cluster member to behave arbitrarily is out-of-model under this posture. *(maintainer — JackieTien97)*
 
 ## §8 Security properties the project provides
@@ -141,7 +156,7 @@ Per-surface trust table *(inferred unless noted; REST/MQTT rows apply only when 
 
 - Change the default `root` password before any production use or exposure outside a trusted environment. *(maintainer — HTHou: must-change before production)*
 - Deploy IoTDB inside a trusted network boundary; do **not** expose the client RPC port (or an enabled REST/MQTT port) directly to an untrusted/public network, especially with default credentials — that is not a supported posture. Enable TLS + auth if a wider exposure is unavoidable. *(maintainer — HTHou: trusted-network-by-default; public exposure with default creds not supported)*
-- Run the ConfigNode↔DataNode, AINode RPC, and consensus channels on a trusted/segmented network (or enable mutual auth/TLS if supported). Do not expose the AINode RPC port (`10810` by default) to an untrusted/public network. *(inferred — consistent with the §14 inter-node ruling)*
+- Run all core internal endpoints listed in §4 — ConfigNode/DataNode internal RPC, MPP data exchange, AINode RPC, and consensus — on a trusted/segmented network (or enable mutual auth/TLS if supported). Do not expose these ports to an untrusted/public network. *(inferred — consistent with the §14 inter-node ruling)*
 - Restrict who is granted the extension system privileges (`USE_UDF`/`USE_TRIGGER`/`USE_PIPE`/`USE_MODEL`) — holding one is equivalent to server-side code execution; RBAC is the boundary, not a sandbox. *(maintainer — HTHou)*
 - Enable client Thrift SSL (`enable_thrift_ssl=true`) where client traffic crosses an untrusted segment — it is off by default. *(maintainer — HTHou)*
 - Set filesystem permissions so only the IoTDB user can read the data/WAL/config directories. *(inferred)*
@@ -155,7 +170,7 @@ Per-surface trust table *(inferred unless noted; REST/MQTT rows apply only when 
 - Granting extension system privileges (`USE_UDF`/etc.) to semi-trusted clients, treating RBAC as a sandbox rather than an authorization boundary. *(maintainer — HTHou)*
 - Building IoTDB SQL by string-concatenating the embedding application's untrusted input. *(inferred)*
 - Running a cluster across an untrusted network without inter-node protection. *(inferred)*
-- Exposing the AINode RPC port (`10810` by default) outside the trusted cluster/control-plane network. *(inferred)*
+- Exposing any core internal port listed in §4 outside the trusted cluster/control-plane network. *(inferred)*
 
 ## §11a Known non-findings (recurring false positives)
 
@@ -181,7 +196,7 @@ Per-surface trust table *(inferred unless noted; REST/MQTT rows apply only when 
 | `VALID` | Violates a §8 property via an in-scope adversary/input (auth bypass, cross-path access, pre-auth/malformed-input crash/OOM/hang, privilege escalation). | §8, §6, §7 |
 | `VALID-HARDENING` | No §8 property broken, but the API/SQL makes a §11 misuse easy enough to harden. | §11 |
 | `OUT-OF-MODEL: trusted-input` | Requires an admin/`root` session or operator-controlled config/files. | §6, §7 |
-| `OUT-OF-MODEL: adversary-not-in-scope` | Requires a capability the model excludes (host control, side channel, direct public exposure, or direct access to an exposed ConfigNode/DataNode/AINode internal RPC network when posture says trusted). | §3, §4, §7 |
+| `OUT-OF-MODEL: adversary-not-in-scope` | Requires a capability the model excludes (host control, side channel, direct public exposure, or direct access to a core internal endpoint listed in §4 when posture says trusted). | §3, §4, §7 |
 | `OUT-OF-MODEL: unsupported-component` | Lands in `example/`, `integration-test/`, or the separate TsFile / SDK repos. | §3 |
 | `OUT-OF-MODEL: non-default-build` | Only manifests under a discouraged/non-default §5a setting (e.g. unchanged `root:root`, or an explicitly-enabled REST/MQTT used as if default). | §5a |
 | `BY-DESIGN: property-disclaimed` | Concerns a §9-disclaimed property (extension code execution within its RBAC grant, no-TLS-by-default, ordinary resource exhaustion, malicious operator). | §9 |
@@ -199,7 +214,7 @@ All items below have now been **confirmed by IoTDB PMC members across two review
 
 **Wave 2 — trust boundaries & protocols:**
 4. **Default-enabled protocols:** *resolved* — Thrift session is the primary surface; REST (`enable_rest_service=false`) and MQTT (`enable_mqtt_service=false`) are **disabled by default**. → §2/§5a/§6. *(maintainer)*
-5. **Inter-node/internal RPC trust:** *resolved* — the ConfigNode↔DataNode, ConfigNode/DataNode↔AINode RPC (default AINode port `10810`), and consensus channels are assumed to run on a **trusted network** and currently have **no transport encryption**; a finding requiring direct access to, or interception/modification of, these internal channels is `OUT-OF-MODEL: adversary-not-in-scope`, and operators own network segmentation (§10). → §4/§7/§9. *(maintainer — JackieTien97; AINode RPC classification clarified here)*
+5. **Inter-node/internal RPC trust:** *resolved* — the ConfigNode/DataNode internal RPC, DataNode MPP data exchange, ConfigNode/DataNode↔AINode RPC, and consensus channels listed in §4 are assumed to run on a **trusted network** and currently have **no transport encryption**; a finding requiring direct access to, or interception/modification of, these internal channels is `OUT-OF-MODEL: adversary-not-in-scope`, and operators own network segmentation (§10). → §4/§7/§9. *(maintainer — JackieTien97; AINode RPC classification clarified here)*
 6. **TLS defaults:** *resolved* — client Thrift SSL is **off by default** (`enable_thrift_ssl=false`); there is **no inter-node TLS today**. → §5a/§9. *(maintainer — HTHou for client SSL; JackieTien97 for inter-node)*
 
 **Wave 3 — extension execution & adversary:**
