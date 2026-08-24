@@ -119,6 +119,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     final Tablet tablet = new Tablet(DEVICE_0, schemaList, 1);
     tablet.addTimestamp(0, 1);
     tablet.addValue("s0", 0, 1L);
+    tablet.rowSize = 1;
 
     final Map<String, Integer> pointCountByDevice = new HashMap<>();
     final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
