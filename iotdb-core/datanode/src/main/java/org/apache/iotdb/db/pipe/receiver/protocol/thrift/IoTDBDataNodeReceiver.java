@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -73,7 +75,9 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DatabaseSchemaTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -86,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
+import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
@@ -96,6 +101,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,6 +118,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -153,6 +161,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private PipeMemoryBlock allocatedMemoryBlock;
+  private final Set<String> autoCreatedTreeDatabases = ConcurrentHashMap.newKeySet();
+  private final Set<String> conflictedTreeDatabases = ConcurrentHashMap.newKeySet();
+
+  private enum TreeDatabaseCreationResult {
+    SKIPPED,
+    CREATED_OR_EXISTED,
+    CONFLICTED
+  }
+
   private final List<PipeMemoryBlock> allocatedSliceMemoryBlocks = new ArrayList<>();
 
   static {
@@ -503,7 +520,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws IOException {
     return isUsingAsyncLoadTsFileStrategy.get()
-        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath), false)
+        ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath), false, null)
         : loadTsFileSync(null, fileAbsolutePath, false);
   }
 
@@ -518,19 +535,95 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final PipeTransferTsFileSealWithModReq tsFileSealReq = (PipeTransferTsFileSealWithModReq) req;
     final String dataBaseName = tsFileSealReq.getDatabaseNameByTsFileName();
     final boolean shouldWaitForSchemaBeforeLoad = tsFileSealReq.shouldWaitForSchemaBeforeLoad();
-    // TsFile's absolute path will be the second element when the request contains a mod file.
-    return isUsingAsyncLoadTsFileStrategy.get()
-        ? loadTsFileAsync(dataBaseName, fileAbsolutePaths, shouldWaitForSchemaBeforeLoad)
-        : loadTsFileSync(
-            dataBaseName,
-            fileAbsolutePaths.get(req.getFileNames().size() - 1),
-            shouldWaitForSchemaBeforeLoad);
+    final String taskId = tsFileSealReq.getConversionTaskId();
+    final boolean asyncLoadOnTypeMismatch = tsFileSealReq.shouldAsyncLoadOnTypeMismatch();
+    final TSStatus duplicateStatus =
+        PipeTsFileConversionTaskManager.registerAndGetDuplicateStatus(
+            taskId, asyncLoadOnTypeMismatch);
+    if (duplicateStatus != null) {
+      return duplicateStatus;
+    }
+    PipeTsFileConversionTaskManager.enter(taskId);
+    try {
+      final TSStatus status;
+      if (isUsingAsyncLoadTsFileStrategy.get()) {
+        status =
+            loadTsFileAsync(dataBaseName, fileAbsolutePaths, shouldWaitForSchemaBeforeLoad, taskId);
+      } else {
+        PipeTsFileConversionTaskManager.markRunning(taskId);
+        status =
+            loadTsFileSync(
+                dataBaseName,
+                fileAbsolutePaths.get(req.getFileNames().size() - 1),
+                shouldWaitForSchemaBeforeLoad);
+      }
+
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (!isUsingAsyncLoadTsFileStrategy.get()) {
+          PipeTsFileConversionTaskManager.markSuccess(taskId);
+        }
+        return status;
+      }
+
+      if (shouldTakeOverToAsyncLoad(
+          status,
+          isUsingAsyncLoadTsFileStrategy.get(),
+          shouldConvertDataTypeOnTypeMismatch,
+          asyncLoadOnTypeMismatch,
+          PipeTsFileConversionTaskManager.isTypeMismatchDetected(taskId))) {
+        PipeTsFileConversionTaskManager.clearCurrentContext();
+        PipeTsFileConversionTaskManager.prepareForActiveLoad(taskId);
+        try {
+          final TSStatus takeoverStatus =
+              loadTsFileAsync(
+                  dataBaseName, fileAbsolutePaths, shouldWaitForSchemaBeforeLoad, taskId);
+          if (takeoverStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return takeoverStatus;
+          }
+        } catch (final Exception ignored) {
+          // The sender retries the same stable task id after a failed durable handoff.
+        }
+        PipeTsFileConversionTaskManager.markRetryable(taskId, status);
+        return status;
+      }
+
+      PipeTsFileConversionTaskManager.markRetryable(taskId, status);
+      return status;
+    } catch (final Exception e) {
+      final TSStatus status =
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
+      PipeTsFileConversionTaskManager.markRetryable(taskId, status);
+      throw e;
+    } finally {
+      PipeTsFileConversionTaskManager.leave();
+    }
+  }
+
+  static boolean shouldTakeOverToAsyncLoad(
+      final TSStatus status,
+      final boolean usingAsyncLoadStrategy,
+      final boolean shouldConvertOnTypeMismatch,
+      final boolean asyncLoadOnTypeMismatch,
+      final boolean typeMismatchDetected) {
+    return !usingAsyncLoadStrategy
+        && shouldConvertOnTypeMismatch
+        && asyncLoadOnTypeMismatch
+        && !isLoadTemporarilyUnavailable(status)
+        && typeMismatchDetected;
+  }
+
+  private static boolean isLoadTemporarilyUnavailable(final TSStatus status) {
+    return status != null
+        && (status.getCode() == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
+            || status.getCode()
+                == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode());
   }
 
   private TSStatus loadTsFileAsync(
       final String dataBaseName,
       final List<String> absolutePaths,
-      final boolean shouldWaitForSchemaBeforeLoad)
+      final boolean shouldWaitForSchemaBeforeLoad,
+      final String conversionTaskId)
       throws IOException {
     final Map<String, String> loadAttributes =
         buildLoadTsFileAttributesForAsync(
@@ -538,11 +631,28 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             shouldConvertDataTypeOnTypeMismatch,
             validateTsFile.get(),
             shouldMarkAsPipeRequest.get(),
-            shouldWaitForSchemaBeforeLoad);
+            shouldWaitForSchemaBeforeLoad,
+            conversionTaskId);
     if (!ActiveLoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");
     }
+    PipeTsFileConversionTaskManager.markReceiverOwned(conversionTaskId);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  protected boolean shouldDeleteSealedFilesOnFailure(
+      final PipeTransferFileSealReqV2 req, final TSStatus loadStatus) {
+    if (!(req instanceof PipeTransferTsFileSealWithModReq)) {
+      return true;
+    }
+    final String taskId = ((PipeTransferTsFileSealWithModReq) req).getConversionTaskId();
+    final PipeTsFileConversionTaskManager.Task task = PipeTsFileConversionTaskManager.get(taskId);
+    return task == null
+        || task.isReceiverOwned()
+        || (task.getState() != PipeTsFileConversionTaskManager.State.PENDING
+            && task.getState() != PipeTsFileConversionTaskManager.State.RUNNING
+            && task.getState() != PipeTsFileConversionTaskManager.State.PAUSED);
   }
 
   static Map<String, String> buildLoadTsFileAttributesForAsync(
@@ -555,7 +665,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         shouldConvertDataTypeOnTypeMismatch,
         validateTsFile,
         shouldMarkAsPipeRequest,
-        false);
+        false,
+        null);
   }
 
   static Map<String, String> buildLoadTsFileAttributesForAsync(
@@ -564,6 +675,22 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
       final boolean shouldWaitForSchemaBeforeLoad) {
+    return buildLoadTsFileAttributesForAsync(
+        dataBaseName,
+        shouldConvertDataTypeOnTypeMismatch,
+        validateTsFile,
+        shouldMarkAsPipeRequest,
+        shouldWaitForSchemaBeforeLoad,
+        null);
+  }
+
+  static Map<String, String> buildLoadTsFileAttributesForAsync(
+      final String dataBaseName,
+      final boolean shouldConvertDataTypeOnTypeMismatch,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest,
+      final boolean shouldWaitForSchemaBeforeLoad,
+      final String conversionTaskId) {
     return ActiveLoadPathHelper.buildAttributes(
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
@@ -571,7 +698,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         validateTsFile || shouldConvertDataTypeOnTypeMismatch || shouldWaitForSchemaBeforeLoad,
         !shouldWaitForSchemaBeforeLoad,
         null,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        AuthorityChecker.SUPER_USER,
+        conversionTaskId);
   }
 
   private TSStatus loadTsFileSync(
@@ -1044,6 +1173,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return RpcUtils.getStatus(status.getCode(), status.getMessage());
     }
 
+    if (autoCreateTreeDatabaseIfNecessary(getTreeDatabaseName(statement))
+        == TreeDatabaseCreationResult.CONFLICTED) {
+      clearTreeDatabaseName(statement);
+    }
+
     return Coordinator.getInstance()
         .executeForTreeModel(
             shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
@@ -1056,6 +1190,91 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             false,
             statement.isDebug())
         .status;
+  }
+
+  private TreeDatabaseCreationResult autoCreateTreeDatabaseIfNecessary(final String database) {
+    if (database == null
+        || LoadTsFileStatement.getDatabaseLevelByTreeDatabase(database) == null
+        || !IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+      return TreeDatabaseCreationResult.SKIPPED;
+    }
+    if (autoCreatedTreeDatabases.contains(database)) {
+      return TreeDatabaseCreationResult.CREATED_OR_EXISTED;
+    }
+    if (conflictedTreeDatabases.contains(database)) {
+      return TreeDatabaseCreationResult.CONFLICTED;
+    }
+
+    try {
+      final DatabaseSchemaStatement statement =
+          new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+      statement.setDatabasePath(new PartialPath(database));
+      statement.setEnablePrintExceptionLog(false);
+
+      final TSStatus permissionStatus = statement.checkPermissionBeforeProcess(username);
+      if (permissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeException(permissionStatus.getMessage());
+      }
+
+      final DatabaseSchemaTask task = new DatabaseSchemaTask(statement);
+      final ListenableFuture<ConfigTaskResult> future =
+          task.execute(ClusterConfigTaskExecutor.getInstance());
+      final ConfigTaskResult result = future.get();
+      final int statusCode = result.getStatusCode().getStatusCode();
+      if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || statusCode == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        autoCreatedTreeDatabases.add(database);
+        return TreeDatabaseCreationResult.CREATED_OR_EXISTED;
+      }
+      if (statusCode == TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
+        conflictedTreeDatabases.add(database);
+        return TreeDatabaseCreationResult.CONFLICTED;
+      }
+      throw new PipeException(
+          String.format(
+              "Auto create tree database failed: %s, status: %s",
+              database, result.getStatus() == null ? result.getStatusCode() : result.getStatus()));
+    } catch (final IllegalPathException e) {
+      throw new PipeException(String.format("Illegal tree database %s.", database), e);
+    } catch (final ExecutionException | InterruptedException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      final Throwable rootCause = getRootCause(e);
+      final int errorCode;
+      if (rootCause instanceof IoTDBException) {
+        errorCode = ((IoTDBException) rootCause).getErrorCode();
+      } else if (rootCause instanceof IoTDBRuntimeException) {
+        errorCode = ((IoTDBRuntimeException) rootCause).getErrorCode();
+      } else {
+        errorCode = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+      }
+      if (errorCode == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        autoCreatedTreeDatabases.add(database);
+        return TreeDatabaseCreationResult.CREATED_OR_EXISTED;
+      }
+      if (errorCode == TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
+        conflictedTreeDatabases.add(database);
+        return TreeDatabaseCreationResult.CONFLICTED;
+      }
+      throw new PipeException("Auto create tree database failed because " + e.getMessage(), e);
+    }
+  }
+
+  private String getTreeDatabaseName(final Statement statement) {
+    if (statement instanceof LoadTsFileStatement) {
+      return ((LoadTsFileStatement) statement).getDatabase();
+    }
+    return null;
+  }
+
+  static void clearTreeDatabaseName(final Statement statement) {
+    if (statement instanceof LoadTsFileStatement) {
+      final LoadTsFileStatement loadTsFileStatement = (LoadTsFileStatement) statement;
+      loadTsFileStatement.setDatabase(null);
+      loadTsFileStatement.setDatabaseLevel(
+          IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel());
+    }
   }
 
   @Override

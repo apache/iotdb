@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 
 public class PipeMemoryManager {
@@ -52,6 +53,9 @@ public class PipeMemoryManager {
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForPipe();
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
       PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
+
+  private final long totalMemorySizeInBytes;
+  private final LongSupplier floatingMemoryUsageSupplier;
 
   private long usedMemorySizeInBytes;
 
@@ -79,11 +83,20 @@ public class PipeMemoryManager {
   private final Set<PipeMemoryBlock> expandableBlocks = new HashSet<>();
 
   public PipeMemoryManager() {
+    this(
+        TOTAL_MEMORY_SIZE_IN_BYTES,
+        () -> PipeDataNodeAgent.task().getAllFloatingMemoryUsageInByte());
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeMemoryManager#tryExpandAll()",
             this::tryExpandAllAndCheckConsistency,
             PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds());
+  }
+
+  PipeMemoryManager(
+      final long totalMemorySizeInBytes, final LongSupplier floatingMemoryUsageSupplier) {
+    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+    this.floatingMemoryUsageSupplier = floatingMemoryUsageSupplier;
   }
 
   // NOTE: Here we unify the memory threshold judgment for tablet and tsfile memory block, because
@@ -96,7 +109,7 @@ public class PipeMemoryManager {
   // 3. The sum of the memory proportion occupied by the tablet memory block and the tsfile memory
   // block does not exceed TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD
 
-  private static double allowedMaxMemorySizeInBytesOfTabletsAndTsFiles() {
+  private double allowedMaxMemorySizeInBytesOfTabletsAndTsFiles() {
     return (PipeConfig.getInstance()
                 .getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
             + PipeConfig.getInstance()
@@ -104,7 +117,7 @@ public class PipeMemoryManager {
         * getTotalNonFloatingMemorySizeInBytes();
   }
 
-  private static double allowedMaxMemorySizeInBytesOfTablets() {
+  private double allowedMaxMemorySizeInBytesOfTablets() {
     return (PipeConfig.getInstance()
                 .getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
             + PipeConfig.getInstance()
@@ -113,7 +126,7 @@ public class PipeMemoryManager {
         * getTotalNonFloatingMemorySizeInBytes();
   }
 
-  private static double allowedMaxMemorySizeInBytesOfTsTiles() {
+  private double allowedMaxMemorySizeInBytesOfTsTiles() {
     return (PipeConfig.getInstance()
                 .getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
             + PipeConfig.getInstance()
@@ -1037,19 +1050,30 @@ public class PipeMemoryManager {
   }
 
   public long getFreeMemorySizeInBytes() {
-    return TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes;
+    return Math.max(0, getTotalNonFloatingMemorySizeInBytes() - usedMemorySizeInBytes);
   }
 
-  public static long getTotalNonFloatingMemorySizeInBytes() {
-    return (long)
-        (TOTAL_MEMORY_SIZE_IN_BYTES
-            * (1 - PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
+  public long getTotalNonFloatingMemorySizeInBytes() {
+    // Floating memory is an upper limit for retained InsertNodes instead of a statically reserved
+    // partition. Non-floating allocations can borrow all floating memory that is not actually in
+    // use, which is especially important for TsFile-only pipes.
+    return Math.max(0, totalMemorySizeInBytes - getUsedFloatingMemorySizeInBytes());
   }
 
-  public static long getTotalFloatingMemorySizeInBytes() {
-    return (long)
-        (TOTAL_MEMORY_SIZE_IN_BYTES
-            * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion());
+  public long getTotalFloatingMemorySizeInBytes() {
+    final long configuredUpperLimit =
+        Math.max(
+            0,
+            (long)
+                (totalMemorySizeInBytes
+                    * PipeConfig.getInstance().getPipeTotalFloatingMemoryProportion()));
+    final long memoryNotUsedByNonFloatingAllocations =
+        Math.max(0, totalMemorySizeInBytes - usedMemorySizeInBytes);
+    return Math.min(configuredUpperLimit, memoryNotUsedByNonFloatingAllocations);
+  }
+
+  private long getUsedFloatingMemorySizeInBytes() {
+    return Math.max(0, floatingMemoryUsageSupplier.getAsLong());
   }
 
   public static long getTotalMemorySizeInBytes() {

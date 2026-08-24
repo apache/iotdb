@@ -52,10 +52,12 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
@@ -380,6 +382,30 @@ public class DataNodeInternalRPCServiceImplTest {
             new TSendBatchPlanNodeReq(Collections.singletonList(request)));
 
     Assert.assertTrue(response.getResponses().get(0).accepted);
+  }
+
+  @Test
+  public void testRegionOperationRetryReturnsAlreadyCompletedStatus() {
+    TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
+    regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2));
+    TCreateSchemaRegionReq createReq =
+        new TCreateSchemaRegionReq()
+            .setRegionReplicaSet(regionReplicaSet)
+            .setStorageGroup("root.retry_test");
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        dataNodeInternalRPCServiceImpl.createSchemaRegion(createReq).getCode());
+    Assert.assertEquals(
+        TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode(),
+        dataNodeInternalRPCServiceImpl.createSchemaRegion(createReq).getCode());
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        dataNodeInternalRPCServiceImpl.deleteRegion(regionReplicaSet.getRegionId()).getCode());
+    Assert.assertEquals(
+        TSStatusCode.REGION_NOT_EXIST.getStatusCode(),
+        dataNodeInternalRPCServiceImpl.deleteRegion(regionReplicaSet.getRegionId()).getCode());
   }
 
   private TRegionReplicaSet genRegionReplicaSet() {

@@ -27,6 +27,9 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
@@ -60,8 +63,10 @@ import javax.annotation.Nullable;
 
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -69,9 +74,13 @@ import java.util.concurrent.ExecutionException;
 import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.convertToOpcDataType;
 import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.timestampToUtc;
 import static org.eclipse.milo.opcua.stack.core.StatusCodes.Bad_Timeout;
+import static org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn.Neither;
 
 public class IoTDBOpcUaClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaNameSpace.class);
+
+  private static final int DEFAULT_MAX_NODES_PER_WRITE = 10_000;
+  private static final int DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT = 250;
 
   // Customized nodes
   private static final int NAME_SPACE_INDEX = 2;
@@ -85,6 +94,9 @@ public class IoTDBOpcUaClient {
   private OpcUaClient client;
   private final boolean historizing;
   private ClientRunner runner;
+
+  private int maxNodesPerWrite = DEFAULT_MAX_NODES_PER_WRITE;
+  private int maxNodesPerNodeManagement = DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT;
 
   public IoTDBOpcUaClient(
       final String nodeUrl,
@@ -114,12 +126,86 @@ public class IoTDBOpcUaClient {
       }
       break;
     }
+    updateOperationLimits();
+  }
+
+  private void updateOperationLimits() {
+    try {
+      final List<DataValue> operationLimits =
+          client
+              .readValuesAsync(
+                  0.0,
+                  Neither,
+                  Arrays.asList(
+                      Identifiers.Server_ServerCapabilities_OperationLimits_MaxNodesPerWrite,
+                      Identifiers
+                          .Server_ServerCapabilities_OperationLimits_MaxNodesPerNodeManagement))
+              .get();
+      maxNodesPerWrite = getOperationLimit(operationLimits, 0, DEFAULT_MAX_NODES_PER_WRITE);
+      maxNodesPerNodeManagement =
+          getOperationLimit(operationLimits, 1, DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT);
+      LOGGER.info(
+          "OPC UA server operation limits: maxNodesPerWrite={}, maxNodesPerNodeManagement={}",
+          maxNodesPerWrite,
+          maxNodesPerNodeManagement);
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "Interrupted while reading OPC UA server operation limits, use defaults: "
+              + "maxNodesPerWrite={}, maxNodesPerNodeManagement={}",
+          DEFAULT_MAX_NODES_PER_WRITE,
+          DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Failed to read OPC UA server operation limits, use defaults: "
+              + "maxNodesPerWrite={}, maxNodesPerNodeManagement={}",
+          DEFAULT_MAX_NODES_PER_WRITE,
+          DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT,
+          e);
+    }
+  }
+
+  private static int getOperationLimit(
+      final List<DataValue> operationLimits, final int index, final int defaultValue) {
+    if (Objects.isNull(operationLimits) || operationLimits.size() <= index) {
+      return defaultValue;
+    }
+
+    final DataValue dataValue = operationLimits.get(index);
+    if (Objects.isNull(dataValue)
+        || Objects.isNull(dataValue.getStatusCode())
+        || !dataValue.getStatusCode().isGood()
+        || Objects.isNull(dataValue.getValue())
+        || !(dataValue.getValue().getValue() instanceof Number)) {
+      return defaultValue;
+    }
+
+    final long limit = ((Number) dataValue.getValue().getValue()).longValue();
+    return limit == 0 ? Integer.MAX_VALUE : (int) Math.min(limit, Integer.MAX_VALUE);
   }
 
   // Only support tree model & client-server
   public void transfer(final Tablet tablet, final OpcUaSink sink) throws Exception {
     OpcUaNameSpace.transferTabletForClientServerModel(
         tablet, sink, this::transferTabletRowForClientServerModel);
+  }
+
+  public void transferLastValues(
+      final Map<IDeviceID, List<Pair<MeasurementSchema, TimeValuePair>>> deviceLastValues,
+      final OpcUaSink sink)
+      throws Exception {
+    final List<OpcUaWriteRequest> writeRequests = new ArrayList<>();
+    for (final Map.Entry<IDeviceID, List<Pair<MeasurementSchema, TimeValuePair>>> entry :
+        deviceLastValues.entrySet()) {
+      OpcUaNameSpace.transferLastValues(
+          entry.getKey(),
+          entry.getValue(),
+          sink,
+          (segments, measurementSchemas, timestamps, values, currentSink) ->
+              collectWriteRequests(
+                  segments, measurementSchemas, timestamps, values, currentSink, writeRequests));
+    }
+    writeValues(writeRequests);
   }
 
   private void transferTabletRowForClientServerModel(
@@ -129,11 +215,22 @@ public class IoTDBOpcUaClient {
       final List<Object> values,
       final OpcUaSink sink)
       throws Exception {
+    final List<OpcUaWriteRequest> writeRequests = new ArrayList<>();
+    collectWriteRequests(segments, measurementSchemas, timestamps, values, sink, writeRequests);
+    writeValues(writeRequests);
+  }
+
+  private void collectWriteRequests(
+      final String[] segments,
+      final List<MeasurementSchema> measurementSchemas,
+      final List<Long> timestamps,
+      final List<Object> values,
+      final OpcUaSink sink,
+      final List<OpcUaWriteRequest> writeRequests) {
     StatusCode currentQuality = sink.getDefaultQuality();
     Object value = null;
     long timestamp = 0;
     NodeId opcDataType = null;
-    final List<OpcUaWriteRequest> writeRequests = new ArrayList<>();
 
     for (int i = 0; i < measurementSchemas.size(); ++i) {
       if (Objects.isNull(values.get(i))) {
@@ -152,7 +249,8 @@ public class IoTDBOpcUaClient {
       if (Objects.nonNull(sink.getValueName()) && !sink.getValueName().equals(name)) {
         PipeLogger.log(
             LOGGER::warn,
-            "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
+            "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\""
+                + " or \"quality-name\"");
         continue;
       }
 
@@ -176,8 +274,6 @@ public class IoTDBOpcUaClient {
       writeRequests.add(
           new OpcUaWriteRequest(value, timestamp, opcDataType, currentQuality, segments, null));
     }
-
-    writeValues(writeRequests);
   }
 
   private void writeValues(final List<OpcUaWriteRequest> writeRequests) throws Exception {
@@ -232,17 +328,23 @@ public class IoTDBOpcUaClient {
       }
     }
 
-    final AddNodesResponse addStatus = client.addNodesAsync(nodesToAdd).get();
-    for (final AddNodesResult result : addStatus.getResults()) {
-      if (!result.getStatusCode().equals(StatusCode.GOOD)
-          && result.getStatusCode().getValue() != StatusCodes.Bad_NodeIdExists) {
-        throw new PipeException(
-            "Failed to create nodes after transfer data value, creation status: "
-                + addStatus
-                + writeRequests
-                    .get(0)
-                    .getErrorString(new StatusCode(StatusCodes.Bad_NodeIdUnknown)));
+    for (int startIndex = 0; startIndex < nodesToAdd.size(); ) {
+      final int endIndex =
+          getBatchEndIndex(startIndex, nodesToAdd.size(), maxNodesPerNodeManagement);
+      final AddNodesResponse addStatus =
+          client.addNodesAsync(nodesToAdd.subList(startIndex, endIndex)).get();
+      for (final AddNodesResult result : addStatus.getResults()) {
+        if (!result.getStatusCode().equals(StatusCode.GOOD)
+            && result.getStatusCode().getValue() != StatusCodes.Bad_NodeIdExists) {
+          throw new PipeException(
+              "Failed to create nodes after transfer data value, creation status: "
+                  + addStatus
+                  + writeRequests
+                      .get(0)
+                      .getErrorString(new StatusCode(StatusCodes.Bad_NodeIdUnknown)));
+        }
       }
+      startIndex = endIndex;
     }
   }
 
@@ -259,13 +361,24 @@ public class IoTDBOpcUaClient {
 
   private List<StatusCode> writeValuesOnce(final List<OpcUaWriteRequest> writeRequests)
       throws Exception {
-    final List<NodeId> nodeIds = new ArrayList<>(writeRequests.size());
-    final List<DataValue> dataValues = new ArrayList<>(writeRequests.size());
-    for (final OpcUaWriteRequest writeRequest : writeRequests) {
-      nodeIds.add(writeRequest.nodeId);
-      dataValues.add(writeRequest.dataValue);
+    final List<StatusCode> writeStatuses = new ArrayList<>(writeRequests.size());
+    for (int startIndex = 0; startIndex < writeRequests.size(); ) {
+      final int endIndex = getBatchEndIndex(startIndex, writeRequests.size(), maxNodesPerWrite);
+      final List<NodeId> nodeIds = new ArrayList<>(endIndex - startIndex);
+      final List<DataValue> dataValues = new ArrayList<>(endIndex - startIndex);
+      for (int i = startIndex; i < endIndex; ++i) {
+        nodeIds.add(writeRequests.get(i).nodeId);
+        dataValues.add(writeRequests.get(i).dataValue);
+      }
+      writeStatuses.addAll(client.writeValuesAsync(nodeIds, dataValues).get());
+      startIndex = endIndex;
     }
-    return client.writeValuesAsync(nodeIds, dataValues).get();
+    return writeStatuses;
+  }
+
+  private static int getBatchEndIndex(
+      final int startIndex, final int totalSize, final int batchSize) {
+    return (int) Math.min((long) totalSize, (long) startIndex + batchSize);
   }
 
   private static final class OpcUaWriteRequest {

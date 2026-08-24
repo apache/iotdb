@@ -59,10 +59,8 @@ public class ColumnHeaderConstant {
   public static final String TIME_PARTITION_ORIGIN = "TimePartitionOrigin";
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
   public static final String SCHEMA_REGION_GROUP_NUM = "SchemaRegionGroupNum";
-  public static final String MIN_SCHEMA_REGION_GROUP_NUM = "MinSchemaRegionGroupNum";
   public static final String MAX_SCHEMA_REGION_GROUP_NUM = "MaxSchemaRegionGroupNum";
   public static final String DATA_REGION_GROUP_NUM = "DataRegionGroupNum";
-  public static final String MIN_DATA_REGION_GROUP_NUM = "MinDataRegionGroupNum";
   public static final String MAX_DATA_REGION_GROUP_NUM = "MaxDataRegionGroupNum";
   public static final String CHILD_PATHS = "ChildPaths";
   public static final String NODE_TYPES = "NodeTypes";
@@ -181,6 +179,7 @@ public class ColumnHeaderConstant {
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
+  public static final String RECENT_FAILURES = "RecentFailures";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -277,10 +276,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TIME_PARTITION_ORIGIN, TSDataType.INT64),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MIN_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MIN_DATA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
@@ -450,7 +447,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
-          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT));
+          new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT),
+          new ColumnHeader(RECENT_FAILURES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTopicColumnHeaders =
       ImmutableList.of(

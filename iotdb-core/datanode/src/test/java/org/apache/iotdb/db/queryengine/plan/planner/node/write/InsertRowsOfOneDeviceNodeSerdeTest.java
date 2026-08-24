@@ -79,4 +79,38 @@ public class InsertRowsOfOneDeviceNodeSerdeTest {
 
     Assert.assertEquals(node, InsertRowsOfOneDeviceNode.deserialize(byteBuffer));
   }
+
+  @Test
+  public void testStoreMeasurementsSkipsFailedMeasurements() throws IllegalPathException {
+    PartialPath device = new PartialPath("root.sg.d");
+    InsertRowsOfOneDeviceNode node = new InsertRowsOfOneDeviceNode(new PlanNodeId("plan node 1"));
+
+    List<InsertRowNode> insertRowNodeList = new ArrayList<>();
+    InsertRowNode firstRow =
+        new InsertRowNode(
+            new PlanNodeId("plan node 1"),
+            device,
+            false,
+            new String[] {"s1", "failed"},
+            new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT},
+            1000L,
+            new Object[] {1.0, 2f},
+            false);
+    firstRow.markFailedMeasurement(1);
+    insertRowNodeList.add(firstRow);
+    insertRowNodeList.add(
+        new InsertRowNode(
+            new PlanNodeId("plan node 1"),
+            device,
+            false,
+            new String[] {"s2"},
+            new TSDataType[] {TSDataType.INT64},
+            2000L,
+            new Object[] {300L},
+            false));
+
+    node.setInsertRowNodeList(insertRowNodeList);
+
+    Assert.assertArrayEquals(new String[] {"s1", "s2"}, node.getMeasurements());
+  }
 }

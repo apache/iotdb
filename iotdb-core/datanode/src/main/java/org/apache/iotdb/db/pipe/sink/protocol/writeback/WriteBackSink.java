@@ -64,7 +64,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Locale;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
@@ -113,9 +112,7 @@ public class WriteBackSink implements PipeConnector {
     try {
       PathUtils.checkAndReturnSingleMeasurement(trimmedTargetDatabase);
       return validateAndNormalizeTreeModelDatabaseName(
-          IoTDBConstant.PATH_ROOT
-              + IoTDBConstant.PATH_SEPARATOR
-              + trimmedTargetDatabase.toLowerCase(Locale.ENGLISH));
+          IoTDBConstant.PATH_ROOT + IoTDBConstant.PATH_SEPARATOR + trimmedTargetDatabase);
     } catch (final Exception e) {
       throw new PipeException(
           String.format("The target database %s is invalid.", targetDatabase), e);

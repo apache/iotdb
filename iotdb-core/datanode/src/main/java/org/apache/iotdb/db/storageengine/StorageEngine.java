@@ -767,58 +767,66 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void deleteDataRegion(DataRegionId regionId) {
-    if (!dataRegionMap.containsKey(regionId) || deletingDataRegionMap.containsKey(regionId)) {
-      return;
+  public TSStatus deleteDataRegion(DataRegionId regionId) {
+    DataRegion region = dataRegionMap.get(regionId);
+    if (region == null) {
+      return RpcUtils.getStatus(
+          deletingDataRegionMap.containsKey(regionId)
+              ? TSStatusCode.DELETE_REGION_ERROR
+              : TSStatusCode.REGION_NOT_EXIST);
     }
-    DataRegion region =
-        deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
-    if (region != null) {
-      region.markDeleted();
-      try {
-        region.abortCompaction();
-        region.syncDeleteDataFiles();
-        region.deleteFolder(systemDir);
-        if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            || CONFIG
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
-            || CONFIG
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-          // delete wal
-          WALManager.getInstance()
-              .deleteWALNode(
-                  region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionIdString());
-          // delete snapshot
-          for (String dataDir : CONFIG.getLocalDataDirs()) {
-            File regionSnapshotDir =
-                new File(
-                    dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
-                    region.getDatabaseName() + FILE_NAME_SEPARATOR + regionId.getId());
-            if (regionSnapshotDir.exists()) {
-              try {
-                FileUtils.deleteDirectory(regionSnapshotDir);
-              } catch (IOException e) {
-                LOGGER.error("Failed to delete snapshot dir {}", regionSnapshotDir, e);
-              }
-            }
+    if (deletingDataRegionMap.putIfAbsent(regionId, region) != null) {
+      return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR);
+    }
+    if (!dataRegionMap.remove(regionId, region)) {
+      deletingDataRegionMap.remove(regionId, region);
+      return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR);
+    }
+    try {
+      if (!region.isDeleted()) {
+        region.markDeleted();
+      }
+      region.abortCompaction();
+      region.syncDeleteDataFiles();
+      region.deleteFolder(systemDir);
+      if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          || CONFIG
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+          || CONFIG
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        // delete wal
+        WALManager.getInstance()
+            .deleteWALNode(
+                region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionIdString());
+        // delete snapshot
+        for (String dataDir : CONFIG.getLocalDataDirs()) {
+          File regionSnapshotDir =
+              new File(
+                  dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
+                  region.getDatabaseName() + FILE_NAME_SEPARATOR + regionId.getId());
+          if (regionSnapshotDir.exists()) {
+            FileUtils.deleteDirectory(regionSnapshotDir);
           }
         }
-        WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
-        WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
-        WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
-        FileMetrics.getInstance()
-            .deleteRegion(region.getDatabaseName(), region.getDataRegionIdString());
-      } catch (Exception e) {
-        LOGGER.error(
-            "Error occurs when deleting data region {}-{}",
-            region.getDatabaseName(),
-            region.getDataRegionIdString(),
-            e);
-      } finally {
-        deletingDataRegionMap.remove(regionId);
       }
+      WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
+      WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
+      WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
+      FileMetrics.getInstance()
+          .deleteRegion(region.getDatabaseName(), region.getDataRegionIdString());
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (Exception e) {
+      dataRegionMap.putIfAbsent(regionId, region);
+      LOGGER.error(
+          "Error occurs when deleting data region {}-{}",
+          region.getDatabaseName(),
+          region.getDataRegionIdString(),
+          e);
+      return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
+    } finally {
+      deletingDataRegionMap.remove(regionId, region);
     }
   }
 

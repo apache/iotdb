@@ -108,6 +108,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
+              .filter(file -> !ActiveLoadPathHelper.isTransferStagingFile(file, listeningDirFile))
               .map(file -> new File(getTsFilePath(file.getAbsolutePath())))
               .distinct()
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
@@ -116,10 +117,21 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
               .limit(currentAllowedPendingSize)
               .forEach(
                   tsFile -> {
-                    activeLoadTsFileLoader.tryTriggerTsFileLoad(
-                        tsFile.getAbsolutePath(),
-                        listeningDirFile.getAbsolutePath(),
-                        isGeneratedByPipe);
+                    final String conversionTaskId =
+                        ActiveLoadPathHelper.parseAttributes(tsFile, listeningDirFile)
+                            .get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY);
+                    if (conversionTaskId == null) {
+                      activeLoadTsFileLoader.tryTriggerTsFileLoad(
+                          tsFile.getAbsolutePath(),
+                          listeningDirFile.getAbsolutePath(),
+                          isGeneratedByPipe);
+                    } else {
+                      activeLoadTsFileLoader.tryTriggerTsFileLoad(
+                          tsFile.getAbsolutePath(),
+                          listeningDirFile.getAbsolutePath(),
+                          isGeneratedByPipe,
+                          conversionTaskId);
+                    }
                   });
         } catch (UncheckedIOException e) {
           LOGGER.debug("The file has been deleted. Ignore this exception.");

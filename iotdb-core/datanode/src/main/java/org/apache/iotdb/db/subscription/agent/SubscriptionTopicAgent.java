@@ -19,9 +19,18 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -30,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -186,5 +196,50 @@ public class SubscriptionTopicAgent {
     } finally {
       releaseReadLock();
     }
+  }
+
+  /**
+   * Check that the authenticated session can read all data covered by the requested topics. The
+   * username in ConsumerConfig is client-controlled and therefore must not be used as the
+   * authorization identity.
+   */
+  public TSStatus checkTopicReadPermissions(
+      final String username, final Iterable<String> topicNames) {
+    if (Objects.isNull(username)) {
+      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+    }
+
+    acquireReadLock();
+    try {
+      for (final String topicName : topicNames) {
+        final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName);
+        if (Objects.isNull(topicMeta)) {
+          continue;
+        }
+
+        final TSStatus status = checkTopicReadPermission(username, topicMeta);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+      }
+      return RpcUtils.SUCCESS_STATUS;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private TSStatus checkTopicReadPermission(final String username, final TopicMeta topicMeta) {
+    final TopicConfig topicConfig = topicMeta.getConfig();
+    final PipePattern pipePattern =
+        topicConfig.getAttribute().containsKey(TopicConstant.PATTERN_KEY)
+            ? new PrefixPipePattern(topicConfig.getAttribute().get(TopicConstant.PATTERN_KEY))
+            : new IoTDBPipePattern(
+                topicConfig.getStringOrDefault(
+                    TopicConstant.PATH_KEY, TopicConstant.PATH_DEFAULT_VALUE));
+    final List<PartialPath> paths = pipePattern.getBaseInclusionPaths();
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkPatternPermission(username, paths, PrivilegeType.READ_DATA.ordinal()),
+        paths,
+        PrivilegeType.READ_DATA);
   }
 }

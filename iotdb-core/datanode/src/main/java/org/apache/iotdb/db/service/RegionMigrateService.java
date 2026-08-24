@@ -502,18 +502,20 @@ public class RegionMigrateService implements IService {
             originalDataNode,
             TRegionMigrateFailedType.RemoveConsensusGroupFailed,
             runResult);
+        return;
       }
 
       // deleteRegion: delete region data
       runResult = deleteRegion();
 
-      if (isFailed(runResult)) {
+      if (!isDeleteRegionCompleted(runResult)) {
         taskFail(
             taskId,
             tRegionId,
             originalDataNode,
             TRegionMigrateFailedType.DeleteRegionFailed,
             runResult);
+        return;
       }
 
       taskSucceed(taskId, tRegionId, "DeletePeer");
@@ -533,6 +535,8 @@ public class RegionMigrateService implements IService {
         } else {
           SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
         }
+      } catch (ConsensusGroupNotExistException e) {
+        // The peer was already removed by an earlier attempt, so continue with local cleanup.
       } catch (ConsensusException e) {
         String errorMsg =
             String.format(
@@ -560,23 +564,10 @@ public class RegionMigrateService implements IService {
           REGION_MIGRATE_PROCESS,
           tRegionId,
           originalDataNode);
-      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
-      try {
-        if (regionId instanceof DataRegionId) {
-          DataNodeRegionManager.getInstance().deleteDataRegion((DataRegionId) regionId);
-        } else {
-          DataNodeRegionManager.getInstance().deleteSchemaRegion((SchemaRegionId) regionId);
-        }
-      } catch (Exception e) {
-        taskLogger.error("{}, deleteRegion {} error", REGION_MIGRATE_PROCESS, regionId, e);
-        status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
-        status.setMessage("deleteRegion " + regionId + " error, " + e.getMessage());
-        return status;
-      }
-      status.setMessage("deleteRegion " + regionId + " succeed");
-      taskLogger.info("{}, Succeed to deleteRegion {}", REGION_MIGRATE_PROCESS, regionId);
-      return status;
+      return regionId instanceof DataRegionId
+          ? DataNodeRegionManager.getInstance().deleteDataRegion((DataRegionId) regionId)
+          : DataNodeRegionManager.getInstance().deleteSchemaRegion((SchemaRegionId) regionId);
     }
   }
 
@@ -628,6 +619,10 @@ public class RegionMigrateService implements IService {
 
   public static boolean isFailed(TSStatus status) {
     return !isSucceed(status);
+  }
+
+  static boolean isDeleteRegionCompleted(TSStatus status) {
+    return isSucceed(status) || status.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode();
   }
 
   private static TEndPoint getConsensusEndPoint(

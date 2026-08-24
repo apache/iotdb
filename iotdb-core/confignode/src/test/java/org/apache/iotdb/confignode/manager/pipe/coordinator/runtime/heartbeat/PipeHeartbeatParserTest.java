@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -243,6 +244,50 @@ public class PipeHeartbeatParserTest {
     verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
   }
 
+  @Test
+  public void testParseHeartbeatAggregatesRecentFailuresFromAllDataNodes() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final String pipeName = "resourceFailurePipe";
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    createPipe(pipeTaskInfo, pipeName, PipeStatus.RUNNING);
+    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName);
+    final ParserTestContext context = createParserTestContext(2, pipeTaskInfo);
+
+    final Map<String, Long> firstNodeFailures = new HashMap<>();
+    firstNodeFailures.put("network_timeout", 10L);
+    final Map<String, Long> secondNodeFailures = new HashMap<>();
+    secondNodeFailures.put("network_timeout", 2L);
+    secondNodeFailures.put("memory_timeout", 15L);
+
+    context.parser.parseHeartbeat(1, createPipeHeartbeat(pipeMeta, firstNodeFailures));
+    context.parser.parseHeartbeat(2, createPipeHeartbeat(pipeMeta, secondNodeFailures));
+
+    final PipeTemporaryMetaInCoordinator temporaryMeta =
+        (PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta();
+    Assert.assertEquals(
+        Long.valueOf(12), temporaryMeta.getGlobalRecentFailures().get("network_timeout"));
+    Assert.assertEquals(
+        Long.valueOf(15), temporaryMeta.getGlobalRecentFailures().get("memory_timeout"));
+    verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
+  }
+
+  @Test
+  public void testPipeHeartbeatTreatsNullRecentFailureMapAsEmpty() throws Exception {
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    createPipe(pipeTaskInfo, "nullFailureMapPipe", PipeStatus.RUNNING);
+    final PipeMeta pipeMeta = pipeTaskInfo.getPipeMetaByPipeName("nullFailureMapPipe");
+    final PipeHeartbeat heartbeat =
+        new PipeHeartbeat(
+            Collections.singletonList(pipeMeta.serialize()),
+            Collections.singletonList(false),
+            Collections.singletonList(0L),
+            Collections.singletonList(0d),
+            Collections.<Map<String, Long>>singletonList(null));
+
+    Assert.assertTrue(heartbeat.getRecentFailures(pipeMeta.getStaticMeta()).isEmpty());
+  }
+
   private ParserTestContext createParserTestContext(final int registeredDataNodeCount) {
     return createParserTestContext(registeredDataNodeCount, new PipeTaskInfo());
   }
@@ -329,6 +374,16 @@ public class PipeHeartbeatParserTest {
 
   private PipeHeartbeat emptyHeartbeat() {
     return new PipeHeartbeat(Collections.emptyList(), null, null, null);
+  }
+
+  private PipeHeartbeat createPipeHeartbeat(
+      final PipeMeta pipeMeta, final Map<String, Long> recentFailures) throws Exception {
+    return new PipeHeartbeat(
+        Collections.singletonList(pipeMeta.serialize()),
+        Collections.singletonList(false),
+        Collections.singletonList(0L),
+        Collections.singletonList(0d),
+        Collections.singletonList(recentFailures));
   }
 
   private static class ParserTestContext {

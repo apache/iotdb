@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.ClientRunner;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.IoTDBOpcUaClient;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
@@ -32,11 +33,20 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.reader.TsFileLastReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.eclipse.milo.opcua.sdk.client.identity.AnonymousProvider;
 import org.eclipse.milo.opcua.sdk.client.identity.IdentityProvider;
 import org.eclipse.milo.opcua.sdk.client.identity.UsernameProvider;
@@ -49,7 +59,11 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -465,6 +479,153 @@ public class OpcUaSink implements PipeConnector {
   @Override
   public void heartbeat() throws Exception {
     // Server side, do nothing
+  }
+
+  @Override
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    if (!shouldTransferTsFileByMetadata(tsFileInsertionEvent)) {
+      PipeConnector.super.transfer(tsFileInsertionEvent);
+      return;
+    }
+
+    final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+        (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+    boolean delegatedToTabletTransfer = false;
+    try {
+      if (transferTsFileByMetadata(pipeTsFileInsertionEvent)
+          == TsFileTransferResult.FALLBACK_TO_TABLETS) {
+        delegatedToTabletTransfer = true;
+        PipeConnector.super.transfer(tsFileInsertionEvent);
+      }
+    } finally {
+      // PipeConnector.transfer(TsFileInsertionEvent) closes the event itself when it is used as a
+      // fallback. Keep the ownership here for the metadata fast path and exceptional exits.
+      if (!delegatedToTabletTransfer) {
+        tsFileInsertionEvent.close();
+      }
+    }
+  }
+
+  private boolean shouldTransferTsFileByMetadata(final TsFileInsertionEvent tsFileInsertionEvent) {
+    if (!isClientServerModel || !(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      return false;
+    }
+
+    final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+        (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+    // Metadata contains the unfiltered last value. Deletions, path/time filters, and privilege
+    // filtering must use the normal parser so that the sink observes exactly the event payload.
+    return !pipeTsFileInsertionEvent.isWithMod() && !pipeTsFileInsertionEvent.shouldParseTime();
+  }
+
+  private TsFileTransferResult transferTsFileByMetadata(
+      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent) throws Exception {
+    if (!pipeTsFileInsertionEvent.increaseReferenceCount(OpcUaSink.class.getName())) {
+      return TsFileTransferResult.SKIPPED;
+    }
+
+    try {
+      if (!pipeTsFileInsertionEvent.waitForTsFileClose()) {
+        return TsFileTransferResult.SKIPPED;
+      }
+
+      final Map<IDeviceID, List<Pair<MeasurementSchema, TimeValuePair>>> deviceLastValues;
+      try {
+        deviceLastValues = readLastValues(pipeTsFileInsertionEvent.getTsFile());
+      } catch (final Exception e) {
+        // Keep the parser as a compatibility fallback when the TsFile metadata cannot be read.
+        return TsFileTransferResult.FALLBACK_TO_TABLETS;
+      }
+      if (Objects.isNull(deviceLastValues)) {
+        return TsFileTransferResult.FALLBACK_TO_TABLETS;
+      }
+
+      if (Objects.nonNull(nameSpace)) {
+        for (final Map.Entry<IDeviceID, List<Pair<MeasurementSchema, TimeValuePair>>> entry :
+            deviceLastValues.entrySet()) {
+          nameSpace.transferLastValues(entry.getKey(), entry.getValue(), this);
+        }
+      } else if (Objects.nonNull(client)) {
+        // Batch all devices into the same OPC UA write so that many-device TsFiles do not incur one
+        // network round trip per device.
+        client.transferLastValues(deviceLastValues, this);
+      } else {
+        throw new PipeException("No OPC client or server is specified when transferring TsFile");
+      }
+      return TsFileTransferResult.TRANSFERRED;
+    } finally {
+      pipeTsFileInsertionEvent.decreaseReferenceCount(OpcUaSink.class.getName(), false);
+    }
+  }
+
+  static @Nullable Map<IDeviceID, List<Pair<MeasurementSchema, TimeValuePair>>> readLastValues(
+      final File tsFile) throws Exception {
+    final Map<IDeviceID, Map<String, TSDataType>> deviceToTimeseriesDataTypes =
+        readTimeseriesDataTypes(tsFile);
+    final long expectedTimeseriesCount =
+        deviceToTimeseriesDataTypes.values().stream().mapToLong(Map::size).sum();
+    long actualTimeseriesCount = 0;
+    final Map<IDeviceID, List<Pair<MeasurementSchema, TimeValuePair>>> deviceLastValues =
+        new LinkedHashMap<>();
+    // Disable asynchronous IO here. The sink already runs in a pipe worker and a synchronous
+    // reader avoids leaving a background task behind when the event is cancelled or falls back to
+    // tablet parsing.
+    try (final TsFileLastReader lastReader = new TsFileLastReader(tsFile.getPath(), false, false)) {
+      while (lastReader.hasNext()) {
+        final Pair<IDeviceID, List<Pair<String, TimeValuePair>>> deviceLastValue =
+            lastReader.next();
+        final Map<String, TSDataType> timeseriesDataTypes =
+            deviceToTimeseriesDataTypes.get(deviceLastValue.getLeft());
+        if (Objects.isNull(timeseriesDataTypes)) {
+          return null;
+        }
+
+        final List<Pair<MeasurementSchema, TimeValuePair>> typedLastValues =
+            deviceLastValues.computeIfAbsent(deviceLastValue.getLeft(), key -> new ArrayList<>());
+        for (final Pair<String, TimeValuePair> lastValue : deviceLastValue.getRight()) {
+          ++actualTimeseriesCount;
+          final TSDataType dataType = timeseriesDataTypes.get(lastValue.getLeft());
+          if (Objects.isNull(dataType)) {
+            return null;
+          }
+          if (!TsFileConstant.TIME_COLUMN_ID.equals(lastValue.getLeft())) {
+            typedLastValues.add(
+                new Pair<>(
+                    new MeasurementSchema(lastValue.getLeft(), dataType), lastValue.getRight()));
+          }
+        }
+      }
+    }
+
+    // TsFileLastReader logs and suppresses IOExceptions from Iterator#hasNext. Comparing against an
+    // independently read metadata count prevents a truncated result from being treated as EOF.
+    if (actualTimeseriesCount != expectedTimeseriesCount) {
+      return null;
+    }
+    return deviceLastValues;
+  }
+
+  private static Map<IDeviceID, Map<String, TSDataType>> readTimeseriesDataTypes(final File tsFile)
+      throws IOException {
+    try (final TsFileSequenceReader sequenceReader = new TsFileSequenceReader(tsFile.getPath())) {
+      final Map<IDeviceID, Map<String, TSDataType>> deviceToTimeseriesDataTypes =
+          new LinkedHashMap<>();
+      for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+          sequenceReader.getAllTimeseriesMetadata(false).entrySet()) {
+        final Map<String, TSDataType> timeseriesDataTypes = new LinkedHashMap<>();
+        for (final TimeseriesMetadata metadata : entry.getValue()) {
+          timeseriesDataTypes.put(metadata.getMeasurementId(), metadata.getTsDataType());
+        }
+        deviceToTimeseriesDataTypes.put(entry.getKey(), timeseriesDataTypes);
+      }
+      return deviceToTimeseriesDataTypes;
+    }
+  }
+
+  private enum TsFileTransferResult {
+    TRANSFERRED,
+    SKIPPED,
+    FALLBACK_TO_TABLETS
   }
 
   @Override

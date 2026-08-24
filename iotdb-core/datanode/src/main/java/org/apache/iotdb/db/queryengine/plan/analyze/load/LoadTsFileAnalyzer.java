@@ -69,6 +69,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
+import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -271,7 +272,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               isVerifySchema,
               isAutoCreateSchemaRequested,
               tabletConversionThresholdBytes,
-              isGeneratedByPipe);
+              isGeneratedByPipe,
+              context.getSession().getUserName());
       if (ActiveLoadUtil.loadTsFileAsyncToActiveDir(
           tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
         analysis.setFinishQueryAfterAnalyze(true);
@@ -465,6 +467,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
+      } else {
+        schemaAutoCreatorAndVerifier.checkWritePermission(device2TimeseriesMetadata);
       }
       // TODO: how to get the correct write point count when
       //  !isAutoCreateSchemaOrVerifySchemaEnabled
@@ -522,6 +526,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private Analysis executeTabletConversionOnException(
       final Analysis analysis, final LoadAnalyzeException e) {
+    if (e instanceof LoadAnalyzeTypeMismatchException) {
+      PipeTsFileConversionTaskManager.markTypeMismatchDetected();
+    }
     if (setTemporaryUnavailableStatusIfNecessary(analysis, e)) {
       return analysis;
     }
@@ -673,33 +680,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             // not a timeseries, skip
           } else {
             // check WRITE_DATA permission of timeseries
-            long startTime = System.nanoTime();
-            try {
-              String userName = context.getSession().getUserName();
-              if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-                TSStatus status;
-                try {
-                  List<PartialPath> paths =
-                      Collections.singletonList(
-                          new PartialPath(device, timeseriesMetadata.getMeasurementId()));
-                  status =
-                      AuthorityChecker.getTSStatus(
-                          AuthorityChecker.checkFullPathListPermission(
-                              userName, paths, PrivilegeType.WRITE_DATA.ordinal()),
-                          paths,
-                          PrivilegeType.WRITE_DATA);
-                } catch (IllegalPathException e) {
-                  throw new RuntimeException(e);
-                }
-                if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  throw new AuthException(
-                      TSStatusCode.representOf(status.getCode()), status.getMessage());
-                }
-              }
-            } finally {
-              PerformanceOverviewMetrics.getInstance()
-                  .recordAuthCost(System.nanoTime() - startTime);
-            }
+            checkWritePermission(device, timeseriesMetadata.getMeasurementId());
             final Pair<CompressionType, TSEncoding> compressionEncodingPair =
                 reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
             schemaCache.addTimeSeries(
@@ -720,6 +701,77 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             flush();
           }
         }
+      }
+    }
+
+    public void checkWritePermission(
+        Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
+        throws AuthException {
+      for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+          device2TimeseriesMetadataList.entrySet()) {
+        final IDeviceID device = entry.getKey();
+
+        try {
+          if (schemaCache.isDeviceDeletedByMods(device)) {
+            continue;
+          }
+        } catch (IllegalPathException e) {
+          LOGGER.warn(
+              "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
+              device,
+              e);
+        }
+
+        for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+          try {
+            if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
+              continue;
+            }
+          } catch (IllegalPathException e) {
+            // In aligned devices, there may be empty measurements which will cause
+            // IllegalPathException.
+            if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
+              LOGGER.warn(
+                  "Failed to check if device {}, timeSeries {} is deleted by mods. Will see it as not deleted.",
+                  device,
+                  timeseriesMetadata.getMeasurementId(),
+                  e);
+            }
+          }
+
+          if (!TSDataType.VECTOR.equals(timeseriesMetadata.getTsDataType())) {
+            checkWritePermission(device, timeseriesMetadata.getMeasurementId());
+          }
+        }
+      }
+    }
+
+    private void checkWritePermission(final IDeviceID device, final String measurementId)
+        throws AuthException {
+      final long startTime = System.nanoTime();
+      try {
+        String userName = context.getSession().getUserName();
+        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+          TSStatus status;
+          try {
+            List<PartialPath> paths =
+                Collections.singletonList(new PartialPath(device, measurementId));
+            status =
+                AuthorityChecker.getTSStatus(
+                    AuthorityChecker.checkFullPathListPermission(
+                        userName, paths, PrivilegeType.WRITE_DATA.ordinal()),
+                    paths,
+                    PrivilegeType.WRITE_DATA);
+          } catch (IllegalPathException e) {
+            throw new RuntimeException(e);
+          }
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new AuthException(
+                TSStatusCode.representOf(status.getCode()), status.getMessage());
+          }
+        }
+      } finally {
+        PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
       }
     }
 

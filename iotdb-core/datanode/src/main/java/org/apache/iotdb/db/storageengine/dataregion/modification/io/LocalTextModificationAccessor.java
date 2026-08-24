@@ -39,7 +39,6 @@ import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -70,68 +69,106 @@ public class LocalTextModificationAccessor
   @Override
   public Collection<Modification> read() {
     List<Modification> result = new ArrayList<>();
-    Iterator<Modification> iterator = getModificationIterator();
-    while (iterator.hasNext()) {
-      result.add(iterator.next());
+    ModificationIterator iterator = getModificationIterator();
+    try {
+      while (iterator.hasNext()) {
+        result.add(iterator.next());
+      }
+      return result;
+    } finally {
+      iterator.close();
     }
-    return result;
   }
 
-  // we need to hold the reader for the Iterator, cannot use auto close or close in finally block
+  // The iterator owns the reader; callers must close it when they no longer need the iterator.
   @SuppressWarnings("java:S2095")
   @Override
-  public Iterator<Modification> getModificationIterator() {
+  public ModificationIterator getModificationIterator() {
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     final BufferedReader reader;
     try {
       reader = new BufferedReader(new FileReader(file));
     } catch (FileNotFoundException e) {
       logger.debug(NO_MODIFICATION_MSG, file);
-
-      // return empty iterator
-      return new Iterator<Modification>() {
-        @Override
-        public boolean hasNext() {
-          return false;
-        }
-
-        @Override
-        public Modification next() {
-          throw new NoSuchElementException();
-        }
-      };
+      return new EmptyModificationIterator();
     }
 
-    final Modification[] cachedModification = new Modification[1];
-    return new Iterator<Modification>() {
-      @Override
-      public boolean hasNext() {
-        try {
-          if (cachedModification[0] == null) {
-            String line = reader.readLine();
-            if (line == null) {
-              reader.close();
-              return false;
-            } else {
-              return decodeModificationAndCache(reader, cachedModification, line);
-            }
-          }
-        } catch (IOException e) {
-          logger.warn("An error occurred when reading modifications", e);
-        }
-        return true;
-      }
+    return new FileModificationIterator(reader);
+  }
 
-      @Override
-      public Modification next() {
-        if (cachedModification[0] == null) {
-          throw new NoSuchElementException();
-        }
-        Modification result = cachedModification[0];
-        cachedModification[0] = null;
-        return result;
+  private class FileModificationIterator implements ModificationIterator {
+
+    private final BufferedReader reader;
+    private final Modification[] cachedModification = new Modification[1];
+    private boolean closed = false;
+
+    private FileModificationIterator(BufferedReader reader) {
+      this.reader = reader;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (closed) {
+        return false;
       }
-    };
+      try {
+        if (cachedModification[0] == null) {
+          String line = reader.readLine();
+          if (line == null) {
+            close();
+            return false;
+          }
+          if (!decodeModificationAndCache(reader, cachedModification, line)) {
+            close();
+            return false;
+          }
+        }
+      } catch (IOException e) {
+        logger.warn("An error occurred when reading modifications", e);
+        close();
+        return false;
+      }
+      return true;
+    }
+
+    @Override
+    public Modification next() {
+      if (cachedModification[0] == null) {
+        throw new NoSuchElementException();
+      }
+      Modification result = cachedModification[0];
+      cachedModification[0] = null;
+      return result;
+    }
+
+    @Override
+    public void close() {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      try {
+        reader.close();
+      } catch (IOException e) {
+        logger.warn("An error occurred when closing modification reader", e);
+      }
+    }
+  }
+
+  private static class EmptyModificationIterator implements ModificationIterator {
+
+    @Override
+    public boolean hasNext() {
+      return false;
+    }
+
+    @Override
+    public Modification next() {
+      throw new NoSuchElementException();
+    }
+
+    @Override
+    public void close() {}
   }
 
   private boolean decodeModificationAndCache(
@@ -142,7 +179,6 @@ public class LocalTextModificationAccessor
     } catch (IOException e) {
       logger.warn("An error occurred when decode line-[{}] to modification", line);
       cachedModification[0] = null;
-      reader.close();
       return false;
     }
   }

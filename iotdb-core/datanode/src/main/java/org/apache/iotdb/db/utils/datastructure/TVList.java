@@ -540,11 +540,6 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public TVList getTvListByColumnIndex(
-      List<Integer> columnIndexList, List<TSDataType> dataTypeList) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
   public long getMaxTime() {
     return maxTime;
   }

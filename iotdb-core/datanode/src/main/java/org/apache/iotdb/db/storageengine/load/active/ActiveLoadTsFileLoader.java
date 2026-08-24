@@ -32,13 +32,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -86,11 +86,16 @@ public class ActiveLoadTsFileLoader {
 
   public void tryTriggerTsFileLoad(
       String absolutePath, String pendingDir, boolean isGeneratedByPipe) {
+    tryTriggerTsFileLoad(absolutePath, pendingDir, isGeneratedByPipe, null);
+  }
+
+  public void tryTriggerTsFileLoad(
+      String absolutePath, String pendingDir, boolean isGeneratedByPipe, String conversionTaskId) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       return;
     }
 
-    if (pendingQueue.enqueue(absolutePath, pendingDir, isGeneratedByPipe)) {
+    if (pendingQueue.enqueue(absolutePath, pendingDir, isGeneratedByPipe, conversionTaskId)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }
@@ -263,10 +268,31 @@ public class ActiveLoadTsFileLoader {
             ? ActiveLoadPathHelper.findPendingDirectory(tsFile)
             : new File(entry.getPendingDir());
     final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
-    ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+    final String conversionTaskId = entry.getConversionTaskId();
+    PipeTsFileConversionTaskManager.registerIfAbsent(conversionTaskId);
+    PipeTsFileConversionTaskManager.markReceiverOwned(conversionTaskId);
+    PipeTsFileConversionTaskManager.markRunning(conversionTaskId);
+    PipeTsFileConversionTaskManager.enter(conversionTaskId);
+    try {
+      ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+      final String userName =
+          attributes.getOrDefault(ActiveLoadPathHelper.USER_KEY, AuthorityChecker.SUPER_USER);
+      session.setUsername(userName);
 
-    return executeStatement(
-        entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement, session);
+      final TSStatus result =
+          executeStatement(
+              entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement,
+              session);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        PipeTsFileConversionTaskManager.markSuccess(conversionTaskId);
+      } else {
+        PipeTsFileConversionTaskManager.markPaused(conversionTaskId, result);
+      }
+      return result;
+    } finally {
+      PipeTsFileConversionTaskManager.leave();
+    }
   }
 
   private TSStatus executeStatement(final Statement statement, final IClientSession session) {
@@ -276,7 +302,7 @@ public class ActiveLoadTsFileLoader {
           .executeForTreeModel(
               statement,
               SessionManager.getInstance().requestQueryId(),
-              new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault(), ""),
+              SESSION_MANAGER.getSessionInfo(session),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
@@ -291,7 +317,10 @@ public class ActiveLoadTsFileLoader {
 
   private void handleLoadFailure(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final TSStatus status) {
-    if (!ActiveLoadFailedMessageHandler.isStatusShouldRetry(entry, status)) {
+    if (ActiveLoadFailedMessageHandler.isStatusShouldRetry(entry, status)) {
+      PipeTsFileConversionTaskManager.markPaused(entry.getConversionTaskId(), status);
+    } else {
+      PipeTsFileConversionTaskManager.markFailed(entry.getConversionTaskId(), status);
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
           entry.getFile(),
@@ -302,6 +331,8 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void handleFileNotFoundException(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    PipeTsFileConversionTaskManager.markFailed(
+        entry.getConversionTaskId(), new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
     LOGGER.warn(
         "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
         entry.getFile(),
@@ -311,7 +342,15 @@ public class ActiveLoadTsFileLoader {
 
   private void handleOtherException(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final Exception e) {
-    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, e.getMessage())) {
+    if (ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, e.getMessage())) {
+      PipeTsFileConversionTaskManager.markPaused(
+          entry.getConversionTaskId(),
+          new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+              .setMessage(e.getMessage()));
+    } else {
+      PipeTsFileConversionTaskManager.markFailed(
+          entry.getConversionTaskId(),
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
           entry.getFile(),

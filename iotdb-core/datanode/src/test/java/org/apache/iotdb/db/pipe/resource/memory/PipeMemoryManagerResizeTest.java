@@ -28,8 +28,11 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class PipeMemoryManagerResizeTest {
 
+  private static final long TOTAL_MEMORY_SIZE_IN_BYTES = 2000;
   private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private boolean originalMemoryManagementEnabled;
@@ -76,7 +79,7 @@ public class PipeMemoryManagerResizeTest {
     final PipeTabletMemoryBlock tablet = manager.forceAllocateForTabletWithRetry(0);
     final long tabletMemorySizeInBytes =
         (long)
-                (PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes()
+                (manager.getTotalNonFloatingMemorySizeInBytes()
                     * (config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
                         + config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
                             / 2))
@@ -97,8 +100,7 @@ public class PipeMemoryManagerResizeTest {
   @Test
   public void testTabletResizeLeavesMemoryForSinkForwardProgress() {
     final PipeMemoryManager manager = new PipeMemoryManager();
-    final long totalNonFloatingMemorySizeInBytes =
-        PipeMemoryManager.getTotalNonFloatingMemorySizeInBytes();
+    final long totalNonFloatingMemorySizeInBytes = manager.getTotalNonFloatingMemorySizeInBytes();
     final long tabletMemorySizeInBytes =
         (long)
                 (totalNonFloatingMemorySizeInBytes
@@ -133,5 +135,33 @@ public class PipeMemoryManagerResizeTest {
     }
 
     Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testFloatingAndNonFloatingMemoryShareTheSamePool() {
+    final AtomicLong floatingMemoryUsageInBytes = new AtomicLong(0);
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(TOTAL_MEMORY_SIZE_IN_BYTES, floatingMemoryUsageInBytes::get);
+
+    Assert.assertEquals(TOTAL_MEMORY_SIZE_IN_BYTES, manager.getTotalNonFloatingMemorySizeInBytes());
+    Assert.assertEquals(
+        TOTAL_MEMORY_SIZE_IN_BYTES / 2, manager.getTotalFloatingMemorySizeInBytes());
+
+    final PipeTsFileMemoryBlock nonFloatingMemory = manager.forceAllocateForTsFileWithRetry(1200);
+    try {
+      // Non-floating memory can borrow the unused half that was previously reserved for InsertNode
+      // queues. Its usage also reduces the current floating-memory limit symmetrically.
+      Assert.assertEquals(1200, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(800, manager.getTotalFloatingMemorySizeInBytes());
+
+      floatingMemoryUsageInBytes.set(500);
+      Assert.assertEquals(1500, manager.getTotalNonFloatingMemorySizeInBytes());
+      Assert.assertEquals(300, manager.getFreeMemorySizeInBytes());
+
+      Assert.assertThrows(
+          PipeRuntimeOutOfMemoryCriticalException.class, () -> manager.forceAllocate(301));
+    } finally {
+      manager.release(nonFloatingMemory);
+    }
   }
 }

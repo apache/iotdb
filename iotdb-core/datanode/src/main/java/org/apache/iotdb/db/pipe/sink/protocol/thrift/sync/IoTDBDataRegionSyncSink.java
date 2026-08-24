@@ -278,10 +278,12 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       throws IOException, WriteProcessException {
     final List<File> sealedFiles = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
+    final List<EnrichedEvent> events = batchToTransfer.deepCopyEvents();
 
     try {
-      for (final File tsFile : sealedFiles) {
-        doTransfer(pipe2WeightMap, tsFile, null, null);
+      for (int outputIndex = 0; outputIndex < sealedFiles.size(); outputIndex++) {
+        final File tsFile = sealedFiles.get(outputIndex);
+        doTransfer(pipe2WeightMap, tsFile, null, null, events, outputIndex);
       }
     } finally {
       for (final File tsFile : sealedFiles) {
@@ -439,7 +441,9 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
               1.0),
           pipeTsFileInsertionEvent.getTsFile(),
           pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null,
-          pipeTsFileInsertionEvent.getDatabaseName());
+          pipeTsFileInsertionEvent.getDatabaseName(),
+          Collections.singletonList(pipeTsFileInsertionEvent),
+          0);
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionSyncSink.class.getName(), false);
@@ -450,11 +454,22 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final File tsFile,
       final File modFile,
-      final String dataBaseName)
+      final String dataBaseName,
+      final Iterable<? extends EnrichedEvent> events,
+      final int outputIndex)
       throws PipeException, IOException {
 
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
+    final String conversionTaskId =
+        shouldAsyncLoadTsFileOnTypeMismatch
+            ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+                sinkTaskId,
+                events,
+                dataBaseName,
+                outputIndex,
+                Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver())
+            : null;
 
     // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
     if (Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver()) {
@@ -466,12 +481,13 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName,
-                    shouldWaitForSchemaBeforeLoad));
+                        modFile.getName(),
+                        modFile.length(),
+                        tsFile.getName(),
+                        tsFile.length(),
+                        dataBaseName,
+                        shouldWaitForSchemaBeforeLoad)
+                    .setConversionTaskInfo(conversionTaskId, shouldAsyncLoadTsFileOnTypeMismatch));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
@@ -496,14 +512,16 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
-                dataBaseName == null && !shouldWaitForSchemaBeforeLoad
+                conversionTaskId == null && dataBaseName == null && !shouldWaitForSchemaBeforeLoad
                     ? PipeTransferTsFileSealReq.toTPipeTransferReq(
                         tsFile.getName(), tsFile.length())
                     : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        tsFile.getName(),
-                        tsFile.length(),
-                        dataBaseName,
-                        shouldWaitForSchemaBeforeLoad));
+                            tsFile.getName(),
+                            tsFile.length(),
+                            dataBaseName,
+                            shouldWaitForSchemaBeforeLoad)
+                        .setConversionTaskInfo(
+                            conversionTaskId, shouldAsyncLoadTsFileOnTypeMismatch));
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
