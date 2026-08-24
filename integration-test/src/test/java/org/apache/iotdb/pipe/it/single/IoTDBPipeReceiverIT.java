@@ -24,12 +24,15 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV1Req;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV2Req;
+import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigPlanReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -56,6 +59,7 @@ import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -256,6 +260,21 @@ public class IoTDBPipeReceiverIT {
       Assert.assertNotEquals(
           TSStatusCode.NOT_LOGIN.getStatusCode(),
           client.pipeTransfer(buildEmptyConfigPlanReq()).getStatus().getCode());
+      Assert.assertEquals(
+          TSStatusCode.NO_PERMISSION.getStatusCode(),
+          client
+              .pipeTransfer(
+                  PipeTransferConfigPlanReq.toTPipeTransferReq(
+                      new CreatePipePluginPlan(
+                          new PipePluginMeta(
+                              "receiver-security-test-plugin",
+                              "attacker.Plugin",
+                              false,
+                              "attacker.jar",
+                              "deadbeef"),
+                          new Binary(new byte[] {1}))))
+              .getStatus()
+              .getCode());
     }
   }
 
