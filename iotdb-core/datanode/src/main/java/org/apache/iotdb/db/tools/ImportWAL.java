@@ -98,7 +98,6 @@ public class ImportWAL {
   private static final String DEFAULT_USER = "root";
   private static final int DEFAULT_THREAD_NUM = 1;
   private static final int SNAPSHOT_TABLET_ROW_LIMIT = 1024;
-  private static final Object CONSOLE_PROMPT_LOCK = new Object();
 
   private ImportWAL() {}
 
@@ -136,11 +135,15 @@ public class ImportWAL {
       final String host = commandLine.getOptionValue("host", DEFAULT_HOST);
       final int port = parsePort(commandLine.getOptionValue("port", String.valueOf(DEFAULT_PORT)));
       final String username = commandLine.getOptionValue("username", DEFAULT_USER);
+      final WALReplayer.ReplayDecisionController replayDecisionController =
+          new WALReplayer.ReplayDecisionController(System.console());
       final ReplayStatistics statistics =
           replayWALDirectories(
               walFiles,
               threadNum,
-              () -> createWALReplayWorker(host, port, username, password, database),
+              () ->
+                  createWALReplayWorker(
+                      host, port, username, password, database, replayDecisionController),
               out,
               deleteSource);
       out.printf(
@@ -353,7 +356,8 @@ public class ImportWAL {
       final int port,
       final String username,
       final String password,
-      final String database)
+      final String database,
+      final WALReplayer.ReplayDecisionController replayDecisionController)
       throws IOException {
     final Session treeSession = createSession(host, port, username, password, null);
     final Session tableSession =
@@ -363,7 +367,7 @@ public class ImportWAL {
       if (tableSession != null) {
         tableSession.open(false);
       }
-      return new SessionWALReplayer(treeSession, tableSession, database);
+      return new SessionWALReplayer(treeSession, tableSession, database, replayDecisionController);
     } catch (final IoTDBConnectionException e) {
       closeSession(tableSession);
       closeSession(treeSession);
@@ -702,8 +706,11 @@ public class ImportWAL {
     private final Session tableSession;
 
     private SessionWALReplayer(
-        final Session treeSession, final Session tableSession, final String tableDatabaseName) {
-      super(treeSession, tableSession, tableDatabaseName);
+        final Session treeSession,
+        final Session tableSession,
+        final String tableDatabaseName,
+        final WALReplayer.ReplayDecisionController replayDecisionController) {
+      super(treeSession, tableSession, tableDatabaseName, replayDecisionController);
       this.treeSession = treeSession;
       this.tableSession = tableSession;
     }
@@ -720,7 +727,7 @@ public class ImportWAL {
     private final Session treeSession;
     private final Session tableSession;
     private final ConsensusLogToTabletConverter converter;
-    private final UnsupportedEntryPrompt unsupportedEntryPrompt;
+    private final ReplayDecisionPrompt replayDecisionPrompt;
     private final Map<String, List<IMeasurementSchema>> tableTagSchemas = new HashMap<>();
 
     WALReplayer(
@@ -729,17 +736,17 @@ public class ImportWAL {
           treeSession,
           tableSession,
           tableDatabaseName,
-          createUnsupportedEntryPrompt(System.console()));
+          new ReplayDecisionController(System.console()));
     }
 
     WALReplayer(
         final Session treeSession,
         final Session tableSession,
         final String tableDatabaseName,
-        final UnsupportedEntryPrompt unsupportedEntryPrompt) {
+        final ReplayDecisionPrompt replayDecisionPrompt) {
       this.treeSession = treeSession;
       this.tableSession = tableSession;
-      this.unsupportedEntryPrompt = unsupportedEntryPrompt;
+      this.replayDecisionPrompt = replayDecisionPrompt;
       converter =
           new ConsensusLogToTabletConverter(
               null, null, ColumnFilterMatcher.matchAll(), tableDatabaseName);
@@ -757,45 +764,111 @@ public class ImportWAL {
         return true;
       }
       if (entry.getValue() instanceof DeleteDataNode deleteDataNode) {
+        final ReplayDecision decision = replayDecisionPrompt.decide(entry, true);
+        if (decision == ReplayDecision.SKIP || decision == ReplayDecision.SKIP_ALL) {
+          return false;
+        }
+        if (decision == ReplayDecision.TERMINATE) {
+          throw replayTerminatedByUser();
+        }
         replayTreeDelete(deleteDataNode);
         return true;
       }
       if (entry.getValue() instanceof RelationalDeleteDataNode
           || entry.getValue() instanceof ObjectNode) {
-        // A null prompt means no interactive console is available, so preserve fail-fast behavior.
-        if (unsupportedEntryPrompt != null && unsupportedEntryPrompt.shouldSkip(entry)) {
+        final ReplayDecision decision = replayDecisionPrompt.decide(entry, false);
+        if (decision == ReplayDecision.SKIP || decision == ReplayDecision.SKIP_ALL) {
           return false;
+        }
+        if (decision == ReplayDecision.TERMINATE) {
+          throw replayTerminatedByUser();
         }
         throw unsupportedOperation(entry);
       }
       return false;
     }
 
-    private static UnsupportedEntryPrompt createUnsupportedEntryPrompt(final Console console) {
-      if (console == null) {
-        return null;
-      }
-      return entry -> {
-        synchronized (CONSOLE_PROMPT_LOCK) {
-          final String answer =
-              console.readLine(
-                  ImportWALMessages
-                      .MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_SKIP_THIS_ENTRY_Y_N_DAFBE650,
-                  entry.getType());
-          return isSkipConfirmation(answer);
-        }
-      };
-    }
-
-    static boolean isSkipConfirmation(final String answer) {
-      return answer != null
-          && ("y".equalsIgnoreCase(answer.trim()) || "yes".equalsIgnoreCase(answer.trim()));
+    enum ReplayDecision {
+      EXECUTE,
+      SKIP,
+      EXECUTE_ALL,
+      SKIP_ALL,
+      TERMINATE
     }
 
     @FunctionalInterface
-    interface UnsupportedEntryPrompt {
+    interface ReplayDecisionPrompt {
 
-      boolean shouldSkip(WALEntry entry);
+      ReplayDecision decide(WALEntry entry, boolean treeDelete);
+    }
+
+    static class ReplayDecisionController implements ReplayDecisionPrompt {
+
+      private final Console console;
+      private ReplayDecision treeDeleteDecision;
+      private boolean skipAllUnsupportedEntries;
+
+      ReplayDecisionController(final Console console) {
+        this.console = console;
+      }
+
+      // The controller is shared by parallel workers so an "all" choice applies to the whole
+      // import rather than only to the WAL files assigned to one worker.
+      @Override
+      public synchronized ReplayDecision decide(final WALEntry entry, final boolean treeDelete) {
+        if (treeDelete && treeDeleteDecision != null) {
+          return treeDeleteDecision == ReplayDecision.EXECUTE_ALL
+              ? ReplayDecision.EXECUTE
+              : ReplayDecision.SKIP;
+        }
+        if (!treeDelete && skipAllUnsupportedEntries) {
+          return ReplayDecision.SKIP;
+        }
+        if (console == null) {
+          return ReplayDecision.TERMINATE;
+        }
+        final String answer =
+            console.readLine(
+                treeDelete
+                    ? ImportWALMessages
+                        .MESSAGE_TREE_MODEL_DELETE_OPERATION_DETECTED_ARG_CHOOSE_E_EXECUTE_S_SKIP_A_EXECUTE_ALL_L_SKIP_ALL_Q_QUIT_11E39FD7
+                    : ImportWALMessages
+                        .MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_CHOOSE_S_SKIP_L_SKIP_ALL_Q_QUIT_0A734E52,
+                entry.getType());
+        final ReplayDecision decision = parseDecision(answer, treeDelete);
+        rememberAllDecision(decision, treeDelete);
+        return decision;
+      }
+
+      private void rememberAllDecision(final ReplayDecision decision, final boolean treeDelete) {
+        if (treeDelete
+            && (decision == ReplayDecision.EXECUTE_ALL || decision == ReplayDecision.SKIP_ALL)) {
+          treeDeleteDecision = decision;
+        } else if (!treeDelete && decision == ReplayDecision.SKIP_ALL) {
+          skipAllUnsupportedEntries = true;
+        }
+      }
+
+      static ReplayDecision parseDecision(final String answer, final boolean treeDelete) {
+        if (answer == null) {
+          return ReplayDecision.TERMINATE;
+        }
+        return switch (answer.trim().toLowerCase(Locale.ROOT)) {
+          case "e", "execute", "yes", "y" ->
+              treeDelete ? ReplayDecision.EXECUTE : ReplayDecision.TERMINATE;
+          case "s", "skip", "no", "n" -> ReplayDecision.SKIP;
+          case "a", "all", "execute_all" ->
+              treeDelete ? ReplayDecision.EXECUTE_ALL : ReplayDecision.TERMINATE;
+          case "l", "skip_all" -> ReplayDecision.SKIP_ALL;
+          case "q", "quit", "terminate", "t" -> ReplayDecision.TERMINATE;
+          default -> ReplayDecision.TERMINATE;
+        };
+      }
+    }
+
+    private static StatementExecutionException replayTerminatedByUser() {
+      return new StatementExecutionException(
+          ImportWALMessages.EXCEPTION_WAL_REPLAY_WAS_TERMINATED_BY_THE_USER_E0BD6197);
     }
 
     private static StatementExecutionException unsupportedOperation(final WALEntry entry) {

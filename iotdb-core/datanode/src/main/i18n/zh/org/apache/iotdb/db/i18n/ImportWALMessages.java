@@ -81,8 +81,14 @@ public final class ImportWALMessages {
       "表模型 WAL 条目要求指定 -db/--database。";
   public static final String EXCEPTION_UNSUPPORTED_WAL_OPERATION_ARG_ABD227A0 =
       "不支持的 WAL 操作：%s";
-  public static final String MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_SKIP_THIS_ENTRY_Y_N_DAFBE650 =
-      "不支持的 WAL 操作：%s。是否跳过此条目？[y/N]：";
+  public static final String
+      MESSAGE_TREE_MODEL_DELETE_OPERATION_DETECTED_ARG_CHOOSE_E_EXECUTE_S_SKIP_A_EXECUTE_ALL_L_SKIP_ALL_Q_QUIT_11E39FD7 =
+          "检测到树模型删除操作：%s。请选择 e=执行、s=跳过、a=全部执行、l=全部跳过、q=终止重放：";
+  public static final String
+      MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_CHOOSE_S_SKIP_L_SKIP_ALL_Q_QUIT_0A734E52 =
+          "不支持的 WAL 操作：%s。请选择 s=跳过、l=全部跳过、q=终止重放：";
+  public static final String EXCEPTION_WAL_REPLAY_WAS_TERMINATED_BY_THE_USER_E0BD6197 =
+      "用户终止了 WAL 重放。";
   public static final String EXCEPTION_INSERT_NODE_ARG_CONTAINS_NO_REPLAYABLE_DATA_5DA13453 =
       "Insert node %s 不包含可重放数据。";
   public static final String EXCEPTION_UNSUPPORTED_SNAPSHOT_DATA_TYPE_ARG_7A32D312 =

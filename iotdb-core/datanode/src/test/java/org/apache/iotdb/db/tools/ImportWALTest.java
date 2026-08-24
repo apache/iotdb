@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -75,6 +76,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -412,10 +414,91 @@ public class ImportWALTest {
             20);
     final Session treeSession = mock(Session.class);
 
-    new ImportWAL.WALReplayer(treeSession, null, null).replay(new WALInfoEntry(1, deleteNode));
+    new ImportWAL.WALReplayer(
+            treeSession,
+            null,
+            null,
+            (entry, treeDelete) -> ImportWAL.WALReplayer.ReplayDecision.EXECUTE)
+        .replay(new WALInfoEntry(1, deleteNode));
 
     verify(treeSession)
         .deleteData(eq(Arrays.asList("root.sg.d1.s1", "root.sg.d2.*")), eq(10L), eq(20L));
+  }
+
+  @Test
+  public void testReplayTreeDeleteSkipsAfterConfirmation() throws Exception {
+    final DeleteDataNode deleteNode =
+        new DeleteDataNode(
+            new PlanNodeId(""), List.of(new MeasurementPath("root.sg.d1.s1")), 10, 20);
+    final Session treeSession = mock(Session.class);
+
+    final boolean replayed =
+        new ImportWAL.WALReplayer(
+                treeSession,
+                null,
+                null,
+                (entry, treeDelete) -> ImportWAL.WALReplayer.ReplayDecision.SKIP)
+            .replay(new WALInfoEntry(1, deleteNode));
+
+    assertFalse(replayed);
+    verify(treeSession, never()).deleteData(any(), anyLong(), anyLong());
+  }
+
+  @Test
+  public void testReplayTreeDeleteExecuteAllAndSkipAllDecisions() throws Exception {
+    final DeleteDataNode deleteNode =
+        new DeleteDataNode(
+            new PlanNodeId(""), List.of(new MeasurementPath("root.sg.d1.s1")), 10, 20);
+    final Session treeSession = mock(Session.class);
+    final AtomicInteger executeAllPromptCount = new AtomicInteger();
+    final ImportWAL.WALReplayer.ReplayDecisionPrompt executeAllPrompt =
+        (entry, treeDelete) -> {
+          executeAllPromptCount.incrementAndGet();
+          return ImportWAL.WALReplayer.ReplayDecision.EXECUTE_ALL;
+        };
+    final ImportWAL.WALReplayer firstExecuteAllReplayer =
+        new ImportWAL.WALReplayer(treeSession, null, null, executeAllPrompt);
+    final ImportWAL.WALReplayer secondExecuteAllReplayer =
+        new ImportWAL.WALReplayer(treeSession, null, null, executeAllPrompt);
+
+    assertTrue(firstExecuteAllReplayer.replay(new WALInfoEntry(1, deleteNode)));
+    assertTrue(secondExecuteAllReplayer.replay(new WALInfoEntry(2, deleteNode)));
+    assertEquals(2, executeAllPromptCount.get());
+    verify(treeSession, times(2)).deleteData(any(), eq(10L), eq(20L));
+
+    final Session skippedTreeSession = mock(Session.class);
+    final AtomicInteger skipAllPromptCount = new AtomicInteger();
+    final ImportWAL.WALReplayer.ReplayDecisionPrompt skipAllPrompt =
+        (entry, treeDelete) -> {
+          skipAllPromptCount.incrementAndGet();
+          return ImportWAL.WALReplayer.ReplayDecision.SKIP_ALL;
+        };
+    final ImportWAL.WALReplayer firstSkipAllReplayer =
+        new ImportWAL.WALReplayer(skippedTreeSession, null, null, skipAllPrompt);
+    final ImportWAL.WALReplayer secondSkipAllReplayer =
+        new ImportWAL.WALReplayer(skippedTreeSession, null, null, skipAllPrompt);
+
+    assertFalse(firstSkipAllReplayer.replay(new WALInfoEntry(1, deleteNode)));
+    assertFalse(secondSkipAllReplayer.replay(new WALInfoEntry(2, deleteNode)));
+    assertEquals(2, skipAllPromptCount.get());
+    verify(skippedTreeSession, never()).deleteData(any(), anyLong(), anyLong());
+  }
+
+  @Test
+  public void testReplayTreeDeleteTerminatesAfterConfirmation() throws Exception {
+    final DeleteDataNode deleteNode =
+        new DeleteDataNode(
+            new PlanNodeId(""), List.of(new MeasurementPath("root.sg.d1.s1")), 10, 20);
+
+    assertThrows(
+        StatementExecutionException.class,
+        () ->
+            new ImportWAL.WALReplayer(
+                    mock(Session.class),
+                    null,
+                    null,
+                    (entry, treeDelete) -> ImportWAL.WALReplayer.ReplayDecision.TERMINATE)
+                .replay(new WALInfoEntry(1, deleteNode)));
   }
 
   /** Covers an unsupported entry when the interactive user explicitly chooses to skip it. */
@@ -424,9 +507,37 @@ public class ImportWALTest {
     final WALEntry entry = mockUnsupportedEntry();
 
     final boolean replayed =
-        new ImportWAL.WALReplayer(mock(Session.class), null, null, ignored -> true).replay(entry);
+        new ImportWAL.WALReplayer(
+                mock(Session.class),
+                null,
+                null,
+                (ignored, treeDelete) -> ImportWAL.WALReplayer.ReplayDecision.SKIP)
+            .replay(entry);
 
     assertFalse(replayed);
+  }
+
+  @Test
+  public void testReplayUnsupportedEntriesSkipAllAfterConfirmation() throws Exception {
+    final AtomicInteger promptCount = new AtomicInteger();
+    final ImportWAL.WALReplayer.ReplayDecisionPrompt skipAllPrompt =
+        (entry, treeDelete) -> {
+          promptCount.incrementAndGet();
+          return ImportWAL.WALReplayer.ReplayDecision.SKIP_ALL;
+        };
+    final ImportWAL.WALReplayer relationalDeleteReplayer =
+        new ImportWAL.WALReplayer(mock(Session.class), null, null, skipAllPrompt);
+
+    assertFalse(relationalDeleteReplayer.replay(mockUnsupportedEntry()));
+    assertFalse(relationalDeleteReplayer.replay(mockUnsupportedEntry()));
+
+    final WALEntry objectEntry = mock(WALEntry.class);
+    when(objectEntry.getType()).thenReturn(WALEntryType.OBJECT_FILE_NODE);
+    when(objectEntry.getValue()).thenReturn(mock(ObjectNode.class));
+    final ImportWAL.WALReplayer objectNodeReplayer =
+        new ImportWAL.WALReplayer(mock(Session.class), null, null, skipAllPrompt);
+    assertFalse(objectNodeReplayer.replay(objectEntry));
+    assertEquals(3, promptCount.get());
   }
 
   /** Covers an unsupported entry when the interactive user declines the skip prompt. */
@@ -437,7 +548,11 @@ public class ImportWALTest {
     assertThrows(
         StatementExecutionException.class,
         () ->
-            new ImportWAL.WALReplayer(mock(Session.class), null, null, ignored -> false)
+            new ImportWAL.WALReplayer(
+                    mock(Session.class),
+                    null,
+                    null,
+                    (ignored, treeDelete) -> ImportWAL.WALReplayer.ReplayDecision.TERMINATE)
                 .replay(entry));
   }
 
@@ -448,17 +563,38 @@ public class ImportWALTest {
 
     assertThrows(
         StatementExecutionException.class,
-        () -> new ImportWAL.WALReplayer(mock(Session.class), null, null, null).replay(entry));
+        () ->
+            new ImportWAL.WALReplayer(
+                    mock(Session.class),
+                    null,
+                    null,
+                    new ImportWAL.WALReplayer.ReplayDecisionController((java.io.Console) null))
+                .replay(entry));
   }
 
-  /** Covers accepted confirmations and the safe default for all other prompt answers. */
   @Test
-  public void testUnsupportedEntrySkipConfirmationParsing() {
-    assertTrue(ImportWAL.WALReplayer.isSkipConfirmation("y"));
-    assertTrue(ImportWAL.WALReplayer.isSkipConfirmation(" YES "));
-    assertFalse(ImportWAL.WALReplayer.isSkipConfirmation("n"));
-    assertFalse(ImportWAL.WALReplayer.isSkipConfirmation(""));
-    assertFalse(ImportWAL.WALReplayer.isSkipConfirmation(null));
+  public void testReplayDecisionParsing() {
+    assertEquals(
+        ImportWAL.WALReplayer.ReplayDecision.EXECUTE,
+        ImportWAL.WALReplayer.ReplayDecisionController.parseDecision("e", true));
+    assertEquals(
+        ImportWAL.WALReplayer.ReplayDecision.SKIP,
+        ImportWAL.WALReplayer.ReplayDecisionController.parseDecision("s", true));
+    assertEquals(
+        ImportWAL.WALReplayer.ReplayDecision.EXECUTE_ALL,
+        ImportWAL.WALReplayer.ReplayDecisionController.parseDecision("a", true));
+    assertEquals(
+        ImportWAL.WALReplayer.ReplayDecision.SKIP_ALL,
+        ImportWAL.WALReplayer.ReplayDecisionController.parseDecision("l", true));
+    assertEquals(
+        ImportWAL.WALReplayer.ReplayDecision.TERMINATE,
+        ImportWAL.WALReplayer.ReplayDecisionController.parseDecision("a", false));
+    assertEquals(
+        ImportWAL.WALReplayer.ReplayDecision.SKIP_ALL,
+        ImportWAL.WALReplayer.ReplayDecisionController.parseDecision("l", false));
+    assertEquals(
+        ImportWAL.WALReplayer.ReplayDecision.TERMINATE,
+        ImportWAL.WALReplayer.ReplayDecisionController.parseDecision("q", true));
   }
 
   /** Covers a non-aligned snapshot whose measurements have independent time axes. */

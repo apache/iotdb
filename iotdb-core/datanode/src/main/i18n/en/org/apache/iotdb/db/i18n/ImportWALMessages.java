@@ -82,8 +82,14 @@ public final class ImportWALMessages {
       "Table-model WAL entries require -db/--database.";
   public static final String EXCEPTION_UNSUPPORTED_WAL_OPERATION_ARG_ABD227A0 =
       "Unsupported WAL operation: %s";
-  public static final String MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_SKIP_THIS_ENTRY_Y_N_DAFBE650 =
-      "Unsupported WAL operation: %s. Skip this entry? [y/N]: ";
+  public static final String
+      MESSAGE_TREE_MODEL_DELETE_OPERATION_DETECTED_ARG_CHOOSE_E_EXECUTE_S_SKIP_A_EXECUTE_ALL_L_SKIP_ALL_Q_QUIT_11E39FD7 =
+          "Tree-model delete operation detected: %s. Choose e=execute, s=skip, a=execute all, l=skip all, q=quit: ";
+  public static final String
+      MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_CHOOSE_S_SKIP_L_SKIP_ALL_Q_QUIT_0A734E52 =
+          "Unsupported WAL operation: %s. Choose s=skip, l=skip all, q=quit: ";
+  public static final String EXCEPTION_WAL_REPLAY_WAS_TERMINATED_BY_THE_USER_E0BD6197 =
+      "WAL replay was terminated by the user.";
   public static final String EXCEPTION_INSERT_NODE_ARG_CONTAINS_NO_REPLAYABLE_DATA_5DA13453 =
       "Insert node %s contains no replayable data.";
   public static final String EXCEPTION_UNSUPPORTED_SNAPSHOT_DATA_TYPE_ARG_7A32D312 =
