@@ -38,6 +38,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -108,6 +109,32 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     final int loadedPointCountAfterFallback = pointCountByDevice.getOrDefault(DEVICE_2, 0);
     Assert.assertTrue(loadedPointCountBeforeCorruption > 0);
     Assert.assertEquals(loadedPointCountBeforeCorruption, loadedPointCountAfterFallback);
+  }
+
+  @Test
+  public void testFlushesPendingTabletsWhenIteratorFails() throws Exception {
+    tsFile = File.createTempFile("load-tree-pending-tablet", ".tsfile");
+    final List<MeasurementSchema> schemaList =
+        Arrays.asList(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN));
+    final Tablet tablet = new Tablet(DEVICE_0, schemaList, 1);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue("s0", 0, 1L);
+
+    final Map<String, Integer> pointCountByDevice = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPoints(statement, pointCountByDevice);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            file -> new ThrowingTabletIterator(file, tablet));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(1, pointCountByDevice.getOrDefault(DEVICE_0, 0).intValue());
   }
 
   @Test
@@ -391,6 +418,38 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
 
     private static void setPipeMemoryManagementEnabled(final boolean enabled) {
       CommonDescriptor.getInstance().getConfig().setPipeMemoryManagementEnabled(enabled);
+    }
+  }
+
+  private static class ThrowingTabletIterator extends LoadTreeTsFileTabletIterator {
+    private final Pair<Tablet, Boolean> tabletWithIsAligned;
+    private boolean tabletAvailable = true;
+
+    private ThrowingTabletIterator(final File file, final Tablet tablet) {
+      super(file, true);
+      tabletWithIsAligned = new Pair<>(tablet, false);
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (tabletAvailable) {
+        return true;
+      }
+      throw new IllegalStateException("synthetic parser failure");
+    }
+
+    @Override
+    public Pair<Tablet, Boolean> next() {
+      if (!tabletAvailable) {
+        throw new IllegalStateException("synthetic parser failure");
+      }
+      tabletAvailable = false;
+      return tabletWithIsAligned;
+    }
+
+    @Override
+    public void close() {
+      // No parser resources are allocated by this test iterator.
     }
   }
 }
