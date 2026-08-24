@@ -28,7 +28,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -57,15 +56,15 @@ public class PipePluginMeta {
       String jarMD5,
       String pluginLoadingExceptionMessage) {
     this.pluginName =
-        validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
+        FileUtils.validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
     this.className = Objects.requireNonNull(className);
 
     this.isBuiltin = isBuiltin;
     if (isBuiltin) {
-      this.jarName = jarName == null ? null : validatePathSegment(jarName);
+      this.jarName = jarName == null ? null : FileUtils.validatePathSegment(jarName);
       this.jarMD5 = jarMD5;
     } else {
-      this.jarName = validatePathSegment(Objects.requireNonNull(jarName));
+      this.jarName = FileUtils.validatePathSegment(Objects.requireNonNull(jarName));
       this.jarMD5 = Objects.requireNonNull(jarMD5);
     }
     this.pluginLoadingExceptionMessage = pluginLoadingExceptionMessage;
@@ -73,7 +72,7 @@ public class PipePluginMeta {
 
   public PipePluginMeta(String pluginName, String className) {
     this.pluginName =
-        validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
+        FileUtils.validatePathSegment(Objects.requireNonNull(pluginName)).toUpperCase(Locale.ROOT);
     this.className = Objects.requireNonNull(className);
 
     this.isBuiltin = true;
@@ -200,14 +199,5 @@ public class PipePluginMeta {
         + pluginLoadingExceptionMessage
         + '\''
         + '}';
-  }
-
-  private static String validatePathSegment(final String pathSegment) {
-    final String pathError = FileUtils.getIllegalError4Directory(pathSegment);
-    if (pathError != null) {
-      throw new IllegalArgumentException(pathError);
-    }
-    Paths.get(pathSegment);
-    return pathSegment;
   }
 }

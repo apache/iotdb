@@ -47,7 +47,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
   }
 
   public boolean isLocalJarMatched(PipePluginMeta pipePluginMeta) throws PipeException {
-    final String pluginName = validatePathSegment(pipePluginMeta.getPluginName());
+    final String pluginName = FileUtils.validatePathSegment(pipePluginMeta.getPluginName());
     final String md5FilePath = pluginName + ".txt";
 
     if (hasFileUnderTemporaryRoot(md5FilePath)) {
@@ -140,7 +140,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
   }
 
   private Path getPluginDirectoryPath(final String pluginName) {
-    final String validatedPluginName = validatePathSegment(pluginName);
+    final String validatedPluginName = FileUtils.validatePathSegment(pluginName);
     return resolvePathUnderDirectory(
         getInstallDirectoryPath(), validatedPluginName.toUpperCase(Locale.ROOT));
   }
@@ -156,7 +156,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
    * check remains as a defense in depth for absolute paths and future callers.
    */
   private Path resolvePathUnderDirectory(final Path baseDirectory, final String pathSegment) {
-    validatePathSegment(pathSegment);
+    FileUtils.validatePathSegment(pathSegment);
 
     final Path normalizedBaseDirectory = baseDirectory.toAbsolutePath().normalize();
     final Path normalizedTargetPath =
@@ -166,14 +166,5 @@ public class PipePluginExecutableManager extends ExecutableManager {
           String.format(PipeMessages.ILLEGAL_FILENAME_PATH_TRAVERSAL, pathSegment));
     }
     return normalizedTargetPath;
-  }
-
-  private String validatePathSegment(final String pathSegment) {
-    final String pathError = FileUtils.getIllegalError4Directory(pathSegment);
-    if (pathError != null) {
-      throw new IllegalArgumentException(pathError);
-    }
-    Paths.get(pathSegment);
-    return pathSegment;
   }
 }
