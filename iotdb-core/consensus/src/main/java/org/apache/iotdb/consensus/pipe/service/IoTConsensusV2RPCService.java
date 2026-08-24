@@ -20,11 +20,13 @@
 package org.apache.iotdb.consensus.pipe.service;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.TrustedChannelFailureHandler;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.commons.service.TrustedChannelAuditServerEventHandler;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.IoTConsensusV2IService;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
@@ -34,11 +36,20 @@ public class IoTConsensusV2RPCService extends ThriftService
 
   private final TEndPoint thisNode;
   private final IoTConsensusV2Config config;
+  private final TrustedChannelFailureHandler trustedChannelFailureHandler;
   private IoTConsensusV2RPCServiceProcessor iotConsensusV2RPCServiceProcessor;
 
   public IoTConsensusV2RPCService(TEndPoint thisNode, IoTConsensusV2Config config) {
+    this(thisNode, config, TrustedChannelFailureHandler.NO_OP);
+  }
+
+  public IoTConsensusV2RPCService(
+      TEndPoint thisNode,
+      IoTConsensusV2Config config,
+      TrustedChannelFailureHandler trustedChannelFailureHandler) {
     this.thisNode = thisNode;
     this.config = config;
+    this.trustedChannelFailureHandler = trustedChannelFailureHandler;
   }
 
   @Override
@@ -71,7 +82,10 @@ public class IoTConsensusV2RPCService extends ThriftService
                   getBindPort(),
                   config.getRpc().getRpcMaxConcurrentClientNum(),
                   config.getRpc().getThriftServerAwaitTimeForStopService(),
-                  new IoTConsensusV2RPCServiceHandler(iotConsensusV2RPCServiceProcessor),
+                  new TrustedChannelAuditServerEventHandler(
+                      new IoTConsensusV2RPCServiceHandler(iotConsensusV2RPCServiceProcessor),
+                      thisNode,
+                      trustedChannelFailureHandler),
                   config.getRpc().isRpcThriftCompressionEnabled(),
                   config.getRpc().getSslKeyStorePath(),
                   config.getRpc().getSslKeyStorePassword(),

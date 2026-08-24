@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.config;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.TrustedChannelFailureHandler;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 
 import java.util.List;
@@ -37,6 +38,7 @@ public class ConsensusConfig {
   private final IoTConsensusConfig iotConsensusConfig;
   private final IoTConsensusV2Config iotConsensusV2Config;
   private final DirectoryStrategyType directoryStrategyType;
+  private final TrustedChannelFailureHandler trustedChannelFailureHandler;
 
   private ConsensusConfig(
       TEndPoint thisNode,
@@ -47,7 +49,8 @@ public class ConsensusConfig {
       RatisConfig ratisConfig,
       IoTConsensusConfig iotConsensusConfig,
       IoTConsensusV2Config iotConsensusV2Config,
-      DirectoryStrategyType directoryStrategyType) {
+      DirectoryStrategyType directoryStrategyType,
+      TrustedChannelFailureHandler trustedChannelFailureHandler) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
@@ -57,6 +60,7 @@ public class ConsensusConfig {
     this.iotConsensusConfig = iotConsensusConfig;
     this.iotConsensusV2Config = iotConsensusV2Config;
     this.directoryStrategyType = directoryStrategyType;
+    this.trustedChannelFailureHandler = trustedChannelFailureHandler;
   }
 
   public TEndPoint getThisNodeEndPoint() {
@@ -95,6 +99,10 @@ public class ConsensusConfig {
     return directoryStrategyType;
   }
 
+  public TrustedChannelFailureHandler getTrustedChannelFailureHandler() {
+    return trustedChannelFailureHandler;
+  }
+
   public static ConsensusConfig.Builder newBuilder() {
     return new ConsensusConfig.Builder();
   }
@@ -111,6 +119,8 @@ public class ConsensusConfig {
     private IoTConsensusV2Config iotConsensusV2Config;
     private DirectoryStrategyType directoryStrategyType =
         DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY;
+    private TrustedChannelFailureHandler trustedChannelFailureHandler =
+        TrustedChannelFailureHandler.NO_OP;
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -124,7 +134,8 @@ public class ConsensusConfig {
               .orElseGet(() -> IoTConsensusConfig.newBuilder().build()),
           Optional.ofNullable(iotConsensusV2Config)
               .orElseGet(() -> IoTConsensusV2Config.newBuilder().build()),
-          directoryStrategyType);
+          directoryStrategyType,
+          trustedChannelFailureHandler);
     }
 
     public Builder setThisNode(TEndPoint thisNode) {
@@ -169,6 +180,14 @@ public class ConsensusConfig {
 
     public Builder setDirectoryStrategyType(DirectoryStrategyType directoryStrategyType) {
       this.directoryStrategyType = directoryStrategyType;
+      return this;
+    }
+
+    public Builder setTrustedChannelFailureHandler(
+        TrustedChannelFailureHandler trustedChannelFailureHandler) {
+      this.trustedChannelFailureHandler =
+          Optional.ofNullable(trustedChannelFailureHandler)
+              .orElse(TrustedChannelFailureHandler.NO_OP);
       return this;
     }
   }

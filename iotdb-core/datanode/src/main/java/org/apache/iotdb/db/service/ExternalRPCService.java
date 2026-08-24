@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -25,7 +26,9 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.commons.service.TrustedChannelAuditServerEventHandler;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -94,7 +97,7 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
                 getBindPort(),
                 config.getRpcMaxConcurrentClientNum(),
                 config.getThriftServerAwaitTimeForStopService(),
-                new RPCServiceThriftHandler(impl),
+                newTrustedChannelAuditHandler(),
                 config.isRpcThriftCompressionEnable(),
                 commonConfig.getKeyStorePath(),
                 commonConfig.getKeyStorePwd(),
@@ -111,7 +114,7 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
                 getBindPort(),
                 config.getRpcMaxConcurrentClientNum(),
                 config.getThriftServerAwaitTimeForStopService(),
-                new RPCServiceThriftHandler(impl),
+                newTrustedChannelAuditHandler(),
                 config.isRpcThriftCompressionEnable(),
                 commonConfig.getKeyStorePath(),
                 commonConfig.getKeyStorePwd(),
@@ -148,6 +151,13 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
 
   private boolean hasText(String value) {
     return value != null && !value.trim().isEmpty();
+  }
+
+  private TrustedChannelAuditServerEventHandler newTrustedChannelAuditHandler() {
+    return new TrustedChannelAuditServerEventHandler(
+        new RPCServiceThriftHandler(impl),
+        new TEndPoint(getBindIP(), getBindPort()),
+        DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary);
   }
 
   private static class RPCServiceHolder {
