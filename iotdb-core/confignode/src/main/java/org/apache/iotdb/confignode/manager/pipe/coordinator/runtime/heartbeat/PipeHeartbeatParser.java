@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -157,49 +159,48 @@ public class PipeHeartbeatParser {
       final PipeTemporaryMetaInCoordinator temporaryMeta =
           (PipeTemporaryMetaInCoordinator) pipeMetaFromCoordinator.getTemporaryMeta();
 
-      final Set<Integer> expectedDataNodeIds = getExpectedDataNodeIds(pipeMetaFromCoordinator);
-
-      // Remove completed pipes
-      final Boolean isPipeCompletedFromAgent = pipeHeartbeat.isCompleted(staticMeta);
-      if (Boolean.TRUE.equals(isPipeCompletedFromAgent)) {
-
-        if (expectedDataNodeIds.contains(nodeId)) {
-          temporaryMeta.markDataNodeCompleted(nodeId);
-          PipeLogger.log(
-              LOGGER::info,
-              ManagerMessages.DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE,
-              nodeId,
-              staticMeta.getPipeName(),
-              pipeHeartbeat.getRemainingEventCount(staticMeta),
-              pipeHeartbeat.getRemainingTime(staticMeta),
-              temporaryMeta.getCompletedDataNodeIds());
+      // Aggregate completed DataRegion ids reported by DataNodes. Only the DataNodes that own the
+      // target region can report it, so the coordinator can compare the union against all required
+      // DataRegion ids without trusting any DataNode's single per-pipe completion boolean.
+      if (pipeHeartbeat.hasCompletedDataRegionReport(staticMeta)) {
+        for (final Integer completedDataRegionId :
+            pipeHeartbeat.getCompletedDataRegionIds(staticMeta)) {
+          temporaryMeta.markDataRegionCompleted(completedDataRegionId);
         }
+      }
 
-        // Only DataNodes that are expected to run this Pipe participate in the completion
-        // judgment. A DataNode that does not own any target region should not block the Pipe
-        // from being automatically dropped after all expected DataNodes complete.
-        if (!expectedDataNodeIds.isEmpty()) {
-          final Set<Integer> uncompletedDataNodeIds = new HashSet<>(expectedDataNodeIds);
-          uncompletedDataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
-          if (uncompletedDataNodeIds.isEmpty()) {
-            PipeLogger.log(
-                LOGGER::info,
-                ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
-                staticMeta.getPipeName(),
-                temporaryMeta.getGlobalRemainingEvents(),
-                temporaryMeta.getGlobalRemainingTime(),
-                staticMeta);
-            pipeTaskInfo.get().removePipeMeta(staticMeta);
-            PipeLogger.log(
-                LOGGER::info,
-                ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
-                staticMeta.getPipeName(),
-                staticMeta);
-            needWriteConsensusOnConfigNodes.set(true);
-            needPushPipeMetaToDataNodes.set(true);
-            continue;
-          }
+      final Set<Integer> requiredDataRegionIds = new HashSet<>();
+      for (final Map.Entry<Integer, PipeTaskMeta> entry :
+          pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+        if (configManager
+            .getPartitionManager()
+            .isRegionGroupExists(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, entry.getKey()))) {
+          requiredDataRegionIds.add(entry.getKey());
         }
+      }
+
+      // Remove completed pipes only when every required DataRegion has been reported complete.
+      // Relying on the region-level reports (instead of the DataNode-level boolean) prevents a
+      // leader-change / task-creation failure from being treated as a successful snapshot transfer.
+      if (!requiredDataRegionIds.isEmpty()
+          && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)) {
+        PipeLogger.log(
+            LOGGER::info,
+            ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
+            staticMeta.getPipeName(),
+            temporaryMeta.getGlobalRemainingEvents(),
+            temporaryMeta.getGlobalRemainingTime(),
+            staticMeta);
+        pipeTaskInfo.get().removePipeMeta(staticMeta);
+        PipeLogger.log(
+            LOGGER::info,
+            ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
+            staticMeta.getPipeName(),
+            staticMeta);
+        needWriteConsensusOnConfigNodes.set(true);
+        needPushPipeMetaToDataNodes.set(true);
+        continue;
       }
 
       // Record statistics
@@ -339,23 +340,5 @@ public class PipeHeartbeatParser {
         }
       }
     }
-  }
-
-  // Returns the DataNodes that must complete this Pipe. It derives the expected set from the pipe's
-  // runtime metadata instead of all registered DataNodes, so DataNodes that do not own any target
-  // region are ignored during the auto-drop completion check.
-  private Set<Integer> getExpectedDataNodeIds(final PipeMeta pipeMeta) {
-    final Set<Integer> registeredDataNodeIds =
-        configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
-    final Set<Integer> expectedDataNodeIds = new HashSet<>();
-    for (final Map.Entry<Integer, PipeTaskMeta> entry :
-        pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
-      // The ConfigRegion task is led by a ConfigNode, not by a DataNode.
-      if (entry.getKey() != Integer.MIN_VALUE
-          && registeredDataNodeIds.contains(entry.getValue().getLeaderNodeId())) {
-        expectedDataNodeIds.add(entry.getValue().getLeaderNodeId());
-      }
-    }
-    return expectedDataNodeIds;
   }
 }
