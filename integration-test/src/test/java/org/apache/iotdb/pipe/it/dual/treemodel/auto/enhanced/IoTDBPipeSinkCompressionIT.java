@@ -142,6 +142,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
+    final Consumer<String> senderOnlyFailure =
+        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -204,7 +206,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
           "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"),
-          handleFailure);
+          senderOnlyFailure);
     }
   }
 

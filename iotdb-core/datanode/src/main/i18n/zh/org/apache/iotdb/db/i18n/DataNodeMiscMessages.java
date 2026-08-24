@@ -121,6 +121,7 @@ public final class DataNodeMiscMessages {
 
   public static final String CREATE_NEW_REGION_ERROR_FMT = "创建新 region %s 错误，异常：%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "创建新 region %s 成功";
+  public static final String LOG_USER_ARG_ROLE_ARG_422D48D3 = "用户：%s，角色：%s";
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -946,11 +947,6 @@ public final class DataNodeMiscMessages {
   public static final String CACHE_ROLE_PATH_PRIVILEGES_ERROR =
       "缓存角色路径权限时发生错误";
 
-  // ---------------------------------------------------------------------------
-  // auth – BasicAuthorityCache
-  // ---------------------------------------------------------------------------
-  public static final String DATANODE_CACHE_INIT_FAILED =
-      "DataNode 缓存初始化失败";
 
   // ---------------------------------------------------------------------------
   // trigger – TriggerExecutor
@@ -1486,5 +1482,30 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms 必须大于 0，但当前值为 ";
   public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "未知的 read_consistency_level：%s，请设置为 \"strong\" 或 \"weak\"";
   public static final String MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0 = "初始 allocateMemoryForAutoResizingBuffer = {}";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_IT_IS_UNDER_DATA_DIRECTORY_KEEP_USING_ORIGINAL_CONFIGURATION_EE87FFD9 =
+      "跳过设置 {} 为 {}，因为其位于 data 目录下。继续使用原配置：{}。";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_ITS_CANONICAL_PATH_CANNOT_BE_RESOLVED_ARG_KEEP_USING_ORIGINAL_CONFIGURATION_C0A8ED09 =
+      "跳过设置 {} 为 {}，因为无法解析其 canonical 路径：{}。继续使用原配置：{}。";
+  public static final String MISC_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_ACTIVE_LOAD_LISTENING_DIRECTORY_S_ARG_0E6A508E =
+      "无法解析 Active Load 监听目录 %s 的 canonical 路径：%s";
+
+  public static final String EXCEPTION_COLUMNSTOCLONE_CANNOT_BE_NULL_458FDF37 =
+      "columnsToClone 不能为 null";
+  public static final String EXCEPTION_CLONELIST_CANNOT_BE_NULL_47AEEA8F =
+      "cloneList 不能为 null";
+  public static final String EXCEPTION_TARGET_ALIGNEDTVLIST_HAS_INCOMPATIBLE_COLUMN_CONTAINERS_31FAC613 =
+      "目标 AlignedTVList 的列容器不兼容";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MOVE_08D46037 =
+      "移动过程中缺少对齐列索引 %d 的值数组";
+  public static final String EXCEPTION_TARGET_VALUE_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_7889C74F =
+      "目标值列索引 %d 尚未准备好进行移动";
+  public static final String EXCEPTION_TARGET_BITMAP_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_AE3B5F88 =
+      "目标 bitmap 列索引 %d 尚未准备好进行移动";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_CLONE_795EB1C5 =
+      "克隆过程中缺少对齐列索引 %d 的值数组";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6 =
+      "扩容过程中缺少对齐列索引 %d 的值数组";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E =
+      "标记空值过程中缺少对齐列索引 %d 的值数组";
 
 }

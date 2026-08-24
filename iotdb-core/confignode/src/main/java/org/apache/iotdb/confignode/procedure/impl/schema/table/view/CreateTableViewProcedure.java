@@ -72,8 +72,17 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
 
   @Override
   protected void checkTableExistence(final ConfigNodeProcedureEnv env) {
+    if (table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).isPresent()) {
+      setFailure(
+          new ProcedureException(
+              new IoTDBException(
+                  TreeViewSchema.UNSUPPORTED_NEED_LAST_CACHE_PROPERTY,
+                  TSStatusCode.SEMANTIC_ERROR.getStatusCode())));
+      return;
+    }
     if (!replace) {
       super.checkTableExistence(env);
+      table.removeProp(TsTable.NEED_LAST_CACHE_PROPERTY);
     } else {
       try {
         final Optional<Pair<TsTable, TableNodeStatus>> oldTableAndStatus =

@@ -1404,6 +1404,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           }
 
           @Override
+          public boolean handlePipeMetaChanges(
+              final List<ByteBuffer> pipeMetas,
+              final List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
+            final List<TPushPipeMetaRespExceptionMessage> exceptionMessagesFromAgent =
+                PipeDataNodeAgent.task()
+                    .handlePipeMetaChanges(
+                        pipeMetas.stream()
+                            .map(PipeMeta::deserialize4TaskAgent)
+                            .collect(Collectors.toList()));
+            // PipeTaskAgent returns null only when its timed write-lock acquisition fails.
+            if (exceptionMessagesFromAgent == null) {
+              return false;
+            }
+            exceptionMessages.addAll(exceptionMessagesFromAgent);
+            return true;
+          }
+
+          @Override
           public TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(final ByteBuffer pipeMeta) {
             return PipeDataNodeAgent.task()
                 .handleSinglePipeMetaChanges(PipeMeta.deserialize4TaskAgent(pipeMeta));
@@ -1449,7 +1467,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       final TPushTopicMetaRespExceptionMessage exceptionMessage;
       if (req.isSetTopicNameToDrop()) {
-        exceptionMessage = SubscriptionAgent.topic().handleDropTopic(req.getTopicNameToDrop());
+        exceptionMessage =
+            req.isSetIsTableModel()
+                ? SubscriptionAgent.topic()
+                    .handleDropTopic(req.getTopicNameToDrop(), req.isIsTableModel())
+                : SubscriptionAgent.topic().handleDropTopic(req.getTopicNameToDrop());
       } else if (req.isSetTopicMeta()) {
         exceptionMessage =
             SubscriptionAgent.topic()
@@ -2348,7 +2370,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .forEach((key, value) -> regionRawDataSize.put(Integer.parseInt(key), value.getLeft()));
       resp.setDataRegionRawDataSize(regionRawDataSize);
     }
-    AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(commonConfig.getNodeStatus().getStatus());
     // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may
@@ -2824,6 +2845,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     ConsensusGroupId consensusGroupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
+    boolean consensusGroupDeleted = true;
     if (consensusGroupId instanceof DataRegionId) {
       try {
         DataRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
@@ -2831,8 +2853,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         if (!(e instanceof ConsensusGroupNotExistException)) {
           return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
         }
+        consensusGroupDeleted = false;
       }
-      return regionManager.deleteDataRegion((DataRegionId) consensusGroupId);
+      return getDeleteRegionStatus(
+          regionManager.deleteDataRegion((DataRegionId) consensusGroupId), consensusGroupDeleted);
     } else {
       try {
         SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
@@ -2840,9 +2864,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         if (!(e instanceof ConsensusGroupNotExistException)) {
           return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
         }
+        consensusGroupDeleted = false;
       }
-      return regionManager.deleteSchemaRegion((SchemaRegionId) consensusGroupId);
+      return getDeleteRegionStatus(
+          regionManager.deleteSchemaRegion((SchemaRegionId) consensusGroupId),
+          consensusGroupDeleted);
     }
+  }
+
+  private TSStatus getDeleteRegionStatus(
+      TSStatus localRegionStatus, boolean consensusGroupDeleted) {
+    if (consensusGroupDeleted
+        && localRegionStatus.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode()) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    return localRegionStatus;
   }
 
   @Override

@@ -197,6 +197,7 @@ public class ColumnHeaderConstant {
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
   public static final String IS_DEGRADED = "IsDegraded";
+  public static final String RECENT_FAILURES = "RecentFailures";
 
   // column names for show repair data partition table progress
   public static final String REPAIR_DATA_PARTITION_TABLE_STATUS = "Status";
@@ -258,6 +259,7 @@ public class ColumnHeaderConstant {
       "max_schema_region_group_num";
   public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
   public static final String MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL = "max_data_region_group_num";
+  public static final String NEED_LAST_CACHE_TABLE_MODEL = "need_last_cache";
 
   public static final String REGION_ID_TABLE_MODEL = "region_id";
   public static final String DATANODE_ID_TABLE_MODEL = "datanode_id";
@@ -279,6 +281,7 @@ public class ColumnHeaderConstant {
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
   public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
+  public static final String RECENT_FAILURES_TABLE_MODEL = "recent_failures";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
@@ -345,6 +348,7 @@ public class ColumnHeaderConstant {
   public static final String PRIVILEGES = "Privileges";
   public static final String COMMENT = "Comment";
   public static final String TABLE_TYPE = "TableType";
+  public static final String NEED_LAST_CACHE = "NeedLastCache";
 
   public static final String VIEW = "View";
   public static final String CREATE_VIEW = "Create View";
@@ -432,7 +436,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(
@@ -616,7 +621,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
           new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT),
-          new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN));
+          new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN),
+          new ColumnHeader(RECENT_FAILURES, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showRepairDataPartitionTableProgressColumnHeaders =
       ImmutableList.of(
@@ -755,7 +761,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(
@@ -804,7 +811,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT),
-          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT));
+          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(
@@ -840,7 +848,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> COPY_TO_TSFILE_COLUMN_HEADERS =
       ImmutableList.of(
-          new ColumnHeader(PATH.toLowerCase(), TSDataType.TEXT),
+          new ColumnHeader(PATH.toLowerCase(), TSDataType.STRING),
           new ColumnHeader(ROW_COUNT, TSDataType.INT64),
           new ColumnHeader(DEVICE_COUNT, TSDataType.INT64),
           new ColumnHeader(SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64),

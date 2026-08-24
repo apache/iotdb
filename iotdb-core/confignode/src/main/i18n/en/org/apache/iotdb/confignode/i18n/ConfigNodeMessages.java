@@ -367,6 +367,9 @@ public final class ConfigNodeMessages {
       "schema_region_consensus_protocol_class";
   public static final String SEND_RPC_TO_DATA_NODE_FOR_CHANGING_REGIONS_LEADER_ON =
       "Send RPC to data node: {} for changing regions leader on it";
+  public static final String
+      LOG_SETNEEDLASTCACHE_THE_NEED_LAST_CACHE_FLAG_OF_DATABASE_ARG_IS_ADJUSTED_TO_ARG_C7CFFABC =
+          "[SetNeedLastCache] The need last cache flag of Database: {} is adjusted to: {}";
   public static final String SETTTL_THE_TTL_OF_DATABASE_IS_ADJUSTED_TO =
       "[SetTTL] The ttl of Database: {} is adjusted to: {}";
   public static final String SNAPSHOT_DIRECTORY_CAN_NOT_BE_CREATED =
@@ -642,10 +645,6 @@ public final class ConfigNodeMessages {
       "Unexpected interruption while waiting for ConfigNode leader load warm-up.";
   public static final String EXCEPTION_PROCEDURE_FILE_ARG_EXCEEDS_THE_LOAD_BUFFER_LIMIT_ARG_ACTUAL_SIZE_ARG_62375B4C =
       "Procedure file %s exceeds the load buffer limit %s, actual size %s";
-  public static final String MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_REPLAYING_OFFER_PLAN_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_2A81A649 =
-      "Dropping legacy region-delete task for {} while replaying offer plan; region deletion is now handled by RemoveRegionGroupProcedure.";
-  public static final String MESSAGE_DROPPING_LEGACY_REGION_DELETE_TASK_FOR_ARG_WHILE_LOADING_SNAPSHOT_REGION_DELETION_IS_NOW_HANDLED_BY_REMOVEREGIONGROUPPROCEDURE_A9D409A0 =
-      "Dropping legacy region-delete task for {} while loading snapshot; region deletion is now handled by RemoveRegionGroupProcedure.";
   public static final String MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_2E051639 =
       "ConfigNode leader is warming up before serving the registering ConfigNode, will wait";
   public static final String MESSAGE_CONFIGNODE_LEADER_IS_WARMING_UP_BEFORE_SERVING_THE_REGISTERING_CONFIGNODE_WILL_WAIT_AND_RETRY_STATUS_ARG_RETRY_ARG_3C924873 =
@@ -676,4 +675,7 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "Failed to create or alter topic, %s and %s are only supported for incremental topics";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_SUBSCRIBING_ONLY_TO_THE_AUDIT_DATABASE_OR_PATHS_UNDER_IT_IS_NOT_ALLOWED_3E96A6BA =
+          "Failed to create or alter topic, subscribing only to the __audit database or paths under it is not allowed";
 }

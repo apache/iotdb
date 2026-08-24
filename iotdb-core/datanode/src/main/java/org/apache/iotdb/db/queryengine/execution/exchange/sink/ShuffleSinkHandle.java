@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -62,6 +63,10 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private volatile boolean aborted = false;
 
   private volatile boolean closed = false;
+
+  // close() and abort() invoke channel callbacks, so they cannot be protected by this handle's
+  // lock.
+  private final AtomicBoolean terminationClaimed = new AtomicBoolean(false);
 
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
@@ -201,37 +206,43 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public boolean abort() {
-    if (aborted || closed) {
+    if (aborted || closed || !terminationClaimed.compareAndSet(false, true)) {
       return false;
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(DataNodeQueryMessages.START_ABORT_SHUFFLE_SINK_HANDLE);
-    }
-    boolean meetError = false;
-    Exception firstException = null;
-    boolean selfAborted = true;
-    for (ISink channel : downStreamChannelList) {
-      try {
-        selfAborted = channel.abort();
-      } catch (Exception e) {
-        if (!meetError) {
-          firstException = e;
-          meetError = true;
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.START_ABORT_SHUFFLE_SINK_HANDLE);
+      }
+      boolean meetError = false;
+      Exception firstException = null;
+      boolean selfAborted = true;
+      for (ISink channel : downStreamChannelList) {
+        try {
+          selfAborted = channel.abort();
+        } catch (Exception e) {
+          if (!meetError) {
+            firstException = e;
+            meetError = true;
+          }
         }
       }
-    }
-    if (meetError) {
-      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_ABORT_CHANNEL, firstException);
-    }
-    if (selfAborted) {
-      sinkListener.onAborted(this);
-      aborted = true;
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
+      if (meetError) {
+        LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_ABORT_CHANNEL, firstException);
       }
-      return true;
-    } else {
-      return false;
+      if (selfAborted) {
+        sinkListener.onAborted(this);
+        aborted = true;
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } finally {
+      if (!aborted) {
+        terminationClaimed.set(false);
+      }
     }
   }
 
@@ -241,37 +252,43 @@ public class ShuffleSinkHandle implements ISinkHandle {
   // Lock ShuffleSinkHandle and wait to lock LocalSinkChannel
   @Override
   public boolean close() {
-    if (closed || aborted) {
+    if (closed || aborted || !terminationClaimed.compareAndSet(false, true)) {
       return false;
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(DataNodeQueryMessages.START_CLOSE_SHUFFLE_SINK_HANDLE);
-    }
-    boolean meetError = false;
-    Exception firstException = null;
-    boolean selfClosed = true;
-    for (ISink channel : downStreamChannelList) {
-      try {
-        selfClosed = channel.close();
-      } catch (Exception e) {
-        if (!meetError) {
-          firstException = e;
-          meetError = true;
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.START_CLOSE_SHUFFLE_SINK_HANDLE);
+      }
+      boolean meetError = false;
+      Exception firstException = null;
+      boolean selfClosed = true;
+      for (ISink channel : downStreamChannelList) {
+        try {
+          selfClosed = channel.close();
+        } catch (Exception e) {
+          if (!meetError) {
+            firstException = e;
+            meetError = true;
+          }
         }
       }
-    }
-    if (meetError) {
-      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_CLOSE_CHANNEL, firstException);
-    }
-    if (selfClosed) {
-      sinkListener.onFinish(this);
-      closed = true;
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
+      if (meetError) {
+        LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_CLOSE_CHANNEL, firstException);
       }
-      return true;
-    } else {
-      return false;
+      if (selfClosed) {
+        sinkListener.onFinish(this);
+        closed = true;
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } finally {
+      if (!closed) {
+        terminationClaimed.set(false);
+      }
     }
   }
 

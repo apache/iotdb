@@ -109,11 +109,14 @@ public class SubscriptionQueueRegistry {
     return committedRetainedMinVersionIds;
   }
 
-  public synchronized void offer(final IndexedConsensusRequest indexedConsensusRequest) {
+  public synchronized boolean offer(final IndexedConsensusRequest indexedConsensusRequest) {
     final int queueCount = queues.size();
     if (queueCount <= 0) {
-      return;
+      return false;
     }
+
+    // Subscription queues reserve request memory, including the serialized buffers.
+    indexedConsensusRequest.buildSerializedRequests();
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -127,8 +130,10 @@ public class SubscriptionQueueRegistry {
               : indexedConsensusRequest.getRequests().get(0).getClass().getSimpleName());
     }
 
+    boolean offeredToAnyQueue = false;
     for (final BlockingQueue<IndexedConsensusRequest> queue : queues.keySet()) {
       final boolean offered = queue.offer(indexedConsensusRequest);
+      offeredToAnyQueue |= offered;
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             IoTConsensusMessages.LOG_OFFER_RESULT_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_7ADC84C2,
@@ -161,6 +166,7 @@ public class SubscriptionQueueRegistry {
         }
       }
     }
+    return offeredToAnyQueue;
   }
 
   private static final class SubscriptionQueueRegistration {
