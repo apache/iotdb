@@ -1,0 +1,1021 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "Prometheus datasource containing the IoTDB DataNode metrics",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "9.3.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "text",
+      "name": "Text",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Number of queue replica series currently exported. Zero can mean that no consensus subscription queue is registered; it is not by itself a scrape failure.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "count(subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"})",
+          "legendFormat": "replica series",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Queue Replica Series",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Preferred-writer queues, aggregated with max across replicas. A value of one means one active queue for the selected group/topic and region; it is not a consumer count.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum(max by (cluster,name,region) (subscription_consensus_active{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"}))",
+          "legendFormat": "active queues",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Preferred-Writer Queues",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Approximate queue-local work on active replicas. It is not an exact remaining event count: unread WAL work contributes only a presence unit.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum((subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"}) and on (cluster,nodeType,nodeId,instance,name,region) (subscription_consensus_active{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 1))",
+          "legendFormat": "approximate lag",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Approximate Pending Work",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Delivered events that are currently in flight and awaiting commit. This is not the total backlog.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum((subscription_uncommitted_event_count{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"}) and on (cluster,nodeType,nodeId,instance,name,region) (subscription_consensus_active{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 1))",
+          "legendFormat": "uncommitted",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Uncommitted Events",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Heuristic count of active replicas that are initialized and have approximate lag equal to zero. Use only after a bounded workload has stopped writing; it is not a completion proof for a live stream.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 5
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum(((subscription_consensus_active{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 1) and on (cluster,nodeType,nodeId,instance,name,region) (subscription_consensus_initialized{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 1)) and on (cluster,nodeType,nodeId,instance,name,region) (subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 0))",
+          "legendFormat": "caught-up regions",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Caught-Up Regions (Heuristic)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Potential no-delivery queues: active and initialized with approximate work, while the cumulative response-byte counter has not increased for five minutes. This does not prove commit progress is stalled.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 5
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum((((subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} > 0) and on (cluster,nodeType,nodeId,instance,name,region) (subscription_consensus_active{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 1)) and on (cluster,nodeType,nodeId,instance,name,region) (subscription_consensus_initialized{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 1)) and on (cluster,nodeType,nodeId,instance,name,region) (increase(subscription_event_transfer_total{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\",rate!~\".+\"}[5m]) == 0))",
+          "legendFormat": "potential no-delivery",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Potential No-Delivery Queues (5m)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Approximate queue-local work on the active preferred-writer replica. A return to zero after writes stop is a useful heuristic, not an exact backlog measurement.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "(subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"}) and on (cluster,nodeType,nodeId,instance,name,region) (subscription_consensus_active{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 1)",
+          "legendFormat": "{{name}} / {{region}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Approximate Lag by Region",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Events delivered but not yet committed on the active queue. A sustained value can indicate slow processing or commit handling, but no commit-stall timestamp is exported.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "(subscription_uncommitted_event_count{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"}) and on (cluster,nodeType,nodeId,instance,name,region) (subscription_consensus_active{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 1)",
+          "legendFormat": "{{name}} / {{region}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Uncommitted Events by Region",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "One-minute moving response transfer rate in bytes per second. The metric is response bytes, not event count or operations per second.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "mappings": [],
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "(subscription_event_transfer_total{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\",rate=\"m1\"}) and on (cluster,nodeType,nodeId,instance,name,region) (subscription_consensus_active{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"} == 1)",
+          "legendFormat": "{{name}} / {{region}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Response Transfer Rate (bytes/s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Active and initialized are queue lifecycle indicators. Active is one on the preferred-writer queue and zero on inactive replicas; initialized means the runtime has been initialized.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "mappings": [],
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (cluster,name,region) (subscription_consensus_active{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"})",
+          "legendFormat": "active {{name}} / {{region}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (cluster,name,region) (subscription_consensus_initialized{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"})",
+          "legendFormat": "initialized {{name}} / {{region}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Queue Lifecycle Status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Cumulative diagnostics. WAL gap counts unavailable WAL search indexes skipped by the queue; routing epoch changes indicate ownership or route transitions.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (cluster,name,region) (subscription_consensus_wal_gap{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"})",
+          "legendFormat": "WAL gap {{name}} / {{region}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (cluster,name,region) (subscription_consensus_routing_epoch_change{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"})",
+          "legendFormat": "routing changes {{name}} / {{region}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "WAL and Routing Diagnostics",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Maximum observed data timestamp, expressed in the server timestamp precision. It is not a committed frontier and should not be unconditionally formatted as milliseconds.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (cluster,name,region) (subscription_consensus_watermark{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"})",
+          "legendFormat": "{{name}} / {{region}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Watermark (Observed Timestamp)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Seek or reset generation. It is a diagnostic generation number, not a commit ID or an exact consumer offset.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (cluster,name,region) (subscription_consensus_seek_generation{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\",region=~\"$region\"})",
+          "legendFormat": "{{name}} / {{region}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Seek / Reset Generation",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "id": 14,
+      "options": {
+        "content": "### Reading this dashboard\n\n`subscription_consensus_lag` is an approximate queue-local work indicator, not an exact remaining event count. For a bounded workload, active + initialized + lag=0 across every participating region is only a catch-up heuristic after writes stop. A continuously written incremental stream has no final ETA. The `NoDelivery` signal detects pending work with no increase in response bytes; it cannot prove that ACK/commit progress is stalled. The legacy topic value `mode=consensus` is normalized to the current `mode=incremental` value.",
+        "mode": "markdown"
+      },
+      "title": "Interpretation and Limits",
+      "type": "text"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "iotdb",
+    "subscription",
+    "consensus"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(subscription_consensus_lag{nodeType=\"DATANODE\"}, cluster)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Cluster",
+        "multi": true,
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "query": "label_values(subscription_consensus_lag{nodeType=\"DATANODE\"}, cluster)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\"}, instance)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": {
+          "query": "label_values(subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\"}, instance)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\"}, name)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Queue (group/topic)",
+        "multi": true,
+        "name": "queue",
+        "options": [],
+        "query": {
+          "query": "label_values(subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\"}, name)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\"}, region)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "DataRegion",
+        "multi": true,
+        "name": "region",
+        "options": [],
+        "query": {
+          "query": "label_values(subscription_consensus_lag{nodeType=\"DATANODE\",cluster=~\"$cluster\",instance=~\"$instance\",name=~\"$queue\"}, region)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "15s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Apache IoTDB Consensus Subscription",
+  "uid": null,
+  "version": 1,
+  "weekStart": ""
+}

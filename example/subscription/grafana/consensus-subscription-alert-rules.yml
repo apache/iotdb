@@ -1,0 +1,76 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+groups:
+  - name: iotdb-consensus-subscription
+    interval: 30s
+    rules:
+      - alert: IoTDBConsensusSubscriptionWALGapIncreased
+        expr: increase(subscription_consensus_wal_gap{nodeType="DATANODE"}[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Consensus subscription skipped unavailable WAL indexes
+          description: >-
+            Queue {{ $labels.name }} in DataRegion {{ $labels.region }} on
+            {{ $labels.instance }} skipped WAL search indexes during the last five minutes.
+
+      - alert: IoTDBConsensusSubscriptionNoActiveQueue
+        expr: max by (cluster, name, region) (subscription_consensus_active{nodeType="DATANODE"}) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Consensus subscription has no active preferred-writer queue
+          description: >-
+            Queue {{ $labels.name }} in DataRegion {{ $labels.region }} has had no active
+            preferred-writer replica for five minutes.
+
+      - alert: IoTDBConsensusSubscriptionDormantWithPendingWork
+        expr: |-
+          (subscription_consensus_active{nodeType="DATANODE"} == 1)
+            and
+          (subscription_consensus_initialized{nodeType="DATANODE"} == 0)
+            and
+          (subscription_consensus_lag{nodeType="DATANODE"} > 0)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Active consensus subscription queue is dormant with pending work
+          description: >-
+            Queue {{ $labels.name }} in DataRegion {{ $labels.region }} on
+            {{ $labels.instance }} is active but uninitialized while approximate work remains.
+
+      - alert: IoTDBConsensusSubscriptionNoDelivery
+        expr: |-
+          (subscription_consensus_active{nodeType="DATANODE"} == 1)
+            and
+          (subscription_consensus_initialized{nodeType="DATANODE"} == 1)
+            and
+          (subscription_consensus_lag{nodeType="DATANODE"} > 0)
+            and
+          (increase(subscription_event_transfer_total{nodeType="DATANODE",rate!~".+"}[5m]) == 0)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Consensus subscription has pending work but transfers no response bytes
+          description: >-
+            Queue {{ $labels.name }} in DataRegion {{ $labels.region }} on
+            {{ $labels.instance }} has approximate pending work but no response bytes have been
+            increased for at least ten minutes. Check whether a consumer is polling and healthy.
