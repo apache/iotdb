@@ -554,7 +554,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new IoTDBException(tsStatus));
       } else {
         if (databaseSchema.isSetTimePartitionOrigin()
-            || databaseSchema.isSetTimePartitionInterval()) {
+            || databaseSchema.isSetTimePartitionInterval()
+            || databaseSchema.isSetNeedLastCache()) {
           ClusterPartitionFetcher.getInstance().invalidAllCache();
         }
         refreshDatabaseTimePartitionConfig(configNodeClient, databaseSchema);
@@ -4787,7 +4788,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         if (databaseSchema.isSetTimePartitionOrigin()
-            || databaseSchema.isSetTimePartitionInterval()) {
+            || databaseSchema.isSetTimePartitionInterval()
+            || databaseSchema.isSetNeedLastCache()) {
           ClusterPartitionFetcher.getInstance().invalidAllCache();
         }
         refreshDatabaseTimePartitionConfig(configNodeClient, databaseSchema);

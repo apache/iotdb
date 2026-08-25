@@ -62,6 +62,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
@@ -70,6 +71,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
+import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.annotations.TreeModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +98,10 @@ public class PartitionCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
 
+  private static boolean isNeedLastCacheEnabled(final TDatabaseSchema databaseSchema) {
+    return !databaseSchema.isSetNeedLastCache() || databaseSchema.isNeedLastCache();
+  }
+
   /** calculate slotId by device */
   private final String seriesSlotExecutorName = config.getSeriesPartitionExecutorClass();
 
@@ -102,7 +109,7 @@ public class PartitionCache {
   private final SeriesPartitionExecutor partitionExecutor;
 
   /** the cache of database */
-  private final Set<String> databaseCache = new HashSet<>();
+  private final Map<String, Boolean> database2NeedLastCacheCache = new HashMap<>();
 
   /** database -> schemaPartitionTable */
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
@@ -210,12 +217,17 @@ public class PartitionCache {
    * @return database name, return {@code null} if cache miss
    */
   private String getDatabaseName(final IDeviceID deviceID) {
-    for (final String database : databaseCache) {
-      if (PathUtils.isStartWith(deviceID, database)) {
-        return database;
+    databaseCacheLock.readLock().lock();
+    try {
+      for (final String database : database2NeedLastCacheCache.keySet()) {
+        if (PathUtils.isStartWith(deviceID, database)) {
+          return database;
+        }
       }
+      return null;
+    } finally {
+      databaseCacheLock.readLock().unlock();
     }
-    return null;
   }
 
   /**
@@ -227,7 +239,7 @@ public class PartitionCache {
   private boolean containsDatabase(final String database) {
     databaseCacheLock.readLock().lock();
     try {
-      return databaseCache.contains(database);
+      return database2NeedLastCacheCache.containsKey(database);
     } finally {
       databaseCacheLock.readLock().unlock();
     }
@@ -265,14 +277,46 @@ public class PartitionCache {
     }
   }
 
+  @TreeModel
+  public boolean isNeedLastCache(final String database) {
+    databaseCacheLock.readLock().lock();
+    Boolean needLastCache;
+    try {
+      needLastCache = database2NeedLastCacheCache.get(database);
+    } finally {
+      databaseCacheLock.readLock().unlock();
+    }
+    if (Objects.nonNull(needLastCache)) {
+      return needLastCache;
+    }
+    try {
+      fetchDatabaseAndUpdateCache(false);
+    } catch (final TException | ClientManagerException e) {
+      logger.warn(
+          DataNodeQueryMessages
+              .LOG_FAILED_TO_GET_NEED_LAST_CACHE_INFO_FOR_DATABASE_ARG_WILL_PUT_CACHE_ANYWAY_EXCEPTION_ARG_D5D80E96,
+          database,
+          e.getMessage());
+      return true;
+    }
+    databaseCacheLock.readLock().lock();
+    try {
+      needLastCache = database2NeedLastCacheCache.get(database);
+    } finally {
+      databaseCacheLock.readLock().unlock();
+    }
+    return Objects.isNull(needLastCache) || needLastCache;
+  }
+
   /** get all database from configNode and update database cache. */
-  private void fetchDatabaseAndUpdateCache() throws ClientManagerException, TException {
+  private void fetchDatabaseAndUpdateCache(final boolean isTableModel)
+      throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-              .setIsTableModel(true)
+              .setIsTableModel(isTableModel)
               .setCanSeeAuditDB(true);
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -556,6 +600,7 @@ public class PartitionCache {
     }
   }
 
+  @TableModel
   public void checkAndAutoCreateDatabase(
       final String database, final boolean isAutoCreate, final String userName) {
     failIfMetadataLeaseFenced();
@@ -563,7 +608,7 @@ public class PartitionCache {
     if (!isExisted) {
       try {
         // try to fetch database from config node when miss
-        fetchDatabaseAndUpdateCache();
+        fetchDatabaseAndUpdateCache(true);
         isExisted = containsDatabase(database);
         if (!isExisted && isAutoCreate) {
           // try to auto create database of failed device
@@ -582,25 +627,46 @@ public class PartitionCache {
   /**
    * update database cache
    *
-   * @param databaseNames the database names that need to update
+   * @param databases names of databases created through local {@code setDatabase} requests. Those
+   *     requests leave {@code needLastCache} unset, which is backward-compatibly treated as
+   *     enabled.
    */
-  public void updateDatabaseCache(final Set<String> databaseNames) {
+  public void updateDatabaseCache(final Set<String> databases) {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.addAll(databaseNames);
+      databases.forEach(
+          database -> {
+            // The newly created schemas omit needLastCache, whose compatibility default is true.
+            database2NeedLastCacheCache.put(database, true);
+          });
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
   }
 
-  public void updateDatabaseCache(final Map<String, TDatabaseSchema> databaseSchemaMap) {
-    if (databaseSchemaMap == null || databaseSchemaMap.isEmpty()) {
+  /**
+   * update database cache
+   *
+   * @param databaseMap the database names and need last cache that need to update
+   */
+  public void updateDatabaseCache(final Map<String, TDatabaseSchema> databaseMap) {
+    if (databaseMap == null || databaseMap.isEmpty()) {
       return;
     }
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.addAll(databaseSchemaMap.keySet());
-      TimePartitionUtils.updateDatabaseTimePartitionConfigs(databaseSchemaMap);
+      databaseMap.forEach(
+          (database, schema) -> {
+            if (database == null || schema == null) {
+              return;
+            }
+            final boolean needLastCache = isNeedLastCacheEnabled(schema);
+            database2NeedLastCacheCache.put(database, needLastCache);
+            if (!needLastCache) {
+              TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(database);
+            }
+          });
+      TimePartitionUtils.updateDatabaseTimePartitionConfigs(databaseMap);
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
@@ -610,7 +676,7 @@ public class PartitionCache {
   public void removeFromDatabaseCache() {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.clear();
+      database2NeedLastCacheCache.clear();
       TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
     } finally {
       databaseCacheLock.writeLock().unlock();
@@ -1157,9 +1223,16 @@ public class PartitionCache {
 
   @Override
   public String toString() {
+    final Map<String, Boolean> databaseCacheSnapshot;
+    databaseCacheLock.readLock().lock();
+    try {
+      databaseCacheSnapshot = new HashMap<>(database2NeedLastCacheCache);
+    } finally {
+      databaseCacheLock.readLock().unlock();
+    }
     return "PartitionCache{"
         + ", databaseCache="
-        + databaseCache
+        + databaseCacheSnapshot
         + ", replicaSetCache="
         + groupIdToReplicaSetMap
         + ", schemaPartitionCache="

@@ -245,6 +245,7 @@ struct TDatabaseSchema {
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
     11: optional bool isTableModel
+    12: optional bool needLastCache
 }
 
 // Schema
@@ -758,6 +759,7 @@ struct TDatabaseInfo {
   9: required i32 dataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
+  13: optional bool needLastCache
 }
 
 struct TGetDatabaseReq {
@@ -1314,6 +1316,7 @@ struct TTableInfo {
    3: optional i32 state
    4: optional string comment
    5: optional i32 type
+   6: optional bool needLastCache
 }
 
 struct TCreateTableViewReq {

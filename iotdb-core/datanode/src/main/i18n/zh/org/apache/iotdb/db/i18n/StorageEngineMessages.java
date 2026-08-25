@@ -539,6 +539,10 @@ public final class StorageEngineMessages {
   public static final String ACTIVE_LOAD_METRIC_COLLECTOR_REGISTERED = "Active 加载指标收集定期任务已注册";
   public static final String DATABASE_NAME_MUST_NOT_BE_EMPTY = "数据库名称不能为空。";
   public static final String USER_NAME_MUST_NOT_BE_EMPTY = "用户名不能为空。";
+  public static final String EXCEPTION_CONVERSION_TASK_ID_MUST_NOT_BE_EMPTY_411D064E =
+      "转换任务 ID 不能为空。";
+  public static final String LOG_FAILED_TO_CLOSE_PIPE_TSFILE_CONVERSION_CONTEXT_8E4D886B =
+      "关闭 Pipe TsFile 转换上下文失败。";
   public static final String ERROR_EXECUTING_ACTIVE_LOAD_JOB = "执行 Active 加载定期任务时发生错误。";
   public static final String ACTIVE_LOAD_EXECUTOR_STARTED = "Active 加载定期任务执行器已成功启动。";
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active 加载定期任务执行器已成功停止。";

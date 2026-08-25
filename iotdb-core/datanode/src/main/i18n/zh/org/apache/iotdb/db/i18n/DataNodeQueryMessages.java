@@ -1972,9 +1972,15 @@ public final class DataNodeQueryMessages {
   public static final String VALUE_MUST_BE_A_LONGLITERAL_BUT_NOW_IS =
 
       " 值必须为 LongLiteral，当前为 ";
+  public static final String EXCEPTION_ARG_VALUE_MUST_BE_A_BOOLEANLITERAL_BUT_NOW_IS_ARG_VALUE_ARG_25C5FFF0 =
+
+      "%s 值必须为 BooleanLiteral，当前为 %s，值：%s";
   public static final String VALUE =
 
       "，值：";
+  public static final String LOG_FAILED_TO_GET_NEED_LAST_CACHE_INFO_FOR_DATABASE_ARG_WILL_PUT_CACHE_ANYWAY_EXCEPTION_ARG_D5D80E96 =
+
+      "获取数据库 {} 的 need_last_cache 信息失败，将继续写入缓存，异常：{}";
   public static final String VALUE_MUST_BE_EQUAL_TO_OR_GREATER_THAN_0_BUT_NOW_IS =
 
       " 值必须大于等于 0，当前为：";

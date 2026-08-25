@@ -92,6 +92,8 @@ public class ShowCreateDatabaseTask implements IConfigTask {
         .append(databaseInfo.getMaxSchemaRegionNum())
         .append(",max_data_region_group_num=")
         .append(databaseInfo.getMaxDataRegionNum())
+        .append(",need_last_cache=")
+        .append(databaseInfo.isSetNeedLastCache() ? databaseInfo.isNeedLastCache() : true)
         .append(")")
         .toString();
   }
