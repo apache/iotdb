@@ -75,7 +75,7 @@ public class SubscriptionReceiverAgent {
   private final ScheduledExecutorService receiverTimeoutChecker;
 
   SubscriptionReceiverAgent() {
-    this(SubscriptionReceiverV1::new, true);
+    this(SubscriptionReceiverV1::new, SubscriptionConfig.getInstance().getSubscriptionEnabled());
   }
 
   SubscriptionReceiverAgent(

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -48,6 +49,20 @@ import static org.junit.Assert.assertTrue;
 public class ConsensusSubscriptionSetupHandlerTest {
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testRuntimeUpdatesAreIgnoredWhenSubscriptionIsDisabled() {
+    final boolean subscriptionEnabled =
+        CommonDescriptor.getInstance().getConfig().getSubscriptionEnabled();
+    try {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(false);
+
+      ConsensusSubscriptionSetupHandler.applyRuntimeState(null, null);
+      ConsensusSubscriptionSetupHandler.onRegionRouteChanged(null, 0);
+    } finally {
+      CommonDescriptor.getInstance().getConfig().setSubscriptionEnabled(subscriptionEnabled);
+    }
+  }
 
   @Test
   public void testSingleTopicSetupFailurePropagates() {

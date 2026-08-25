@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
@@ -805,6 +806,10 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void applyRuntimeState(
       final TConsensusGroupId groupId, final ConsensusRegionRuntimeState runtimeState) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
     final int newPreferredNodeId = runtimeState.getPreferredWriterNodeId();
     final Integer oldPreferredBoxed = lastKnownPreferredWriter.put(groupId, newPreferredNodeId);
     final int oldPreferredNodeId = (oldPreferredBoxed != null) ? oldPreferredBoxed : -1;
@@ -836,6 +841,10 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void onRegionRouteChanged(
       final Map<TConsensusGroupId, TRegionReplicaSet> newMap, final long routingTimestamp) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
     final int myNodeId = IOTDB_CONFIG.getDataNodeId();
 
     for (final Map.Entry<TConsensusGroupId, TRegionReplicaSet> newEntry : newMap.entrySet()) {

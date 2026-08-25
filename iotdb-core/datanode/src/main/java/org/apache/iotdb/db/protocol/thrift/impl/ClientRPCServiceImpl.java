@@ -3795,7 +3795,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
-    SubscriptionAgent.receiver().handleClientExit();
+    if (COMMON_CONFIG.getSubscriptionEnabled()) {
+      SubscriptionAgent.receiver().handleClientExit();
+    }
   }
 
   @Override

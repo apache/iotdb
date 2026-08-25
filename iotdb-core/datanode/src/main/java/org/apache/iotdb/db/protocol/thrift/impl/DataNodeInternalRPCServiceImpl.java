@@ -2681,6 +2681,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPullCommitProgressResp(RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION))
+          .setCommitRegionProgress(Collections.emptyMap());
+    }
+
     try {
       final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
       final Map<String, ByteBuffer> regionProgress =
@@ -2697,6 +2702,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus syncSubscriptionProgress(TSyncSubscriptionProgressReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
+    }
+
     try {
       SubscriptionAgent.broker()
           .receiveSubscriptionProgress(
@@ -2718,6 +2727,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus pushSubscriptionRuntime(TPushSubscriptionRuntimeReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
+    }
+
     try {
       for (final TSubscriptionRuntimeStateEntry runtimeStateEntry : req.getRuntimeStates()) {
         ConsensusSubscriptionSetupHandler.applyRuntimeState(
@@ -3566,8 +3579,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus updateRegionCache(TRegionRouteReq req) {
-    boolean result = ClusterPartitionFetcher.getInstance().updateRegionCache(req);
-    if (result) {
+    final boolean result = ClusterPartitionFetcher.getInstance().updateRegionCache(req);
+    if (!result) {
+      return RpcUtils.getStatus(TSStatusCode.PARTITION_CACHE_UPDATE_ERROR);
+    }
+
+    if (SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       // Notify consensus subscription queues of any preferred-writer changes
       try {
         ConsensusSubscriptionSetupHandler.onRegionRouteChanged(
@@ -3578,10 +3595,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .MISC_LOG_FAILED_TO_PROCESS_CONSENSUS_SUBSCRIPTION_ROUTE_UPDATE_80D73E2B,
             e);
       }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } else {
-      return RpcUtils.getStatus(TSStatusCode.PARTITION_CACHE_UPDATE_ERROR);
     }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {
