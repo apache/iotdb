@@ -98,7 +98,10 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
     try {
       if (conversionContext.deferredStatus != null) {
         final TSStatus result =
-            flushPendingTablets(conversionContext, loadTsFileStatement.isConvertOnTypeMismatch());
+            flushPendingTablets(
+                conversionContext,
+                loadTsFileStatement.isConvertOnTypeMismatch(),
+                loadTsFileStatement.isTsFilePhysicalPath());
         if (!handleTSStatus(result, loadTsFileStatement)) {
           shouldReleaseContext = !isManagedTask || !isTemporaryUnavailable(result);
           return Optional.of(result);
@@ -205,7 +208,10 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       // discard successfully converted data.
       if (!retryable && !conversionContext.tabletRawReqs.isEmpty()) {
         final TSStatus flushStatus =
-            flushPendingTablets(conversionContext, loadTsFileStatement.isConvertOnTypeMismatch());
+            flushPendingTablets(
+                conversionContext,
+                loadTsFileStatement.isConvertOnTypeMismatch(),
+                loadTsFileStatement.isTsFilePhysicalPath());
         if (!handleTSStatus(flushStatus, loadTsFileStatement)) {
           if (isManagedTask && isTemporaryUnavailable(flushStatus)) {
             conversionContext.deferredStatus = status;
