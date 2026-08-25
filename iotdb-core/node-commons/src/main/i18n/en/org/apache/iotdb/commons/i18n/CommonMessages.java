@@ -222,7 +222,11 @@ public final class CommonMessages {
   public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9 = "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.";
   public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 = "Unsupported M4 value type: ";
   public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold must be in [0, 1), but was ";
+  public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION = "the value of wpass should be in (0, 1)";
+  public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "No columns could be calculated.";
+  public static final String EXCEPTION_NOT_ALLOWED_COLUMNS = "Only column with double, float, int32, int64 can be calculated by the function, %s is the %s.";
   public static final String LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443 =
       "Trusted channel function failed: initiator=%s, target=%s";
-
+  public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM =
+      "row index exceeds the maximum allowed number in one partition";
 }

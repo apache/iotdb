@@ -5923,6 +5923,7 @@ public class StatementAnalyzer {
 
     private boolean isPartitionColumnsProvidedByProperSchema(String functionName) {
       return TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
+          || TableBuiltinTableFunction.LOWPASS.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName);
     }
 

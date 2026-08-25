@@ -1572,12 +1572,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
                 symbol ->
                     new TableFunctionNode.PassThroughColumn(symbol, partitionBy.contains(symbol)))
             .forEach(passThroughColumns::add);
-      } else if (!TableBuiltinTableFunction.M4
-              .getFunctionName()
-              .equalsIgnoreCase(functionAnalysis.getFunctionName())
-          && !TableBuiltinTableFunction.FFT
-              .getFunctionName()
-              .equalsIgnoreCase(functionAnalysis.getFunctionName())
+      } else if (needAddPartitionColumn(functionAnalysis.getFunctionName())
           && tableArgument.getPartitionBy().isPresent()) {
         tableArgument.getPartitionBy().get().stream()
             // the original symbols for partitioning columns, not coerced
@@ -1611,6 +1606,12 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
             sourceProperties.build());
 
     return new RelationPlan(root, analysis.getScope(node), outputSymbols.build(), outerContext);
+  }
+
+  private boolean needAddPartitionColumn(String functionName) {
+    return !TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.LOWPASS.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName);
   }
 
   private RelationPlan planExternalTsFileScan(
