@@ -589,7 +589,8 @@ public class PipeHeartbeatParserTest {
   }
 
   private PipeHeartbeat createPipeHeartbeatWithCompletedRegions(
-      final PipeMeta pipeMeta, final boolean isCompleted, final List<Integer> completedRegionIds) {
+      final PipeMeta pipeMeta, final boolean isCompleted, final List<Integer> completedRegionIds)
+      throws Exception {
     return new PipeHeartbeat(
         Collections.singletonList(pipeMeta.serialize()),
         Collections.singletonList(isCompleted),
