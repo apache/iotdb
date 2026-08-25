@@ -161,11 +161,11 @@ public class IoTDBWritableViewIT {
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
             new HashSet<>(
                 Arrays.asList(
-                    "source_table,200,USING,view comment,BASE TABLE,null,",
-                    "writable_view,200,USING,view comment,WRITABLE VIEW,source_table,")));
+                    "source_table,200,USING,view comment,BASE TABLE,null,true,",
+                    "writable_view,200,USING,view comment,WRITABLE VIEW,source_table,true,")));
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show writable views"),
@@ -229,11 +229,11 @@ public class IoTDBWritableViewIT {
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
             new HashSet<>(
                 Arrays.asList(
-                    "source_table,200,USING,view comment,BASE TABLE,null,",
-                    "writable_view,300,USING,view comment,WRITABLE VIEW,source_table,")));
+                    "source_table,200,USING,view comment,BASE TABLE,null,true,",
+                    "writable_view,300,USING,view comment,WRITABLE VIEW,source_table,true,")));
 
         try (final ResultSet resultSet = statement.executeQuery("show create view writable_view")) {
           assertTrue(resultSet.next());
@@ -253,16 +253,16 @@ public class IoTDBWritableViewIT {
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
             new HashSet<>(
                 Arrays.asList(
-                    "source_table,200,USING,view comment,BASE TABLE,null,",
-                    "writable_view,300,USING,view comment,WRITABLE VIEW,source_table,",
+                    "source_table,200,USING,view comment,BASE TABLE,null,true,",
+                    "writable_view,300,USING,view comment,WRITABLE VIEW,source_table,true,",
                     "source_table_without_explicit_comment,200,USING,"
-                        + "source_table_without_explicit_comment,BASE TABLE,null,",
+                        + "source_table_without_explicit_comment,BASE TABLE,null,true,",
                     "writable_view_without_explicit_comment,200,USING,"
                         + "source_table_without_explicit_comment,WRITABLE VIEW,"
-                        + "source_table_without_explicit_comment,")));
+                        + "source_table_without_explicit_comment,true,")));
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("describe source_table_without_explicit_comment details"),
@@ -412,8 +412,8 @@ public class IoTDBWritableViewIT {
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
-            Collections.singleton("source_table,100,USING,null,BASE TABLE,null,"));
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
+            Collections.singleton("source_table,100,USING,null,BASE TABLE,null,true,"));
       } finally {
         dropDatabaseQuietly(statement, database);
       }
@@ -521,7 +521,7 @@ public class IoTDBWritableViewIT {
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
             Collections.emptySet());
       } finally {
         dropDatabaseQuietly(statement, database);
@@ -648,31 +648,31 @@ public class IoTDBWritableViewIT {
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
             new HashSet<>(
                 Arrays.asList(
-                    "source_table,100,USING,null,BASE TABLE,null,",
-                    "writable_view,200,USING,null,WRITABLE VIEW,source_table,")));
+                    "source_table,100,USING,null,BASE TABLE,null,true,",
+                    "writable_view,200,USING,null,WRITABLE VIEW,source_table,true,")));
 
         statement.execute("alter view writable_view set properties ttl=300, schema_cascade=true");
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
             new HashSet<>(
                 Arrays.asList(
-                    "source_table,100,USING,null,BASE TABLE,null,",
-                    "writable_view,300,USING,null,WRITABLE VIEW,source_table,")));
+                    "source_table,100,USING,null,BASE TABLE,null,true,",
+                    "writable_view,300,USING,null,WRITABLE VIEW,source_table,true,")));
 
         statement.execute("alter view writable_view set properties ttl=400, schema_cascade=false");
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
             new HashSet<>(
                 Arrays.asList(
-                    "source_table,400,USING,null,BASE TABLE,null,",
-                    "writable_view,400,USING,null,WRITABLE VIEW,source_table,")));
+                    "source_table,400,USING,null,BASE TABLE,null,true,",
+                    "writable_view,400,USING,null,WRITABLE VIEW,source_table,true,")));
 
         try (final ResultSet resultSet = statement.executeQuery("show create view writable_view")) {
           assertTrue(resultSet.next());
@@ -709,11 +709,11 @@ public class IoTDBWritableViewIT {
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
             new HashSet<>(
                 Arrays.asList(
-                    "source_table,8640000,USING,null,BASE TABLE,null,",
-                    "writable_view_renamed,8640000,USING,null,WRITABLE VIEW,source_table,")));
+                    "source_table,8640000,USING,null,BASE TABLE,null,true,",
+                    "writable_view_renamed,8640000,USING,null,WRITABLE VIEW,source_table,true,")));
         TestUtils.assertResultSetEqual(
             statement.executeQuery("select * from writable_view_renamed"),
             "time,dev,temp,",
@@ -1201,8 +1201,8 @@ public class IoTDBWritableViewIT {
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
-            Collections.singleton("writable_view,INF,USING,null,WRITABLE VIEW,source_table,"));
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
+            Collections.singleton("writable_view,INF,USING,null,WRITABLE VIEW,source_table,true,"));
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("describe writable_view details"),
@@ -1231,7 +1231,7 @@ public class IoTDBWritableViewIT {
 
         TestUtils.assertResultSetEqual(
             statement.executeQuery("show tables details"),
-            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+            "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
             Collections.emptySet());
       } finally {
         dropDatabaseQuietly(statement, database);

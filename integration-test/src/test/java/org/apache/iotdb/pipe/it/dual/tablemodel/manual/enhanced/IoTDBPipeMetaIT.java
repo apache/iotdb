@@ -249,11 +249,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from test",
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,200,USING,view comment,BASE TABLE,null,",
-                  "view1,200,USING,view comment,WRITABLE VIEW,table1,")),
+                  "table1,200,USING,view comment,BASE TABLE,null,true,",
+                  "view1,200,USING,view comment,WRITABLE VIEW,table1,true,")),
           dbName);
 
       TestUtils.executeNonQuery(
@@ -313,11 +313,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from test",
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,200,USING,view comment,BASE TABLE,null,",
-                  "view2,200,USING,view comment,WRITABLE VIEW,table1,")),
+                  "table1,200,USING,view comment,BASE TABLE,null,true,",
+                  "view2,200,USING,view comment,WRITABLE VIEW,table1,true,")),
           dbName);
 
       TestUtils.assertDataEventuallyOnEnv(
@@ -389,11 +389,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from test",
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,200,USING,view comment,BASE TABLE,null,",
-                  "view2,300,USING,view comment,WRITABLE VIEW,table1,")),
+                  "table1,200,USING,view comment,BASE TABLE,null,true,",
+                  "view2,300,USING,view comment,WRITABLE VIEW,table1,true,")),
           dbName);
 
       TestUtils.assertDataEventuallyOnEnv(
@@ -426,8 +426,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from test",
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
-          Collections.singleton("table1,200,USING,view comment,BASE TABLE,null,"),
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
+          Collections.singleton("table1,200,USING,view comment,BASE TABLE,null,true,"),
           dbName);
     }
   }
@@ -457,11 +457,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + dbName,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,100,USING,null,BASE TABLE,null,",
-                  "view1,100,USING,null,WRITABLE VIEW,table1,")),
+                  "table1,100,USING,null,BASE TABLE,null,true,",
+                  "view1,100,USING,null,WRITABLE VIEW,table1,true,")),
           dbName);
 
       TestUtils.executeNonQuery(
@@ -481,11 +481,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + dbName,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,300,USING,null,BASE TABLE,null,",
-                  "view1,300,USING,null,WRITABLE VIEW,table1,")),
+                  "table1,300,USING,null,BASE TABLE,null,true,",
+                  "view1,300,USING,null,WRITABLE VIEW,table1,true,")),
           dbName);
     }
   }
@@ -515,11 +515,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + dbName,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,100,USING,null,BASE TABLE,null,",
-                  "view1,100,USING,null,WRITABLE VIEW,table1,")),
+                  "table1,100,USING,null,BASE TABLE,null,true,",
+                  "view1,100,USING,null,WRITABLE VIEW,table1,true,")),
           dbName);
 
       TestUtils.executeNonQuery(
@@ -546,12 +546,12 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + dbName,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,300,USING,null,BASE TABLE,null,",
-                  "table2,300,USING,null,BASE TABLE,null,",
-                  "view1,300,USING,null,WRITABLE VIEW,table2,")),
+                  "table1,300,USING,null,BASE TABLE,null,true,",
+                  "table2,300,USING,null,BASE TABLE,null,true,",
+                  "view1,300,USING,null,WRITABLE VIEW,table2,true,")),
           dbName);
 
       TestUtils.executeNonQuery(
@@ -564,12 +564,12 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + dbName,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,300,USING,source mismatch comment,BASE TABLE,null,",
-                  "table2,300,USING,source mismatch comment,BASE TABLE,null,",
-                  "view1,300,USING,source mismatch comment,WRITABLE VIEW,table2,")),
+                  "table1,300,USING,source mismatch comment,BASE TABLE,null,true,",
+                  "table2,300,USING,source mismatch comment,BASE TABLE,null,true,",
+                  "view1,300,USING,source mismatch comment,WRITABLE VIEW,table2,true,")),
           dbName);
     }
   }
@@ -605,11 +605,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + viewOnlyDb,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,100,USING,null,BASE TABLE,null,",
-                  "view1,100,USING,null,WRITABLE VIEW,table1,")),
+                  "table1,100,USING,null,BASE TABLE,null,true,",
+                  "view1,100,USING,null,WRITABLE VIEW,table1,true,")),
           viewOnlyDb);
 
       TestUtils.executeNonQuery(
@@ -622,11 +622,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + viewOnlyDb,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "table1,100,USING,null,BASE TABLE,null,",
-                  "view1,200,USING,null,WRITABLE VIEW,table1,")),
+                  "table1,100,USING,null,BASE TABLE,null,true,",
+                  "view1,200,USING,null,WRITABLE VIEW,table1,true,")),
           viewOnlyDb);
 
       final String sourceOnlyDb = "source_only";
@@ -649,8 +649,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + sourceOnlyDb,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
-          Collections.singleton("table1,100,USING,null,BASE TABLE,null,"),
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
+          Collections.singleton("table1,100,USING,null,BASE TABLE,null,true,"),
           sourceOnlyDb);
 
       TestUtils.executeNonQuery(
@@ -663,8 +663,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + sourceOnlyDb,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
-          Collections.singleton("table1,100,USING,null,BASE TABLE,null,"),
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
+          Collections.singleton("table1,100,USING,null,BASE TABLE,null,true,"),
           sourceOnlyDb);
     }
   }
@@ -705,11 +705,11 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show tables details from " + dbName,
-          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,NeedLastCache,",
           new HashSet<>(
               Arrays.asList(
-                  "source_table,INF,USING,null,BASE TABLE,null,",
-                  "view1,INF,USING,null,WRITABLE VIEW,source_table,")),
+                  "source_table,INF,USING,null,BASE TABLE,null,true,",
+                  "view1,INF,USING,null,WRITABLE VIEW,source_table,true,")),
           dbName);
 
       TestUtils.executeNonQuery(
