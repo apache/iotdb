@@ -46,6 +46,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -587,7 +588,9 @@ public class TsFileProcessorTest {
         genSingleMeasurementTablet(rowCount, true), rangeList, actualResults, false, new long[5]);
 
     Assert.assertEquals(
-        expectedProcessor.getWorkMemTable().getTVListsRamCost(),
+        expectedProcessor.getWorkMemTable().getTVListsRamCost()
+            + 2 * AlignedTVList.bitmapReferenceRamCost()
+            + AlignedTVList.bitmapRamCost(),
         actualProcessor.getWorkMemTable().getTVListsRamCost());
     Assert.assertEquals(
         TSStatusCode.OUT_OF_TTL.getStatusCode(), actualResults[failedIndex].getCode());
