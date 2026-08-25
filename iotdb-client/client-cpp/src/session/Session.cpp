@@ -1067,31 +1067,6 @@ void Session::close() {
   if (impl_->isClosed_) {
     return;
   }
-  try {
-    if (impl_->enableRedirection_) {
-      for (auto& entry : impl_->endPointToSessionConnection) {
-        if (entry.second) {
-          try {
-            entry.second->close();
-          } catch (const exception& e) {
-            log_debug(e.what());
-          }
-        }
-      }
-      impl_->endPointToSessionConnection.clear();
-    }
-    if (impl_->defaultSessionConnection_) {
-      try {
-        impl_->defaultSessionConnection_->close();
-      } catch (const exception& e) {
-        log_debug(e.what());
-      }
-      impl_->defaultSessionConnection_.reset();
-    }
-  } catch (...) {
-    impl_->isClosed_ = true;
-    throw;
-  }
   impl_->isClosed_ = true;
 }
 
@@ -1112,7 +1087,7 @@ void Session::insertRecord(const string& deviceId, int64_t time, const vector<st
         impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
       impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        impl_->getDefaultSessionConnection()->insertStringRecord(req);
+        impl_->defaultSessionConnection_->insertStringRecord(req);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1141,7 +1116,7 @@ void Session::insertRecord(const string& deviceId, int64_t time, const vector<st
         impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
       impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        impl_->getDefaultSessionConnection()->insertRecord(req);
+        impl_->defaultSessionConnection_->insertRecord(req);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1168,7 +1143,7 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
         impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
       impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        impl_->getDefaultSessionConnection()->insertStringRecord(req);
+        impl_->defaultSessionConnection_->insertStringRecord(req);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1198,7 +1173,7 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
         impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
       impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        impl_->getDefaultSessionConnection()->insertRecord(req);
+        impl_->defaultSessionConnection_->insertRecord(req);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1227,7 +1202,7 @@ void Session::insertRecords(const vector<string>& deviceIds, const vector<int64_
     request.__set_valuesList(valuesList);
     request.__set_isAligned(false);
     try {
-      impl_->getDefaultSessionConnection()->insertStringRecords(request);
+      impl_->defaultSessionConnection_->insertStringRecords(request);
     } catch (RedirectException& e) {
     }
   }
@@ -1260,7 +1235,7 @@ void Session::insertRecords(const vector<string>& deviceIds, const vector<int64_
     request.__set_valuesList(bufferList);
     request.__set_isAligned(false);
     try {
-      impl_->getDefaultSessionConnection()->insertRecords(request);
+      impl_->defaultSessionConnection_->insertRecords(request);
     } catch (RedirectException& e) {
     }
   }
@@ -1285,7 +1260,7 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds, const vector
     request.__set_valuesList(valuesList);
     request.__set_isAligned(true);
     try {
-      impl_->getDefaultSessionConnection()->insertStringRecords(request);
+      impl_->defaultSessionConnection_->insertStringRecords(request);
     } catch (RedirectException& e) {
     }
   }
@@ -1318,7 +1293,7 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds, const vector
     request.__set_valuesList(bufferList);
     request.__set_isAligned(false);
     try {
-      impl_->getDefaultSessionConnection()->insertRecords(request);
+      impl_->defaultSessionConnection_->insertRecords(request);
     } catch (RedirectException& e) {
     }
   }
@@ -1370,7 +1345,7 @@ void Session::insertRecordsOfOneDevice(const string& deviceId, vector<int64_t>& 
         impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
       impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        impl_->getDefaultSessionConnection()->insertRecordsOfOneDevice(request);
+        impl_->defaultSessionConnection_->insertRecordsOfOneDevice(request);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1425,7 +1400,7 @@ void Session::insertAlignedRecordsOfOneDevice(const string& deviceId, vector<int
         impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
       impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        impl_->getDefaultSessionConnection()->insertRecordsOfOneDevice(request);
+        impl_->defaultSessionConnection_->insertRecordsOfOneDevice(request);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1477,7 +1452,7 @@ void Session::Impl::insertTablet(TSInsertTabletReq request) {
     if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
       deviceIdToEndpoint.erase(deviceId);
       try {
-        getDefaultSessionConnection()->insertTablet(request);
+        defaultSessionConnection_->insertTablet(request);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1495,7 +1470,7 @@ void Session::insertTablet(Tablet& tablet, bool sorted) {
 void Session::insertRelationalTablet(Tablet& tablet, bool sorted) {
   std::unordered_map<std::shared_ptr<SessionConnection>, Tablet> relationalTabletGroup;
   if (impl_->tableModelDeviceIdToEndpoint.empty()) {
-    relationalTabletGroup.insert(make_pair(impl_->getDefaultSessionConnection(), tablet));
+    relationalTabletGroup.insert(make_pair(impl_->defaultSessionConnection_, tablet));
   } else if (SessionUtils::isTabletContainsSingleDevice(tablet)) {
     relationalTabletGroup.insert(
         make_pair(impl_->getSessionConnection(tablet.getDeviceID(0)), tablet));
@@ -1596,7 +1571,7 @@ void Session::Impl::insertRelationalTabletOnce(
       removeBrokenSessionConnection(connection);
       try {
         TSStatus respStatus;
-        getDefaultSessionConnection()->getSessionClient()->insertTablet(respStatus, request);
+        defaultSessionConnection_->getSessionClient()->insertTablet(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
       } catch (RedirectException& e) {
       }
@@ -1718,7 +1693,7 @@ void Session::insertTablets(unordered_map<string, Tablet*>& tablets, bool sorted
     request.__set_isAligned(isAligned);
     try {
       TSStatus respStatus;
-      impl_->getDefaultSessionConnection()->insertTablets(request);
+      impl_->defaultSessionConnection_->insertTablets(request);
       RpcUtils::verifySuccess(respStatus);
     } catch (RedirectException& e) {
     }
@@ -1747,7 +1722,7 @@ void Session::testInsertRecord(const string& deviceId, int64_t time,
   req.__set_values(values);
   TSStatus tsStatus;
   try {
-    impl_->getDefaultSessionConnection()->testInsertStringRecord(req);
+    impl_->defaultSessionConnection_->testInsertStringRecord(req);
     RpcUtils::verifySuccess(tsStatus);
   } catch (const TTransportException& e) {
     log_debug(e.what());
@@ -1773,7 +1748,7 @@ void Session::testInsertTablet(const Tablet& tablet) {
   request.__set_size(tablet.rowSize);
   try {
     TSStatus tsStatus;
-    impl_->getDefaultSessionConnection()->testInsertTablet(request);
+    impl_->defaultSessionConnection_->testInsertTablet(request);
     RpcUtils::verifySuccess(tsStatus);
   } catch (const TTransportException& e) {
     log_debug(e.what());
@@ -1803,8 +1778,7 @@ void Session::testInsertRecords(const vector<string>& deviceIds, const vector<in
 
   try {
     TSStatus tsStatus;
-    impl_->getDefaultSessionConnection()->getSessionClient()->insertStringRecords(tsStatus,
-                                                                                  request);
+    impl_->defaultSessionConnection_->getSessionClient()->insertStringRecords(tsStatus, request);
     RpcUtils::verifySuccess(tsStatus);
   } catch (const TTransportException& e) {
     log_debug(e.what());
@@ -1825,7 +1799,7 @@ void Session::deleteTimeseries(const string& path) {
 }
 
 void Session::deleteTimeseries(const vector<string>& paths) {
-  impl_->getDefaultSessionConnection()->deleteTimeseries(paths);
+  impl_->defaultSessionConnection_->deleteTimeseries(paths);
 }
 
 void Session::deleteData(const string& path, int64_t endTime) {
@@ -1843,11 +1817,11 @@ void Session::deleteData(const vector<string>& paths, int64_t startTime, int64_t
   req.__set_paths(paths);
   req.__set_startTime(startTime);
   req.__set_endTime(endTime);
-  impl_->getDefaultSessionConnection()->deleteData(req);
+  impl_->defaultSessionConnection_->deleteData(req);
 }
 
 void Session::setStorageGroup(const string& storageGroupId) {
-  impl_->getDefaultSessionConnection()->setStorageGroup(storageGroupId);
+  impl_->defaultSessionConnection_->setStorageGroup(storageGroupId);
 }
 
 void Session::deleteStorageGroup(const string& storageGroup) {
@@ -1857,7 +1831,7 @@ void Session::deleteStorageGroup(const string& storageGroup) {
 }
 
 void Session::deleteStorageGroups(const vector<string>& storageGroups) {
-  impl_->getDefaultSessionConnection()->deleteStorageGroups(storageGroups);
+  impl_->defaultSessionConnection_->deleteStorageGroups(storageGroups);
 }
 
 void Session::createDatabase(const string& database) {
@@ -1906,7 +1880,7 @@ void Session::createTimeseries(const string& path, TSDataType::TSDataType dataTy
   if (!measurementAlias.empty()) {
     req.__set_measurementAlias(measurementAlias);
   }
-  impl_->getDefaultSessionConnection()->createTimeseries(req);
+  impl_->defaultSessionConnection_->createTimeseries(req);
 }
 
 void Session::createMultiTimeseries(const vector<string>& paths,
@@ -1955,7 +1929,7 @@ void Session::createMultiTimeseries(const vector<string>& paths,
     request.__set_measurementAliasList(*measurementAliasList);
   }
 
-  impl_->getDefaultSessionConnection()->createMultiTimeseries(request);
+  impl_->defaultSessionConnection_->createMultiTimeseries(request);
 }
 
 void Session::createAlignedTimeseries(
@@ -1988,7 +1962,7 @@ void Session::createAlignedTimeseries(
   }
   request.__set_compressors(compressorsOrdinal);
 
-  impl_->getDefaultSessionConnection()->createAlignedTimeseries(request);
+  impl_->defaultSessionConnection_->createAlignedTimeseries(request);
 }
 
 bool Session::checkTimeseriesExists(const string& path) {
@@ -2009,7 +1983,7 @@ bool Session::checkTimeseriesExists(const string& path) {
 shared_ptr<SessionConnection> Session::Impl::getQuerySessionConnection() {
   auto endPoint = nodesSupplier_->getQueryEndPoint();
   if (!endPoint.is_initialized() || endPointToSessionConnection.empty()) {
-    return getDefaultSessionConnection();
+    return defaultSessionConnection_;
   }
 
   auto it = endPointToSessionConnection.find(endPoint.value());
@@ -2017,7 +1991,6 @@ shared_ptr<SessionConnection> Session::Impl::getQuerySessionConnection() {
     return it->second;
   }
 
-  getDefaultSessionConnection();
   shared_ptr<SessionConnection> newConnection;
   try {
     newConnection =
@@ -2027,7 +2000,7 @@ shared_ptr<SessionConnection> Session::Impl::getQuerySessionConnection() {
     return newConnection;
   } catch (exception& e) {
     log_debug("Session::Impl::getQuerySessionConnection() exception: " + e.what());
-    return getDefaultSessionConnection();
+    return newConnection;
   }
 }
 
@@ -2035,7 +2008,7 @@ shared_ptr<SessionConnection> Session::Impl::getSessionConnection(std::string de
   if (!enableRedirection_ || deviceIdToEndpoint.find(deviceId) == deviceIdToEndpoint.end() ||
       endPointToSessionConnection.find(deviceIdToEndpoint[deviceId]) ==
           endPointToSessionConnection.end()) {
-    return getDefaultSessionConnection();
+    return defaultSessionConnection_;
   }
   return endPointToSessionConnection.find(deviceIdToEndpoint[deviceId])->second;
 }
@@ -2046,21 +2019,21 @@ Session::Impl::getSessionConnection(std::shared_ptr<storage::IDeviceID> deviceId
       tableModelDeviceIdToEndpoint.find(deviceId) == tableModelDeviceIdToEndpoint.end() ||
       endPointToSessionConnection.find(tableModelDeviceIdToEndpoint[deviceId]) ==
           endPointToSessionConnection.end()) {
-    return getDefaultSessionConnection();
+    return defaultSessionConnection_;
   }
   return endPointToSessionConnection.find(tableModelDeviceIdToEndpoint[deviceId])->second;
 }
 
 string Session::getTimeZone() {
-  auto ret = impl_->getDefaultSessionConnection()->getTimeZone();
+  auto ret = impl_->defaultSessionConnection_->getTimeZone();
   return ret.timeZone;
 }
 
 void Session::setTimeZone(const string& zoneId) {
   TSSetTimeZoneReq req;
-  req.__set_sessionId(impl_->getDefaultSessionConnection()->sessionId);
+  req.__set_sessionId(impl_->defaultSessionConnection_->sessionId);
   req.__set_timeZone(zoneId);
-  impl_->getDefaultSessionConnection()->setTimeZone(req);
+  impl_->defaultSessionConnection_->setTimeZone(req);
 }
 
 unique_ptr<SessionDataSet> Session::executeQueryStatement(const string& sql) {
@@ -2074,7 +2047,6 @@ unique_ptr<SessionDataSet> Session::executeQueryStatement(const string& sql, int
 void Session::Impl::handleQueryRedirection(TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
-  getDefaultSessionConnection();
   shared_ptr<SessionConnection> newConnection;
   auto it = endPointToSessionConnection.find(endPoint);
   if (it != endPointToSessionConnection.end()) {
@@ -2098,7 +2070,6 @@ void Session::Impl::handleRedirection(const std::string& deviceId, TEndPoint end
     return;
   if (endPoint.ip == "0.0.0.0")
     return;
-  getDefaultSessionConnection();
   deviceIdToEndpoint[deviceId] = endPoint;
 
   shared_ptr<SessionConnection> newConnection;
@@ -2124,7 +2095,6 @@ void Session::Impl::handleRedirection(const std::shared_ptr<storage::IDeviceID>&
     return;
   if (endPoint.ip == "0.0.0.0")
     return;
-  getDefaultSessionConnection();
   tableModelDeviceIdToEndpoint[deviceId] = endPoint;
 
   shared_ptr<SessionConnection> newConnection;
@@ -2157,7 +2127,7 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
     log_warn("Session connection redirect exception: " + e.what());
     impl_->handleQueryRedirection(endpointToThrift(e.endPoint));
     try {
-      return impl_->getDefaultSessionConnection()->executeQueryStatement(sql, timeoutInMs);
+      return impl_->defaultSessionConnection_->executeQueryStatement(sql, timeoutInMs);
     } catch (exception& e) {
       log_error("Exception while executing redirected query statement: %s", e.what());
       throw ExecutionException(e.what());
@@ -2170,9 +2140,7 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
 
 void Session::executeNonQueryStatement(const string& sql) {
   try {
-    impl_->getDefaultSessionConnection()->executeNonQueryStatement(sql);
-  } catch (const IoTDBConnectionException&) {
-    throw;
+    impl_->defaultSessionConnection_->executeNonQueryStatement(sql);
   } catch (const exception& e) {
     throw IoTDBException(e.what());
   }
@@ -2180,7 +2148,7 @@ void Session::executeNonQueryStatement(const string& sql) {
 
 unique_ptr<SessionDataSet> Session::executeRawDataQuery(const vector<string>& paths,
                                                         int64_t startTime, int64_t endTime) {
-  return impl_->getDefaultSessionConnection()->executeRawDataQuery(paths, startTime, endTime);
+  return impl_->defaultSessionConnection_->executeRawDataQuery(paths, startTime, endTime);
 }
 
 unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string>& paths) {
@@ -2189,28 +2157,28 @@ unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string>& p
 
 unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string>& paths,
                                                          int64_t lastTime) {
-  return impl_->getDefaultSessionConnection()->executeLastDataQuery(paths, lastTime);
+  return impl_->defaultSessionConnection_->executeLastDataQuery(paths, lastTime);
 }
 
 void Session::createSchemaTemplate(const Template& templ) {
   TSCreateSchemaTemplateReq req;
   req.__set_name(templ.getName());
   req.__set_serializedTemplate(templ.serialize());
-  impl_->getDefaultSessionConnection()->createSchemaTemplate(req);
+  impl_->defaultSessionConnection_->createSchemaTemplate(req);
 }
 
 void Session::setSchemaTemplate(const string& template_name, const string& prefix_path) {
   TSSetSchemaTemplateReq req;
   req.__set_templateName(template_name);
   req.__set_prefixPath(prefix_path);
-  impl_->getDefaultSessionConnection()->setSchemaTemplate(req);
+  impl_->defaultSessionConnection_->setSchemaTemplate(req);
 }
 
 void Session::unsetSchemaTemplate(const string& prefix_path, const string& template_name) {
   TSUnsetSchemaTemplateReq req;
   req.__set_templateName(template_name);
   req.__set_prefixPath(prefix_path);
-  impl_->getDefaultSessionConnection()->unsetSchemaTemplate(req);
+  impl_->defaultSessionConnection_->unsetSchemaTemplate(req);
 }
 
 void Session::addAlignedMeasurementsInTemplate(
@@ -2244,7 +2212,7 @@ void Session::addAlignedMeasurementsInTemplate(
   }
   req.__set_compressors(compressorsOrdinal);
 
-  impl_->getDefaultSessionConnection()->appendSchemaTemplate(req);
+  impl_->defaultSessionConnection_->appendSchemaTemplate(req);
 }
 
 void Session::addAlignedMeasurementsInTemplate(const string& template_name,
@@ -2290,7 +2258,7 @@ void Session::addUnalignedMeasurementsInTemplate(
   }
   req.__set_compressors(compressorsOrdinal);
 
-  impl_->getDefaultSessionConnection()->appendSchemaTemplate(req);
+  impl_->defaultSessionConnection_->appendSchemaTemplate(req);
 }
 
 void Session::addUnalignedMeasurementsInTemplate(const string& template_name,
@@ -2310,14 +2278,14 @@ void Session::deleteNodeInTemplate(const string& template_name, const string& pa
   TSPruneSchemaTemplateReq req;
   req.__set_name(template_name);
   req.__set_path(path);
-  impl_->getDefaultSessionConnection()->pruneSchemaTemplate(req);
+  impl_->defaultSessionConnection_->pruneSchemaTemplate(req);
 }
 
 int Session::countMeasurementsInTemplate(const string& template_name) {
   TSQueryTemplateReq req;
   req.__set_name(template_name);
   req.__set_queryType(TemplateQueryType::COUNT_MEASUREMENTS);
-  TSQueryTemplateResp resp = impl_->getDefaultSessionConnection()->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.count;
 }
 
@@ -2326,7 +2294,7 @@ bool Session::isMeasurementInTemplate(const string& template_name, const string&
   req.__set_name(template_name);
   req.__set_measurement(path);
   req.__set_queryType(TemplateQueryType::IS_MEASUREMENT);
-  TSQueryTemplateResp resp = impl_->getDefaultSessionConnection()->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.result;
 }
 
@@ -2335,7 +2303,7 @@ bool Session::isPathExistInTemplate(const string& template_name, const string& p
   req.__set_name(template_name);
   req.__set_measurement(path);
   req.__set_queryType(TemplateQueryType::PATH_EXIST);
-  TSQueryTemplateResp resp = impl_->getDefaultSessionConnection()->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.result;
 }
 
@@ -2344,7 +2312,7 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string& templ
   req.__set_name(template_name);
   req.__set_measurement("");
   req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
-  TSQueryTemplateResp resp = impl_->getDefaultSessionConnection()->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.measurements;
 }
 
@@ -2354,7 +2322,7 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string& templ
   req.__set_name(template_name);
   req.__set_measurement(pattern);
   req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
-  TSQueryTemplateResp resp = impl_->getDefaultSessionConnection()->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.measurements;
 }
 

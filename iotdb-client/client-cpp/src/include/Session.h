@@ -232,14 +232,6 @@ public:
   }
 
   void addTimestamp(size_t rowIndex, int64_t timestamp) {
-    if (rowIndex >= static_cast<size_t>(maxRowNumber)) {
-      char tmpStr[100];
-      snprintf(tmpStr, sizeof(tmpStr),
-               "Tablet::addTimestamp(), rowIndex >= maxRowNumber. rowIndex=%ld, "
-               "maxRowNumber=%ld.",
-               (long)rowIndex, (long)maxRowNumber);
-      throw std::out_of_range(tmpStr);
-    }
     timestamps[rowIndex] = timestamp;
     rowSize = max(rowSize, rowIndex + 1);
   }
@@ -256,18 +248,10 @@ public:
       throw std::out_of_range(tmpStr);
     }
 
-    if (rowIndex >= static_cast<size_t>(maxRowNumber)) {
+    if (rowIndex >= rowSize) {
       char tmpStr[100];
       snprintf(tmpStr, sizeof(tmpStr),
-               "Tablet::addValue(), rowIndex >= maxRowNumber. rowIndex=%ld, maxRowNumber=%ld.",
-               (long)rowIndex, (long)maxRowNumber);
-      throw std::out_of_range(tmpStr);
-    }
-
-    if (rowIndex >= static_cast<size_t>(rowSize)) {
-      char tmpStr[100];
-      snprintf(tmpStr, sizeof(tmpStr),
-               "Tablet::addValue(), rowIndex >= rowSize. rowIndex=%ld, rowSize=%ld.",
+               "Tablet::addValue(), rowIndex >= rowSize. rowIndex=%ld, rowSize.size()=%ld.",
                (long)rowIndex, (long)rowSize);
       throw std::out_of_range(tmpStr);
     }

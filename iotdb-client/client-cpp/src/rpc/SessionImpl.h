@@ -60,13 +60,6 @@ public:
   std::shared_ptr<INodesSupplier> nodesSupplier_;
   std::shared_ptr<SessionConnection> defaultSessionConnection_;
 
-  std::shared_ptr<SessionConnection> getDefaultSessionConnection() {
-    if (isClosed_ || !defaultSessionConnection_) {
-      throw IoTDBConnectionException("Session is not open, please invoke Session.open() first");
-    }
-    return defaultSessionConnection_;
-  }
-
   TEndPoint defaultEndPoint_;
 
   struct TEndPointHash {
@@ -175,7 +168,7 @@ void Session::Impl::insertByGroup(
         if (endPointToSessionConnection.size() > 1) {
           removeBrokenSessionConnection(connection);
           try {
-            insertConsumer(getDefaultSessionConnection(), req);
+            insertConsumer(defaultSessionConnection_, req);
           } catch (const RedirectException&) {
           }
         } else {
@@ -223,7 +216,7 @@ void Session::Impl::insertOnce(
     if (endPointToSessionConnection.size() > 1) {
       removeBrokenSessionConnection(connection);
       try {
-        insertConsumer(getDefaultSessionConnection(), req);
+        insertConsumer(defaultSessionConnection_, req);
       } catch (const RedirectException&) {
       }
     } else {

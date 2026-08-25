@@ -26,12 +26,11 @@
 #include "SessionDataSet.h"
 
 #include <cstring>
-#include <map>
-#include <memory>
-#include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <vector>
+#include <map>
+#include <unordered_map>
+#include <memory>
 
 /* ============================================================
  *  Internal wrapper structs — the opaque handles point to these
@@ -87,10 +86,6 @@ static TsStatus handleException(const std::exception& e) {
       dynamic_cast<const StatementExecutionException*>(&e) ||
       dynamic_cast<const BatchExecutionException*>(&e)) {
     return setError(TS_ERR_EXECUTION, e);
-  }
-  if (dynamic_cast<const std::out_of_range*>(&e) ||
-      dynamic_cast<const std::invalid_argument*>(&e)) {
-    return setError(TS_ERR_INVALID_PARAM, e);
   }
 #endif
   return setError(TS_ERR_UNKNOWN, e);
@@ -683,10 +678,7 @@ TsStatus ts_tablet_set_row_count(CTablet* tablet, int rowCount) {
   clearError();
   if (!tablet)
     return setError(TS_ERR_NULL_PTR, "tablet is null");
-  if (rowCount < 0 || static_cast<size_t>(rowCount) > tablet->cpp.maxRowNumber) {
-    return setError(TS_ERR_INVALID_PARAM, "rowCount out of range [0, maxRowNumber]");
-  }
-  tablet->cpp.rowSize = static_cast<size_t>(rowCount);
+  tablet->cpp.rowSize = rowCount;
   return TS_OK;
 }
 
