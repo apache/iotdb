@@ -69,10 +69,9 @@ public class DataNodeInternalRPCServiceImplDiskTest {
   }
 
   @Test
-  public void testPipeReceiverDiskDoesNotBlockRunningRecovery() {
+  public void testRunningRecoveryUsesAggregateDiskRatio() {
     SystemMetrics systemMetrics = mock(SystemMetrics.class);
-    // The storage-engine disks have an aggregate free ratio of 52%. A full Pipe receiver disk is
-    // handled by the receiver itself and must not prevent the node from recovering Running.
+    // The aggregate free ratio is 52%, so the node can recover to Running.
     when(systemMetrics.getSystemDiskAvailableSpace()).thenReturn(104L);
     when(systemMetrics.getSystemDiskTotalSpace()).thenReturn(200L);
 

@@ -193,7 +193,7 @@ public class FolderManagerTest {
   }
 
   @Test
-  public void testPipeFolderManagerDoesNotChangeNodeStatusWhenDiskFull() {
+  public void testFolderManagerCanSkipNodeStatusChangeWhenDiskFull() {
     CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
     NodeStatus originalStatus = commonConfig.getNodeStatus();
     String originalStatusReason = commonConfig.getStatusReason();
