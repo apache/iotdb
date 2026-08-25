@@ -110,6 +110,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.LongSupplier;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
@@ -147,7 +148,7 @@ public class IoTConsensusServerImpl {
   private final Set<Peer> configuration = ConcurrentHashMap.newKeySet();
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
-  private IoTConsensusConfig config;
+  private volatile IoTConsensusConfig config;
   private final ConsensusReqReader consensusReqReader;
   private volatile boolean active;
   private String newSnapshotDirName;
@@ -1144,8 +1145,10 @@ public class IoTConsensusServerImpl {
    */
   public void registerSubscriptionQueue(
       final BlockingQueue<IndexedConsensusRequest> queue,
-      final SubscriptionWalRetentionPolicy retentionPolicy) {
-    subscriptionQueueRegistry.register(queue, retentionPolicy);
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    subscriptionQueueRegistry.register(
+        queue, retentionPolicy, committedRetainedMinVersionIdSupplier);
     // Immediately re-evaluate the safe delete index with new subscription awareness
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
@@ -1288,8 +1291,8 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * Computes and updates the safe-to-delete WAL search index based on replication progress and
-   * subscription WAL retention policy.
+   * Computes and updates the safe-to-delete WAL search index based on replication progress,
+   * subscription WAL retention policy, and consumer-group committed progress.
    *
    * <p>Because multiple subscription topics share one region WAL, the effective per-region
    * retention policy is the most conservative policy across all active subscription queues on this
@@ -1316,7 +1319,8 @@ public class IoTConsensusServerImpl {
 
     final SubscriptionRetentionBound subscriptionRetentionBound =
         subscriptionWalRetentionCalculator.calculate(
-            subscriptionQueueRegistry.getRetentionPolicies());
+            subscriptionQueueRegistry.getRetentionPolicies(),
+            subscriptionQueueRegistry.getCommittedRetainedMinVersionIds());
 
     consensusReqReader.setSafelyDeletedSearchIndex(
         Math.min(replicationIndex, subscriptionRetentionBound.getSafelyDeletedSearchIndex()));
@@ -1350,6 +1354,7 @@ public class IoTConsensusServerImpl {
   /** This method is used for hot reload of IoTConsensusConfig. */
   public void reloadConsensusConfig(IoTConsensusConfig config) {
     this.config = config;
+    logDispatcher.reloadConfig(config);
   }
 
   /**

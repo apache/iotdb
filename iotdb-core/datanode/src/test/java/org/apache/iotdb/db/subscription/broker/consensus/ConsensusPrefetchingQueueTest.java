@@ -107,6 +107,124 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testWalFileCommitRequirementUsesPerWriterMaximum() {
+    final String regionId = "DataRegion[1]";
+    final WALMetaData metadata = new WALMetaData();
+    metadata.add(1, -1L, 0L, 0L, -1, -1L);
+    metadata.add(1, 1L, 0L, 100L, 7, 1L);
+    metadata.add(1, 2L, 0L, 100L, 7, 2L);
+    metadata.add(1, -1L, 0L, 200L, 8, 1L);
+
+    final ConsensusPrefetchingQueue.WalFileCommitRequirement requirement =
+        ConsensusPrefetchingQueue.WalFileCommitRequirement.fromMetadata(regionId, metadata);
+
+    assertFalse(
+        requirement.isCoveredBy(
+            new RegionProgress(
+                Collections.singletonMap(
+                    new WriterId(regionId, 7), new WriterProgress(100L, 2L)))));
+    assertFalse(
+        requirement.isCoveredBy(
+            new RegionProgress(
+                java.util.Map.of(
+                    new WriterId(regionId, 7),
+                    new WriterProgress(100L, 1L),
+                    new WriterId(regionId, 8),
+                    new WriterProgress(200L, 1L)))));
+    assertTrue(
+        requirement.isCoveredBy(
+            new RegionProgress(
+                java.util.Map.of(
+                    new WriterId(regionId, 7),
+                    new WriterProgress(100L, 2L),
+                    new WriterId(regionId, 8),
+                    new WriterProgress(200L, 1L)))));
+  }
+
+  @Test
+  public void testWalFileCommitRequirementRejectsUnsupportedWriterMetadata() {
+    final WALMetaData metadata = new WALMetaData();
+    metadata.add(1, 1L, 0L, 0L, -1, 1L);
+
+    final ConsensusPrefetchingQueue.WalFileCommitRequirement requirement =
+        ConsensusPrefetchingQueue.WalFileCommitRequirement.fromMetadata("DataRegion[1]", metadata);
+
+    assertFalse(requirement.isCoveredBy(new RegionProgress(Collections.emptyMap())));
+  }
+
+  @Test
+  public void testReplayStartPreservesUncoveredFollowerEntries() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("replay-start-with-follower-entry");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final DataRegionId regionId = new DataRegionId(1);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      reader.currentSearchIndex = 1L;
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              mock(ConsensusLogToTabletConverter.class),
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      final WriterId formerLeader = new WriterId(regionId.toString(), 8);
+      final WriterProgress committedProgress = new WriterProgress(100L, 10L);
+      final RegionProgress regionProgress =
+          new RegionProgress(Collections.singletonMap(formerLeader, committedProgress));
+      final List<IndexedConsensusRequest> requests =
+          Arrays.asList(
+              createRequest(-1L, 10L, 100L, 8),
+              createRequest(-1L, 11L, 101L, 8),
+              createRequest(1L, 1L, 200L, 7));
+
+      final ConsensusPrefetchingQueue.ReplayLocateDecision decision =
+          queue.scanReplayStartForRequests(requests.iterator(), regionProgress, true);
+
+      assertEquals(ConsensusPrefetchingQueue.ReplayLocateStatus.FOUND, decision.getStatus());
+      assertEquals(1L, decision.getStartSearchIndex());
+      assertEquals(
+          committedProgress,
+          decision.getRecoveryRegionProgress().getWriterPositions().get(formerLeader));
+
+      // With no uncovered local request, keep the local cursor at the tail without advancing the
+      // recovery progress past the still-uncovered follower request.
+      reader.currentSearchIndex = 5L;
+      final ConsensusPrefetchingQueue.ReplayLocateDecision tailDecision =
+          queue.scanReplayStartForRequests(
+              Collections.singletonList(createRequest(-1L, 11L, 101L, 8)).iterator(),
+              regionProgress,
+              true);
+
+      assertEquals(ConsensusPrefetchingQueue.ReplayLocateStatus.AT_END, tailDecision.getStatus());
+      assertEquals(5L, tailDecision.getStartSearchIndex());
+      assertEquals(
+          committedProgress,
+          tailDecision.getRecoveryRegionProgress().getWriterPositions().get(formerLeader));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   public void testAdmissionClearCannotLeaveEntryEnqueuedAfterFence() throws Exception {
     final Class<?> queueClass =
@@ -1706,6 +1824,68 @@ public class ConsensusPrefetchingQueueTest {
   }
 
   @Test
+  public void testRequeueDoesNotIncrementNackCount() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("system-requeue-without-nack");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final DataRegionId regionId = new DataRegionId(1);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any()))
+          .thenReturn(Collections.singletonList(createTablet()), Collections.emptyList());
+      when(converter.getDatabaseName()).thenReturn("db");
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+
+      reader.currentSearchIndex = 2L;
+      assertTrue(pendingEntries(queue).offer(createRequest(1L)));
+      assertTrue(pendingEntries(queue).offer(createRequest(2L)));
+      assertNull(queue.poll("consumer"));
+      queue.drivePrefetchOnce();
+
+      final SubscriptionEvent event = queue.poll("consumer");
+      assertNotNull(event);
+      assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
+
+      assertTrue(queue.requeue("consumer", event.getCommitContext()));
+      assertEquals(0L, event.getNackCount());
+      assertEquals(0L, queue.getSubscriptionUncommittedEventCount());
+      assertEquals(1, queue.getPrefetchedEventCount());
+
+      final SubscriptionEvent redeliveredEvent = queue.poll("consumer");
+      assertSame(event, redeliveredEvent);
+      assertEquals(0L, redeliveredEvent.getNackCount());
+      assertTrue(queue.ack("consumer", redeliveredEvent.getCommitContext()));
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testDeactivationReleasesMaterializedTabletMemory() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("system-deactivation-memory-release");
@@ -1856,6 +2036,20 @@ public class ConsensusPrefetchingQueueTest {
                 StatementTestUtils.genInsertRowNode(Math.toIntExact(searchIndex))))
         .setPhysicalTime(1000L + searchIndex)
         .setNodeId(7);
+  }
+
+  private static IndexedConsensusRequest createRequest(
+      final long searchIndex,
+      final long localSeq,
+      final long physicalTime,
+      final int writerNodeId) {
+    return new IndexedConsensusRequest(
+            searchIndex,
+            localSeq,
+            Collections.singletonList(
+                StatementTestUtils.genInsertRowNode(Math.toIntExact(localSeq))))
+        .setPhysicalTime(physicalTime)
+        .setNodeId(writerNodeId);
   }
 
   private static IndexedConsensusRequest createSizedRequest(

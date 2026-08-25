@@ -242,7 +242,8 @@ public class ProgressWALIteratorTest {
   }
 
   @Test
-  public void testFollowerEntryDoesNotSynthesizeSearchIndexFromProgressLocalSeq() throws Exception {
+  public void testLocalLowerBoundKeepsFollowerEntryWithoutSynthesizingSearchIndex()
+      throws Exception {
     final Path dir = Files.createTempDirectory("progress-wal-iterator-follower");
     final File firstWal =
         dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
@@ -255,17 +256,19 @@ public class ProgressWALIteratorTest {
       try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
         writer.write(searchableEntry(-1L), singleEntryMeta(19, -1L, 1L, 900L, 5, 1009L));
       }
-      try (WALWriter ignored = new WALWriter(lastWal, WALFileVersion.V3)) {
-        // Create a readable successor for the first WAL file.
+      try (WALWriter writer = new WALWriter(lastWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 1000L, 6, 1L));
       }
 
-      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), Long.MIN_VALUE)) {
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 1L)) {
         assertTrue(iterator.hasNext());
         final IndexedConsensusRequest request = iterator.next();
         assertEquals(-1L, request.getSearchIndex());
         assertEquals(1009L, request.getProgressLocalSeq());
         assertEquals(900L, request.getPhysicalTime());
         assertEquals(5, request.getNodeId());
+        assertTrue(iterator.hasNext());
+        assertEquals(1L, iterator.next().getSearchIndex());
         assertFalse(iterator.hasNext());
       }
     } finally {
