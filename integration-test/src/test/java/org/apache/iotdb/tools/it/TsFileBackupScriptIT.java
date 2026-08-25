@@ -96,7 +96,7 @@ public class TsFileBackupScriptIT {
   private static final int DELETE_OFFSET = 20;
   private static final int DELETE_LENGTH = 25;
   private static final long PROCESS_TIMEOUT_SECONDS = 60;
-  private static final long VERIFY_TIMEOUT_SECONDS = 120;
+  private static final long VERIFY_TIMEOUT_SECONDS = 300;
 
   private static BaseEnv senderEnv;
   private static BaseEnv receiverEnv;

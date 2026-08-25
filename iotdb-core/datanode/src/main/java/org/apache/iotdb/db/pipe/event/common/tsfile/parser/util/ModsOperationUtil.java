@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.util;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -144,7 +142,7 @@ public class ModsOperationUtil {
       return false;
     }
 
-    final List<ModEntry> mods = getOverlappedMods(deviceID, measurementID, modifications);
+    final List<ModEntry> mods = modifications.getOverlapped(deviceID, measurementID);
     if (mods == null || mods.isEmpty()) {
       return false;
     }
@@ -181,7 +179,7 @@ public class ModsOperationUtil {
     List<ModsInfo> modsInfos = new ArrayList<>(measurements.size());
 
     for (final String measurement : measurements) {
-      final List<ModEntry> mods = getOverlappedMods(deviceID, measurement, modifications);
+      final List<ModEntry> mods = modifications.getOverlapped(deviceID, measurement);
       if (mods == null || mods.isEmpty()) {
         // No mods, use empty list and index 0
         modsInfos.add(new ModsInfo(Collections.emptyList(), 0));
@@ -208,17 +206,6 @@ public class ModsOperationUtil {
     }
 
     return modsInfos;
-  }
-
-  private static List<ModEntry> getOverlappedMods(
-      final IDeviceID deviceID,
-      final String measurement,
-      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications) {
-    try {
-      return modifications.getOverlapped(CompactionPathUtils.getPath(deviceID, measurement));
-    } catch (final IllegalPathException e) {
-      throw new PipeException(e.getMessage(), e);
-    }
   }
 
   /**
