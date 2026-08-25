@@ -569,7 +569,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   l::info,
                   DataNodePipeMessages.LOG_REPORTED_ARG_PIPE_METAS_12068FC6,
                   report.pipeMetaBinaryList.size()));
-    } catch (final IOException | IllegalPathException e) {
+    } catch (final IOException e) {
       throw new TException(e);
     }
     return report;
