@@ -117,7 +117,8 @@ public class PipeHeartbeatScheduler {
                         resp.getPipeRemainingEventCountList(),
                         resp.getPipeRemainingTimeList(),
                         resp.getPipeDegradedStatusList(),
-                        resp.getPipeRecentFailureList())));
+                        resp.getPipeRecentFailureList(),
+                        resp.getPipeCompletedDataRegionList())));
 
     // config node heartbeat
     try {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -39,6 +41,7 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -156,41 +159,48 @@ public class PipeHeartbeatParser {
       final PipeTemporaryMetaInCoordinator temporaryMeta =
           (PipeTemporaryMetaInCoordinator) pipeMetaFromCoordinator.getTemporaryMeta();
 
-      // Remove completed pipes
-      final Boolean isPipeCompletedFromAgent = pipeHeartbeat.isCompleted(staticMeta);
-      if (Boolean.TRUE.equals(isPipeCompletedFromAgent)) {
+      // Aggregate completed DataRegion ids reported by DataNodes. Only the DataNodes that own the
+      // target region can report it, so the coordinator can compare the union against all required
+      // DataRegion ids without trusting any DataNode's single per-pipe completion boolean.
+      if (pipeHeartbeat.hasCompletedDataRegionReport(staticMeta)) {
+        for (final Integer completedDataRegionId :
+            pipeHeartbeat.getCompletedDataRegionIds(staticMeta)) {
+          temporaryMeta.markDataRegionCompleted(completedDataRegionId);
+        }
+      }
 
-        temporaryMeta.markDataNodeCompleted(nodeId);
+      final Set<Integer> requiredDataRegionIds = new HashSet<>();
+      for (final Map.Entry<Integer, PipeTaskMeta> entry :
+          pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+        if (configManager
+            .getPartitionManager()
+            .isRegionGroupExists(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, entry.getKey()))) {
+          requiredDataRegionIds.add(entry.getKey());
+        }
+      }
+
+      // Remove completed pipes only when every required DataRegion has been reported complete.
+      // Relying on the region-level reports (instead of the DataNode-level boolean) prevents a
+      // leader-change / task-creation failure from being treated as a successful snapshot transfer.
+      if (!requiredDataRegionIds.isEmpty()
+          && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)) {
         PipeLogger.log(
             LOGGER::info,
-            ManagerMessages.DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE,
-            nodeId,
+            ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
             staticMeta.getPipeName(),
-            pipeHeartbeat.getRemainingEventCount(staticMeta),
-            pipeHeartbeat.getRemainingTime(staticMeta),
-            temporaryMeta.getCompletedDataNodeIds());
-
-        final Set<Integer> uncompletedDataNodeIds =
-            configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
-        uncompletedDataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
-        if (uncompletedDataNodeIds.isEmpty()) {
-          PipeLogger.log(
-              LOGGER::info,
-              ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
-              staticMeta.getPipeName(),
-              temporaryMeta.getGlobalRemainingEvents(),
-              temporaryMeta.getGlobalRemainingTime(),
-              staticMeta);
-          pipeTaskInfo.get().removePipeMeta(staticMeta);
-          PipeLogger.log(
-              LOGGER::info,
-              ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
-              staticMeta.getPipeName(),
-              staticMeta);
-          needWriteConsensusOnConfigNodes.set(true);
-          needPushPipeMetaToDataNodes.set(true);
-          continue;
-        }
+            temporaryMeta.getGlobalRemainingEvents(),
+            temporaryMeta.getGlobalRemainingTime(),
+            staticMeta);
+        pipeTaskInfo.get().removePipeMeta(staticMeta);
+        PipeLogger.log(
+            LOGGER::info,
+            ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
+            staticMeta.getPipeName(),
+            staticMeta);
+        needWriteConsensusOnConfigNodes.set(true);
+        needPushPipeMetaToDataNodes.set(true);
+        continue;
       }
 
       // Record statistics

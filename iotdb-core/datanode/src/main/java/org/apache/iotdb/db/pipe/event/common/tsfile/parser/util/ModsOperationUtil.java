@@ -19,25 +19,23 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.util;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
-import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.common.TimeRange;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -58,67 +56,19 @@ public class ModsOperationUtil {
    */
   public static PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
       loadModificationsFromTsFile(File tsFile) {
-    return buildModificationsPatternTreeMap(readAllModificationsFromTsFile(tsFile));
-  }
+    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
+        PatternTreeMapFactory.getModsPatternTreeMap();
 
-  public static List<ModEntry> readAllModificationsFromTsFile(final File tsFile) {
     try {
-      return ModificationFile.readAllModifications(tsFile, true);
+      ModificationFile.readAllModifications(tsFile, true)
+          .forEach(
+              modification -> modifications.append(modification.keyOfPatternTree(), modification));
     } catch (Exception e) {
       throw new PipeException(
           DataNodePipeMessages.FAILED_TO_LOAD_MODIFICATIONS_FROM_TSFILE + tsFile.getPath(), e);
     }
-  }
 
-  public static PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
-      buildModificationsPatternTreeMap(final List<ModEntry> modEntries) {
-    final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
-        PatternTreeMapFactory.getModsPatternTreeMap();
-    for (final ModEntry modEntry : modEntries) {
-      modifications.append(modEntry.keyOfPatternTree(), modEntry);
-    }
     return modifications;
-  }
-
-  public static ModEntry buildObjectColumnDeletionEntries(
-      final TableDeletionEntry tableDeletionEntry, final Set<String> objectMeasurementNames) {
-    return buildObjectColumnDeletionEntries(tableDeletionEntry, objectMeasurementNames, false);
-  }
-
-  public static ModEntry buildObjectColumnDeletionEntries(
-      final TableDeletionEntry tableDeletionEntry,
-      final Set<String> objectMeasurementNames,
-      final boolean deleteAllColumnsWhenAllValueColumnsAreObjects) {
-    if (tableDeletionEntry == null
-        || objectMeasurementNames == null
-        || objectMeasurementNames.isEmpty()) {
-      return null;
-    }
-
-    final DeletionPredicate predicate = tableDeletionEntry.getPredicate();
-    final List<String> targetMeasurements;
-    if (predicate.getMeasurementNames().isEmpty()) {
-      targetMeasurements =
-          deleteAllColumnsWhenAllValueColumnsAreObjects
-              ? Collections.emptyList()
-              : new ArrayList<>(objectMeasurementNames);
-    } else {
-      targetMeasurements =
-          predicate.getMeasurementNames().stream()
-              .filter(objectMeasurementNames::contains)
-              .collect(Collectors.toList());
-    }
-
-    if (!predicate.getMeasurementNames().isEmpty() && targetMeasurements.isEmpty()) {
-      return null;
-    }
-
-    return new TableDeletionEntry(
-        new DeletionPredicate(
-            predicate.getTableName(), predicate.getTagPredicate(), targetMeasurements),
-        new TimeRange(
-            tableDeletionEntry.getTimeRange().getMin(),
-            tableDeletionEntry.getTimeRange().getMax()));
   }
 
   /**
@@ -142,7 +92,7 @@ public class ModsOperationUtil {
       return false;
     }
 
-    final List<ModEntry> mods = modifications.getOverlapped(deviceID, measurementID);
+    final List<ModEntry> mods = getOverlappedMods(deviceID, measurementID, modifications);
     if (mods == null || mods.isEmpty()) {
       return false;
     }
@@ -179,7 +129,7 @@ public class ModsOperationUtil {
     List<ModsInfo> modsInfos = new ArrayList<>(measurements.size());
 
     for (final String measurement : measurements) {
-      final List<ModEntry> mods = modifications.getOverlapped(deviceID, measurement);
+      final List<ModEntry> mods = getOverlappedMods(deviceID, measurement, modifications);
       if (mods == null || mods.isEmpty()) {
         // No mods, use empty list and index 0
         modsInfos.add(new ModsInfo(Collections.emptyList(), 0));
@@ -206,6 +156,17 @@ public class ModsOperationUtil {
     }
 
     return modsInfos;
+  }
+
+  private static List<ModEntry> getOverlappedMods(
+      final IDeviceID deviceID,
+      final String measurement,
+      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications) {
+    try {
+      return modifications.getOverlapped(CompactionPathUtils.getPath(deviceID, measurement));
+    } catch (final IllegalPathException e) {
+      throw new PipeException(e.getMessage(), e);
+    }
   }
 
   /**
