@@ -1185,6 +1185,19 @@ struct TShowThrottleReq {
   1: optional string userName;
 }
 
+struct TUserResourceQuotaResp {
+  1: required common.TSStatus status
+  2: optional map<string, common.TUserResourceQuota> userResourceQuota
+  // dataNodeId -> in-use snapshot (from heartbeat); only alive DataNodes
+  3: optional map<i32, common.TUserResourceUsageSnapshot> usageByDataNode
+}
+
+struct TShowUserResourceQuotaReq {
+  1: optional string userName
+  2: optional i32 dataNodeId
+  3: optional bool summary
+}
+
 
 // ====================================================
 // Activation
@@ -2090,6 +2103,21 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  /** Set user resource quota */
+  common.TSStatus setUserResourceQuota(common.TSetUserResourceQuotaReq req)
+
+  /** Show user resource quota */
+  TUserResourceQuotaResp showUserResourceQuota(TShowUserResourceQuotaReq req)
+
+  /** Get user resource quota */
+  TUserResourceQuotaResp getUserResourceQuota()
+
+  /**
+   * DataNode reports per-user resource in-use snapshot for SHOW USER QUOTA aggregation.
+   * Dedicated RPC (not main node heartbeat); low frequency is enough.
+   */
+  common.TSStatus reportUserResourceUsage(i32 dataNodeId, common.TUserResourceUsageSnapshot usage)
 
   /** Push heartbeat in shutdown */
   common.TSStatus pushHeartbeat(i32 dataNodeId, common.TPipeHeartbeatResp resp)

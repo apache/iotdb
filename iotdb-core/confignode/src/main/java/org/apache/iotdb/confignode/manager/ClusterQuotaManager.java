@@ -23,20 +23,25 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TSetUserResourceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.write.quota.DeleteUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetUserResourceQuotaPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowUserResourceQuotaReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResourceQuotaResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -64,6 +69,10 @@ public class ClusterQuotaManager {
   private final Map<String, List<Integer>> dataRegionIdMap;
   private final Map<Integer, Long> regionDisk;
 
+  /** dataNodeId -> latest user-resource in-use snapshot from heartbeat. */
+  private final Map<Integer, org.apache.iotdb.common.rpc.thrift.TUserResourceUsageSnapshot>
+      userResourceUsageByNode;
+
   public ClusterQuotaManager(IManager configManager, QuotaInfo quotaInfo) {
     this.configManager = configManager;
     this.quotaInfo = quotaInfo;
@@ -72,6 +81,7 @@ public class ClusterQuotaManager {
     schemaRegionIdMap = new HashMap<>();
     dataRegionIdMap = new HashMap<>();
     regionDisk = new ConcurrentHashMap<>();
+    userResourceUsageByNode = new ConcurrentHashMap<>();
   }
 
   public TSStatus setSpaceQuota(final TSetSpaceQuotaReq req) {
@@ -245,6 +255,144 @@ public class ClusterQuotaManager {
     return throttleQuotaResp;
   }
 
+  public TSStatus setUserResourceQuota(TSetUserResourceQuotaReq req) {
+    if (isClearRequest(req.getUserResourceQuota())) {
+      return deleteUserResourceQuota(req.getUserName());
+    }
+    try {
+      TSStatus response =
+          configManager
+              .getConsensusManager()
+              .write(new SetUserResourceQuotaPlan(req.getUserName(), req.getUserResourceQuota()));
+      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // Broadcast the merged quota persisted on ConfigNode, not the partial request.
+        org.apache.iotdb.common.rpc.thrift.TUserResourceQuota merged =
+            quotaInfo.getUserResourceQuotaLimit().get(req.getUserName());
+        TSetUserResourceQuotaReq broadcastReq = new TSetUserResourceQuotaReq();
+        broadcastReq.setUserName(req.getUserName());
+        broadcastReq.setUserResourceQuota(merged != null ? merged : req.getUserResourceQuota());
+        Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+            configManager.getNodeManager().getRegisteredDataNodeLocations();
+        DataNodeAsyncRequestContext<TSetUserResourceQuotaReq, TSStatus> clientHandler =
+            new DataNodeAsyncRequestContext<>(
+                CnToDnAsyncRequestType.SET_USER_RESOURCE_QUOTA, broadcastReq, dataNodeLocationMap);
+        CnToDnInternalServiceAsyncRequestManager.getInstance()
+            .sendAsyncRequestWithRetry(clientHandler);
+        return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
+      }
+      return response;
+    } catch (ConsensusException e) {
+      LOGGER.warn(ManagerMessages.LOG_UNEXPECTED_ERROR_SETTING_USER_RESOURCE_QUOTA_91A4C2E8, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
+  }
+
+  private static boolean isClearRequest(
+      org.apache.iotdb.common.rpc.thrift.TUserResourceQuota quota) {
+    if (quota == null) {
+      return true;
+    }
+    boolean readEmpty =
+        !quota.isSetReadQuota() || quota.getReadQuota() == null || quota.getReadQuota().isEmpty();
+    boolean writeEmpty =
+        !quota.isSetWriteQuota()
+            || quota.getWriteQuota() == null
+            || quota.getWriteQuota().isEmpty();
+    boolean throttleEmpty =
+        !quota.isSetThrottleLimit()
+            || quota.getThrottleLimit() == null
+            || quota.getThrottleLimit().isEmpty();
+    return readEmpty && writeEmpty && throttleEmpty;
+  }
+
+  public TSStatus deleteUserResourceQuota(String userName) {
+    try {
+      TSStatus response =
+          configManager.getConsensusManager().write(new DeleteUserResourceQuotaPlan(userName));
+      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        TSetUserResourceQuotaReq broadcastReq = new TSetUserResourceQuotaReq();
+        broadcastReq.setUserName(userName);
+        // Empty quota means clear on DataNode (see UserResourceQuotaManager.isClearRequest).
+        org.apache.iotdb.common.rpc.thrift.TUserResourceQuota empty =
+            new org.apache.iotdb.common.rpc.thrift.TUserResourceQuota();
+        empty.setReadQuota(
+            new java.util.EnumMap<>(org.apache.iotdb.common.rpc.thrift.TResourceType.class));
+        empty.setWriteQuota(
+            new java.util.EnumMap<>(org.apache.iotdb.common.rpc.thrift.TResourceType.class));
+        empty.setThrottleLimit(new java.util.HashMap<>());
+        broadcastReq.setUserResourceQuota(empty);
+        Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+            configManager.getNodeManager().getRegisteredDataNodeLocations();
+        DataNodeAsyncRequestContext<TSetUserResourceQuotaReq, TSStatus> clientHandler =
+            new DataNodeAsyncRequestContext<>(
+                CnToDnAsyncRequestType.SET_USER_RESOURCE_QUOTA, broadcastReq, dataNodeLocationMap);
+        CnToDnInternalServiceAsyncRequestManager.getInstance()
+            .sendAsyncRequestWithRetry(clientHandler);
+        return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
+      }
+      return response;
+    } catch (ConsensusException e) {
+      LOGGER.warn(ManagerMessages.LOG_UNEXPECTED_ERROR_SETTING_USER_RESOURCE_QUOTA_91A4C2E8, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
+  }
+
+  public TUserResourceQuotaResp showUserResourceQuota(TShowUserResourceQuotaReq req) {
+    TUserResourceQuotaResp resp = new TUserResourceQuotaResp();
+    if (req.getUserName() == null) {
+      resp.setUserResourceQuota(quotaInfo.getUserResourceQuotaLimit());
+    } else {
+      Map<String, org.apache.iotdb.common.rpc.thrift.TUserResourceQuota> map = new HashMap<>();
+      org.apache.iotdb.common.rpc.thrift.TUserResourceQuota quota =
+          quotaInfo.getUserResourceQuotaLimit().get(req.getUserName());
+      if (quota != null) {
+        map.put(req.getUserName(), quota);
+      }
+      resp.setUserResourceQuota(map);
+    }
+    // Aggregate usage for all Running DataNodes (heartbeat cache; empty if not yet reported).
+    Map<Integer, org.apache.iotdb.common.rpc.thrift.TUserResourceUsageSnapshot> usage =
+        new HashMap<>();
+    try {
+      for (org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration dn :
+          configManager
+              .getNodeManager()
+              .filterDataNodeThroughStatus(org.apache.iotdb.commons.cluster.NodeStatus.Running)) {
+        int nodeId = dn.getLocation().getDataNodeId();
+        if (req.isSetDataNodeId() && req.getDataNodeId() != nodeId) {
+          continue;
+        }
+        usage.put(
+            nodeId,
+            userResourceUsageByNode.getOrDefault(
+                nodeId, new org.apache.iotdb.common.rpc.thrift.TUserResourceUsageSnapshot()));
+      }
+    } catch (Exception e) {
+      LOGGER.warn(
+          ManagerMessages
+              .LOG_FAILED_TO_AGGREGATE_RUNNING_DATANODE_USAGE_FOR_SHOW_USER_QUOTA_00017902,
+          e);
+    }
+    if (!usage.isEmpty()) {
+      resp.setUsageByDataNode(usage);
+    }
+    resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return resp;
+  }
+
+  public TUserResourceQuotaResp getUserResourceQuota() {
+    TUserResourceQuotaResp resp = new TUserResourceQuotaResp();
+    if (!quotaInfo.getUserResourceQuotaLimit().isEmpty()) {
+      resp.setUserResourceQuota(quotaInfo.getUserResourceQuotaLimit());
+    }
+    resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return resp;
+  }
+
   public Map<String, TSpaceQuota> getSpaceQuotaUsage() {
     return quotaInfo.getSpaceQuotaUsage();
   }
@@ -259,6 +407,23 @@ public class ClusterQuotaManager {
 
   public Map<Integer, Long> getRegionDisk() {
     return regionDisk;
+  }
+
+  public Map<Integer, org.apache.iotdb.common.rpc.thrift.TUserResourceUsageSnapshot>
+      getUserResourceUsageByNode() {
+    return userResourceUsageByNode;
+  }
+
+  /** Accept DN-side usage snapshot from dedicated report RPC (not main heartbeat). */
+  public TSStatus reportUserResourceUsage(
+      int dataNodeId, org.apache.iotdb.common.rpc.thrift.TUserResourceUsageSnapshot usage) {
+    if (usage != null) {
+      userResourceUsageByNode.put(dataNodeId, usage);
+    } else {
+      userResourceUsageByNode.put(
+          dataNodeId, new org.apache.iotdb.common.rpc.thrift.TUserResourceUsageSnapshot());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public void updateSpaceQuotaUsage() {

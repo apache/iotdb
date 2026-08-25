@@ -36,12 +36,19 @@ public class ThrottleQuotaLimit {
   }
 
   public void setQuotas(TSetThrottleQuotaReq req) {
-    if (!req.getThrottleQuota().getThrottleLimit().isEmpty()) {
+    if (req.getThrottleQuota().isSetThrottleLimit()
+        && !req.getThrottleQuota().getThrottleLimit().isEmpty()) {
       userQuotaLimiter.put(
           req.getUserName(), QuotaLimiter.fromThrottle(req.getThrottleQuota().getThrottleLimit()));
     }
     memLimit.put(req.getUserName(), req.getThrottleQuota().getMemLimit());
     cpuLimit.put(req.getUserName(), req.getThrottleQuota().cpuLimit);
+  }
+
+  public void removeQuota(String userName) {
+    userQuotaLimiter.remove(userName);
+    memLimit.remove(userName);
+    cpuLimit.remove(userName);
   }
 
   public Map<String, QuotaLimiter> getUserQuotaLimiter() {

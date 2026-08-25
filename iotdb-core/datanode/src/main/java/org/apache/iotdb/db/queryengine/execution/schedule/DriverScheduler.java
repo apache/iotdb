@@ -36,7 +36,6 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
-import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
@@ -45,7 +44,10 @@ import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskStatus;
-import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
+import org.apache.iotdb.db.storageengine.rescon.quotas.AcquireContext;
+import org.apache.iotdb.db.storageengine.rescon.quotas.AcquirePolicy;
+import org.apache.iotdb.db.storageengine.rescon.quotas.UserResourceQuotaExceededException;
+import org.apache.iotdb.db.storageengine.rescon.quotas.UserResourceQuotaManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
@@ -65,7 +67,6 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /** The manager of fragment instances scheduling. */
 public class DriverScheduler implements IDriverScheduler, IService {
@@ -199,10 +200,12 @@ public class DriverScheduler implements IDriverScheduler, IService {
                     driver.isHighestPriority())));
 
     List<DriverTask> submittedTasks = new ArrayList<>();
+    List<DriverTask> deferredTasks = new ArrayList<>();
     for (DriverTask task : tasks) {
       IDriver driver = task.getDriver();
       int dependencyDriverIndex = driver.getDriverContext().getDependencyDriverIndex();
       if (dependencyDriverIndex != -1) {
+        deferredTasks.add(task);
         SettableFuture<?> blockedDependencyFuture =
             tasks.get(dependencyDriverIndex).getBlockedDependencyDriver();
         blockedDependencyFuture.addListener(
@@ -230,43 +233,45 @@ public class DriverScheduler implements IDriverScheduler, IService {
     if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()
         && sessionInfo != null
         && !sessionInfo.getUserName().equals(IoTDBConstant.PATH_ROOT)) {
-      AtomicInteger usedCpu = new AtomicInteger();
-      AtomicLong estimatedMemory = new AtomicLong();
-      queryMap
-          .get(queryId)
-          .values()
-          .forEach(
-              driverTasks ->
-                  driverTasks.forEach(
-                      driverTask -> {
-                        if (driverTask.getStatus().equals(DriverTaskStatus.RUNNING)
-                            && driverTask.getDriver() instanceof DataDriver) {
-                          usedCpu.addAndGet(1);
-                          estimatedMemory.addAndGet(driverTask.getEstimatedMemorySize());
-                        }
-                      }));
-      if (!DataNodeThrottleQuotaManager.getInstance()
-          .getThrottleQuotaLimit()
-          .checkCpu(sessionInfo.getUserName(), usedCpu.get())) {
-        throw new CpuNotEnoughException(
-            DataNodeQueryMessages
-                .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_CPU_TO_EXECUTE_CURRENT_FRAGMENT_INSTANCE_E7719FB8);
-      }
-      if (!DataNodeThrottleQuotaManager.getInstance()
-          .getThrottleQuotaLimit()
-          .checkMemory(sessionInfo.getUserName(), estimatedMemory.get())) {
-        throw new MemoryNotEnoughException(
-            DataNodeQueryMessages
-                .QUERY_EXCEPTION_THERE_IS_NO_ENOUGH_MEMORY_TO_EXECUTE_CURRENT_FRAGMENT_INSTANCE_CB632843);
+      List<DriverTask> allTasks = new ArrayList<>(submittedTasks.size() + deferredTasks.size());
+      allTasks.addAll(submittedTasks);
+      allTasks.addAll(deferredTasks);
+      for (DriverTask task : allTasks) {
+        AcquireContext ctx =
+            new AcquireContext()
+                .setQueryId(queryId.getId())
+                .setFragmentId(task.getDriverTaskId().getFragmentInstanceId().getFullId())
+                .setStatementType("QUERY");
+        try {
+          task.setQuotaTokenBundle(
+              UserResourceQuotaManager.getInstance()
+                  .acquireReadResources(
+                      sessionInfo.getUserName(),
+                      task.getEstimatedMemorySize(),
+                      ctx,
+                      AcquirePolicy.defaults()));
+        } catch (UserResourceQuotaExceededException e) {
+          for (DriverTask acquired : allTasks) {
+            if (acquired.getQuotaTokenBundle() != null) {
+              acquired.getQuotaTokenBundle().close();
+              acquired.setQuotaTokenBundle(null);
+            }
+          }
+          throw new CpuNotEnoughException(e.getMessage());
+        }
       }
     }
 
     for (DriverTask task : submittedTasks) {
       registerTaskToQueryMap(queryId, task);
     }
-    scheduler.enforceTimeLimit(submittedTasks.get(submittedTasks.size() - 1));
-    for (DriverTask task : submittedTasks) {
-      submitTaskToReadyQueue(task);
+    // Deferred (dependency) drivers are registered when their listener fires; still need a
+    // timeout sentinel if this query only has independent drivers.
+    if (!submittedTasks.isEmpty()) {
+      scheduler.enforceTimeLimit(submittedTasks.get(submittedTasks.size() - 1));
+      for (DriverTask task : submittedTasks) {
+        submitTaskToReadyQueue(task);
+      }
     }
   }
 
@@ -373,6 +378,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
       }
 
       timeoutQueue.remove(task.getDriverTaskId());
+      if (task.getQuotaTokenBundle() != null) {
+        task.getQuotaTokenBundle().close();
+        task.setQuotaTokenBundle(null);
+      }
       Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
           queryMap.get(task.getDriverTaskId().getQueryId());
       if (queryRelatedTasks != null) {

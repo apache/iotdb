@@ -256,10 +256,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.DeleteUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowUserResourceQuotaStatement;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
@@ -4916,6 +4919,148 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showThrottleQuotaStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     }
     return showThrottleQuotaStatement;
+  }
+
+  @Override
+  public Statement visitSetUserResourceQuota(IoTDBSqlParser.SetUserResourceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
+    }
+    if (parseIdentifier(ctx.userName.getText()).equals(IoTDBConstant.PATH_ROOT)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT_3AAFE275);
+    }
+    SetUserResourceQuotaStatement statement = new SetUserResourceQuotaStatement();
+    statement.setUserName(parseIdentifier(ctx.userName.getText()));
+    for (IoTDBSqlParser.AttributePairContext pair : ctx.attributePair()) {
+      applyUserResourceQuotaAttribute(
+          statement,
+          parseAttributeKey(pair.attributeKey()),
+          parseAttributeValue(pair.attributeValue()));
+    }
+    return statement;
+  }
+
+  @Override
+  public Statement visitShowUserResourceQuota(IoTDBSqlParser.ShowUserResourceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
+    }
+    ShowUserResourceQuotaStatement statement = new ShowUserResourceQuotaStatement();
+    if (ctx.userName != null) {
+      statement.setUserName(parseIdentifier(ctx.userName.getText()));
+    }
+    if (ctx.SUMMARY() != null) {
+      statement.setSummary(true);
+    }
+    if (ctx.dataNodeId != null) {
+      statement.setDataNodeId(Integer.parseInt(ctx.dataNodeId.getText()));
+    }
+    return statement;
+  }
+
+  @Override
+  public Statement visitDeleteUserResourceQuota(IoTDBSqlParser.DeleteUserResourceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
+    }
+    if (parseIdentifier(ctx.userName.getText()).equals(IoTDBConstant.PATH_ROOT)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_CANNOT_SET_USER_QUOTA_FOR_USER_ROOT_3AAFE275);
+    }
+    DeleteUserResourceQuotaStatement statement = new DeleteUserResourceQuotaStatement();
+    statement.setUserName(parseIdentifier(ctx.userName.getText()));
+    return statement;
+  }
+
+  private void applyUserResourceQuotaAttribute(
+      SetUserResourceQuotaStatement statement, String key, String value) {
+    String[] parts = key.toLowerCase().split("_");
+    if (parts.length < 3) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_USER_QUOTA_ATTRIBUTE_ARG_D6CC7292, key));
+    }
+    SetUserResourceQuotaStatement.OperationSide side;
+    try {
+      side = SetUserResourceQuotaStatement.OperationSide.valueOf(parts[0].toUpperCase());
+    } catch (IllegalArgumentException e) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_USER_QUOTA_ATTRIBUTE_ARG_D6CC7292, key));
+    }
+    String bound = parts[parts.length - 1];
+    if ("disk".equals(parts[1]) && "io".equals(parts[2])) {
+      // Fixed unit: bytes/sec as positive long (avoid complex size/time strings).
+      long bytesPerSec;
+      try {
+        bytesPerSec = Long.parseLong(value);
+      } catch (NumberFormatException e) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_INVALID_USER_QUOTA_DISK_IO_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_SEC_C140D430,
+                value));
+      }
+      if (bytesPerSec <= 0) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_INVALID_USER_QUOTA_DISK_IO_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_SEC_C140D430,
+                value));
+      }
+      statement.putDiskIo(side, new TTimedQuota(IoTDBConstant.SEC, bytesPerSec));
+      return;
+    }
+    SetUserResourceQuotaStatement.ResourceSide resource;
+    if ("temp".equals(parts[1]) && "disk".equals(parts[2]) && parts.length >= 4) {
+      resource = SetUserResourceQuotaStatement.ResourceSide.TEMP_DISK;
+    } else {
+      try {
+        resource = SetUserResourceQuotaStatement.ResourceSide.valueOf(parts[1].toUpperCase());
+      } catch (IllegalArgumentException e) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_INVALID_USER_QUOTA_ATTRIBUTE_ARG_D6CC7292, key));
+      }
+    }
+    if (!"min".equals(bound) && !"max".equals(bound)) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_USER_QUOTA_ATTRIBUTE_ARG_D6CC7292, key));
+    }
+    long parsed;
+    if (resource == SetUserResourceQuotaStatement.ResourceSide.CPU) {
+      parsed = Long.parseLong(value);
+    } else if (resource == SetUserResourceQuotaStatement.ResourceSide.TEMP_DISK) {
+      // Fixed unit: bytes as positive long.
+      try {
+        parsed = Long.parseLong(value);
+      } catch (NumberFormatException e) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_INVALID_USER_QUOTA_TEMP_DISK_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_B306C6BF,
+                value));
+      }
+      if (parsed <= 0) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_INVALID_USER_QUOTA_TEMP_DISK_VALUE_ARG_EXPECTED_POSITIVE_LONG_BYTES_B306C6BF,
+                value));
+      }
+    } else {
+      parsed = parseThrottleQuotaSizeUnit(value.toLowerCase());
+    }
+    long min = -1;
+    long max = -1;
+    if ("min".equals(bound)) {
+      min = parsed;
+    } else {
+      max = parsed;
+    }
+    statement.putRange(side, resource, min, max);
   }
 
   private long parseThrottleQuotaTimeUnit(String timeUnit) {

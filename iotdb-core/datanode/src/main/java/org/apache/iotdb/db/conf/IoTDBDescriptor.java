@@ -1065,6 +1065,20 @@ public class IoTDBDescriptor {
     conf.setQuotaEnable(
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
+    conf.setDnQuotaCpuSlots(
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_quota_cpu_slots", String.valueOf(conf.getDnQuotaCpuSlots()))));
+    conf.setDnQuotaMemoryBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "dn_quota_memory_bytes", String.valueOf(conf.getDnQuotaMemoryBytes()))));
+    if (properties.containsKey("dn_quota_temp_disk_bytes")) {
+      conf.setDnQuotaTempDiskBytes(
+          Long.parseLong(properties.getProperty("dn_quota_temp_disk_bytes")));
+    } else {
+      conf.setDnQuotaTempDiskBytes(conf.computeDefaultTempDiskBytes());
+    }
 
     // The buffer for sort operator to calculate
     loadFixedSizeLimitForQuery(

@@ -166,10 +166,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.DeleteUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetUserResourceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowUserResourceQuotaStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -2004,6 +2007,24 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowThrottleQuota(
       ShowThrottleQuotaStatement showThrottleQuotaStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+  }
+
+  @Override
+  public TSStatus visitSetUserResourceQuota(
+      SetUserResourceQuotaStatement statement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+  }
+
+  @Override
+  public TSStatus visitShowUserResourceQuota(
+      ShowUserResourceQuotaStatement statement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+  }
+
+  @Override
+  public TSStatus visitDeleteUserResourceQuota(
+      DeleteUserResourceQuotaStatement statement, TreeAccessCheckContext context) {
     return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
   }
 

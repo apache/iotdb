@@ -245,6 +245,7 @@ keyWords
     | SUBSCRIPTION
     | SUBSCRIPTIONS
     | SUBSTRING
+    | SUMMARY
     | SYSTEM
     | TABLE
     | TAG
