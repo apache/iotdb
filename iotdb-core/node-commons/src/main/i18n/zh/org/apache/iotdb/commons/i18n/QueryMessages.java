@@ -262,4 +262,35 @@ public final class QueryMessages {
   public static final String NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_APPEND = "NoChannelGroupByHash 不支持 appendValuesTo";
   public static final String NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_RAW_HASH = "NoChannelGroupByHash 不支持 getRawHash";
   public static final String MULTIPLE_TABLE_FUNCTION_AI_NODE_PROVIDER = "找到多个 ITableFunctionAINodeServiceProvider";
+
+  // ======================== FFT table function ========================
+
+  public static final String FFT_DATA_REQUIRES_ORDER_BY =
+      "具有 set 语义的表参数需要 ORDER BY 子句。";
+  public static final String FFT_REQUIRES_NAMED_NUMERIC_COLUMNS =
+      "FFT 要求数值输入列必须有名称。";
+  public static final String FFT_NO_NUMERIC_COLUMNS = "未找到用于 FFT 计算的数值列。";
+  public static final String FFT_ORDER_BY_MUST_CONTAIN_TIMECOL =
+      "DATA 参数的 ORDER BY 子句必须恰好包含 TIMECOL 参数指定的时间列。";
+  public static final String FFT_TRANSFORM_LENGTH_EXCEEDS_LIMIT =
+      "FFT 变换长度 N 不能超过 %d。";
+  public static final String FFT_SPECTRUM_BUFFER_TOO_LARGE =
+      "FFT 频谱缓冲区过大。请减小 N 或数值列的数量。";
+  public static final String FFT_INVALID_NORM =
+      "FFT 的 NORM 值无效。支持 backward、forward 和 ortho。";
+  public static final String FFT_UNSUPPORTED_PARTITION_TYPE = "不支持的 FFT 分区类型：%s";
+  public static final String FFT_UNSUPPORTED_VALUE_TYPE = "不支持的 FFT 数值类型：%s";
+  public static final String FFT_TIME_MUST_BE_STRICTLY_ASCENDING =
+      "FFT 输入的时间列在每个分区内必须严格递增。";
+  public static final String FFT_NULL_VALUE_NOT_SUPPORTED =
+      "FFT 不支持列 [%s] 中的 null 值。";
+  public static final String FFT_NEEDS_TWO_ROWS_FOR_INTERVAL =
+      "FFT 至少需要两行数据才能推断 SAMPLE_INTERVAL。";
+  public static final String FFT_SAMPLE_INTERVAL_MUST_BE_POSITIVE =
+      "FFT 的 SAMPLE_INTERVAL 必须为正数。";
+  public static final String FFT_SAMPLE_INTERVAL_MUST_BE_DURATION_LITERAL =
+      "FFT 的 SAMPLE_INTERVAL 参数必须是 duration 字面量。";
+  public static final String FFT_N_MUST_BE_POSITIVE_INTEGER = "FFT 的 N 参数必须是正整数。";
+  public static final String FFT_ORDER_BY_MUST_SORT_ASCENDING =
+      "DATA 参数的 ORDER BY 子句必须按时间列升序排序。";
 }

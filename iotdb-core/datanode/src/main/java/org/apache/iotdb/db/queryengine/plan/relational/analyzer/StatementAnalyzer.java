@@ -5322,15 +5322,14 @@ public class StatementAnalyzer {
               arguments, parameterSpecifications, FFTTableFunction.SAMPLE_INTERVAL_PARAMETER_NAME);
       if (sampleIntervalArgument.isPresent()
           && !(sampleIntervalArgument.get().getValue() instanceof TimeDurationLiteral)) {
-        throw new SemanticException(
-            "The SAMPLE_INTERVAL argument of FFT must be a duration literal.");
+        throw new SemanticException(QueryMessages.FFT_SAMPLE_INTERVAL_MUST_BE_DURATION_LITERAL);
       }
 
       Optional<TableFunctionArgument> nArgument =
           findOptionalTableFunctionArgument(
               arguments, parameterSpecifications, FFTTableFunction.N_PARAMETER_NAME);
       if (nArgument.isPresent() && nArgument.get().getValue() instanceof TimeDurationLiteral) {
-        throw new SemanticException("The N argument of FFT must be a positive integer.");
+        throw new SemanticException(QueryMessages.FFT_N_MUST_BE_POSITIVE_INTEGER);
       }
 
       validateFFTOrderBySortOrder(arguments, parameterSpecifications);
@@ -5359,8 +5358,7 @@ public class StatementAnalyzer {
 
       for (SortItem sortItem : orderBy.get().getSortItems()) {
         if (sortItem.getOrdering() != SortItem.Ordering.ASCENDING) {
-          throw new SemanticException(
-              "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+          throw new SemanticException(QueryMessages.FFT_ORDER_BY_MUST_SORT_ASCENDING);
         }
       }
     }

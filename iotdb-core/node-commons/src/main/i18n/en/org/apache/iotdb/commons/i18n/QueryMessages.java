@@ -262,4 +262,38 @@ public final class QueryMessages {
   public static final String NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_APPEND = "NoChannelGroupByHash does not support appendValuesTo";
   public static final String NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_RAW_HASH = "NoChannelGroupByHash does not support getRawHash";
   public static final String MULTIPLE_TABLE_FUNCTION_AI_NODE_PROVIDER = "Multiple ITableFunctionAINodeServiceProvider found";
+
+  // ======================== FFT table function ========================
+
+  public static final String FFT_DATA_REQUIRES_ORDER_BY =
+      "Table argument with set semantics requires an ORDER BY clause.";
+  public static final String FFT_REQUIRES_NAMED_NUMERIC_COLUMNS =
+      "FFT requires named numeric input columns.";
+  public static final String FFT_NO_NUMERIC_COLUMNS =
+      "No numeric columns found for FFT calculation.";
+  public static final String FFT_ORDER_BY_MUST_CONTAIN_TIMECOL =
+      "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.";
+  public static final String FFT_TRANSFORM_LENGTH_EXCEEDS_LIMIT =
+      "FFT transform length N must not exceed %d.";
+  public static final String FFT_SPECTRUM_BUFFER_TOO_LARGE =
+      "FFT spectrum buffer is too large. Reduce N or the number of numeric columns.";
+  public static final String FFT_INVALID_NORM =
+      "Invalid NORM value for FFT. Supported values are backward, forward and ortho.";
+  public static final String FFT_UNSUPPORTED_PARTITION_TYPE =
+      "Unsupported FFT partition type: %s";
+  public static final String FFT_UNSUPPORTED_VALUE_TYPE = "Unsupported FFT value type: %s";
+  public static final String FFT_TIME_MUST_BE_STRICTLY_ASCENDING =
+      "The time column of FFT input must be strictly ascending within each partition.";
+  public static final String FFT_NULL_VALUE_NOT_SUPPORTED =
+      "FFT does not support null values in column [%s].";
+  public static final String FFT_NEEDS_TWO_ROWS_FOR_INTERVAL =
+      "FFT requires at least two rows to infer SAMPLE_INTERVAL.";
+  public static final String FFT_SAMPLE_INTERVAL_MUST_BE_POSITIVE =
+      "FFT SAMPLE_INTERVAL must be positive.";
+  public static final String FFT_SAMPLE_INTERVAL_MUST_BE_DURATION_LITERAL =
+      "The SAMPLE_INTERVAL argument of FFT must be a duration literal.";
+  public static final String FFT_N_MUST_BE_POSITIVE_INTEGER =
+      "The N argument of FFT must be a positive integer.";
+  public static final String FFT_ORDER_BY_MUST_SORT_ASCENDING =
+      "The ORDER BY clause of the DATA argument must sort the time column in ascending order.";
 }

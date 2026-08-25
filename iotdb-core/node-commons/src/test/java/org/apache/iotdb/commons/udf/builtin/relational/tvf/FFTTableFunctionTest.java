@@ -205,6 +205,20 @@ public class FFTTableFunctionTest {
   }
 
   @Test
+  public void testInfersIntervalWithoutNanosecondTimestampOverflow() throws UDFException {
+    TableFunctionDataProcessor processor = createProcessor(false, 2L);
+    processor.process(record(-6_000_000_000_000_000_000L, 1.0), Collections.emptyList(), null);
+    processor.process(record(6_000_000_000_000_000_000L, 2.0), Collections.emptyList(), null);
+
+    List<ColumnBuilder> builders = createOutputBuilders(2);
+    processor.finish(builders, null);
+
+    double intervalSeconds =
+        12.0e18 * TimestampPrecisionUtils.currPrecision.toNanos(1L) / 1_000_000_000.0;
+    assertDoubleColumn(builders.get(1).build(), 0.0, -1.0 / (2.0 * intervalSeconds));
+  }
+
+  @Test
   public void testUsesExplicitSampleIntervalWithoutGapValidation() throws UDFException {
     TableFunctionDataProcessor processor = createProcessor(true);
     processor.process(record(0L, 1.0), Collections.emptyList(), null);

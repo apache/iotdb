@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.fft.DoubleFFT_1D;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.fft.FloatFFT_1D;
@@ -128,7 +129,7 @@ public class FFTTableFunction implements TableFunction {
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
     if (tableArgument.getOrderBy().isEmpty()) {
-      throw new SemanticException("Table argument with set semantics requires an ORDER BY clause.");
+      throw new SemanticException(QueryMessages.FFT_DATA_REQUIRES_ORDER_BY);
     }
 
     String timeColumn =
@@ -169,7 +170,7 @@ public class FFTTableFunction implements TableFunction {
               .getFieldNames()
               .get(i)
               .orElseThrow(
-                  () -> new SemanticException("FFT requires named numeric input columns."));
+                  () -> new SemanticException(QueryMessages.FFT_REQUIRES_NAMED_NUMERIC_COLUMNS));
       valueIndexes.add(i);
       valueNames.add(columnName);
       valueTypes.add(type);
@@ -178,7 +179,7 @@ public class FFTTableFunction implements TableFunction {
     }
 
     if (valueIndexes.isEmpty()) {
-      throw new SemanticException("No numeric columns found for FFT calculation.");
+      throw new SemanticException(QueryMessages.FFT_NO_NUMERIC_COLUMNS);
     }
 
     long transformLength = (long) ((ScalarArgument) arguments.get(N_PARAMETER_NAME)).getValue();
@@ -253,8 +254,7 @@ public class FFTTableFunction implements TableFunction {
   private static void validateOrderBy(TableArgument tableArgument, String timeColumn) {
     if (tableArgument.getOrderBy().size() != 1
         || !tableArgument.getOrderBy().get(0).equalsIgnoreCase(timeColumn)) {
-      throw new SemanticException(
-          "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.");
+      throw new SemanticException(QueryMessages.FFT_ORDER_BY_MUST_CONTAIN_TIMECOL);
     }
   }
 
@@ -273,26 +273,23 @@ public class FFTTableFunction implements TableFunction {
     }
     if (transformLength > MAX_TRANSFORM_LENGTH) {
       throw new SemanticException(
-          String.format("FFT transform length N must not exceed %d.", MAX_TRANSFORM_LENGTH));
+          String.format(QueryMessages.FFT_TRANSFORM_LENGTH_EXCEEDS_LIMIT, MAX_TRANSFORM_LENGTH));
     }
     long spectrumValues;
     try {
       spectrumValues =
           Math.multiplyExact(Math.multiplyExact(transformLength, 2L), valueColumnCount);
     } catch (ArithmeticException e) {
-      throw new SemanticException(
-          "FFT spectrum buffer is too large. Reduce N or the number of numeric columns.");
+      throw new SemanticException(QueryMessages.FFT_SPECTRUM_BUFFER_TOO_LARGE);
     }
     if (spectrumValues > MAX_SPECTRUM_VALUES) {
-      throw new SemanticException(
-          "FFT spectrum buffer is too large. Reduce N or the number of numeric columns.");
+      throw new SemanticException(QueryMessages.FFT_SPECTRUM_BUFFER_TOO_LARGE);
     }
   }
 
   private static void validateNorm(String norm) {
     if (!NORM_BACKWARD.equals(norm) && !NORM_FORWARD.equals(norm) && !NORM_ORTHO.equals(norm)) {
-      throw new SemanticException(
-          "Invalid NORM value for FFT. Supported values are backward, forward and ortho.");
+      throw new SemanticException(QueryMessages.FFT_INVALID_NORM);
     }
   }
 
@@ -490,7 +487,8 @@ public class FFTTableFunction implements TableFunction {
           return valueOperator;
         }
       }
-      throw new IllegalArgumentException("Unsupported FFT partition type: " + type);
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.FFT_UNSUPPORTED_PARTITION_TYPE, type));
     }
   }
 
@@ -540,7 +538,8 @@ public class FFTTableFunction implements TableFunction {
           return numericOperator;
         }
       }
-      throw new IllegalArgumentException("Unsupported FFT value type: " + type);
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.FFT_UNSUPPORTED_VALUE_TYPE, type));
     }
   }
 
@@ -653,8 +652,7 @@ public class FFTTableFunction implements TableFunction {
         firstTime = currentTime;
         initialized = true;
       } else if (currentTime <= previousTime) {
-        throw new SemanticException(
-            "The time column of FFT input must be strictly ascending within each partition.");
+        throw new SemanticException(QueryMessages.FFT_TIME_MUST_BE_STRICTLY_ASCENDING);
       }
       previousTime = currentTime;
 
@@ -669,7 +667,7 @@ public class FFTTableFunction implements TableFunction {
         NumericColumn valueColumn = valueColumns[i];
         if (input.isNull(valueColumn.inputIndex)) {
           throw new SemanticException(
-              String.format("FFT does not support null values in column [%s].", valueColumn.name));
+              String.format(QueryMessages.FFT_NULL_VALUE_NOT_SUPPORTED, valueColumn.name));
         }
         if (shouldCacheRow) {
           row[i] = valueColumn.read(input);
@@ -769,14 +767,16 @@ public class FFTTableFunction implements TableFunction {
         interval = sampleInterval;
       } else {
         if (inputRowCount < 2) {
-          throw new SemanticException("FFT requires at least two rows to infer SAMPLE_INTERVAL.");
+          throw new SemanticException(QueryMessages.FFT_NEEDS_TWO_ROWS_FOR_INTERVAL);
         }
-        interval = (double) (previousTime - firstTime) / (inputRowCount - 1);
+        // Convert before subtracting so nanosecond timestamps spanning more than Long.MAX_VALUE
+        // do not overflow as longs.
+        interval = ((double) previousTime - (double) firstTime) / (inputRowCount - 1);
       }
       double intervalSeconds =
           interval * TimestampPrecisionUtils.currPrecision.toNanos(1L) / 1_000_000_000.0;
       if (intervalSeconds <= 0) {
-        throw new SemanticException("FFT SAMPLE_INTERVAL must be positive.");
+        throw new SemanticException(QueryMessages.FFT_SAMPLE_INTERVAL_MUST_BE_POSITIVE);
       }
       return intervalSeconds;
     }
