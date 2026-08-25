@@ -20,8 +20,7 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.i18n.UtilMessages;
-
-import com.google.common.base.CharMatcher;
+import org.apache.iotdb.google.common.base.CharMatcher;
 
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;

@@ -39,8 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
-
-import com.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,11 +50,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Verify.verify;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.base.Verify.verify;
 
 /**
  * Keeps mappings of fields and AST expressions to symbols in the current plan within query

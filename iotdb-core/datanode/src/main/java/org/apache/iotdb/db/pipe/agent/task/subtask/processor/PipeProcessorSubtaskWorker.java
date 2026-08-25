@@ -22,9 +22,9 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.google.common.annotations.VisibleForTesting;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

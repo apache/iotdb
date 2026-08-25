@@ -29,9 +29,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 
 public class LogicalIndexNavigation {
   public static final LogicalIndexNavigation NO_OP =

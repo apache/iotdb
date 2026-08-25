@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.google.common.net.InetAddresses;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import com.google.common.net.InetAddresses;
 import org.eclipse.milo.opcua.sdk.server.EndpointConfig;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig;

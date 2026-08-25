@@ -29,9 +29,9 @@ import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.google.common.primitives.Ints;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.primitives.Ints;
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -44,11 +44,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.CURRENT_USED_MEMORY;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.MAX_USED_MEMORY;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class StreamingHashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =

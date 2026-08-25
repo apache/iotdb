@@ -22,8 +22,8 @@ package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -34,9 +34,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 
 public class ExpressionAndValuePointers {
   public static final ExpressionAndValuePointers TRUE =

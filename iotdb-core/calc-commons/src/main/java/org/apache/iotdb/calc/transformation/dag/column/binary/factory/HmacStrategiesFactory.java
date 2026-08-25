@@ -22,9 +22,8 @@ package org.apache.iotdb.calc.transformation.dag.column.binary.factory;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.binary.strategies.HmacStrategy;
 import org.apache.iotdb.commons.exception.SemanticException;
-
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
+import org.apache.iotdb.google.common.hash.HashFunction;
+import org.apache.iotdb.google.common.hash.Hashing;
 
 public final class HmacStrategiesFactory {
 

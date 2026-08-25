@@ -21,9 +21,9 @@ package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.google.common.base.MoreObjects;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TimeDuration;
 
@@ -31,8 +31,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class Fill extends Node {
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Fill.class);

@@ -25,10 +25,10 @@ import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.iotdb.google.common.util.concurrent.ListeningScheduledExecutorService;
+import org.apache.iotdb.google.common.util.concurrent.MoreExecutors;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

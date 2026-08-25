@@ -61,8 +61,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowSpecif
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
@@ -71,9 +70,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
@@ -84,6 +80,9 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeRefe
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ScopeReferenceExtractor.isFieldFromScope;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 
 /** Checks whether an expression is constant with respect to the group */
 class AggregationAnalyzer {

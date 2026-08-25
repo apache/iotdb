@@ -28,7 +28,7 @@ import javax.annotation.Nullable;
 
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowPipes extends PipeStatement {
 

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.driver;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 
 /**

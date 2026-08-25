@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.common.header;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.google.common.primitives.Bytes;
 
-import com.google.common.primitives.Bytes;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.ArrayList;

@@ -51,9 +51,9 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.externalservice.ServiceInfo.State.RUNNING;
 import static org.apache.iotdb.commons.externalservice.ServiceInfo.State.STOPPED;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class ExternalServiceManagementService {
   @GuardedBy("lock")

@@ -54,10 +54,10 @@ import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.consensus.i18n.IoTConsensusV2Messages;
 import org.apache.iotdb.consensus.pipe.service.IoTConsensusV2RPCService;
 import org.apache.iotdb.consensus.pipe.service.IoTConsensusV2RPCServiceProcessor;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

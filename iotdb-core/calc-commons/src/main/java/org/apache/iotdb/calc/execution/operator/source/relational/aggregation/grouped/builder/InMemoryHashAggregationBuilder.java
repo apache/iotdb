@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.queryengine.execution.operator.source.relational
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.primitives.Ints;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.primitives.Ints;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;

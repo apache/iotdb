@@ -27,7 +27,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 /**
  * The result of Linear Fill functions at timestamp "T" is calculated by performing a linear fitting

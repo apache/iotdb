@@ -1,0 +1,104 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.google.common.graph;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+
+import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkNotNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+
+/**
+ * A base implementation of {@link NetworkConnections} for undirected networks.
+ *
+ * @author James Sexton
+ * @param <N> Node parameter type
+ * @param <E> Edge parameter type
+ */
+@ElementTypesAreNonnullByDefault
+abstract class AbstractUndirectedNetworkConnections<N, E> implements NetworkConnections<N, E> {
+  /** Keys are edges incident to the origin node, values are the node at the other end. */
+  final Map<E, N> incidentEdgeMap;
+
+  AbstractUndirectedNetworkConnections(Map<E, N> incidentEdgeMap) {
+    this.incidentEdgeMap = checkNotNull(incidentEdgeMap);
+  }
+
+  @Override
+  public Set<N> predecessors() {
+    return adjacentNodes();
+  }
+
+  @Override
+  public Set<N> successors() {
+    return adjacentNodes();
+  }
+
+  @Override
+  public Set<E> incidentEdges() {
+    return Collections.unmodifiableSet(incidentEdgeMap.keySet());
+  }
+
+  @Override
+  public Set<E> inEdges() {
+    return incidentEdges();
+  }
+
+  @Override
+  public Set<E> outEdges() {
+    return incidentEdges();
+  }
+
+  @Override
+  public N adjacentNode(E edge) {
+    // We're relying on callers to call this method only with an edge that's in the graph.
+    return requireNonNull(incidentEdgeMap.get(edge));
+  }
+
+  @Override
+  public N removeInEdge(E edge, boolean isSelfLoop) {
+    if (!isSelfLoop) {
+      return removeOutEdge(edge);
+    }
+    return null;
+  }
+
+  @Override
+  public N removeOutEdge(E edge) {
+    N previousNode = incidentEdgeMap.remove(edge);
+    // We're relying on callers to call this method only with an edge that's in the graph.
+    return requireNonNull(previousNode);
+  }
+
+  @Override
+  public void addInEdge(E edge, N node, boolean isSelfLoop) {
+    if (!isSelfLoop) {
+      addOutEdge(edge, node);
+    }
+  }
+
+  @Override
+  public void addOutEdge(E edge, N node) {
+    N previousNode = incidentEdgeMap.put(edge, node);
+    checkState(previousNode == null);
+  }
+}

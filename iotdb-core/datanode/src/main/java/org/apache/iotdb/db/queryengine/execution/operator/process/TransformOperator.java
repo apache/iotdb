@@ -39,8 +39,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInpu
 import org.apache.iotdb.db.queryengine.transformation.dag.input.TsBlockInputDataSet;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;

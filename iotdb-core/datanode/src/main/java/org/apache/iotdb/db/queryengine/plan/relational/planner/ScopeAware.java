@@ -30,10 +30,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 
 import java.util.OptionalInt;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.treeEqual;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.treeHash;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 /**
  * A wrapper for Expressions that can be used as a key in maps and sets.

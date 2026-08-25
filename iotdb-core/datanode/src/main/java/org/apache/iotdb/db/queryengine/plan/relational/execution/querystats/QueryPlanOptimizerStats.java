@@ -23,8 +23,8 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class QueryPlanOptimizerStats {
   private final String rule;

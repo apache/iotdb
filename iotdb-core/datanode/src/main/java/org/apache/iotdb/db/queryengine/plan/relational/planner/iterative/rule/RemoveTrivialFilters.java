@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.filter;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class RemoveTrivialFilters implements Rule<FilterNode> {
   private static final Pattern<FilterNode> PATTERN = filter();

@@ -20,8 +20,8 @@
 package org.apache.iotdb.commons.pipe.datastructure.queue;
 
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
 
-import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

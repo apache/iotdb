@@ -33,17 +33,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
-
-import com.google.common.collect.Range;
+import org.apache.iotdb.google.common.collect.Range;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup.noLookup;
+import static org.apache.iotdb.google.common.collect.Iterables.getOnlyElement;
 
 public final class QueryCardinalityUtil {
   private QueryCardinalityUtil() {}

@@ -27,8 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
-
-import com.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,7 +35,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 /** Utility class for extracting and binding parameters in prepared statements. */
 public final class ParameterExtractor {

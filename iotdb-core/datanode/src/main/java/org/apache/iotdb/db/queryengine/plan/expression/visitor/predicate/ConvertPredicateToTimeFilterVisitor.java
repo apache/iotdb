@@ -51,8 +51,8 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TimeZone;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression.flipType;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
 public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter, Void> {

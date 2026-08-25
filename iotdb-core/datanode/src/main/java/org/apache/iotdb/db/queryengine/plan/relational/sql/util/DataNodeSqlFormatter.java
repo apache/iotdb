@@ -83,8 +83,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
-
-import com.google.common.base.Joiner;
+import org.apache.iotdb.google.common.base.Joiner;
 
 import java.util.List;
 import java.util.Objects;

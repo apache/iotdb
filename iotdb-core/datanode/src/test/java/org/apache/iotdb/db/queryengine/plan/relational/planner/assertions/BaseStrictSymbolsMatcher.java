@@ -27,8 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import java.util.Set;
 import java.util.function.Function;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public abstract class BaseStrictSymbolsMatcher implements Matcher {
   private final Function<PlanNode, Set<Symbol>> getActual;

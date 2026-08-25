@@ -29,9 +29,9 @@ import org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher.Progr
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrLabel;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Test;

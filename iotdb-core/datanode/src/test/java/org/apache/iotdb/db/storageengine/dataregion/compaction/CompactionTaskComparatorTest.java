@@ -37,8 +37,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
+import org.apache.iotdb.google.common.collect.MinMaxPriorityQueue;
 
-import com.google.common.collect.MinMaxPriorityQueue;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

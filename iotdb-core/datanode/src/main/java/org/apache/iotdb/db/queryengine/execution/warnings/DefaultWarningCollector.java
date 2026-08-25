@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.warnings;
 
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.concurrent.GuardedBy;
 
 import javax.annotation.concurrent.ThreadSafe;

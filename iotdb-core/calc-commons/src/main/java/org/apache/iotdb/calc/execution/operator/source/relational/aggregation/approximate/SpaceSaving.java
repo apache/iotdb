@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;

@@ -26,15 +26,15 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Throwables.throwIfUnchecked;
-import static com.google.common.base.Verify.verify;
 import static java.lang.Math.addExact;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.Math.toIntExact;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.VariableWidthData.EMPTY_CHUNK;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.VariableWidthData.POINTER_SIZE;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.iotdb.google.common.base.Verify.verify;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfByteArray;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfIntArray;

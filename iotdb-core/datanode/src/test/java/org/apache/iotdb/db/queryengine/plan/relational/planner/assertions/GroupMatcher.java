@@ -26,8 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
 import java.util.List;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
+import static org.apache.iotdb.google.common.base.MoreObjects.toStringHelper;
 
 public class GroupMatcher extends SortMatcher {
   private final int partitionKeyCount;

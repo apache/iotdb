@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.execution;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 
 public enum QueryState {
   QUEUED(false),

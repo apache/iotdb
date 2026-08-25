@@ -34,8 +34,8 @@ import org.antlr.v4.runtime.Token;
 
 import java.util.Set;
 
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords.sqlKeywords;
+import static org.apache.iotdb.google.common.collect.ImmutableSet.toImmutableSet;
 
 public final class ReservedIdentifiers {
 

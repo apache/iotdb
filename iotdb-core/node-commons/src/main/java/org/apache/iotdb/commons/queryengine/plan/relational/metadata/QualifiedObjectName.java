@@ -27,9 +27,9 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.metadata.MetadataUtil.checkObjectName;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 @Immutable
 public class QualifiedObjectName {

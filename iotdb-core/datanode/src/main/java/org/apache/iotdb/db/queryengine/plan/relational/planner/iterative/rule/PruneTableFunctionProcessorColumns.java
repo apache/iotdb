@@ -28,8 +28,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.tableFunctionProcessor;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 /**
  * TableFunctionProcessorNode has two kinds of outputs:

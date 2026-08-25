@@ -21,11 +21,11 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
-import com.google.common.collect.ImmutableMap;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

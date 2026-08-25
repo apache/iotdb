@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import java.util.Objects;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public final class NodeLocation {
 

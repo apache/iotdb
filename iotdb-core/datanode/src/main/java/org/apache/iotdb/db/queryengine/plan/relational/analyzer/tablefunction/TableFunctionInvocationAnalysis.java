@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction;
 
+import org.apache.iotdb.google.common.collect.ImmutableList;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
-
-import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Map;

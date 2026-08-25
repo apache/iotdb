@@ -21,13 +21,12 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
-
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.google.common.util.concurrent.Futures;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 
 import java.util.NoSuchElementException;
 
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.apache.iotdb.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements ISchemaReader<T> {
 

@@ -84,9 +84,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Window;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowSpecification;
-
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.base.Joiner;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -96,13 +95,13 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter.formatName;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.util.ReservedIdentifiers.reserved;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.google.common.collect.Iterables.getOnlyElement;
 
 public final class ExpressionFormatter {
 

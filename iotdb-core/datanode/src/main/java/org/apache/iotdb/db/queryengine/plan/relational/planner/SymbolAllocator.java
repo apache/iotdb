@@ -34,8 +34,8 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class SymbolAllocator {
 

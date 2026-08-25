@@ -43,8 +43,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.google.common.io.BaseEncoding;
 
-import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
@@ -65,8 +65,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression.flipType;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.enums.TSDataType.DOUBLE;
 import static org.apache.tsfile.enums.TSDataType.INT32;
 import static org.apache.tsfile.enums.TSDataType.INT64;

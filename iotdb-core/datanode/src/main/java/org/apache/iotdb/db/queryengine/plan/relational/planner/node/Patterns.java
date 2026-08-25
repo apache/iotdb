@@ -59,11 +59,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Pattern.typeOf;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Property.optionalProperty;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Property.property;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.google.common.collect.Iterables.getOnlyElement;
 
 public final class Patterns {
   private Patterns() {}

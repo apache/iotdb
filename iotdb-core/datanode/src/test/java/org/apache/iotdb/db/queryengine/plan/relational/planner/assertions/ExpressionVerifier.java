@@ -54,9 +54,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 /**
  * Expression visitor which verifies if given expression (actual) is matching other expression given

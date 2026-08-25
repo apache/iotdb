@@ -21,9 +21,9 @@ package org.apache.iotdb.calc.execution.operator;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash;
+import org.apache.iotdb.google.common.collect.AbstractIterator;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.AbstractIterator;
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;

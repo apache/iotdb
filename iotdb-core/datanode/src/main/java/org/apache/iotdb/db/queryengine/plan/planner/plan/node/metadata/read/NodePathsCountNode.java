@@ -25,8 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.ProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

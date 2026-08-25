@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.udf;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.iotdb.google.common.collect.ImmutableSet;
 
 import java.util.Arrays;
 import java.util.HashSet;

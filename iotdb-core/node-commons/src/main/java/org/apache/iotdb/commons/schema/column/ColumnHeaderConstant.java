@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.commons.schema.column;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
+
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;

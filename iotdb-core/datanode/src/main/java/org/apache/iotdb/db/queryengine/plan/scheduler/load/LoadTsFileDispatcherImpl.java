@@ -72,7 +72,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.immediateFuture;
 
 public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCloseable {
 

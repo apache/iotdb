@@ -95,9 +95,9 @@ import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.function.ToLongFunction;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public class SeriesScanUtil implements Accountable {
 

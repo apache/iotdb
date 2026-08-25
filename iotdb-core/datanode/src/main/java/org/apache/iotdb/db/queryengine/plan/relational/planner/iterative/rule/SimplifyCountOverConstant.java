@@ -34,8 +34,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.LongType;
 
 import java.util.Collections;
@@ -43,7 +43,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.google.common.base.Verify.verify;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
@@ -54,6 +53,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
+import static org.apache.iotdb.google.common.base.Verify.verify;
 
 public class SimplifyCountOverConstant implements Rule<AggregationNode> {
   private static final Capture<ProjectNode> CHILD = newCapture();

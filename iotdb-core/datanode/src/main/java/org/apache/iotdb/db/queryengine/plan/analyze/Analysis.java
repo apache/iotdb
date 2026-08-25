@@ -77,7 +77,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis implements IAnalysis {

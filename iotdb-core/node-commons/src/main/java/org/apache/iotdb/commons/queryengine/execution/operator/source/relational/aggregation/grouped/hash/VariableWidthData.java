@@ -20,21 +20,21 @@
 package org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash;
 
 import org.apache.iotdb.commons.i18n.QueryMessages;
+import org.apache.iotdb.google.common.primitives.Ints;
 
-import com.google.common.primitives.Ints;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Verify.verify;
 import static java.lang.Math.addExact;
 import static java.lang.Math.max;
 import static java.lang.Math.subtractExact;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.FlatHash.bytesToInt;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.FlatHash.intToBytes;
 import static org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.FlatHash.sumExact;
+import static org.apache.iotdb.google.common.base.Verify.verify;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfObjectArray;
 

@@ -22,10 +22,10 @@ package org.apache.iotdb.db.queryengine.plan.execution.memory;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
@@ -34,7 +34,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.apache.iotdb.google.common.util.concurrent.Futures.immediateFuture;
 
 public class MemorySourceHandle implements ISourceHandle {
 

@@ -20,14 +20,13 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
 import org.apache.iotdb.commons.i18n.QueryMessages;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrQuantifier.zeroOrOne;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.google.common.collect.ImmutableList.toImmutableList;
 
 /**
  * Remove empty pattern from pattern alternation and replace it with quantification of a

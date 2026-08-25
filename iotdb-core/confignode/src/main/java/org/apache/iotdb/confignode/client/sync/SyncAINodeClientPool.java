@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncAINodeClient;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.google.common.collect.ImmutableMap;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.ratis.util.function.CheckedBiFunction;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;

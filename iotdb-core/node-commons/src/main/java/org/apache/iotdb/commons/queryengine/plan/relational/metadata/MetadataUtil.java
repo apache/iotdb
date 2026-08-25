@@ -23,16 +23,15 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
-
-import com.google.common.collect.Lists;
+import org.apache.iotdb.google.common.collect.Lists;
 
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.google.common.base.Preconditions.checkArgument;
 
 public class MetadataUtil {
   private MetadataUtil() {}

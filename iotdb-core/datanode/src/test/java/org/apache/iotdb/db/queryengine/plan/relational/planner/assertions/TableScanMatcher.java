@@ -31,9 +31,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
+import static org.apache.iotdb.google.common.base.Preconditions.checkState;
 
 public abstract class TableScanMatcher implements Matcher {
   protected final String expectedTableName;

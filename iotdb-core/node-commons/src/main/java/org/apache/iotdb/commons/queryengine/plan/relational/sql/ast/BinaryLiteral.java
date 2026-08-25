@@ -21,9 +21,9 @@ package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
+import org.apache.iotdb.google.common.base.CharMatcher;
+import org.apache.iotdb.google.common.io.BaseEncoding;
 
-import com.google.common.base.CharMatcher;
-import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;

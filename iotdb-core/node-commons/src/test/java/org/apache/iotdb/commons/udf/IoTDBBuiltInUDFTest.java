@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.udf.builtin.UDTFSinh;
 import org.apache.iotdb.commons.udf.builtin.UDTFSqrt;
 import org.apache.iotdb.commons.udf.builtin.UDTFTan;
 import org.apache.iotdb.commons.udf.builtin.UDTFTanh;
+import org.apache.iotdb.google.common.collect.ImmutableList;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -46,7 +47,6 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.type.Type;
 
-import com.google.common.collect.ImmutableList;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
