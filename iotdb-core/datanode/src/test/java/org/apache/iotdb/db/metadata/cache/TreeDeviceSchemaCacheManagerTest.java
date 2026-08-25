@@ -22,9 +22,13 @@ package org.apache.iotdb.db.metadata.cache;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -48,6 +52,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
@@ -270,6 +275,82 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     treeDeviceSchemaCacheManager.cleanUp();
     Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
+  }
+
+  @Test
+  public void testLastCacheIsInvalidatedWhenDatabaseNeedLastCacheSetFalse()
+      throws IllegalPathException {
+    final String database = "root.db";
+    final PartialPath device = new PartialPath("root.db.d");
+    final MeasurementSchema s1 = new MeasurementSchema("s1", TSDataType.INT32);
+    final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
+    final MeasurementPath measurementPath = new MeasurementPath(device.concatNode("s1"), s1);
+
+    treeDeviceSchemaCacheManager.declareLastCache(database, measurementPath);
+    treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+        database,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        new String[] {"s1"},
+        new TimeValuePair[] {tv1},
+        false,
+        new MeasurementSchema[] {s1});
+    Assert.assertEquals(tv1, treeDeviceSchemaCacheManager.getLastCache(measurementPath));
+
+    final TDatabaseSchema disabledSchema = new TDatabaseSchema();
+    disabledSchema.setNeedLastCache(false);
+    new PartitionCache().updateDatabaseCache(Collections.singletonMap(database, disabledSchema));
+
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(measurementPath));
+  }
+
+  @Test
+  public void testUpdateLastCacheLazilyWithAlias() throws IllegalPathException {
+    final String database = "root.db";
+    final PartialPath device = new PartialPath("root.db.d_alias");
+    final MeasurementSchema s1 = new MeasurementSchema("s1", TSDataType.INT32);
+    final MeasurementSchema s2 = new MeasurementSchema("s2", TSDataType.INT32);
+    final MeasurementPath s1Path = new MeasurementPath(device.concatNode("s1"), s1);
+    final AtomicInteger composedValueCount = new AtomicInteger();
+
+    treeDeviceSchemaCacheManager.declareLastCache(database, s1Path);
+
+    final InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("testUpdateLastCacheLazilyWithAlias"),
+            device,
+            false,
+            new String[] {"alias", "uncachedAlias"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.INT32},
+            new MeasurementSchema[] {s1, s2},
+            1L,
+            new Object[] {1, 2},
+            false) {
+          @Override
+          public String[] getRawMeasurements() {
+            throw new AssertionError("Last cache update should not copy raw measurements");
+          }
+
+          @Override
+          public TimeValuePair composeTimeValuePair(final int columnIndex) {
+            composedValueCount.incrementAndGet();
+            return super.composeTimeValuePair(columnIndex);
+          }
+        };
+
+    insertRowNode.updateLastCache(database);
+
+    Assert.assertEquals(1, composedValueCount.get());
+    Assert.assertEquals(
+        new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)),
+        treeDeviceSchemaCacheManager.getLastCache(
+            new MeasurementPath(device.getIDeviceID(), "s1")));
+    Assert.assertNull(
+        treeDeviceSchemaCacheManager.getLastCache(
+            new MeasurementPath(device.getIDeviceID(), "s2")));
+    Assert.assertNull(
+        treeDeviceSchemaCacheManager.getLastCache(
+            new MeasurementPath(device.getIDeviceID(), "alias")));
   }
 
   @Test

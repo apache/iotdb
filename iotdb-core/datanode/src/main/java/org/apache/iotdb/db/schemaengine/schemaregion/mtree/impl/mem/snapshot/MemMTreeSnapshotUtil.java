@@ -246,9 +246,6 @@ public class MemMTreeSnapshotUtil {
       case INTERNAL_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeInternalMNode(inputStream);
-        if (ancestors.size() == 1) {
-          currentTableName.set(node.getName());
-        }
         break;
       case DATABASE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
@@ -277,14 +274,18 @@ public class MemMTreeSnapshotUtil {
       case TABLE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
-        if (ancestors.size() == 1) {
-          currentTableName.set(node.getName());
-        }
         deviceProcess.accept(node.getAsDeviceMNode());
-        tableDeviceProcess.accept(node.getAsDeviceMNode(), currentTableName.get());
         break;
       default:
         throw new IOException(DataNodeSchemaMessages.UNRECOGNIZED_MNODE_TYPE + type);
+    }
+
+    // The table-name node may also be a tree-model device in legacy mixed-model metadata.
+    if (ancestors.size() == 1) {
+      currentTableName.set(node.getName());
+    }
+    if (type == TABLE_MNODE_TYPE) {
+      tableDeviceProcess.accept(node.getAsDeviceMNode(), currentTableName.get());
     }
 
     regionStatistics.requestMemory(node.estimateSize());

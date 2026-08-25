@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
@@ -198,6 +199,10 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     return driverContext.getFragmentInstanceContext().getId();
   }
 
+  public long getOuterQueryDeadlineMs() {
+    return driverContext.getFragmentInstanceContext().getOuterQueryDeadlineMs();
+  }
+
   public List<PipelineDriverFactory> getPipelineDriverFactories() {
     return pipelineDriverFactories;
   }
@@ -259,7 +264,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   public void setMaxBytesOneHandleCanReserve() {
     long maxBytesOneHandleCanReserve = getMaxBytesOneHandleCanReserve();
     LOGGER.debug(
-        "MaxBytesOneHandleCanReserve for ExchangeOperator is {}, exchangeSumNum is {}.",
+        DataNodeQueryMessages
+            .MAXBYTESONEHANDLECANRESERVE_FOR_EXCHANGEOPERATOR_IS_ARG_EXCHANGESUMNUM_IS_ARG,
         maxBytesOneHandleCanReserve,
         exchangeSumNum);
     exchangeOperatorList.forEach(
@@ -293,8 +299,10 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   }
 
   public void setISink(ISink sink) {
-    requireNonNull(sink, "sink is null");
-    checkArgument(driverContext.getSink() == null, "There must be at most one SinkNode");
+    requireNonNull(sink, DataNodeQueryMessages.EXCEPTION_SINK_IS_NULL_E33854B4);
+    checkArgument(
+        driverContext.getSink() == null,
+        DataNodeQueryMessages.EXCEPTION_THERE_MUST_BE_AT_MOST_ONE_SINKNODE_A965AFE7);
     driverContext.setSink(sink);
   }
 

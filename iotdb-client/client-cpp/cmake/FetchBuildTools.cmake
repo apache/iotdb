@@ -253,8 +253,23 @@ if(NOT FLEX_EXECUTABLE)
 endif()
 message(STATUS "[BuildTools] flex  = ${FLEX_EXECUTABLE}")
 
-# bison
+# bison - Thrift 0.23's grammar build uses bison >= 3.7 features (e.g. the
+# --file-prefix-map option), so reject an older system bison (manylinux_2_28
+# ships 3.0.4) and build ${BISON_VERSION} from source instead.
+set(_bison_min_version "3.7")
 find_program(BISON_EXECUTABLE bison)
+if(BISON_EXECUTABLE)
+    execute_process(COMMAND "${BISON_EXECUTABLE}" --version
+            OUTPUT_VARIABLE _bison_ver_out ERROR_QUIET
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(REGEX MATCH "[0-9]+\\.[0-9]+(\\.[0-9]+)?" _bison_ver "${_bison_ver_out}")
+    if(_bison_ver AND _bison_ver VERSION_LESS _bison_min_version)
+        message(STATUS
+                "[BuildTools] system bison ${_bison_ver} < ${_bison_min_version} "
+                "(too old for Thrift ${THRIFT_VERSION}); building ${BISON_VERSION} from source")
+        unset(BISON_EXECUTABLE CACHE)
+    endif()
+endif()
 if(NOT BISON_EXECUTABLE)
     _iotdb_resolve_tarball(_bison_tarball "bison-${BISON_VERSION}.tar.gz" "${_bison_url}")
     _iotdb_build_autotools(bison "${_bison_tarball}" "bison-${BISON_VERSION}")

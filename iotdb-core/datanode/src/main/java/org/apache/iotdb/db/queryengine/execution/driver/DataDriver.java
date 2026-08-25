@@ -21,7 +21,9 @@ package org.apache.iotdb.db.queryengine.execution.driver;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -65,17 +67,27 @@ public class DataDriver extends Driver {
         } else {
           return true;
         }
+      } catch (MetadataLeaseFencedException e) {
+        LOGGER.info(
+            DataNodeSchemaMessages.METADATA_LEASE_IS_FENCED, driverContext.getDriverTaskID(), e);
+        handleInitFailure(e, blockedFuture);
       } catch (Throwable t) {
         LOGGER.error(
-            "Failed to do the initialization for driver {} ", driverContext.getDriverTaskID(), t);
-        driverContext.failed(t);
-        blockedFuture.setException(t);
-        throwIfUnchecked(t);
-        // should never happen
-        throw new AssertionError(t);
+            DataNodeQueryMessages.FAILED_TO_DO_THE_INITIALIZATION_FOR_DRIVER_ARG,
+            driverContext.getDriverTaskID(),
+            t);
+        handleInitFailure(t, blockedFuture);
       }
     }
     return true;
+  }
+
+  private void handleInitFailure(Throwable t, SettableFuture<?> blockedFuture) {
+    driverContext.failed(t);
+    blockedFuture.setException(t);
+    throwIfUnchecked(t);
+    // should never happen
+    throw new AssertionError(t);
   }
 
   @Override

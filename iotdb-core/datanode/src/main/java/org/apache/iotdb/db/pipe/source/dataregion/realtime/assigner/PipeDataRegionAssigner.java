@@ -192,6 +192,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 final PipeTsFileInsertionEvent tsFileInsertionEvent =
                     (PipeTsFileInsertionEvent) innerEvent;
                 tsFileInsertionEvent.bindTsFileDedupScopeID(source.getTsFileDedupScopeID());
+                tsFileInsertionEvent.setTsFileParser(source.getTsFileParser());
                 tsFileInsertionEvent.disableMod4NonTransferPipes(source.isShouldTransferModFile());
               }
 
@@ -299,7 +300,8 @@ public class PipeDataRegionAssigner implements Closeable {
       } catch (final InterruptedException e) {
         interrupted = true;
         LOGGER.warn(
-            "Interrupted while waiting for in-flight publishes to finish when closing assigner on data region {}.",
+            DataNodePipeMessages
+                .PIPE_LOG_INTERRUPTED_WHILE_WAITING_FOR_IN_FLIGHT_PUBLISHES_TO_FINISH_C8E3757B,
             dataRegionId);
       }
     }
@@ -331,7 +333,8 @@ public class PipeDataRegionAssigner implements Closeable {
   private void logSourceAssignmentChange(
       final String action, final PipeRealtimeDataRegionSource source) {
     LOGGER.info(
-        "Pipe {}@{} {} realtime source on data region {} (listenToTsFile={}, listenToInsertNode={}, registeredSourceCount={}, tsFileSourceCount={}, insertNodeSourceCount={}).",
+        DataNodePipeMessages
+            .PIPE_LOG_PIPE_REALTIME_SOURCE_ON_DATA_REGION_LISTENTOTSFILE_LISTENTOINSERTNODE_A02E1552,
         source.getPipeName(),
         source.getCreationTime(),
         action,

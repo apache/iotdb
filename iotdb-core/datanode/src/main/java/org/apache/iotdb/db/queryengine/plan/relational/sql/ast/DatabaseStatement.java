@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEst
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
 import com.google.common.collect.ImmutableList;
@@ -47,10 +48,15 @@ public abstract class DatabaseStatement extends Statement {
       final boolean exists,
       final String dbName,
       final List<Property> properties) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.exists = exists;
-    this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
-    this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
+    this.dbName =
+        requireNonNull(dbName, DataNodeQueryMessages.EXCEPTION_DBNAME_IS_NULL_4521C4EE)
+            .toLowerCase(Locale.ENGLISH);
+    this.properties =
+        ImmutableList.copyOf(
+            requireNonNull(
+                properties, DataNodeQueryMessages.EXCEPTION_PROPERTIES_IS_NULL_57B88B49));
   }
 
   public String getDbName() {

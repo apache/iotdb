@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.iot.subscription;
 
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 
 import org.slf4j.Logger;
@@ -32,6 +33,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
 
 public class SubscriptionQueueRegistry {
 
@@ -40,7 +42,7 @@ public class SubscriptionQueueRegistry {
   private static final long QUEUE_FULL_LOG_INTERVAL_MS = TimeUnit.SECONDS.toMillis(10);
 
   private final String consensusGroupId;
-  private final Map<BlockingQueue<IndexedConsensusRequest>, SubscriptionWalRetentionPolicy> queues =
+  private final Map<BlockingQueue<IndexedConsensusRequest>, SubscriptionQueueRegistration> queues =
       new ConcurrentHashMap<>();
   private final AtomicLong droppedEntries = new AtomicLong();
   private final AtomicLong lastDropLogTimeMs = new AtomicLong();
@@ -49,10 +51,26 @@ public class SubscriptionQueueRegistry {
     this.consensusGroupId = consensusGroupId;
   }
 
+  /**
+   * Registers a queue without a committed-progress constraint.
+   *
+   * <p>This overload keeps callers using the original queue-registration API source-compatible.
+   * {@link Long#MAX_VALUE} is the neutral value for the retention calculator and therefore does not
+   * add an extra WAL-retention constraint.
+   */
   public synchronized void register(
       final BlockingQueue<IndexedConsensusRequest> queue,
       final SubscriptionWalRetentionPolicy retentionPolicy) {
-    queues.put(queue, retentionPolicy);
+    register(queue, retentionPolicy, () -> Long.MAX_VALUE);
+  }
+
+  public synchronized void register(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    queues.put(
+        queue,
+        new SubscriptionQueueRegistration(retentionPolicy, committedRetainedMinVersionIdSupplier));
   }
 
   // Shares the monitor with offer() so unregister() is a real stop-receiving barrier.
@@ -69,18 +87,41 @@ public class SubscriptionQueueRegistry {
   }
 
   public synchronized Collection<SubscriptionWalRetentionPolicy> getRetentionPolicies() {
-    return new ArrayList<>(queues.values());
+    final Collection<SubscriptionWalRetentionPolicy> retentionPolicies = new ArrayList<>();
+    for (final SubscriptionQueueRegistration registration : queues.values()) {
+      retentionPolicies.add(registration.retentionPolicy);
+    }
+    return retentionPolicies;
   }
 
-  public synchronized void offer(final IndexedConsensusRequest indexedConsensusRequest) {
+  public Collection<Long> getCommittedRetainedMinVersionIds() {
+    final Collection<LongSupplier> suppliers = new ArrayList<>();
+    synchronized (this) {
+      for (final SubscriptionQueueRegistration registration : queues.values()) {
+        suppliers.add(registration.committedRetainedMinVersionIdSupplier);
+      }
+    }
+
+    final Collection<Long> committedRetainedMinVersionIds = new ArrayList<>();
+    for (final LongSupplier supplier : suppliers) {
+      committedRetainedMinVersionIds.add(supplier.getAsLong());
+    }
+    return committedRetainedMinVersionIds;
+  }
+
+  public synchronized boolean offer(final IndexedConsensusRequest indexedConsensusRequest) {
     final int queueCount = queues.size();
     if (queueCount <= 0) {
-      return;
+      return false;
     }
+
+    // Subscription queues reserve request memory, including the serialized buffers.
+    indexedConsensusRequest.buildSerializedRequests();
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "write() offering to {} subscription queue(s), group={}, searchIndex={}, requestType={}",
+          IoTConsensusMessages
+              .LOG_WRITE_OFFERING_ARG_SUBSCRIPTION_QUEUE_S_GROUP_ARG_SEARCHINDEX_ARG_A8489EDF,
           queueCount,
           consensusGroupId,
           indexedConsensusRequest.getSearchIndex(),
@@ -89,11 +130,13 @@ public class SubscriptionQueueRegistry {
               : indexedConsensusRequest.getRequests().get(0).getClass().getSimpleName());
     }
 
+    boolean offeredToAnyQueue = false;
     for (final BlockingQueue<IndexedConsensusRequest> queue : queues.keySet()) {
       final boolean offered = queue.offer(indexedConsensusRequest);
+      offeredToAnyQueue |= offered;
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "offer result={}, queueSize={}, queueRemaining={}",
+            IoTConsensusMessages.LOG_OFFER_RESULT_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_7ADC84C2,
             offered,
             queue.size(),
             queue.remainingCapacity());
@@ -105,8 +148,10 @@ public class SubscriptionQueueRegistry {
         if (now - lastLogTime >= QUEUE_FULL_LOG_INTERVAL_MS
             && lastDropLogTimeMs.compareAndSet(lastLogTime, now)) {
           LOGGER.warn(
-              "Subscription queue full, dropped {} entry(s) in the last {} ms, latest "
-                  + "searchIndex={}, queueSize={}, queueRemaining={}",
+              IoTConsensusMessages
+                      .LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ARG_ENTRY_S_LAST_ARG_MS_2AD8AB3D
+                  + IoTConsensusMessages
+                      .LOG_SEARCHINDEX_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_2EA619ED,
               droppedEntries.getAndSet(0),
               QUEUE_FULL_LOG_INTERVAL_MS,
               indexedConsensusRequest.getSearchIndex(),
@@ -114,11 +159,26 @@ public class SubscriptionQueueRegistry {
               queue.remainingCapacity());
         } else if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "Subscription queue full, dropped entry searchIndex={}, droppedCount={}",
+              IoTConsensusMessages
+                  .LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8,
               indexedConsensusRequest.getSearchIndex(),
               droppedCount);
         }
       }
+    }
+    return offeredToAnyQueue;
+  }
+
+  private static final class SubscriptionQueueRegistration {
+
+    private final SubscriptionWalRetentionPolicy retentionPolicy;
+    private final LongSupplier committedRetainedMinVersionIdSupplier;
+
+    private SubscriptionQueueRegistration(
+        final SubscriptionWalRetentionPolicy retentionPolicy,
+        final LongSupplier committedRetainedMinVersionIdSupplier) {
+      this.retentionPolicy = retentionPolicy;
+      this.committedRetainedMinVersionIdSupplier = committedRetainedMinVersionIdSupplier;
     }
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.source.Source
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
@@ -117,7 +118,8 @@ public class CteScanNode extends SourceNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(newChildren.isEmpty(), "newChildren is not empty");
+    checkArgument(
+        newChildren.isEmpty(), DataNodeQueryMessages.EXCEPTION_NEWCHILDREN_IS_NOT_EMPTY_170FCE18);
     return this;
   }
 

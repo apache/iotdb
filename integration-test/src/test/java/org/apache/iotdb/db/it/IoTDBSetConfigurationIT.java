@@ -179,6 +179,72 @@ public class IoTDBSetConfigurationIT {
   }
 
   @Test
+  public void testRejectedWalThrottleThresholdDoesNotUpdateConfiguration() {
+    String key = "wal_throttle_threshold_in_byte";
+    String validValue = "1073741824";
+    String defaultValue = "214748364800";
+    int dataNodeId = EnvFactory.getEnv().getConfigNodeWrapperList().size();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"" + key + "\"=\"" + validValue + "\"");
+      assertAppliedConfiguration(0, key, validValue);
+      assertAppliedConfiguration(dataNodeId, key, validValue);
+
+      for (String invalidValue : Arrays.asList("bad", "9223372036854775808")) {
+        assertSetConfigurationFailed(
+            statement,
+            "set configuration \"" + key + "\"=\"" + invalidValue + "\"",
+            "NumberFormatException");
+        assertAppliedConfiguration(0, key, validValue);
+        assertAppliedConfiguration(dataNodeId, key, validValue);
+        Assert.assertTrue(
+            EnvFactory.getEnv().getNodeWrapperList().stream()
+                .allMatch(
+                    nodeWrapper ->
+                        checkConfigFileContains(nodeWrapper, key + "=" + validValue)
+                            && !checkConfigFileContains(nodeWrapper, key + "=" + invalidValue)));
+      }
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("set configuration \"" + key + "\"=\"" + defaultValue + "\"");
+      } catch (Exception e) {
+        Assert.fail(e.getMessage());
+      }
+    }
+    Assert.assertTrue(
+        EnvFactory.getEnv().getNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper -> checkConfigFileContains(nodeWrapper, key + "=" + defaultValue)));
+  }
+
+  @Test
+  public void testHotReloadRegionMigrationFileRemoveSpeedLimit() {
+    String key = "region_migration_file_remove_speed_limit_bytes_per_second";
+    int dataNodeId = EnvFactory.getEnv().getConfigNodeWrapperList().size();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"" + key + "\"=\"65536\" on " + dataNodeId);
+      assertAppliedConfiguration(dataNodeId, key, "65536");
+      Assert.assertTrue(
+          checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), key + "=65536"));
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    } finally {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("set configuration \"" + key + "\"=\"16777216\" on " + dataNodeId);
+      } catch (Exception e) {
+        Assert.fail(e.getMessage());
+      }
+    }
+    Assert.assertTrue(
+        checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), key + "=16777216"));
+  }
+
+  @Test
   public void testHotReloadContinuousQueryMinEveryInterval() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
 import org.apache.iotdb.rpc.RpcSslUtils;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.conf.Parameters;
@@ -58,8 +59,10 @@ import javax.net.ssl.TrustManager;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.AccessDeniedException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -80,7 +83,7 @@ public class Utils {
   private Utils() {}
 
   public static String hostAddress(TEndPoint endpoint) {
-    return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
+    return UrlUtils.convertTEndPointIpv4AndIpv6Url(endpoint);
   }
 
   public static String fromTEndPointToString(TEndPoint endpoint) {
@@ -101,8 +104,7 @@ public class Utils {
   }
 
   public static TEndPoint fromRaftPeerAddressToTEndPoint(String address) {
-    String[] items = address.split(":");
-    return new TEndPoint(items[0], Integer.parseInt(items[1]));
+    return UrlUtils.parseTEndPointIpv4AndIpv6Url(address);
   }
 
   public static int fromRaftPeerIdToNodeId(RaftPeerId id) {
@@ -110,8 +112,7 @@ public class Utils {
   }
 
   public static TEndPoint fromRaftPeerProtoToTEndPoint(RaftPeerProto proto) {
-    String[] items = proto.getAddress().split(":");
-    return new TEndPoint(items[0], Integer.parseInt(items[1]));
+    return fromRaftPeerAddressToTEndPoint(proto.getAddress());
   }
 
   // priority is used as ordinal of leader election
@@ -184,10 +185,23 @@ public class Utils {
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
     AutoScalingBufferWriteTransport byteBuffer =
-        new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
-    TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
-    status.write(protocol);
-    return ByteBuffer.wrap(byteBuffer.getBuffer());
+        createAutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
+    try {
+      TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
+      status.write(protocol);
+      return ByteBuffer.wrap(Arrays.copyOf(byteBuffer.getBuffer(), byteBuffer.getPos()));
+    } finally {
+      byteBuffer.close();
+    }
+  }
+
+  private static AutoScalingBufferWriteTransport createAutoScalingBufferWriteTransport(
+      int initialCapacity) throws TException {
+    try {
+      return new AutoScalingBufferWriteTransport(initialCapacity);
+    } catch (IOException e) {
+      throw new TException(e);
+    }
   }
 
   public static TSStatus deserializeFrom(ByteBuffer buffer) throws TException {

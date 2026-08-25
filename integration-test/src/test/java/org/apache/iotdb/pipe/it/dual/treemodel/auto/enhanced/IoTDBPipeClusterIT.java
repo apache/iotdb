@@ -84,6 +84,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -99,6 +100,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -132,7 +134,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
   private void testMachineDowntime(String sink) {
     StringBuilder a = new StringBuilder();
     for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
-      a.append(nodeWrapper.getIp()).append(":").append(nodeWrapper.getPort());
+      a.append(nodeWrapper.getIpAndPortString());
       a.append(",");
     }
     a.deleteCharAt(a.length() - 1);

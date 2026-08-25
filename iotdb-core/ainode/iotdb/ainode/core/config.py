@@ -466,13 +466,24 @@ def load_properties(filepath, sep="=", comment_char="#"):
 def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
     """Parse TEndPoint from a given endpoint url.
     Args:
-        endpoint_url: an endpoint url, format: ip:port
+        endpoint_url: an endpoint url, format: host:port or [ipv6]:port
     Returns:
         TEndPoint
     Raises:
-        BadNodeUrlError
+        BadNodeUrlException
     """
-    split = endpoint_url.split(":")
+    if endpoint_url.startswith("["):
+        end_index = endpoint_url.find("]")
+        if end_index <= 1 or end_index + 1 >= len(endpoint_url):
+            raise BadNodeUrlException(endpoint_url)
+        if endpoint_url[end_index + 1] != ":":
+            raise BadNodeUrlException(endpoint_url)
+        split = [endpoint_url[1:end_index], endpoint_url[end_index + 2 :]]
+    else:
+        if "[" in endpoint_url or "]" in endpoint_url:
+            raise BadNodeUrlException(endpoint_url)
+        split = endpoint_url.rsplit(":", 1)
+
     if len(split) != 2:
         raise BadNodeUrlException(endpoint_url)
 

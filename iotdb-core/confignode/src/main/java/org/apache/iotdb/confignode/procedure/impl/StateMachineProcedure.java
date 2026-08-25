@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 
@@ -132,6 +133,17 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   /**
+   * Returns whether the specified state is already present in the persisted state history.
+   *
+   * <p>The current state is included once it has been scheduled. This is useful when an append-only
+   * state is added to a procedure and the new execution path needs to coexist with procedures
+   * persisted by an older version.
+   */
+  protected final boolean hasReachedState(final TState state) {
+    return states.contains(getStateId(state));
+  }
+
+  /**
    * Add a child procedure to execute.
    *
    * @param childProcedure the child procedure
@@ -145,10 +157,17 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     updateTimestamp();
     try {
       if (noMoreState() || isFailed()) {
-        return null;
+        return new Procedure[0];
       }
 
       TState state = getCurrentState();
+      if (state == null) {
+        LOG.warn(
+            ProcedureMessages.STATE_MACHINE_PROCEDURE_EOF_STATE_SKIP_EXECUTION, getProcId(), this);
+        stateFlow = Flow.NO_MORE_STATE;
+        setStateDeserialized(false);
+        return new Procedure[0];
+      }
 
       // init for the first execution
       if (states.isEmpty()) {
@@ -156,7 +175,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         addNextStateAndCalculateCycles();
       }
 
-      LOG.trace("{}", this);
+      LOG.trace(ProcedureMessages.LOG_ARG_8393DD4A, this);
       stateFlow = executeFromState(env, state);
       if (!isFailed()) {
         addNextStateAndCalculateCycles();
@@ -168,7 +187,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         subProcList.clear();
         return subProcedures;
       }
-      return (isWaiting() || isFailed() || noMoreState()) ? null : new Procedure[] {this};
+      return (isWaiting() || isFailed() || noMoreState())
+          ? new Procedure[0]
+          : new Procedure[] {this};
     } finally {
       updateTimestamp();
     }
@@ -179,7 +200,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     if (Flow.HAS_MORE_STATE == stateFlow) {
       if (nextState == NO_NEXT_STATE) {
         LOG.error(
-            "StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE. It is likely that there is some problem with the code. Please check the code. This procedure is about to be terminated: {}",
+            ProcedureMessages
+                .LOG_STATEMACHINEPROCEDURE_PID_ARG_NOT_SET_NEXT_STATE_BUT_RETURN_HAS_7F93E63F,
             getProcId(),
             this);
         stateFlow = Flow.NO_MORE_STATE;
@@ -190,7 +212,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     if (Flow.NO_MORE_STATE == stateFlow) {
       if (nextState != NO_NEXT_STATE) {
         LOG.warn(
-            "StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE",
+            ProcedureMessages
+                .LOG_STATEMACHINEPROCEDURE_PID_ARG_SET_NEXT_STATE_ARG_BUT_RETURN_NO_0CA2D56C,
             getProcId(),
             nextState);
       }

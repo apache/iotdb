@@ -50,7 +50,9 @@ public class LiteralInterpreter {
   private final SessionInfo session;
 
   public LiteralInterpreter(PlannerContext plannerContext, SessionInfo session) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
     this.session = session;
   }
 
@@ -66,7 +68,7 @@ public class LiteralInterpreter {
     private final Type type;
 
     private LiteralVisitor(Type type) {
-      this.type = requireNonNull(type, "type is null");
+      this.type = requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
     }
 
     @Override

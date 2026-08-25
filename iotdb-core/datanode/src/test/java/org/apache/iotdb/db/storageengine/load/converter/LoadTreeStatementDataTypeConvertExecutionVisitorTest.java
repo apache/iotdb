@@ -21,13 +21,16 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -37,6 +40,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -108,6 +112,55 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     final int loadedPointCountAfterFallback = pointCountByDevice.getOrDefault(DEVICE_2, 0);
     Assert.assertTrue(loadedPointCountBeforeCorruption > 0);
     Assert.assertEquals(loadedPointCountBeforeCorruption, loadedPointCountAfterFallback);
+  }
+
+  @Test
+  public void testFlushesPendingTabletsWhenIteratorFails() throws Exception {
+    tsFile = File.createTempFile("load-tree-pending-tablet", ".tsfile");
+    final List<IMeasurementSchema> schemaList =
+        Arrays.asList(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN));
+    final Tablet tablet = new Tablet(DEVICE_0, schemaList, 1);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue("s0", 0, 1L);
+
+    final Map<String, Integer> pointCountByDevice = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPoints(statement, pointCountByDevice);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            },
+            file -> new ThrowingTabletIterator(file, tablet));
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(1, pointCountByDevice.getOrDefault(DEVICE_0, 0).intValue());
+  }
+
+  @Test
+  public void testLoadScanParserUsesQueryMemoryPoolInsteadOfPipeMemory() throws Exception {
+    tsFile = new File("load-tree-parser-query-memory.tsfile");
+    writeTsFile(tsFile);
+
+    final long pipeMemoryBefore = PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes();
+    final LoadTsFileMemoryManager loadMemoryManager = LoadTsFileMemoryManager.getInstance();
+    final long loadMemoryBefore = loadMemoryManager.getUsedMemorySizeInBytes();
+
+    try (final LoadTreeTsFileTabletIterator tabletIterator =
+        new LoadTreeTsFileTabletIterator(tsFile, true)) {
+      Assert.assertTrue(tabletIterator.hasNext());
+      Assert.assertNotNull(tabletIterator.next());
+      Assert.assertTrue(loadMemoryManager.getUsedMemorySizeInBytes() > loadMemoryBefore);
+      Assert.assertEquals(
+          pipeMemoryBefore, PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes());
+    }
+
+    Assert.assertEquals(loadMemoryBefore, loadMemoryManager.getUsedMemorySizeInBytes());
+    Assert.assertEquals(
+        pipeMemoryBefore, PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes());
   }
 
   @Test
@@ -207,6 +260,24 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
         pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s8", 0) < ROW_COUNT_PER_DEVICE);
     Assert.assertTrue(
         pointCountByTimeseries.getOrDefault(ALIGNED_DEVICE + ".s12", 0) < ROW_COUNT_PER_DEVICE);
+  }
+
+  @Test
+  public void testPipeOutOfMemoryIsTemporaryUnavailable() throws Exception {
+    tsFile = File.createTempFile("oom", ".tsfile");
+
+    final LoadTreeConvertedInsertTabletStatementExceptionVisitor visitor =
+        new LoadTreeConvertedInsertTabletStatementExceptionVisitor();
+    final TSStatus status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            new IllegalStateException(
+                "wrapped memory pressure",
+                new PipeRuntimeOutOfMemoryCriticalException("pipe tablet memory is not enough")));
+
+    Assert.assertEquals(
+        TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(), status.getCode());
+    Assert.assertNotEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
   }
 
   private void writeTsFile(final File file) throws Exception {
@@ -375,6 +446,38 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
 
     private static void setPipeMemoryManagementEnabled(final boolean enabled) {
       CommonDescriptor.getInstance().getConfig().setPipeMemoryManagementEnabled(enabled);
+    }
+  }
+
+  private static class ThrowingTabletIterator extends LoadTreeTsFileTabletIterator {
+    private final Pair<Tablet, Boolean> tabletWithIsAligned;
+    private boolean tabletAvailable = true;
+
+    private ThrowingTabletIterator(final File file, final Tablet tablet) {
+      super(file, true);
+      tabletWithIsAligned = new Pair<>(tablet, false);
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (tabletAvailable) {
+        return true;
+      }
+      throw new IllegalStateException("synthetic parser failure");
+    }
+
+    @Override
+    public Pair<Tablet, Boolean> next() {
+      if (!tabletAvailable) {
+        throw new IllegalStateException("synthetic parser failure");
+      }
+      tabletAvailable = false;
+      return tabletWithIsAligned;
+    }
+
+    @Override
+    public void close() {
+      // No parser resources are allocated by this test iterator.
     }
   }
 }

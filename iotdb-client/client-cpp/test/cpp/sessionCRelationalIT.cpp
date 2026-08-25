@@ -254,6 +254,19 @@ TEST_CASE("C API Table - Multi-node table session", "[c_table_multiNode][c_table
   ts_table_session_destroy(localSession);
 }
 
+TEST_CASE("C API Table - Reject SQL after close", "[c_table_close][c_table_lifecycle]") {
+  CaseReporter cr("c_table_close");
+
+  CTableSession* localSession = ts_table_session_new("127.0.0.1", 6667, "root", "root", "");
+  REQUIRE(localSession != nullptr);
+  REQUIRE(ts_table_session_open(localSession) == TS_OK);
+
+  ts_table_session_close(localSession);
+
+  REQUIRE(ts_table_session_execute_non_query(localSession, "SHOW DATABASES") != TS_OK);
+  ts_table_session_destroy(localSession);
+}
+
 /* ============================================================
  *  Dataset column info (table model)
  * ============================================================ */

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheUpdateSource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
@@ -60,7 +61,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue {
+public class InsertRowNode extends InsertNode implements WALEntryValue, LastCacheUpdateSource {
 
   private static final byte TYPE_RAW_STRING = -1;
 
@@ -341,6 +342,73 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     getType().serialize(stream);
     subSerialize(stream);
+  }
+
+  @Override
+  protected int serializedAttributesSize() {
+    return PlanNodeType.BYTES + serializedSubAttributesSize();
+  }
+
+  /**
+   * Returns the exact number of bytes written by the row serializer.
+   *
+   * @return the serialized row field size
+   */
+  protected int serializedSubAttributesSize() {
+    return Long.BYTES
+        + ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath())
+        + serializedMeasurementsAndValuesSize();
+  }
+
+  /**
+   * Returns the exact number of bytes written by the measurement and value serializer.
+   *
+   * @return the serialized measurement and value size
+   */
+  protected int serializedMeasurementsAndValuesSize() {
+    int size = Integer.BYTES + Byte.BYTES;
+
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!shouldSerializeMeasurement(i)) {
+        continue;
+      }
+      size +=
+          measurementSchemas == null
+              ? ReadWriteIOUtils.sizeToWrite(measurements[i])
+              : measurementSchemas[i].serializedSize();
+    }
+
+    for (int i = 0; values != null && i < values.length; i++) {
+      if (!shouldSerializeMeasurement(i)) {
+        continue;
+      }
+      size += serializedValueSize(i);
+    }
+
+    return size + Byte.BYTES + Byte.BYTES;
+  }
+
+  private int serializedValueSize(final int index) {
+    final TSDataType dataType = getDataTypeIfPresent(index);
+    if (values[index] == null) {
+      return Byte.BYTES + (dataType == null ? 0 : Byte.BYTES);
+    }
+
+    if (isNeedInferType) {
+      return Byte.BYTES + ReadWriteIOUtils.sizeToWrite(values[index].toString());
+    }
+
+    return Byte.BYTES
+        + switch (dataType) {
+          case BOOLEAN -> Byte.BYTES;
+          case INT32, DATE -> Integer.BYTES;
+          case INT64, TIMESTAMP -> Long.BYTES;
+          case FLOAT -> Float.BYTES;
+          case DOUBLE -> Double.BYTES;
+          case TEXT, STRING, BLOB, OBJECT -> ReadWriteIOUtils.sizeToWrite((Binary) values[index]);
+          case VECTOR, UNKNOWN ->
+              throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
+        };
   }
 
   void subSerialize(ByteBuffer buffer) {
@@ -1010,6 +1078,21 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
   }
 
+  @Override
+  public long getLastCacheTimestamp() {
+    return time;
+  }
+
+  @Override
+  public boolean hasLastCacheValue(final int index) {
+    return canComposeTimeValuePair(index);
+  }
+
+  @Override
+  public TimeValuePair getLastCacheValue(final int index) {
+    return composeTimeValuePair(index);
+  }
+
   private boolean canComposeTimeValuePair(final int columnIndex) {
     return measurements != null
         && columnIndex >= 0
@@ -1026,19 +1109,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public void updateLastCache(String databaseName) {
-    String[] rawMeasurements = getRawMeasurements();
-    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
-    for (int i = 0; i < rawMeasurements.length; i++) {
-      timeValuePairs[i] = composeTimeValuePair(i);
-    }
     TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCacheIfExists(
-            databaseName,
-            getDeviceID(),
-            rawMeasurements,
-            timeValuePairs,
-            isAligned,
-            measurementSchemas);
+            databaseName, getDeviceID(), measurements, this, isAligned, measurementSchemas);
   }
 
   @Override

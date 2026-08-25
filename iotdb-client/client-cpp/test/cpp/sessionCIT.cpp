@@ -497,6 +497,27 @@ TEST_CASE("C API - Tablet row count and reset", "[c_tabletReset]") {
   ts_tablet_destroy(tablet);
 }
 
+TEST_CASE("C API - Tablet index bounds", "[c_tabletBounds]") {
+  CaseReporter cr("c_tabletBounds");
+  const char* colNames[] = {"s1"};
+  TSDataType_C dts[] = {TS_TYPE_INT64};
+  CTablet* tablet = ts_tablet_new("root.ctest.d1", 1, colNames, dts, 10);
+  REQUIRE(tablet != nullptr);
+
+  REQUIRE(ts_tablet_add_timestamp(tablet, 0, 1) == TS_OK);
+  REQUIRE(ts_tablet_add_value_int64(tablet, 0, 0, 100) == TS_OK);
+  REQUIRE(ts_tablet_add_timestamp(tablet, 100, 2) != TS_OK);
+  REQUIRE(ts_tablet_add_value_int64(tablet, 1, 0, 100) != TS_OK);
+  REQUIRE(ts_tablet_add_value_int64(tablet, 0, 100, 100) != TS_OK);
+  REQUIRE(ts_tablet_set_row_count(tablet, -1) != TS_OK);
+  REQUIRE(ts_tablet_set_row_count(tablet, 11) != TS_OK);
+  REQUIRE(ts_tablet_set_row_count(tablet, 1000000) != TS_OK);
+  REQUIRE(ts_tablet_set_row_count(tablet, 5) == TS_OK);
+  REQUIRE(ts_tablet_get_row_count(tablet) == 5);
+
+  ts_tablet_destroy(tablet);
+}
+
 TEST_CASE("C API - Aligned timeseries and aligned writes", "[c_aligned]") {
   CaseReporter cr("c_aligned");
 
@@ -770,4 +791,34 @@ TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDelete]") {
   REQUIRE(ts_session_delete_timeseries(g_session, pdate) == TS_OK);
   REQUIRE(ts_session_delete_timeseries(g_session, pblob) == TS_OK);
   REQUIRE(ts_session_delete_database(g_session, sg) == TS_OK);
+}
+
+TEST_CASE("C API - Query DATE 1000-01-01", "[c_dateMinYear]") {
+  CaseReporter cr("c_dateMinYear");
+
+  const char* path = "root.ctest.d1.s_date_min";
+  ensureTimeseries(g_session, path, TS_TYPE_DATE, TS_ENCODING_PLAIN, TS_COMPRESSION_SNAPPY);
+
+  const char* deviceId = "root.ctest.d1";
+  const char* measurements[] = {"s_date_min"};
+  TSDataType_C types[] = {TS_TYPE_DATE};
+  TSDate_C dateVal = {1000, 1, 1};
+  const void* vals[] = {&dateVal};
+  REQUIRE(ts_session_insert_record(g_session, deviceId, 1000LL, 1, measurements, types, vals) ==
+          TS_OK);
+
+  CSessionDataSet* dataSet = nullptr;
+  REQUIRE(ts_session_execute_query(g_session,
+                                   "select s_date_min from root.ctest.d1 where time=1000",
+                                   &dataSet) == TS_OK);
+  REQUIRE(dataSet != nullptr);
+  REQUIRE(ts_dataset_has_next(dataSet));
+  CRowRecord* record = ts_dataset_next(dataSet);
+  REQUIRE(record != nullptr);
+  REQUIRE_FALSE(ts_row_record_is_null(record, 0));
+  REQUIRE(ts_row_record_get_date_int32(record, 0) == 10000101);
+  ts_row_record_destroy(record);
+  ts_dataset_destroy(dataSet);
+
+  REQUIRE(ts_session_delete_timeseries(g_session, path) == TS_OK);
 }

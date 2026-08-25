@@ -79,6 +79,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   @Override
   public void bufferTableModelTablet(String dataBase, Tablet tablet) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
+    fallbackBuilder.bufferTableModelTablet(dataBase, tablet);
   }
 
   @Override
@@ -92,13 +93,15 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     if (dataBase2TabletList.isEmpty()) {
       return new ArrayList<>(0);
     }
+    final List<Pair<String, File>> pairList = new ArrayList<>();
     try {
-      final List<Pair<String, File>> pairList = new ArrayList<>();
       for (final String dataBase : dataBase2TabletList.keySet()) {
         pairList.addAll(writeTabletsToTsFiles(dataBase));
       }
       return pairList;
     } catch (final Exception e) {
+      pairList.forEach(
+          pair -> org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(pair.right));
       LOGGER.warn(
           DataNodePipeMessages
               .EXCEPTION_OCCURRED_WHEN_PIPETABLEMODELTSFILEBUILDERV2_WRITING_TABLETS_TO,
@@ -131,10 +134,17 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
       throws WriteProcessException {
     final IMemTable memTable = new PrimitiveMemTable(null, null);
     final List<Pair<String, File>> sealedFiles = new ArrayList<>();
-    try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
-      writeTabletsIntoOneFile(dataBase, memTable, writer);
-      sealedFiles.add(new Pair<>(dataBase, writer.getFile()));
+    File file = null;
+    try {
+      file = createFile();
+      try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(file)) {
+        writeTabletsIntoOneFile(dataBase, memTable, writer);
+        sealedFiles.add(new Pair<>(dataBase, writer.getFile()));
+      }
     } catch (final Exception e) {
+      if (file != null) {
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
+      }
       LOGGER.warn(
           DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
           currentBatchId.get(),

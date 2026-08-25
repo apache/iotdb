@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -57,17 +59,17 @@ public class CurrentTime extends Expression {
   }
 
   public CurrentTime(NodeLocation location, Function function) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
 
-    this.function = requireNonNull(function, "function is null");
+    this.function = requireNonNull(function, QueryMessages.EXCEPTION_FUNCTION_IS_NULL_E0FA4B62);
     this.precision = null;
   }
 
   public CurrentTime(NodeLocation location, Function function, Integer precision) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
 
-    this.function = requireNonNull(function, "function is null");
-    this.precision = requireNonNull(precision, "precision is null");
+    this.function = requireNonNull(function, QueryMessages.EXCEPTION_FUNCTION_IS_NULL_E0FA4B62);
+    this.precision = requireNonNull(precision, QueryMessages.EXCEPTION_PRECISION_IS_NULL_73E48139);
   }
 
   public Function getFunction() {

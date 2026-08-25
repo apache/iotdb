@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.consensus.ratis.utils;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.config.RatisConfig;
 
 import org.apache.ratis.protocol.RaftGroupId;
+import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.util.TimeDuration;
 import org.junit.Assert;
 import org.junit.Test;
@@ -63,5 +65,57 @@ public class UtilsTest {
     Assert.assertEquals(
         TimeDuration.valueOf(52700, TimeUnit.MILLISECONDS),
         Utils.getMaxRetrySleepTime(clientConfig));
+  }
+
+  @Test
+  public void testRaftPeerAddressRoundTripWithIpv4() {
+    TEndPoint endPoint = new TEndPoint("192.0.0.1", 10720);
+
+    Assert.assertEquals("192.0.0.1:10720", Utils.hostAddress(endPoint));
+    Assert.assertEquals(
+        endPoint, Utils.fromRaftPeerAddressToTEndPoint(Utils.hostAddress(endPoint)));
+  }
+
+  @Test
+  public void testRaftPeerAddressRoundTripWithHostName() {
+    TEndPoint endPoint = new TEndPoint("localhost", 10720);
+
+    Assert.assertEquals("localhost:10720", Utils.hostAddress(endPoint));
+    Assert.assertEquals(
+        endPoint, Utils.fromRaftPeerAddressToTEndPoint(Utils.hostAddress(endPoint)));
+  }
+
+  @Test
+  public void testRaftPeerAddressRoundTripWithIpv6() {
+    TEndPoint endPoint = new TEndPoint("::1", 10720);
+
+    Assert.assertEquals("[::1]:10720", Utils.hostAddress(endPoint));
+    Assert.assertEquals(
+        endPoint, Utils.fromRaftPeerAddressToTEndPoint(Utils.hostAddress(endPoint)));
+    Assert.assertEquals(endPoint, Utils.fromRaftPeerAddressToTEndPoint("::1:10720"));
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testRaftPeerAddressRejectsBracketedIpv6WithoutPortSeparator() {
+    Utils.fromRaftPeerAddressToTEndPoint("[::1]10720");
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testRaftPeerAddressRejectsBracketedIpv6WithoutPort() {
+    Utils.fromRaftPeerAddressToTEndPoint("[::1]:");
+  }
+
+  @Test(expected = NumberFormatException.class)
+  public void testRaftPeerAddressRejectsBracketedIpv6WithoutEndMark() {
+    Utils.fromRaftPeerAddressToTEndPoint("[::1:10720");
+  }
+
+  @Test
+  public void testRaftPeerProtoRoundTripWithIpv6() {
+    TEndPoint endPoint = new TEndPoint("0:0:0:0:0:0:0:1", 10720);
+    RaftPeer raftPeer = Utils.fromNodeInfoAndPriorityToRaftPeer(1, endPoint, 0);
+
+    Assert.assertEquals("[0:0:0:0:0:0:0:1]:10720", raftPeer.getAddress());
+    Assert.assertEquals(endPoint, Utils.fromRaftPeerProtoToTEndPoint(raftPeer.getRaftPeerProto()));
   }
 }

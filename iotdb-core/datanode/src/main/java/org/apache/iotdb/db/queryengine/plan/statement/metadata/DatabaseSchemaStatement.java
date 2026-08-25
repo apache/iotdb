@@ -36,9 +36,11 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private PartialPath databasePath;
   private Long ttl = null;
   private Long timePartitionInterval = null;
-  private Integer schemaRegionGroupNum = null;
-  private Integer dataRegionGroupNum = null;
+  private Integer maxSchemaRegionGroupNum = null;
+  private Integer maxDataRegionGroupNum = null;
   private boolean enablePrintExceptionLog = true;
+  private boolean needLastCache = true;
+  private boolean isNeedLastCacheSet = false;
 
   // Deprecated
   private Integer schemaReplicationFactor = null;
@@ -94,20 +96,20 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     this.timePartitionInterval = timePartitionInterval;
   }
 
-  public Integer getSchemaRegionGroupNum() {
-    return schemaRegionGroupNum;
+  public Integer getMaxSchemaRegionGroupNum() {
+    return maxSchemaRegionGroupNum;
   }
 
-  public void setSchemaRegionGroupNum(final Integer schemaRegionGroupNum) {
-    this.schemaRegionGroupNum = schemaRegionGroupNum;
+  public void setMaxSchemaRegionGroupNum(final Integer maxSchemaRegionGroupNum) {
+    this.maxSchemaRegionGroupNum = maxSchemaRegionGroupNum;
   }
 
-  public Integer getDataRegionGroupNum() {
-    return dataRegionGroupNum;
+  public Integer getMaxDataRegionGroupNum() {
+    return maxDataRegionGroupNum;
   }
 
-  public void setDataRegionGroupNum(final Integer dataRegionGroupNum) {
-    this.dataRegionGroupNum = dataRegionGroupNum;
+  public void setMaxDataRegionGroupNum(final Integer maxDataRegionGroupNum) {
+    this.maxDataRegionGroupNum = maxDataRegionGroupNum;
   }
 
   public boolean getEnablePrintExceptionLog() {
@@ -116,6 +118,19 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   public void setEnablePrintExceptionLog(final boolean enablePrintExceptionLog) {
     this.enablePrintExceptionLog = enablePrintExceptionLog;
+  }
+
+  public boolean isNeedLastCache() {
+    return needLastCache;
+  }
+
+  public boolean isSetNeedLastCache() {
+    return isNeedLastCacheSet;
+  }
+
+  public void setNeedLastCache(final boolean needLastCache) {
+    this.needLastCache = needLastCache;
+    this.isNeedLastCacheSet = true;
   }
 
   @Override
@@ -141,8 +156,8 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   @Override
   public String toString() {
-    return "SetStorageGroupStatement{"
-        + "storageGroupPath="
+    return "DatabaseSchemaStatement{"
+        + "databasePath="
         + databasePath
         + ", ttl="
         + ttl
@@ -152,10 +167,10 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
         + dataReplicationFactor
         + ", timePartitionInterval="
         + timePartitionInterval
-        + ", schemaRegionGroupNum="
-        + schemaRegionGroupNum
-        + ", dataRegionGroupNum="
-        + dataRegionGroupNum
+        + ", maxSchemaRegionGroupNum="
+        + maxSchemaRegionGroupNum
+        + ", maxDataRegionGroupNum="
+        + maxDataRegionGroupNum
         + '}';
   }
 

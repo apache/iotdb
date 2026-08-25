@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.thrift.annotation.Nullable;
@@ -162,6 +164,24 @@ public class ConsumerGroupMeta {
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
+
+    final String expectedSqlDialect = existedConsumerMeta.getConfig().getSqlDialect();
+    final String actualSqlDialect = consumerMeta.getConfig().getSqlDialect();
+    final boolean isExpectedTableModel =
+        SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(expectedSqlDialect);
+    final boolean isActualTableModel =
+        SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(actualSqlDialect);
+    if (isExpectedTableModel != isActualTableModel) {
+      final String exceptionMessage =
+          String.format(
+              PipeMessages
+                  .EXCEPTION_FAILED_TO_CREATE_CONSUMER_ARG_BECAUSE_INCONSISTENT_SQL_DIALECT_UNDER_THE_SAME_CONSUMER_GROUP_EXPECTED_ARG_ACTUAL_ARG_A7DA3FB9,
+              consumerMeta.getConsumerId(),
+              expectedSqlDialect,
+              actualSqlDialect);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
   }
 
   public void addConsumer(final ConsumerMeta consumerMeta) {
@@ -193,6 +213,15 @@ public class ConsumerGroupMeta {
 
   public ConsumerMeta getConsumerMeta(final String consumerId) {
     return consumerIdToConsumerMeta.get(consumerId);
+  }
+
+  public boolean visibleUnder(final boolean isTableModel) {
+    if (consumerIdToConsumerMeta.isEmpty()) {
+      return false;
+    }
+    final String sqlDialect =
+        consumerIdToConsumerMeta.values().iterator().next().getConfig().getSqlDialect();
+    return isTableModel == SystemConstant.SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(sqlDialect);
   }
 
   ////////////////////////// subscription //////////////////////////
@@ -259,8 +288,10 @@ public class ConsumerGroupMeta {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(
-              "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer group %s",
-              consumerId, consumerGroupId));
+              PipeMessages
+                  .EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87,
+              consumerId,
+              consumerGroupId));
     }
 
     for (final String topic : topics) {
@@ -297,8 +328,10 @@ public class ConsumerGroupMeta {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(
           String.format(
-              "Failed to remove subscription from consumer group meta: consumer %s does not exist in consumer group %s",
-              consumerId, consumerGroupId));
+              PipeMessages
+                  .EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3,
+              consumerId,
+              consumerGroupId));
     }
 
     final Set<String> noSubscriptionTopicAfterRemoval = new HashSet<>();
