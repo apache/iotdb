@@ -407,7 +407,29 @@ public class LogDispatcher {
     }
 
     void waitForBatchAccumulation(long waitingTimeInMs) throws InterruptedException {
-      Thread.sleep(waitingTimeInMs);
+      if (waitingTimeInMs <= 0) {
+        return;
+      }
+
+      final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(waitingTimeInMs);
+      final int maxLogEntriesNumPerBatch = config.getReplication().getMaxLogEntriesNumPerBatch();
+
+      // Keep collecting while the batch is below its entry limit. A plain sleep makes the
+      // dispatcher wait for the full accumulation interval even when the batch becomes full
+      // immediately, which unnecessarily throttles IoTConsensus under sustained write load.
+      while (bufferedEntries.size() < maxLogEntriesNumPerBatch) {
+        final long remainingNanos = deadlineNanos - System.nanoTime();
+        if (remainingNanos <= 0) {
+          return;
+        }
+
+        final IndexedConsensusRequest request =
+            pendingEntries.poll(remainingNanos, TimeUnit.NANOSECONDS);
+        if (request == null) {
+          return;
+        }
+        bufferedEntries.add(request);
+      }
     }
 
     public void updateSafelyDeletedSearchIndex() {
