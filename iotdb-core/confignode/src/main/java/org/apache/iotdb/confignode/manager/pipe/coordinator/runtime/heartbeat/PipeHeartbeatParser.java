@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
@@ -32,11 +33,14 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.PipeSourceTreePatternUtils;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -162,23 +166,25 @@ public class PipeHeartbeatParser {
       // Aggregate completed DataRegion ids reported by DataNodes. Only the DataNodes that own the
       // target region can report it, so the coordinator can compare the union against all required
       // DataRegion ids without trusting any DataNode's single per-pipe completion boolean.
+      boolean newlyCompletedDataRegionReported = false;
       if (pipeHeartbeat.hasCompletedDataRegionReport(staticMeta)) {
         for (final Integer completedDataRegionId :
             pipeHeartbeat.getCompletedDataRegionIds(staticMeta)) {
+          newlyCompletedDataRegionReported |=
+              !temporaryMeta.getCompletedDataRegionIds().contains(completedDataRegionId);
           temporaryMeta.markDataRegionCompleted(completedDataRegionId);
         }
       }
 
-      final Set<Integer> requiredDataRegionIds = new HashSet<>();
-      for (final Map.Entry<Integer, PipeTaskMeta> entry :
-          pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
-        if (configManager
-            .getPartitionManager()
-            .isRegionGroupExists(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, entry.getKey()))) {
-          requiredDataRegionIds.add(entry.getKey());
-        }
-      }
+      // Align with copyAndFilterOutNonWorkingDataRegionPipeTasks: CN's task table contains every
+      // user-visible DataRegion, but DataNodes only create / complete tasks for regions that match
+      // the source pattern. Waiting on unmatched regions would prevent snapshot pipes from
+      // dropping.
+      final Set<Integer> requiredDataRegionIds =
+          collectRequiredDataRegionIds(pipeMetaFromCoordinator);
+      final Set<Integer> ignoredDataRegionIds =
+          collectExistingDataRegionIds(pipeMetaFromCoordinator);
+      ignoredDataRegionIds.removeAll(requiredDataRegionIds);
 
       // Remove completed pipes only when every required DataRegion has been reported complete.
       // Relying on the region-level reports (instead of the DataNode-level boolean) prevents a
@@ -201,6 +207,18 @@ public class PipeHeartbeatParser {
         needWriteConsensusOnConfigNodes.set(true);
         needPushPipeMetaToDataNodes.set(true);
         continue;
+      }
+
+      if (newlyCompletedDataRegionReported) {
+        PipeLogger.log(
+            LOGGER::info,
+            ManagerMessages
+                .LOG_SNAPSHOT_PIPE_ARG_WAITING_FOR_DATAREGION_COMPLETION_REQUIRED_ARG_COMPLETED_ARG_REPORTED_ARG_60EA1C34,
+            staticMeta.getPipeName(),
+            requiredDataRegionIds,
+            ignoredDataRegionIds,
+            temporaryMeta.getCompletedDataRegionIds(),
+            pipeHeartbeat.getCompletedDataRegionIds(staticMeta));
       }
 
       // Record statistics
@@ -339,6 +357,99 @@ public class PipeHeartbeatParser {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Collect DataRegion ids that this pipe must wait on before auto-drop. Schema / Config regions
+   * are skipped; DataRegions that the source pattern will not listen to are skipped as well, using
+   * the same {@link DataRegionListeningFilter} as task push-down.
+   *
+   * <p>If database / schema lookup fails, the region is kept (same conservative behavior as {@code
+   * copyAndFilterOutNonWorkingDataRegionPipeTasks}).
+   */
+  private Set<Integer> collectRequiredDataRegionIds(final PipeMeta pipeMetaFromCoordinator) {
+    final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
+    PathPatternTree internalInclusionPathPatternTree = null;
+    if (!staticMeta.isSourceExternal()) {
+      try {
+        internalInclusionPathPatternTree =
+            PipeSourceTreePatternUtils.parseInternalInclusionPathPatternTree(
+                staticMeta.getSourceParameters());
+      } catch (final Exception ignored) {
+        // Keep every existing DataRegion when the pattern cannot be parsed.
+      }
+    }
+
+    final Set<Integer> requiredDataRegionIds = new HashSet<>();
+    for (final Map.Entry<Integer, PipeTaskMeta> entry :
+        pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+      final TConsensusGroupId dataRegionId =
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, entry.getKey());
+      if (!configManager.getPartitionManager().isRegionGroupExists(dataRegionId)) {
+        continue;
+      }
+      if (shouldKeepDataRegionAsRequired(
+          staticMeta, dataRegionId, internalInclusionPathPatternTree)) {
+        requiredDataRegionIds.add(entry.getKey());
+      }
+    }
+    return requiredDataRegionIds;
+  }
+
+  private Set<Integer> collectExistingDataRegionIds(final PipeMeta pipeMeta) {
+    final Set<Integer> ids = new HashSet<>();
+    for (final Integer id : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet()) {
+      if (configManager
+          .getPartitionManager()
+          .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, id))) {
+        ids.add(id);
+      }
+    }
+    return ids;
+  }
+
+  private boolean shouldKeepDataRegionAsRequired(
+      final PipeStaticMeta staticMeta,
+      final TConsensusGroupId dataRegionId,
+      final PathPatternTree internalInclusionPathPatternTree) {
+    // A null tree pattern is valid for table-model pipes, which select data by database/table
+    // parameters rather than a tree path. Only external sources bypass database filtering.
+    if (staticMeta.isSourceExternal()) {
+      return true;
+    }
+
+    final String database;
+    try {
+      database = configManager.getPartitionManager().getRegionDatabase(dataRegionId);
+      if (database == null) {
+        return true;
+      }
+    } catch (final Exception ignored) {
+      return true;
+    }
+
+    final boolean isTableModel;
+    try {
+      final TDatabaseSchema schema =
+          configManager.getClusterSchemaManager().getDatabaseSchemaByName(database);
+      if (schema == null) {
+        return true;
+      }
+      isTableModel = schema.isIsTableModel();
+    } catch (final Exception ignored) {
+      return true;
+    }
+
+    try {
+      return DataRegionListeningFilter.shouldDatabaseBeListened(
+          staticMeta.getSourceParameters(),
+          isTableModel,
+          database,
+          internalInclusionPathPatternTree,
+          staticMeta.getPipeType());
+    } catch (final Exception ignored) {
+      return true;
     }
   }
 }

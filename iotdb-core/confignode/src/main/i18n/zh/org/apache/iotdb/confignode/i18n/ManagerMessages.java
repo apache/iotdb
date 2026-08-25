@@ -686,6 +686,9 @@ public final class ManagerMessages {
   public static final String LOG_ALL_DATANODES_REPORTED_HISTORICAL_PIPE_ARG_COMPLETED_GLOBALREMAININGEVENTCOUNT_ARG_GLOBALREMAININGTIME_255 =
       "所有 DataNode 均报告历史 pipe {} 已完成。globalRemainingEventCount：{}，"
       + "globalRemainingTime：{}，staticMeta：{}";
+  public static final String
+      LOG_SNAPSHOT_PIPE_ARG_WAITING_FOR_DATAREGION_COMPLETION_REQUIRED_ARG_COMPLETED_ARG_REPORTED_ARG_60EA1C34 =
+          "Snapshot pipe {} 仍在等待 DataRegion 完成。required={}，ignored={}，completed={}，reported={}";
   public static final String LOG_UPDATED_PROGRESS_INDEX_PIPE_NAME_ARG_CONSENSUS_GROUP_ID_ARG_DF112F4F = "已更新 (pipe 名称：{}，共识组 id：{}) 的进度索引 ... ";
   public static final String LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5 = "coordinator 上的进度索引：{}，agent 上的进度索引：{}，更新后的 progressIndex：{}";
   public static final String LOG_DETECT_PIPERUNTIMECONNECTORCRITICALEXCEPTION_ARG_7D198DD7 = "检测到 PipeRuntimeConnectorCriticalException %s ";

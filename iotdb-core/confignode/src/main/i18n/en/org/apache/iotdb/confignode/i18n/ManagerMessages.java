@@ -710,6 +710,9 @@ public final class ManagerMessages {
   public static final String LOG_ALL_DATANODES_REPORTED_HISTORICAL_PIPE_ARG_COMPLETED_GLOBALREMAININGEVENTCOUNT_ARG_GLOBALREMAININGTIME_255 =
       "All DataNodes reported historical pipe {} completed. globalRemainingEventCount: {},"
       + " globalRemainingTime: {}, staticMeta: {}";
+  public static final String
+      LOG_SNAPSHOT_PIPE_ARG_WAITING_FOR_DATAREGION_COMPLETION_REQUIRED_ARG_COMPLETED_ARG_REPORTED_ARG_60EA1C34 =
+          "Snapshot pipe {} waiting for DataRegion completion. required={}, ignored={}, completed={}, reported={}";
   public static final String LOG_UPDATED_PROGRESS_INDEX_PIPE_NAME_ARG_CONSENSUS_GROUP_ID_ARG_DF112F4F = "Updated progress index for (pipe name: {}, consensus group id: {}) ... ";
   public static final String LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5 = "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}";
   public static final String LOG_DETECT_PIPERUNTIMECONNECTORCRITICALEXCEPTION_ARG_7D198DD7 = "Detect PipeRuntimeConnectorCriticalException %s ";
