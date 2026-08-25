@@ -111,6 +111,21 @@ public class ConsensusPrefetchingQueue {
 
   private final SubscriptionWalRetentionPolicy retentionPolicy;
 
+  /**
+   * Earliest WAL file version still needed by this consumer group's committed progress. Topic
+   * retention and this boundary are merged conservatively by IoTConsensus before deletion.
+   */
+  private volatile long committedRetainedMinVersionId = 0L;
+
+  private final Object committedRetentionLock = new Object();
+
+  private RegionProgress lastCommittedProgressForRetention;
+
+  private File lastRetainedWalFileForRetention;
+
+  private final Map<Long, WalFileCommitRequirement> walFileCommitRequirements =
+      new ConcurrentHashMap<>();
+
   private final WakeableIndexedConsensusQueue pendingEntries;
 
   private static final int PENDING_QUEUE_CAPACITY = 4096;
@@ -536,7 +551,8 @@ public class ConsensusPrefetchingQueue {
     this.pendingEntries =
         new WakeableIndexedConsensusQueue(
             PENDING_QUEUE_CAPACITY, this::requestPrefetch, this::canAcceptRealtimeEntry);
-    serverImpl.registerSubscriptionQueue(pendingEntries, retentionPolicy);
+    serverImpl.registerSubscriptionQueue(
+        pendingEntries, retentionPolicy, this::getCommittedRetainedMinVersionId);
 
     LOGGER.info(
         DataNodePipeMessages
@@ -790,6 +806,7 @@ public class ConsensusPrefetchingQueue {
     this.observedSeekGeneration = seekGeneration.get();
     discardBatch(this.lingerBatch);
     resetBatchWriterProgress();
+    refreshCommittedWalRetentionBoundAndNotify();
 
     LOGGER.info(
         DataNodePipeMessages
@@ -1104,7 +1121,7 @@ public class ConsensusPrefetchingQueue {
             compareWriterProgress(candidate, existing) > 0 ? candidate : existing);
   }
 
-  private int compareWriterProgress(
+  private static int compareWriterProgress(
       final WriterProgress leftProgress, final WriterProgress rightProgress) {
     int cmp = Long.compare(leftProgress.getPhysicalTime(), rightProgress.getPhysicalTime());
     if (cmp != 0) {
@@ -2094,8 +2111,7 @@ public class ConsensusPrefetchingQueue {
     commitManager.recordMapping(
         consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
     if (tablets.isEmpty()) {
-      return commitManager.commit(
-          consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+      return commitAndRefreshWalRetention(writerId, writerProgress);
     }
 
     // nextOffset <= 0 means all tablets delivered in single batch
@@ -2304,8 +2320,7 @@ public class ConsensusPrefetchingQueue {
       boolean committed = false;
       try {
         committed =
-            commitManager.commitWithoutOutstanding(
-                consumerGroupId, topicName, consensusGroupId, commitWriterId, commitWriterProgress);
+            commitWithoutOutstandingAndRefreshWalRetention(commitWriterId, commitWriterProgress);
       } finally {
         if (!committed
             && Objects.nonNull(event)
@@ -2710,12 +2725,7 @@ public class ConsensusPrefetchingQueue {
           }
 
           final boolean committed =
-              commitManager.commit(
-                  consumerGroupId,
-                  topicName,
-                  consensusGroupId,
-                  commitWriterId,
-                  commitWriterProgress);
+              commitAndRefreshWalRetention(commitWriterId, commitWriterProgress);
           if (!committed) {
             if (!silent) {
               LOGGER.warn(
@@ -3230,6 +3240,7 @@ public class ConsensusPrefetchingQueue {
     // entry so seek/rebind resumes from the intended frontier.
     commitManager.resetState(
         consumerGroupId, topicName, consensusGroupId, request.committedRegionProgress);
+    refreshCommittedWalRetentionBoundAndNotify();
 
     LOGGER.info(
         DataNodePipeMessages
@@ -3241,6 +3252,122 @@ public class ConsensusPrefetchingQueue {
             ? request.committedRegionProgress.getWriterPositions().size()
             : 0,
         seekGeneration.get());
+  }
+
+  private boolean commitAndRefreshWalRetention(
+      final WriterId writerId, final WriterProgress writerProgress) {
+    final boolean committed =
+        commitManager.commit(
+            consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+    if (committed) {
+      refreshCommittedWalRetentionBoundAndNotify();
+    }
+    return committed;
+  }
+
+  private boolean commitWithoutOutstandingAndRefreshWalRetention(
+      final WriterId writerId, final WriterProgress writerProgress) {
+    final boolean committed =
+        commitManager.commitWithoutOutstanding(
+            consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+    if (committed) {
+      refreshCommittedWalRetentionBoundAndNotify();
+    }
+    return committed;
+  }
+
+  private long getCommittedRetainedMinVersionId() {
+    refreshCommittedWalRetentionBound();
+    return committedRetainedMinVersionId;
+  }
+
+  private void refreshCommittedWalRetentionBoundAndNotify() {
+    if (refreshCommittedWalRetentionBound()) {
+      serverImpl.checkAndUpdateSafeDeletedSearchIndex();
+    }
+  }
+
+  private boolean refreshCommittedWalRetentionBound() {
+    final RegionProgress committedRegionProgress =
+        commitManager.getCommittedRegionProgress(consumerGroupId, topicName, consensusGroupId);
+
+    synchronized (committedRetentionLock) {
+      if (Objects.equals(lastCommittedProgressForRetention, committedRegionProgress)
+          && Objects.nonNull(lastRetainedWalFileForRetention)
+          && lastRetainedWalFileForRetention.exists()) {
+        return false;
+      }
+
+      final CommittedWalRetentionBound newRetentionBound =
+          computeCommittedRetainedMinVersionId(committedRegionProgress);
+      final long newRetainedMinVersionId = newRetentionBound.retainedMinVersionId;
+      final boolean changed = committedRetainedMinVersionId != newRetainedMinVersionId;
+      committedRetainedMinVersionId = newRetainedMinVersionId;
+      lastCommittedProgressForRetention = committedRegionProgress;
+      lastRetainedWalFileForRetention = newRetentionBound.retainedWalFile;
+      walFileCommitRequirements.keySet().removeIf(versionId -> versionId < newRetainedMinVersionId);
+      return changed;
+    }
+  }
+
+  private CommittedWalRetentionBound computeCommittedRetainedMinVersionId(
+      final RegionProgress committedRegionProgress) {
+    if (!(consensusReqReader instanceof WALNode)) {
+      return new CommittedWalRetentionBound(0L, null);
+    }
+
+    final WALNode walNode = (WALNode) consensusReqReader;
+    final long currentWalVersion = walNode.getCurrentWALFileVersion();
+    final File[] walFiles = WALFileUtils.listAllWALFiles(walNode.getLogDirectory());
+    if (Objects.isNull(walFiles) || walFiles.length == 0) {
+      return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), null);
+    }
+
+    WALFileUtils.ascSortByVersionId(walFiles);
+    for (final File walFile : walFiles) {
+      final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+      if (versionId >= currentWalVersion) {
+        return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), walFile);
+      }
+      if (ProgressWALIterator.isHeaderOnlyWalFile(walFile)) {
+        continue;
+      }
+
+      WalFileCommitRequirement requirement = walFileCommitRequirements.get(versionId);
+      if (Objects.isNull(requirement)) {
+        try (final ProgressWALReader reader = openProgressWALReader(walFile)) {
+          requirement =
+              WalFileCommitRequirement.fromMetadata(
+                  consensusGroupId.toString(), reader.getMetaData());
+          walFileCommitRequirements.put(versionId, requirement);
+        } catch (final IOException e) {
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_READ_WAL_METADATA_FROM_A2ED50D1,
+              this,
+              walFile,
+              e);
+          return new CommittedWalRetentionBound(versionId, walFile);
+        }
+      }
+
+      if (!requirement.isCoveredBy(committedRegionProgress)) {
+        return new CommittedWalRetentionBound(versionId, walFile);
+      }
+    }
+    return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), null);
+  }
+
+  private static final class CommittedWalRetentionBound {
+
+    private final long retainedMinVersionId;
+    private final File retainedWalFile;
+
+    private CommittedWalRetentionBound(
+        final long retainedMinVersionId, final File retainedWalFile) {
+      this.retainedMinVersionId = retainedMinVersionId;
+      this.retainedWalFile = retainedWalFile;
+    }
   }
 
   public RegionProgress computeTailRegionProgress() {
@@ -3304,6 +3431,77 @@ public class ConsensusPrefetchingQueue {
     private LiveWALMetaDataSnapshot(final long versionId, final WALMetaData metadata) {
       this.versionId = versionId;
       this.metadata = metadata;
+    }
+  }
+
+  static final class WalFileCommitRequirement {
+
+    private final Map<WriterId, WriterProgress> requiredWriterProgress;
+    private final boolean containsUnsupportedProgress;
+
+    private WalFileCommitRequirement(
+        final Map<WriterId, WriterProgress> requiredWriterProgress,
+        final boolean containsUnsupportedProgress) {
+      this.requiredWriterProgress = requiredWriterProgress;
+      this.containsUnsupportedProgress = containsUnsupportedProgress;
+    }
+
+    static WalFileCommitRequirement fromMetadata(
+        final String regionId, final WALMetaData metadata) {
+      if (Objects.isNull(metadata)) {
+        return new WalFileCommitRequirement(Collections.emptyMap(), true);
+      }
+
+      final List<Integer> buffersSize = metadata.getBuffersSize();
+      final List<Long> physicalTimes = metadata.getPhysicalTimes();
+      final List<Short> nodeIds = metadata.getNodeIds();
+      final List<Long> localSeqs = metadata.getLocalSeqs();
+      if (physicalTimes.size() < buffersSize.size()
+          || nodeIds.size() < buffersSize.size()
+          || localSeqs.size() < buffersSize.size()) {
+        return new WalFileCommitRequirement(Collections.emptyMap(), true);
+      }
+
+      final Map<WriterId, WriterProgress> requiredWriterProgress = new LinkedHashMap<>();
+      for (int i = 0; i < buffersSize.size(); i++) {
+        final int writerNodeId = nodeIds.get(i);
+        final long physicalTime = physicalTimes.get(i);
+        final long localSeq = localSeqs.get(i);
+        if (writerNodeId < 0 && physicalTime == 0L && localSeq < 0L) {
+          // Non-search WAL entries do not participate in subscription progress.
+          continue;
+        }
+        if (writerNodeId < 0 || physicalTime < 0L || localSeq < 0L) {
+          // Legacy or incomplete writer metadata cannot be compared safely with RegionProgress.
+          return new WalFileCommitRequirement(Collections.emptyMap(), true);
+        }
+
+        final WriterId writerId = new WriterId(regionId, writerNodeId);
+        final WriterProgress candidateProgress = new WriterProgress(physicalTime, localSeq);
+        requiredWriterProgress.merge(
+            writerId,
+            candidateProgress,
+            (currentProgress, candidate) ->
+                compareWriterProgress(candidate, currentProgress) > 0
+                    ? candidate
+                    : currentProgress);
+      }
+      return new WalFileCommitRequirement(requiredWriterProgress, false);
+    }
+
+    boolean isCoveredBy(final RegionProgress committedRegionProgress) {
+      if (containsUnsupportedProgress || Objects.isNull(committedRegionProgress)) {
+        return false;
+      }
+      for (final Map.Entry<WriterId, WriterProgress> entry : requiredWriterProgress.entrySet()) {
+        final WriterProgress committedWriterProgress =
+            committedRegionProgress.getWriterPositions().get(entry.getKey());
+        if (Objects.isNull(committedWriterProgress)
+            || compareWriterProgress(committedWriterProgress, entry.getValue()) < 0) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 
