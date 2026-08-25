@@ -629,6 +629,7 @@ struct TPullCommitProgressReq {
 struct TPullCommitProgressResp {
   1: required common.TSStatus status
   2: optional map<string, binary> commitRegionProgress
+  3: optional map<string, binary> subscriptionProgress
 }
 
 struct TSyncSubscriptionProgressReq {
