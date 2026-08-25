@@ -1582,18 +1582,6 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     return (int) parsedValue;
   }
 
-  private boolean parseBooleanFromLiteral(final Object value, final String name) {
-    if (!(value instanceof BooleanLiteral)) {
-      throw new SemanticException(
-          name
-              + " value must be a BooleanLiteral, but now is "
-              + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
-              + ", value: "
-              + value);
-    }
-    return ((BooleanLiteral) value).getValue();
-  }
-
   @Override
   public IConfigTask visitCreatePipe(final CreatePipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.OTHER);
