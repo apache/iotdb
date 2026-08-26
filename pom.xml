@@ -58,7 +58,7 @@
         <argLine/>
         <awaitility.version>4.2.0</awaitility.version>
         <boost.include.dir/>
-        <bouncycastle.version>1.84</bouncycastle.version>
+        <bouncycastle.version>1.85</bouncycastle.version>
         <caffeine.version>2.9.3</caffeine.version>
         <cglib.version>3.3.0</cglib.version>
         <checker-qual.version>3.38.0</checker-qual.version>
