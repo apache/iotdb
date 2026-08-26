@@ -92,6 +92,118 @@ import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtil
 
 public class TypeServices {
 
+  private static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();
+
+  // Unsupported fill types defer their exception until the returned strategy is used so check()
+  // can still validate that every TypeEnum has a service entry.
+  public static final TypeService<Supplier<ILinearFill>> LINEAR_FILL_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE -> IntLinearFill::new;
+            case INT64, TIMESTAMP -> LongLinearFill::new;
+            case FLOAT -> FloatLinearFill::new;
+            case DOUBLE -> DoubleLinearFill::new;
+            case BOOLEAN, TEXT, STRING, BLOB, OBJECT -> () -> IDENTITY_LINEAR_FILL;
+            case ROW, UNKNOWN, VECTOR ->
+                () -> {
+                  throw unsupportedDataType(type);
+                };
+          };
+
+  public static final TypeService<Function<IFillFilter, IFill>> PREVIOUS_FILL_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                filter ->
+                    filter == null
+                        ? new BooleanPreviousFill()
+                        : new BooleanPreviousFillWithTimeDuration(filter);
+            case TEXT, STRING, BLOB, OBJECT ->
+                filter ->
+                    filter == null
+                        ? new BinaryPreviousFill()
+                        : new BinaryPreviousFillWithTimeDuration(filter);
+            case INT32, DATE ->
+                filter ->
+                    filter == null
+                        ? new IntPreviousFill()
+                        : new IntPreviousFillWithTimeDuration(filter);
+            case INT64, TIMESTAMP ->
+                filter ->
+                    filter == null
+                        ? new LongPreviousFill()
+                        : new LongPreviousFillWithTimeDuration(filter);
+            case FLOAT ->
+                filter ->
+                    filter == null
+                        ? new FloatPreviousFill()
+                        : new FloatPreviousFillWithTimeDuration(filter);
+            case DOUBLE ->
+                filter ->
+                    filter == null
+                        ? new DoublePreviousFill()
+                        : new DoublePreviousFillWithTimeDuration(filter);
+            case ROW, UNKNOWN, VECTOR ->
+                filter -> {
+                  throw unsupportedDataType(type);
+                };
+          };
+
+  public static final TypeService<Function<IFillFilter, ILinearFill>> NEXT_FILL_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> BooleanNextFill::new;
+            case TEXT, STRING, BLOB, OBJECT -> BinaryNextFill::new;
+            case INT32, DATE -> IntNextFill::new;
+            case INT64, TIMESTAMP -> LongNextFill::new;
+            case FLOAT -> FloatNextFill::new;
+            case DOUBLE -> DoubleNextFill::new;
+            case ROW, UNKNOWN, VECTOR ->
+                filter -> {
+                  throw unsupportedDataType(type);
+                };
+          };
+
+  public static final TypeService<BooleanFunction<JoinKeyComparator>> JOIN_KEY_COMPARATOR_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                ascending ->
+                    ascending
+                        ? AscIntTypeJoinKeyComparator.getInstance()
+                        : DescIntTypeJoinKeyComparator.getInstance();
+            case INT64, TIMESTAMP ->
+                ascending ->
+                    ascending
+                        ? AscLongTypeJoinKeyComparator.getInstance()
+                        : DescLongTypeJoinKeyComparator.getInstance();
+            case FLOAT ->
+                ascending ->
+                    ascending
+                        ? AscFloatTypeJoinKeyComparator.getInstance()
+                        : DescFloatTypeJoinKeyComparator.getInstance();
+            case DOUBLE ->
+                ascending ->
+                    ascending
+                        ? AscDoubleTypeJoinKeyComparator.getInstance()
+                        : DescDoubleTypeJoinKeyComparator.getInstance();
+            case BOOLEAN ->
+                ascending ->
+                    ascending
+                        ? AscBooleanTypeJoinKeyComparator.getInstance()
+                        : DescBooleanTypeJoinKeyComparator.getInstance();
+            case STRING, BLOB, TEXT ->
+                ascending ->
+                    ascending
+                        ? AscBinaryTypeJoinKeyComparator.getInstance()
+                        : DescBinaryTypeJoinKeyComparator.getInstance();
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                ascending -> {
+                  throw new UnsupportedOperationException(
+                      CalcMessages.UNSUPPORTED_DATA_TYPE + type);
+                };
+          };
+
   public static final TypeService<IntFunction<Comparator<SortKey>>> MERGE_SORT_COMPARATOR_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -394,6 +506,10 @@ public class TypeServices {
               };
 
   static {
+    LINEAR_FILL_SERVICE.check();
+    PREVIOUS_FILL_SERVICE.check();
+    NEXT_FILL_SERVICE.check();
+    JOIN_KEY_COMPARATOR_SERVICE.check();
     MERGE_SORT_COMPARATOR_SERVICE.check();
     MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.check();
     MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE.check();
@@ -408,6 +524,10 @@ public class TypeServices {
 
   private TypeServices() {
     // util class doesn't need constructor
+  }
+
+  private static IllegalArgumentException unsupportedDataType(final Type type) {
+    return new IllegalArgumentException(CalcMessages.UNKNOWN_DATATYPE + type.getTypeEnum());
   }
 
   public interface DefaultEncodingProvider {
@@ -427,6 +547,12 @@ public class TypeServices {
   @FunctionalInterface
   public interface ColumnToDoubleConverter {
     double convert(Column column, int position);
+  }
+
+  @FunctionalInterface
+  public interface BooleanFunction<T> {
+    // Keep primitive dispatchers unboxed when selecting ascending/descending strategies.
+    T apply(boolean value);
   }
 
   @FunctionalInterface
