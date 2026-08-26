@@ -31,6 +31,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
@@ -69,9 +70,6 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
   private static final int REALTIME_INSERT_ROWS = 50;
 
   private static final long RECEIVER_VERIFY_TIMEOUT_MS = 120_000L;
-  private static final long SENDER_FILE_VISIBILITY_TIMEOUT_MS = 60_000L;
-  private static final long SENDER_FILE_VISIBILITY_POLL_INTERVAL_MS = 500L;
-  private static final String TSFILE_RESOURCE_SUFFIX = ".tsfile.resource";
 
   private String targetDir;
 
@@ -234,13 +232,6 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
         insertRows(sender, HISTORY_INSERT_START, HISTORY_INSERT_ROWS);
         TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
-        // IoTConsensus replicates the FLUSH asynchronously. Wait until every replica of the
-        // DataRegion(s) that actually contain historical data has sealed its TsFile before
-        // issuing the deletion. Otherwise a follower can apply the deletion before receiving the
-        // historical TsFile and will never create the corresponding deletion mod.
-        Map<Integer, Set<Integer>> historicalDataRegionReplicas =
-            waitForSenderHistoricalTsFileVisibleOnDataRegionReplicas(sender);
-
         long delStart = HISTORY_INSERT_START + DELETE_OFFSET;
         long delEnd = delStart + DELETE_LENGTH - 1;
 
@@ -251,8 +242,7 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
 
         // OBJECT payload compensation still derives from deletion mods when source mods are
         // disabled.
-        waitForSenderDeletionVisibleOnDataRegionReplicas(
-            historicalDataRegionReplicas, delStart, delEnd);
+        waitForSenderDeletionVisibleOnAllDataNodes(delStart, delEnd);
 
         for (long t = HISTORY_INSERT_START; t < HISTORY_INSERT_START + HISTORY_INSERT_ROWS; t++) {
           boolean inDeleteRange = (t >= delStart && t <= delEnd);
@@ -462,174 +452,47 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
     return sb.toString();
   }
 
-  private Map<Integer, Set<Integer>> waitForSenderHistoricalTsFileVisibleOnDataRegionReplicas(
-      ITableSession sender) throws Exception {
-    long deadline = System.currentTimeMillis() + SENDER_FILE_VISIBILITY_TIMEOUT_MS;
-    Map<Integer, Set<Integer>> activeDataRegionReplicas = Collections.emptyMap();
-
-    while (System.currentTimeMillis() < deadline) {
-      try {
-        Map<Integer, Set<Integer>> dataRegionReplicas = getDataRegionReplicas(sender);
-        activeDataRegionReplicas = selectActiveDataRegionReplicas(dataRegionReplicas);
-        if (!activeDataRegionReplicas.isEmpty()
-            && areHistoricalTsFilesVisibleOnReplicas(activeDataRegionReplicas)) {
-          return activeDataRegionReplicas;
-        }
-      } catch (Exception e) {
-        LOGGER.debug("Failed to inspect sender DataRegion replicas, retrying...", e);
+  private void waitForSenderDeletionVisibleOnAllDataNodes(long delStart, long delEnd)
+      throws Exception {
+    for (DataNodeWrapper dataNodeWrapper : senderEnv.getDataNodeWrapperList()) {
+      File databaseDir =
+          Paths.get(dataNodeWrapper.getDataNodeDir(), "data", "sequence", TEST_DATABASE).toFile();
+      if (!hasTsFile(databaseDir)) {
+        continue;
       }
-      Thread.sleep(SENDER_FILE_VISIBILITY_POLL_INTERVAL_MS);
-    }
-
-    Assert.fail(
-        String.format(
-            "Historical TsFile is not visible on all active sender DataRegion replicas: %s",
-            activeDataRegionReplicas));
-    return activeDataRegionReplicas;
-  }
-
-  private Map<Integer, Set<Integer>> getDataRegionReplicas(ITableSession sender) throws Exception {
-    Map<Integer, Set<Integer>> dataRegionReplicas = new LinkedHashMap<>();
-    try (SessionDataSet dataSet =
-        sender.executeQueryStatement("SHOW REGIONS FROM " + TEST_DATABASE)) {
-      SessionDataSet.DataIterator iterator = dataSet.iterator();
-      while (iterator.next()) {
-        if (!"DataRegion".equals(iterator.getString("Type"))) {
-          continue;
-        }
-        dataRegionReplicas
-            .computeIfAbsent(iterator.getInt("RegionId"), ignored -> new LinkedHashSet<>())
-            .add(iterator.getInt("DataNodeId"));
-      }
-    }
-    return dataRegionReplicas;
-  }
-
-  private Map<Integer, Set<Integer>> selectActiveDataRegionReplicas(
-      Map<Integer, Set<Integer>> dataRegionReplicas) {
-    Map<Integer, Set<Integer>> activeDataRegionReplicas = new LinkedHashMap<>();
-    for (Map.Entry<Integer, Set<Integer>> entry : dataRegionReplicas.entrySet()) {
-      for (Integer dataNodeId : entry.getValue()) {
-        DataNodeWrapper dataNodeWrapper = senderEnv.dataNodeIdToWrapper(dataNodeId).orElse(null);
-        if (dataNodeWrapper != null
-            && hasCompletedTsFile(getDataRegionDirs(dataNodeWrapper, entry.getKey()))) {
-          activeDataRegionReplicas.put(entry.getKey(), new LinkedHashSet<>(entry.getValue()));
+      long deadline = System.currentTimeMillis() + 60_000L;
+      while (System.currentTimeMillis() < deadline) {
+        if (hasDeletionMod(databaseDir, delStart, delEnd)) {
           break;
         }
+        Thread.sleep(500);
       }
+      Assert.assertTrue(
+          String.format(
+              "Deletion mod [%d, %d] is not visible on DataNode %s.",
+              delStart, delEnd, dataNodeWrapper.getId()),
+          hasDeletionMod(databaseDir, delStart, delEnd));
     }
-    return activeDataRegionReplicas;
   }
 
-  private boolean areHistoricalTsFilesVisibleOnReplicas(
-      Map<Integer, Set<Integer>> dataRegionReplicas) {
-    for (Map.Entry<Integer, Set<Integer>> entry : dataRegionReplicas.entrySet()) {
-      for (Integer dataNodeId : entry.getValue()) {
-        DataNodeWrapper dataNodeWrapper = senderEnv.dataNodeIdToWrapper(dataNodeId).orElse(null);
-        if (dataNodeWrapper == null
-            || !hasCompletedTsFile(getDataRegionDirs(dataNodeWrapper, entry.getKey()))) {
-          return false;
-        }
-      }
-    }
-    return true;
+  private boolean hasTsFile(File databaseDir) {
+    return !FileUtils.listFilesRecursively(
+            databaseDir, file -> file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX))
+        .isEmpty();
   }
 
-  private void waitForSenderDeletionVisibleOnDataRegionReplicas(
-      Map<Integer, Set<Integer>> dataRegionReplicas, long delStart, long delEnd) throws Exception {
-    long deadline = System.currentTimeMillis() + SENDER_FILE_VISIBILITY_TIMEOUT_MS;
-    IOException lastException = null;
-    while (System.currentTimeMillis() < deadline) {
-      try {
-        if (hasDeletionModOnReplicas(dataRegionReplicas, delStart, delEnd)) {
-          return;
-        }
-      } catch (IOException e) {
-        lastException = e;
-        LOGGER.debug("Failed to inspect sender deletion mods, retrying...", e);
-      }
-      Thread.sleep(SENDER_FILE_VISIBILITY_POLL_INTERVAL_MS);
-    }
-    if (lastException != null) {
-      throw lastException;
-    }
-    Assert.fail(
-        String.format(
-            "Deletion mod [%d, %d] is not visible on sender DataRegion replicas: %s",
-            delStart, delEnd, dataRegionReplicas));
-  }
-
-  private boolean hasDeletionModOnReplicas(
-      Map<Integer, Set<Integer>> dataRegionReplicas, long delStart, long delEnd)
-      throws IOException {
-    for (Map.Entry<Integer, Set<Integer>> entry : dataRegionReplicas.entrySet()) {
-      for (Integer dataNodeId : entry.getValue()) {
-        DataNodeWrapper dataNodeWrapper = senderEnv.dataNodeIdToWrapper(dataNodeId).orElse(null);
-        if (dataNodeWrapper == null
-            || !hasDeletionMod(
-                getDataRegionDirs(dataNodeWrapper, entry.getKey()), delStart, delEnd)) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  private List<File> getDataRegionDirs(DataNodeWrapper dataNodeWrapper, int dataRegionId) {
-    File dataRoot = Paths.get(dataNodeWrapper.getDataNodeDir(), "data").toFile();
-    String dataRegionDirName = String.valueOf(dataRegionId);
-    List<File> dataRegionDirs = new ArrayList<>();
-    for (File directory : FileUtils.listFilesRecursively(dataRoot, File::isDirectory)) {
-      File databaseDir = directory.getParentFile();
-      File sequenceDir = databaseDir == null ? null : databaseDir.getParentFile();
-      if (dataRegionDirName.equals(directory.getName())
-          && databaseDir != null
-          && TEST_DATABASE.equals(databaseDir.getName())
-          && sequenceDir != null
-          && "sequence".equals(sequenceDir.getName())) {
-        dataRegionDirs.add(directory);
-      }
-    }
-    return dataRegionDirs;
-  }
-
-  private boolean hasCompletedTsFile(List<File> dataRegionDirs) {
-    for (File dataRegionDir : dataRegionDirs) {
-      List<File> resourceFiles =
-          FileUtils.listFilesRecursively(
-              dataRegionDir, file -> file.getName().endsWith(TSFILE_RESOURCE_SUFFIX));
-      for (File resourceFile : resourceFiles) {
-        if (resourceFile.length() > 0
-            && new File(
-                    resourceFile
-                        .getAbsolutePath()
-                        .substring(
-                            0,
-                            resourceFile.getAbsolutePath().length()
-                                - TSFILE_RESOURCE_SUFFIX.length()))
-                .isFile()) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  private boolean hasDeletionMod(List<File> dataRegionDirs, long delStart, long delEnd)
-      throws IOException {
-    for (File dataRegionDir : dataRegionDirs) {
-      List<File> modFiles =
-          FileUtils.listFilesRecursively(
-              dataRegionDir, file -> file.getName().endsWith(ModificationFile.FILE_SUFFIX));
-      for (File modFile : modFiles) {
-        try (ModificationFile modificationFile = new ModificationFile(modFile, false)) {
-          for (ModEntry modEntry : modificationFile.getAllMods()) {
-            if (modEntry instanceof TableDeletionEntry
-                && TABLE_NAME.equals(((TableDeletionEntry) modEntry).getTableName())
-                && modEntry.getStartTime() <= delStart
-                && modEntry.getEndTime() >= delEnd) {
-              return true;
-            }
+  private boolean hasDeletionMod(File databaseDir, long delStart, long delEnd) throws IOException {
+    List<File> modFiles =
+        FileUtils.listFilesRecursively(
+            databaseDir, file -> file.getName().endsWith(ModificationFile.FILE_SUFFIX));
+    for (File modFile : modFiles) {
+      try (ModificationFile modificationFile = new ModificationFile(modFile, false)) {
+        for (ModEntry modEntry : modificationFile.getAllMods()) {
+          if (modEntry instanceof TableDeletionEntry
+              && TABLE_NAME.equals(((TableDeletionEntry) modEntry).getTableName())
+              && modEntry.getStartTime() <= delStart
+              && modEntry.getEndTime() >= delEnd) {
+            return true;
           }
         }
       }
