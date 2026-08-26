@@ -46,6 +46,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.zip.CRC32;
@@ -138,6 +139,31 @@ public class IoTDBAirGapReceiverTest {
     Assert.assertArrayEquals(AirGapOneByteResponse.OK, socket.getWrittenBytes());
   }
 
+  @Test
+  public void testIdleReadTimeoutDoesNotRespondOrCloseSocket() throws Exception {
+    final RecordingSocket socket = new RecordingSocket(new TimeoutInputStream(new byte[0]));
+    invokeReceive(new IoTDBAirGapReceiver(socket, 5L));
+
+    Assert.assertArrayEquals(new byte[0], socket.getWrittenBytes());
+    Assert.assertFalse(socket.isClosed());
+  }
+
+  @Test
+  public void testPartialRequestReadTimeoutClosesSocketWithoutResponse() throws Exception {
+    final RecordingSocket socket =
+        new RecordingSocket(new TimeoutInputStream(new byte[] {(byte) 0xFF}));
+    invokeReceive(new IoTDBAirGapReceiver(socket, 6L));
+
+    Assert.assertArrayEquals(new byte[0], socket.getWrittenBytes());
+    Assert.assertTrue(socket.isClosed());
+  }
+
+  private static void invokeReceive(final IoTDBAirGapReceiver receiver) throws Exception {
+    final Method receive = IoTDBAirGapReceiver.class.getDeclaredMethod("receive");
+    receive.setAccessible(true);
+    receive.invoke(receiver);
+  }
+
   private static void setField(final Object target, final String fieldName, final Object value)
       throws Exception {
     final Field field = IoTDBAirGapReceiver.class.getDeclaredField(fieldName);
@@ -147,7 +173,21 @@ public class IoTDBAirGapReceiverTest {
 
   private static class RecordingSocket extends Socket {
 
+    private final InputStream inputStream;
     private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+    private RecordingSocket() {
+      this(new ByteArrayInputStream(new byte[0]));
+    }
+
+    private RecordingSocket(final InputStream inputStream) {
+      this.inputStream = inputStream;
+    }
+
+    @Override
+    public InputStream getInputStream() {
+      return inputStream;
+    }
 
     @Override
     public OutputStream getOutputStream() {
@@ -156,6 +196,35 @@ public class IoTDBAirGapReceiverTest {
 
     byte[] getWrittenBytes() {
       return outputStream.toByteArray();
+    }
+  }
+
+  private static class TimeoutInputStream extends InputStream {
+
+    private final byte[] bytesBeforeTimeout;
+    private int position;
+
+    private TimeoutInputStream(final byte[] bytesBeforeTimeout) {
+      this.bytesBeforeTimeout = bytesBeforeTimeout;
+    }
+
+    @Override
+    public int read() throws IOException {
+      if (position >= bytesBeforeTimeout.length) {
+        throw new SocketTimeoutException("Test timeout");
+      }
+      return bytesBeforeTimeout[position++] & 0xFF;
+    }
+
+    @Override
+    public int read(final byte[] buffer, final int offset, final int length) throws IOException {
+      if (position >= bytesBeforeTimeout.length) {
+        throw new SocketTimeoutException("Test timeout");
+      }
+      final int bytesToRead = Math.min(length, bytesBeforeTimeout.length - position);
+      System.arraycopy(bytesBeforeTimeout, position, buffer, offset, bytesToRead);
+      position += bytesToRead;
+      return bytesToRead;
     }
   }
 

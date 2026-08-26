@@ -324,6 +324,11 @@ public class QueryModificationLoaderTest {
     }
 
     @Override
+    public void releaseMemoryImmediately(long size) {
+      reservedBytes -= size;
+    }
+
+    @Override
     public void releaseAllReservedMemory() {
       reservedBytes = 0;
     }

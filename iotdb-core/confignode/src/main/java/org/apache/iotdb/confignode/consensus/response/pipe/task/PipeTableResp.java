@@ -293,6 +293,7 @@ public class PipeTableResp implements DataSet {
       if (Objects.nonNull(isDegraded)) {
         showPipeInfo.setIsDegraded(isDegraded);
       }
+      showPipeInfo.setRecentFailures(temporaryMeta.getGlobalRecentFailures());
       showPipeInfoList.add(showPipeInfo);
     }
 

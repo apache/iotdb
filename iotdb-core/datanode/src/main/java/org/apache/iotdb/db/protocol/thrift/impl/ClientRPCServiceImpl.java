@@ -3485,7 +3485,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInPipeSubscribeResp();
       }
 
-      return SubscriptionAgent.receiver().handle(req);
+      return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
     } finally {
       SESSION_MANAGER.updateIdleTime();
     }
@@ -3635,7 +3635,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
-    SubscriptionAgent.receiver().handleClientExit();
+    if (COMMON_CONFIG.getSubscriptionEnabled()) {
+      SubscriptionAgent.receiver().handleClientExit();
+    }
   }
 
   /**
@@ -3710,7 +3712,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
     }
 
@@ -3792,7 +3797,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
           DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
     }

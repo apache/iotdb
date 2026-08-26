@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
@@ -58,12 +59,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import static org.apache.iotdb.commons.schema.table.Audit.isAuditDatabase;
+import static org.apache.iotdb.commons.utils.PathUtils.isTableModelDatabase;
+
 /**
  * Handles setup and teardown of consensus-based subscription queues on DataNode.
  *
- * <p>For each consensus-mode topic subscribed by a consumer group, this handler discovers matching
- * local IoTConsensus DataRegions, builds the appropriate log-to-tablet converter, and binds one
- * queue per region to the consensus subscription broker.
+ * <p>For each incremental-mode topic subscribed by a consumer group, this handler discovers
+ * matching local IoTConsensus DataRegions, builds the appropriate log-to-tablet converter, and
+ * binds one queue per region to the consensus subscription broker.
  */
 public class ConsensusSubscriptionSetupHandler {
 
@@ -159,13 +163,15 @@ public class ConsensusSubscriptionSetupHandler {
 
     for (final Map.Entry<String, java.util.Set<String>> groupEntry : allSubscriptions.entrySet()) {
       final String consumerGroupId = groupEntry.getKey();
+      final boolean isTableModel = SubscriptionAgent.consumer().isTableModel(consumerGroupId);
       for (final String topicName : groupEntry.getValue()) {
-        if (!isConsensusBasedTopic(topicName)) {
+        if (!isConsensusBasedTopic(topicName, isTableModel)) {
           continue;
         }
         try {
           final Map<String, TopicConfig> topicConfigs =
-              SubscriptionAgent.topic().getTopicConfigs(java.util.Collections.singleton(topicName));
+              SubscriptionAgent.topic()
+                  .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
           final TopicConfig topicConfig = topicConfigs.get(topicName);
           if (topicConfig == null) {
             continue;
@@ -180,8 +186,7 @@ public class ConsensusSubscriptionSetupHandler {
           final String dbRaw = dataRegion.getDatabaseName();
           final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
 
-          // For table topics, skip if this region's database doesn't match the topic filter.
-          if (!matchesTopicDatabase(topicConfig, dbTableModel)) {
+          if (!matchesTopicDataRegion(dbRaw, topicConfig, isTableModel)) {
             continue;
           }
 
@@ -292,9 +297,13 @@ public class ConsensusSubscriptionSetupHandler {
   }
 
   public static boolean isConsensusBasedTopic(final String topicName) {
+    return isConsensusBasedTopic(topicName, false);
+  }
+
+  public static boolean isConsensusBasedTopic(final String topicName, final boolean isTableModel) {
     try {
-      final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
-      final boolean result = TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(topicMode);
+      final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName, isTableModel);
+      final boolean result = TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(topicMode);
       LOGGER.debug(
           DataNodePipeMessages.PIPE_LOG_ISCONSENSUSBASEDTOPIC_CHECK_FOR_TOPIC_MODE_RESULT_19EFA0F9,
           topicName,
@@ -311,8 +320,9 @@ public class ConsensusSubscriptionSetupHandler {
     }
   }
 
-  private static boolean isConsensusBasedTopicRequired(final String topicName) {
-    final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
+  private static boolean isConsensusBasedTopicRequired(
+      final String topicName, final boolean isTableModel) {
+    final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName, isTableModel);
     if (Objects.isNull(topicMode)) {
       throw new SubscriptionException(
           String.format(
@@ -320,11 +330,17 @@ public class ConsensusSubscriptionSetupHandler {
                   .EXCEPTION_TOPIC_METADATA_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_A1949F20,
               topicName));
     }
-    return TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(topicMode);
+    return TopicConstant.MODE_INCREMENTAL_VALUE.equalsIgnoreCase(topicMode);
   }
 
   public static void setupConsensusSubscriptions(
       final String consumerGroupId, final Set<String> topicNames) {
+    setupConsensusSubscriptions(
+        consumerGroupId, topicNames, SubscriptionAgent.consumer().isTableModel(consumerGroupId));
+  }
+
+  public static void setupConsensusSubscriptions(
+      final String consumerGroupId, final Set<String> topicNames, final boolean isTableModel) {
     final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     if (!(dataRegionConsensus instanceof IoTConsensus)) {
       final String configuredProtocol = IOTDB_CONFIG.getDataRegionConsensusProtocolClass();
@@ -332,7 +348,7 @@ public class ConsensusSubscriptionSetupHandler {
           Objects.nonNull(dataRegionConsensus) ? dataRegionConsensus.getClass().getName() : "null";
       LOGGER.warn(
           DataNodePipeMessages
-              .PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812,
+              .PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4,
           consumerGroupId,
           ConsensusFactory.IOT_CONSENSUS,
           configuredProtocol,
@@ -359,9 +375,10 @@ public class ConsensusSubscriptionSetupHandler {
     setupConsensusTopics(
         consumerGroupId,
         topicNames,
-        ConsensusSubscriptionSetupHandler::isConsensusBasedTopicRequired,
+        topicName -> isConsensusBasedTopicRequired(topicName, isTableModel),
         topicName ->
-            setupConsensusQueueForTopic(consumerGroupId, topicName, ioTConsensus, commitManager),
+            setupConsensusQueueForTopic(
+                consumerGroupId, topicName, isTableModel, ioTConsensus, commitManager),
         attemptedTopicNames ->
             rollbackConsensusSubscriptionSetup(
                 consumerGroupId, attemptedTopicNames, commitManager, setupSnapshot));
@@ -448,21 +465,24 @@ public class ConsensusSubscriptionSetupHandler {
    * <p>This method discovers local DataRegion consensus groups that match the topic filter and
    * binds one consensus subscription queue to each matching region.
    *
-   * <p>For table-model topics, only regions whose database matches the topic's {@code DATABASE_KEY}
-   * filter are bound. For tree-model topics, all local data regions are candidates. Additionally,
-   * the {@link #onNewRegionCreated} callback ensures that regions created after this method runs
-   * are also automatically bound.
+   * <p>Only regions whose database names identify the same data model as the consumer group are
+   * candidates. A database name with the {@code root.} prefix identifies a tree-model region. For
+   * table-model topics, the candidate region's database must also match the topic's {@code
+   * DATABASE_KEY} filter. Additionally, the {@link #onNewRegionCreated} callback ensures that
+   * regions created after this method runs are also automatically bound.
    */
   private static void setupConsensusQueueForTopic(
       final String consumerGroupId,
       final String topicName,
+      final boolean isTableModel,
       final IoTConsensus ioTConsensus,
       final ConsensusSubscriptionCommitManager commitManager) {
     final int myNodeId = IOTDB_CONFIG.getDataNodeId();
 
     // Get topic config for building the converter
     final Map<String, TopicConfig> topicConfigs =
-        SubscriptionAgent.topic().getTopicConfigs(java.util.Collections.singleton(topicName));
+        SubscriptionAgent.topic()
+            .getTopicConfigs(java.util.Collections.singleton(topicName), isTableModel);
     final TopicConfig topicConfig = topicConfigs.get(topicName);
     if (topicConfig == null) {
       throw new SubscriptionException(
@@ -509,16 +529,19 @@ public class ConsensusSubscriptionSetupHandler {
       }
       final String dbRaw = dataRegion.getDatabaseName();
       final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
+      final boolean dataRegionIsTableModel = isTableModelDatabase(dbRaw);
 
-      if (!matchesTopicDatabase(topicConfig, dbTableModel)) {
-        LOGGER.info(
-            DataNodePipeMessages
-                .PIPE_LOG_SKIPPING_REGION_DATABASE_FOR_TABLE_TOPIC_DATABASE_KEY_2DA27A84,
-            groupId,
-            dbTableModel,
-            topicName,
-            topicConfig.getStringOrDefault(
-                TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE));
+      if (!matchesTopicDataRegion(dbRaw, topicConfig, isTableModel)) {
+        if (isTableModel && dataRegionIsTableModel && topicConfig.isTableTopic()) {
+          LOGGER.info(
+              DataNodePipeMessages
+                  .PIPE_LOG_SKIPPING_REGION_DATABASE_FOR_TABLE_TOPIC_DATABASE_KEY_2DA27A84,
+              groupId,
+              dbTableModel,
+              topicName,
+              topicConfig.getStringOrDefault(
+                  TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE));
+        }
         continue;
       }
 
@@ -629,10 +652,24 @@ public class ConsensusSubscriptionSetupHandler {
     return new ConsensusLogToTabletConverter(treePattern, tablePattern, null, actualDatabaseName);
   }
 
-  private static boolean matchesTopicDatabase(
+  static boolean matchesTopicDatabase(
       final TopicConfig topicConfig, final String actualDatabaseName) {
-    return !topicConfig.isTableTopic()
-        || buildTablePattern(topicConfig).matchesDatabase(actualDatabaseName);
+    return !isAuditDatabase(actualDatabaseName)
+        && (!topicConfig.isTableTopic()
+            || buildTablePattern(topicConfig).matchesDatabase(actualDatabaseName));
+  }
+
+  static boolean matchesTopicDataRegion(
+      final String databaseName, final TopicConfig topicConfig, final boolean isTableModel) {
+    if (databaseName == null
+        || topicConfig == null
+        || isTableModelDatabase(databaseName) != isTableModel
+        || topicConfig.isTableTopic() != isTableModel) {
+      return false;
+    }
+    final String actualDatabaseName =
+        databaseName.startsWith("root.") ? databaseName.substring(5) : databaseName;
+    return matchesTopicDatabase(topicConfig, actualDatabaseName);
   }
 
   private static TablePattern buildTablePattern(final TopicConfig topicConfig) {
@@ -722,6 +759,10 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void applyRuntimeState(
       final TConsensusGroupId groupId, final ConsensusRegionRuntimeState runtimeState) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
     final int newPreferredNodeId = runtimeState.getPreferredWriterNodeId();
     final Integer oldPreferredBoxed = lastKnownPreferredWriter.put(groupId, newPreferredNodeId);
     final int oldPreferredNodeId = (oldPreferredBoxed != null) ? oldPreferredBoxed : -1;
@@ -753,6 +794,10 @@ public class ConsensusSubscriptionSetupHandler {
 
   public static void onRegionRouteChanged(
       final Map<TConsensusGroupId, TRegionReplicaSet> newMap, final long routingTimestamp) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
     final int myNodeId = IOTDB_CONFIG.getDataNodeId();
 
     for (final Map.Entry<TConsensusGroupId, TRegionReplicaSet> newEntry : newMap.entrySet()) {

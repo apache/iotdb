@@ -58,12 +58,13 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Iterator;
@@ -1154,7 +1155,7 @@ public class ConsensusSubscriptionCommitManager {
   }
 
   private static void deleteFileIfExists(final File file) {
-    if (file.exists() && !file.delete()) {
+    if (file.exists() && !org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file)) {
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_FAILED_TO_DELETE_CONSENSUS_SUBSCRIPTION_PROGRESS_FILE_51C57096,
@@ -1220,11 +1221,15 @@ public class ConsensusSubscriptionCommitManager {
 
   private void overwriteRegionPayload(
       final File metaFile, final long payloadOffset, final byte[] payload) throws IOException {
-    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(metaFile, "rw")) {
-      randomAccessFile.seek(payloadOffset);
-      randomAccessFile.write(payload);
+    try (final FileChannel channel =
+        FileChannel.open(metaFile.toPath(), StandardOpenOption.WRITE)) {
+      channel.position(payloadOffset);
+      final ByteBuffer payloadBuffer = ByteBuffer.wrap(payload);
+      while (payloadBuffer.hasRemaining()) {
+        channel.write(payloadBuffer);
+      }
       if (SubscriptionConfig.getInstance().isSubscriptionConsensusCommitFsyncEnabled()) {
-        randomAccessFile.getFD().sync();
+        channel.force(true);
       }
     }
   }
@@ -1778,7 +1783,9 @@ public class ConsensusSubscriptionCommitManager {
 
         final ProgressKey outstandingKey = outstandingKeys.remove(ProgressSlot.from(incomingKey));
         if (Objects.isNull(outstandingKey)) {
-          LOGGER.warn(
+          // Late or duplicate ACKs are reported by the queue or summarized by the receiver. Logging
+          // every missing mapping at WARN would amplify one commit request by its context count.
+          LOGGER.debug(
               DataNodePipeMessages
                   .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_REJECT_DIRECT_COMMIT_WITHOUT_5B975E49,
               incomingKey.physicalTime,

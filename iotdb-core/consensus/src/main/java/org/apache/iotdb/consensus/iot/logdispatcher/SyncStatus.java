@@ -32,7 +32,7 @@ import java.util.List;
 public class SyncStatus {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncStatus.class);
-  private final IoTConsensusConfig config;
+  private IoTConsensusConfig config;
   private final IndexController controller;
   private final LinkedList<Batch> pendingBatches = new LinkedList<>();
   private final IoTConsensusMemoryManager iotConsensusMemoryManager =
@@ -43,16 +43,26 @@ public class SyncStatus {
     this.config = config;
   }
 
+  public synchronized void reloadConfig(IoTConsensusConfig config) {
+    this.config = config;
+    notifyAll();
+  }
+
   /**
    * we may block here if the synchronization pipeline is full.
    *
    * @throws InterruptedException
    */
   public synchronized void addNextBatch(Batch batch) throws InterruptedException {
-    while ((pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
-            || !iotConsensusMemoryManager.reserve(batch))
-        && !Thread.interrupted()) {
-      wait();
+    while (true) {
+      while (pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()) {
+        wait();
+      }
+      if (iotConsensusMemoryManager.reserve(batch)) {
+        break;
+      }
+      // Memory may be freed by another SyncStatus, which cannot notify this monitor.
+      wait(Math.max(1, config.getReplication().getBasicRetryWaitTimeMs()));
     }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(

@@ -197,12 +197,20 @@ struct TSetThrottleQuotaReq {
   2: required TThrottleQuota throttleQuota
 }
 
+struct TPipeCompletedDataRegion {
+  1: required string pipeName
+  2: required i64 creationTime
+  3: required list<i32> completedDataRegionIds
+}
+
 struct TPipeHeartbeatResp {
   1: required list<binary> pipeMetaList
   2: optional list<bool> pipeCompletedList
   3: optional list<i64> pipeRemainingEventCountList
   4: optional list<double> pipeRemainingTimeList
   5: optional list<i32> pipeDegradedStatusList
+  6: optional list<map<string, i64>> pipeRecentFailureList
+  7: optional list<TPipeCompletedDataRegion> pipeCompletedDataRegionList
 }
 
 struct TLicense {
@@ -319,6 +327,10 @@ enum TAggregationType {
   SKEWNESS,
   KURTOSIS
   PERCENTILE,
+  RATE,
+  INCREASE,
+  IRATE,
+  DELTA,
 }
 
 struct TShowConfigurationTemplateResp {

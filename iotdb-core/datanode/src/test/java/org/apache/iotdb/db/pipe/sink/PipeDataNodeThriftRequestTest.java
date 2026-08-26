@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.pipe.sink;
 
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
@@ -71,6 +74,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -1177,6 +1181,68 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(Arrays.asList(modFileName, tsFileName), deserializeReq.getFileNames());
     Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
     Assert.assertEquals("root.db", deserializeReq.getDatabaseNameByTsFileName());
+    Assert.assertFalse(deserializeReq.shouldWaitForSchemaBeforeLoad());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealWithModReqWaitsForSchema() throws IOException {
+    final PipeTransferTsFileSealWithModReq req =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+            "1.tsfile.mod", 10, "1.tsfile", 100, "root.db", true);
+    final PipeTransferTsFileSealWithModReq deserializeReq =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertTrue(deserializeReq.shouldWaitForSchemaBeforeLoad());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealConversionTaskInfoIsStable() throws IOException {
+    final String taskId =
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", "1.tsfile.mod", 10, "1.tsfile", 100);
+    Assert.assertEquals(
+        taskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", "1.tsfile.mod", 10, "1.tsfile", 100));
+    Assert.assertNotEquals(
+        taskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", "1.tsfile.mod", 10, "1.tsfile", 101));
+
+    final PipeTransferTsFileSealWithModReq request =
+        PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                "1.tsfile.mod", 10, "1.tsfile", 100, "root.db")
+            .setConversionTaskInfo(taskId, false);
+    final PipeTransferTsFileSealWithModReq deserialized =
+        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(request);
+    Assert.assertEquals(taskId, deserialized.getConversionTaskId());
+    Assert.assertFalse(deserialized.shouldAsyncLoadOnTypeMismatch());
+  }
+
+  @Test
+  public void testPipeTransferTsFileSealConversionTaskIdDistinguishesProgressIndexes() {
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    final EnrichedEvent firstEvent = Mockito.mock(EnrichedEvent.class);
+    Mockito.when(firstEvent.getCommitterKey()).thenReturn(committerKey);
+    Mockito.when(firstEvent.getCommitIds()).thenReturn(Collections.singletonList(1L));
+    Mockito.when(firstEvent.getProgressIndex()).thenReturn(new IoTProgressIndex(1, 1L));
+
+    final EnrichedEvent secondEvent = Mockito.mock(EnrichedEvent.class);
+    Mockito.when(secondEvent.getCommitterKey()).thenReturn(committerKey);
+    Mockito.when(secondEvent.getCommitIds()).thenReturn(Collections.singletonList(1L));
+    Mockito.when(secondEvent.getProgressIndex()).thenReturn(new IoTProgressIndex(1, 100L));
+
+    final String firstTaskId =
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", Collections.singletonList(firstEvent), "root.db", 0);
+    Assert.assertEquals(
+        firstTaskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", Collections.singletonList(firstEvent), "root.db", 0));
+    Assert.assertNotEquals(
+        firstTaskId,
+        PipeTransferTsFileSealWithModReq.generateConversionTaskId(
+            "sink-task", Collections.singletonList(secondEvent), "root.db", 0));
   }
 
   @Test
@@ -1201,6 +1267,7 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(Arrays.asList(10L, 100L), deserializeReq.getFileLengths());
     Assert.assertTrue(deserializeReq.getParameters().isEmpty());
     Assert.assertNull(deserializeReq.getDatabaseNameByTsFileName());
+    Assert.assertFalse(deserializeReq.shouldWaitForSchemaBeforeLoad());
   }
 
   @Test

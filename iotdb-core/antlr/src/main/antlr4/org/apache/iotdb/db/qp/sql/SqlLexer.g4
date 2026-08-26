@@ -1239,6 +1239,10 @@ MAX_DATA_REGION_GROUP_NUM
     : M A X '_' D A T A '_' R E G I O N '_' G R O U P '_' N U M
     ;
 
+NEED_LAST_CACHE
+    : N E E D '_' L A S T '_' C A C H E
+    ;
+
 CURRENT_TIMESTAMP
     : C U R R E N T '_' T I M E S T A M P
     ;

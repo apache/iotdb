@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -48,6 +49,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.zip.CRC32;
@@ -104,13 +106,27 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   }
 
   private void receive() throws IOException {
-    final InputStream inputStream = new BufferedInputStream(socket.getInputStream());
+    final ReadProgressInputStream readProgressInputStream =
+        new ReadProgressInputStream(socket.getInputStream());
+    final InputStream inputStream = new BufferedInputStream(readProgressInputStream);
 
     try {
       final byte[] data = readData(inputStream);
       currentOutputStream = socket.getOutputStream();
 
       if (!receive(data, null)) {
+        socket.close();
+      }
+    } catch (final SocketTimeoutException e) {
+      // It is normal for an air gap sender to remain idle. Only close the connection when the
+      // timeout occurs after a request has started, because the stream can no longer be decoded
+      // reliably in that case. Do not send FAIL without receiving a complete request.
+      if (readProgressInputStream.hasReadAnyByte()) {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_EXCEPTION_DURING_HANDLING,
+            receiverId,
+            socket,
+            e);
         socket.close();
       }
     } catch (final PipeConnectionException e) {
@@ -209,10 +225,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || status.getCode()
             == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
-      LOGGER.info(
-          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED,
-          receiverId,
-          resp.getStatus());
       ok();
     } else if (status.getCode()
         == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
@@ -221,7 +233,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.info(DataNodePipeMessages.TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP);
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
         handleReq(req, startTime, receiverKey);
@@ -392,6 +403,37 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
             DataNodePipeMessages.SOCKET_CLOSED_WHEN_EXECUTING_SKIPTILLENOUGH);
       }
       currentSkippedBytes += skippedBytes;
+    }
+  }
+
+  private static class ReadProgressInputStream extends FilterInputStream {
+
+    private boolean hasReadAnyByte;
+
+    private ReadProgressInputStream(final InputStream inputStream) {
+      super(inputStream);
+    }
+
+    @Override
+    public int read() throws IOException {
+      final int result = super.read();
+      if (result >= 0) {
+        hasReadAnyByte = true;
+      }
+      return result;
+    }
+
+    @Override
+    public int read(final byte[] buffer, final int offset, final int length) throws IOException {
+      final int result = super.read(buffer, offset, length);
+      if (result > 0) {
+        hasReadAnyByte = true;
+      }
+      return result;
+    }
+
+    private boolean hasReadAnyByte() {
+      return hasReadAnyByte;
     }
   }
 }

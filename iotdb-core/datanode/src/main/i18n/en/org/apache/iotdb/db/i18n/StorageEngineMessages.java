@@ -539,6 +539,10 @@ public final class StorageEngineMessages {
   public static final String ACTIVE_LOAD_METRIC_COLLECTOR_REGISTERED = "Active load metric collector periodical jobs registered";
   public static final String DATABASE_NAME_MUST_NOT_BE_EMPTY = "Database name must not be empty.";
   public static final String USER_NAME_MUST_NOT_BE_EMPTY = "User name must not be empty.";
+  public static final String EXCEPTION_CONVERSION_TASK_ID_MUST_NOT_BE_EMPTY_411D064E =
+      "Conversion task ID must not be empty.";
+  public static final String LOG_FAILED_TO_CLOSE_PIPE_TSFILE_CONVERSION_CONTEXT_8E4D886B =
+      "Failed to close Pipe TsFile conversion context.";
   public static final String ERROR_EXECUTING_ACTIVE_LOAD_JOB = "Error occurred when executing active load periodical job.";
   public static final String ACTIVE_LOAD_EXECUTOR_STARTED = "Active load periodical jobs executor is started successfully.";
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active load periodical jobs executor is stopped successfully.";
@@ -1227,6 +1231,12 @@ public final class StorageEngineMessages {
           + "File will be moved to fail directory.";
   public static final String STORAGE_LOG_ERROR_OCCURRED_DURING_HOT_RELOAD_ACTIVE_LOAD_DIRS_CURRENT_673AFC0F =
       "Error occurred during hot reload active load dirs. Current active load listening dirs: {}.";
+  public static final String LOG_ACTIVE_LOAD_LISTENING_DIRECTORY_S_IS_SKIPPED_DURING_HOT_RELOAD_BECAUSE_IT_IS_UNDER_IOTDB_DATA_DIRECTORY_DA90CAE1 =
+      "Active load listening directory {} is skipped during hot reload because it is under data "
+          + "directory.";
+  public static final String LOG_FAILED_TO_VALIDATE_ACTIVE_LOAD_LISTENING_DIRECTORY_S_SKIP_SCANNING_ARG_0E6A508E =
+      "Failed to validate active load listening directory {}. Skip scanning this directory. "
+          + "Reason: {}";
   public static final String STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_READABLE_SKIP_SCANNING_THIS_DIR_9C8B7E00 =
       "Current dir path is not readable: {}.Skip scanning this dir. Please check the permission.";
   public static final String STORAGE_LOG_CURRENT_DIR_PATH_IS_NOT_WRITABLE_SKIP_SCANNING_THIS_DIR_4885E78F =

@@ -434,6 +434,8 @@ public final class DataNodePipeMessages {
       "Failed to send request {} (watermark = {}) to {}";
   public static final String FAILED_TO_TRIGGER_COMBINE_WATERMARK_COUNT_PROGRESSINDEX =
       "Failed to trigger combine. watermark={}, count={}, progressIndex={}";
+  public static final String EXCEPTION_FAILED_TO_INITIALIZE_STATEPROGRESSINDEX_FROM_PROGRESS_INDEX_ARG_E95617F9 =
+      "Failed to initialize StateProgressIndex from progress index %s.";
   public static final String FAILURE_OCCURRED_WHEN_TRYING_TO_COMMIT_PROGRESS =
       "Failure occurred when trying to commit progress index. timestamp={}, count={}, "
           + "progressIndex={}";
@@ -651,8 +653,8 @@ public final class DataNodePipeMessages {
       "When '{}' ('{}') is set to false, specifying {} and {} is invalid.";
   public static final String WHEN_IS_SET_TO_TRUE_SPECIFYING_AND =
       "When '{}' ('{}', '{}', '{}') is set to true, specifying {} and {} is invalid.";
-  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_AND_IS =
-      "When {}, {}, {} or {} is specified, specifying {}, {}, {}, {}, {} and {} is invalid.";
+  public static final String WHEN_OR_IS_SPECIFIED_SPECIFYING_OR_IS_INVALID =
+      "When {}, {}, {} or {} is specified, specifying {}, {}, {} or {} is invalid.";
 
   // ===================== SINK =====================
 
@@ -1293,8 +1295,6 @@ public final class DataNodePipeMessages {
       "Pipe air gap receiver {} started. Socket: {}";
   public static final String PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY =
       "Pipe air gap receiver {}: Temporary unavailable retry timed out, returning FAIL to sender.";
-  public static final String PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED =
-      "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe data transport error, {}";
   public static final String PIPE_INSERTING_ROW_CASTING_TYPE_FROM =
       "Pipe: Inserting row. Casting type from {} to {}.";
@@ -1335,8 +1335,6 @@ public final class DataNodePipeMessages {
       "Start load pipeData with serialize number {} and type {},value={}";
   public static final String STORAGE_ENGINE_READONLY = "storage engine readonly";
   public static final String SYNC_START_AT_TO_IS_DONE = "Sync {} start at {} to {} is done.";
-  public static final String TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP =
-      "Temporary unavailable exception encountered at air gap receiver, will retry locally.";
   public static final String THE_IOTCONSENSUSV2_REQUEST_VERSION_IS_DIFFERENT_FROM =
       "The iotConsensusV2 request version {} is different from the sender request version {}, "
           + "the receiver will be reset to the sender request version.";
@@ -2018,10 +2016,15 @@ public final class DataNodePipeMessages {
           + "runtimeVersion {} -> {}, runtimeState={} (route hint)";
   public static final String PIPE_LOG_FAILED_TO_CHECK_IF_TOPIC_IS_CONSENSUS_BASED_DEFAULTING_TO_ECCE1509 =
       "Failed to check if topic [{}] is consensus-based, defaulting to false";
-  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812 =
+  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4 =
       "Skipping setup of consensus-based subscriptions for consumer group [{}] because "
-          + "mode=consensus only supports data_region_consensus_protocol_class={}, but current "
+          + "mode=incremental only supports data_region_consensus_protocol_class={}, but current "
           + "configured value is {} (runtime consensus implementation: {})";
+  public static final String
+      EXCEPTION_SUBSCRIPTION_CANNOT_ARG_CONSENSUS_BASED_TOPIC_S_ARG_IN_CONSUMER_GROUP_ARG_BECAUSE_MODE_INCREMENTAL_ONLY_SUPPORTS_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_ARG_BUT_CURRENT_CONFIGURED_VALUE_IS_ARG_RUNTIME_CONSENSUS_IMPLEMENTATION_ARG_6F21ED67 =
+          "Subscription: cannot %s consensus-based topic(s) %s in consumer group [%s] because "
+              + "mode=incremental only supports data_region_consensus_protocol_class=%s, but "
+              + "current configured value is %s (runtime consensus implementation: %s)";
   public static final String PIPE_LOG_TOPIC_CONFIG_NOT_FOUND_FOR_TOPIC_CANNOT_SET_UP_CONSENSUS_A93339CE =
       "Topic config not found for topic [{}], cannot set up consensus queue";
   public static final String PIPE_LOG_NO_LOCAL_IOTCONSENSUS_DATA_REGION_FOUND_FOR_TOPIC_IN_CONSUMER_6FD0600E =
@@ -2097,11 +2100,11 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_INITIALIZED_STARTSEARCHINDEX_69B53EE6 =
       "ConsensusPrefetchingQueue {}: prefetch initialized, startSearchIndex={}, progressSource={}, "
           + "recoveryWriterCount={}";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_D75375D0 =
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_WALGAPSKIPPEDENTRIES_9A4E6608 =
       "ConsensusPrefetchingQueue {}: periodic stats, lag={}, pendingDelta={}, walDelta={}, "
-          + "pendingTotal={}, walTotal={}, pendingQueueSize={}, prefetchingQueueSize={}, "
-          + "inFlightEventsSize={}, realtimeWriterCount={}, walHasNext={}, isActive={}, "
-          + "subtaskScheduled={}";
+          + "pendingTotal={}, walTotal={}, walGapSkippedEntries={}, pendingQueueSize={}, "
+          + "prefetchingQueueSize={}, inFlightEventsSize={}, realtimeWriterCount={}, "
+          + "walHasNext={}, isActive={}, subtaskScheduled={}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
       "ConsensusPrefetchingQueue {}: waiting {}ms for WAL gap [{}, {}) to become visible, "
           + "currentNextExpected={}, currentWalIndex={}, seekGeneration={}";
@@ -2181,6 +2184,14 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator: error reading WAL";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
       "ProgressWALIterator: failed to open WAL file {}, skipping";
+  public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
+      "ProgressWALIterator: skipped {} unreadable retained WAL files in directory {}, "
+          + "firstFile={}, lastFile={}, firstError={}; historical subscription data in these "
+          + "files cannot be replayed";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64 =
+      "ConsensusPrefetchingQueue {}: WAL replay skipped unavailable search indexes [{}, {}), "
+          + "skippedEntries={}, totalWalGapSkippedEntries={}; the missing WAL data may have been "
+          + "reclaimed before subscription consumption";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}: terminate event committed for historical transfer. creationTime: {}, "
           + "shouldMark: {}. {}";
@@ -2585,4 +2596,12 @@ public final class DataNodePipeMessages {
       "Topic config for %s is unavailable during consensus subscription setup";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "Failed to release TsFile parser memory for Pipe {} (creation time {}) in DataRegion {} because no reservation exists.";
+  public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
+      "Pipe processor worker {} has been processing the same event for {} ms. Pipe: {}, DataRegion: {}, subtask: {}, event: {}, thread state: {}. Stack:{}";
+  public static final String LOG_OPC_UA_SERVER_OPERATION_LIMITS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_5D2BCC90 =
+      "OPC UA server operation limits: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
+  public static final String LOG_INTERRUPTED_WHILE_READING_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_357D46A4 =
+      "Interrupted while reading OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
+  public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
+      "Failed to read OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
 }

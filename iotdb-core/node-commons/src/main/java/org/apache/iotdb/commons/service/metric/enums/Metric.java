@@ -217,6 +217,17 @@ public enum Metric {
   SUBSCRIPTION_CONSENSUS_SEEK_GENERATION("subscription_consensus_seek_generation"),
   SUBSCRIPTION_CONSENSUS_ACTIVE("subscription_consensus_active"),
   SUBSCRIPTION_CONSENSUS_INITIALIZED("subscription_consensus_initialized"),
+  SUBSCRIPTION_CONSENSUS_REMAINING_EVENT_COUNT("subscription_consensus_remaining_event_count"),
+  SUBSCRIPTION_CONSENSUS_RAW_WAL_GAP("subscription_consensus_raw_wal_gap"),
+  SUBSCRIPTION_CONSENSUS_CURRENT_WAL_SEARCH_INDEX(
+      "subscription_consensus_current_wal_search_index"),
+  SUBSCRIPTION_CONSENSUS_NEXT_READ_SEARCH_INDEX("subscription_consensus_next_read_search_index"),
+  SUBSCRIPTION_CONSENSUS_IN_FLIGHT_EVENT_COUNT("subscription_consensus_in_flight_event_count"),
+  SUBSCRIPTION_CONSENSUS_PREFETCHED_EVENT_COUNT("subscription_consensus_prefetched_event_count"),
+  SUBSCRIPTION_CONSENSUS_PENDING_EVENT_COUNT("subscription_consensus_pending_event_count"),
+  SUBSCRIPTION_CONSENSUS_LAST_POLL_TIME("subscription_consensus_last_poll_time"),
+  SUBSCRIPTION_CONSENSUS_LAST_PROGRESS_TIME("subscription_consensus_last_progress_time"),
+  SUBSCRIPTION_CONSENSUS_PROGRESS_STATUS("subscription_consensus_progress_status"),
   // load related
   ACTIVE_LOADING_FILES_NUMBER("active_loading_files_number"),
   ACTIVE_LOADING_FILES_SIZE("active_loading_files_size"),

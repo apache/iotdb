@@ -240,6 +240,7 @@ struct TDatabaseSchema {
     9: optional i32 maxDataRegionGroupNum
     10: optional i64 timePartitionOrigin
     11: optional bool isTableModel
+    12: optional bool needLastCache
 }
 
 // Schema
@@ -753,6 +754,7 @@ struct TDatabaseInfo {
   9: required i32 dataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
+  13: optional bool needLastCache
 }
 
 struct TGetDatabaseReq {
@@ -883,6 +885,7 @@ struct TShowPipeInfo {
   8: optional i64 remainingEventCount
   9: optional double EstimatedRemainingTime
   10: optional bool isDegraded
+  11: optional map<string, i64> recentFailures
 }
 
 struct TGetAllPipeInfoResp {
@@ -1065,11 +1068,13 @@ struct TUnsubscribeReq {
 struct TShowSubscriptionReq {
     1: optional string topicName
     2: optional bool isTableModel
+    3: optional bool details
 }
 
 struct TShowSubscriptionResp {
     1: required common.TSStatus status
     2: optional list<TShowSubscriptionInfo> subscriptionInfoList
+    3: optional list<TSubscriptionProgressInfo> subscriptionProgressList
 }
 
 struct TShowSubscriptionInfo {
@@ -1077,6 +1082,28 @@ struct TShowSubscriptionInfo {
     2: required string consumerGroupId
     3: required set<string> consumerIds
     4: optional i64 creationTime
+}
+
+struct TSubscriptionProgressInfo {
+    1: required string topicName
+    2: required string consumerGroupId
+    3: required string regionId
+    4: required i32 dataNodeId
+    5: required bool active
+    6: required bool initialized
+    7: required string status
+    8: required i64 remainingEventCount
+    9: required i64 rawWalGap
+    10: required i64 approximateLag
+    11: required i64 inFlightEventCount
+    12: required i64 prefetchedEventCount
+    13: required i64 pendingEventCount
+    14: required i64 currentWalSearchIndex
+    15: required i64 nextReadSearchIndex
+    16: required i64 lastProgressTimeMs
+    17: required i64 lastPollTimeMs
+    18: required string lastConsumerId
+    19: required i64 seekGeneration
 }
 
 struct TDropSubscriptionReq {
@@ -1308,6 +1335,7 @@ struct TTableInfo {
    3: optional i32 state
    4: optional string comment
    5: optional i32 type
+   6: optional bool needLastCache
 }
 
 struct TCreateTableViewReq {

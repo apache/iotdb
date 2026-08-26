@@ -116,6 +116,7 @@ databaseAttributesClause
 
 databaseAttributeClause
     : databaseAttributeKey operator_eq INTEGER_LITERAL
+    | NEED_LAST_CACHE operator_eq boolean_literal
     ;
 
 databaseAttributeKey
@@ -598,7 +599,7 @@ verifyConnection
 
 // ---- Remove DataNode
 removeDataNode
-    : REMOVE DATANODE dataNodeIds+=INTEGER_LITERAL (COMMA dataNodeIds+=INTEGER_LITERAL)*
+    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL
     ;
 
 // ---- Remove ConfigNode
@@ -741,7 +742,7 @@ showTopics
     ;
 
 showSubscriptions
-    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    : SHOW SUBSCRIPTIONS (DETAILS)? (ON topicName=identifier)?
     ;
 
 dropSubscription

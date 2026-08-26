@@ -21,11 +21,13 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -109,6 +111,21 @@ public class ConsensusPrefetchingQueue {
   private final ConsensusReqReader consensusReqReader;
 
   private final SubscriptionWalRetentionPolicy retentionPolicy;
+
+  /**
+   * Earliest WAL file version still needed by this consumer group's committed progress. Topic
+   * retention and this boundary are merged conservatively by IoTConsensus before deletion.
+   */
+  private volatile long committedRetainedMinVersionId = 0L;
+
+  private final Object committedRetentionLock = new Object();
+
+  private RegionProgress lastCommittedProgressForRetention;
+
+  private File lastRetainedWalFileForRetention;
+
+  private final Map<Long, WalFileCommitRequirement> walFileCommitRequirements =
+      new ConcurrentHashMap<>();
 
   private final WakeableIndexedConsensusQueue pendingEntries;
 
@@ -195,9 +212,9 @@ public class ConsensusPrefetchingQueue {
   private volatile ProgressWALIterator subscriptionWALIterator;
 
   /**
-   * Seek requests must not close/reset the WAL iterator from RPC threads because the prefetch
-   * worker may be reading it concurrently. Instead, seek only records the latest desired reset and
-   * the queue's next prefetch round applies it after observing the new seek generation.
+   * WAL cursor changes outside the iterator must not close/reset it from RPC threads because the
+   * prefetch worker may be reading it concurrently. Instead, the latest desired reset is recorded
+   * and applied by the next prefetch round after observing the expected seek generation.
    */
   private volatile long pendingSubscriptionWalResetSearchIndex = Long.MIN_VALUE;
 
@@ -246,6 +263,13 @@ public class ConsensusPrefetchingQueue {
   private volatile long observedSeekGeneration;
 
   private volatile long lastStatsLogTimeMs = System.currentTimeMillis();
+
+  /** Wall-clock time of the most recent event poll and committed progress update. */
+  private volatile long lastPollTimeMs = 0L;
+
+  private volatile long lastProgressTimeMs = 0L;
+
+  private volatile String lastConsumerId = "";
 
   private volatile long lastPendingAcceptedEntries = 0L;
 
@@ -379,6 +403,9 @@ public class ConsensusPrefetchingQueue {
 
     private final Runnable wakeupHook;
     private final BooleanSupplier admissionSupplier;
+    private final IoTConsensusMemoryManager requestMemoryManager =
+        IoTConsensusMemoryManager.getInstance();
+    private final AtomicLong retainedRequestBytes = new AtomicLong(0L);
 
     private WakeableIndexedConsensusQueue(
         final int capacity, final Runnable wakeupHook, final BooleanSupplier admissionSupplier) {
@@ -394,7 +421,20 @@ public class ConsensusPrefetchingQueue {
         if (!admissionSupplier.getAsBoolean()) {
           return false;
         }
-        offered = super.offer(request);
+        if (!requestMemoryManager.reserve(request)) {
+          return false;
+        }
+        try {
+          offered = super.offer(request);
+        } catch (final Throwable t) {
+          requestMemoryManager.free(request);
+          throw t;
+        }
+        if (offered) {
+          retainedRequestBytes.addAndGet(request.getRetainedMemorySize());
+        } else {
+          requestMemoryManager.free(request);
+        }
       }
       if (offered) {
         wakeupHook.run();
@@ -404,7 +444,23 @@ public class ConsensusPrefetchingQueue {
 
     @Override
     public synchronized void clear() {
-      super.clear();
+      IndexedConsensusRequest request;
+      while (Objects.nonNull(request = super.poll())) {
+        release(request);
+      }
+    }
+
+    private void release(final IndexedConsensusRequest request) {
+      retainedRequestBytes.addAndGet(-request.getRetainedMemorySize());
+      requestMemoryManager.free(request);
+    }
+
+    private void release(final List<IndexedConsensusRequest> requests) {
+      requests.forEach(this::release);
+    }
+
+    private long getRetainedRequestBytes() {
+      return retainedRequestBytes.get();
     }
   }
 
@@ -503,7 +559,8 @@ public class ConsensusPrefetchingQueue {
     this.pendingEntries =
         new WakeableIndexedConsensusQueue(
             PENDING_QUEUE_CAPACITY, this::requestPrefetch, this::canAcceptRealtimeEntry);
-    serverImpl.registerSubscriptionQueue(pendingEntries, retentionPolicy);
+    serverImpl.registerSubscriptionQueue(
+        pendingEntries, retentionPolicy, this::getCommittedRetainedMinVersionId);
 
     LOGGER.info(
         DataNodePipeMessages
@@ -748,15 +805,15 @@ public class ConsensusPrefetchingQueue {
     }
 
     this.nextExpectedSearchIndex.set(resolvedStart.getStartSearchIndex());
-    if (consensusReqReader instanceof WALNode) {
-      this.subscriptionWALIterator =
-          new ProgressWALIterator(
-              (WALNode) consensusReqReader, resolvedStart.getStartSearchIndex());
-    }
+    // Use the same factory as cursor resets; the default implementation still returns null for
+    // readers without WAL support.
+    this.subscriptionWALIterator =
+        createSubscriptionWALIterator(resolvedStart.getStartSearchIndex());
     this.prefetchInitialized = true;
     this.observedSeekGeneration = seekGeneration.get();
     discardBatch(this.lingerBatch);
     resetBatchWriterProgress();
+    refreshCommittedWalRetentionBoundAndNotify();
 
     LOGGER.info(
         DataNodePipeMessages
@@ -970,8 +1027,7 @@ public class ConsensusPrefetchingQueue {
     final Map<WriterId, WriterProgress> effectiveRecoveryWriterProgress =
         new LinkedHashMap<>(requestedWriterProgress);
     final Set<WriterId> exactVisibleWriterIds = new LinkedHashSet<>();
-    Long firstUncoveredReplayableSearchIndex = null;
-    boolean sawBlockingNonReplayableUncovered = false;
+    Long firstUncoveredLocalSearchIndex = null;
 
     while (requests.hasNext()) {
       final IndexedConsensusRequest request = requests.next();
@@ -993,11 +1049,9 @@ public class ConsensusPrefetchingQueue {
       }
 
       if (request.getSearchIndex() >= 0) {
-        if (Objects.isNull(firstUncoveredReplayableSearchIndex)) {
-          firstUncoveredReplayableSearchIndex = request.getSearchIndex();
+        if (Objects.isNull(firstUncoveredLocalSearchIndex)) {
+          firstUncoveredLocalSearchIndex = request.getSearchIndex();
         }
-      } else if (Objects.isNull(firstUncoveredReplayableSearchIndex)) {
-        sawBlockingNonReplayableUncovered = true;
       }
     }
 
@@ -1012,14 +1066,11 @@ public class ConsensusPrefetchingQueue {
     final RegionProgress effectiveRecoveryRegionProgress =
         new RegionProgress(effectiveRecoveryWriterProgress);
 
-    if (sawBlockingNonReplayableUncovered) {
-      return ReplayLocateDecision.locateMiss(
-          effectiveRecoveryRegionProgress,
-          "uncovered non-replayable WAL records appear before the first local replayable record");
-    }
-    if (Objects.nonNull(firstUncoveredReplayableSearchIndex)) {
+    // The iterator's lower bound filters only locally indexed requests. Replicated requests stay
+    // visible and are deduplicated by writer progress, so they do not block local cursor lookup.
+    if (Objects.nonNull(firstUncoveredLocalSearchIndex)) {
       return ReplayLocateDecision.found(
-          firstUncoveredReplayableSearchIndex,
+          firstUncoveredLocalSearchIndex,
           effectiveRecoveryRegionProgress,
           "resolved first uncovered replayable WAL record");
     }
@@ -1077,7 +1128,7 @@ public class ConsensusPrefetchingQueue {
             compareWriterProgress(candidate, existing) > 0 ? candidate : existing);
   }
 
-  private int compareWriterProgress(
+  private static int compareWriterProgress(
       final WriterProgress leftProgress, final WriterProgress rightProgress) {
     int cmp = Long.compare(leftProgress.getPhysicalTime(), rightProgress.getPhysicalTime());
     if (cmp != 0) {
@@ -1242,6 +1293,8 @@ public class ConsensusPrefetchingQueue {
 
         // Mark as polled before updating inFlightEvents
         event.recordLastPolledTimestamp();
+        lastPollTimeMs = System.currentTimeMillis();
+        lastConsumerId = consumerId;
         inFlightEvents.put(new InFlightEventKey(consumerId, event.getCommitContext()), event);
         event.recordLastPolledConsumerId(consumerId);
         return event;
@@ -1391,9 +1444,14 @@ public class ConsensusPrefetchingQueue {
             nextExpectedSearchIndex.get(),
             prefetchingQueue.size());
 
-        final MaterializationResult batchResult =
-            accumulateFromPending(
-                batch, lingerBatch, observedSeekGeneration, maxTablets, maxBatchBytes);
+        final MaterializationResult batchResult;
+        try {
+          batchResult =
+              accumulateFromPending(
+                  batch, lingerBatch, observedSeekGeneration, maxTablets, maxBatchBytes);
+        } finally {
+          pendingEntries.release(batch);
+        }
         if (batchResult != MaterializationResult.SUCCESS) {
           if (batchResult == MaterializationResult.WAL_GAP) {
             return PrefetchRoundResult.rescheduleAfter(WAL_GAP_RETRY_SLEEP_MS);
@@ -1480,13 +1538,14 @@ public class ConsensusPrefetchingQueue {
     final long currentWalAcceptedEntries = walPathAcceptedEntries.get();
     LOGGER.info(
         DataNodePipeMessages
-            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_D75375D0,
+            .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_WALGAPSKIPPEDENTRIES_9A4E6608,
         this,
         getLag(),
         currentPendingAcceptedEntries - lastPendingAcceptedEntries,
         currentWalAcceptedEntries - lastWalAcceptedEntries,
         currentPendingAcceptedEntries,
         currentWalAcceptedEntries,
+        walGapSkippedEntries.get(),
         pendingEntries.size(),
         prefetchingQueue.size(),
         inFlightEvents.size(),
@@ -1597,10 +1656,39 @@ public class ConsensusPrefetchingQueue {
     return hasLocalSearchIndex(request) && request.getSearchIndex() < nextExpectedSearchIndex.get();
   }
 
-  private void advanceLocalCursorIfPresent(final IndexedConsensusRequest request) {
+  private boolean advanceLocalCursorIfPresent(final IndexedConsensusRequest request) {
     if (hasLocalSearchIndex(request)) {
       nextExpectedSearchIndex.set(request.getSearchIndex() + 1);
+      return true;
     }
+    return false;
+  }
+
+  private void advanceLocalCursorFromPendingIfPresent(
+      final IndexedConsensusRequest request, final long expectedSeekGeneration) {
+    if (advanceLocalCursorIfPresent(request)) {
+      // Pending delivery advances independently of the WAL reader. Raise its local lower bound in
+      // place so stale local requests are filtered without rebuilding and rescanning retained WAL.
+      final ProgressWALIterator iterator = subscriptionWALIterator;
+      if (Objects.nonNull(iterator) && seekGeneration.get() == expectedSeekGeneration) {
+        iterator.advanceTo(
+            nextExpectedSearchIndex.get(), this::isWriterProgressCoveredForWalFastForward);
+      }
+    }
+  }
+
+  private boolean isWriterProgressCoveredForWalFastForward(
+      final long physicalTime, final int nodeId, final long localSeq) {
+    final WriterProgress candidate = new WriterProgress(physicalTime, localSeq);
+    final WriterProgress recoveryProgress =
+        recoveryWriterProgressByWriter.get(new WriterId(consensusGroupId.toString(), nodeId));
+    if (Objects.nonNull(recoveryProgress)
+        && compareWriterProgress(candidate, recoveryProgress) <= 0) {
+      return true;
+    }
+    final WriterProgress materializedProgress = materializedProgressByWriter.get(nodeId);
+    return Objects.nonNull(materializedProgress)
+        && compareWriterProgress(candidate, materializedProgress) <= 0;
   }
 
   private MaterializationResult appendRealtimeRequest(
@@ -1678,12 +1766,12 @@ public class ConsensusPrefetchingQueue {
 
       if (shouldSkipForRecoveryProgress(request)) {
         skippedCount++;
-        advanceLocalCursorIfPresent(request);
+        advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
         continue;
       }
       if (shouldSkipForMaterializedProgress(request)) {
         skippedCount++;
-        advanceLocalCursorIfPresent(request);
+        advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
         continue;
       }
 
@@ -1695,7 +1783,7 @@ public class ConsensusPrefetchingQueue {
       }
       markMaterializedProgress(request);
       processedCount++;
-      advanceLocalCursorIfPresent(request);
+      advanceLocalCursorFromPendingIfPresent(request, expectedSeekGeneration);
       if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
         break;
       }
@@ -1787,7 +1875,9 @@ public class ConsensusPrefetchingQueue {
     // Use the persistent linger batch so an unexpected runtime failure cannot orphan already
     // reserved Tablets or advance replay progress past data that has become unreachable.
     final DeliveryBatchState batchState = lingerBatch;
-    resetSubscriptionWALPosition(nextExpectedSearchIndex.get());
+    // Keep the iterator and its buffered next request across rounds. Reopening it here discards the
+    // request prepared by hasNext() and repeatedly re-reads, skips, and decompresses the same WAL
+    // segment. Pending-path cursor advances and seek operations request explicit realignment.
     final MaterializationResult materializationResult =
         pumpFromSubscriptionWAL(
             batchState, expectedSeekGeneration, maxWalEntries, maxTablets, maxBatchBytes);
@@ -1820,7 +1910,6 @@ public class ConsensusPrefetchingQueue {
       return MaterializationResult.SUCCESS;
     }
 
-    subscriptionWALIterator.refresh();
     ensureSubscriptionWalReadable();
 
     int entriesRead = 0;
@@ -1835,11 +1924,11 @@ public class ConsensusPrefetchingQueue {
           continue;
         }
         if (shouldSkipForRecoveryProgress(walEntry)) {
-          advanceLocalCursorIfPresent(walEntry);
+          advanceWalReplayCursorIfPresent(walEntry);
           continue;
         }
         if (shouldSkipForMaterializedProgress(walEntry)) {
-          advanceLocalCursorIfPresent(walEntry);
+          advanceWalReplayCursorIfPresent(walEntry);
           continue;
         }
 
@@ -1853,7 +1942,7 @@ public class ConsensusPrefetchingQueue {
           return appendResult;
         }
         markMaterializedProgress(walEntry);
-        advanceLocalCursorIfPresent(walEntry);
+        advanceWalReplayCursorIfPresent(walEntry);
       } catch (final Exception e) {
         LOGGER.warn(
             DataNodePipeMessages
@@ -1875,10 +1964,37 @@ public class ConsensusPrefetchingQueue {
     return MaterializationResult.SUCCESS;
   }
 
+  private void advanceWalReplayCursorIfPresent(final IndexedConsensusRequest request) {
+    if (!hasLocalSearchIndex(request)) {
+      return;
+    }
+
+    final long actualSearchIndex = request.getSearchIndex();
+    final long expectedSearchIndex = nextExpectedSearchIndex.get();
+    if (actualSearchIndex > expectedSearchIndex) {
+      final long skippedEntries = actualSearchIndex - expectedSearchIndex;
+      final long totalSkippedEntries = walGapSkippedEntries.addAndGet(skippedEntries);
+      LOGGER.warn(
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64,
+          this,
+          expectedSearchIndex,
+          actualSearchIndex,
+          skippedEntries,
+          totalSkippedEntries);
+    }
+    nextExpectedSearchIndex.set(actualSearchIndex + 1);
+  }
+
   private void ensureSubscriptionWalReadable() {
-    if (Objects.isNull(subscriptionWALIterator)
-        || subscriptionWALIterator.hasNext()
-        || !(consensusReqReader instanceof WALNode)) {
+    if (Objects.isNull(subscriptionWALIterator) || subscriptionWALIterator.hasNext()) {
+      return;
+    }
+
+    // Listing and sorting all retained WAL files is only necessary after the iterator is
+    // exhausted. While it still has a readable request, refreshing cannot affect the next result.
+    subscriptionWALIterator.refresh();
+    if (subscriptionWALIterator.hasNext() || !(consensusReqReader instanceof WALNode)) {
       return;
     }
 
@@ -1895,9 +2011,6 @@ public class ConsensusPrefetchingQueue {
         currentWalIndex);
     ((WALNode) consensusReqReader).rollWALFile();
     resetSubscriptionWALPosition(nextExpectedSearchIndex.get());
-    if (Objects.nonNull(subscriptionWALIterator)) {
-      subscriptionWALIterator.refresh();
-    }
   }
 
   private void resetSubscriptionWALPosition(final long startSearchIndex) {
@@ -1915,6 +2028,11 @@ public class ConsensusPrefetchingQueue {
   protected void onWalGapRetryScheduled() {}
 
   private boolean hasReadableWalEntries() {
+    if (pendingSubscriptionWalResetSearchIndex != Long.MIN_VALUE) {
+      // Do not advance the stale iterator only to discard its buffered request when the next round
+      // applies the pending realignment. Returning true keeps the worker scheduled for that round.
+      return true;
+    }
     return Objects.nonNull(subscriptionWALIterator) && subscriptionWALIterator.hasNext();
   }
 
@@ -2025,8 +2143,7 @@ public class ConsensusPrefetchingQueue {
     commitManager.recordMapping(
         consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
     if (tablets.isEmpty()) {
-      return commitManager.commit(
-          consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+      return commitAndRefreshWalRetention(writerId, writerProgress);
     }
 
     // nextOffset <= 0 means all tablets delivered in single batch
@@ -2041,7 +2158,10 @@ public class ConsensusPrefetchingQueue {
             SubscriptionPollResponseType.TABLETS.getType(),
             payload,
             commitContext,
-            SubscriptionAgent.broker().getColumnFilterMatcher(topicName).isTimeSelected(),
+            SubscriptionAgent.broker()
+                .getColumnFilterMatcher(
+                    topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))
+                .isTimeSelected(),
             getTimeSelectedByTable(converter.getDatabaseName(), tablets));
 
     // Install the ownership record before exposing the event to concurrent poll/ack threads.
@@ -2067,7 +2187,9 @@ public class ConsensusPrefetchingQueue {
       return Collections.emptyMap();
     }
     final ColumnFilterMatcher matcher =
-        SubscriptionAgent.broker().getColumnFilterMatcher(topicName);
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId));
     final Map<String, Boolean> tableMap = new HashMap<>();
     for (final Tablet tablet : tablets) {
       if (Objects.nonNull(tablet) && Objects.nonNull(tablet.getTableName())) {
@@ -2209,7 +2331,10 @@ public class ConsensusPrefetchingQueue {
 
   private boolean ackMissingInFlightEvent(
       final SubscriptionCommitContext commitContext, final boolean silent) {
-    acquireWriteLock();
+    // Late or duplicate ACKs touch the same concurrent lifecycle indexes and commit manager as the
+    // regular in-flight ACK path. A read lock is sufficient to fence seek/close transitions while
+    // allowing ACKs to proceed concurrently with a long-running WAL prefetch round.
+    acquireReadLock();
     try {
       if (!canAcceptCommitContext(commitContext, "ack", silent)) {
         return false;
@@ -2227,8 +2352,7 @@ public class ConsensusPrefetchingQueue {
       boolean committed = false;
       try {
         committed =
-            commitManager.commitWithoutOutstanding(
-                consumerGroupId, topicName, consensusGroupId, commitWriterId, commitWriterProgress);
+            commitWithoutOutstandingAndRefreshWalRetention(commitWriterId, commitWriterProgress);
       } finally {
         if (!committed
             && Objects.nonNull(event)
@@ -2256,7 +2380,7 @@ public class ConsensusPrefetchingQueue {
       }
       return true;
     } finally {
-      releaseWriteLock();
+      releaseReadLock();
     }
   }
 
@@ -2496,6 +2620,44 @@ public class ConsensusPrefetchingQueue {
     return refreshed.get();
   }
 
+  /**
+   * Returns an event to the prefetching queue without modifying its response or nack count.
+   *
+   * <p>This is used when the server polled the event but cannot fit it in the current response.
+   */
+  public boolean requeue(final String consumerId, final SubscriptionCommitContext commitContext) {
+    acquireReadLock();
+    try {
+      if (isClosed || closeRequested || pendingSeekRequest != null || !isActive) {
+        return false;
+      }
+      if (Objects.isNull(commitContext)
+          || !commitContext.hasWriterProgress()
+          || isCommitContextOutdated(commitContext)) {
+        return false;
+      }
+      final AtomicBoolean requeued = new AtomicBoolean(false);
+      inFlightEvents.compute(
+          new InFlightEventKey(consumerId, commitContext),
+          (key, ev) -> {
+            if (Objects.isNull(ev)) {
+              return null;
+            }
+            if (ev.isCommitted()) {
+              cleanUpEvent(ev, false);
+              return null;
+            }
+            ev.resetLastPolledTimestamp();
+            prefetchingQueue.add(ev);
+            requeued.set(true);
+            return null;
+          });
+      return requeued.get();
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   private boolean canAcceptCommitContext(
       final SubscriptionCommitContext commitContext, final String action, final boolean silent) {
     if (isClosed || closeRequested || pendingSeekRequest != null) {
@@ -2595,12 +2757,7 @@ public class ConsensusPrefetchingQueue {
           }
 
           final boolean committed =
-              commitManager.commit(
-                  consumerGroupId,
-                  topicName,
-                  consensusGroupId,
-                  commitWriterId,
-                  commitWriterProgress);
+              commitAndRefreshWalRetention(commitWriterId, commitWriterProgress);
           if (!committed) {
             if (!silent) {
               LOGGER.warn(
@@ -3115,6 +3272,7 @@ public class ConsensusPrefetchingQueue {
     // entry so seek/rebind resumes from the intended frontier.
     commitManager.resetState(
         consumerGroupId, topicName, consensusGroupId, request.committedRegionProgress);
+    refreshCommittedWalRetentionBoundAndNotify();
 
     LOGGER.info(
         DataNodePipeMessages
@@ -3126,6 +3284,124 @@ public class ConsensusPrefetchingQueue {
             ? request.committedRegionProgress.getWriterPositions().size()
             : 0,
         seekGeneration.get());
+  }
+
+  private boolean commitAndRefreshWalRetention(
+      final WriterId writerId, final WriterProgress writerProgress) {
+    final boolean committed =
+        commitManager.commit(
+            consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+    if (committed) {
+      lastProgressTimeMs = System.currentTimeMillis();
+      refreshCommittedWalRetentionBoundAndNotify();
+    }
+    return committed;
+  }
+
+  private boolean commitWithoutOutstandingAndRefreshWalRetention(
+      final WriterId writerId, final WriterProgress writerProgress) {
+    final boolean committed =
+        commitManager.commitWithoutOutstanding(
+            consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+    if (committed) {
+      lastProgressTimeMs = System.currentTimeMillis();
+      refreshCommittedWalRetentionBoundAndNotify();
+    }
+    return committed;
+  }
+
+  private long getCommittedRetainedMinVersionId() {
+    refreshCommittedWalRetentionBound();
+    return committedRetainedMinVersionId;
+  }
+
+  private void refreshCommittedWalRetentionBoundAndNotify() {
+    if (refreshCommittedWalRetentionBound()) {
+      serverImpl.checkAndUpdateSafeDeletedSearchIndex();
+    }
+  }
+
+  private boolean refreshCommittedWalRetentionBound() {
+    final RegionProgress committedRegionProgress =
+        commitManager.getCommittedRegionProgress(consumerGroupId, topicName, consensusGroupId);
+
+    synchronized (committedRetentionLock) {
+      if (Objects.equals(lastCommittedProgressForRetention, committedRegionProgress)
+          && Objects.nonNull(lastRetainedWalFileForRetention)
+          && lastRetainedWalFileForRetention.exists()) {
+        return false;
+      }
+
+      final CommittedWalRetentionBound newRetentionBound =
+          computeCommittedRetainedMinVersionId(committedRegionProgress);
+      final long newRetainedMinVersionId = newRetentionBound.retainedMinVersionId;
+      final boolean changed = committedRetainedMinVersionId != newRetainedMinVersionId;
+      committedRetainedMinVersionId = newRetainedMinVersionId;
+      lastCommittedProgressForRetention = committedRegionProgress;
+      lastRetainedWalFileForRetention = newRetentionBound.retainedWalFile;
+      walFileCommitRequirements.keySet().removeIf(versionId -> versionId < newRetainedMinVersionId);
+      return changed;
+    }
+  }
+
+  private CommittedWalRetentionBound computeCommittedRetainedMinVersionId(
+      final RegionProgress committedRegionProgress) {
+    if (!(consensusReqReader instanceof WALNode)) {
+      return new CommittedWalRetentionBound(0L, null);
+    }
+
+    final WALNode walNode = (WALNode) consensusReqReader;
+    final long currentWalVersion = walNode.getCurrentWALFileVersion();
+    final File[] walFiles = WALFileUtils.listAllWALFiles(walNode.getLogDirectory());
+    if (Objects.isNull(walFiles) || walFiles.length == 0) {
+      return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), null);
+    }
+
+    WALFileUtils.ascSortByVersionId(walFiles);
+    for (final File walFile : walFiles) {
+      final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+      if (versionId >= currentWalVersion) {
+        return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), walFile);
+      }
+      if (ProgressWALIterator.isHeaderOnlyWalFile(walFile)) {
+        continue;
+      }
+
+      WalFileCommitRequirement requirement = walFileCommitRequirements.get(versionId);
+      if (Objects.isNull(requirement)) {
+        try (final ProgressWALReader reader = openProgressWALReader(walFile)) {
+          requirement =
+              WalFileCommitRequirement.fromMetadata(
+                  consensusGroupId.toString(), reader.getMetaData());
+          walFileCommitRequirements.put(versionId, requirement);
+        } catch (final IOException e) {
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_READ_WAL_METADATA_FROM_A2ED50D1,
+              this,
+              walFile,
+              e);
+          return new CommittedWalRetentionBound(versionId, walFile);
+        }
+      }
+
+      if (!requirement.isCoveredBy(committedRegionProgress)) {
+        return new CommittedWalRetentionBound(versionId, walFile);
+      }
+    }
+    return new CommittedWalRetentionBound(Math.max(0L, currentWalVersion), null);
+  }
+
+  private static final class CommittedWalRetentionBound {
+
+    private final long retainedMinVersionId;
+    private final File retainedWalFile;
+
+    private CommittedWalRetentionBound(
+        final long retainedMinVersionId, final File retainedWalFile) {
+      this.retainedMinVersionId = retainedMinVersionId;
+      this.retainedWalFile = retainedWalFile;
+    }
   }
 
   public RegionProgress computeTailRegionProgress() {
@@ -3189,6 +3465,77 @@ public class ConsensusPrefetchingQueue {
     private LiveWALMetaDataSnapshot(final long versionId, final WALMetaData metadata) {
       this.versionId = versionId;
       this.metadata = metadata;
+    }
+  }
+
+  static final class WalFileCommitRequirement {
+
+    private final Map<WriterId, WriterProgress> requiredWriterProgress;
+    private final boolean containsUnsupportedProgress;
+
+    private WalFileCommitRequirement(
+        final Map<WriterId, WriterProgress> requiredWriterProgress,
+        final boolean containsUnsupportedProgress) {
+      this.requiredWriterProgress = requiredWriterProgress;
+      this.containsUnsupportedProgress = containsUnsupportedProgress;
+    }
+
+    static WalFileCommitRequirement fromMetadata(
+        final String regionId, final WALMetaData metadata) {
+      if (Objects.isNull(metadata)) {
+        return new WalFileCommitRequirement(Collections.emptyMap(), true);
+      }
+
+      final List<Integer> buffersSize = metadata.getBuffersSize();
+      final List<Long> physicalTimes = metadata.getPhysicalTimes();
+      final List<Short> nodeIds = metadata.getNodeIds();
+      final List<Long> localSeqs = metadata.getLocalSeqs();
+      if (physicalTimes.size() < buffersSize.size()
+          || nodeIds.size() < buffersSize.size()
+          || localSeqs.size() < buffersSize.size()) {
+        return new WalFileCommitRequirement(Collections.emptyMap(), true);
+      }
+
+      final Map<WriterId, WriterProgress> requiredWriterProgress = new LinkedHashMap<>();
+      for (int i = 0; i < buffersSize.size(); i++) {
+        final int writerNodeId = nodeIds.get(i);
+        final long physicalTime = physicalTimes.get(i);
+        final long localSeq = localSeqs.get(i);
+        if (writerNodeId < 0 && physicalTime == 0L && localSeq < 0L) {
+          // Non-search WAL entries do not participate in subscription progress.
+          continue;
+        }
+        if (writerNodeId < 0 || physicalTime < 0L || localSeq < 0L) {
+          // Legacy or incomplete writer metadata cannot be compared safely with RegionProgress.
+          return new WalFileCommitRequirement(Collections.emptyMap(), true);
+        }
+
+        final WriterId writerId = new WriterId(regionId, writerNodeId);
+        final WriterProgress candidateProgress = new WriterProgress(physicalTime, localSeq);
+        requiredWriterProgress.merge(
+            writerId,
+            candidateProgress,
+            (currentProgress, candidate) ->
+                compareWriterProgress(candidate, currentProgress) > 0
+                    ? candidate
+                    : currentProgress);
+      }
+      return new WalFileCommitRequirement(requiredWriterProgress, false);
+    }
+
+    boolean isCoveredBy(final RegionProgress committedRegionProgress) {
+      if (containsUnsupportedProgress || Objects.isNull(committedRegionProgress)) {
+        return false;
+      }
+      for (final Map.Entry<WriterId, WriterProgress> entry : requiredWriterProgress.entrySet()) {
+        final WriterProgress committedWriterProgress =
+            committedRegionProgress.getWriterPositions().get(entry.getKey());
+        if (Objects.isNull(committedWriterProgress)
+            || compareWriterProgress(committedWriterProgress, entry.getValue()) < 0) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 
@@ -3583,6 +3930,98 @@ public class ConsensusPrefetchingQueue {
     return prefetchInitialized ? 1L : 0L;
   }
 
+  public long getRawWalGap() {
+    final long currentSearchIndex = consensusReqReader.getCurrentSearchIndex();
+    final long nextSearchIndex = nextExpectedSearchIndex.get();
+    return currentSearchIndex >= nextSearchIndex && currentSearchIndex > 0
+        ? currentSearchIndex - nextSearchIndex + 1
+        : 0L;
+  }
+
+  public long getRemainingEventCount() {
+    return 0L
+        + prefetchingQueue.size()
+        + inFlightEvents.size()
+        + pendingEntries.size()
+        + getRealtimeBufferedEntryCount()
+        + lingerBatch.getEntryCount();
+  }
+
+  public long getLastPollTimeMs() {
+    return lastPollTimeMs;
+  }
+
+  public long getLastProgressTimeMs() {
+    return lastProgressTimeMs;
+  }
+
+  /** Returns 0=uninitialized, 1=inactive, 2=caught up, 3=catching up, 4=stalled. */
+  public long getProgressStatus() {
+    switch (getProgressStatusName()) {
+      case SubscriptionProgressSnapshot.STATUS_INACTIVE:
+        return 1L;
+      case SubscriptionProgressSnapshot.STATUS_CAUGHT_UP:
+        return 2L;
+      case SubscriptionProgressSnapshot.STATUS_CATCHING_UP:
+        return 3L;
+      case SubscriptionProgressSnapshot.STATUS_STALLED:
+        return 4L;
+      default:
+        return 0L;
+    }
+  }
+
+  public String getProgressStatusName() {
+    if (!prefetchInitialized) {
+      return SubscriptionProgressSnapshot.STATUS_UNINITIALIZED;
+    }
+    if (!isActive) {
+      return SubscriptionProgressSnapshot.STATUS_INACTIVE;
+    }
+    if (getLag() <= 0L) {
+      return SubscriptionProgressSnapshot.STATUS_CAUGHT_UP;
+    }
+    final long stalledTimeoutMs =
+        SubscriptionConfig.getInstance().getSubscriptionConsensusConsumerEvictionTimeoutMs();
+    final long progressReferenceTimeMs =
+        lastProgressTimeMs > 0L ? lastProgressTimeMs : lastPollTimeMs;
+    if (progressReferenceTimeMs > 0L
+        && stalledTimeoutMs > 0L
+        && System.currentTimeMillis() - progressReferenceTimeMs >= stalledTimeoutMs) {
+      return SubscriptionProgressSnapshot.STATUS_STALLED;
+    }
+    return SubscriptionProgressSnapshot.STATUS_CATCHING_UP;
+  }
+
+  public SubscriptionProgressSnapshot getProgressSnapshot() {
+    final long currentWalSearchIndex = consensusReqReader.getCurrentSearchIndex();
+    final long nextReadSearchIndex = nextExpectedSearchIndex.get();
+    return new SubscriptionProgressSnapshot(
+        IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+        consumerGroupId,
+        topicName,
+        consensusGroupId.toString(),
+        isActive,
+        prefetchInitialized,
+        currentWalSearchIndex,
+        nextReadSearchIndex,
+        getRawWalGap(),
+        getLag(),
+        prefetchingQueue.size(),
+        inFlightEvents.size(),
+        pendingEntries.size(),
+        getRealtimeBufferedEntryCount(),
+        lingerBatch.getEntryCount(),
+        lastPollTimeMs,
+        lastProgressTimeMs,
+        lastConsumerId,
+        seekGeneration.get(),
+        walGapSkippedEntries.get(),
+        runtimeVersionChangeCount.get(),
+        maxObservedTimestamp,
+        getProgressStatusName());
+  }
+
   public void setActiveWriterNodeIds(final Set<Integer> activeWriterNodeIds) {
     this.runtimeActiveWriterNodeIds =
         Collections.unmodifiableSet(
@@ -3767,6 +4206,10 @@ public class ConsensusPrefetchingQueue {
     return retainedTabletBytes.get();
   }
 
+  public long getRetainedRequestBytes() {
+    return pendingEntries.getRetainedRequestBytes();
+  }
+
   public long getSubscriptionMemoryLimitInBytes() {
     return subscriptionMemoryManager.getTotalMemorySizeInBytes();
   }
@@ -3780,8 +4223,16 @@ public class ConsensusPrefetchingQueue {
     return prefetchingQueue.size();
   }
 
+  public int getPendingEventCount() {
+    return pendingEntries.size();
+  }
+
   public long getCurrentReadSearchIndex() {
     return nextExpectedSearchIndex.get();
+  }
+
+  public long getCurrentWalSearchIndex() {
+    return consensusReqReader.getCurrentSearchIndex();
   }
 
   public long getPendingPathAcceptedEntries() {
@@ -3835,6 +4286,7 @@ public class ConsensusPrefetchingQueue {
     result.put("prefetchingQueueSize", String.valueOf(prefetchingQueue.size()));
     result.put("inFlightEventsSize", String.valueOf(inFlightEvents.size()));
     result.put("pendingEntriesSize", String.valueOf(pendingEntries.size()));
+    result.put("retainedRequestBytes", String.valueOf(getRetainedRequestBytes()));
     result.put("retainedTabletBytes", String.valueOf(retainedTabletBytes.get()));
     result.put("memoryBlockedEntryBytes", String.valueOf(memoryBlockedEntryBytes));
     result.put("realtimeAdmissionBlocked", String.valueOf(realtimeAdmissionBlocked.get()));
