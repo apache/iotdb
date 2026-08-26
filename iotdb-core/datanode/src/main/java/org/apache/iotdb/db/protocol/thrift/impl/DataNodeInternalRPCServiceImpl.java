@@ -1637,15 +1637,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return new TPullCommitProgressResp(RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION))
-          .setCommitRegionProgress(Collections.emptyMap());
+          .setCommitRegionProgress(Collections.emptyMap())
+          .setSubscriptionProgress(Collections.emptyMap());
     }
 
     try {
       final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
       final Map<String, ByteBuffer> regionProgress =
           SubscriptionAgent.broker().collectAllRegionCommitProgress(dataNodeId);
+      final Map<String, ByteBuffer> subscriptionProgress =
+          SubscriptionAgent.broker().collectAllProgressSnapshots();
       return new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
-          .setCommitRegionProgress(regionProgress);
+          .setCommitRegionProgress(regionProgress)
+          .setSubscriptionProgress(subscriptionProgress);
     } catch (Exception e) {
       LOGGER.warn(
           DataNodeMiscMessages.MISC_LOG_ERROR_OCCURRED_WHEN_PULLING_COMMIT_PROGRESS_48C12E4B, e);
