@@ -335,12 +335,12 @@ public class SchemaEngine {
     return schemaRegion;
   }
 
-  public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
+  public synchronized boolean deleteSchemaRegion(SchemaRegionId schemaRegionId)
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion == null) {
       logger.warn(DataNodeSchemaMessages.SCHEMA_REGION_ALREADY_DELETED, schemaRegionId);
-      return;
+      return false;
     }
     schemaRegion.deleteSchemaRegion();
     schemaMetricManager.removeSchemaRegionMetric(schemaRegionId.getId());
@@ -364,6 +364,7 @@ public class SchemaEngine {
         FileUtils.deleteFileOrDirectory(sgDir);
       }
     }
+    return true;
   }
 
   public int getSchemaRegionNumber() {

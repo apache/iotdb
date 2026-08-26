@@ -2824,6 +2824,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     ConsensusGroupId consensusGroupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
+    boolean consensusGroupDeleted = true;
     if (consensusGroupId instanceof DataRegionId) {
       try {
         DataRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
@@ -2831,8 +2832,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         if (!(e instanceof ConsensusGroupNotExistException)) {
           return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
         }
+        consensusGroupDeleted = false;
       }
-      return regionManager.deleteDataRegion((DataRegionId) consensusGroupId);
+      return getDeleteRegionStatus(
+          regionManager.deleteDataRegion((DataRegionId) consensusGroupId), consensusGroupDeleted);
     } else {
       try {
         SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
@@ -2840,9 +2843,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         if (!(e instanceof ConsensusGroupNotExistException)) {
           return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
         }
+        consensusGroupDeleted = false;
       }
-      return regionManager.deleteSchemaRegion((SchemaRegionId) consensusGroupId);
+      return getDeleteRegionStatus(
+          regionManager.deleteSchemaRegion((SchemaRegionId) consensusGroupId),
+          consensusGroupDeleted);
     }
+  }
+
+  private TSStatus getDeleteRegionStatus(
+      TSStatus localRegionStatus, boolean consensusGroupDeleted) {
+    if (consensusGroupDeleted
+        && localRegionStatus.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode()) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    return localRegionStatus;
   }
 
   @Override
