@@ -663,6 +663,9 @@ public final class ConfigNodeMessages {
       "procedure_completed_evict_ttl should be greater than 0, but was ";
 
   public static final String
-      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_CONSENSUS_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_3C2D0BDA =
-          "Failed to create or alter topic, mode=consensus does not support topic attributes %s";
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_MODE_INCREMENTAL_DOES_NOT_SUPPORT_TOPIC_ATTRIBUTES_ARG_1A72326A =
+          "Failed to create or alter topic, mode=incremental does not support topic attributes %s";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
+          "Failed to create or alter topic, %s and %s are only supported for incremental topics";
 }
