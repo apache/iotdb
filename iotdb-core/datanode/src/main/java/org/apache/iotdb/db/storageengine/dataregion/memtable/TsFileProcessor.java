@@ -104,9 +104,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -292,6 +294,10 @@ public class TsFileProcessor {
     ensureMemTable(infoForMetrics);
     workMemTable.checkDataType(insertRowNode);
 
+    AlignedTVListRamCostSnapshot alignedRamCostSnapshot =
+        insertRowNode.isAligned()
+            ? new AlignedTVListRamCostSnapshot(workMemTable, insertRowNode.getDeviceID())
+            : null;
     long[] memIncrements;
 
     long memControlStartTime = System.nanoTime();
@@ -356,11 +362,15 @@ public class TsFileProcessor {
             insertRowNode,
             tsFileResource);
 
-    int pointInserted;
-    if (insertRowNode.isAligned()) {
-      pointInserted = workMemTable.insertAlignedRow(insertRowNode);
-    } else {
-      pointInserted = workMemTable.insert(insertRowNode);
+    int pointInserted = 0;
+    try {
+      if (insertRowNode.isAligned()) {
+        pointInserted = workMemTable.insertAlignedRow(insertRowNode);
+      } else {
+        pointInserted = workMemTable.insert(insertRowNode);
+      }
+    } finally {
+      reconcileAlignedTVListRamCost(alignedRamCostSnapshot, memIncrements[0]);
     }
 
     // Update start time of this memtable
@@ -385,6 +395,17 @@ public class TsFileProcessor {
     workMemTable.checkDataType(insertRowsNode);
 
     long[] memIncrements;
+    long alignedMemTableIncrement = 0;
+    Set<IDeviceID> alignedDeviceIds = new HashSet<>();
+    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+      if (insertRowNode.isAligned()) {
+        alignedDeviceIds.add(insertRowNode.getDeviceID());
+      }
+    }
+    AlignedTVListRamCostSnapshot alignedRamCostSnapshot =
+        alignedDeviceIds.isEmpty()
+            ? null
+            : new AlignedTVListRamCostSnapshot(workMemTable, alignedDeviceIds);
 
     long memControlStartTime = System.nanoTime();
     if (insertRowsNode.isMixingAlignment()) {
@@ -398,7 +419,14 @@ public class TsFileProcessor {
         }
       }
       long[] alignedMemIncrements = checkAlignedMemCostAndAddToTspInfoForRows(alignedList);
-      long[] nonAlignedMemIncrements = checkMemCostAndAddToTspInfoForRows(nonAlignedList);
+      alignedMemTableIncrement = alignedMemIncrements[0];
+      final long[] nonAlignedMemIncrements;
+      try {
+        nonAlignedMemIncrements = checkMemCostAndAddToTspInfoForRows(nonAlignedList);
+      } catch (final WriteProcessException e) {
+        rollbackMemoryInfoIfNeeded(alignedMemIncrements);
+        throw e;
+      }
       memIncrements = new long[3];
       for (int i = 0; i < 3; i++) {
         memIncrements[i] = alignedMemIncrements[i] + nonAlignedMemIncrements[i];
@@ -407,6 +435,7 @@ public class TsFileProcessor {
       if (insertRowsNode.isAligned()) {
         memIncrements =
             checkAlignedMemCostAndAddToTspInfoForRows(insertRowsNode.getInsertRowNodeList());
+        alignedMemTableIncrement = memIncrements[0];
       } else {
         memIncrements = checkMemCostAndAddToTspInfoForRows(insertRowsNode.getInsertRowNodeList());
       }
@@ -456,19 +485,24 @@ public class TsFileProcessor {
             tsFileResource);
 
     int pointInserted = 0;
-    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
-      if (insertRowNode.isAligned()) {
-        pointInserted += workMemTable.insertAlignedRow(insertRowNode);
-      } else {
-        pointInserted += workMemTable.insert(insertRowNode);
+    try {
+      for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+        if (insertRowNode.isAligned()) {
+          pointInserted += workMemTable.insertAlignedRow(insertRowNode);
+        } else {
+          pointInserted += workMemTable.insert(insertRowNode);
+        }
+
+        // update start time of this memtable
+        tsFileResource.updateStartTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
+        // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+        // for unsequence tsfile, we have to update the endTime for each insertion.
+        if (!sequence) {
+          tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
+        }
       }
-      // update start time of this memtable
-      tsFileResource.updateStartTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
-      // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
-      // for unsequence tsfile, we have to update the endTime for each insertion.
-      if (!sequence) {
-        tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
-      }
+    } finally {
+      reconcileAlignedTVListRamCost(alignedRamCostSnapshot, alignedMemTableIncrement);
     }
 
     tsFileResource.updateProgressIndex(insertRowsNode.getProgressIndex());
@@ -583,6 +617,20 @@ public class TsFileProcessor {
     ensureMemTable(infoForMetrics);
     workMemTable.checkDataType(insertTabletNode);
 
+    Set<IDeviceID> alignedDeviceIds = new HashSet<>();
+    if (insertTabletNode.isAligned()) {
+      for (int[] range : rangeList) {
+        for (Pair<IDeviceID, Integer> deviceEndPosition :
+            insertTabletNode.splitByDevice(range[0], range[1])) {
+          alignedDeviceIds.add(deviceEndPosition.getLeft());
+        }
+      }
+    }
+    AlignedTVListRamCostSnapshot alignedRamCostSnapshot =
+        alignedDeviceIds.isEmpty()
+            ? null
+            : new AlignedTVListRamCostSnapshot(workMemTable, alignedDeviceIds);
+
     long[] memIncrements =
         scheduleMemoryBlock(insertTabletNode, rangeList, results, infoForMetrics);
 
@@ -628,52 +676,63 @@ public class TsFileProcessor {
             tsFileResource);
 
     int pointInserted = 0;
-    for (int[] rangePair : rangeList) {
-      int start = rangePair[0];
-      int end = rangePair[1];
-      try {
-        if (insertTabletNode.isAligned()) {
-          pointInserted +=
-              workMemTable.insertAlignedTablet(
-                  insertTabletNode, start, end, noFailure ? null : results);
-        } else {
-          pointInserted += workMemTable.insertTablet(insertTabletNode, start, end);
+    try {
+      for (int rangeIndex = 0; rangeIndex < rangeList.size(); rangeIndex++) {
+        final int[] rangePair = rangeList.get(rangeIndex);
+        int start = rangePair[0];
+        int end = rangePair[1];
+        try {
+          if (insertTabletNode.isAligned()) {
+            pointInserted +=
+                workMemTable.insertAlignedTablet(
+                    insertTabletNode, start, end, noFailure ? null : results);
+          } else {
+            pointInserted += workMemTable.insertTablet(insertTabletNode, start, end);
+          }
+        } catch (final WriteProcessException e) {
+          final TSStatus failureStatus = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+          for (int failedRangeIndex = rangeIndex;
+              failedRangeIndex < rangeList.size();
+              failedRangeIndex++) {
+            final int[] failedRange = rangeList.get(failedRangeIndex);
+            for (int i = failedRange[0]; i < failedRange[1]; i++) {
+              results[i] = failureStatus;
+            }
+          }
+          throw e;
         }
-      } catch (WriteProcessException e) {
         for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+          if (results[i] == null
+              || results[i].getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            results[i] = RpcUtils.SUCCESS_STATUS;
+          }
         }
-        throw new WriteProcessException(e);
-      }
-      for (int i = start; i < end; i++) {
-        if (results[i] == null
-            || results[i].getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          results[i] = RpcUtils.SUCCESS_STATUS;
-        }
-      }
 
-      final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
-          insertTabletNode.splitByDevice(start, end);
-      tsFileResource.updateStartTime(
-          deviceEndOffsetPairs.get(0).left, insertTabletNode.getTimes()[start]);
-      if (!sequence) {
-        // For sequence tsfile, we update the endTime only when the file is prepared to be closed.
-        // For unsequence tsfile, we have to update the endTime for each insertion.
-        tsFileResource.updateEndTime(
-            deviceEndOffsetPairs.get(0).left,
-            insertTabletNode.getTimes()[deviceEndOffsetPairs.get(0).right - 1]);
-      }
-      for (int i = 1; i < deviceEndOffsetPairs.size(); i++) {
-        // the end offset of i - 1 is the start offset of i
+        final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
+            insertTabletNode.splitByDevice(start, end);
         tsFileResource.updateStartTime(
-            deviceEndOffsetPairs.get(i).left,
-            insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i - 1).right]);
+            deviceEndOffsetPairs.get(0).left, insertTabletNode.getTimes()[start]);
         if (!sequence) {
+          // For sequence tsfile, we update the endTime only when the file is prepared to be closed.
+          // For unsequence tsfile, we have to update the endTime for each insertion.
           tsFileResource.updateEndTime(
+              deviceEndOffsetPairs.get(0).left,
+              insertTabletNode.getTimes()[deviceEndOffsetPairs.get(0).right - 1]);
+        }
+        for (int i = 1; i < deviceEndOffsetPairs.size(); i++) {
+          // the end offset of i - 1 is the start offset of i
+          tsFileResource.updateStartTime(
               deviceEndOffsetPairs.get(i).left,
-              insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i).right - 1]);
+              insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i - 1).right]);
+          if (!sequence) {
+            tsFileResource.updateEndTime(
+                deviceEndOffsetPairs.get(i).left,
+                insertTabletNode.getTimes()[deviceEndOffsetPairs.get(i).right - 1]);
+          }
         }
       }
+    } finally {
+      reconcileAlignedTVListRamCost(alignedRamCostSnapshot, memIncrements[0]);
     }
     tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
 
@@ -1169,6 +1228,75 @@ public class TsFileProcessor {
                 && columnCategories[index] == TsTableColumnCategory.FIELD);
   }
 
+  private void reconcileAlignedTVListRamCost(
+      AlignedTVListRamCostSnapshot snapshot, long estimatedMemTableIncrement) {
+    if (snapshot == null) {
+      return;
+    }
+
+    long correction = snapshot.getMemoryCorrection(estimatedMemTableIncrement);
+    if (correction > 0) {
+      dataRegionInfo.addStorageGroupMemCost(correction);
+      snapshot.memTable.addTVListRamCost(correction);
+    } else if (correction < 0) {
+      long releasedMemory = -correction;
+      dataRegionInfo.releaseStorageGroupMemCost(releasedMemory);
+      snapshot.memTable.releaseTVListRamCost(releasedMemory);
+      SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
+    }
+  }
+
+  static final class AlignedTVListRamCostSnapshot {
+
+    private final IMemTable memTable;
+    private final IDeviceID deviceId;
+    private final Set<IDeviceID> deviceIds;
+    private final long ramCostBeforeWrite;
+
+    AlignedTVListRamCostSnapshot(IMemTable memTable, IDeviceID deviceId) {
+      this.memTable = memTable;
+      this.deviceId = deviceId;
+      this.deviceIds = null;
+      this.ramCostBeforeWrite = getRamCost(memTable, deviceId);
+    }
+
+    AlignedTVListRamCostSnapshot(IMemTable memTable, Set<IDeviceID> deviceIds) {
+      this.memTable = memTable;
+      this.deviceId = null;
+      this.deviceIds = deviceIds;
+      this.ramCostBeforeWrite = getRamCost(memTable, deviceIds);
+    }
+
+    long getMemoryCorrection(long estimatedMemTableIncrement) {
+      return (deviceId == null ? getRamCost(memTable, deviceIds) : getRamCost(memTable, deviceId))
+          - ramCostBeforeWrite
+          - estimatedMemTableIncrement;
+    }
+
+    private static long getRamCost(IMemTable memTable, Set<IDeviceID> deviceIds) {
+      long ramCost = 0;
+      for (IDeviceID currentDeviceId : deviceIds) {
+        ramCost += getRamCost(memTable, currentDeviceId);
+      }
+      return ramCost;
+    }
+
+    private static long getRamCost(IMemTable memTable, IDeviceID deviceId) {
+      IWritableMemChunk memChunk =
+          memTable.getWritableMemChunk(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+      if (!(memChunk instanceof AlignedWritableMemChunk)) {
+        return 0;
+      }
+
+      AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
+      long ramCost = alignedMemChunk.getWorkingTVList().getRamSize();
+      for (AlignedTVList sortedTVList : alignedMemChunk.getSortedList()) {
+        ramCost += sortedTVList.getRamSize();
+      }
+      return ramCost;
+    }
+  }
+
   private void updateMemoryInfo(
       long memTableIncrement, long chunkMetadataIncrement, long textDataIncrement)
       throws WriteProcessRejectException {
@@ -1219,6 +1347,15 @@ public class TsFileProcessor {
     SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
     workMemTable.releaseTVListRamCost(memTableIncrement);
     workMemTable.releaseTextDataSize(textDataIncrement);
+  }
+
+  private void rollbackMemoryInfoIfNeeded(final long[] memIncrements) {
+    for (final long memIncrement : memIncrements) {
+      if (memIncrement != 0) {
+        rollbackMemoryInfo(memIncrements);
+        return;
+      }
+    }
   }
 
   /**
