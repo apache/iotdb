@@ -176,7 +176,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     try {
       folderManager =
           new FolderManager(
-              Arrays.asList(RECEIVER_FILE_BASE_DIRS), DirectoryStrategyType.SEQUENCE_STRATEGY);
+              Arrays.asList(RECEIVER_FILE_BASE_DIRS),
+              DirectoryStrategyType.SEQUENCE_STRATEGY,
+              false);
     } catch (final DiskSpaceInsufficientException e) {
       LOGGER.error(
           "Fail to create pipe receiver file folders allocation strategy because all disks of folders are full.",
