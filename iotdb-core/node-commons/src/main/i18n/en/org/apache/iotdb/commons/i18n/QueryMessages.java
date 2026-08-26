@@ -587,5 +587,10 @@ public final class QueryMessages {
       "The N argument of FFT must be a positive integer.";
   public static final String FFT_ORDER_BY_MUST_SORT_ASCENDING =
       "The ORDER BY clause of the DATA argument must sort the time column in ascending order.";
+  public static final String EXCEPTION_FFT_LENGTH_MUST_BE_A_POSITIVE_INT_SIZED_VALUE_A000D3BB =
+      "FFT length must be a positive int-sized value.";
+  public static final String
+      EXCEPTION_INPUT_ARRAY_LENGTH_MUST_BE_AT_LEAST_2_FFT_LENGTH_31DF6A25 =
+          "Input array length must be at least 2 * FFT length.";
 
 }

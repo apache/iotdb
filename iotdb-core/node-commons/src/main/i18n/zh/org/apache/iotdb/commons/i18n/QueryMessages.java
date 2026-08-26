@@ -584,5 +584,10 @@ public final class QueryMessages {
   public static final String FFT_N_MUST_BE_POSITIVE_INTEGER = "FFT 的 N 参数必须是正整数。";
   public static final String FFT_ORDER_BY_MUST_SORT_ASCENDING =
       "DATA 参数的 ORDER BY 子句必须按时间列升序排序。";
+  public static final String EXCEPTION_FFT_LENGTH_MUST_BE_A_POSITIVE_INT_SIZED_VALUE_A000D3BB =
+      "FFT 长度必须是正数且不能超过 int 范围。";
+  public static final String
+      EXCEPTION_INPUT_ARRAY_LENGTH_MUST_BE_AT_LEAST_2_FFT_LENGTH_31DF6A25 =
+          "输入数组长度必须至少为 FFT 长度的 2 倍。";
 
 }

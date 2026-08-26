@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf.fft;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 /** Computes an in-place 1D forward DFT for interleaved complex float data. */
 public final class FloatFFT_1D {
 
@@ -26,14 +28,16 @@ public final class FloatFFT_1D {
 
   public FloatFFT_1D(long length) {
     if (length < 1 || length > Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("FFT length must be a positive int-sized value.");
+      throw new IllegalArgumentException(
+          QueryMessages.EXCEPTION_FFT_LENGTH_MUST_BE_A_POSITIVE_INT_SIZED_VALUE_A000D3BB);
     }
     this.length = (int) length;
   }
 
   public void complexForward(float[] values) {
     if (values.length < 2 * length) {
-      throw new IllegalArgumentException("Input array length must be at least 2 * FFT length.");
+      throw new IllegalArgumentException(
+          QueryMessages.EXCEPTION_INPUT_ARRAY_LENGTH_MUST_BE_AT_LEAST_2_FFT_LENGTH_31DF6A25);
     }
     if (length == 1) {
       return;
