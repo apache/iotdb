@@ -27,9 +27,17 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThrows;
 
 public class DeepCopyRpcTransportFactoryTest {
+
+  @Test
+  public void testGetInstanceReturnsIndependentClientFactories() {
+    assertNotSame(
+        DeepCopyRpcTransportFactory.getInstance(8, 16),
+        DeepCopyRpcTransportFactory.getInstance(8, 16));
+  }
 
   @Test
   public void testIndependentMaxFrameSizeConfigurations() throws TTransportException {

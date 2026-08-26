@@ -21,13 +21,7 @@ package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TTransportFactory;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
-
-  private static final Map<FactoryConfig, DeepCopyRpcTransportFactory> INSTANCES =
-      new ConcurrentHashMap<>();
 
   public static DeepCopyRpcTransportFactory INSTANCE;
 
@@ -45,10 +39,7 @@ public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
 
   public static DeepCopyRpcTransportFactory getInstance(
       int thriftDefaultBufferSize, int thriftMaxFrameSize) {
-    FactoryConfig config =
-        new FactoryConfig(USE_SNAPPY, thriftDefaultBufferSize, thriftMaxFrameSize);
-    return INSTANCES.computeIfAbsent(
-        config, key -> create(key.useSnappy, key.thriftDefaultBufferSize, key.thriftMaxFrameSize));
+    return create(USE_SNAPPY, thriftDefaultBufferSize, thriftMaxFrameSize);
   }
 
   private static DeepCopyRpcTransportFactory create(
@@ -61,7 +52,4 @@ public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
             new TimeoutChangeableTFastFramedTransport.Factory(
                 thriftDefaultBufferSize, thriftMaxFrameSize, true));
   }
-
-  private record FactoryConfig(
-      boolean useSnappy, int thriftDefaultBufferSize, int thriftMaxFrameSize) {}
 }
