@@ -384,18 +384,35 @@ public class SourceHandle implements ISourceHandle {
 
   public synchronized void updatePendingDataBlockInfo(
       int startSequenceId, List<Long> dataBlockSizes) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          DataNodeQueryMessages.RECEIVENEWTSBLOCKNOTIFICATION_ARG_ARG_EACH_SIZE_IS_ARG,
-          startSequenceId,
-          startSequenceId + dataBlockSizes.size(),
-          dataBlockSizes);
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodeQueryMessages.RECEIVENEWTSBLOCKNOTIFICATION_ARG_ARG_EACH_SIZE_IS_ARG,
+            startSequenceId,
+            startSequenceId + dataBlockSizes.size(),
+            dataBlockSizes);
+      }
+      for (int i = 0; i < dataBlockSizes.size(); i++) {
+        sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
+      }
+      if (canGetTsBlockFromRemote) {
+        trySubmitGetDataBlocksTask();
+      }
+    } catch (RuntimeException | Error t) {
+      // This method runs in the inbound RPC thread. Mark the local FI failed before the same
+      // exception is returned to the upstream FI through the existing Thrift error channel.
+      notifyFailure(t);
+      throw t;
     }
-    for (int i = 0; i < dataBlockSizes.size(); i++) {
-      sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
-    }
-    if (canGetTsBlockFromRemote) {
-      trySubmitGetDataBlocksTask();
+  }
+
+  private void notifyFailure(Throwable t) {
+    try {
+      sourceHandleListener.onFailure(this, t);
+    } catch (Throwable callbackFailure) {
+      if (callbackFailure != t) {
+        t.addSuppressed(callbackFailure);
+      }
     }
   }
 

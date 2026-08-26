@@ -367,6 +367,9 @@ public final class ConfigNodeMessages {
       "schema_region_consensus_protocol_class";
   public static final String SEND_RPC_TO_DATA_NODE_FOR_CHANGING_REGIONS_LEADER_ON =
       "Send RPC to data node: {} for changing regions leader on it";
+  public static final String
+      LOG_SETNEEDLASTCACHE_THE_NEED_LAST_CACHE_FLAG_OF_DATABASE_ARG_IS_ADJUSTED_TO_ARG_C7CFFABC =
+          "[SetNeedLastCache] The need last cache flag of Database: {} is adjusted to: {}";
   public static final String SETTTL_THE_TTL_OF_DATABASE_IS_ADJUSTED_TO =
       "[SetTTL] The ttl of Database: {} is adjusted to: {}";
   public static final String SNAPSHOT_DIRECTORY_CAN_NOT_BE_CREATED =
@@ -672,4 +675,7 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "Failed to create or alter topic, %s and %s are only supported for incremental topics";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_SUBSCRIBING_ONLY_TO_THE_AUDIT_DATABASE_OR_PATHS_UNDER_IT_IS_NOT_ALLOWED_3E96A6BA =
+          "Failed to create or alter topic, subscribing only to the __audit database or paths under it is not allowed";
 }

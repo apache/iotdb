@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -37,5 +40,17 @@ public class CommonConfigTest {
   @Test
   public void testSubscriptionIsNotExposedInConfigurationTemplate() throws IOException {
     assertNull(ConfigurationFileUtils.getConfigurationDefaultValue("subscription_enabled"));
+  }
+
+  @Test
+  public void testSameNodeStatusDoesNotClearStatusReason() {
+    CommonConfig config = new CommonConfig();
+    config.setNodeStatus(NodeStatus.ReadOnly);
+    config.setStatusReason(NodeStatus.DISK_FULL);
+
+    config.setNodeStatus(NodeStatus.ReadOnly);
+
+    Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
+    Assert.assertEquals(NodeStatus.DISK_FULL, config.getStatusReason());
   }
 }

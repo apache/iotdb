@@ -80,7 +80,7 @@ public class SubscriptionReceiverAgent {
   SubscriptionReceiverAgent() {
     this(
         SubscriptionReceiverV1::new,
-        true,
+        SubscriptionConfig.getInstance().getSubscriptionEnabled(),
         () -> SubscriptionConfig.getInstance().getSubscriptionEnabled());
   }
 
