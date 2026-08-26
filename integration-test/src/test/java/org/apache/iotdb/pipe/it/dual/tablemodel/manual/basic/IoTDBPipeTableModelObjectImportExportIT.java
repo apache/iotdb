@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
@@ -64,6 +65,9 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
   private static final int REALTIME_INSERT_ROWS = 50;
 
   private static final long RECEIVER_VERIFY_TIMEOUT_MS = 120_000L;
+
+  private static final long SENDER_DELETION_EFFECTIVE_TIMEOUT_MS = 60_000L;
+  private static final long SENDER_DELETION_EFFECTIVE_POLL_INTERVAL_MS = 500L;
 
   private String targetDir;
 
@@ -229,14 +233,24 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
         long delStart = HISTORY_INSERT_START + DELETE_OFFSET;
         long delEnd = delStart + DELETE_LENGTH - 1;
 
-        sender.executeNonQueryStatement(
-            String.format(
-                "DELETE FROM %s WHERE time >= %d AND time <= %d", TABLE_NAME, delStart, delEnd));
+        // Deletion mods are only transferred when source.mods.enable is true. With mods disabled,
+        // the deleted OBJECT payload files are physically removed at the source and cannot be
+        // synced to the receiver, so the deletion step is skipped and the full dataset is expected.
+        if (modsEnable) {
+          sender.executeNonQueryStatement(
+              String.format(
+                  "DELETE FROM %s WHERE time >= %d AND time <= %d", TABLE_NAME, delStart, delEnd));
+
+          // The pipe's historical export reads the DataRegion leader's TsFile. The deletion
+          // reaches that leader through IoTConsensus asynchronously, so wait until it is actually
+          // effective on every sender DataNode before flushing. Otherwise the historical export
+          // may capture the TsFile before the deletion mod exists.
+          waitForSenderDeletionEffective(delStart, delEnd);
+        }
         TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
         for (long t = HISTORY_INSERT_START; t < HISTORY_INSERT_START + HISTORY_INSERT_ROWS; t++) {
-          boolean inDeleteRange = (t >= delStart && t <= delEnd);
-          // Deleted OBJECT payload files cannot be read back even when source mods are disabled.
+          boolean inDeleteRange = modsEnable && (t >= delStart && t <= delEnd);
           if (!inDeleteRange) {
             expectedTimestamps.add(t);
           }
@@ -406,6 +420,48 @@ public class IoTDBPipeTableModelObjectImportExportIT extends AbstractPipeTableMo
       }
     }
     if (tablet.getRowSize() > 0) session.insert(tablet);
+  }
+
+  private void waitForSenderDeletionEffective(long delStart, long delEnd) throws Exception {
+    final long deadline = System.currentTimeMillis() + SENDER_DELETION_EFFECTIVE_TIMEOUT_MS;
+    final List<String> senderNodeUrls = new ArrayList<>();
+    for (final DataNodeWrapper dataNodeWrapper : senderEnv.getDataNodeWrapperList()) {
+      senderNodeUrls.add(dataNodeWrapper.getIpAndPortString());
+    }
+
+    while (System.currentTimeMillis() < deadline) {
+      boolean allEffective = true;
+      for (final String nodeUrl : senderNodeUrls) {
+        try (ITableSession session =
+            senderEnv.getTableSessionConnection(Collections.singletonList(nodeUrl))) {
+          session.executeNonQueryStatement(String.format("USE %s", TEST_DATABASE));
+          String sql =
+              String.format(
+                  "SELECT time FROM %s WHERE time >= %d AND time <= %d",
+                  TABLE_NAME, delStart, delEnd);
+          try (SessionDataSet dataSet = session.executeQueryStatement(sql)) {
+            if (dataSet.iterator().next()) {
+              allEffective = false;
+              break;
+            }
+          }
+        }
+      }
+      if (allEffective) {
+        LOGGER.info(
+            "Deletion of range [{} - {}] is effective on all sender DataNodes {}.",
+            delStart,
+            delEnd,
+            senderNodeUrls);
+        return;
+      }
+      Thread.sleep(SENDER_DELETION_EFFECTIVE_POLL_INTERVAL_MS);
+    }
+
+    Assert.fail(
+        String.format(
+            "Deletion of range [%d - %d] is not effective on sender DataNodes %s within %d ms.",
+            delStart, delEnd, senderNodeUrls, SENDER_DELETION_EFFECTIVE_TIMEOUT_MS));
   }
 
   private void waitForPipeRunning(ITableSession session, String pipeName) throws Exception {
