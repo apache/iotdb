@@ -151,6 +151,26 @@ public class TypeServicesTest {
                 .apply(columnTransformers));
   }
 
+  @Test
+  public void testUpdateLastRowServiceUsesTypeColumnWriter() {
+    Column input = new IntColumn(2, Optional.empty(), new int[] {10, 20}, TSDataType.DATE);
+    Column output =
+        TypeServices.UPDATE_LAST_ROW_SERVICE
+            .call(Type.fromTsDataType(TSDataType.DATE))
+            .apply(input, 1);
+
+    assertEquals(1, output.getPositionCount());
+    assertEquals(20, output.getInt(0));
+    assertEquals(TSDataType.DATE, output.getDataType());
+
+    Assert.assertThrows(
+        RuntimeException.class,
+        () ->
+            TypeServices.UPDATE_LAST_ROW_SERVICE
+                .call(Type.fromTsDataType(TSDataType.VECTOR))
+                .apply(input, 0));
+  }
+
   // Covers every supported RANGE-frame type and guards native integer overflow and long precision.
   @Test
   public void testRangeFrameComparatorPreservesNativeArithmetic() {

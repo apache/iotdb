@@ -108,6 +108,7 @@ import org.apache.iotdb.calc.plan.relational.planner.CastToStringLiteralVisitor;
 import org.apache.iotdb.calc.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -183,12 +184,6 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.tsfile.read.common.block.column.FloatColumn;
-import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
@@ -205,7 +200,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -1175,7 +1169,9 @@ public abstract class TableOperatorGenerator<
           rightOutputSymbolIdx,
           JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
           dataTypes,
-          joinKeyTypes.stream().map(this::buildUpdateLastRowFunction).collect(Collectors.toList()));
+          joinKeyTypes.stream()
+              .map(TypeServices.UPDATE_LAST_ROW_SERVICE::call)
+              .collect(Collectors.toList()));
     } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
       CommonOperatorContext operatorContext =
           addOperatorContext(
@@ -1207,40 +1203,6 @@ public abstract class TableOperatorGenerator<
           String.format("%s must have join keys.", node.getJoinType()));
     } catch (IllegalArgumentException e) {
       throw new SemanticException(e.getMessage());
-    }
-  }
-
-  protected BiFunction<Column, Integer, Column> buildUpdateLastRowFunction(Type joinKeyType) {
-    switch (joinKeyType.getTypeEnum()) {
-      case INT32:
-        return (inputColumn, rowIndex) ->
-            new IntColumn(
-                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.INT32);
-      case DATE:
-        return (inputColumn, rowIndex) ->
-            new IntColumn(
-                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.DATE);
-      case INT64:
-      case TIMESTAMP:
-        return (inputColumn, rowIndex) ->
-            new LongColumn(1, Optional.empty(), new long[] {inputColumn.getLong(rowIndex)});
-      case FLOAT:
-        return (inputColumn, rowIndex) ->
-            new FloatColumn(1, Optional.empty(), new float[] {inputColumn.getFloat(rowIndex)});
-      case DOUBLE:
-        return (inputColumn, rowIndex) ->
-            new DoubleColumn(1, Optional.empty(), new double[] {inputColumn.getDouble(rowIndex)});
-      case BOOLEAN:
-        return (inputColumn, rowIndex) ->
-            new BooleanColumn(
-                1, Optional.empty(), new boolean[] {inputColumn.getBoolean(rowIndex)});
-      case STRING:
-      case TEXT:
-      case BLOB:
-        return (inputColumn, rowIndex) ->
-            new BinaryColumn(1, Optional.empty(), new Binary[] {inputColumn.getBinary(rowIndex)});
-      default:
-        throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_DATA_TYPE + joinKeyType);
     }
   }
 

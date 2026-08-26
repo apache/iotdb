@@ -339,6 +339,19 @@ public class TypeServices {
                     };
               };
 
+  /**
+   * Creates a single-row column containing the value at the requested row. Delegating the write to
+   * {@link Type} preserves type-specific column metadata (for example, DATE) without another
+   * TsDataType dispatch.
+   */
+  public static final TypeService<ColumnRowFunction> UPDATE_LAST_ROW_SERVICE =
+      type ->
+          (column, rowIndex) -> {
+            ColumnBuilder columnBuilder = type.createColumnBuilder(1);
+            type.write(columnBuilder, column, rowIndex);
+            return columnBuilder.build();
+          };
+
   public static final TypeService<Function<TsPrimitiveType, Object>>
       PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE =
           type ->
@@ -579,6 +592,7 @@ public class TypeServices {
     JOIN_KEY_COMPARATOR_SERVICE.check();
     GREATEST_COLUMN_TRANSFORMER_SERVICE.check();
     LEAST_COLUMN_TRANSFORMER_SERVICE.check();
+    UPDATE_LAST_ROW_SERVICE.check();
     MERGE_SORT_COMPARATOR_SERVICE.check();
     MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.check();
     MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE.check();
@@ -616,6 +630,11 @@ public class TypeServices {
     TSEncoding getDefaultDoubleEncoding();
 
     TSEncoding getDefaultTextEncoding();
+  }
+
+  @FunctionalInterface
+  public interface ColumnRowFunction {
+    Column apply(Column column, int rowIndex);
   }
 
   @FunctionalInterface
