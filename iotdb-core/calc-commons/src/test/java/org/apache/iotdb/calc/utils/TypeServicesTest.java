@@ -18,6 +18,9 @@
 
 package org.apache.iotdb.calc.utils;
 
+import org.apache.iotdb.calc.execution.operator.process.join.merge.comparator.AscIntTypeJoinKeyComparator;
+import org.apache.iotdb.calc.execution.operator.process.join.merge.comparator.JoinKeyComparator;
+import org.apache.iotdb.calc.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 
@@ -38,6 +41,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -92,6 +96,37 @@ public class TypeServicesTest {
             TypeServices.MERGE_SORT_COMPARATOR_SERVICE
                 .call(Type.fromTsDataType(TSDataType.VECTOR))
                 .apply(0));
+  }
+
+  @Test
+  public void testFillServicesUseTypeStrategies() {
+    assertNotNull(
+        TypeServices.LINEAR_FILL_SERVICE.call(Type.fromTsDataType(TSDataType.INT32)).get());
+    assertNotNull(
+        TypeServices.PREVIOUS_FILL_SERVICE.call(Type.fromTsDataType(TSDataType.TEXT)).apply(null));
+    assertNotNull(
+        TypeServices.NEXT_FILL_SERVICE.call(Type.fromTsDataType(TSDataType.DOUBLE)).apply(null));
+
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> TypeServices.LINEAR_FILL_SERVICE.call(Type.fromTsDataType(TSDataType.UNKNOWN)).get());
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            TypeServices.PREVIOUS_FILL_SERVICE
+                .call(Type.fromTsDataType(TSDataType.VECTOR))
+                .apply(null));
+  }
+
+  @Test
+  public void testJoinKeyComparatorServiceUsesTypeStrategies() {
+    JoinKeyComparator comparator =
+        JoinKeyComparatorFactory.getComparator(Type.fromTsDataType(TSDataType.INT32), true);
+    assertSame(AscIntTypeJoinKeyComparator.getInstance(), comparator);
+
+    Assert.assertThrows(
+        UnsupportedOperationException.class,
+        () -> JoinKeyComparatorFactory.getComparator(Type.fromTsDataType(TSDataType.VECTOR), true));
   }
 
   // Covers every supported RANGE-frame type and guards native integer overflow and long precision.
