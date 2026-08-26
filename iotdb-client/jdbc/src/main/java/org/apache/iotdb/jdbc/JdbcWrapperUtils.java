@@ -19,17 +19,22 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
+
 import java.sql.SQLException;
 
-public class IoTDBURLException extends SQLException {
+final class JdbcWrapperUtils {
 
-  private static final long serialVersionUID = -5071922897222027267L;
-
-  public IoTDBURLException(String reason) {
-    super(reason);
+  static boolean isWrapperFor(Object wrapper, Class<?> iface) {
+    return iface != null && iface.isInstance(wrapper);
   }
 
-  public IoTDBURLException(String reason, Throwable cause) {
-    super(reason, cause);
+  static <T> T unwrap(Object wrapper, Class<T> iface) throws SQLException {
+    if (isWrapperFor(wrapper, iface)) {
+      return iface.cast(wrapper);
+    }
+    throw new SQLException(JdbcMessages.CANNOT_UNWRAP_TO + iface);
   }
+
+  private JdbcWrapperUtils() {}
 }

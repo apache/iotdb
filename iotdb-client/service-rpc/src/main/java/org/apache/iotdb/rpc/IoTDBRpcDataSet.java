@@ -54,6 +54,7 @@ public class IoTDBRpcDataSet {
 
   private final String sql;
   private boolean isClosed = false;
+  private boolean explicitlyClosed = false;
   private IClientRPCService.Iface client;
   private final List<String> columnNameList; // no deduplication
   private final List<String> columnTypeList; // no deduplication
@@ -209,7 +210,12 @@ public class IoTDBRpcDataSet {
   }
 
   public void close() throws StatementExecutionException, TException {
+    close(true);
+  }
+
+  private void close(boolean explicitlyClosed) throws StatementExecutionException, TException {
     if (isClosed) {
+      this.explicitlyClosed = this.explicitlyClosed || explicitlyClosed;
       return;
     }
     if (client != null) {
@@ -227,9 +233,13 @@ public class IoTDBRpcDataSet {
     }
     client = null;
     isClosed = true;
+    this.explicitlyClosed = explicitlyClosed;
   }
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
+    if (explicitlyClosed) {
+      throw new IoTDBConnectionException(RpcMessages.DATASET_ALREADY_CLOSED);
+    }
     if (hasCachedBlock()) {
       lastReadWasNull = false;
       constructOneRow();
@@ -247,7 +257,7 @@ public class IoTDBRpcDataSet {
       return true;
     } else {
       try {
-        close();
+        close(false);
         return false;
       } catch (TException e) {
         throw new IoTDBConnectionException(RpcMessages.CANNOT_CLOSE_DATASET, e);
@@ -267,7 +277,7 @@ public class IoTDBRpcDataSet {
       RpcUtils.verifySuccess(resp.getStatus());
       moreData = resp.moreData;
       if (!resp.hasResultSet) {
-        close();
+        close(false);
       } else {
         queryResult = resp.getQueryResult();
         queryResultIndex = 0;
@@ -643,6 +653,9 @@ public class IoTDBRpcDataSet {
   }
 
   public void checkRecord() throws StatementExecutionException {
+    if (explicitlyClosed) {
+      throw new StatementExecutionException(RpcMessages.DATASET_ALREADY_CLOSED);
+    }
     if (queryResultIndex > queryResultSize
         || tsBlockIndex >= tsBlockSize
         || queryResult == null
