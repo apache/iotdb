@@ -1373,6 +1373,9 @@ public final class DataNodeQueryMessages {
       "Cannot deserialize InsertTabletNode";
   public static final String MERGE_IS_NOT_SUPPORTED =
       "Merge is not supported";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_OBJECT_FILE_ARG_AT_OFFSET_ARG_WITH_LENGTH_ARG_4B5170FE =
+          "Failed to read object file %s at offset %d with length %d";
   public static final String FAILED_TO_SERIALIZE_MODENTRY_TO_WAL =
       "Failed to serialize modEntry to WAL";
   public static final String ALL_DATABASE_NAME_NEED_TO_BE_SAME =

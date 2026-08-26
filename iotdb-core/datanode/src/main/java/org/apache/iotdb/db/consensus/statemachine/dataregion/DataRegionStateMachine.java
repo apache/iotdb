@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -178,6 +180,15 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   protected PlanNode grabPlanNode(IndexedConsensusRequest indexedRequest) {
+    if (indexedRequest.getRequests().isEmpty()) {
+      // An empty request is emitted when an ObjectNode's external file was deleted by TTL. It is
+      // still a valid consensus entry and must be applied as a no-op to advance follower progress.
+      return new InsertRowsNode(new PlanNodeId(""))
+          .setSearchIndex(indexedRequest.getSearchIndex())
+          .setPhysicalTime(indexedRequest.getPhysicalTime())
+          .setNodeId(indexedRequest.getNodeId())
+          .setSyncIndex(indexedRequest.getSyncIndex());
+    }
     List<SearchNode> searchNodes = new ArrayList<>();
     PlanNode onlyOne = null;
     for (IConsensusRequest req : indexedRequest.getRequests()) {

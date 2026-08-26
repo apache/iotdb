@@ -1176,6 +1176,10 @@ public final class StorageEngineMessages {
       "Skip from {} to {}, it's a dangerous operation because insert plan {} may have been lost.";
   public static final String STORAGE_LOG_FAIL_TO_READ_WAL_FROM_WAL_FILE_SKIP_THIS_FILE_06A3B079 =
       "Fail to read wal from wal file {}, skip this file.";
+  public static final String
+      STORAGE_LOG_FAILED_TO_SERIALIZE_OBJECTNODE_AT_SEARCH_INDEX_POSSIBLY_BECAUSE_ITS_BBC67D7F =
+          "Failed to serialize ObjectNode {} at search index {}, possibly because its object file "
+              + "has been deleted by TTL. Skip this ObjectNode and continue reading the WAL.";
   public static final String STORAGE_LOG_FAIL_TO_TRIGGER_ROLLING_WAL_NODE_S_WAL_FILE_LOG_WRITER_D1E595DC =
       "Fail to trigger rolling wal node-{}'s wal file log writer.";
   public static final String STORAGE_LOG_FAIL_TO_FIND_TSFILE_RECOVER_PERFORMER_FOR_WAL_ENTRY_IN_TSFILE_ED4EF3E7 =

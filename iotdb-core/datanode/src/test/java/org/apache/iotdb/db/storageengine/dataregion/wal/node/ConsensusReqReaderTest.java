@@ -28,10 +28,13 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
@@ -39,8 +42,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import com.timecho.iotdb.calc.storageengine.dataregion.Base32ObjectPath;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -315,6 +320,51 @@ public class ConsensusReqReaderTest {
     Assert.assertEquals(1L, request.getProgressLocalSeq());
     Assert.assertEquals(123456789L, request.getPhysicalTime());
     Assert.assertEquals(7, request.getNodeId());
+  }
+
+  /**
+   * Verifies that an ObjectNode whose external file was deleted by TTL becomes an empty request at
+   * the same index, allowing followers to advance without hiding later requests in the WAL file.
+   */
+  @Test
+  public void testReqIteratorSkipsObjectNodeDeletedByTTL() throws Exception {
+    final InsertRowNode requestBeforeObjectNode = getInsertRowNode(devicePath);
+    requestBeforeObjectNode.setSearchIndex(1).setLastFragment(true);
+    walNode.log(0, requestBeforeObjectNode);
+
+    final IDeviceID deviceID =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"missing_table", "d1"});
+    final ObjectNode deletedObjectNode =
+        new ObjectNode(
+            true,
+            0,
+            new byte[] {1},
+            new Base32ObjectPath(Integer.MAX_VALUE, 987654321, deviceID, "ttl_deleted_object"));
+    deletedObjectNode.setSearchIndex(2);
+    walNode.log(0, deletedObjectNode);
+    walNode.log(0, new ContinuousSameSearchIndexSeparatorNode());
+
+    final InsertRowNode requestAfterObjectNode = getInsertRowNode(devicePath);
+    requestAfterObjectNode.setSearchIndex(3).setLastFragment(true);
+    walNode.log(0, requestAfterObjectNode);
+    walNode.rollWALFile();
+
+    final ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
+    Assert.assertTrue(iterator.hasNext());
+    Assert.assertEquals(1, iterator.next().getSearchIndex());
+    Assert.assertTrue(iterator.hasNext());
+    IndexedConsensusRequest emptyRequest = iterator.next();
+    Assert.assertEquals(2, emptyRequest.getSearchIndex());
+    Assert.assertTrue(emptyRequest.getRequests().isEmpty());
+    PlanNode followerNoOp =
+        (PlanNode) new IoTConsensusDataRegionStateMachine(null).deserializeRequest(emptyRequest);
+    Assert.assertTrue(followerNoOp instanceof InsertRowsNode);
+    Assert.assertTrue(((InsertRowsNode) followerNoOp).getInsertRowNodeList().isEmpty());
+    Assert.assertEquals(2, ((InsertRowsNode) followerNoOp).getSearchIndex());
+    Assert.assertEquals(2, ((InsertRowsNode) followerNoOp).getSyncIndex());
+    Assert.assertTrue(iterator.hasNext());
+    Assert.assertEquals(3, iterator.next().getSearchIndex());
+    Assert.assertFalse(iterator.hasNext());
   }
 
   @Test

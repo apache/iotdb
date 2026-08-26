@@ -1354,6 +1354,9 @@ public final class DataNodeQueryMessages {
       "无法反序列化 InsertTabletNode";
   public static final String MERGE_IS_NOT_SUPPORTED =
       "不支持合并";
+  public static final String
+      EXCEPTION_FAILED_TO_READ_OBJECT_FILE_ARG_AT_OFFSET_ARG_WITH_LENGTH_ARG_4B5170FE =
+          "读取对象文件 %s 失败，偏移量为 %d，长度为 %d";
   public static final String FAILED_TO_SERIALIZE_MODENTRY_TO_WAL =
       "将 modEntry 序列化到 WAL 失败";
   public static final String ALL_DATABASE_NAME_NEED_TO_BE_SAME =

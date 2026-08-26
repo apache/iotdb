@@ -1105,6 +1105,10 @@ public final class StorageEngineMessages {
       "跳过从 {} 到 {}，这是危险操作，原因：insert plan {} 可能已丢失。";
   public static final String STORAGE_LOG_FAIL_TO_READ_WAL_FROM_WAL_FILE_SKIP_THIS_FILE_06A3B079 =
       "无法从 wal 文件 {} 读取 WAL，跳过该文件。";
+  public static final String
+      STORAGE_LOG_FAILED_TO_SERIALIZE_OBJECTNODE_AT_SEARCH_INDEX_POSSIBLY_BECAUSE_ITS_BBC67D7F =
+          "序列化 ObjectNode {}（search index 为 {}）失败，可能是其对象文件已被 TTL 删除。"
+              + "跳过该 ObjectNode 并继续读取 WAL。";
   public static final String STORAGE_LOG_FAIL_TO_TRIGGER_ROLLING_WAL_NODE_S_WAL_FILE_LOG_WRITER_D1E595DC =
       "无法触发 rolling wal node-{} 的 wal 文件 log writer。";
   public static final String STORAGE_LOG_FAIL_TO_FIND_TSFILE_RECOVER_PERFORMER_FOR_WAL_ENTRY_IN_TSFILE_ED4EF3E7 =

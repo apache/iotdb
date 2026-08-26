@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.request.IConsensusRequest;
@@ -696,6 +697,8 @@ public class WALNode implements IWALNode {
   }
 
   private class PlanNodeIterator implements ReqIterator {
+    private static final long SKIPPED_OBJECT_NODE_MEMORY_SIZE = -1L;
+
     /** search index of next element */
     private long nextSearchIndex;
 
@@ -767,6 +770,7 @@ public class WALNode implements IWALNode {
       AtomicReference<List<IConsensusRequest>> tmpNodes = new AtomicReference<>(new ArrayList<>());
       AtomicBoolean notFirstFile = new AtomicBoolean(false);
       AtomicBoolean hasCollectedSufficientData = new AtomicBoolean(false);
+      AtomicBoolean hasSerializationFailure = new AtomicBoolean(false);
 
       long memorySize = 0;
 
@@ -783,13 +787,25 @@ public class WALNode implements IWALNode {
                       .setPhysicalTime(currentRequestPhysicalTime)
                       .setNodeId(currentRequestNodeId));
               tmpNodes.set(new ArrayList<>());
-              currentRequestPhysicalTime = 0L;
-              currentRequestNodeId = -1;
-              currentRequestLocalSeq = -1L;
+              resetCurrentRequestMetadata();
               nextSearchIndex++;
               if (notFirstFile.get()) {
                 hasCollectedSufficientData.set(true);
               }
+            }
+          };
+
+      // A failed ObjectNode may not be marked as the last fragment. In that case the following
+      // separator or WAL entry marks the request boundary, at which point an empty request keeps
+      // the consensus search index contiguous.
+      Runnable tryToCollectRequestAndBumpIndex =
+          () -> {
+            if (!tmpNodes.get().isEmpty()) {
+              tryToCollectInsertNodeAndBumpIndex.run();
+              hasSerializationFailure.set(false);
+            } else if (hasSerializationFailure.get()) {
+              addEmptyRequestAndBumpIndex(notFirstFile, hasCollectedSufficientData);
+              hasSerializationFailure.set(false);
             }
           };
 
@@ -798,7 +814,7 @@ public class WALNode implements IWALNode {
         // cannot find any in this file, so all slices of last plan node are found
         if (WALFileUtils.parseStatusCode(filesToSearch[currentFileIndex].getName())
             == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
-          tryToCollectInsertNodeAndBumpIndex.run();
+          tryToCollectRequestAndBumpIndex.run();
           continue;
         }
         try (ProgressWALReader progressWALReader =
@@ -815,35 +831,25 @@ public class WALNode implements IWALNode {
               buffer.clear();
               if (currentWalEntryIndex == -1) {
                 // WAL entry of targetIndex has been fully collected, so put them into insertNodes
-                tryToCollectInsertNodeAndBumpIndex.run();
+                tryToCollectRequestAndBumpIndex.run();
               } else if (currentWalEntryIndex < nextSearchIndex) {
                 // WAL entry is outdated, do nothing, continue to see next WAL entry
               } else if (currentWalEntryIndex == nextSearchIndex) {
                 captureCurrentRequestMetadataIfNeeded(progressWALReader, tmpNodes.get());
-                if (type == WALEntryType.OBJECT_FILE_NODE) {
-                  WALEntry walEntry =
-                      WALEntry.deserialize(
-                          new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // only be called by leader read from wal
-                  // wal only has relativePath, offset, eof, length
-                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
-                  // content
-                  // need to add IoTConsensusRequest instead of ObjectNode
-                  tmpNodes
-                      .get()
-                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
-                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                final long requestMemorySize =
+                    addConsensusRequest(type, buffer, currentWalEntryIndex, tmpNodes.get());
+                if (requestMemorySize != SKIPPED_OBJECT_NODE_MEMORY_SIZE) {
+                  memorySize += requestMemorySize;
                 } else {
-                  tmpNodes.get().add(new IoTConsensusRequest(buffer));
-                  memorySize += buffer.remaining();
+                  hasSerializationFailure.set(true);
                 }
                 if (isLastFragment) {
-                  tryToCollectInsertNodeAndBumpIndex.run();
+                  tryToCollectRequestAndBumpIndex.run();
                 }
               } else {
                 // currentWalEntryIndex > targetIndex
                 // WAL entry of targetIndex has been fully collected, put them into insertNodes
-                tryToCollectInsertNodeAndBumpIndex.run();
+                tryToCollectRequestAndBumpIndex.run();
                 if (currentWalEntryIndex != nextSearchIndex) {
                   logger.warn(
                       StorageEngineMessages
@@ -853,29 +859,19 @@ public class WALNode implements IWALNode {
                   nextSearchIndex = currentWalEntryIndex;
                 }
                 captureCurrentRequestMetadataIfNeeded(progressWALReader, tmpNodes.get());
-                if (type == WALEntryType.OBJECT_FILE_NODE) {
-                  WALEntry walEntry =
-                      WALEntry.deserialize(
-                          new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // only be called by leader read from wal
-                  // wal only has relativePath, offset, eof, length
-                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
-                  // content
-                  // need to add IoTConsensusRequest instead of ObjectNode
-                  tmpNodes
-                      .get()
-                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
-                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                final long requestMemorySize =
+                    addConsensusRequest(type, buffer, currentWalEntryIndex, tmpNodes.get());
+                if (requestMemorySize != SKIPPED_OBJECT_NODE_MEMORY_SIZE) {
+                  memorySize += requestMemorySize;
                 } else {
-                  tmpNodes.get().add(new IoTConsensusRequest(buffer));
-                  memorySize += buffer.remaining();
+                  hasSerializationFailure.set(true);
                 }
                 if (isLastFragment) {
-                  tryToCollectInsertNodeAndBumpIndex.run();
+                  tryToCollectRequestAndBumpIndex.run();
                 }
               }
             } else {
-              tryToCollectInsertNodeAndBumpIndex.run();
+              tryToCollectRequestAndBumpIndex.run();
             }
             if (memorySize > config.getWalBufferSize()) {
               tryToCollectInsertNodeAndBumpIndex.run();
@@ -908,12 +904,64 @@ public class WALNode implements IWALNode {
       return false;
     }
 
+    private long addConsensusRequest(
+        final WALEntryType type,
+        final ByteBuffer buffer,
+        final long searchIndex,
+        final List<IConsensusRequest> requests)
+        throws IOException {
+      if (type != WALEntryType.OBJECT_FILE_NODE) {
+        requests.add(new IoTConsensusRequest(buffer));
+        return buffer.remaining();
+      }
+
+      final WALEntry walEntry =
+          WALEntry.deserialize(new DataInputStream(new ByteArrayInputStream(buffer.array())));
+      final ObjectNode objectNode = (ObjectNode) walEntry.getValue();
+      try {
+        // A WAL ObjectNode stores only the object-file location and loads its content lazily when
+        // the leader sends the request to followers. TTL may delete that external file first.
+        requests.add(new IoTConsensusRequest(objectNode.serialize()));
+        return objectNode.getMemorySize();
+      } catch (SerializationRunTimeException e) {
+        logger.debug(
+            StorageEngineMessages
+                .STORAGE_LOG_FAILED_TO_SERIALIZE_OBJECTNODE_AT_SEARCH_INDEX_POSSIBLY_BECAUSE_ITS_BBC67D7F,
+            objectNode.getFilePathString(),
+            searchIndex,
+            e);
+        return SKIPPED_OBJECT_NODE_MEMORY_SIZE;
+      }
+    }
+
     private void captureCurrentRequestMetadataIfNeeded(
         ProgressWALReader progressWALReader, List<IConsensusRequest> tmpNodes) {
       if (tmpNodes.isEmpty()) {
         currentRequestPhysicalTime = progressWALReader.getCurrentEntryPhysicalTime();
         currentRequestNodeId = progressWALReader.getCurrentEntryNodeId();
         currentRequestLocalSeq = progressWALReader.getCurrentEntryLocalSeq();
+      }
+    }
+
+    private void resetCurrentRequestMetadata() {
+      currentRequestPhysicalTime = 0L;
+      currentRequestNodeId = -1;
+      currentRequestLocalSeq = -1L;
+    }
+
+    private void addEmptyRequestAndBumpIndex(
+        AtomicBoolean notFirstFile, AtomicBoolean hasCollectedSufficientData) {
+      insertNodes.add(
+          new IndexedConsensusRequest(
+                  nextSearchIndex,
+                  currentRequestLocalSeq >= 0 ? currentRequestLocalSeq : nextSearchIndex,
+                  Collections.emptyList())
+              .setPhysicalTime(currentRequestPhysicalTime)
+              .setNodeId(currentRequestNodeId));
+      resetCurrentRequestMetadata();
+      nextSearchIndex++;
+      if (notFirstFile.get()) {
+        hasCollectedSufficientData.set(true);
       }
     }
 
