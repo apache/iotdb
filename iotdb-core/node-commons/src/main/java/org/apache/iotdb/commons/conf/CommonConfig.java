@@ -688,7 +688,11 @@ public class CommonConfig {
     return status;
   }
 
-  public void setNodeStatus(NodeStatus newStatus) {
+  public synchronized void setNodeStatus(NodeStatus newStatus) {
+    if (status == newStatus) {
+      return;
+    }
+
     logger.info("Set system mode from {} to {}.", status, newStatus);
     this.status = newStatus;
     this.statusReason = null;
