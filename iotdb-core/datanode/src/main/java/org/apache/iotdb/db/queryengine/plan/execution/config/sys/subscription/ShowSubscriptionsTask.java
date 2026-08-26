@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscriptionProgressInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -50,6 +51,7 @@ public class ShowSubscriptionsTask implements IConfigTask {
   public ShowSubscriptionsTask(final ShowSubscriptions showSubscriptions) {
     this.showSubscriptionsStatement = new ShowSubscriptionsStatement();
     this.showSubscriptionsStatement.setTopicName(showSubscriptions.getTopicName());
+    this.showSubscriptionsStatement.setDetails(showSubscriptions.isDetails());
     this.showSubscriptionsStatement.setTableModel(true);
   }
 
@@ -99,5 +101,53 @@ public class ShowSubscriptionsTask implements IConfigTask {
             TSStatusCode.SUCCESS_STATUS,
             builder.build(),
             DatasetHeaderFactory.getShowSubscriptionHeader()));
+  }
+
+  public static void buildDetailsTSBlock(
+      final List<TSubscriptionProgressInfo> progressInfoList,
+      final SettableFuture<ConfigTaskResult> future) {
+    final TsBlockBuilder builder =
+        new TsBlockBuilder(
+            ColumnHeaderConstant.showSubscriptionDetailsColumnHeaders.stream()
+                .map(ColumnHeader::getColumnType)
+                .collect(Collectors.toList()));
+
+    for (final TSubscriptionProgressInfo progressInfo : progressInfoList) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      writeText(builder, 0, progressInfo.getTopicName() + "_" + progressInfo.getConsumerGroupId());
+      writeText(builder, 1, progressInfo.getTopicName());
+      writeText(builder, 2, progressInfo.getConsumerGroupId());
+      builder.getColumnBuilder(3).writeInt(progressInfo.getDataNodeId());
+      writeText(builder, 4, progressInfo.getRegionId());
+      writeText(builder, 5, progressInfo.getStatus());
+      builder.getColumnBuilder(6).writeBoolean(progressInfo.isActive());
+      builder.getColumnBuilder(7).writeBoolean(progressInfo.isInitialized());
+      builder.getColumnBuilder(8).writeLong(progressInfo.getRemainingEventCount());
+      builder.getColumnBuilder(9).writeLong(progressInfo.getRawWalGap());
+      builder.getColumnBuilder(10).writeLong(progressInfo.getApproximateLag());
+      builder.getColumnBuilder(11).writeLong(progressInfo.getInFlightEventCount());
+      builder.getColumnBuilder(12).writeLong(progressInfo.getPrefetchedEventCount());
+      builder.getColumnBuilder(13).writeLong(progressInfo.getPendingEventCount());
+      builder.getColumnBuilder(14).writeLong(progressInfo.getCurrentWalSearchIndex());
+      builder.getColumnBuilder(15).writeLong(progressInfo.getNextReadSearchIndex());
+      builder.getColumnBuilder(16).writeLong(progressInfo.getLastProgressTimeMs());
+      builder.getColumnBuilder(17).writeLong(progressInfo.getLastPollTimeMs());
+      writeText(builder, 18, progressInfo.getLastConsumerId());
+      builder.getColumnBuilder(19).writeLong(progressInfo.getSeekGeneration());
+      builder.declarePosition();
+    }
+
+    future.set(
+        new ConfigTaskResult(
+            TSStatusCode.SUCCESS_STATUS,
+            builder.build(),
+            DatasetHeaderFactory.getShowSubscriptionDetailsHeader()));
+  }
+
+  private static void writeText(
+      final TsBlockBuilder builder, final int columnIndex, final String value) {
+    builder
+        .getColumnBuilder(columnIndex)
+        .writeBinary(new Binary(value == null ? "" : value, TSFileConfig.STRING_CHARSET));
   }
 }

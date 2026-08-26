@@ -632,7 +632,7 @@ showCreateTopicStatement
     ;
 
 showSubscriptionsStatement
-    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    : SHOW SUBSCRIPTIONS (DETAILS)? (ON topicName=identifier)?
     ;
 
 dropSubscriptionStatement

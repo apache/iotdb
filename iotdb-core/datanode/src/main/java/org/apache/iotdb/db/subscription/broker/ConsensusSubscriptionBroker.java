@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -494,6 +495,21 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       }
     }
     return lagMap;
+  }
+
+  @Override
+  public Map<String, SubscriptionProgressSnapshot> getProgressSnapshotMap() {
+    final Map<String, SubscriptionProgressSnapshot> progressMap = new ConcurrentHashMap<>();
+    for (final Map.Entry<String, List<ConsensusPrefetchingQueue>> entry :
+        topicNameToConsensusPrefetchingQueues.entrySet()) {
+      for (final ConsensusPrefetchingQueue queue : entry.getValue()) {
+        if (!queue.isClosed()) {
+          progressMap.put(
+              entry.getKey() + "/" + queue.getConsensusGroupId(), queue.getProgressSnapshot());
+        }
+      }
+    }
+    return progressMap;
   }
 
   private TopicOwnershipSnapshot refreshAndGetTopicOwnership(

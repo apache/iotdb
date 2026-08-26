@@ -974,10 +974,14 @@ public class DataNodeSqlFormatter extends CommonQuerySqlFormatter
 
   @Override
   public Void visitShowSubscriptions(ShowSubscriptions node, Integer context) {
+    builder.append("SHOW SUBSCRIPTIONS");
+    if (node.isDetails()) {
+      builder.append(" DETAILS");
+    }
     if (Objects.isNull(node.getTopicName())) {
-      builder.append("SHOW SUBSCRIPTIONS");
+      return null;
     } else {
-      builder.append("SHOW SUBSCRIPTIONS ON ").append(node.getTopicName());
+      builder.append(" ON ").append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
     }
 
     return null;
