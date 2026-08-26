@@ -63,6 +63,7 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -104,6 +105,52 @@ public class ConsensusPrefetchingQueueTest {
             ConsensusPrefetchingQueue.class
                 .getDeclaredMethod("setActive", boolean.class)
                 .getModifiers()));
+  }
+
+  @Test
+  public void testWalFileCommitRequirementUsesPerWriterMaximum() {
+    final String regionId = "DataRegion[1]";
+    final WALMetaData metadata = new WALMetaData();
+    metadata.add(1, -1L, 0L, 0L, -1, -1L);
+    metadata.add(1, 1L, 0L, 100L, 7, 1L);
+    metadata.add(1, 2L, 0L, 100L, 7, 2L);
+    metadata.add(1, -1L, 0L, 200L, 8, 1L);
+
+    final ConsensusPrefetchingQueue.WalFileCommitRequirement requirement =
+        ConsensusPrefetchingQueue.WalFileCommitRequirement.fromMetadata(regionId, metadata);
+
+    assertFalse(
+        requirement.isCoveredBy(
+            new RegionProgress(
+                Collections.singletonMap(
+                    new WriterId(regionId, 7), new WriterProgress(100L, 2L)))));
+    assertFalse(
+        requirement.isCoveredBy(
+            new RegionProgress(
+                java.util.Map.of(
+                    new WriterId(regionId, 7),
+                    new WriterProgress(100L, 1L),
+                    new WriterId(regionId, 8),
+                    new WriterProgress(200L, 1L)))));
+    assertTrue(
+        requirement.isCoveredBy(
+            new RegionProgress(
+                java.util.Map.of(
+                    new WriterId(regionId, 7),
+                    new WriterProgress(100L, 2L),
+                    new WriterId(regionId, 8),
+                    new WriterProgress(200L, 1L)))));
+  }
+
+  @Test
+  public void testWalFileCommitRequirementRejectsUnsupportedWriterMetadata() {
+    final WALMetaData metadata = new WALMetaData();
+    metadata.add(1, 1L, 0L, 0L, -1, 1L);
+
+    final ConsensusPrefetchingQueue.WalFileCommitRequirement requirement =
+        ConsensusPrefetchingQueue.WalFileCommitRequirement.fromMetadata("DataRegion[1]", metadata);
+
+    assertFalse(requirement.isCoveredBy(new RegionProgress(Collections.emptyMap())));
   }
 
   @Test
@@ -869,6 +916,67 @@ public class ConsensusPrefetchingQueueTest {
 
       assertTrue(queue.computeTailRegionProgress().getWriterPositions().isEmpty());
       verify(walNode).rollWALFile();
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testWalReplayCountsOnlyUnavailableSearchIndexes() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("wal-replay-gap-counter");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final DataRegionId regionId = new DataRegionId(9);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      reader.currentSearchIndex = 4L;
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.convert(any())).thenReturn(Collections.singletonList(createTablet()));
+      when(converter.getDatabaseName()).thenReturn("db");
+
+      final Iterator<IndexedConsensusRequest> retainedWalEntries =
+          Arrays.asList(createRequest(1L), createRequest(4L)).iterator();
+      final ProgressWALIterator walIterator = mock(ProgressWALIterator.class);
+      when(walIterator.hasNext()).thenAnswer(ignored -> retainedWalEntries.hasNext());
+      when(walIterator.next()).thenAnswer(ignored -> retainedWalEntries.next());
+
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true) {
+            @Override
+            protected ProgressWALIterator createSubscriptionWALIterator(
+                final long startSearchIndex) {
+              return walIterator;
+            }
+          };
+
+      assertNull(queue.poll("consumer"));
+      queue.drivePrefetchOnce();
+
+      assertEquals(2L, queue.getWalPathAcceptedEntries());
+      assertEquals(2L, queue.getWalGapSkippedEntries());
+      assertEquals(5L, queue.getCurrentReadSearchIndex());
     } finally {
       if (queue != null) {
         queue.close();

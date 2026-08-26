@@ -279,6 +279,44 @@ public class ProgressWALIteratorTest {
   }
 
   @Test
+  public void testIteratorAggregatesUnreadableRetainedWalFiles() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-unreadable-files");
+    final File firstBrokenWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File secondBrokenWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 1, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File lastWal =
+        dir.resolve(WALFileUtils.getLogFileName(2, 2, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+
+    try {
+      Files.write(firstBrokenWal.toPath(), new byte[128]);
+      Files.write(secondBrokenWal.toPath(), new byte[128]);
+      try (WALWriter writer = new WALWriter(lastWal, WALFileVersion.V3)) {
+        // Create a readable successor so both malformed WAL files are treated as retained history.
+        writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 200L, 7, 2L));
+      }
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), Long.MIN_VALUE)) {
+        assertTrue(iterator.hasNext());
+        assertEquals(2L, iterator.next().getSearchIndex());
+        assertFalse(iterator.hasNext());
+        assertTrue(iterator.hasSkippedBrokenWalFiles());
+        assertEquals(2, iterator.getSkippedBrokenWalFileCount());
+        assertTrue(iterator.hasIncompleteScan());
+        assertFalse(iterator.hasReadError());
+      }
+    } finally {
+      Files.deleteIfExists(firstBrokenWal.toPath());
+      Files.deleteIfExists(secondBrokenWal.toPath());
+      Files.deleteIfExists(lastWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
   public void testLiveWalReopenReusesMetadataSnapshot() throws Exception {
     final Path dir = Files.createTempDirectory("progress-wal-iterator-live-snapshot");
     final File liveWal =

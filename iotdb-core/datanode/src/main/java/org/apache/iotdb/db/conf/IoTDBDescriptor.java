@@ -141,9 +141,10 @@ public class IoTDBDescriptor {
   }
 
   protected IoTDBDescriptor() {
-    boolean hasProperties = loadProps();
+    boolean hasLoadedProperties = loadProps();
     ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
         ServiceLoader.load(IPropertiesLoader.class);
+    boolean hasProperties = false;
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
       LOGGER.info(DataNodeMiscMessages.WILL_RELOAD_PROPERTIES, loader.getClass().getName());
       hasProperties = true;
@@ -166,8 +167,8 @@ public class IoTDBDescriptor {
           .getConfig()
           .setCustomizedProperties(loader.getCustomizedProperties());
     }
-    // if there are no properties, we need to init memory config
-    if (!hasProperties) {
+    // If no configuration source initialized the memory config, initialize it with defaults.
+    if (!hasLoadedProperties && !hasProperties) {
       memoryConfig.init(new TrimProperties());
     }
   }
@@ -227,7 +228,6 @@ public class IoTDBDescriptor {
   /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean loadProps() {
-    boolean hasProperties = false;
     TrimProperties commonProperties = new TrimProperties();
     // if new properties file exist, skip old properties files
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
@@ -238,7 +238,6 @@ public class IoTDBDescriptor {
         properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
-        hasProperties = true;
       } catch (FileNotFoundException e) {
         LOGGER.error(DataNodeMiscMessages.FAIL_FIND_CONFIG_FILE, url, e);
         System.exit(-1);
@@ -257,13 +256,14 @@ public class IoTDBDescriptor {
             .getMetricConfig()
             .updateRpcInstance(NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
       }
+      return true;
     } else {
       LOGGER.warn(
           DataNodeMiscMessages
               .MISC_LOG_COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN_SOURCES_EE3ED103,
           CommonConfig.SYSTEM_CONFIG_NAME);
+      return false;
     }
-    return hasProperties;
   }
 
   public void loadProperties(TrimProperties properties) throws BadNodeUrlException, IOException {
