@@ -88,6 +88,7 @@ import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANOD
 public class NodeInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeInfo.class);
+  private static final int VERSION_INFO_EDITION_MAGIC = 0x56494531;
 
   private static final int MINIMUM_DATANODE =
       Math.max(
@@ -716,11 +717,21 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   private void serializeVersionInfo(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(nodeVersionInfo.size(), outputStream);
-    for (Entry<Integer, TNodeVersionInfo> entry : nodeVersionInfo.entrySet()) {
+    // Keep one stable order for the legacy records and their appended edition values.
+    List<Entry<Integer, TNodeVersionInfo>> entries = new ArrayList<>(nodeVersionInfo.entrySet());
+    ReadWriteIOUtils.write(entries.size(), outputStream);
+    for (Entry<Integer, TNodeVersionInfo> entry : entries) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue().getVersion(), outputStream);
       ReadWriteIOUtils.write(entry.getValue().getBuildInfo(), outputStream);
+    }
+    // Keep the legacy version/build layout intact and append edition data behind a marker so old
+    // snapshots remain readable.
+    ReadWriteIOUtils.write(VERSION_INFO_EDITION_MAGIC, outputStream);
+    for (Entry<Integer, TNodeVersionInfo> entry : entries) {
+      ReadWriteIOUtils.write(
+          entry.getValue().isSetProductEdition() ? entry.getValue().getProductEdition() : null,
+          outputStream);
     }
   }
 
@@ -820,12 +831,29 @@ public class NodeInfo implements SnapshotProcessor {
     // thus we need to check inputStream before deserialize.
     if (inputStream.available() != 0) {
       int size = ReadWriteIOUtils.readInt(inputStream);
+      List<Integer> nodeIds = new ArrayList<>(size);
       while (size > 0) {
         int nodeId = ReadWriteIOUtils.readInt(inputStream);
         String version = ReadWriteIOUtils.readString(inputStream);
         String buildInfo = ReadWriteIOUtils.readString(inputStream);
         nodeVersionInfo.put(nodeId, new TNodeVersionInfo(version, buildInfo));
+        nodeIds.add(nodeId);
         size--;
+      }
+      if (inputStream.available() >= Integer.BYTES) {
+        inputStream.mark(Integer.BYTES);
+        int marker = ReadWriteIOUtils.readInt(inputStream);
+        if (marker == VERSION_INFO_EDITION_MAGIC) {
+          for (int nodeId : nodeIds) {
+            String productEdition = ReadWriteIOUtils.readString(inputStream);
+            TNodeVersionInfo versionInfo = nodeVersionInfo.get(nodeId);
+            if (versionInfo != null && productEdition != null) {
+              versionInfo.setProductEdition(productEdition);
+            }
+          }
+        } else {
+          inputStream.reset();
+        }
       }
     }
   }

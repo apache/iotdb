@@ -652,6 +652,15 @@ public final class ManagerMessages {
   public static final String MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_FOLLOWING_IP_PORT_ARG_CURRENT_ARG_CB78CC3B =
       "Reject %s registration. Because the following ip:port: %s of the current %s is conflicted"
       + " with other registered Nodes in the cluster.";
+  public static final String
+      MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_ITS_PRODUCT_EDITION_ARG_IS_INCONSISTENT_WITH_THE_SEED_CONFIGNODE_PRODUCT_EDITION_ARG_PLEASE_USE_THE_SAME_PRODUCT_EDITION_AS_THE_SEED_CONFIGNODE_4BAECF4F =
+          "Reject %s registration because its product edition (%s) is inconsistent with the"
+              + " Seed-ConfigNode product edition (%s). Please use the same product edition as the"
+              + " Seed-ConfigNode.";
+  public static final String
+      MESSAGE_REJECT_ARG_RESTART_BECAUSE_ITS_PRODUCT_EDITION_ARG_IS_INCONSISTENT_WITH_THE_REGISTERED_PRODUCT_EDITION_ARG_PLEASE_USE_THE_SAME_PRODUCT_EDITION_AS_BEFORE_D1ED7DF0 =
+          "Reject %s restart because its product edition (%s) is inconsistent with the registered"
+              + " product edition (%s). Please use the same product edition as before.";
   public static final String MESSAGE_1_USE_SQL_SHOW_CLUSTER_DETAILS_FIND_OUT_CONFLICT_NODES_A1195AEA =
       "\t1. Use SQL: \"show cluster details\" to find out the conflict Nodes. Remove them and retry"
       + " start.";

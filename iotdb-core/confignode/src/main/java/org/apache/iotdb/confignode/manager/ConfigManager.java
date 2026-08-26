@@ -542,6 +542,7 @@ public class ConfigManager implements IManager {
               req.getClusterId(),
               req.getDataNodeConfiguration().getLocation().getDataNodeId(),
               req.getDataNodeConfiguration().getLocation(),
+              req.getVersionInfo(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return nodeManager.updateDataNodeIfNecessary(req);
@@ -575,6 +576,7 @@ public class ConfigManager implements IManager {
               req.getClusterId(),
               req.getAiNodeConfiguration().getLocation().getAiNodeId(),
               req.getAiNodeConfiguration().getLocation(),
+              req.getVersionInfo(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return nodeManager.updateAINodeIfNecessary(req);

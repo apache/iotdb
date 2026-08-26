@@ -156,6 +156,8 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
     ReadWriteIOUtils.write(versionInfo.getVersion(), stream);
     ReadWriteIOUtils.write(versionInfo.getBuildInfo(), stream);
+    ReadWriteIOUtils.write(
+        versionInfo.isSetProductEdition() ? versionInfo.getProductEdition() : null, stream);
   }
 
   @Override
@@ -169,6 +171,12 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
         versionInfo =
             new TNodeVersionInfo(
                 ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+        if (byteBuffer.hasRemaining()) {
+          String productEdition = ReadWriteIOUtils.readString(byteBuffer);
+          if (productEdition != null) {
+            versionInfo.setProductEdition(productEdition);
+          }
+        }
       } else {
         versionInfo = new TNodeVersionInfo("Unknown", "Unknown");
       }

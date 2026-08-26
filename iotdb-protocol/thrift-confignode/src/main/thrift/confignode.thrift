@@ -688,6 +688,8 @@ struct TGetClusterIdResp {
 struct TNodeVersionInfo {
   1: required string version;
   2: required string buildInfo;
+  // Product edition used to prevent ConfigNodes/DataNodes from different distributions joining the same cluster.
+  3: optional string productEdition;
 }
 
 struct TNodeActivateInfo {

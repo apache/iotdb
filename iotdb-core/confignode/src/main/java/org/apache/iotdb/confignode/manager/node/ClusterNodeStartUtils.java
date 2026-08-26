@@ -37,11 +37,13 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /** Startup check utils before register/restart a ConfigNode/DataNode. */
@@ -116,6 +118,68 @@ public class ClusterNodeStartUtils {
     return status;
   }
 
+  static TSStatus confirmProductEdition(
+      NodeType nodeType, TNodeVersionInfo versionInfo, ConfigManager configManager) {
+    final TNodeVersionInfo seedConfigNodeVersionInfo =
+        configManager.getNodeManager().getNodeVersionInfo().get(0);
+    final String nodeProductEdition =
+        versionInfo == null || !versionInfo.isSetProductEdition()
+            ? null
+            : versionInfo.getProductEdition();
+    // The edition field was added after the original version-info format. Nodes running an older
+    // version do not send it, so keep accepting those nodes for rolling-upgrade compatibility.
+    if (nodeProductEdition == null) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    final String seedProductEdition =
+        seedConfigNodeVersionInfo == null || !seedConfigNodeVersionInfo.isSetProductEdition()
+            ? IoTDBConstant.PRODUCT_EDITION
+            : seedConfigNodeVersionInfo.getProductEdition();
+    if (!Objects.equals(seedProductEdition, nodeProductEdition)) {
+      return new TSStatus(TSStatusCode.REJECT_NODE_START.getStatusCode())
+          .setMessage(
+              String.format(
+                  ManagerMessages
+                      .MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_ITS_PRODUCT_EDITION_ARG_IS_INCONSISTENT_WITH_THE_SEED_CONFIGNODE_PRODUCT_EDITION_ARG_PLEASE_USE_THE_SAME_PRODUCT_EDITION_AS_THE_SEED_CONFIGNODE_4BAECF4F,
+                  nodeType.getNodeType(),
+                  nodeProductEdition,
+                  seedProductEdition));
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  static TSStatus confirmProductEditionOnRestart(
+      NodeType nodeType, int nodeId, TNodeVersionInfo versionInfo, ConfigManager configManager) {
+    final String nodeProductEdition =
+        versionInfo == null || !versionInfo.isSetProductEdition()
+            ? null
+            : versionInfo.getProductEdition();
+    // The edition field was added after the original version-info format. Nodes running an older
+    // version do not send it, so keep accepting those nodes for rolling-upgrade compatibility.
+    if (nodeProductEdition == null) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    final TNodeVersionInfo registeredVersionInfo =
+        configManager.getNodeManager().getNodeVersionInfo().get(nodeId);
+    // Keep accepting nodes whose registered version info predates the productEdition field.
+    if (registeredVersionInfo == null || !registeredVersionInfo.isSetProductEdition()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    final String registeredProductEdition = registeredVersionInfo.getProductEdition();
+    if (!Objects.equals(registeredProductEdition, nodeProductEdition)) {
+      return new TSStatus(TSStatusCode.REJECT_NODE_START.getStatusCode())
+          .setMessage(
+              String.format(
+                  ManagerMessages
+                      .MESSAGE_REJECT_ARG_RESTART_BECAUSE_ITS_PRODUCT_EDITION_ARG_IS_INCONSISTENT_WITH_THE_REGISTERED_PRODUCT_EDITION_ARG_PLEASE_USE_THE_SAME_PRODUCT_EDITION_AS_BEFORE_D1ED7DF0,
+                  nodeType.getNodeType(),
+                  nodeProductEdition,
+                  registeredProductEdition));
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
   public static TSStatus confirmClusterId(ConfigManager configManager) {
     TSStatus status = new TSStatus();
     final String clusterId =
@@ -137,6 +201,11 @@ public class ClusterNodeStartUtils {
       TDataNodeRegisterReq req, ConfigManager configManager) {
     // Confirm cluster name
     TSStatus status = confirmClusterName(NodeType.DataNode, req.getClusterName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    // Confirm product edition
+    status = confirmProductEdition(NodeType.DataNode, req.getVersionInfo(), configManager);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
@@ -167,6 +236,11 @@ public class ClusterNodeStartUtils {
     // Confirm cluster name
     TSStatus status =
         confirmClusterName(NodeType.ConfigNode, req.getClusterParameters().getClusterName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    // Confirm product edition
+    status = confirmProductEdition(NodeType.ConfigNode, req.getVersionInfo(), configManager);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
@@ -221,6 +295,7 @@ public class ClusterNodeStartUtils {
       String clusterId,
       int nodeId,
       Object nodeLocation,
+      TNodeVersionInfo versionInfo,
       ConfigManager configManager) {
 
     final String CONF_FILE_NAME = getConfigFileName(nodeType);
@@ -308,6 +383,12 @@ public class ClusterNodeStartUtils {
               nodeId,
               nodeType.getNodeType(),
               nodeId));
+      return status;
+    }
+
+    /* Reject restart if the product edition has changed since registration */
+    status = confirmProductEditionOnRestart(nodeType, nodeId, versionInfo, configManager);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
 

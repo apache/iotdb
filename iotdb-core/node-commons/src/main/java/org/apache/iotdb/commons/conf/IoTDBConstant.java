@@ -108,6 +108,10 @@ public class IoTDBConstant {
   public static final String BRAND_NAME =
       ModuleConfigManager.getInstance().isIoTDB() ? "IoTDB" : "TimechoDB";
 
+  /** Stable product identifier exchanged during cluster node registration. */
+  public static final String PRODUCT_EDITION =
+      ModuleConfigManager.getInstance().getEdition().name();
+
   public static final String LOGO =
       ModuleConfigManager.getInstance().isIoTDB() ? IOTDB_LOGO : TIMECHODB_LOGO;
 

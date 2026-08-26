@@ -66,6 +66,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusR
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ClusterManager;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
@@ -511,6 +512,12 @@ public class NodeManager {
   }
 
   public TSStatus updateConfigNodeIfNecessary(int configNodeId, TNodeVersionInfo versionInfo) {
+    TSStatus productEditionStatus =
+        ClusterNodeStartUtils.confirmProductEditionOnRestart(
+            NodeType.ConfigNode, configNodeId, versionInfo, (ConfigManager) configManager);
+    if (productEditionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return productEditionStatus;
+    }
     TNodeVersionInfo recordVersionInfo = nodeInfo.getVersionInfo(configNodeId);
     if (!recordVersionInfo.equals(versionInfo)) {
       // Update versionInfo when modified during restart

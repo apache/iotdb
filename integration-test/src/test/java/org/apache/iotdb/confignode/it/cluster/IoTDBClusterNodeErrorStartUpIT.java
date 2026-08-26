@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -117,6 +118,55 @@ public class IoTDBClusterNodeErrorStartUpIT {
   }
 
   @Test
+  public void testRejectDifferentProductEditionInSameCluster()
+      throws ClientManagerException, IOException, InterruptedException, TException {
+    ConfigNodeWrapper configNodeWrapper = EnvFactory.getEnv().generateRandomConfigNodeWrapper();
+    DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().generateRandomDataNodeWrapper();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      TNodeVersionInfo seedConfigNodeVersionInfo = client.showCluster().getNodeVersionInfo().get(0);
+      Assert.assertNotNull(seedConfigNodeVersionInfo);
+      Assert.assertTrue(seedConfigNodeVersionInfo.isSetProductEdition());
+      String seedProductEdition = seedConfigNodeVersionInfo.getProductEdition();
+      String differentProductEdition = "IOTDB".equals(seedProductEdition) ? "TIMECHODB" : "IOTDB";
+
+      TConfigNodeRegisterReq configNodeRegisterReq =
+          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(TEST_CLUSTER_NAME, configNodeWrapper);
+      configNodeRegisterReq
+          .getClusterParameters()
+          .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
+      configNodeRegisterReq.setVersionInfo(
+          seedConfigNodeVersionInfo.deepCopy().setProductEdition(differentProductEdition));
+      TConfigNodeRegisterResp configNodeRegisterResp =
+          client.registerConfigNode(configNodeRegisterReq);
+      assertProductEditionMismatch(
+          configNodeRegisterResp.getStatus().getCode(),
+          configNodeRegisterResp.getStatus().getMessage(),
+          seedProductEdition,
+          differentProductEdition);
+
+      TDataNodeRegisterReq dataNodeRegisterReq =
+          ConfigNodeTestUtils.generateTDataNodeRegisterReq(TEST_CLUSTER_NAME, dataNodeWrapper);
+      dataNodeRegisterReq.setVersionInfo(
+          seedConfigNodeVersionInfo.deepCopy().setProductEdition(differentProductEdition));
+      TDataNodeRegisterResp dataNodeRegisterResp = client.registerDataNode(dataNodeRegisterReq);
+      assertProductEditionMismatch(
+          dataNodeRegisterResp.getStatus().getCode(),
+          dataNodeRegisterResp.getStatus().getMessage(),
+          seedProductEdition,
+          differentProductEdition);
+    }
+  }
+
+  private static void assertProductEditionMismatch(
+      int statusCode, String message, String seedProductEdition, String nodeProductEdition) {
+    Assert.assertEquals(TSStatusCode.REJECT_NODE_START.getStatusCode(), statusCode);
+    Assert.assertTrue(message.contains(nodeProductEdition));
+    Assert.assertTrue(message.contains(seedProductEdition));
+  }
+
+  @Test
   public void testConflictNodeRegistration()
       throws ClientManagerException, InterruptedException, TException, IOException {
     /* Test ConfigNode conflict register */
@@ -138,6 +188,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
           ConfigNodeTestUtils.generateTConfigNodeRegisterReq(
               TEST_CLUSTER_NAME, conflictConfigNodeWrapper);
       req.getClusterParameters().setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
+      req.setVersionInfo(client.showCluster().getNodeVersionInfo().get(0).deepCopy());
       TConfigNodeRegisterResp resp = client.registerConfigNode(req);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), resp.getStatus().getCode());
@@ -168,6 +219,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
       TDataNodeRegisterReq req =
           ConfigNodeTestUtils.generateTDataNodeRegisterReq(
               TEST_CLUSTER_NAME, conflictDataNodeWrapper);
+      req.setVersionInfo(client.showCluster().getNodeVersionInfo().get(0).deepCopy());
       TDataNodeRegisterResp resp = client.registerDataNode(req);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), resp.getStatus().getCode());
@@ -248,6 +300,26 @@ public class IoTDBClusterNodeErrorStartUpIT {
         }
       }
       Assert.assertNotEquals(-1, registeredDataNodeId);
+
+      // A registered DataNode must not restart with a different product edition.
+      TNodeVersionInfo registeredDataNodeVersionInfo =
+          showClusterResp.getNodeVersionInfo().get(registeredDataNodeId);
+      Assert.assertNotNull(registeredDataNodeVersionInfo);
+      Assert.assertTrue(registeredDataNodeVersionInfo.isSetProductEdition());
+      String differentProductEdition =
+          "IOTDB".equals(registeredDataNodeVersionInfo.getProductEdition()) ? "TIMECHODB" : "IOTDB";
+      dataNodeRestartReq =
+          ConfigNodeTestUtils.generateTDataNodeRestartReq(
+              TEST_CLUSTER_NAME, registeredDataNodeId, registeredDataNodeWrapper);
+      dataNodeRestartReq.setVersionInfo(
+          registeredDataNodeVersionInfo.deepCopy().setProductEdition(differentProductEdition));
+      dataNodeRestartResp = client.restartDataNode(dataNodeRestartReq);
+      Assert.assertEquals(
+          TSStatusCode.REJECT_NODE_START.getStatusCode(),
+          dataNodeRestartResp.getStatus().getCode());
+      Assert.assertTrue(
+          dataNodeRestartResp.getStatus().getMessage().contains(differentProductEdition));
+
       originPort = registeredDataNodeWrapper.getInternalPort();
       registeredDataNodeWrapper.setInternalPort(-12345);
       dataNodeRestartReq =

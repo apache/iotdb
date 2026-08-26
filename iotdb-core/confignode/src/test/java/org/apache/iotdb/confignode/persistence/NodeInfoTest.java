@@ -24,10 +24,13 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -66,6 +69,11 @@ public class NodeInfoTest {
   public void testSnapshot() throws TException, IOException {
     registerConfigNodes();
     registerDataNodes();
+    nodeInfo.updateVersionInfo(
+        new UpdateVersionInfoPlan(
+            new TNodeVersionInfo("2.0.11", "build-info")
+                .setProductEdition(IoTDBConstant.PRODUCT_EDITION),
+            10000));
     Assert.assertTrue(nodeInfo.processTakeSnapshot(snapshotDir));
 
     NodeInfo nodeInfo1 = new NodeInfo();

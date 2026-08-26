@@ -641,6 +641,12 @@ public final class ManagerMessages {
   public static final String MESSAGE_2_CHANGE_CLUSTER_NAME_PARAMETER_ARG_MATCH_TARGET_CLUSTER_0A0DB235 = "\n\t2. 修改 %s 中的 cluster_name 参数以匹配目标集群";
   public static final String MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_FOLLOWING_IP_PORT_ARG_CURRENT_ARG_CB78CC3B =
       "拒绝注册 %s。原因：以下 ip:port：%s（属于当前 %s）与集群中其他已注册节点冲突。";
+  public static final String
+      MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_ITS_PRODUCT_EDITION_ARG_IS_INCONSISTENT_WITH_THE_SEED_CONFIGNODE_PRODUCT_EDITION_ARG_PLEASE_USE_THE_SAME_PRODUCT_EDITION_AS_THE_SEED_CONFIGNODE_4BAECF4F =
+          "拒绝 %s 注册，因为其产品版本（%s）与 Seed-ConfigNode 的产品版本（%s）不一致。请使用与 Seed-ConfigNode 相同的产品版本。";
+  public static final String
+      MESSAGE_REJECT_ARG_RESTART_BECAUSE_ITS_PRODUCT_EDITION_ARG_IS_INCONSISTENT_WITH_THE_REGISTERED_PRODUCT_EDITION_ARG_PLEASE_USE_THE_SAME_PRODUCT_EDITION_AS_BEFORE_D1ED7DF0 =
+          "拒绝 %s 重启，因为其产品版本（%s）与已注册的产品版本（%s）不一致。请使用之前相同的产品版本。";
   public static final String MESSAGE_1_USE_SQL_SHOW_CLUSTER_DETAILS_FIND_OUT_CONFLICT_NODES_A1195AEA = "\t1. 使用 SQL：\"show cluster details\" 找出冲突节点。移除它们后重试启动。";
   public static final String MESSAGE_2_CHANGE_CONFLICT_IP_PORT_CONFIGURATIONS_ARG_FILE_RETRY_START_CF3F08F6 = "\n\t2. 修改 %s 文件中的冲突 ip:port 配置，然后重试启动。";
   public static final String MESSAGE_CLUSTER_ID_HAS_NOT_GENERATED_PLEASE_TRY_AGAIN_LATER_58A1C3F2 = "cluster id 尚未生成，请稍后重试";

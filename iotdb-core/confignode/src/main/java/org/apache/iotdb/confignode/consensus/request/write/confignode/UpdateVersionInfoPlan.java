@@ -59,6 +59,8 @@ public class UpdateVersionInfoPlan extends ConfigPhysicalPlan {
     ReadWriteIOUtils.write(nodeId, stream);
     ReadWriteIOUtils.write(versionInfo.getVersion(), stream);
     ReadWriteIOUtils.write(versionInfo.getBuildInfo(), stream);
+    ReadWriteIOUtils.write(
+        versionInfo.isSetProductEdition() ? versionInfo.getProductEdition() : null, stream);
   }
 
   @Override
@@ -67,6 +69,12 @@ public class UpdateVersionInfoPlan extends ConfigPhysicalPlan {
     versionInfo =
         new TNodeVersionInfo(
             ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readString(buffer));
+    if (buffer.hasRemaining()) {
+      String productEdition = ReadWriteIOUtils.readString(buffer);
+      if (productEdition != null) {
+        versionInfo.setProductEdition(productEdition);
+      }
+    }
   }
 
   @Override

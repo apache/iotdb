@@ -40,7 +40,8 @@ public class AddConfigNodeProcedureTest {
         new AddConfigNodeProcedure(
             new TConfigNodeLocation(
                 0, new TEndPoint("127.0.0.1", 10710), new TEndPoint("0.0.0.0", 10720)),
-            new TNodeVersionInfo(IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO));
+            new TNodeVersionInfo(IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO)
+                .setProductEdition(IoTDBConstant.PRODUCT_EDITION));
 
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

@@ -217,9 +217,12 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
                   .updateConfigNodeIfNecessary(
                       configNodeId,
                       new TNodeVersionInfo(
-                          IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO));
+                              IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO)
+                          .setProductEdition(IoTDBConstant.PRODUCT_EDITION));
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
+          } else if (status.getCode() == TSStatusCode.REJECT_NODE_START.getStatusCode()) {
+            throw new StartupException(status.getMessage());
           } else {
             startUpSleep("restart ConfigNode failed! ");
           }
@@ -252,7 +255,9 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             .getNodeManager()
             .applyConfigNode(
                 CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(SEED_CONFIG_NODE_ID),
-                new TNodeVersionInfo(IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO));
+                new TNodeVersionInfo(IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO)
+                    .setProductEdition(IoTDBConstant.PRODUCT_EDITION));
+
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until Seed-ConfigNode is fully initialized
@@ -414,7 +419,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(INIT_NON_SEED_CONFIG_NODE_ID));
 
     req.setVersionInfo(
-        new TNodeVersionInfo(IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO));
+        new TNodeVersionInfo(IoTDBConstant.VERSION_WITH_PROFILE, IoTDBConstant.BUILD_INFO)
+            .setProductEdition(IoTDBConstant.PRODUCT_EDITION));
 
     TEndPoint seedConfigNode = CONF.getSeedConfigNode();
     if (seedConfigNode == null) {
