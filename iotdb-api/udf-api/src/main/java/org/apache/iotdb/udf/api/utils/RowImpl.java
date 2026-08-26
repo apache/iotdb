@@ -129,30 +129,10 @@ public class RowImpl implements Row {
     if (tsDataType == null) {
       return null;
     }
-    byte type = tsDataType.getType();
-    switch (type) {
-      case 0:
-        return Type.BOOLEAN;
-      case 1:
-        return Type.INT32;
-      case 2:
-        return Type.INT64;
-      case 3:
-        return Type.FLOAT;
-      case 4:
-        return Type.DOUBLE;
-      case 5:
-        return Type.TEXT;
-      case 8:
-        return Type.TIMESTAMP;
-      case 9:
-        return Type.DATE;
-      case 10:
-        return Type.BLOB;
-      case 11:
-        return Type.STRING;
-      default:
-        throw new IllegalArgumentException(UdfApiMessages.INVALID_INPUT + type);
+    try {
+      return Type.valueOf(tsDataType.getType());
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(UdfApiMessages.INVALID_INPUT + tsDataType.getType(), e);
     }
   }
 }
