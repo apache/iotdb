@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.process.join.merge.comparator.Jo
 import org.apache.iotdb.calc.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -37,6 +38,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
@@ -127,6 +129,26 @@ public class TypeServicesTest {
     Assert.assertThrows(
         UnsupportedOperationException.class,
         () -> JoinKeyComparatorFactory.getComparator(Type.fromTsDataType(TSDataType.VECTOR), true));
+  }
+
+  @Test
+  public void testGreatestLeastTransformerServicesUseTypeStrategies() {
+    List<ColumnTransformer> columnTransformers = Collections.emptyList();
+    assertNotNull(
+        TypeServices.GREATEST_COLUMN_TRANSFORMER_SERVICE
+            .call(Type.fromTsDataType(TSDataType.INT32))
+            .apply(columnTransformers));
+    assertNotNull(
+        TypeServices.LEAST_COLUMN_TRANSFORMER_SERVICE
+            .call(Type.fromTsDataType(TSDataType.DOUBLE))
+            .apply(columnTransformers));
+
+    Assert.assertThrows(
+        UnsupportedOperationException.class,
+        () ->
+            TypeServices.GREATEST_COLUMN_TRANSFORMER_SERVICE
+                .call(Type.fromTsDataType(TSDataType.VECTOR))
+                .apply(columnTransformers));
   }
 
   // Covers every supported RANGE-frame type and guards native integer overflow and long precision.

@@ -68,6 +68,19 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.BinaryGreatestColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.BinaryLeastColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.BooleanGreatestColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.BooleanLeastColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.DoubleGreatestColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.DoubleLeastColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.FloatGreatestColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.FloatLeastColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.Int32GreatestColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.Int32LeastColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.Int64GreatestColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.multi.Int64LeastColumnTransformer;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 
 import org.apache.tsfile.block.column.Column;
@@ -82,6 +95,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
@@ -270,6 +284,59 @@ public class TypeServices {
                         MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLength;
                 case ROW, UNKNOWN, VECTOR ->
                     throw new UnSupportedDataTypeException(type.toString()).setChecked(true);
+              };
+
+  public static final TypeService<Function<List<ColumnTransformer>, ColumnTransformer>>
+      GREATEST_COLUMN_TRANSFORMER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN ->
+                    columnTransformers ->
+                        new BooleanGreatestColumnTransformer(type, columnTransformers);
+                case INT32, DATE ->
+                    columnTransformers ->
+                        new Int32GreatestColumnTransformer(type, columnTransformers);
+                case INT64, TIMESTAMP ->
+                    columnTransformers ->
+                        new Int64GreatestColumnTransformer(type, columnTransformers);
+                case FLOAT ->
+                    columnTransformers ->
+                        new FloatGreatestColumnTransformer(type, columnTransformers);
+                case DOUBLE ->
+                    columnTransformers ->
+                        new DoubleGreatestColumnTransformer(type, columnTransformers);
+                case STRING, TEXT ->
+                    columnTransformers ->
+                        new BinaryGreatestColumnTransformer(type, columnTransformers);
+                case BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                    columnTransformers -> {
+                      throw unsupportedGreatestLeastDataType(type);
+                    };
+              };
+
+  public static final TypeService<Function<List<ColumnTransformer>, ColumnTransformer>>
+      LEAST_COLUMN_TRANSFORMER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN ->
+                    columnTransformers ->
+                        new BooleanLeastColumnTransformer(type, columnTransformers);
+                case INT32, DATE ->
+                    columnTransformers -> new Int32LeastColumnTransformer(type, columnTransformers);
+                case INT64, TIMESTAMP ->
+                    columnTransformers -> new Int64LeastColumnTransformer(type, columnTransformers);
+                case FLOAT ->
+                    columnTransformers -> new FloatLeastColumnTransformer(type, columnTransformers);
+                case DOUBLE ->
+                    columnTransformers ->
+                        new DoubleLeastColumnTransformer(type, columnTransformers);
+                case STRING, TEXT ->
+                    columnTransformers ->
+                        new BinaryLeastColumnTransformer(type, columnTransformers);
+                case BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                    columnTransformers -> {
+                      throw unsupportedGreatestLeastDataType(type);
+                    };
               };
 
   public static final TypeService<Function<TsPrimitiveType, Object>>
@@ -510,6 +577,8 @@ public class TypeServices {
     PREVIOUS_FILL_SERVICE.check();
     NEXT_FILL_SERVICE.check();
     JOIN_KEY_COMPARATOR_SERVICE.check();
+    GREATEST_COLUMN_TRANSFORMER_SERVICE.check();
+    LEAST_COLUMN_TRANSFORMER_SERVICE.check();
     MERGE_SORT_COMPARATOR_SERVICE.check();
     MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE.check();
     MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE.check();
@@ -528,6 +597,11 @@ public class TypeServices {
 
   private static IllegalArgumentException unsupportedDataType(final Type type) {
     return new IllegalArgumentException(CalcMessages.UNKNOWN_DATATYPE + type.getTypeEnum());
+  }
+
+  private static UnsupportedOperationException unsupportedGreatestLeastDataType(final Type type) {
+    return new UnsupportedOperationException(
+        CalcMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
   }
 
   public interface DefaultEncodingProvider {

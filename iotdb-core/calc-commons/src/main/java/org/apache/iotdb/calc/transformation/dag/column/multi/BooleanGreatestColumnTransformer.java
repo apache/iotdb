@@ -28,7 +28,7 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 
 public class BooleanGreatestColumnTransformer extends AbstractGreatestLeastColumnTransformer {
-  protected BooleanGreatestColumnTransformer(
+  public BooleanGreatestColumnTransformer(
       Type returnType, List<ColumnTransformer> columnTransformerList) {
     super(returnType, columnTransformerList);
   }
