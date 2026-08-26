@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
@@ -42,6 +43,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
@@ -286,8 +288,17 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
           partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
           sgPartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
-      for (TTimePartitionSlot timePartitionSlot :
-          dataPartitionQueryParam.getTimePartitionSlotList()) {
+      List<TTimePartitionSlot> timePartitionSlots =
+          dataPartitionQueryParam.hasTimeList()
+              ? dataPartitionQueryParam.getTimeList().stream()
+                  .map(
+                      time ->
+                          TimePartitionUtils.getTimePartitionSlot(
+                              time, dataPartitionQueryParam.getDatabaseName()))
+                  .distinct()
+                  .collect(Collectors.toList())
+              : dataPartitionQueryParam.getTimePartitionSlotList();
+      for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
         if (timePartitionSlot.startTime == 0) {
           timePartitionSlotListMap.put(timePartitionSlot, d1DataRegions);
         } else {

@@ -256,7 +256,7 @@ public class IoTDBDatabaseIT {
           assertTrue(resultSet.getInt(8) >= defaultSchemaRegionGroupNum[cnt]);
           assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(9));
           assertTrue(resultSet.getInt(10) >= defaultDataRegionGroupNum[cnt]);
-          assertFalse(resultSet.getBoolean(11));
+          assertTrue(resultSet.getBoolean(11));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -812,7 +812,7 @@ public class IoTDBDatabaseIT {
         int cnt = 0;
         while (resultSet.next()) {
           if ("information_schema".equals(resultSet.getString(1))) {
-            for (int columnIndex = 3; columnIndex <= expectedColumnSchemas.size(); columnIndex++) {
+            for (int columnIndex = 3; columnIndex < expectedColumnSchemas.size(); columnIndex++) {
               assertNull(resultSet.getObject(columnIndex));
             }
             assertFalse(resultSet.getBoolean(11));

@@ -37,8 +37,6 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private Long ttl = null;
   private Long timePartitionInterval = null;
   private Long timePartitionOrigin = null;
-  private Integer schemaRegionGroupNum = null;
-  private Integer dataRegionGroupNum = null;
   private Integer maxSchemaRegionGroupNum = null;
   private Integer maxDataRegionGroupNum = null;
   private boolean enablePrintExceptionLog = true;
@@ -105,22 +103,6 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   public void setTimePartitionOrigin(final Long timePartitionOrigin) {
     this.timePartitionOrigin = timePartitionOrigin;
-  }
-
-  public Integer getSchemaRegionGroupNum() {
-    return schemaRegionGroupNum;
-  }
-
-  public void setSchemaRegionGroupNum(final Integer schemaRegionGroupNum) {
-    this.schemaRegionGroupNum = schemaRegionGroupNum;
-  }
-
-  public Integer getDataRegionGroupNum() {
-    return dataRegionGroupNum;
-  }
-
-  public void setDataRegionGroupNum(final Integer dataRegionGroupNum) {
-    this.dataRegionGroupNum = dataRegionGroupNum;
   }
 
   public Integer getMaxSchemaRegionGroupNum() {
@@ -196,10 +178,6 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
         + timePartitionInterval
         + ", timePartitionOrigin="
         + timePartitionOrigin
-        + ", schemaRegionGroupNum="
-        + schemaRegionGroupNum
-        + ", dataRegionGroupNum="
-        + dataRegionGroupNum
         + ", maxSchemaRegionGroupNum="
         + maxSchemaRegionGroupNum
         + ", maxDataRegionGroupNum="
