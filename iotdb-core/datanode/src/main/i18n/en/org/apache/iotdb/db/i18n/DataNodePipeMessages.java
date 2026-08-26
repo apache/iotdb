@@ -2009,6 +2009,8 @@ public final class DataNodePipeMessages {
           + "runtimeVersion {} -> {}, runtimeState={} (route hint)";
   public static final String PIPE_LOG_FAILED_TO_CHECK_IF_TOPIC_IS_CONSENSUS_BASED_DEFAULTING_TO_ECCE1509 =
       "Failed to check if topic [{}] is consensus-based, defaulting to false";
+  public static final String EXCEPTION_TOPIC_METADATA_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_A1949F20 =
+      "Topic metadata for %s is unavailable during consensus subscription setup";
   public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4 =
       "Skipping setup of consensus-based subscriptions for consumer group [{}] because "
           + "mode=incremental only supports data_region_consensus_protocol_class={}, but current "

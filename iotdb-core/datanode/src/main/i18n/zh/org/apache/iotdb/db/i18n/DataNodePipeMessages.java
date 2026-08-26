@@ -1865,6 +1865,8 @@ public final class DataNodePipeMessages {
           + "{} -> {}，runtimeState={}（route hint）";
   public static final String PIPE_LOG_FAILED_TO_CHECK_IF_TOPIC_IS_CONSENSUS_BASED_DEFAULTING_TO_ECCE1509 =
       "检查 topic [{}] 是否为 consensus-based 失败，默认设为 false";
+  public static final String EXCEPTION_TOPIC_METADATA_FOR_ARG_IS_UNAVAILABLE_DURING_CONSENSUS_SUBSCRIPTION_SETUP_A1949F20 =
+      "共识订阅设置期间 topic %s 的元数据不可用";
   public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_46BEE6E4 =
       "跳过 consumer group [{}] 的 consensus-based subscription 设置，因为 mode=incremental 仅支持 "
           + "data_region_consensus_protocol_class={}，但当前配置值为 {}（运行时 consensus 实现：{}）";
