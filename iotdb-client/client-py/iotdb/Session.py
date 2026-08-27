@@ -24,6 +24,7 @@ import sys
 import warnings
 
 from iotdb.utils.SessionDataSet import SessionDataSet
+from iotdb.utils.SessionUtils import filter_null_columns
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 from tzlocal import get_localzone_name
@@ -1095,6 +1096,8 @@ class Session(object):
         :param tablet: a tablet specified above
         """
         request = self.gen_insert_tablet_req(tablet)
+        if request is None:
+            return
         try:
             connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
@@ -1123,19 +1126,24 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(tablet_lst)):
-                connection = self.get_connection(tablet_lst[i].get_insert_target_name())
+                filtered = filter_null_columns(tablet_lst[i])
+                if filtered is None:
+                    continue
+                connection = self.get_connection(filtered.get_insert_target_name())
                 request = request_group.setdefault(
                     connection.client,
                     TSInsertTabletsReq(
                         connection.session_id, [], [], [], [], [], [], False
                     ),
                 )
-                request.prefixPaths.append(tablet_lst[i].get_insert_target_name())
-                request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
-                request.measurementsList.append(tablet_lst[i].get_measurements())
-                request.valuesList.append(tablet_lst[i].get_binary_values())
-                request.sizeList.append(tablet_lst[i].get_row_number())
-                request.typesList.append(tablet_lst[i].get_data_types())
+                request.prefixPaths.append(filtered.get_insert_target_name())
+                request.timestampsList.append(filtered.get_binary_timestamps())
+                request.measurementsList.append(filtered.get_measurements())
+                request.valuesList.append(filtered.get_binary_values())
+                request.sizeList.append(filtered.get_row_number())
+                request.typesList.append(filtered.get_data_types())
+            if not request_group:
+                return 0
             for client, request in request_group.items():
                 try:
                     rpc_utils.verify_success_with_redirection_for_multi_devices(
@@ -1161,6 +1169,8 @@ class Session(object):
             return 0
         else:
             request = self.gen_insert_tablets_req(tablet_lst)
+            if request is None:
+                return 0
             try:
                 return rpc_utils.verify_success(self.__client.insertTablets(request))
             except TTransport.TException as e:
@@ -1190,6 +1200,8 @@ class Session(object):
         :param tablet: a tablet specified above
         """
         request = self.gen_insert_tablet_req(tablet, True)
+        if request is None:
+            return
         try:
             connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
@@ -1218,19 +1230,24 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(tablet_lst)):
-                connection = self.get_connection(tablet_lst[i].get_insert_target_name())
+                filtered = filter_null_columns(tablet_lst[i])
+                if filtered is None:
+                    continue
+                connection = self.get_connection(filtered.get_insert_target_name())
                 request = request_group.setdefault(
                     connection.client,
                     TSInsertTabletsReq(
                         connection.session_id, [], [], [], [], [], [], True
                     ),
                 )
-                request.prefixPaths.append(tablet_lst[i].get_insert_target_name())
-                request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
-                request.measurementsList.append(tablet_lst[i].get_measurements())
-                request.valuesList.append(tablet_lst[i].get_binary_values())
-                request.sizeList.append(tablet_lst[i].get_row_number())
-                request.typesList.append(tablet_lst[i].get_data_types())
+                request.prefixPaths.append(filtered.get_insert_target_name())
+                request.timestampsList.append(filtered.get_binary_timestamps())
+                request.measurementsList.append(filtered.get_measurements())
+                request.valuesList.append(filtered.get_binary_values())
+                request.sizeList.append(filtered.get_row_number())
+                request.typesList.append(filtered.get_data_types())
+            if not request_group:
+                return 0
             for client, request in request_group.items():
                 try:
                     rpc_utils.verify_success_with_redirection_for_multi_devices(
@@ -1256,6 +1273,8 @@ class Session(object):
             return 0
         else:
             request = self.gen_insert_tablets_req(tablet_lst, True)
+            if request is None:
+                return 0
             try:
                 return rpc_utils.verify_success(self.__client.insertTablets(request))
             except TTransport.TException as e:
@@ -1282,6 +1301,8 @@ class Session(object):
         :param tablet: a tablet specified above
         """
         request = self.gen_insert_relational_tablet_req(tablet)
+        if request is None:
+            return
         try:
             connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
@@ -1480,6 +1501,8 @@ class Session(object):
         :param tablet: a tablet of data
         """
         request = self.gen_insert_tablet_req(tablet)
+        if request is None:
+            return
         try:
             return rpc_utils.verify_success(self.__client.testInsertTablet(request))
         except TTransport.TException as e:
@@ -1501,6 +1524,8 @@ class Session(object):
         :param tablet_list: List of tablets
         """
         request = self.gen_insert_tablets_req(tablet_list)
+        if request is None:
+            return
         try:
             return rpc_utils.verify_success(self.__client.testInsertTablets(request))
         except TTransport.TException as e:
@@ -1516,29 +1541,35 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def gen_insert_tablet_req(self, tablet, is_aligned=False):
+        filtered = filter_null_columns(tablet)
+        if filtered is None:
+            return None
         return TSInsertTabletReq(
             self.__session_id,
-            tablet.get_insert_target_name(),
-            tablet.get_measurements(),
-            tablet.get_binary_values(),
-            tablet.get_binary_timestamps(),
-            tablet.get_data_types(),
-            tablet.get_row_number(),
+            filtered.get_insert_target_name(),
+            filtered.get_measurements(),
+            filtered.get_binary_values(),
+            filtered.get_binary_timestamps(),
+            filtered.get_data_types(),
+            filtered.get_row_number(),
             is_aligned,
         )
 
     def gen_insert_relational_tablet_req(self, tablet, is_aligned=False):
+        filtered = filter_null_columns(tablet)
+        if filtered is None:
+            return None
         return TSInsertTabletReq(
             self.__session_id,
-            tablet.get_insert_target_name(),
-            tablet.get_measurements(),
-            tablet.get_binary_values(),
-            tablet.get_binary_timestamps(),
-            tablet.get_data_types(),
-            tablet.get_row_number(),
+            filtered.get_insert_target_name(),
+            filtered.get_measurements(),
+            filtered.get_binary_values(),
+            filtered.get_binary_timestamps(),
+            filtered.get_data_types(),
+            filtered.get_row_number(),
             is_aligned,
             True,
-            tablet.get_column_categories(),
+            filtered.get_column_categories(),
         )
 
     def gen_insert_tablets_req(self, tablet_lst, is_aligned=False):
@@ -1549,12 +1580,17 @@ class Session(object):
         type_lst = []
         size_lst = []
         for tablet in tablet_lst:
-            device_id_lst.append(tablet.get_insert_target_name())
-            measurements_lst.append(tablet.get_measurements())
-            values_lst.append(tablet.get_binary_values())
-            timestamps_lst.append(tablet.get_binary_timestamps())
-            type_lst.append(tablet.get_data_types())
-            size_lst.append(tablet.get_row_number())
+            filtered = filter_null_columns(tablet)
+            if filtered is None:
+                continue
+            device_id_lst.append(filtered.get_insert_target_name())
+            measurements_lst.append(filtered.get_measurements())
+            values_lst.append(filtered.get_binary_values())
+            timestamps_lst.append(filtered.get_binary_timestamps())
+            type_lst.append(filtered.get_data_types())
+            size_lst.append(filtered.get_row_number())
+        if not device_id_lst:
+            return None
         return TSInsertTabletsReq(
             self.__session_id,
             device_id_lst,

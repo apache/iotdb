@@ -29,11 +29,26 @@ class BitMap(object):
     def mark(self, position):
         self.bits[position // 8] |= BitMap.BIT_UTIL[position % 8]
 
+    def is_marked(self, position):
+        return (self.bits[position // 8] & BitMap.BIT_UTIL[position % 8]) != 0
+
+    def get_size(self):
+        return self.__size
+
     def is_all_unmarked(self):
         for i in range(self.__size // 8):
             if self.bits[i] != 0:
                 return False
         for i in range(self.__size % 8):
             if (self.bits[self.__size // 8] & BitMap.BIT_UTIL[i]) != 0:
+                return False
+        return True
+
+    def is_all_marked(self):
+        for i in range(self.__size // 8):
+            if self.bits[i] != 0xFF:
+                return False
+        for i in range(self.__size % 8):
+            if (self.bits[self.__size // 8] & BitMap.BIT_UTIL[i]) == 0:
                 return False
         return True

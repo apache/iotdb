@@ -145,7 +145,8 @@ public:
   void handleRedirection(const std::string& deviceId, TEndPoint endPoint);
   void handleRedirection(const std::shared_ptr<storage::IDeviceID>& deviceId, TEndPoint endPoint);
 
-  static void buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted);
+  // Returns false when all FIELD columns are null and the insert should be skipped.
+  static bool buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted);
   void insertTablet(TSInsertTabletReq request);
   void insertRelationalTabletOnce(
       const std::unordered_map<std::shared_ptr<SessionConnection>, Tablet>& relationalTabletGroup,

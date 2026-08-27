@@ -99,6 +99,8 @@ template <typename T, typename Target> void safe_cast(const T& value, Target& ta
  *
  */
 class Tablet {
+  friend class SessionUtils;
+
 private:
   static const int DEFAULT_ROW_SIZE = 1024;
 
@@ -431,6 +433,15 @@ public:
   static std::string getValue(const Tablet& tablet);
 
   static bool isTabletContainsSingleDevice(Tablet tablet);
+
+  /**
+   * Drop entirely-null FIELD columns within [0, rowSize). TAG/ATTRIBUTE are kept.
+   * Does not mutate {@code tablet}.
+   *
+   * @return non-owning pointer to {@code tablet} if nothing to drop; a new tablet if
+   *         filtered; nullptr if every FIELD column is null (caller should skip insert)
+   */
+  static std::shared_ptr<const Tablet> filterNullColumns(const Tablet& tablet);
 };
 
 class TemplateNode {

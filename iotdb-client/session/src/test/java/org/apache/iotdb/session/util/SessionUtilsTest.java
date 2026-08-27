@@ -225,6 +225,51 @@ public class SessionUtilsTest {
   }
 
   @Test
+  public void testFilterNullColumns() {
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("s1", TSDataType.INT32));
+    schemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemas.add(new MeasurementSchema("s3", TSDataType.FLOAT));
+    schemas.add(new MeasurementSchema("s4", TSDataType.DOUBLE));
+    schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+
+    Tablet tablet = new Tablet("root.sg.d1", schemas, 1);
+    tablet.addTimestamp(0, 1000L);
+    tablet.addValue("s1", 0, 1);
+    tablet.addValue("s2", 0, null);
+    tablet.addValue("s3", 0, 1.5f);
+    tablet.addValue("s4", 0, null);
+    tablet.addValue("s5", 0, null);
+
+    Tablet filtered = SessionUtils.filterNullColumns(tablet);
+    Assert.assertNotNull(filtered);
+    Assert.assertNotSame(tablet, filtered);
+    Assert.assertEquals(2, filtered.getSchemas().size());
+    Assert.assertEquals("s1", filtered.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("s3", filtered.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals(1, ((int[]) filtered.getValues()[0])[0]);
+    Assert.assertEquals(1.5f, ((float[]) filtered.getValues()[1])[0], 0.0001f);
+
+    // no BitMap -> same instance
+    long[] timestamps = new long[] {1L};
+    Object[] values = new Object[] {new int[] {1}};
+    List<IMeasurementSchema> singleSchema =
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32));
+    Tablet noBitMapTablet = new Tablet("root.sg.d1", singleSchema, timestamps, values, null, 1);
+    Assert.assertSame(noBitMapTablet, SessionUtils.filterNullColumns(noBitMapTablet));
+
+    // all columns null -> null
+    Tablet allNull = new Tablet("root.sg.d1", schemas, 1);
+    allNull.addTimestamp(0, 2000L);
+    allNull.addValue("s1", 0, null);
+    allNull.addValue("s2", 0, null);
+    allNull.addValue("s3", 0, null);
+    allNull.addValue("s4", 0, null);
+    allNull.addValue("s5", 0, null);
+    Assert.assertNull(SessionUtils.filterNullColumns(allNull));
+  }
+
+  @Test
   public void testParseSeedNodeUrls() {
     List<String> nodeUrls = Collections.singletonList("127.0.0.1:1234");
     List<TEndPoint> tEndPoints = SessionUtils.parseSeedNodeUrls(nodeUrls);

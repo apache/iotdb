@@ -26,6 +26,7 @@ import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.encoder.Encoder;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
@@ -465,6 +466,105 @@ public class SessionUtils {
     } catch (IOException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  /**
+   * Remove FIELD columns that are entirely null within {@code [0, rowSize)} according to BitMap.
+   * TAG / ATTRIBUTE columns are always kept. Does not mutate the input tablet.
+   *
+   * @param tablet source tablet
+   * @return the same instance if nothing to drop; a new tablet with remaining columns; or {@code
+   *     null} if every FIELD column is null (no valid measurement left to insert)
+   */
+  public static Tablet filterNullColumns(Tablet tablet) {
+    if (tablet == null) {
+      return null;
+    }
+    BitMap[] bitMaps = tablet.getBitMaps();
+    if (bitMaps == null) {
+      return tablet;
+    }
+
+    List<IMeasurementSchema> schemas = tablet.getSchemas();
+    List<ColumnCategory> columnCategories = tablet.getColumnTypes();
+    Object[] values = tablet.getValues();
+    int columnCount = schemas.size();
+    int rowSize = tablet.getRowSize();
+
+    List<IMeasurementSchema> keptSchemas = new ArrayList<>(columnCount);
+    List<ColumnCategory> keptCategories =
+        columnCategories != null ? new ArrayList<>(columnCount) : null;
+    List<Object> keptValues = new ArrayList<>(columnCount);
+    List<BitMap> keptBitMaps = new ArrayList<>(columnCount);
+
+    int originalFieldCount = 0;
+    int keptFieldCount = 0;
+
+    for (int i = 0; i < columnCount; i++) {
+      ColumnCategory category =
+          columnCategories != null && i < columnCategories.size()
+              ? columnCategories.get(i)
+              : ColumnCategory.FIELD;
+      boolean isField = category == ColumnCategory.FIELD;
+      if (isField) {
+        originalFieldCount++;
+      }
+
+      boolean drop = isField && i < bitMaps.length && isColumnAllNull(bitMaps[i], rowSize);
+      if (drop) {
+        continue;
+      }
+
+      keptSchemas.add(schemas.get(i));
+      if (keptCategories != null) {
+        keptCategories.add(category);
+      }
+      keptValues.add(values[i]);
+      keptBitMaps.add(i < bitMaps.length ? bitMaps[i] : null);
+      if (isField) {
+        keptFieldCount++;
+      }
+    }
+
+    if (keptSchemas.size() == columnCount) {
+      return tablet;
+    }
+    if (originalFieldCount > 0 && keptFieldCount == 0) {
+      return null;
+    }
+    if (keptSchemas.isEmpty()) {
+      return null;
+    }
+
+    Object[] newValues = keptValues.toArray();
+    BitMap[] newBitMaps = keptBitMaps.toArray(new BitMap[0]);
+    if (keptCategories != null) {
+      return new Tablet(
+          tablet.getDeviceId(),
+          keptSchemas,
+          keptCategories,
+          tablet.getTimestamps(),
+          newValues,
+          newBitMaps,
+          rowSize);
+    }
+    return new Tablet(
+        tablet.getDeviceId(), keptSchemas, tablet.getTimestamps(), newValues, newBitMaps, rowSize);
+  }
+
+  private static boolean isColumnAllNull(BitMap bitMap, int rowSize) {
+    if (bitMap == null || rowSize <= 0) {
+      return false;
+    }
+    if (bitMap.getSize() == rowSize && bitMap.isAllMarked()) {
+      return true;
+    }
+    for (int row = 0; row < rowSize; row++) {
+      if (!bitMap.isMarked(row)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /* Used for table model insert only. */

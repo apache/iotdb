@@ -413,6 +413,83 @@ bool SessionUtils::isTabletContainsSingleDevice(Tablet tablet) {
   return true;
 }
 
+static bool isColumnAllNull(const BitMap& bitMap, size_t rowSize) {
+  if (rowSize == 0) {
+    return false;
+  }
+  if (bitMap.getSize() == rowSize && bitMap.isAllMarked()) {
+    return true;
+  }
+  for (size_t row = 0; row < rowSize; row++) {
+    if (!bitMap.isMarked(row)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::shared_ptr<const Tablet> SessionUtils::filterNullColumns(const Tablet& tablet) {
+  const size_t columnCount = tablet.schemas.size();
+  if (columnCount == 0 || tablet.bitMaps.size() < columnCount) {
+    return std::shared_ptr<const Tablet>(&tablet, [](const Tablet*) {});
+  }
+
+  std::vector<size_t> keptIndices;
+  keptIndices.reserve(columnCount);
+  size_t originalFieldCount = 0;
+  size_t keptFieldCount = 0;
+
+  for (size_t i = 0; i < columnCount; i++) {
+    ColumnCategory category =
+        i < tablet.columnTypes.size() ? tablet.columnTypes[i] : ColumnCategory::FIELD;
+    bool isField = category == ColumnCategory::FIELD;
+    if (isField) {
+      originalFieldCount++;
+    }
+    bool drop = isField && isColumnAllNull(tablet.bitMaps[i], tablet.rowSize);
+    if (drop) {
+      continue;
+    }
+    keptIndices.push_back(i);
+    if (isField) {
+      keptFieldCount++;
+    }
+  }
+
+  if (keptIndices.size() == columnCount) {
+    return std::shared_ptr<const Tablet>(&tablet, [](const Tablet*) {});
+  }
+  if (originalFieldCount > 0 && keptFieldCount == 0) {
+    return nullptr;
+  }
+  if (keptIndices.empty()) {
+    return nullptr;
+  }
+
+  std::vector<std::pair<std::string, TSDataType::TSDataType>> keptSchemas;
+  std::vector<ColumnCategory> keptColumnTypes;
+  keptSchemas.reserve(keptIndices.size());
+  keptColumnTypes.reserve(keptIndices.size());
+  for (size_t idx : keptIndices) {
+    keptSchemas.push_back(tablet.schemas[idx]);
+    keptColumnTypes.push_back(idx < tablet.columnTypes.size() ? tablet.columnTypes[idx]
+                                                              : ColumnCategory::FIELD);
+  }
+
+  auto filteredOut = std::make_shared<Tablet>(tablet.deviceId, keptSchemas, keptColumnTypes,
+                                              tablet.maxRowNumber, tablet.isAligned);
+  filteredOut->deleteColumns();
+  filteredOut->timestamps = tablet.timestamps;
+  filteredOut->rowSize = tablet.rowSize;
+  for (size_t ni = 0; ni < keptIndices.size(); ni++) {
+    size_t oi = keptIndices[ni];
+    Tablet::deepCopyTabletColValue(&tablet.values[oi], &filteredOut->values[ni],
+                                   keptSchemas[ni].second, static_cast<int>(tablet.maxRowNumber));
+    filteredOut->bitMaps[ni] = tablet.bitMaps[oi];
+  }
+  return filteredOut;
+}
+
 string MeasurementNode::serialize() const {
   MyStringBuffer buffer;
   buffer.putString(getName());
@@ -1002,6 +1079,10 @@ void Session::Impl::insertTabletsWithLeaderCache(unordered_map<string, Tablet*>&
     }
     auto deviceId = item.first;
     auto tablet = item.second;
+    std::shared_ptr<const Tablet> toEncode = SessionUtils::filterNullColumns(*tablet);
+    if (!toEncode) {
+      continue;
+    }
     auto connection = getSessionConnection(deviceId);
     auto it = tabletsGroup.find(connection);
     if (it == tabletsGroup.end()) {
@@ -1009,18 +1090,22 @@ void Session::Impl::insertTabletsWithLeaderCache(unordered_map<string, Tablet*>&
       tabletsGroup[connection] = request;
     }
     TSInsertTabletsReq& existingReq = tabletsGroup[connection];
-    existingReq.prefixPaths.emplace_back(tablet->deviceId);
-    existingReq.timestampsList.emplace_back(move(SessionUtils::getTime(*tablet)));
-    existingReq.valuesList.emplace_back(move(SessionUtils::getValue(*tablet)));
-    existingReq.sizeList.emplace_back(tablet->rowSize);
+    existingReq.prefixPaths.emplace_back(toEncode->deviceId);
+    existingReq.timestampsList.emplace_back(move(SessionUtils::getTime(*toEncode)));
+    existingReq.valuesList.emplace_back(move(SessionUtils::getValue(*toEncode)));
+    existingReq.sizeList.emplace_back(toEncode->rowSize);
     vector<int> dataTypes;
     vector<string> measurements;
-    for (pair<string, TSDataType::TSDataType> schema : tablet->schemas) {
+    for (pair<string, TSDataType::TSDataType> schema : toEncode->schemas) {
       measurements.push_back(schema.first);
       dataTypes.push_back(schema.second);
     }
     existingReq.measurementsList.emplace_back(measurements);
     existingReq.typesList.emplace_back(dataTypes);
+  }
+
+  if (tabletsGroup.empty()) {
+    return;
   }
 
   std::function<void(std::shared_ptr<SessionConnection>, const TSInsertTabletsReq&)> consumer =
@@ -1444,27 +1529,41 @@ void Session::insertTablet(Tablet& tablet) {
   }
 }
 
-void Session::Impl::buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted) {
+bool Session::Impl::buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted) {
   if ((!sorted) && !checkSorted(tablet)) {
     sortTablet(tablet);
   }
 
-  request.__set_prefixPath(tablet.deviceId);
+  std::shared_ptr<const Tablet> toEncode = SessionUtils::filterNullColumns(tablet);
+  if (!toEncode) {
+    return false;
+  }
+
+  request.__set_prefixPath(toEncode->deviceId);
 
   std::vector<std::string> reqMeasurements;
-  reqMeasurements.reserve(tablet.schemas.size());
+  reqMeasurements.reserve(toEncode->schemas.size());
   std::vector<int32_t> types;
-  types.reserve(tablet.schemas.size());
-  for (pair<string, TSDataType::TSDataType> schema : tablet.schemas) {
+  types.reserve(toEncode->schemas.size());
+  for (pair<string, TSDataType::TSDataType> schema : toEncode->schemas) {
     reqMeasurements.push_back(schema.first);
     types.push_back(schema.second);
   }
   request.__set_measurements(reqMeasurements);
   request.__set_types(types);
-  request.__set_values(SessionUtils::getValue(tablet));
-  request.__set_timestamps(SessionUtils::getTime(tablet));
-  request.__set_size(tablet.rowSize);
-  request.__set_isAligned(tablet.isAligned);
+  request.__set_values(SessionUtils::getValue(*toEncode));
+  request.__set_timestamps(SessionUtils::getTime(*toEncode));
+  request.__set_size(toEncode->rowSize);
+  request.__set_isAligned(toEncode->isAligned);
+  if (!toEncode->columnTypes.empty()) {
+    std::vector<int8_t> columnCategories;
+    columnCategories.reserve(toEncode->columnTypes.size());
+    for (auto& category : toEncode->columnTypes) {
+      columnCategories.push_back(static_cast<int8_t>(category));
+    }
+    request.__set_columnCategories(columnCategories);
+  }
+  return true;
 }
 
 void Session::Impl::insertTablet(TSInsertTabletReq request) {
@@ -1488,7 +1587,9 @@ void Session::Impl::insertTablet(TSInsertTabletReq request) {
 
 void Session::insertTablet(Tablet& tablet, bool sorted) {
   TSInsertTabletReq request;
-  impl_->buildInsertTabletReq(request, tablet, sorted);
+  if (!impl_->buildInsertTabletReq(request, tablet, sorted)) {
+    return;
+  }
   impl_->insertTablet(request);
 }
 
@@ -1574,13 +1675,10 @@ void Session::Impl::insertRelationalTabletOnce(
   auto connection = iter->first;
   auto tablet = iter->second;
   TSInsertTabletReq request;
-  buildInsertTabletReq(request, tablet, sorted);
-  request.__set_writeToTable(true);
-  std::vector<int8_t> columnCategories;
-  for (auto& category : tablet.columnTypes) {
-    columnCategories.push_back(static_cast<int8_t>(category));
+  if (!buildInsertTabletReq(request, tablet, sorted)) {
+    return;
   }
-  request.__set_columnCategories(columnCategories);
+  request.__set_writeToTable(true);
   try {
     TSStatus respStatus;
     connection->getSessionClient()->insertTablet(respStatus, request);
@@ -1629,14 +1727,10 @@ void Session::Impl::insertRelationalTabletByGroup(
     futures.emplace_back(
         std::async(std::launch::async, [this, connection, tablet, sorted]() mutable {
           TSInsertTabletReq request;
-          buildInsertTabletReq(request, tablet, sorted);
-          request.__set_writeToTable(true);
-
-          std::vector<int8_t> columnCategories;
-          for (auto& category : tablet.columnTypes) {
-            columnCategories.push_back(static_cast<int8_t>(category));
+          if (!buildInsertTabletReq(request, tablet, sorted)) {
+            return;
           }
-          request.__set_columnCategories(columnCategories);
+          request.__set_writeToTable(true);
 
           try {
             TSStatus respStatus;
@@ -1702,18 +1796,25 @@ void Session::insertTablets(unordered_map<string, Tablet*>& tablets, bool sorted
       if (!impl_->checkSorted(*(item.second))) {
         impl_->sortTablet(*(item.second));
       }
-      request.prefixPaths.push_back(item.second->deviceId);
+      std::shared_ptr<const Tablet> toEncode = SessionUtils::filterNullColumns(*(item.second));
+      if (!toEncode) {
+        continue;
+      }
+      request.prefixPaths.push_back(toEncode->deviceId);
       vector<string> measurements;
       vector<int> dataTypes;
-      for (pair<string, TSDataType::TSDataType> schema : item.second->schemas) {
+      for (pair<string, TSDataType::TSDataType> schema : toEncode->schemas) {
         measurements.push_back(schema.first);
         dataTypes.push_back(schema.second);
       }
       request.measurementsList.push_back(measurements);
       request.typesList.push_back(dataTypes);
-      request.timestampsList.push_back(move(SessionUtils::getTime(*(item.second))));
-      request.valuesList.push_back(move(SessionUtils::getValue(*(item.second))));
-      request.sizeList.push_back(item.second->rowSize);
+      request.timestampsList.push_back(move(SessionUtils::getTime(*toEncode)));
+      request.valuesList.push_back(move(SessionUtils::getValue(*toEncode)));
+      request.sizeList.push_back(toEncode->rowSize);
+    }
+    if (request.prefixPaths.empty()) {
+      return;
     }
     request.__set_isAligned(isAligned);
     try {
