@@ -18,10 +18,13 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.type.service.TypeService;
 
 import java.io.IOException;
@@ -175,15 +178,53 @@ final class TypeServices {
                 };
           };
 
+  // UDF Row has no generic numeric accessor, so bind its primitive getter once during beforeStart.
+  static final TypeService<NumericRowReader> NUMERIC_ROW_READER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 -> row -> row.getInt(0);
+            case INT64 -> row -> row.getLong(0);
+            case FLOAT -> row -> row.getFloat(0);
+            case DOUBLE -> row -> row.getDouble(0);
+            case BOOLEAN, DATE, TIMESTAMP, TEXT, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                row -> {
+                  throw invalidNumericDataType(type);
+                };
+          };
+
+  // TsFile Type provides primitive numeric conversion for every supported column implementation.
+  static final TypeService<NumericColumnReader> NUMERIC_COLUMN_READER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, INT64, FLOAT, DOUBLE -> type::getDouble;
+            case BOOLEAN, DATE, TIMESTAMP, TEXT, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                (column, position) -> {
+                  throw invalidNumericDataType(type);
+                };
+          };
+
   static {
     VALUE_TREND_READER_SERVICE.check();
     VALUE_DIFFERENCE_OPERATOR_SERVICE.check();
     NON_NEGATIVE_VALUE_DIFFERENCE_OPERATOR_SERVICE.check();
     DERIVATIVE_OPERATOR_SERVICE.check();
     NON_NEGATIVE_DERIVATIVE_OPERATOR_SERVICE.check();
+    NUMERIC_ROW_READER_SERVICE.check();
+    NUMERIC_COLUMN_READER_SERVICE.check();
   }
 
   private TypeServices() {}
+
+  private static UDFInputSeriesDataTypeNotValidException invalidNumericDataType(
+      org.apache.tsfile.read.common.type.Type type) {
+    return new UDFInputSeriesDataTypeNotValidException(
+        0,
+        UDFDataTypeTransformer.transformReadTypeToUDFDataType(type),
+        Type.INT32,
+        Type.INT64,
+        Type.FLOAT,
+        Type.DOUBLE);
+  }
 
   @FunctionalInterface
   interface PreviousValueReader {
@@ -202,5 +243,15 @@ final class TypeServices {
     void apply(
         UDTFValueTrend target, long time, Row row, PointCollector collector, double timeDelta)
         throws UDFInputSeriesDataTypeNotValidException, IOException;
+  }
+
+  @FunctionalInterface
+  interface NumericRowReader {
+    double read(Row row) throws UDFInputSeriesDataTypeNotValidException, IOException;
+  }
+
+  @FunctionalInterface
+  interface NumericColumnReader {
+    double read(Column column, int position) throws UDFInputSeriesDataTypeNotValidException;
   }
 }
