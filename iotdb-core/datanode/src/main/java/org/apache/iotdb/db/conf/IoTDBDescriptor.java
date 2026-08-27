@@ -1114,8 +1114,7 @@ public class IoTDBDescriptor {
               + "but current value is {}, ignore that and use the default value {}",
           partitionTableRecoverMaxReadMBsPerSecond,
           conf.getPartitionTableRecoverMaxReadMBsPerSecond());
-      partitionTableRecoverMaxReadMBsPerSecond =
-          conf.getPartitionTableRecoverMaxReadMBsPerSecond();
+      partitionTableRecoverMaxReadMBsPerSecond = conf.getPartitionTableRecoverMaxReadMBsPerSecond();
     }
     conf.setPartitionTableRecoverMaxReadMBsPerSecond(partitionTableRecoverMaxReadMBsPerSecond);
   }
