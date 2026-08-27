@@ -26,7 +26,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 
-import com.timecho.iotdb.commons.external.listmatch.PatternList;
 import com.timecho.iotdb.i18n.TimechoServerMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,11 +33,10 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.regex.Pattern;
 
 public class IPFilter {
   public static final String IP_LIST_PATTERN =
@@ -53,8 +51,8 @@ public class IPFilter {
     throw new UnsupportedOperationException(TimechoServerMessages.CANNOT_INSTANTIATE_THIS_CLASS);
   }
 
-  static PatternList whitePattern;
-  static PatternList blackPattern;
+  static volatile IPMatcher whitePattern;
+  static volatile IPMatcher blackPattern;
 
   static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -100,7 +98,7 @@ public class IPFilter {
     }
     lock.readLock().lock();
     try {
-      return whitePattern.matches(ip);
+      return whitePattern != null && whitePattern.matches(ip);
     } finally {
       lock.readLock().unlock();
     }
@@ -112,7 +110,7 @@ public class IPFilter {
     }
     lock.readLock().lock();
     try {
-      return blackPattern.matches(ip);
+      return blackPattern != null && blackPattern.matches(ip);
     } finally {
       lock.readLock().unlock();
     }
@@ -127,12 +125,13 @@ public class IPFilter {
       return isInBlackList(ip);
     } else if (conf.isEnableWhiteList() && !conf.isEnableBlackList()) {
       return !isInWhiteList(ip);
-    } else {
+    } else if (conf.isEnableWhiteList() && conf.isEnableBlackList()) {
       if (isInBlackList(ip)) {
         return true;
       }
       return !isInWhiteList(ip);
     }
+    return false;
   }
 
   public static Set<String> getAllowListPatterns() {
@@ -156,48 +155,53 @@ public class IPFilter {
                     Arrays.stream(conf.getRawBlackIPList().split(","))
                         .map(String::trim)
                         .toArray(String[]::new)));
-    if (conf.isEnableWhiteList()) {
-      checkValidityOfIP(whiteIPList, true);
+    IPMatcher.BuildResult whiteResult =
+        conf.isEnableWhiteList() ? IPMatcher.build(whiteIPList) : null;
+    IPMatcher.BuildResult blackResult =
+        conf.isEnableBlackList() ? IPMatcher.build(blackIPList) : null;
+    Set<String> validWhiteIPList = new LinkedHashSet<>(whiteIPList);
+    if (whiteResult != null) {
+      validWhiteIPList.removeAll(whiteResult.getInvalidPatterns());
     }
-    if (conf.isEnableBlackList()) {
-      checkValidityOfIP(blackIPList, false);
+
+    lock.writeLock().lock();
+    try {
+      whitePattern =
+          whiteResult == null || whiteResult.getMatcher().isEmpty()
+              ? null
+              : whiteResult.getMatcher();
+      blackPattern =
+          blackResult == null || blackResult.getMatcher().isEmpty()
+              ? null
+              : blackResult.getMatcher();
+      allowListPatterns =
+          whiteResult == null
+              ? Collections.emptySet()
+              : Collections.unmodifiableSet(validWhiteIPList);
+    } finally {
+      lock.writeLock().unlock();
     }
-    allowListPatterns = whiteIPList; // for compatibility
-    if (whiteIPList.isEmpty()) {
-      whitePattern = null;
-      if (blackIPList.isEmpty()) {
-        blackPattern = null;
-      } else {
-        blackPattern = new PatternList(blackIPList, ".", false);
-      }
-    } else if (blackIPList.isEmpty()) {
-      blackPattern = null;
-      whitePattern = new PatternList(whiteIPList, ".", false);
-    } else {
-      whitePattern = new PatternList(whiteIPList, ".", false);
-      blackPattern = new PatternList(blackIPList, ".", false);
+
+    if (whiteResult != null) {
+      logInvalidPatterns(whiteResult.getInvalidPatterns(), true);
+    }
+    if (blackResult != null) {
+      logInvalidPatterns(blackResult.getInvalidPatterns(), false);
     }
   }
 
-  private static void checkValidityOfIP(Set<String> ipList, Boolean isWhiteList) {
-    Iterator<String> iterator = ipList.iterator();
-    Set<String> invalidIps = new HashSet<>();
+  private static void logInvalidPatterns(Set<String> invalidPatterns, boolean isWhiteList) {
+    if (invalidPatterns.isEmpty()) {
+      return;
+    }
     String whiteOrBlack = "white";
-    while (iterator.hasNext()) {
-      String ip = iterator.next();
-      if (!Pattern.matches(IP_LIST_PATTERN, ip)) {
-        invalidIps.add(ip);
-        iterator.remove();
-      }
+    if (!isWhiteList) {
+      whiteOrBlack = "black";
     }
-    if (!invalidIps.isEmpty()) {
-      if (!isWhiteList) {
-        whiteOrBlack = "black";
-      }
-      logger.error(
-          "The IP format configuration for {}list  is incorrect. The detailed information of the incorrect IPs is: {}",
-          whiteOrBlack,
-          invalidIps.toString());
-    }
+    logger.error(
+        TimechoServerMessages
+            .LOG_THE_IP_FORMAT_CONFIGURATION_FOR_ARG_LIST_IS_INCORRECT_THE_DETAILED_INFORMATION_OF_THE_INCORRECT_IPS_IS_ARG_8649B43F,
+        whiteOrBlack,
+        invalidPatterns);
   }
 }

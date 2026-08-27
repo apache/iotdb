@@ -81,4 +81,7 @@ public final class TimechoServerMessages {
   public static final String CANNOT_INSTANTIATE_THIS_CLASS = "Cannot instantiate this class";
   public static final String INITIALIZING_WHITE_BLACK_LIST_UPDATE_CALLBACK =
       "Initializing white/black list update call back";
+  public static final String
+      LOG_THE_IP_FORMAT_CONFIGURATION_FOR_ARG_LIST_IS_INCORRECT_THE_DETAILED_INFORMATION_OF_THE_INCORRECT_IPS_IS_ARG_8649B43F =
+          "The IP format configuration for {}list is incorrect. The detailed information of the incorrect IPs is: {}";
 }

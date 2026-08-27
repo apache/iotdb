@@ -2710,17 +2710,19 @@ enable_white_list=false
 # Privilege: SECURITY
 enable_black_list=false
 
-#  white ip list  (separated by commas and malformed IPs will be ignored and logged)
+#  white ip list (comma-separated IPv4/IPv6 literals, CIDR ranges, or legacy IPv4 wildcards;
+#  malformed entries are ignored and logged)
 # effectiveMode: hot_reload
 # Privilege: SECURITY
-# example: white_ip_list=127.0.0.1,192.168.32.21
+# example: white_ip_list=127.0.0.1,::1,192.168.32.0/24,2001:db8::/32
 # warning: When the whitelist function is enabled, if 127.0.0.1 is not added to the whitelist, the local machine cannot log in.
 white_ip_list=
 
-#  black ip list  (separated by commas and malformed IPs will be ignored and logged)
+#  black ip list (comma-separated IPv4/IPv6 literals, CIDR ranges, or legacy IPv4 wildcards;
+#  malformed entries are ignored and logged)
 # effectiveMode: hot_reload
 # Privilege: SECURITY
-# example: white_ip_list=127.0.0.1,192.168.32.21
+# example: black_ip_list=127.0.0.1,::1,192.168.32.0/24,2001:db8::/32
 black_ip_list=
 
 

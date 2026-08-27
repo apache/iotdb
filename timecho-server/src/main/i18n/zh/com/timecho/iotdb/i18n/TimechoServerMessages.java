@@ -81,4 +81,7 @@ public final class TimechoServerMessages {
   public static final String CANNOT_INSTANTIATE_THIS_CLASS = "无法实例化此类";
   public static final String INITIALIZING_WHITE_BLACK_LIST_UPDATE_CALLBACK =
       "正在初始化白/黑名单更新回调";
+  public static final String
+      LOG_THE_IP_FORMAT_CONFIGURATION_FOR_ARG_LIST_IS_INCORRECT_THE_DETAILED_INFORMATION_OF_THE_INCORRECT_IPS_IS_ARG_8649B43F =
+          "{}list 的 IP 格式配置不正确。错误 IP 的详细信息为：{}";
 }
