@@ -108,6 +108,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String receiverPipeName;
   protected long receiverPipeCreationTime = Long.MIN_VALUE;
   private final AtomicReference<String> pipeReceiverRuntimeSessionKey = new AtomicReference<>();
+  private final AtomicReference<String> pipeReceiverRuntimeConnectionIdentity =
+      new AtomicReference<>();
 
   @Override
   public IoTDBSinkRequestVersion getVersion() {
@@ -984,22 +986,35 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
       throws IOException, IllegalPathException;
 
-  protected void recordPipeReceiverHandshake(
+  protected synchronized void recordPipeReceiverHandshake(
       final String receiverNodeType, final int receiverNodeId, final String protocol) {
-    final String sessionKey =
-        String.format("%s-%s-%s-%s", receiverNodeType, receiverNodeId, protocol, receiverId.get());
-    final String oldSessionKey = pipeReceiverRuntimeSessionKey.getAndSet(sessionKey);
-    if (!Objects.equals(oldSessionKey, sessionKey)) {
+    final String senderHost = getSenderHost();
+    final String senderPort = getSenderPort();
+    final String connectionIdentity =
+        String.format(
+            "%s-%s-%s-%s-%s", receiverNodeType, receiverNodeId, protocol, senderHost, senderPort);
+    if (!Objects.equals(connectionIdentity, pipeReceiverRuntimeConnectionIdentity.get())
+        || pipeReceiverRuntimeSessionKey.get() == null) {
+      final String oldSessionKey =
+          pipeReceiverRuntimeSessionKey.getAndSet(
+              String.format(
+                  "%s-%s-%s-%s", receiverNodeType, receiverNodeId, protocol, receiverId.get()));
+      pipeReceiverRuntimeConnectionIdentity.set(connectionIdentity);
       PipeReceiverRuntimeRegistry.getInstance().deregister(oldSessionKey);
     }
+
+    // A receiver object represents one physical connection, while receiverId changes on every
+    // handshake. Keep its runtime session key stable so repeated handshakes can associate multiple
+    // pipes with the same connection.
+    final String sessionKey = pipeReceiverRuntimeSessionKey.get();
     PipeReceiverRuntimeRegistry.getInstance()
         .registerOrUpdateSession(
             sessionKey,
             receiverNodeType,
             receiverNodeId,
             protocol,
-            getSenderHost(),
-            parseSenderPort(getSenderPort()),
+            senderHost,
+            parseSenderPort(senderPort),
             username,
             senderClusterId,
             receiverPipeName,
@@ -1012,7 +1027,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         .markTransfer(pipeReceiverRuntimeSessionKey.get(), System.currentTimeMillis());
   }
 
-  protected void clearPipeReceiverRuntime() {
+  protected synchronized void clearPipeReceiverRuntime() {
+    pipeReceiverRuntimeConnectionIdentity.set(null);
     PipeReceiverRuntimeRegistry.getInstance()
         .deregister(pipeReceiverRuntimeSessionKey.getAndSet(null));
   }

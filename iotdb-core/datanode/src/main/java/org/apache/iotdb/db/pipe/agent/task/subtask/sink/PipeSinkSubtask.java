@@ -466,6 +466,28 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
   }
 
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      outputPipeSinkOperationLock.lock();
+      try {
+        ((IoTDBSink) outputPipeSink).discardReceiverRuntimeSessions(pipeName, creationTime);
+      } finally {
+        outputPipeSinkOperationLock.unlock();
+      }
+    }
+  }
+
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      outputPipeSinkOperationLock.lock();
+      try {
+        ((IoTDBSink) outputPipeSink).registerReceiverRuntimeSessions(pipeName, creationTime);
+      } finally {
+        outputPipeSinkOperationLock.unlock();
+      }
+    }
+  }
+
   private static boolean isEventFromPipe(
       final EnrichedEvent event, final CommitterKey committerKey) {
     return committerKey.getPipeName().equals(event.getPipeName())

@@ -1114,6 +1114,20 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     }
   }
 
+  @Override
+  public synchronized void discardReceiverRuntimeSessions(
+      final String pipeName, final long creationTime) {
+    // The synchronous sink provides the lifecycle handshake. The pipe-aware cleanup applies to all
+    // receiver sessions without closing connections still shared by other pipes.
+    syncSink.discardReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
+  @Override
+  public synchronized void registerReceiverRuntimeSessions(
+      final String pipeName, final long creationTime) {
+    syncSink.registerReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
   public synchronized void clearRetryEventsReferenceCount() {
     while (!retryEventQueue.isEmpty() || !retryTsFileQueue.isEmpty()) {
       final Event event =

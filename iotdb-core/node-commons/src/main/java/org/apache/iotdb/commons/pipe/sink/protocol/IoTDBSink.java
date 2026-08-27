@@ -617,6 +617,14 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     // Do nothing by default.
   }
 
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
+  }
+
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
+  }
+
   public TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
     // Explanation for +3: version 1 byte, type 2 bytes
     totalUncompressedSize.addAndGet(req.body.array().length + 3);

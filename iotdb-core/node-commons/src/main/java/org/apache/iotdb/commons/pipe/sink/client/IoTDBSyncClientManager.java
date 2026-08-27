@@ -174,6 +174,11 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   protected void reconstructClient(TEndPoint endPoint) {
+    reconstructClient(endPoint, pipeName, pipeCreationTime);
+  }
+
+  private void reconstructClient(
+      final TEndPoint endPoint, final String pipeName, final long pipeCreationTime) {
     endPoint2HandshakeErrorMessage.remove(endPoint);
 
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
@@ -194,7 +199,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     // is returned, it means that the initialization is not successful and the handshake operation
     // is not performed.
     if (initClientAndStatus(clientAndStatus, endPoint)) {
-      sendHandshakeReq(clientAndStatus);
+      sendHandshakeReq(clientAndStatus, pipeName, pipeCreationTime);
     }
   }
 
@@ -230,6 +235,13 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   public void sendHandshakeReq(final Pair<IoTDBSyncClient, Boolean> clientAndStatus) {
+    sendHandshakeReq(clientAndStatus, pipeName, pipeCreationTime);
+  }
+
+  private void sendHandshakeReq(
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final String pipeName,
+      final long pipeCreationTime) {
     final IoTDBSyncClient client = clientAndStatus.getLeft();
     try {
       final HashMap<String, String> params = new HashMap<>();
@@ -258,7 +270,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF,
           Boolean.toString(skipIfNoPrivileges));
-      appendPipeInfoToHandshakeParams(params);
+      appendPipeInfoToHandshakeParams(params, pipeName, pipeCreationTime);
 
       // Try to handshake by PipeTransferHandshakeV2Req.
       TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));
@@ -343,13 +355,38 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
   public void discardReceiverRuntimeSessions() {
     try {
-      sendPipeReceiverRuntimeInfoCleanupReq();
+      sendPipeReceiverRuntimeInfoCleanupReq(pipeName, pipeCreationTime);
     } finally {
       close();
     }
   }
 
-  private void sendPipeReceiverRuntimeInfoCleanupReq() {
+  public void discardReceiverRuntimeSessions(final String pipeName, final long pipeCreationTime) {
+    sendPipeReceiverRuntimeInfoCleanupReq(pipeName, pipeCreationTime);
+  }
+
+  public void registerReceiverRuntimeSessions(final String pipeName, final long pipeCreationTime) {
+    if (pipeName == null) {
+      return;
+    }
+
+    for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
+        endPoint2ClientAndStatus.entrySet()) {
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus = entry.getValue();
+      if (clientAndStatus == null) {
+        continue;
+      }
+
+      if (clientAndStatus.getLeft() == null || !Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        reconstructClient(entry.getKey(), pipeName, pipeCreationTime);
+      } else {
+        sendHandshakeReq(clientAndStatus, pipeName, pipeCreationTime);
+      }
+    }
+  }
+
+  private void sendPipeReceiverRuntimeInfoCleanupReq(
+      final String pipeName, final long pipeCreationTime) {
     if (pipeName == null) {
       return;
     }

@@ -279,6 +279,41 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
+  public void testRepeatedHandshakeKeepsPipesOnTheSameReceiverRuntimeSession() {
+    final TestingDataNodeReceiver receiver = new TestingDataNodeReceiver();
+
+    receiver.setReceiverId(1);
+    receiver.recordDataNodeReceiverRuntime(3, "10.0.0.1", "9001", "root", "cluster-a", "pipe-a", 1);
+    receiver.setReceiverId(2);
+    receiver.recordDataNodeReceiverRuntime(3, "10.0.0.1", "9001", "root", "cluster-a", "pipe-b", 2);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+    Assert.assertEquals(1, snapshots.size());
+    Assert.assertEquals(1, snapshots.get(0).getConnectionCount());
+    Assert.assertEquals(2, snapshots.get(0).getPipeCount());
+    Assert.assertTrue(snapshots.get(0).getPipeIds().contains("pipe-a@"));
+    Assert.assertTrue(snapshots.get(0).getPipeIds().contains("pipe-b@"));
+  }
+
+  @Test
+  public void testHandshakeOnChangedConnectionReplacesReceiverRuntimeSession() {
+    final TestingDataNodeReceiver receiver = new TestingDataNodeReceiver();
+
+    receiver.setReceiverId(1);
+    receiver.recordDataNodeReceiverRuntime(3, "10.0.0.1", "9001", "root", "cluster-a", "pipe-a", 1);
+    receiver.setReceiverId(2);
+    receiver.recordDataNodeReceiverRuntime(3, "10.0.0.1", "9002", "root", "cluster-a", "pipe-b", 2);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+    Assert.assertEquals(1, snapshots.size());
+    Assert.assertEquals("9002", snapshots.get(0).getSenderPorts());
+    Assert.assertEquals(1, snapshots.get(0).getConnectionCount());
+    Assert.assertEquals(1, snapshots.get(0).getPipeCount());
+    Assert.assertFalse(snapshots.get(0).getPipeIds().contains("pipe-a@"));
+    Assert.assertTrue(snapshots.get(0).getPipeIds().contains("pipe-b@"));
+  }
+
+  @Test
   public void testConfigNodeReceiverRuntimeIsClearedOnHandleExit() throws Exception {
     final TestingDataNodeReceiver receiver = new TestingDataNodeReceiver();
     final String configNodeSessionKey = "ConfigNode-7-thrift-test-config-receiver";
@@ -426,6 +461,10 @@ public class IoTDBDataNodeReceiverTest {
 
     private String senderHost;
     private String senderPort;
+
+    private void setReceiverId(final long receiverId) {
+      this.receiverId.set(receiverId);
+    }
 
     private void recordDataNodeReceiverRuntime(
         final int receiverNodeId,

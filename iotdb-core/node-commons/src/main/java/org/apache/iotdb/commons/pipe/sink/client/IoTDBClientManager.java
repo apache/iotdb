@@ -101,6 +101,11 @@ public abstract class IoTDBClientManager {
   }
 
   protected void appendPipeInfoToHandshakeParams(final Map<String, String> params) {
+    appendPipeInfoToHandshakeParams(params, pipeName, pipeCreationTime);
+  }
+
+  protected void appendPipeInfoToHandshakeParams(
+      final Map<String, String> params, final String pipeName, final long pipeCreationTime) {
     if (pipeName == null) {
       return;
     }
