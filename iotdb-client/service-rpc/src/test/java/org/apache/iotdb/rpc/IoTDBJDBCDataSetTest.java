@@ -18,15 +18,20 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.Arrays;
 
 public class IoTDBJDBCDataSetTest {
@@ -91,6 +96,71 @@ public class IoTDBJDBCDataSetTest {
         TypeServices.JDBC_STRING_READER_SERVICE.call(UnknownType.UNKNOWN).apply(new byte[0]));
     Assert.assertNull(
         TypeServices.JDBC_OBJECT_READER_SERVICE.call(UnknownType.UNKNOWN).apply(new byte[0]));
+  }
+
+  @Test
+  public void testRpcValueReadersUseTypeServices() {
+    Type intType = Type.fromTsDataType(TSDataType.INT32);
+    Column intColumn = intType.createColumnBuilder(1).writeInt(42).build();
+    Assert.assertEquals(42, readRpcObject(intType, intColumn, 1_000));
+    Assert.assertEquals("42", readRpcString(intType, intColumn));
+
+    Type textType = Type.fromTsDataType(TSDataType.TEXT);
+    Column textColumn =
+        textType
+            .createColumnBuilder(1)
+            .writeBinary(new Binary("text", TSFileConfig.STRING_CHARSET))
+            .build();
+    Assert.assertEquals("text", readRpcObject(textType, textColumn, 1_000));
+    Assert.assertEquals("text", readRpcString(textType, textColumn));
+
+    Type timestampType = Type.fromTsDataType(TSDataType.TIMESTAMP);
+    Column timestampColumn = timestampType.createColumnBuilder(1).writeLong(1_234_567).build();
+    Assert.assertEquals(
+        RpcUtils.convertToTimestamp(1_234_567, 1_000_000),
+        readRpcObject(timestampType, timestampColumn, 1_000_000));
+    Assert.assertEquals("1234567", readRpcString(timestampType, timestampColumn));
+
+    Type dateType = Type.fromTsDataType(TSDataType.DATE);
+    Column dateColumn = dateType.createColumnBuilder(1).writeInt(20240801).build();
+    Assert.assertEquals(DateUtils.formatDate(20240801), readRpcObject(dateType, dateColumn, 1_000));
+    Assert.assertEquals(DateUtils.formatDate(20240801), readRpcString(dateType, dateColumn));
+
+    byte[] blob = new byte[] {1, 2, 3};
+    Type blobType = Type.fromTsDataType(TSDataType.BLOB);
+    Column blobColumn = blobType.createColumnBuilder(1).writeBinary(new Binary(blob)).build();
+    Assert.assertEquals(
+        BytesUtils.parseBlobByteArrayToString(blob), readRpcObject(blobType, blobColumn, 1_000));
+    Assert.assertEquals(
+        BytesUtils.parseBlobByteArrayToString(blob), readRpcString(blobType, blobColumn));
+
+    byte[] object = ByteBuffer.allocate(16).putLong(0).putLong(42).array();
+    Type objectType = Type.fromTsDataType(TSDataType.OBJECT);
+    Column objectColumn = objectType.createColumnBuilder(1).writeBinary(new Binary(object)).build();
+    Assert.assertEquals(
+        BytesUtils.parseObjectByteArrayToString(object),
+        readRpcObject(objectType, objectColumn, 1_000));
+    Assert.assertEquals(
+        BytesUtils.parseObjectByteArrayToString(object), readRpcString(objectType, objectColumn));
+
+    Assert.assertNull(
+        TypeServices.RPC_OBJECT_READER_SERVICE
+            .call(UnknownType.UNKNOWN)
+            .read(UnknownType.UNKNOWN, null, 0, 1_000));
+    Assert.assertNull(
+        TypeServices.RPC_STRING_READER_SERVICE
+            .call(UnknownType.UNKNOWN)
+            .read(UnknownType.UNKNOWN, null, 0, "long", "ms", ZoneId.of("UTC")));
+  }
+
+  private static Object readRpcObject(Type type, Column column, int timeFactor) {
+    return TypeServices.RPC_OBJECT_READER_SERVICE.call(type).read(type, column, 0, timeFactor);
+  }
+
+  private static String readRpcString(Type type, Column column) {
+    return TypeServices.RPC_STRING_READER_SERVICE
+        .call(type)
+        .read(type, column, 0, "long", "ms", ZoneId.of("UTC"));
   }
 
   private static void assertUnsupported(TSDataType dataType) {

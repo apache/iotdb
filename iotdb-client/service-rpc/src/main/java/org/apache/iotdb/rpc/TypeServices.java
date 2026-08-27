@@ -18,6 +18,9 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
@@ -25,6 +28,7 @@ import org.apache.tsfile.utils.DateUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.ZoneId;
 import java.util.function.Function;
 
 final class TypeServices {
@@ -59,10 +63,100 @@ final class TypeServices {
             case ROW, UNKNOWN, VECTOR -> ignored -> null;
           };
 
+  static final TypeService<RpcObjectReader> RPC_OBJECT_READER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN, INT32, INT64, FLOAT, DOUBLE ->
+                (actualType, column, position, timeFactor) ->
+                    actualType.getObject(column, position);
+            case TIMESTAMP ->
+                (actualType, column, position, timeFactor) ->
+                    RpcUtils.convertToTimestamp(actualType.getLong(column, position), timeFactor);
+            case TEXT, STRING ->
+                (actualType, column, position, timeFactor) ->
+                    actualType
+                        .getBinary(column, position)
+                        .getStringValue(TSFileConfig.STRING_CHARSET);
+            case OBJECT ->
+                (actualType, column, position, timeFactor) ->
+                    BytesUtils.parseObjectByteArrayToString(
+                        actualType.getBinary(column, position).getValues());
+            case BLOB ->
+                (actualType, column, position, timeFactor) ->
+                    BytesUtils.parseBlobByteArrayToString(
+                        actualType.getBinary(column, position).getValues());
+            case DATE ->
+                (actualType, column, position, timeFactor) ->
+                    DateUtils.formatDate(actualType.getInt(column, position));
+            case ROW, UNKNOWN, VECTOR -> (actualType, column, position, timeFactor) -> null;
+          };
+
+  static final TypeService<RpcStringReader> RPC_STRING_READER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    String.valueOf(actualType.getBoolean(column, position));
+            case INT32 ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    String.valueOf(actualType.getInt(column, position));
+            case INT64 ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    String.valueOf(actualType.getLong(column, position));
+            case FLOAT ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    String.valueOf(actualType.getFloat(column, position));
+            case DOUBLE ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    String.valueOf(actualType.getDouble(column, position));
+            case TIMESTAMP ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    RpcUtils.formatDatetime(
+                        timeFormat, timePrecision, actualType.getLong(column, position), zoneId);
+            case TEXT, STRING ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    actualType
+                        .getBinary(column, position)
+                        .getStringValue(TSFileConfig.STRING_CHARSET);
+            case OBJECT ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    BytesUtils.parseObjectByteArrayToString(
+                        actualType.getBinary(column, position).getValues());
+            case BLOB ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    BytesUtils.parseBlobByteArrayToString(
+                        actualType.getBinary(column, position).getValues());
+            case DATE ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) ->
+                    DateUtils.formatDate(actualType.getInt(column, position));
+            case ROW, UNKNOWN, VECTOR ->
+                (actualType, column, position, timeFormat, timePrecision, zoneId) -> null;
+          };
+
   static {
     JDBC_STRING_READER_SERVICE.check();
     JDBC_OBJECT_READER_SERVICE.check();
+    RPC_OBJECT_READER_SERVICE.check();
+    RPC_STRING_READER_SERVICE.check();
   }
 
   private TypeServices() {}
+
+  @FunctionalInterface
+  interface RpcObjectReader {
+
+    Object read(Type type, Column column, int position, int timeFactor);
+  }
+
+  @FunctionalInterface
+  interface RpcStringReader {
+
+    String read(
+        Type type,
+        Column column,
+        int position,
+        String timeFormat,
+        String timePrecision,
+        ZoneId zoneId);
+  }
 }

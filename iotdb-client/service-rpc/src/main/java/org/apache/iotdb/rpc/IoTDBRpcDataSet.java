@@ -27,12 +27,12 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 
 import org.apache.thrift.TException;
-import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.nio.ByteBuffer;
@@ -473,37 +473,10 @@ public class IoTDBRpcDataSet {
       return null;
     }
     lastReadWasNull = false;
-    TSDataType tsDataType = getDataTypeByTsBlockColumnIndex(tsBlockColumnIndex);
-    switch (tsDataType) {
-      case BOOLEAN:
-      case INT32:
-      case INT64:
-      case FLOAT:
-      case DOUBLE:
-        return curTsBlock.getColumn(tsBlockColumnIndex).getObject(tsBlockIndex);
-      case TIMESTAMP:
-        long timestamp =
-            (tsBlockColumnIndex == -1
-                ? curTsBlock.getTimeByIndex(tsBlockIndex)
-                : curTsBlock.getColumn(tsBlockColumnIndex).getLong(tsBlockIndex));
-        return convertToTimestamp(timestamp, timeFactor);
-      case TEXT:
-      case STRING:
-        return curTsBlock
-            .getColumn(tsBlockColumnIndex)
-            .getBinary(tsBlockIndex)
-            .getStringValue(TSFileConfig.STRING_CHARSET);
-      case OBJECT:
-        return BytesUtils.parseObjectByteArrayToString(
-            curTsBlock.getColumn(tsBlockColumnIndex).getBinary(tsBlockIndex).getValues());
-      case BLOB:
-        return BytesUtils.parseBlobByteArrayToString(
-            curTsBlock.getColumn(tsBlockColumnIndex).getBinary(tsBlockIndex).getValues());
-      case DATE:
-        return DateUtils.formatDate(curTsBlock.getColumn(tsBlockColumnIndex).getInt(tsBlockIndex));
-      default:
-        return null;
-    }
+    Type type = Type.fromTsDataType(getDataTypeByTsBlockColumnIndex(tsBlockColumnIndex));
+    return TypeServices.RPC_OBJECT_READER_SERVICE
+        .call(type)
+        .read(type, getColumnByTsBlockColumnIndex(tsBlockColumnIndex), tsBlockIndex, timeFactor);
   }
 
   public String getString(int columnIndex) throws StatementExecutionException {
@@ -526,47 +499,22 @@ public class IoTDBRpcDataSet {
       return null;
     }
     lastReadWasNull = false;
-    return getString(tsBlockColumnIndex, getDataTypeByTsBlockColumnIndex(tsBlockColumnIndex));
+    Type type = Type.fromTsDataType(getDataTypeByTsBlockColumnIndex(tsBlockColumnIndex));
+    return TypeServices.RPC_STRING_READER_SERVICE
+        .call(type)
+        .read(
+            type,
+            getColumnByTsBlockColumnIndex(tsBlockColumnIndex),
+            tsBlockIndex,
+            timeFormat,
+            timePrecision,
+            zoneId);
   }
 
-  private String getString(int index, TSDataType tsDataType) {
-    switch (tsDataType) {
-      case BOOLEAN:
-        return String.valueOf(curTsBlock.getColumn(index).getBoolean(tsBlockIndex));
-      case INT32:
-        return String.valueOf(curTsBlock.getColumn(index).getInt(tsBlockIndex));
-      case INT64:
-        return String.valueOf(
-            (index == -1
-                ? curTsBlock.getTimeByIndex(tsBlockIndex)
-                : curTsBlock.getColumn(index).getLong(tsBlockIndex)));
-      case TIMESTAMP:
-        long timestamp =
-            (index == -1
-                ? curTsBlock.getTimeByIndex(tsBlockIndex)
-                : curTsBlock.getColumn(index).getLong(tsBlockIndex));
-        return RpcUtils.formatDatetime(timeFormat, timePrecision, timestamp, zoneId);
-      case FLOAT:
-        return String.valueOf(curTsBlock.getColumn(index).getFloat(tsBlockIndex));
-      case DOUBLE:
-        return String.valueOf(curTsBlock.getColumn(index).getDouble(tsBlockIndex));
-      case TEXT:
-      case STRING:
-        return curTsBlock
-            .getColumn(index)
-            .getBinary(tsBlockIndex)
-            .getStringValue(TSFileConfig.STRING_CHARSET);
-      case OBJECT:
-        return BytesUtils.parseObjectByteArrayToString(
-            curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
-      case BLOB:
-        return BytesUtils.parseBlobByteArrayToString(
-            curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
-      case DATE:
-        return DateUtils.formatDate(curTsBlock.getColumn(index).getInt(tsBlockIndex));
-      default:
-        return null;
-    }
+  private Column getColumnByTsBlockColumnIndex(int tsBlockColumnIndex) {
+    return tsBlockColumnIndex == -1
+        ? curTsBlock.getTimeColumn()
+        : curTsBlock.getColumn(tsBlockColumnIndex);
   }
 
   public Timestamp getTimestamp(int columnIndex) throws StatementExecutionException {
