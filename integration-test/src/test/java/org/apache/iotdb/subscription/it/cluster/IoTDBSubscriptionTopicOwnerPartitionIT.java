@@ -68,7 +68,6 @@ public class IoTDBSubscriptionTopicOwnerPartitionIT extends AbstractSubscription
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         // Lower the owner-lease floor so the test can use a short lease and stay fast.
