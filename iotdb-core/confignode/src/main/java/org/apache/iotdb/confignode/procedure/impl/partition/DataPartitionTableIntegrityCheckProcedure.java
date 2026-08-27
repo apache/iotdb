@@ -421,7 +421,7 @@ public class DataPartitionTableIntegrityCheckProcedure
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
       getLocalDataPartitionTable(final ConfigNodeProcedureEnv env, final String database) {
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath(database, false).concatNode("**"));
+    patternTree.appendPathPattern(new PartialPath(database, true).concatNode("**"));
     patternTree.constructTree();
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         env.getConfigManager().getSchemaPartition(patternTree).getSchemaPartitionTable();
