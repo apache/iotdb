@@ -812,6 +812,15 @@ public class IoTConsensusServerImpl {
     }
   }
 
+  /** Wait until every remote peer has synchronized its writes to all peers. */
+  public void waitUntilAllRemotePeersSyncLogCompleted() throws ConsensusGroupModifyPeerException {
+    for (Peer peer : getConfiguration()) {
+      if (!peer.equals(thisNode)) {
+        waitTargetPeerUntilSyncLogCompleted(peer);
+      }
+    }
+  }
+
   public boolean hasReleaseAllRegionRelatedResource(ConsensusGroupId groupId) {
     return stateMachine.hasReleaseAllRegionRelatedResource(groupId);
   }
