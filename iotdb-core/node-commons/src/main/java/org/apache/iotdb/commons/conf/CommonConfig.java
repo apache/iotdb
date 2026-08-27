@@ -60,7 +60,6 @@ public class CommonConfig {
   public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
   public static final long DEFAULT_TIME_PARTITION_INTERVAL = 604_800_000L;
-
   // The authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
       "org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer";
@@ -393,7 +392,7 @@ public class CommonConfig {
 
   private boolean pipeAutoSplitFullEnabled = true;
 
-  private boolean subscriptionEnabled = true;
+  private boolean subscriptionEnabled = false;
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;

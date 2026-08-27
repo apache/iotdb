@@ -558,7 +558,7 @@ public class DataNodeMemoryConfig {
         properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
     boolean subscriptionEnabled =
         Boolean.parseBoolean(
-            properties.getProperty("subscription_enabled", Boolean.TRUE.toString()));
+            properties.getProperty("subscription_enabled", Boolean.FALSE.toString()));
     final int[] queryMemoryProportions;
     try {
       queryMemoryProportions =
