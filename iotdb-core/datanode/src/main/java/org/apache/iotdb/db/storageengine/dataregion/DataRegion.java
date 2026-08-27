@@ -120,6 +120,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
@@ -4031,8 +4032,13 @@ public class DataRegion implements IDataRegionForQuery {
             EncryptDBUtils.getFirstEncryptParamFromDatabase(databaseName));
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-      // Sort the time partition from largest to smallest
-      timePartitions.sort(Comparator.reverseOrder());
+      if (DefaultCompactionTaskComparatorImpl.isOldestTimePartitionFirst()) {
+        // old time partitions first
+        timePartitions.sort(Comparator.naturalOrder());
+      } else {
+        // new time partitions first (current behavior)
+        timePartitions.sort(Comparator.reverseOrder());
+      }
 
       // schedule insert compaction
       int[] submitCountOfTimePartitions = executeInsertionCompaction(timePartitions, context);

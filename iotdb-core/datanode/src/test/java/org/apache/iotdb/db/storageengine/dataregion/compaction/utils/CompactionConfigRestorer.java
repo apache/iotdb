@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.TieredStorageMigrationFileSelectionStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -36,6 +37,8 @@ public class CompactionConfigRestorer {
   private InnerSequenceCompactionSelector innerStrategy =
       InnerSequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET;
   private CompactionPriority priority = CompactionPriority.BALANCE;
+  private TieredStorageMigrationFileSelectionStrategy tieredStorageMigrationFileSelectionStrategy =
+      TieredStorageMigrationFileSelectionStrategy.DEFAULT;
   private long targetFileSize = 1073741824L;
   private long targetChunkSize = 1048576L;
   private long targetChunkPointNum = 100000L;
@@ -67,6 +70,8 @@ public class CompactionConfigRestorer {
     config.setCrossCompactionSelector(crossStrategy);
     config.setInnerSequenceCompactionSelector(innerStrategy);
     config.setCompactionPriority(priority);
+    config.setTieredStorageMigrationFileSelectionStrategy(
+        tieredStorageMigrationFileSelectionStrategy);
     config.setTargetCompactionFileSize(targetFileSize);
     config.setTargetChunkSize(targetChunkSize);
     config.setTargetChunkPointNum(targetChunkPointNum);

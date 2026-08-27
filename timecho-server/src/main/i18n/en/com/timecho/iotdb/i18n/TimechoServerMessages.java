@@ -76,6 +76,9 @@ public final class TimechoServerMessages {
   public static final String SUCCESSFULLY_DELETE_TSFILE_BY_SPACE_TL =
       "Successfully delete TsFile {} by the SpaceTL.";
   public static final String MIGRATE_TASK_ERROR = "migrate task error";
+  public static final String
+      LOG_AN_ERROR_OCCURRED_WHEN_CHECKING_AND_TRYING_TO_MIGRATE_TSFILE_ARG_A4343079 =
+          "An error occurred when checking and trying to migrate TsFileResource {}";
 
   // RPC / IPFilter
   public static final String CANNOT_INSTANTIATE_THIS_CLASS = "Cannot instantiate this class";

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.TieredStorageMigrationFileSelectionStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
@@ -443,6 +444,98 @@ public class CompactionTaskComparatorTest {
     for (int i = 9; i >= 0; i--) {
       Assert.assertEquals(candidateCompactionTaskQueue.take().getTimePartition(), i);
     }
+  }
+
+  @Test
+  public void testCompareByTimePartitionWithLargestTsFileFirstInnerSpaceCompaction()
+      throws InterruptedException {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTieredStorageMigrationFileSelectionStrategy(
+            TieredStorageMigrationFileSelectionStrategy.LARGEST_TSFILE_FIRST);
+    List<TsFileResource> resources1 = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      resources1.add(
+          new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i, i)), 10));
+    }
+    FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
+        new FixedPriorityBlockingQueue<>(
+            IoTDBDescriptor.getInstance().getConfig().getCandidateCompactionTaskQueueSize(),
+            new DefaultCompactionTaskComparatorImpl());
+    for (int i = 0; i < 10; i++) {
+      FakedInnerSpaceCompactionTask task =
+          new FakedInnerSpaceCompactionTask("fakeSg", i, tsFileManager, true, resources1, 0);
+      candidateCompactionTaskQueue.put(task);
+    }
+
+    for (int i = 0; i < 10; i++) {
+      Assert.assertEquals(i, candidateCompactionTaskQueue.take().getTimePartition());
+    }
+  }
+
+  @Test
+  public void testCompareByTimePartitionWithLargestTsFileFirstCrossSpaceCompaction()
+      throws InterruptedException {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTieredStorageMigrationFileSelectionStrategy(
+            TieredStorageMigrationFileSelectionStrategy.LARGEST_TSFILE_FIRST);
+    List<TsFileResource> seqResources = new ArrayList<>();
+    List<TsFileResource> unseqResources = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      seqResources.add(
+          new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i, i)), 10));
+    }
+    for (int i = 10; i < 20; i++) {
+      unseqResources.add(
+          new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i, i)), 10));
+    }
+    FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
+        new FixedPriorityBlockingQueue<>(
+            IoTDBDescriptor.getInstance().getConfig().getCandidateCompactionTaskQueueSize(),
+            new DefaultCompactionTaskComparatorImpl());
+    for (int i = 0; i < 10; i++) {
+      CrossSpaceCompactionTask task =
+          new CrossSpaceCompactionTask(
+              i,
+              tsFileManager,
+              seqResources,
+              unseqResources,
+              new FastCompactionPerformer(true),
+              0,
+              0);
+      candidateCompactionTaskQueue.put(task);
+    }
+
+    for (int i = 0; i < 10; i++) {
+      Assert.assertEquals(i, candidateCompactionTaskQueue.take().getTimePartition());
+    }
+  }
+
+  @Test
+  public void testCompareByVersionWithLargestTsFileFirstInnerSpaceCompaction()
+      throws InterruptedException {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTieredStorageMigrationFileSelectionStrategy(
+            TieredStorageMigrationFileSelectionStrategy.LARGEST_TSFILE_FIRST);
+    List<TsFileResource> resources1 =
+        Collections.singletonList(new FakedTsFileResource(new File("0-1-0-0.tsfile"), 10));
+    List<TsFileResource> resources2 =
+        Collections.singletonList(new FakedTsFileResource(new File("0-5-0-0.tsfile"), 10));
+    FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
+        new FixedPriorityBlockingQueue<>(
+            IoTDBDescriptor.getInstance().getConfig().getCandidateCompactionTaskQueueSize(),
+            new DefaultCompactionTaskComparatorImpl());
+    candidateCompactionTaskQueue.put(
+        new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, true, resources1, 0));
+    candidateCompactionTaskQueue.put(
+        new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, true, resources2, 1));
+
+    Assert.assertEquals(
+        1L, ((InnerSpaceCompactionTask) candidateCompactionTaskQueue.take()).getMaxFileVersion());
+    Assert.assertEquals(
+        5L, ((InnerSpaceCompactionTask) candidateCompactionTaskQueue.take()).getMaxFileVersion());
   }
 
   @Test

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.compara
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.TieredStorageMigrationFileSelectionStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
@@ -34,6 +35,19 @@ import java.util.List;
 
 public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskComparator {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  /**
+   * When the tiered storage migration strategy prefers the largest tsfile first, compaction starts
+   * from the oldest time partition. This lets old, rarely queried files be merged into larger files
+   * so that they can be selected and migrated to remote storage first, instead of compacting newly
+   * written files and migrating them away prematurely.
+   */
+  public static boolean isOldestTimePartitionFirst() {
+    return IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getTieredStorageMigrationFileSelectionStrategy()
+        == TieredStorageMigrationFileSelectionStrategy.LARGEST_TSFILE_FIRST;
+  }
 
   @SuppressWarnings({"squid:S3776", "javabugs:S6320"})
   @Override
@@ -122,6 +136,9 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     // we prefer to execute task with greater time partition
     // because we want to compact files with new data
     if (o1.getTimePartition() != o2.getTimePartition()) {
+      if (isOldestTimePartitionFirst()) {
+        return o1.getTimePartition() < o2.getTimePartition() ? -1 : 1;
+      }
       return o2.getTimePartition() > o1.getTimePartition() ? 1 : -1;
     }
 
@@ -131,6 +148,9 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     if (o1.getDataRegionId().equals(o2.getDataRegionId())
         && o1.getTimePartition() == o2.getTimePartition()
         && o1.getMaxFileVersion() != o2.getMaxFileVersion()) {
+      if (isOldestTimePartitionFirst()) {
+        return o1.getMaxFileVersion() < o2.getMaxFileVersion() ? -1 : 1;
+      }
       return o2.getMaxFileVersion() > o1.getMaxFileVersion() ? 1 : -1;
     }
 
@@ -156,6 +176,9 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     // we prefer to execute task with greater time partition
     // because we want to compact files with new data
     if (o1.getTimePartition() != o2.getTimePartition()) {
+      if (isOldestTimePartitionFirst()) {
+        return o1.getTimePartition() < o2.getTimePartition() ? -1 : 1;
+      }
       return o2.getTimePartition() > o1.getTimePartition() ? 1 : -1;
     }
 

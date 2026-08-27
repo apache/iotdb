@@ -122,6 +122,9 @@ public final class DataNodeMiscMessages {
   public static final String CREATE_NEW_REGION_ERROR_FMT = "创建新 region %s 错误，异常：%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "创建新 region %s 成功";
   public static final String LOG_USER_ARG_ROLE_ARG_422D48D3 = "用户：%s，角色：%s";
+  public static final String
+      LOG_UNKNOWN_TIERED_STORAGE_MIGRATION_FILE_SELECTION_STRATEGY_ARG_USE_DEFAULT_STRATEGY_ARG_C2A73E2D =
+          "未知的多级存储迁移文件选择策略 '{}'，使用默认策略 '{}'。";
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------

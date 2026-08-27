@@ -264,6 +264,11 @@ public class PropertiesTest {
     properties.setProperty("floating_string_infer_type", "DOUBLE "); // data type: TSDataType
     properties.setProperty("default_boolean_encoding", "RLE "); // data type: TSEncoding
     properties.setProperty("expired_data_ratio", "0.3 "); // data type: float
+    properties.setProperty(
+        "dn_tiered_storage_migration_file_selection_strategy",
+        "LARGEST_TSFILE_FIRST "); // data type: enum
+    properties.setProperty(
+        "dn_tiered_storage_migration_check_interval_in_seconds", "20 "); // data type: int
 
     try {
       descriptor.loadProperties(properties);
@@ -275,6 +280,17 @@ public class PropertiesTest {
       Assert.assertEquals(TSDataType.DOUBLE, descriptor.getConfig().getFloatingStringInferType());
       Assert.assertEquals(TSEncoding.RLE, descriptor.getConfig().getDefaultBooleanEncoding());
       Assert.assertEquals(0.3, descriptor.getConfig().getExpiredDataRatio(), 0.000001);
+      Assert.assertEquals(
+          TieredStorageMigrationFileSelectionStrategy.LARGEST_TSFILE_FIRST,
+          descriptor.getConfig().getTieredStorageMigrationFileSelectionStrategy());
+      Assert.assertEquals(
+          20, descriptor.getConfig().getTieredStorageMigrationCheckIntervalInSeconds());
+
+      properties.remove("dn_tiered_storage_migration_file_selection_strategy");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          TieredStorageMigrationFileSelectionStrategy.LARGEST_TSFILE_FIRST,
+          descriptor.getConfig().getTieredStorageMigrationFileSelectionStrategy());
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
@@ -287,6 +303,9 @@ public class PropertiesTest {
     properties.setProperty("floating_string_infer_type", " DOUBLE ");
     properties.setProperty("default_boolean_encoding", " RLE ");
     properties.setProperty("expired_data_ratio", " 0.3 ");
+    properties.setProperty(
+        "dn_tiered_storage_migration_file_selection_strategy", " LARGEST_TSFILE_FIRST ");
+    properties.setProperty("dn_tiered_storage_migration_check_interval_in_seconds", " 30 ");
 
     try {
       descriptor.loadHotModifiedProps(properties);
@@ -298,9 +317,36 @@ public class PropertiesTest {
       Assert.assertEquals(TSDataType.DOUBLE, descriptor.getConfig().getFloatingStringInferType());
       Assert.assertEquals(TSEncoding.RLE, descriptor.getConfig().getDefaultBooleanEncoding());
       Assert.assertEquals(0.3, descriptor.getConfig().getExpiredDataRatio(), 0.000001);
+      Assert.assertEquals(
+          TieredStorageMigrationFileSelectionStrategy.LARGEST_TSFILE_FIRST,
+          descriptor.getConfig().getTieredStorageMigrationFileSelectionStrategy());
+      Assert.assertEquals(
+          20, descriptor.getConfig().getTieredStorageMigrationCheckIntervalInSeconds());
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
+
+    descriptor
+        .getConfig()
+        .setTieredStorageMigrationFileSelectionStrategy(
+            TieredStorageMigrationFileSelectionStrategy.DEFAULT);
+    descriptor
+        .getConfig()
+        .setTieredStorageMigrationCheckIntervalInSeconds(
+            IoTDBConfig.DEFAULT_TIERED_STORAGE_MIGRATION_CHECK_INTERVAL_IN_SECONDS);
+  }
+
+  @Test
+  public void testTieredStorageMigrationFileSelectionStrategyFallback() {
+    Assert.assertEquals(
+        TieredStorageMigrationFileSelectionStrategy.DEFAULT,
+        TieredStorageMigrationFileSelectionStrategy.fromString("unknown"));
+    Assert.assertEquals(
+        TieredStorageMigrationFileSelectionStrategy.DEFAULT,
+        TieredStorageMigrationFileSelectionStrategy.fromString(null));
+    Assert.assertEquals(
+        TieredStorageMigrationFileSelectionStrategy.LARGEST_TSFILE_FIRST,
+        TieredStorageMigrationFileSelectionStrategy.fromString(" largest_tsfile_first "));
   }
 
   @Test

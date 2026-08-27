@@ -1572,6 +1572,20 @@ public class IoTDBDescriptor {
     }
     conf.setMigrateThreadCount(migrationThreadCount);
 
+    int migrationCheckIntervalInSeconds =
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty(
+                        "dn_tiered_storage_migration_check_interval_in_seconds",
+                        String.valueOf(conf.getTieredStorageMigrationCheckIntervalInSeconds())))
+                .map(String::trim)
+                .orElse(String.valueOf(conf.getTieredStorageMigrationCheckIntervalInSeconds())));
+    if (migrationCheckIntervalInSeconds <= 0) {
+      migrationCheckIntervalInSeconds =
+          IoTDBConfig.DEFAULT_TIERED_STORAGE_MIGRATION_CHECK_INTERVAL_IN_SECONDS;
+    }
+    conf.setTieredStorageMigrationCheckIntervalInSeconds(migrationCheckIntervalInSeconds);
+
     loadMigrationHotProps(properties);
   }
 
@@ -1602,6 +1616,16 @@ public class IoTDBDescriptor {
       conf.setSpaceUsageThresholds(usageThresholds);
     }
 
+    String migrationFileSelectionStrategy =
+        Optional.ofNullable(
+                properties.getProperty(
+                    "dn_tiered_storage_migration_file_selection_strategy",
+                    conf.getTieredStorageMigrationFileSelectionStrategy().name()))
+            .map(String::trim)
+            .orElse(conf.getTieredStorageMigrationFileSelectionStrategy().name());
+    conf.setTieredStorageMigrationFileSelectionStrategy(
+        TieredStorageMigrationFileSelectionStrategy.fromString(migrationFileSelectionStrategy));
+
     String migrateSpeedLimitParam =
         Optional.ofNullable(
                 properties.getProperty(
@@ -1631,6 +1655,23 @@ public class IoTDBDescriptor {
             .orElse(ConfigurationFileUtils.getConfigurationDefaultValue("dn_tier_full_policy"));
 
     conf.setTierFullPolicy(tierFullPolicy);
+  }
+
+  private void reloadMigrationManager() throws ReflectiveOperationException, StartupException {
+    try {
+      IMigrationManager migrationTaskManager =
+          (IMigrationManager)
+              Class.forName("com.timecho.iotdb.dataregion.migration.MigrationTaskManager")
+                  .getMethod("getInstance")
+                  .invoke(null);
+      if (!migrationTaskManager.isEnable()) {
+        migrationTaskManager.start();
+      } else {
+        migrationTaskManager.reloadMigrateSpeedLimit();
+      }
+    } catch (ClassNotFoundException ignored) {
+      // Migration is only available in TimechoDB.
+    }
   }
 
   private void loadObjectStorageProps(TrimProperties properties) {
@@ -2686,19 +2727,7 @@ public class IoTDBDescriptor {
       // update migration config
       loadMigrationHotProps(properties);
       checkTierConfig();
-      try {
-        IMigrationManager migrationTaskManager =
-            (IMigrationManager)
-                Class.forName("com.timecho.iotdb.dataregion.migration.MigrationTaskManager")
-                    .getDeclaredConstructor()
-                    .newInstance();
-        if (!migrationTaskManager.isEnable()) {
-          migrationTaskManager.start();
-        } else {
-          migrationTaskManager.reloadMigrateSpeedLimit();
-        }
-      } catch (ClassNotFoundException ignored) {
-      }
+      reloadMigrationManager();
 
       // update merge_threshold_of_explain_analyze
       conf.setMergeThresholdOfExplainAnalyze(

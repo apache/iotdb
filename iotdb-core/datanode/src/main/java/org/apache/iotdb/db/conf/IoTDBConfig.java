@@ -1297,6 +1297,12 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
+  public static final int DEFAULT_TIERED_STORAGE_MIGRATION_CHECK_INTERVAL_IN_SECONDS = 10;
+
+  /** Interval in seconds to check whether tiered storage migration is needed */
+  private int tieredStorageMigrationCheckIntervalInSeconds =
+      DEFAULT_TIERED_STORAGE_MIGRATION_CHECK_INTERVAL_IN_SECONDS;
+
   /** Threads for migration tasks */
   private int migrateThreadCount = 1;
 
@@ -1312,6 +1318,11 @@ public class IoTDBConfig {
   private double[] spaceUsageThresholds = {DEFAULT_SPACE_USAGE_THRESHOLD};
 
   public static final double DEFAULT_SPACE_USAGE_THRESHOLD = 0.85;
+
+  /** The strategy to select TsFiles when migration is triggered by disk space usage */
+  private volatile TieredStorageMigrationFileSelectionStrategy
+      tieredStorageMigrationFileSelectionStrategy =
+          TieredStorageMigrationFileSelectionStrategy.DEFAULT;
 
   /** Delete the oldest data when last tier‘s space is full */
   private String tierFullPolicy = "NULL";
@@ -4781,6 +4792,16 @@ public class IoTDBConfig {
     this.migrateThreadCount = migrateThreadCount;
   }
 
+  public int getTieredStorageMigrationCheckIntervalInSeconds() {
+    return tieredStorageMigrationCheckIntervalInSeconds;
+  }
+
+  public void setTieredStorageMigrationCheckIntervalInSeconds(
+      int tieredStorageMigrationCheckIntervalInSeconds) {
+    this.tieredStorageMigrationCheckIntervalInSeconds =
+        tieredStorageMigrationCheckIntervalInSeconds;
+  }
+
   public long[] getTieredStorageMigrateSpeedLimitBytesPerSec() {
     return tieredStorageMigrateSpeedLimitBytesPerSec;
   }
@@ -4796,6 +4817,16 @@ public class IoTDBConfig {
 
   public void setSpaceUsageThresholds(double[] spaceUsageThresholds) {
     this.spaceUsageThresholds = spaceUsageThresholds;
+  }
+
+  public TieredStorageMigrationFileSelectionStrategy
+      getTieredStorageMigrationFileSelectionStrategy() {
+    return tieredStorageMigrationFileSelectionStrategy;
+  }
+
+  public void setTieredStorageMigrationFileSelectionStrategy(
+      TieredStorageMigrationFileSelectionStrategy tieredStorageMigrationFileSelectionStrategy) {
+    this.tieredStorageMigrationFileSelectionStrategy = tieredStorageMigrationFileSelectionStrategy;
   }
 
   public String getTierFullPolicy() {

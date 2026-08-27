@@ -122,6 +122,9 @@ public final class DataNodeMiscMessages {
   public static final String CREATE_NEW_REGION_ERROR_FMT = "create new region %s error,  exception:%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "create new region %s succeed";
   public static final String LOG_USER_ARG_ROLE_ARG_422D48D3 = "user: %s, role: %s";
+  public static final String
+      LOG_UNKNOWN_TIERED_STORAGE_MIGRATION_FILE_SELECTION_STRATEGY_ARG_USE_DEFAULT_STRATEGY_ARG_C2A73E2D =
+          "Unknown tiered storage migration file selection strategy '{}', use default strategy '{}'.";
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------
