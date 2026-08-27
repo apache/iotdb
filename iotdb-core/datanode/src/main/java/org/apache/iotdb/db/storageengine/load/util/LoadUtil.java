@@ -35,7 +35,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,6 +120,11 @@ public class LoadUtil {
       return true;
     }
 
+    // Validate before moving the source so ordinary or malformed files remain in place.
+    if (!isValidTsFile(file)) {
+      return false;
+    }
+
     final File targetFilePath;
     try {
       targetFilePath =
@@ -143,6 +150,19 @@ public class LoadUtil {
             file),
         isDeleteAfterLoad);
     return true;
+  }
+
+  private static boolean isValidTsFile(final File file) {
+    if (!file.isFile() || !file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+      return false;
+    }
+    try (final TsFileSequenceReader reader =
+        new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+      return TSFileConfig.MAGIC_STRING.equals(reader.readHeadMagic())
+          && TSFileConfig.MAGIC_STRING.equals(reader.readTailMagic());
+    } catch (Exception e) {
+      return false;
+    }
   }
 
   private static Map<String, String> appendCurrentUserIfAbsent(
