@@ -41,14 +41,11 @@ import static org.junit.Assert.assertTrue;
 public class IoTConsensusMemoryManagerTest {
 
   private IMemoryBlock previousMemoryBlock;
-  private double previousMaxMemoryRatioForQueue;
   private long memoryBlockSize = 16 * 1024L;
 
   @Before
   public void setUp() throws Exception {
     previousMemoryBlock = IoTConsensusMemoryManager.getInstance().getMemoryBlock();
-    previousMaxMemoryRatioForQueue =
-        IoTConsensusMemoryManager.getInstance().getMaxMemoryRatioForQueue();
     IoTConsensusMemoryManager.getInstance()
         .setMemoryBlock(new AtomicLongMemoryBlock("Test", null, memoryBlockSize));
     IoTConsensusMemoryManager.getInstance().reset();
@@ -58,8 +55,6 @@ public class IoTConsensusMemoryManagerTest {
   public void tearDown() throws Exception {
     IoTConsensusMemoryManager.getInstance().reset();
     IoTConsensusMemoryManager.getInstance().setMemoryBlock(previousMemoryBlock);
-    IoTConsensusMemoryManager.getInstance()
-        .updateMaxMemoryRatioForQueue(previousMaxMemoryRatioForQueue);
   }
 
   @Test
@@ -124,23 +119,6 @@ public class IoTConsensusMemoryManagerTest {
     request.clearRequests();
     assertTrue(request.getRequests().isEmpty());
     assertEquals(0L, request.getRetainedMemorySize());
-  }
-
-  @Test
-  public void testUpdateMaxMemoryRatioForQueue() {
-    final IndexedConsensusRequest request =
-        new IndexedConsensusRequest(
-            1,
-            Collections.singletonList(
-                new ByteBufferConsensusRequest(ByteBuffer.allocate((int) (memoryBlockSize / 3)))));
-    request.buildSerializedRequests();
-
-    IoTConsensusMemoryManager.getInstance().updateMaxMemoryRatioForQueue(0.25);
-    assertFalse(IoTConsensusMemoryManager.getInstance().reserve(request));
-
-    IoTConsensusMemoryManager.getInstance().updateMaxMemoryRatioForQueue(0.5);
-    assertTrue(IoTConsensusMemoryManager.getInstance().reserve(request));
-    IoTConsensusMemoryManager.getInstance().free(request);
   }
 
   private void testReserveAndRelease(int numReservation) {
