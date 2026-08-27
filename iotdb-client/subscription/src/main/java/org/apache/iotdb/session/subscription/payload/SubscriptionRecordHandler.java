@@ -26,18 +26,15 @@ import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.query.dataset.AbstractResultSet;
 import org.apache.tsfile.read.query.dataset.ResultSet;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.utils.DateUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -343,39 +340,9 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
         final String measurement = currentTablet.getSchemas().get(columnIndex).getMeasurementName();
         final TSDataType dataType = currentTablet.getSchemas().get(columnIndex).getType();
         final Object value = currentTablet.getValues()[columnIndex];
-        switch (dataType) {
-          case BOOLEAN:
-            record.addPoint(measurement, ((boolean[]) value)[currentRowIndex]);
-            break;
-          case INT32:
-            record.addPoint(measurement, ((int[]) value)[currentRowIndex]);
-            break;
-          case DATE:
-            record.addPoint(measurement, ((LocalDate[]) value)[currentRowIndex]);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            record.addPoint(measurement, ((long[]) value)[currentRowIndex]);
-            break;
-          case FLOAT:
-            record.addPoint(measurement, ((float[]) value)[currentRowIndex]);
-            break;
-          case DOUBLE:
-            record.addPoint(measurement, ((double[]) value)[currentRowIndex]);
-            break;
-          case TEXT:
-          case STRING:
-          case BLOB:
-          case OBJECT:
-            final Binary binary = ((Binary[]) value)[currentRowIndex];
-            if (Objects.nonNull(binary)) {
-              record.addPoint(measurement, binary.getValues());
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
-        }
+        TypeServices.TS_RECORD_VALUE_APPENDER_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .append(record, measurement, value, currentRowIndex);
       }
       return record;
     }
@@ -383,36 +350,9 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
     private static Field generateFieldFromTabletValue(
         final TSDataType dataType, final Object value, final int index) {
       final Field field = new Field(dataType);
-      switch (dataType) {
-        case BOOLEAN:
-          field.setBoolV(((boolean[]) value)[index]);
-          break;
-        case INT32:
-          field.setIntV(((int[]) value)[index]);
-          break;
-        case DATE:
-          field.setIntV(DateUtils.parseDateExpressionToInt(((LocalDate[]) value)[index]));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          field.setLongV(((long[]) value)[index]);
-          break;
-        case FLOAT:
-          field.setFloatV(((float[]) value)[index]);
-          break;
-        case DOUBLE:
-          field.setDoubleV(((double[]) value)[index]);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          field.setBinaryV(new Binary((((Binary[]) value)[index]).getValues()));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataType));
-      }
+      TypeServices.FIELD_VALUE_READER_SERVICE
+          .call(Type.fromTsDataType(dataType))
+          .read(field, value, index);
       return field;
     }
 
