@@ -210,13 +210,11 @@ public class ConfigNodeRPCServiceProcessorTest extends TestCase {
     Mockito.verify(configManager, Mockito.never()).getConsensusManager();
   }
 
-  public void testAlterDatabaseAllowsTimePartitionProperties() {
+  public void testAlterDatabaseRejectsTimePartitionProperties() {
     CommonConfig commonConfig = Mockito.mock(CommonConfig.class);
     ConfigNodeConfig configNodeConfig = Mockito.mock(ConfigNodeConfig.class);
     ConfigNode configNode = Mockito.mock(ConfigNode.class);
     ConfigManager configManager = Mockito.mock(ConfigManager.class);
-    TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    Mockito.when(configManager.alterDatabase(Mockito.any())).thenReturn(successStatus);
     ConfigNodeRPCServiceProcessor sut =
         new ConfigNodeRPCServiceProcessor(
             commonConfig, configNodeConfig, configNode, configManager);
@@ -228,7 +226,7 @@ public class ConfigNodeRPCServiceProcessorTest extends TestCase {
                 .setTimePartitionOrigin(100L)
                 .setTimePartitionInterval(200L));
 
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    Mockito.verify(configManager).alterDatabase(Mockito.any());
+    Assert.assertEquals(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode(), status.getCode());
+    Mockito.verify(configManager, Mockito.never()).alterDatabase(Mockito.any());
   }
 }

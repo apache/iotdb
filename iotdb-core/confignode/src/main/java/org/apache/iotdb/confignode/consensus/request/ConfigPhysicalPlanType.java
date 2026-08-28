@@ -47,8 +47,8 @@ public enum ConfigPhysicalPlanType {
   SetTTL((short) 201),
   SetSchemaReplicationFactor((short) 202),
   SetDataReplicationFactor((short) 203),
+  // Retained for compatibility with legacy consensus logs. No public API writes this plan.
   SetTimePartitionInterval((short) 204),
-  SetTimePartitionOrigin((short) 212),
   AdjustMaxRegionGroupNum((short) 205),
   DeleteDatabase((short) 206),
   PreDeleteDatabase((short) 207),

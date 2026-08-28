@@ -56,7 +56,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
@@ -242,6 +241,18 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       final TDatabaseSchema alterSchema = plan.getSchema();
+      if (alterSchema.isSetTimePartitionOrigin()) {
+        return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+            .setMessage(
+                ConfigNodeMessages
+                    .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONORIGIN_YET_B315F2E3);
+      }
+      if (alterSchema.isSetTimePartitionInterval()) {
+        return new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+            .setMessage(
+                ConfigNodeMessages
+                    .MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONINTERVAL_YET_F539A76F);
+      }
       final PartialPath partialPathName =
           PartialPath.getQualifiedDatabasePartialPath(alterSchema.getName());
 
@@ -284,20 +295,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             currentSchema.isNeedLastCache());
       }
 
-      if (alterSchema.isSetTimePartitionOrigin()) {
-        currentSchema.setTimePartitionOrigin(alterSchema.getTimePartitionOrigin());
-      }
-
-      if (alterSchema.isSetTimePartitionInterval()) {
-        currentSchema.setTimePartitionInterval(alterSchema.getTimePartitionInterval());
-      }
-
       mTree
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
-
-      TimePartitionUtils.updateDatabaseTimePartitionConfig(currentSchema.getName(), currentSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
@@ -485,6 +486,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
+  /** Applies legacy consensus logs. New requests cannot reach this method. */
   public TSStatus setTimePartitionInterval(final SetTimePartitionIntervalPlan plan) {
     final TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
@@ -496,31 +498,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         final TDatabaseSchema databaseSchema =
             mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
         databaseSchema.setTimePartitionInterval(plan.getTimePartitionInterval());
-        TimePartitionUtils.updateDatabaseTimePartitionConfig(plan.getDatabase(), databaseSchema);
-        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } else {
-        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
-      }
-    } catch (final MetadataException e) {
-      LOGGER.error(ERROR_NAME, e);
-      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
-    return result;
-  }
-
-  public TSStatus setTimePartitionOrigin(final SetTimePartitionOriginPlan plan) {
-    final TSStatus result = new TSStatus();
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      final ConfigMTree mTree =
-          PathUtils.isTableModelDatabase(plan.getDatabase()) ? tableModelMTree : treeModelMTree;
-      final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
-      if (mTree.isDatabaseAlreadySet(path)) {
-        final TDatabaseSchema databaseSchema =
-            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
-        databaseSchema.setTimePartitionOrigin(plan.getTimePartitionOrigin());
         TimePartitionUtils.updateDatabaseTimePartitionConfig(plan.getDatabase(), databaseSchema);
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {

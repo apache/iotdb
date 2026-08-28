@@ -33,8 +33,6 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTe
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -159,16 +157,10 @@ public class ClusterSchemaInfoTest {
 
     Assert.assertEquals(100L, TimePartitionUtils.getTimePartitionOrigin("root.sg"));
     Assert.assertEquals(200L, TimePartitionUtils.getTimePartitionInterval("root.sg"));
-
-    clusterSchemaInfo.setTimePartitionOrigin(new SetTimePartitionOriginPlan("root.sg", 300L));
-    clusterSchemaInfo.setTimePartitionInterval(new SetTimePartitionIntervalPlan("root.sg", 400L));
-
-    Assert.assertEquals(300L, TimePartitionUtils.getTimePartitionOrigin("root.sg"));
-    Assert.assertEquals(400L, TimePartitionUtils.getTimePartitionInterval("root.sg"));
   }
 
   @Test
-  public void testAlterDatabaseTimePartitionConfig() throws IllegalPathException {
+  public void testAlterDatabaseRejectsTimePartitionConfig() throws IllegalPathException {
     final String database = "root.alter";
     final TDatabaseSchema databaseSchema =
         new TDatabaseSchema(database)
@@ -185,9 +177,10 @@ public class ClusterSchemaInfoTest {
                 new TDatabaseSchema(database)
                     .setIsTableModel(false)
                     .setTimePartitionInterval(400L)));
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), intervalStatus.getCode());
+    Assert.assertEquals(
+        TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode(), intervalStatus.getCode());
     Assert.assertEquals(100L, TimePartitionUtils.getTimePartitionOrigin(database));
-    Assert.assertEquals(400L, TimePartitionUtils.getTimePartitionInterval(database));
+    Assert.assertEquals(200L, TimePartitionUtils.getTimePartitionInterval(database));
 
     final GetDatabasePlan getDatabasePlan =
         new GetDatabasePlan(
@@ -199,7 +192,7 @@ public class ClusterSchemaInfoTest {
     final TDatabaseSchema storedSchema =
         clusterSchemaInfo.getMatchedDatabaseSchemas(getDatabasePlan).getSchemaMap().get(database);
     Assert.assertEquals(100L, storedSchema.getTimePartitionOrigin());
-    Assert.assertEquals(400L, storedSchema.getTimePartitionInterval());
+    Assert.assertEquals(200L, storedSchema.getTimePartitionInterval());
   }
 
   @Test

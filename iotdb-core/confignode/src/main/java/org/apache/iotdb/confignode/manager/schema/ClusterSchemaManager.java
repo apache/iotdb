@@ -64,8 +64,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
@@ -253,11 +251,6 @@ public class ClusterSchemaManager {
           ManagerMessages.MESSAGE_FAILED_ALTER_DATABASE_DATABASE_2734674F
               + databaseSchema.getName()
               + ManagerMessages.MESSAGE_DOESN_T_EXIST_EED8C92E);
-      return result;
-    }
-
-    result = validateTimePartitionConfig(databaseSchema);
-    if (result != null) {
       return result;
     }
 
@@ -476,61 +469,6 @@ public class ClusterSchemaManager {
       result.setMessage(e.getMessage());
       return result;
     }
-  }
-
-  public TSStatus setTimePartitionInterval(
-      SetTimePartitionIntervalPlan setTimePartitionIntervalPlan) {
-    final TSStatus validationResult =
-        validateTimePartitionConfig(
-            new TDatabaseSchema(setTimePartitionIntervalPlan.getDatabase())
-                .setTimePartitionInterval(setTimePartitionIntervalPlan.getTimePartitionInterval()));
-    if (validationResult != null) {
-      return validationResult;
-    }
-    // TODO: Inform DataNodes
-    try {
-      return getConsensusManager().write(setTimePartitionIntervalPlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      result.setMessage(e.getMessage());
-      return result;
-    }
-  }
-
-  public TSStatus setTimePartitionOrigin(SetTimePartitionOriginPlan setTimePartitionOriginPlan) {
-    final TSStatus validationResult =
-        validateTimePartitionConfig(
-            new TDatabaseSchema(setTimePartitionOriginPlan.getDatabase())
-                .setTimePartitionOrigin(setTimePartitionOriginPlan.getTimePartitionOrigin()));
-    if (validationResult != null) {
-      return validationResult;
-    }
-    try {
-      return getConsensusManager().write(setTimePartitionOriginPlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      result.setMessage(e.getMessage());
-      return result;
-    }
-  }
-
-  private static TSStatus validateTimePartitionConfig(final TDatabaseSchema databaseSchema) {
-    if (databaseSchema.isSetTimePartitionOrigin() && databaseSchema.getTimePartitionOrigin() < 0) {
-      return RpcUtils.getStatus(
-          TSStatusCode.DATABASE_CONFIG_ERROR,
-          ManagerMessages
-              .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9);
-    }
-    if (databaseSchema.isSetTimePartitionInterval()
-        && databaseSchema.getTimePartitionInterval() <= 0) {
-      return RpcUtils.getStatus(
-          TSStatusCode.DATABASE_CONFIG_ERROR,
-          ManagerMessages
-              .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONINTERVAL_SHOULD_POSITIVE_BB1B473F);
-    }
-    return null;
   }
 
   /**

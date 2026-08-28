@@ -79,7 +79,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -444,10 +443,9 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.setDataReplicationFactor(
             (SetDataReplicationFactorPlan) physicalPlan);
       case SetTimePartitionInterval:
+        // This type is no longer writable and remains solely for replaying legacy consensus logs.
         return clusterSchemaInfo.setTimePartitionInterval(
             (SetTimePartitionIntervalPlan) physicalPlan);
-      case SetTimePartitionOrigin:
-        return clusterSchemaInfo.setTimePartitionOrigin((SetTimePartitionOriginPlan) physicalPlan);
       case CreateRegionGroups:
         return partitionInfo.createRegionGroups((CreateRegionGroupsPlan) physicalPlan);
       case OfferRegionMaintainTasks:

@@ -207,16 +207,6 @@ struct TSetDataReplicationFactorReq {
   2: required i32 dataReplicationFactor
 }
 
-struct TSetTimePartitionIntervalReq {
-  1: required string database
-  2: required i64 timePartitionInterval
-}
-
-struct TSetTimePartitionOriginReq {
-  1: required string database
-  2: required i64 timePartitionOrigin
-}
-
 struct TCountDatabaseResp {
   1: required common.TSStatus status
   2: optional i32 count
@@ -1467,12 +1457,6 @@ service IConfigNodeRPCService {
 
   /** Update the specific Database's DataReplicationFactor */
   common.TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req)
-
-  /** Update the specific Database's PartitionInterval */
-  common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
-
-  /** Update the specific Database's PartitionOrigin */
-  common.TSStatus setTimePartitionOrigin(TSetTimePartitionOriginReq req)
 
   /** Count the matched Databases */
   TCountDatabaseResp countMatchedDatabases(TGetDatabaseReq req)

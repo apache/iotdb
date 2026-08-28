@@ -51,8 +51,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
@@ -389,10 +387,6 @@ public interface IManager {
   TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan configPhysicalPlan);
 
   TSStatus setDataReplicationFactor(SetDataReplicationFactorPlan configPhysicalPlan);
-
-  TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan configPhysicalPlan);
-
-  TSStatus setTimePartitionOrigin(SetTimePartitionOriginPlan configPhysicalPlan);
 
   /**
    * Count Databases.

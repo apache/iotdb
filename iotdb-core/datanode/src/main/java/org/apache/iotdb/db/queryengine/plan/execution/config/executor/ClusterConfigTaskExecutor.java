@@ -553,15 +553,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
         future.setException(new IoTDBException(tsStatus));
       } else {
-        if (databaseSchema.isSetTimePartitionOrigin()
-            || databaseSchema.isSetTimePartitionInterval()
-            || databaseSchema.isSetNeedLastCache()) {
-          ClusterPartitionFetcher.getInstance().invalidAllCache();
-        }
-        refreshDatabaseTimePartitionConfig(configNodeClient, databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final IOException | ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -4787,12 +4781,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
-        if (databaseSchema.isSetTimePartitionOrigin()
-            || databaseSchema.isSetTimePartitionInterval()
-            || databaseSchema.isSetNeedLastCache()) {
-          ClusterPartitionFetcher.getInstance().invalidAllCache();
-        }
-        refreshDatabaseTimePartitionConfig(configNodeClient, databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_NOT_EXIST.getStatusCode() == tsStatus.getCode()) {
         if (ifNotExists) {
@@ -4810,7 +4798,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.setException(new IoTDBException(tsStatus));
       }
-    } catch (final IOException | ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
