@@ -28,9 +28,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
-import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.enums.TSDataType;
 
@@ -40,6 +38,7 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
 
   private String aggMethodType;
   private Aggregator aggregator;
+  private TypeServices.NumericWindowTransformer<UDTFEqualSizeBucketAggSample> windowTransformer;
 
   private interface Aggregator {
 
@@ -463,40 +462,30 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
         throw new UDFParameterNotValidException(
             "Illegal aggregation method. Aggregation type should be avg, min, max, sum, extreme, variance.");
     }
+    windowTransformer =
+        TypeServices.BUCKET_AGG_WINDOW_TRANSFORMER_SERVICE.call(
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(parameters.getDataType(0)));
   }
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector)
       throws IOException, UDFParameterNotValidException {
-    switch (dataType) {
-      case INT32:
-        aggregator.aggregateInt(rowWindow, collector);
-        break;
-      case INT64:
-        aggregator.aggregateLong(rowWindow, collector);
-        break;
-      case FLOAT:
-        aggregator.aggregateFloat(rowWindow, collector);
-        break;
-      case DOUBLE:
-        aggregator.aggregateDouble(rowWindow, collector);
-        break;
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      case DATE:
-      case STRING:
-      case TIMESTAMP:
-      case BOOLEAN:
-      default:
-        // This will not happen
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    windowTransformer.transform(this, rowWindow, collector);
+  }
+
+  void aggregateInt(RowWindow rowWindow, PointCollector collector) throws IOException {
+    aggregator.aggregateInt(rowWindow, collector);
+  }
+
+  void aggregateLong(RowWindow rowWindow, PointCollector collector) throws IOException {
+    aggregator.aggregateLong(rowWindow, collector);
+  }
+
+  void aggregateFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
+    aggregator.aggregateFloat(rowWindow, collector);
+  }
+
+  void aggregateDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+    aggregator.aggregateDouble(rowWindow, collector);
   }
 }

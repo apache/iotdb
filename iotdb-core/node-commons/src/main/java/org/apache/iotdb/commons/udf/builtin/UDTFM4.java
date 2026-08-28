@@ -30,7 +30,6 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
 
@@ -60,6 +59,7 @@ public class UDTFM4 implements UDTF {
 
   protected AccessStrategy accessStrategy;
   protected TSDataType dataType;
+  private TypeServices.NumericWindowTransformer<UDTFM4> windowTransformer;
 
   public static final String WINDOW_SIZE_KEY = "windowSize";
   public static final String TIME_INTERVAL_KEY = "timeInterval";
@@ -100,6 +100,9 @@ public class UDTFM4 implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
+    windowTransformer =
+        TypeServices.M4_WINDOW_TRANSFORMER_SERVICE.call(
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(parameters.getDataType(0)));
     // set data type
     configurations.setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
 
@@ -124,36 +127,7 @@ public class UDTFM4 implements UDTF {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector)
       throws UDFException, IOException {
-    switch (dataType) {
-      case INT32:
-        transformInt(rowWindow, collector);
-        break;
-      case INT64:
-        transformLong(rowWindow, collector);
-        break;
-      case FLOAT:
-        transformFloat(rowWindow, collector);
-        break;
-      case DOUBLE:
-        transformDouble(rowWindow, collector);
-        break;
-      case BLOB:
-      case OBJECT:
-      case DATE:
-      case STRING:
-      case TIMESTAMP:
-      case BOOLEAN:
-      case TEXT:
-      default:
-        // This will not happen
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    windowTransformer.transform(this, rowWindow, collector);
   }
 
   public void transformInt(RowWindow rowWindow, PointCollector collector) throws IOException {

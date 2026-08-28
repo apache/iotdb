@@ -29,9 +29,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
-import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -45,6 +43,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
   private String type;
   private int number;
   private OutlierSampler outlierSampler;
+  private TypeServices.NumericWindowTransformer<UDTFEqualSizeBucketOutlierSample> windowTransformer;
 
   private interface OutlierSampler {
 
@@ -638,41 +637,31 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         throw new UDFParameterNotValidException(
             "Illegal outlier method. Outlier type should be avg, stendis, cos or prenextdis.");
     }
+    windowTransformer =
+        TypeServices.BUCKET_OUTLIER_WINDOW_TRANSFORMER_SERVICE.call(
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(parameters.getDataType(0)));
   }
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector)
       throws IOException, UDFParameterNotValidException {
-    switch (dataType) {
-      case INT32:
-        outlierSampler.outlierSampleInt(rowWindow, collector);
-        break;
-      case INT64:
-        outlierSampler.outlierSampleLong(rowWindow, collector);
-        break;
-      case FLOAT:
-        outlierSampler.outlierSampleFloat(rowWindow, collector);
-        break;
-      case DOUBLE:
-        outlierSampler.outlierSampleDouble(rowWindow, collector);
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case DATE:
-      case STRING:
-      case BOOLEAN:
-      case TIMESTAMP:
-      default:
-        // This will not happen
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    windowTransformer.transform(this, rowWindow, collector);
+  }
+
+  void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
+    outlierSampler.outlierSampleInt(rowWindow, collector);
+  }
+
+  void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException {
+    outlierSampler.outlierSampleLong(rowWindow, collector);
+  }
+
+  void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
+    outlierSampler.outlierSampleFloat(rowWindow, collector);
+  }
+
+  void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+    outlierSampler.outlierSampleDouble(rowWindow, collector);
   }
 
   public void addToMinHeap(PriorityQueue<Pair<Integer, Double>> pq, int i, double value) {
