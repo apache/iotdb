@@ -34,4 +34,12 @@ public class CommonConfigAuditEventTest {
             .getAuditableControlEventType()
             .contains(AuditEventType.LOGIN_RESOURCE_RESTRICT));
   }
+
+  @Test
+  public void defaultControlEventsIncludeTrustedChannelFailure() {
+    assertTrue(
+        new CommonConfig()
+            .getAuditableControlEventType()
+            .contains(AuditEventType.TRUSTED_CHANNEL_FUNCTION_FAILURE));
+  }
 }
