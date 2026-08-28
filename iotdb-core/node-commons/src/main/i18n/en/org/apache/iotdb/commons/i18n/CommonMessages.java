@@ -324,4 +324,7 @@ public final class CommonMessages {
       "Trusted channel function failed: initiator=%s, target=%s";
   public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM =
       "row index exceeds the maximum allowed number in one partition";
+  public static final String
+      EXCEPTION_XCORR_REQUIRES_EXACTLY_TWO_CALCULATION_COLUMNS_BUT_FOUND_ARG_2FF8EB0C =
+          "XCorr requires exactly two calculation columns, but found %d.";
 }

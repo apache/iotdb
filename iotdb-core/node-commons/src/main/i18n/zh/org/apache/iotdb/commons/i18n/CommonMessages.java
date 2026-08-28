@@ -221,4 +221,7 @@ public final class CommonMessages {
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "没有找到可以计算的列.";
   public static final String EXCEPTION_NOT_ALLOWED_COLUMNS = "只允许列类型为double, float, int32, int64参与函数计算, 当前列 %s 类型是 %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM = "分区行数超过了最大限制";
+  public static final String
+      EXCEPTION_XCORR_REQUIRES_EXACTLY_TWO_CALCULATION_COLUMNS_BUT_FOUND_ARG_2FF8EB0C =
+          "XCorr 要求必须正好有两列计算列，但实际找到 %d 列。";
 }

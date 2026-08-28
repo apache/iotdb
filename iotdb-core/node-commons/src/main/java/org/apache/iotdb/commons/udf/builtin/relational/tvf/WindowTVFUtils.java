@@ -40,8 +40,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class WindowTVFUtils {
+
+  private static final Set<Type> ALLOWED_CALCULATION_TYPES =
+      Set.of(Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
 
   private static final Set<Type> SUPPORTED_PARTITION_TYPES =
       new HashSet<>(
@@ -101,6 +105,37 @@ public class WindowTVFUtils {
       indexes.add(findColumnIndex(tableArgument, partitionColumn, SUPPORTED_PARTITION_TYPES));
     }
     return indexes;
+  }
+
+  /**
+   * Collect calculation-column indexes after excluding partition and time columns.
+   *
+   * <p>If {@code calculationColumnConsumer} is provided, it is invoked with each calculation column
+   * name so the caller can append the corresponding result field to its output schema.
+   */
+  public static List<Integer> getCalculationIndexes(
+      TableArgument tableArgument,
+      Set<Integer> excludedIndexes,
+      Consumer<String> calculationColumnConsumer) {
+    List<Integer> calculationIndexes = new ArrayList<>();
+    for (int i = 0; i < tableArgument.getFieldTypes().size(); i++) {
+      if (excludedIndexes.contains(i)) {
+        continue;
+      }
+
+      Type type = tableArgument.getFieldTypes().get(i);
+      String columnName = tableArgument.getFieldNames().get(i).get();
+      if (!ALLOWED_CALCULATION_TYPES.contains(type)) {
+        throw new SemanticException(
+            String.format(CommonMessages.EXCEPTION_NOT_ALLOWED_COLUMNS, columnName, type));
+      }
+
+      calculationIndexes.add(i);
+      if (calculationColumnConsumer != null) {
+        calculationColumnConsumer.accept(columnName);
+      }
+    }
+    return calculationIndexes;
   }
 
   public static String joinTypes(List<Type> types) {

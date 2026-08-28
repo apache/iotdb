@@ -58,8 +58,6 @@ public abstract class FilterTransferTableFunction implements TableFunction {
 
   protected static final String PARTITION_TYPES_PROPERTY = "PARTITION_TYPES";
   protected static final String CALCULATION_COLUMN_COUNT_PROPERTY = "CALCULATION_COLUMN_COUNT";
-  protected static final Set<Type> ALLOWED_TYPES =
-      Set.of(Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -111,21 +109,11 @@ public abstract class FilterTransferTableFunction implements TableFunction {
     // record the time column
     schemaBuilder.addField(tableArgument.getFieldNames().get(timeColumnIndex), Type.TIMESTAMP);
     // record the calculation columns, only double, float, int32, and int64 are allowed
-    for (int i = 0; i < tableArgument.getFieldTypes().size(); i++) {
-      if (excludedIndexes.contains(i)) {
-        continue;
-      }
-      Type type = tableArgument.getFieldTypes().get(i);
-      String columnName = tableArgument.getFieldNames().get(i).get();
-      if (!ALLOWED_TYPES.contains(type)) {
-        throw new SemanticException(
-            String.format(CommonMessages.EXCEPTION_NOT_ALLOWED_COLUMNS, columnName, type));
-      }
-
-      // all the result column would be the double type
-      calculationIndexes.add(i);
-      schemaBuilder.addField(convertColumnName(columnName), Type.DOUBLE);
-    }
+    calculationIndexes.addAll(
+        WindowTVFUtils.getCalculationIndexes(
+            tableArgument,
+            excludedIndexes,
+            columnName -> schemaBuilder.addField(convertColumnName(columnName), Type.DOUBLE)));
 
     if (calculationIndexes.isEmpty()) {
       throw new SemanticException(CommonMessages.EXCEPTION_NO_CALCULATE_COLUMNS);
@@ -172,10 +160,10 @@ public abstract class FilterTransferTableFunction implements TableFunction {
       implements TableFunctionDataProcessor {
 
     protected static final int INITIAL_CAPACITY = 512;
-    private static final int MAX_COUNT_IN_ONE_PARTITION = 65536;
+    protected static final int MAX_COUNT_IN_ONE_PARTITION = 65536;
 
     private final double wpass;
-    private int partitionRowIndex;
+    private int partitionRowCount;
 
     private final int partitionColumnCount;
     private final int timeColumnIndex;
@@ -192,6 +180,7 @@ public abstract class FilterTransferTableFunction implements TableFunction {
       this.wpass = wpass;
       this.partitionColumnCount = partitionTypes.length;
       this.timeColumnIndex = partitionColumnCount;
+      this.partitionRowCount = 0;
       this.calculationColumnStartIndex = timeColumnIndex + 1;
       this.partitionTypes = partitionTypes;
       this.partitionValues = new Object[partitionTypes.length];
@@ -207,16 +196,16 @@ public abstract class FilterTransferTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      if (partitionRowIndex >= MAX_COUNT_IN_ONE_PARTITION) {
+      if (partitionRowCount >= MAX_COUNT_IN_ONE_PARTITION) {
         throw new SemanticException(
             CommonMessages.EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM);
       }
-      if (partitionRowIndex == 0) {
+      if (partitionRowCount == 0) {
         capturePartitionValues(input);
       }
       collectTimeColumnValue(input);
-      collectCalculationValues(input, partitionRowIndex);
-      partitionRowIndex++;
+      collectCalculationValues(input, partitionRowCount);
+      partitionRowCount++;
     }
 
     private void capturePartitionValues(Record input) {
@@ -227,11 +216,11 @@ public abstract class FilterTransferTableFunction implements TableFunction {
     }
 
     private void collectTimeColumnValue(Record input) {
-      if (partitionRowIndex >= partitionTimestamps.length) {
+      if (partitionRowCount >= partitionTimestamps.length) {
         int newCapacity = partitionTimestamps.length + (partitionTimestamps.length >> 2);
         partitionTimestamps = Arrays.copyOf(partitionTimestamps, newCapacity);
       }
-      partitionTimestamps[partitionRowIndex] = input.getLong(timeColumnIndex);
+      partitionTimestamps[partitionRowCount] = input.getLong(timeColumnIndex);
     }
 
     private void collectCalculationValues(Record input, int partitionRowIndex) {
@@ -256,14 +245,14 @@ public abstract class FilterTransferTableFunction implements TableFunction {
         ColumnBuilder partitionColumnBuilder = properColumnBuilders.get(columnIndex);
         Object partitionValue = partitionValues[columnIndex];
         Type partitionType = partitionTypes[columnIndex];
-        for (int rowIndex = 0; rowIndex < partitionRowIndex; rowIndex++) {
+        for (int rowIndex = 0; rowIndex < partitionRowCount; rowIndex++) {
           WindowTVFUtils.writeValue(partitionColumnBuilder, partitionValue, partitionType);
         }
       }
 
       // collect the time column
       ColumnBuilder timeColumnBuilder = properColumnBuilders.get(timeColumnIndex);
-      for (int rowIndex = 0; rowIndex < partitionRowIndex; rowIndex++) {
+      for (int rowIndex = 0; rowIndex < partitionRowCount; rowIndex++) {
         timeColumnBuilder.writeLong(partitionTimestamps[rowIndex]);
       }
 
@@ -282,7 +271,7 @@ public abstract class FilterTransferTableFunction implements TableFunction {
         ColumnBuilder properColumnBuilder) {
       int size = columnContainer.validValueCount;
       if (size == 0) {
-        for (int rowIndex = 0; rowIndex < partitionRowIndex; rowIndex++) {
+        for (int rowIndex = 0; rowIndex < partitionRowCount; rowIndex++) {
           properColumnBuilder.appendNull();
         }
         return;
@@ -290,7 +279,7 @@ public abstract class FilterTransferTableFunction implements TableFunction {
       double[] temp = filterTransform(columnContainer, size, wpass);
       // Restore the transformed values to their original rows; excluded rows stay null.
       int validValueIndex = 0;
-      for (int i = 0; i < partitionRowIndex; i++) {
+      for (int i = 0; i < partitionRowCount; i++) {
         if (columnContainer.validRows.get(i)) {
           properColumnBuilder.writeDouble(temp[2 * validValueIndex]);
           validValueIndex++;

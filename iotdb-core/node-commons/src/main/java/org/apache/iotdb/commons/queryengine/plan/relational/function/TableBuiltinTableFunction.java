@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.XCorrTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
@@ -53,7 +54,8 @@ public enum TableBuiltinTableFunction {
   PATTERN_MATCH("pattern_match"),
   CLASSIFY("classify"),
   LOWPASS("lowpass"),
-  HIGHPASS("highpass");
+  HIGHPASS("highpass"),
+  XCORR("xcorr");
 
   private final String functionName;
 
@@ -107,6 +109,8 @@ public enum TableBuiltinTableFunction {
         return new LowPassTableFunction();
       case "highpass":
         return new HighPassTableFunction();
+      case "xcorr":
+        return new XCorrTableFunction();
       default:
         throw new UnsupportedOperationException(
             String.format(QueryMessages.UNSUPPORTED_TABLE_FUNCTION, functionName));
