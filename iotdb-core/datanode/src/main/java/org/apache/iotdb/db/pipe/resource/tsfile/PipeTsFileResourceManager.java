@@ -402,6 +402,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
+  /** Returns the shared public resource map when {@code pipeName} is null. */
   public Map<String, ? extends PipeTsFileResource> getResourceMap(final @Nullable String pipeName) {
     return Objects.nonNull(pipeName)
         ? hardlinkOrCopiedFileToPipeTsFileResourceMap.computeIfAbsent(
