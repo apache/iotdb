@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -56,25 +57,32 @@ public class SubscriptionReceiverAgent {
       new TPipeSubscribeResp(
           RpcUtils.getStatus(
               TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR,
-              "Subscription not enabled, please set config `subscription_enabled` to true."),
+              DataNodeQueryMessages.QUERY_EXCEPTION_SUBSCRIPTION_IS_NOT_ENABLED_7F43DCBB),
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
   private final ThreadLocal<SubscriptionReceiver> receiverThreadLocal = new ThreadLocal<>();
   private final Set<SubscriptionReceiver> activeReceivers = ConcurrentHashMap.newKeySet();
-  private final ScheduledExecutorService receiverTimeoutChecker =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          SubscriptionReceiverAgent.class.getSimpleName() + "-Timeout-Checker");
+  private final ScheduledExecutorService receiverTimeoutChecker;
 
   SubscriptionReceiverAgent() {
     RECEIVER_CONSTRUCTORS.put(
         PipeSubscribeRequestVersion.VERSION_1.getVersion(), SubscriptionReceiverV1::new);
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        receiverTimeoutChecker,
-        this::checkReceiverTimeouts,
-        Math.max(1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
-        Math.max(1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
-        TimeUnit.MILLISECONDS);
+    if (SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      receiverTimeoutChecker =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              SubscriptionReceiverAgent.class.getSimpleName() + "-Timeout-Checker");
+      ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+          receiverTimeoutChecker,
+          this::checkReceiverTimeouts,
+          Math.max(
+              1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
+          Math.max(
+              1_000L, SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs() / 2L),
+          TimeUnit.MILLISECONDS);
+    } else {
+      receiverTimeoutChecker = null;
+    }
   }
 
   public TPipeSubscribeResp handle(final TPipeSubscribeReq req) {

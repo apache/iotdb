@@ -795,8 +795,7 @@ public class IoTDBDatabaseIT {
                   "test,view_table,s11,INT32,FIELD,USING,null,",
                   "test,view_table,s3,INT32,FIELD,USING,null,")));
 
-      statement.execute(
-          "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
+      statement.execute("create pipe a2b with sink ('sink'='do-nothing-sink')");
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select id from pipes where creation_time > 0"),
           "id,",
@@ -980,8 +979,7 @@ public class IoTDBDatabaseIT {
         final Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("create user test 'password123456'");
       adminStmt.execute("create database db");
-      adminStmt.execute(
-          "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
+      adminStmt.execute("create pipe a2b with sink ('sink'='do-nothing-sink')");
     }
 
     try (final Connection userCon =
