@@ -63,7 +63,6 @@ public class IoTDBConsensusSubscriptionColumnFilterClusterIT extends AbstractSub
         .setSchemaReplicationFactor(1)
         .setDataReplicationFactor(2)
         .setAutoCreateSchemaEnabled(true)
-        .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setSubscriptionOwnerLeaseDurationMsMin(1000);
