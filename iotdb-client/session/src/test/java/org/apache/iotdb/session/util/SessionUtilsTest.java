@@ -292,6 +292,22 @@ public class SessionUtilsTest {
   }
 
   @Test
+  public void testFilterNullColumnsActiveRowsWhenBitmapSizedToMaxRowNumber() {
+    List<IMeasurementSchema> twoSchemas = new ArrayList<>();
+    twoSchemas.add(new MeasurementSchema("s1", TSDataType.INT32));
+    twoSchemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    Tablet partialRowTablet = new Tablet("root.sg.d1", twoSchemas, 10);
+    partialRowTablet.addTimestamp(0, 4000L);
+    partialRowTablet.addValue("s1", 0, 1);
+    partialRowTablet.addValue("s2", 0, null);
+    Tablet partialRowFiltered = SessionUtils.filterNullColumns(partialRowTablet);
+    Assert.assertNotNull(partialRowFiltered);
+    Assert.assertNotSame(partialRowTablet, partialRowFiltered);
+    Assert.assertEquals(1, partialRowFiltered.getSchemas().size());
+    Assert.assertEquals("s1", partialRowFiltered.getSchemas().get(0).getMeasurementName());
+  }
+
+  @Test
   public void testParseSeedNodeUrls() {
     List<String> nodeUrls = Collections.singletonList("127.0.0.1:1234");
     List<TEndPoint> tEndPoints = SessionUtils.parseSeedNodeUrls(nodeUrls);

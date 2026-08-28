@@ -545,15 +545,8 @@ public class SessionUtils {
     if (bitMap == null || rowSize <= 0) {
       return false;
     }
-    if (bitMap.getSize() == rowSize && bitMap.isAllMarked()) {
-      return true;
-    }
-    for (int row = 0; row < rowSize; row++) {
-      if (!bitMap.isMarked(row)) {
-        return false;
-      }
-    }
-    return true;
+    // BitMap is sized to maxRowNumber; only [0, rowSize) are active rows.
+    return bitMap.isRangeAllMarked(0, rowSize);
   }
 
   /* Used for table model insert only. */

@@ -105,3 +105,56 @@ def test_filter_null_columns_numpy_tablet():
     assert filtered is not None
     assert filtered is not np_tablet
     assert filtered.get_measurements() == ["s1", "s3"]
+
+
+def test_filter_null_columns_numpy_tablet_active_rows():
+    measurements = ["s1", "s2"]
+    data_types = [TSDataType.INT32, TSDataType.INT64]
+    values = [
+        np.array([1], dtype=np.dtype(">i4")),
+        np.array([0], dtype=np.dtype(">i8")),
+    ]
+    timestamps = np.array([1000], dtype=np.dtype(">i8"))
+    bitmaps = [BitMap(10), BitMap(10)]
+    bitmaps[1].mark(0)
+
+    np_tablet = NumpyTablet(
+        "root.sg.d1",
+        measurements,
+        data_types,
+        values,
+        timestamps,
+        bitmaps=bitmaps,
+    )
+    filtered = filter_null_columns(np_tablet)
+    assert filtered is not None
+    assert filtered is not np_tablet
+    assert filtered.get_measurements() == ["s1"]
+
+
+def test_bitmap_is_range_all_marked():
+    bit_map = BitMap(20)
+    for i in range(20):
+        if i % 4 != 2:
+            bit_map.mark(i)
+    for start in range(21):
+        for length in range(21 - start):
+            all_marked = all(bit_map.is_marked(i) for i in range(start, start + length))
+            assert bit_map.is_range_all_marked(start, length) is all_marked
+    assert bit_map.is_range_all_marked(0, 0) is True
+    assert bit_map.is_range_all_marked(0, 21) is False
+    assert bit_map.is_range_all_marked(21, 0) is False
+    assert bit_map.is_range_all_marked(-1, 1) is False
+    assert bit_map.is_range_all_marked(0, -1) is False
+
+    empty = BitMap(0)
+    assert empty.is_all_marked() is True
+    full = BitMap(8)
+    for i in range(8):
+        full.mark(i)
+    assert full.is_all_marked() is True
+    partial = BitMap(8)
+    for i in range(7):
+        partial.mark(i)
+    assert partial.is_all_marked() is False
+    assert partial.is_range_all_marked(0, 7) is True

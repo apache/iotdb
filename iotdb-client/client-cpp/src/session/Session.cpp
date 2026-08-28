@@ -451,15 +451,7 @@ static bool isColumnAllNull(const BitMap& bitMap, size_t rowSize) {
     return false;
   }
   // BitMap is sized to maxRowNumber; only [0, rowSize) are active rows.
-  if (bitMap.getSize() == rowSize) {
-    return bitMap.isAllMarked();
-  }
-  for (size_t row = 0; row < rowSize; row++) {
-    if (!bitMap.isMarked(row)) {
-      return false;
-    }
-  }
-  return true;
+  return bitMap.isRangeAllMarked(0, rowSize);
 }
 
 std::shared_ptr<const Tablet> SessionUtils::filterNullColumns(const Tablet& tablet) {

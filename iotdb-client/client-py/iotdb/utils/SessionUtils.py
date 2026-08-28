@@ -26,12 +26,8 @@ from iotdb.utils.Tablet import ColumnType, Tablet
 def _is_column_all_null_bitmap(bitmap: Optional[BitMap], row_number: int) -> bool:
     if bitmap is None or row_number <= 0:
         return False
-    if bitmap.get_size() == row_number and bitmap.is_all_marked():
-        return True
-    for row in range(row_number):
-        if not bitmap.is_marked(row):
-            return False
-    return True
+    # BitMap is sized to maxRowNumber; only [0, row_number) are active rows.
+    return bitmap.is_range_all_marked(0, row_number)
 
 
 def _is_tablet_column_all_null(tablet: Tablet, column_index: int) -> bool:

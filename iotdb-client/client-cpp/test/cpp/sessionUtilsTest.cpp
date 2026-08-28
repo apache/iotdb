@@ -97,3 +97,49 @@ TEST_CASE("SessionUtils filterNullColumns keeps TAG when table-model FIELD colum
   REQUIRE(filtered->columnTypes.size() == 1);
   REQUIRE(filtered->columnTypes[0] == ColumnCategory::TAG);
 }
+
+TEST_CASE("SessionUtils filterNullColumns checks active rows when bitmap is maxRowNumber-sized",
+          "[utils]") {
+  vector<pair<string, TSDataType::TSDataType>> schemas = {{"s1", TSDataType::INT32},
+                                                          {"s2", TSDataType::INT64}};
+  Tablet tablet("root.sg.d1", schemas, 10);
+  tablet.timestamps[0] = 1000L;
+  tablet.rowSize = 1;
+  tablet.addValue("s1", 0, 1);
+  tablet.bitMaps[1].mark(0);
+
+  std::shared_ptr<const Tablet> filtered = SessionUtils::filterNullColumns(tablet);
+  REQUIRE(filtered != nullptr);
+  REQUIRE(filtered->schemas.size() == 1);
+  REQUIRE(filtered->schemas[0].first == "s1");
+}
+
+TEST_CASE("BitMap isRangeAllMarked matches per-bit scan and rejects OOB", "[utils]") {
+  BitMap bitMap(20);
+  for (size_t i = 0; i < 20; i++) {
+    if (i % 4 != 2) {
+      bitMap.mark(i);
+    }
+  }
+  for (size_t start = 0; start <= 20; start++) {
+    for (size_t length = 0; length <= 20 - start; length++) {
+      bool allMarked = true;
+      for (size_t i = start; i < start + length; i++) {
+        allMarked = allMarked && bitMap.isMarked(i);
+      }
+      REQUIRE(bitMap.isRangeAllMarked(start, length) == allMarked);
+    }
+  }
+  REQUIRE(bitMap.isRangeAllMarked(0, 0));
+  REQUIRE_FALSE(bitMap.isRangeAllMarked(0, 21));
+  REQUIRE_FALSE(bitMap.isRangeAllMarked(21, 0));
+
+  BitMap empty;
+  REQUIRE(empty.isAllMarked());
+  BitMap full(8);
+  full.markAll();
+  REQUIRE(full.isAllMarked());
+  full.unmark(7);
+  REQUIRE_FALSE(full.isAllMarked());
+  REQUIRE(full.isRangeAllMarked(0, 7));
+}
