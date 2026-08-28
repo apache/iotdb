@@ -1611,6 +1611,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   private boolean needAddPartitionColumn(String functionName) {
     return !TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
         && !TableBuiltinTableFunction.LOWPASS.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.HIGHPASS.getFunctionName().equalsIgnoreCase(functionName)
         && !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName);
   }
 

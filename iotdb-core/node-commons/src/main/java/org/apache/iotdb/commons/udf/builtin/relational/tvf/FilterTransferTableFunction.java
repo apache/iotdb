@@ -159,7 +159,15 @@ public abstract class FilterTransferTableFunction implements TableFunction {
 
   protected abstract String convertColumnName(String columnName);
 
-  /** every partition data (may include multiple columns) responding to a DataProcessor */
+  /**
+   * Processes one complete partition (which may contain multiple calculation columns).
+   *
+   * <p>FFT-based filters cannot operate on null values. We therefore collect only finite, non-null
+   * values for each calculation column and keep their original row positions. The compact sequence
+   * is passed to the filter, then the transformed values are expanded back to the partition's
+   * original row layout. Rows that had a null or non-finite input remain null in the output; they
+   * do not participate in the FFT calculation.
+   */
   protected abstract static class FilterTransferDataProcessor
       implements TableFunctionDataProcessor {
 
@@ -228,6 +236,7 @@ public abstract class FilterTransferTableFunction implements TableFunction {
 
     private void collectCalculationValues(Record input, int partitionRowIndex) {
       for (int i = 0; i < calculationColumnContainers.length; i++) {
+        // Missing and non-finite values are intentionally excluded from the compact FFT input.
         if (!input.isNull(calculationColumnStartIndex + i)) {
           double aDouble = input.getDouble(calculationColumnStartIndex + i);
           if (Double.isFinite(aDouble)) {
@@ -279,7 +288,7 @@ public abstract class FilterTransferTableFunction implements TableFunction {
         return;
       }
       double[] temp = filterTransform(columnContainer, size, wpass);
-      // collect the value after the transformation
+      // Restore the transformed values to their original rows; excluded rows stay null.
       int validValueIndex = 0;
       for (int i = 0; i < partitionRowIndex; i++) {
         if (columnContainer.validRows.get(i)) {

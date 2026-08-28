@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.HighPassTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.LowPassTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
@@ -51,7 +52,8 @@ public enum TableBuiltinTableFunction {
   FORECAST("forecast"),
   PATTERN_MATCH("pattern_match"),
   CLASSIFY("classify"),
-  LOWPASS("lowpass");
+  LOWPASS("lowpass"),
+  HIGHPASS("highpass");
 
   private final String functionName;
 
@@ -103,6 +105,8 @@ public enum TableBuiltinTableFunction {
         return new ClassifyTableFunction();
       case "lowpass":
         return new LowPassTableFunction();
+      case "highpass":
+        return new HighPassTableFunction();
       default:
         throw new UnsupportedOperationException(
             String.format(QueryMessages.UNSUPPORTED_TABLE_FUNCTION, functionName));
