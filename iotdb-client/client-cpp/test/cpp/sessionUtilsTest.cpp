@@ -62,7 +62,8 @@ TEST_CASE("SessionUtils filterNullColumns returns original when nothing to drop"
   REQUIRE(filtered.get() == &tablet);
 }
 
-TEST_CASE("SessionUtils filterNullColumns returns nullptr when all FIELD columns null", "[utils]") {
+TEST_CASE("SessionUtils filterNullColumns returns nullptr when tree-model FIELD columns are all null",
+          "[utils]") {
   vector<pair<string, TSDataType::TSDataType>> schemas = {{"s1", TSDataType::INT32},
                                                           {"s2", TSDataType::INT64}};
   Tablet tablet("root.sg.d1", schemas, 1);
@@ -73,4 +74,26 @@ TEST_CASE("SessionUtils filterNullColumns returns nullptr when all FIELD columns
 
   std::shared_ptr<const Tablet> filtered = SessionUtils::filterNullColumns(tablet);
   REQUIRE(filtered == nullptr);
+}
+
+TEST_CASE("SessionUtils filterNullColumns keeps TAG when table-model FIELD columns are all null",
+          "[utils]") {
+  vector<pair<string, TSDataType::TSDataType>> schemas = {
+      {"tag1", TSDataType::TEXT}, {"s1", TSDataType::INT32}, {"s2", TSDataType::INT64}};
+  vector<ColumnCategory> columnTypes = {ColumnCategory::TAG, ColumnCategory::FIELD,
+                                        ColumnCategory::FIELD};
+  Tablet tablet("table1", schemas, columnTypes, 1);
+  tablet.timestamps[0] = 3000L;
+  tablet.rowSize = 1;
+  tablet.addValue("tag1", 0, string("d1"));
+  tablet.bitMaps[1].mark(0);
+  tablet.bitMaps[2].mark(0);
+
+  std::shared_ptr<const Tablet> filtered = SessionUtils::filterNullColumns(tablet);
+  REQUIRE(filtered != nullptr);
+  REQUIRE(filtered.get() != &tablet);
+  REQUIRE(filtered->schemas.size() == 1);
+  REQUIRE(filtered->schemas[0].first == "tag1");
+  REQUIRE(filtered->columnTypes.size() == 1);
+  REQUIRE(filtered->columnTypes[0] == ColumnCategory::TAG);
 }

@@ -145,7 +145,8 @@ public:
   void handleRedirection(const std::string& deviceId, TEndPoint endPoint);
   void handleRedirection(const std::shared_ptr<storage::IDeviceID>& deviceId, TEndPoint endPoint);
 
-  // Returns false when all FIELD columns are null and the insert should be skipped.
+  // Returns false when filtering leaves no columns (tree-model all-null FIELD tablet).
+  // Table-model inserts may keep TAG / ATTRIBUTE columns when all FIELD columns are null.
   static bool buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted);
   void insertTablet(TSInsertTabletReq request);
   void insertRelationalTabletOnce(

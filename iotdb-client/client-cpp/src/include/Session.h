@@ -438,8 +438,9 @@ public:
    * Drop entirely-null FIELD columns within [0, rowSize). TAG/ATTRIBUTE are kept.
    * Does not mutate {@code tablet}.
    *
-   * @return non-owning pointer to {@code tablet} if nothing to drop; a new tablet if
-   *         filtered; nullptr if every FIELD column is null (caller should skip insert)
+   * @return non-owning pointer to {@code tablet} if nothing to drop; a new tablet if filtered;
+   *         nullptr if no columns remain. Table-model TAG / ATTRIBUTE columns are kept even when
+   *         every FIELD column is null.
    */
   static std::shared_ptr<const Tablet> filterNullColumns(const Tablet& tablet);
 };

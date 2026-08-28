@@ -22,7 +22,7 @@ from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.SessionUtils import filter_null_columns
-from iotdb.utils.Tablet import Tablet
+from iotdb.utils.Tablet import ColumnType, Tablet
 
 
 def test_filter_null_columns_tablet():
@@ -63,6 +63,22 @@ def test_filter_null_columns_tablet():
         [2000],
     )
     assert filter_null_columns(all_null) is None
+
+
+def test_filter_null_columns_table_model_keeps_tag():
+    tablet = Tablet(
+        "table1",
+        ["tag1", "s1", "s2"],
+        [TSDataType.STRING, TSDataType.INT32, TSDataType.INT32],
+        [["d1", None, None]],
+        [3000],
+        column_types=[ColumnType.TAG, ColumnType.FIELD, ColumnType.FIELD],
+    )
+    filtered = filter_null_columns(tablet)
+    assert filtered is not None
+    assert filtered is not tablet
+    assert filtered.get_measurements() == ["tag1"]
+    assert filtered.get_column_categories() == [ColumnType.TAG]
 
 
 def test_filter_null_columns_numpy_tablet():

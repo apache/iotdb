@@ -474,7 +474,8 @@ public class SessionUtils {
    *
    * @param tablet source tablet
    * @return the same instance if nothing to drop; a new tablet with remaining columns; or {@code
-   *     null} if every FIELD column is null (no valid measurement left to insert)
+   *     null} if no columns remain (e.g. tree-model tablet whose FIELD columns are all null). For
+   *     table-model tablets, TAG / ATTRIBUTE columns are kept even when every FIELD column is null.
    */
   public static Tablet filterNullColumns(Tablet tablet) {
     if (tablet == null) {
@@ -497,18 +498,12 @@ public class SessionUtils {
     List<Object> keptValues = new ArrayList<>(columnCount);
     List<BitMap> keptBitMaps = new ArrayList<>(columnCount);
 
-    int originalFieldCount = 0;
-    int keptFieldCount = 0;
-
     for (int i = 0; i < columnCount; i++) {
       ColumnCategory category =
           columnCategories != null && i < columnCategories.size()
               ? columnCategories.get(i)
               : ColumnCategory.FIELD;
       boolean isField = category == ColumnCategory.FIELD;
-      if (isField) {
-        originalFieldCount++;
-      }
 
       boolean drop = isField && i < bitMaps.length && isColumnAllNull(bitMaps[i], rowSize);
       if (drop) {
@@ -521,16 +516,10 @@ public class SessionUtils {
       }
       keptValues.add(values[i]);
       keptBitMaps.add(i < bitMaps.length ? bitMaps[i] : null);
-      if (isField) {
-        keptFieldCount++;
-      }
     }
 
     if (keptSchemas.size() == columnCount) {
       return tablet;
-    }
-    if (originalFieldCount > 0 && keptFieldCount == 0) {
-      return null;
     }
     if (keptSchemas.isEmpty()) {
       return null;

@@ -436,31 +436,20 @@ std::shared_ptr<const Tablet> SessionUtils::filterNullColumns(const Tablet& tabl
 
   std::vector<size_t> keptIndices;
   keptIndices.reserve(columnCount);
-  size_t originalFieldCount = 0;
-  size_t keptFieldCount = 0;
 
   for (size_t i = 0; i < columnCount; i++) {
     ColumnCategory category =
         i < tablet.columnTypes.size() ? tablet.columnTypes[i] : ColumnCategory::FIELD;
     bool isField = category == ColumnCategory::FIELD;
-    if (isField) {
-      originalFieldCount++;
-    }
     bool drop = isField && isColumnAllNull(tablet.bitMaps[i], tablet.rowSize);
     if (drop) {
       continue;
     }
     keptIndices.push_back(i);
-    if (isField) {
-      keptFieldCount++;
-    }
   }
 
   if (keptIndices.size() == columnCount) {
     return std::shared_ptr<const Tablet>(&tablet, [](const Tablet*) {});
-  }
-  if (originalFieldCount > 0 && keptFieldCount == 0) {
-    return nullptr;
   }
   if (keptIndices.empty()) {
     return nullptr;

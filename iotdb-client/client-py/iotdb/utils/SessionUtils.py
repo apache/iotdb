@@ -52,7 +52,8 @@ def filter_null_columns(
     Returns:
         the same instance if nothing to drop;
         a new tablet with remaining columns;
-        None if every FIELD column is null.
+        None if no columns remain. Table-model TAG / ATTRIBUTE columns are kept even when
+        every FIELD column is null.
     """
     if tablet is None:
         return None
@@ -62,8 +63,6 @@ def filter_null_columns(
     row_number = tablet.get_row_number()
 
     kept_indices: List[int] = []
-    original_field_count = 0
-    kept_field_count = 0
 
     is_numpy = isinstance(tablet, NumpyTablet)
     bitmaps = tablet.bitmaps if is_numpy else None
@@ -75,8 +74,6 @@ def filter_null_columns(
             else ColumnType.FIELD
         )
         is_field = category == ColumnType.FIELD
-        if is_field:
-            original_field_count += 1
 
         if is_field:
             if is_numpy:
@@ -93,13 +90,9 @@ def filter_null_columns(
             continue
 
         kept_indices.append(i)
-        if is_field:
-            kept_field_count += 1
 
     if len(kept_indices) == column_number:
         return tablet
-    if original_field_count > 0 and kept_field_count == 0:
-        return None
     if not kept_indices:
         return None
 

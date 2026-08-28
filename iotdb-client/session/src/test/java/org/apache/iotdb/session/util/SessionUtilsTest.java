@@ -22,6 +22,7 @@ package org.apache.iotdb.session.util;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -267,6 +268,27 @@ public class SessionUtilsTest {
     allNull.addValue("s4", 0, null);
     allNull.addValue("s5", 0, null);
     Assert.assertNull(SessionUtils.filterNullColumns(allNull));
+
+    // table model: keep TAG when all FIELD columns are null
+    List<IMeasurementSchema> tableSchemas = new ArrayList<>();
+    tableSchemas.add(new MeasurementSchema("tag1", TSDataType.STRING));
+    tableSchemas.add(new MeasurementSchema("s1", TSDataType.INT32));
+    tableSchemas.add(new MeasurementSchema("s2", TSDataType.INT32));
+    List<ColumnCategory> columnCategories = new ArrayList<>();
+    columnCategories.add(ColumnCategory.TAG);
+    columnCategories.add(ColumnCategory.FIELD);
+    columnCategories.add(ColumnCategory.FIELD);
+    Tablet tableModelTablet = new Tablet("table1", tableSchemas, columnCategories, 1);
+    tableModelTablet.addTimestamp(0, 3000L);
+    tableModelTablet.addValue("tag1", 0, "d1");
+    tableModelTablet.addValue("s1", 0, null);
+    tableModelTablet.addValue("s2", 0, null);
+    Tablet tableModelFiltered = SessionUtils.filterNullColumns(tableModelTablet);
+    Assert.assertNotNull(tableModelFiltered);
+    Assert.assertNotSame(tableModelTablet, tableModelFiltered);
+    Assert.assertEquals(1, tableModelFiltered.getSchemas().size());
+    Assert.assertEquals("tag1", tableModelFiltered.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals(ColumnCategory.TAG, tableModelFiltered.getColumnTypes().get(0));
   }
 
   @Test
