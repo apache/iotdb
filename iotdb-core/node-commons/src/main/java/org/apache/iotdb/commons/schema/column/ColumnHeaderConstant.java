@@ -140,6 +140,19 @@ public class ColumnHeaderConstant {
   public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
   public static final String SUBSCRIBED_CONSUMERS = "SubscribedConsumers";
   public static final String SUBSCRIPTION_ID = "SubscriptionID";
+  public static final String SUBSCRIPTION_ACTIVE = "Active";
+  public static final String SUBSCRIPTION_INITIALIZED = "Initialized";
+  public static final String RAW_WAL_GAP = "RawWalGap";
+  public static final String APPROXIMATE_LAG = "ApproximateLag";
+  public static final String IN_FLIGHT_EVENT_COUNT = "InFlightEventCount";
+  public static final String PREFETCHED_EVENT_COUNT = "PrefetchedEventCount";
+  public static final String PENDING_EVENT_COUNT = "PendingEventCount";
+  public static final String CURRENT_WAL_SEARCH_INDEX = "CurrentWalSearchIndex";
+  public static final String NEXT_READ_SEARCH_INDEX = "NextReadSearchIndex";
+  public static final String LAST_PROGRESS_TIME = "LastProgressTime";
+  public static final String LAST_POLL_TIME = "LastPollTime";
+  public static final String LAST_CONSUMER_ID = "LastConsumerId";
+  public static final String SEEK_GENERATION = "SeekGeneration";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -259,6 +272,7 @@ public class ColumnHeaderConstant {
       "max_schema_region_group_num";
   public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
   public static final String MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL = "max_data_region_group_num";
+  public static final String NEED_LAST_CACHE_TABLE_MODEL = "need_last_cache";
 
   public static final String REGION_ID_TABLE_MODEL = "region_id";
   public static final String DATANODE_ID_TABLE_MODEL = "datanode_id";
@@ -347,6 +361,7 @@ public class ColumnHeaderConstant {
   public static final String PRIVILEGES = "Privileges";
   public static final String COMMENT = "Comment";
   public static final String TABLE_TYPE = "TableType";
+  public static final String NEED_LAST_CACHE = "NeedLastCache";
 
   public static final String VIEW = "View";
   public static final String CREATE_VIEW = "Create View";
@@ -434,7 +449,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(
@@ -644,6 +660,29 @@ public class ColumnHeaderConstant {
           new ColumnHeader(CONSUMER_GROUP_NAME, TSDataType.TEXT),
           new ColumnHeader(SUBSCRIBED_CONSUMERS, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showSubscriptionDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SUBSCRIPTION_ID, TSDataType.TEXT),
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(CONSUMER_GROUP_NAME, TSDataType.TEXT),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(REGION_ID, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(SUBSCRIPTION_ACTIVE, TSDataType.BOOLEAN),
+          new ColumnHeader(SUBSCRIPTION_INITIALIZED, TSDataType.BOOLEAN),
+          new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(RAW_WAL_GAP, TSDataType.INT64),
+          new ColumnHeader(APPROXIMATE_LAG, TSDataType.INT64),
+          new ColumnHeader(IN_FLIGHT_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(PREFETCHED_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(PENDING_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(CURRENT_WAL_SEARCH_INDEX, TSDataType.INT64),
+          new ColumnHeader(NEXT_READ_SEARCH_INDEX, TSDataType.INT64),
+          new ColumnHeader(LAST_PROGRESS_TIME, TSDataType.INT64),
+          new ColumnHeader(LAST_POLL_TIME, TSDataType.INT64),
+          new ColumnHeader(LAST_CONSUMER_ID, TSDataType.TEXT),
+          new ColumnHeader(SEEK_GENERATION, TSDataType.INT64));
+
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(SOURCE_COLUMN, TSDataType.TEXT),
@@ -758,7 +797,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(
@@ -807,7 +847,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT),
-          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT));
+          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(NEED_LAST_CACHE, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(

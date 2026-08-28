@@ -1455,7 +1455,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.ShowSubscriptionsStatementContext ctx) {
     final String topicName =
         getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
-    return new ShowSubscriptions(topicName);
+    return new ShowSubscriptions(topicName, ctx.DETAILS() != null);
   }
 
   @Override

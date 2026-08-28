@@ -541,6 +541,11 @@
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-io</artifactId>
+                <version>${jetty.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-util</artifactId>
                 <version>${jetty.version}</version>
             </dependency>
@@ -712,6 +717,10 @@
                     <version>3.1.2</version>
                     <configuration>
                         <argLine>${argLine} -Xmx1024m</argLine>
+                        <!-- Subscription UT is maintained and executed by the enterprise edition. -->
+                        <excludes>
+                            <exclude>**/subscription/**</exclude>
+                        </excludes>
                         <!-- Force the working directory to be different for each fork, so forks don't trample each other -->
                         <workingDirectory>${project.build.directory}/fork_${surefire.forkNumber}</workingDirectory>
                     </configuration>

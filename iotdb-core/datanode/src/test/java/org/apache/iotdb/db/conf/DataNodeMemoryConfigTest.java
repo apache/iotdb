@@ -21,10 +21,12 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.junit.Test;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -35,7 +37,7 @@ import static org.junit.Assert.assertTrue;
 public class DataNodeMemoryConfigTest {
 
   @Test
-  public void testResolveSubscriptionQueryMemoryProportions() {
+  public void testResolveSubscriptionQueryMemoryProportionsWhenEnabled() {
     final int[] defaultProportions = DataNodeMemoryConfig.resolveQueryMemoryProportions(null, true);
     assertArrayEquals(new int[] {1, 100, 200, 50, 200, 200, 200, 50, 250}, defaultProportions);
     assertEquals(
@@ -43,10 +45,52 @@ public class DataNodeMemoryConfigTest {
     assertArrayEquals(
         new int[] {1, 100, 200, 50, 200, 200, 200, 50, 250},
         DataNodeMemoryConfig.resolveQueryMemoryProportions("1:100:200:50:200:200:200:50", true));
+  }
+
+  @Test
+  public void testResolveSubscriptionQueryMemoryProportionsWhenDisabled() {
     assertArrayEquals(
         new int[] {1, 100, 200, 50, 200, 200, 200, 50, 0},
         DataNodeMemoryConfig.resolveQueryMemoryProportions(
             "1:100:200:50:200:200:200:50:1000", false));
+    assertArrayEquals(
+        new int[] {1, 100, 200, 50, 200, 200, 200, 50, 0},
+        DataNodeMemoryConfig.resolveQueryMemoryProportions(null, false));
+  }
+
+  @Test
+  public void testSubscriptionDoesNotReserveQueryMemoryWhenDisabledByDefault()
+      throws ReflectiveOperationException {
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("chunk_timeseriesmeta_free_memory_proportion", "0:0:0:0:1:0:0:0:1");
+    final DataNodeMemoryConfig memoryConfig = initializeQueryEngineMemory(properties);
+
+    assertEquals(0, memoryConfig.getSubscriptionMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(1_000_000L, memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes());
+  }
+
+  @Test
+  public void testSubscriptionDoesNotReserveQueryMemoryWhenExplicitlyDisabled()
+      throws ReflectiveOperationException {
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("chunk_timeseriesmeta_free_memory_proportion", "0:0:0:0:1:0:0:0:1");
+    properties.setProperty("subscription_enabled", Boolean.FALSE.toString());
+    final DataNodeMemoryConfig memoryConfig = initializeQueryEngineMemory(properties);
+
+    assertEquals(0, memoryConfig.getSubscriptionMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(1_000_000L, memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes());
+  }
+
+  @Test
+  public void testSubscriptionDoesNotReserveQueryMemoryWhenConfiguredEnabled()
+      throws ReflectiveOperationException {
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("chunk_timeseriesmeta_free_memory_proportion", "0:0:0:0:1:0:0:0:1");
+    properties.setProperty("subscription_enabled", Boolean.TRUE.toString());
+    final DataNodeMemoryConfig memoryConfig = initializeQueryEngineMemory(properties);
+
+    assertEquals(0, memoryConfig.getSubscriptionMemoryManager().getTotalMemorySizeInBytes());
+    assertEquals(1_000_000L, memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @Test
@@ -132,5 +176,16 @@ public class DataNodeMemoryConfigTest {
     assertEquals(
         Runtime.getRuntime().maxMemory() / 7,
         DataNodeMemoryConfig.calculateAutoResizingBufferMemorySizeInBytes(properties));
+  }
+
+  private DataNodeMemoryConfig initializeQueryEngineMemory(TrimProperties properties)
+      throws ReflectiveOperationException {
+    final DataNodeMemoryConfig memoryConfig = new DataNodeMemoryConfig();
+    final Method initQueryEngineMemoryAllocate =
+        DataNodeMemoryConfig.class.getDeclaredMethod(
+            "initQueryEngineMemoryAllocate", MemoryManager.class, TrimProperties.class);
+    initQueryEngineMemoryAllocate.setAccessible(true);
+    initQueryEngineMemoryAllocate.invoke(memoryConfig, new MemoryManager(1_000_000L), properties);
+    return memoryConfig;
   }
 }

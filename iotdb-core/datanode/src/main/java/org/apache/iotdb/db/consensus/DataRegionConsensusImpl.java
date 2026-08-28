@@ -39,6 +39,7 @@ import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config.ReplicateMode;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -140,6 +141,8 @@ public class DataRegionConsensusImpl {
       return ConsensusConfig.newBuilder()
           .setThisNodeId(CONF.getDataNodeId())
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
+          .setTrustedChannelFailureHandler(
+              DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary)
           .setStorageDir(CONF.getDataRegionConsensusDir())
           .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))
           // IoTConsensus always balances received snapshot files by least occupied space,

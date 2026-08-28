@@ -798,10 +798,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                           req.getRequest(),
                           e);
                     }
-                    // nack
+                    // A response-size overflow caused by events already added to this response is
+                    // local batching backpressure, not a consumer rejection. Requeue it without
+                    // increasing the poison-message nack counter.
                     if (!isOutdated) {
-                      SubscriptionAgent.broker()
-                          .commit(consumerConfig, Collections.singletonList(commitContext), true);
+                      final boolean requeued =
+                          e instanceof SubscriptionPayloadExceedException
+                              && totalSize.get() > 0
+                              && SubscriptionAgent.broker().requeue(consumerConfig, commitContext);
+                      if (!requeued) {
+                        SubscriptionAgent.broker()
+                            .commit(consumerConfig, Collections.singletonList(commitContext), true);
+                      }
                     }
                     return null;
                   }

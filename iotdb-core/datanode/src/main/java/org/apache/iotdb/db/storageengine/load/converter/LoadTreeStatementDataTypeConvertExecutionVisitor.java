@@ -42,6 +42,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil.calculateTabletSizeInBytes;
@@ -57,6 +58,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           .getLoadTsFileTabletConversionBatchMemorySizeInBytes();
 
   private final StatementExecutor statementExecutor;
+  private final Function<File, LoadTreeTsFileTabletIterator> tabletIteratorFactory;
 
   @FunctionalInterface
   public interface StatementExecutor {
@@ -65,7 +67,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
   public LoadTreeStatementDataTypeConvertExecutionVisitor(
       final StatementExecutor statementExecutor) {
+    this(statementExecutor, file -> new LoadTreeTsFileTabletIterator(file, true));
+  }
+
+  LoadTreeStatementDataTypeConvertExecutionVisitor(
+      final StatementExecutor statementExecutor,
+      final Function<File, LoadTreeTsFileTabletIterator> tabletIteratorFactory) {
     this.statementExecutor = statementExecutor;
+    this.tabletIteratorFactory = tabletIteratorFactory;
   }
 
   @Override
@@ -87,11 +96,24 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
     boolean shouldReleaseContext = !isManagedTask;
 
     try {
+      if (conversionContext.deferredStatus != null) {
+        final TSStatus result =
+            flushPendingTablets(conversionContext, loadTsFileStatement.isConvertOnTypeMismatch());
+        if (!handleTSStatus(result, loadTsFileStatement)) {
+          shouldReleaseContext = !isManagedTask || !isTemporaryUnavailable(result);
+          return Optional.of(result);
+        }
+        final TSStatus deferredStatus = conversionContext.deferredStatus;
+        conversionContext.deferredStatus = null;
+        shouldReleaseContext = true;
+        return Optional.of(deferredStatus);
+      }
+
       final List<File> files = loadTsFileStatement.getTsFiles();
       while (conversionContext.fileIndex < files.size()) {
         if (conversionContext.tabletIterator == null) {
           conversionContext.tabletIterator =
-              new LoadTreeTsFileTabletIterator(files.get(conversionContext.fileIndex), true);
+              tabletIteratorFactory.apply(files.get(conversionContext.fileIndex));
         }
 
         if (conversionContext.deferredTabletRawReq != null) {
@@ -164,11 +186,29 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
               .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
           loadTsFileStatement,
           e);
+      final boolean retryable = isRetryableConversionException(e);
       final TSStatus status =
           loadTsFileStatement.accept(
               LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
-      shouldReleaseContext =
-          !isManagedTask || !LoadTsFileDataTypeConverter.isMemoryPressureException(e);
+
+      // A parser can fail after producing tablets that are still waiting for the next batch
+      // boundary. Submit those tablets before reporting the parser error so the error does not
+      // discard successfully converted data.
+      if (!retryable && !conversionContext.tabletRawReqs.isEmpty()) {
+        final TSStatus flushStatus =
+            flushPendingTablets(conversionContext, loadTsFileStatement.isConvertOnTypeMismatch());
+        if (!handleTSStatus(flushStatus, loadTsFileStatement)) {
+          if (isManagedTask && isTemporaryUnavailable(flushStatus)) {
+            conversionContext.deferredStatus = status;
+            shouldReleaseContext = false;
+          } else {
+            shouldReleaseContext = true;
+          }
+          return Optional.of(flushStatus);
+        }
+      }
+
+      shouldReleaseContext = !isManagedTask || !retryable;
       return Optional.of(status);
     } finally {
       if (shouldReleaseContext) {
@@ -201,6 +241,21 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
                 == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode());
   }
 
+  private static boolean isRetryableConversionException(final Throwable throwable) {
+    if (LoadTsFileDataTypeConverter.isMemoryPressureException(throwable)) {
+      return true;
+    }
+
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof InterruptedException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
   private static void deleteSourceFiles(final LoadTsFileStatement statement) {
     statement
         .getTsFiles()
@@ -228,6 +283,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
     private Pair<Tablet, Boolean> deferredTabletWithIsAligned;
     private PipeTransferTabletRawReq deferredTabletRawReq;
     private long deferredTabletRawReqSize;
+    private TSStatus deferredStatus;
 
     private void addTablet(final PipeTransferTabletRawReq request, final long size) {
       tabletRawReqs.add(request);
@@ -259,6 +315,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       deferredTabletWithIsAligned = null;
       deferredTabletRawReq = null;
       deferredTabletRawReqSize = 0;
+      deferredStatus = null;
       block.close();
     }
   }
