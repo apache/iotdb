@@ -359,7 +359,16 @@ public class DataPartitionTableIntegrityCheckProcedure
 
       // Get current DataPartitionTable from ConfigManager
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
-          localDataPartitionTable = getLocalDataPartitionTable(env, database);
+          localDataPartitionTable;
+      try {
+        localDataPartitionTable = getLocalDataPartitionTable(env, database);
+      } catch (IllegalPathException e) {
+        LOG.warn(
+            "[DataPartitionIntegrity] Skip database {} because it is not a legal path",
+            database,
+            e);
+        continue;
+      }
 
       // Check if ConfigNode has a data partition that is associated with the earliestTimeslot
       if ((localDataPartitionTable == null
@@ -420,13 +429,10 @@ public class DataPartitionTableIntegrityCheckProcedure
   }
 
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
-      getLocalDataPartitionTable(final ConfigNodeProcedureEnv env, final String database) {
+      getLocalDataPartitionTable(final ConfigNodeProcedureEnv env, final String database)
+          throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
-    try {
-      patternTree.appendPathPattern(new PartialPath(database).concatNode("**"));
-    } catch (IllegalPathException e) {
-      throw new RuntimeException(e);
-    }
+    patternTree.appendPathPattern(new PartialPath(database).concatNode("**"));
     patternTree.constructTree();
     Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
         env.getConfigManager().getSchemaPartition(patternTree).getSchemaPartitionTable();
@@ -678,12 +684,23 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
+    Set<String> invalidDatabases = new HashSet<>();
     for (String database : databasesWithLostDataPartition) {
       Map<TSeriesPartitionSlot, SeriesPartitionTable> finalDataPartitionMap = new HashMap<>();
 
       // Get current DataPartitionTable from ConfigManager
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
-          localDataPartitionTableMap = getLocalDataPartitionTable(env, database);
+          localDataPartitionTableMap;
+      try {
+        localDataPartitionTableMap = getLocalDataPartitionTable(env, database);
+      } catch (IllegalPathException e) {
+        LOG.warn(
+            "[DataPartitionIntegrity] Skip database {} because it is not a legal path",
+            database,
+            e);
+        invalidDatabases.add(database);
+        continue;
+      }
 
       // Check if ConfigNode has a data partition that is associated with the earliestTimeslot
       if (localDataPartitionTableMap == null
@@ -724,6 +741,7 @@ public class DataPartitionTableIntegrityCheckProcedure
                             .merge(databaseScopedDataPartitionTable.getDataPartitionTable()));
                   }));
     }
+    databasesWithLostDataPartition.removeAll(invalidDatabases);
 
     LOG.info("[DataPartitionIntegrity] DataPartitionTables merge completed successfully");
     setNextState(DataPartitionTableIntegrityCheckProcedureState.WRITE_PARTITION_TABLE_TO_CONSENSUS);
