@@ -44,6 +44,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -211,6 +212,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
@@ -400,14 +402,14 @@ public class ConfigManager implements IManager {
   }
 
   public void close() throws IOException {
-    if (consensusManager.get() != null) {
-      consensusManager.get().close();
-    }
     if (partitionManager != null) {
       partitionManager.getRegionMaintainer().shutdown();
     }
     if (procedureManager != null) {
       procedureManager.stopExecutor();
+    }
+    if (consensusManager.get() != null) {
+      consensusManager.get().close();
     }
   }
 
@@ -1042,6 +1044,28 @@ public class ConfigManager implements IManager {
     }
 
     return resp;
+  }
+
+  @Override
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    return partitionManager.dataPartitionTableIntegrityCheck();
+  }
+
+  @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TShowRepairDataPartitionTableProgressResp(
+              status, RepairDataPartitionTableProgressState.UNKNOWN.name(), 0.0)
+          .setMessage(status.getMessage());
+    }
+
+    return partitionManager.showRepairDataPartitionTableProgress();
   }
 
   private void printNewCreatedDataPartition(

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -168,6 +169,24 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     return deviceToIndex.keySet();
+  }
+
+  @Override
+  public Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter) {
+    return deviceToIndex.keySet();
+  }
+
+  public Map<IDeviceID, Integer> getDeviceToIndex() {
+    return deviceToIndex;
+  }
+
+  public long[] getEndTimes() {
+    return endTimes;
+  }
+
+  public long[] getStartTimes() {
+    return startTimes;
   }
 
   /**

@@ -57,6 +57,7 @@ import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
@@ -64,6 +65,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
@@ -1762,6 +1764,37 @@ public class ProcedureManager {
     if (interrupted) {
       Thread.currentThread().interrupt();
     }
+  }
+
+  public boolean isExistUnfinishedProcedure(
+      Class<? extends StateMachineProcedure<?, ?>> procedureClass) {
+    if (procedureClass == null) {
+      return false;
+    }
+
+    for (Procedure<ConfigNodeProcedureEnv> procedure : getExecutor().getProcedures().values()) {
+      if (!procedure.isFinished() && procedureClass.isInstance(procedure)) {
+        LOGGER.info(
+            "[{}] procedure details are {}",
+            procedureClass.getSimpleName(),
+            procedure.toStringDetails());
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  public Optional<DataPartitionTableIntegrityCheckProcedure>
+      getUnfinishedDataPartitionTableIntegrityCheckProcedure() {
+    for (Procedure<ConfigNodeProcedureEnv> procedure : getExecutor().getProcedures().values()) {
+      if (!procedure.isFinished()
+          && procedure instanceof DataPartitionTableIntegrityCheckProcedure) {
+        return Optional.of((DataPartitionTableIntegrityCheckProcedure) procedure);
+      }
+    }
+
+    return Optional.empty();
   }
 
   // ======================================================

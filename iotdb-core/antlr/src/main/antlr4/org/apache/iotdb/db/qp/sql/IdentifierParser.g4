@@ -176,6 +176,7 @@ keyWords
     | PRIVILEGES
     | PRIVILEGE_VALUE
     | PROCESSLIST
+    | PROGRESS
     | PROCESSOR
     | PROPERTY
     | PRUNE
@@ -225,6 +226,7 @@ keyWords
     | SUBSCRIPTIONS
     | SUBSTRING
     | SYSTEM
+    | TABLE
     | TAGS
     | TAIL
     | TASK

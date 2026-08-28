@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
@@ -83,10 +84,12 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreate
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -115,6 +118,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -150,6 +154,9 @@ public class PartitionManager {
 
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
+
+  private final AtomicBoolean dataPartitionTableIntegrityCheckProcedureRunning =
+      new AtomicBoolean(false);
 
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
@@ -468,6 +475,43 @@ public class PartitionManager {
       return resp;
     }
     return resp;
+  }
+
+  /** Used to repair the lost data partition table */
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    if (configManager
+            .getProcedureManager()
+            .isExistUnfinishedProcedure(DataPartitionTableIntegrityCheckProcedure.class)
+        || !dataPartitionTableIntegrityCheckProcedureRunning.compareAndSet(false, true)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+          "DataPartitionTableIntegrityCheckProcedure is already submitted.");
+    }
+
+    synchronized (this) {
+      DataPartitionTableIntegrityCheckProcedure procedure =
+          new DataPartitionTableIntegrityCheckProcedure();
+      getProcedureManager().getExecutor().submitProcedure(procedure);
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public void markDataPartitionTableIntegrityCheckProcedureFinished() {
+    dataPartitionTableIntegrityCheckProcedureRunning.set(false);
+  }
+
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    return configManager
+        .getProcedureManager()
+        .getUnfinishedDataPartitionTableIntegrityCheckProcedure()
+        .map(DataPartitionTableIntegrityCheckProcedure::getProgress)
+        .orElseGet(
+            () ->
+                new TShowRepairDataPartitionTableProgressResp(
+                        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
+                        RepairDataPartitionTableProgressState.IDLE.name(),
+                        0.0)
+                    .setMessage("No running DataPartitionTable integrity check procedure"));
   }
 
   private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {
