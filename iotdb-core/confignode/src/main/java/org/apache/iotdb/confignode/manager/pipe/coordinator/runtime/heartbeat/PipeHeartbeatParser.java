@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
@@ -178,10 +179,18 @@ public class PipeHeartbeatParser {
       final Set<Integer> requiredDataRegionIds =
           collectRequiredDataRegionIds(pipeMetaFromCoordinator);
 
-      // Remove completed pipes only when every required DataRegion has been reported complete.
-      // Relying on the region-level reports (instead of the DataNode-level boolean) prevents a
-      // leader-change / task-creation failure from being treated as a successful snapshot transfer.
-      if (!requiredDataRegionIds.isEmpty()
+      // A history-only internal pipe is finite and may be removed when all required DataRegions
+      // complete, or when CN determines that no DataRegion matched at creation time. An explicit
+      // region-level report proves that a DataNode has received the pipe meta, preventing an empty
+      // task map from completing the pipe before its initial push. Realtime and external-source
+      // pipes must remain alive because they may receive work in the future.
+      final boolean isFiniteInternalPipe =
+          !staticMeta.isSourceExternal()
+              && PipeTaskAgent.isHistoryOnlyPipe(staticMeta.getSourceParameters());
+      final boolean hasReliableDataRegionReport =
+          pipeHeartbeat.hasCompletedDataRegionReport(staticMeta);
+      if (isFiniteInternalPipe
+          && hasReliableDataRegionReport
           && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)) {
         PipeLogger.log(
             LOGGER::info,
