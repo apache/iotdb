@@ -69,6 +69,39 @@ TSDataType::TSDataType getTSDataTypeFromString(const string& str) {
   return TSDataType::UNKNOWN;
 }
 
+Tablet::Tablet(const std::string& deviceId,
+               const std::vector<std::pair<std::string, TSDataType::TSDataType>>& schemas,
+               const std::vector<ColumnCategory> columnTypes, size_t maxRowNumber, bool isAligned,
+               WithoutValueColumnsTag)
+    : deviceId(deviceId), schemas(schemas), columnTypes(columnTypes), maxRowNumber(maxRowNumber),
+      isAligned(isAligned) {
+  timestamps.resize(maxRowNumber);
+  values.resize(schemas.size(), nullptr);
+  tagColumnIndexes.clear();
+  for (size_t i = 0; i < columnTypes.size(); i++) {
+    if (columnTypes[i] == ColumnCategory::TAG) {
+      tagColumnIndexes.push_back(static_cast<int>(i));
+    }
+  }
+  bitMaps.resize(schemas.size());
+  for (size_t i = 0; i < schemas.size(); i++) {
+    bitMaps[i].resize(maxRowNumber);
+  }
+  schemaNameIndex.clear();
+  for (size_t i = 0; i < schemas.size(); i++) {
+    schemaNameIndex[schemas[i].first] = i;
+  }
+  rowSize = 0;
+}
+
+std::shared_ptr<Tablet> Tablet::createWithoutValueColumns(
+    const std::string& deviceId,
+    const std::vector<std::pair<std::string, TSDataType::TSDataType>>& schemas,
+    const std::vector<ColumnCategory>& columnTypes, size_t maxRowNumber, bool isAligned) {
+  return std::shared_ptr<Tablet>(new Tablet(deviceId, schemas, columnTypes, maxRowNumber, isAligned,
+                                            WithoutValueColumnsTag{}));
+}
+
 void Tablet::createColumns() {
   for (size_t i = 0; i < schemas.size(); i++) {
     TSDataType::TSDataType dataType = schemas[i].second;
@@ -417,8 +450,9 @@ static bool isColumnAllNull(const BitMap& bitMap, size_t rowSize) {
   if (rowSize == 0) {
     return false;
   }
-  if (bitMap.getSize() == rowSize && bitMap.isAllMarked()) {
-    return true;
+  // BitMap is sized to maxRowNumber; only [0, rowSize) are active rows.
+  if (bitMap.getSize() == rowSize) {
+    return bitMap.isAllMarked();
   }
   for (size_t row = 0; row < rowSize; row++) {
     if (!bitMap.isMarked(row)) {
@@ -465,9 +499,8 @@ std::shared_ptr<const Tablet> SessionUtils::filterNullColumns(const Tablet& tabl
                                                               : ColumnCategory::FIELD);
   }
 
-  auto filteredOut = std::make_shared<Tablet>(tablet.deviceId, keptSchemas, keptColumnTypes,
-                                              tablet.maxRowNumber, tablet.isAligned);
-  filteredOut->deleteColumns();
+  auto filteredOut = Tablet::createWithoutValueColumns(
+      tablet.deviceId, keptSchemas, keptColumnTypes, tablet.maxRowNumber, tablet.isAligned);
   filteredOut->timestamps = tablet.timestamps;
   filteredOut->rowSize = tablet.rowSize;
   for (size_t ni = 0; ni < keptIndices.size(); ni++) {

@@ -107,6 +107,13 @@ private:
   void createColumns();
   void deleteColumns();
 
+  struct WithoutValueColumnsTag {};
+
+  Tablet(const std::string& deviceId,
+         const std::vector<std::pair<std::string, TSDataType::TSDataType>>& schemas,
+         const std::vector<ColumnCategory> columnTypes, size_t maxRowNumber, bool isAligned,
+         WithoutValueColumnsTag);
+
 public:
   std::string deviceId; // deviceId of this tablet
   std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas;
@@ -162,30 +169,17 @@ public:
          const std::vector<std::pair<std::string, TSDataType::TSDataType>>& schemas,
          const std::vector<ColumnCategory> columnTypes, size_t maxRowNumber,
          bool _isAligned = false)
-      : deviceId(deviceId), schemas(schemas), columnTypes(columnTypes), maxRowNumber(maxRowNumber),
-        isAligned(_isAligned) {
-    // create timestamp column
-    timestamps.resize(maxRowNumber);
-    // create value columns
-    values.resize(schemas.size());
+      : Tablet(deviceId, schemas, columnTypes, maxRowNumber, _isAligned, WithoutValueColumnsTag{}) {
     createColumns();
-    // init tagColumnIndexes
-    for (size_t i = 0; i < this->columnTypes.size(); i++) {
-      if (this->columnTypes[i] == ColumnCategory::TAG) {
-        tagColumnIndexes.push_back(i);
-      }
-    }
-    // create bitMaps
-    bitMaps.resize(schemas.size());
-    for (size_t i = 0; i < schemas.size(); i++) {
-      bitMaps[i].resize(maxRowNumber);
-    }
-    // create schemaNameIndex
-    for (size_t i = 0; i < schemas.size(); i++) {
-      schemaNameIndex[schemas[i].first] = i;
-    }
-    this->rowSize = 0;
   }
+
+  /**
+   * Create a tablet with metadata and bitmaps only; value columns are filled by the caller.
+   */
+  static std::shared_ptr<Tablet> createWithoutValueColumns(
+      const std::string& deviceId,
+      const std::vector<std::pair<std::string, TSDataType::TSDataType>>& schemas,
+      const std::vector<ColumnCategory>& columnTypes, size_t maxRowNumber, bool isAligned = false);
 
   Tablet(const Tablet& other)
       : deviceId(other.deviceId), schemas(other.schemas), schemaNameIndex(other.schemaNameIndex),

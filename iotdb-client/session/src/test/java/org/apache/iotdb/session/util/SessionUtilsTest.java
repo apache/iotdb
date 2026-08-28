@@ -270,15 +270,15 @@ public class SessionUtilsTest {
     Assert.assertNull(SessionUtils.filterNullColumns(allNull));
 
     // table model: keep TAG when all FIELD columns are null
-    List<IMeasurementSchema> tableSchemas = new ArrayList<>();
-    tableSchemas.add(new MeasurementSchema("tag1", TSDataType.STRING));
-    tableSchemas.add(new MeasurementSchema("s1", TSDataType.INT32));
-    tableSchemas.add(new MeasurementSchema("s2", TSDataType.INT32));
+    List<String> tableMeasurements = Arrays.asList("tag1", "s1", "s2");
+    List<TSDataType> tableDataTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.INT32, TSDataType.INT32);
     List<ColumnCategory> columnCategories = new ArrayList<>();
     columnCategories.add(ColumnCategory.TAG);
     columnCategories.add(ColumnCategory.FIELD);
     columnCategories.add(ColumnCategory.FIELD);
-    Tablet tableModelTablet = new Tablet("table1", tableSchemas, columnCategories, 1);
+    Tablet tableModelTablet =
+        new Tablet("table1", tableMeasurements, tableDataTypes, columnCategories, 1);
     tableModelTablet.addTimestamp(0, 3000L);
     tableModelTablet.addValue("tag1", 0, "d1");
     tableModelTablet.addValue("s1", 0, null);
