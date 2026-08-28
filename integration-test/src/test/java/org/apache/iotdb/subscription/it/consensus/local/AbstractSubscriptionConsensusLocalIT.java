@@ -39,6 +39,7 @@ public abstract class AbstractSubscriptionConsensusLocalIT extends AbstractSubsc
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
