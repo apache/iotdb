@@ -505,7 +505,11 @@ public class SessionUtils {
               : ColumnCategory.FIELD;
       boolean isField = category == ColumnCategory.FIELD;
 
-      boolean drop = isField && i < bitMaps.length && isColumnAllNull(bitMaps[i], rowSize);
+      boolean drop =
+          isField
+              && schemas.get(i).getMeasurementName() != null
+              && i < bitMaps.length
+              && isColumnAllNull(bitMaps[i], rowSize);
       if (drop) {
         continue;
       }
