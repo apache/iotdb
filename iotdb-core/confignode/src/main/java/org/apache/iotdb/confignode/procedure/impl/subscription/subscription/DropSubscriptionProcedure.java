@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
@@ -105,11 +106,27 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
     for (final String topic : unsubscribeReq.getTopicNames()) {
       if (topicsUnsubByGroup.contains(topic)) {
+        final TopicMeta topicMeta =
+            subscriptionInfo.get().deepCopyTopicMeta(topic, unsubscribeReq.isTableModel);
+        final String topicMode = topicMeta.getConfig().getMode();
+        final boolean isConsensusBasedTopic = topicMeta.getConfig().isIncrementalMode();
+
+        if (isConsensusBasedTopic) {
+          LOGGER.info(
+              ProcedureMessages
+                      .LOG_DROPSUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_6962D13C
+                  + ProcedureMessages.LOG_MODE_ARG_SKIPPING_PIPE_REMOVAL_133B0CD6,
+              topic,
+              topicMode);
+          continue;
+        }
+
         // Topic will be subscribed by no consumers in this group
         dropPipeProcedures.add(
             new DropPipeProcedureV2(
                 PipeStaticMeta.generateSubscriptionPipeName(
                     topic, unsubscribeReq.getConsumerGroupId()),
+                topicMeta.visibleUnderTableModel(),
                 pipeTaskInfo));
       }
     }
@@ -133,7 +150,11 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     // Execute DropPipeProcedureV2s
     final List<ConfigPhysicalPlan> dropPipePlans =
         dropPipeProcedures.stream()
-            .map(proc -> new DropPipePlanV2(proc.getPipeName()))
+            .map(
+                proc ->
+                    proc.isTableModelSet()
+                        ? new DropPipePlanV2(proc.getPipeName(), proc.isTableModel())
+                        : new DropPipePlanV2(proc.getPipeName()))
             .collect(Collectors.toList());
     TSStatus response;
     try {
@@ -164,20 +185,18 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
     // Push pipe meta to data nodes
-    final List<String> pipeNames =
-        dropPipeProcedures.stream()
-            .map(DropPipeProcedureV2::getPipeName)
-            .collect(Collectors.toList());
     final String exceptionMessage =
         AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
-            null, dropMultiPipeOnDataNodes(pipeNames, env));
+            null, dropMultiPipeOnDataNodes(dropPipeProcedures, env));
     if (!exceptionMessage.isEmpty()) {
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
               ProcedureMessages
                   .FAILED_TO_DROP_PIPES_WHEN_DROPPING_SUBSCRIPTION_WITH_REQUEST_BECAUSE,
-              pipeNames,
+              dropPipeProcedures.stream()
+                  .map(DropPipeProcedureV2::getPipeName)
+                  .collect(Collectors.toList()),
               unsubscribeReq,
               exceptionMessage));
     }

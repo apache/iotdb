@@ -32,16 +32,20 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -56,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -70,6 +75,8 @@ import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -116,9 +123,12 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewPr
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.CommitProgressSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.runtime.SubscriptionHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime.TopicMetaSyncProcedure;
@@ -136,6 +146,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -157,6 +168,8 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.ratis.util.AutoCloseableLock;
 import org.apache.tsfile.enums.TSDataType;
@@ -174,6 +187,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -226,14 +240,21 @@ public class ProcedureManager {
   }
 
   public void startExecutor() {
+    startExecutor(null);
+  }
+
+  public void startExecutor(final Runnable beforeStartingWorkers) {
     if (!executor.isRunning()) {
       executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
-      executor.startWorkers();
       executor.startCompletedCleaner(
           CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
           CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
       executor.addInternalProcedure(partitionTableCleaner);
       store.start();
+      if (beforeStartingWorkers != null) {
+        beforeStartingWorkers.run();
+      }
+      executor.startWorkers();
       LOGGER.info(ManagerMessages.PROCEDUREMANAGER_IS_STARTED_SUCCESSFULLY);
     }
   }
@@ -248,6 +269,24 @@ public class ProcedureManager {
       }
       executor.removeInternalProcedure(partitionTableCleaner);
     }
+  }
+
+  /**
+   * Reload the completed-procedure cleaner with the current {@code
+   * procedure_completed_clean_interval} and {@code procedure_completed_evict_ttl}. Only takes
+   * effect on the running (leader) ConfigNode; on a follower the executor is stopped and the fresh
+   * values are picked up when {@link #startExecutor} runs after the next leader switch.
+   */
+  public void updateCompletedProcedureCleaner() {
+    if (executor.isRunning()) {
+      executor.restartCompletedCleaner(
+          CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
+          CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
+    }
+  }
+
+  public boolean isProcedureExecutionThread() {
+    return ProcedureExecutor.isProcedureExecutionThread();
   }
 
   @TestOnly
@@ -770,6 +809,29 @@ public class ProcedureManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  /**
+   * Collect the ids of all DataNodes that an in-progress {@link RemoveDataNodesProcedure} is
+   * removing.
+   *
+   * <p>A DataNode being removed must not receive any newly allocated Region replica: doing so would
+   * leave a replica stranded on a node that is about to disappear, blocking the removal from ever
+   * completing. We cannot rely on the node's {@link NodeStatus} here, because a DataNode that was
+   * killed (e.g. {@code kill -9}) before removal is reported as {@link NodeStatus#Unknown} by the
+   * failure detector rather than {@link NodeStatus#Removing}, so a status filter alone would still
+   * let it through. The authoritative source is therefore the running procedure itself, which holds
+   * the removing DataNode list and survives leader switches via procedure persistence.
+   *
+   * @return the set of DataNode ids currently being removed (empty if no removal is in progress)
+   */
+  public Set<Integer> getRemovingDataNodeIds() {
+    return getExecutor().getProcedures().values().stream()
+        .filter(procedure -> procedure instanceof RemoveDataNodesProcedure)
+        .filter(procedure -> !procedure.isFinished())
+        .flatMap(procedure -> ((RemoveDataNodesProcedure) procedure).getRemovedDataNodes().stream())
+        .map(TDataNodeLocation::getDataNodeId)
+        .collect(Collectors.toSet());
+  }
+
   // region region operation related check
 
   /**
@@ -784,6 +846,7 @@ public class ProcedureManager {
    */
   private TSStatus checkMigrateRegion(
       TMigrateRegionReq migrateRegionReq,
+      int regionId,
       TConsensusGroupId regionGroupId,
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
@@ -808,7 +871,7 @@ public class ProcedureManager {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, because the original DataNode %s doesn't contain Region %s",
-              migrateRegionReq.getFromId(), migrateRegionReq.getRegionId());
+              migrateRegionReq.getFromId(), regionId);
     } else if (configManager
         .getPartitionManager()
         .getAllReplicaSets(destDataNode.getDataNodeId())
@@ -817,7 +880,7 @@ public class ProcedureManager {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, because the target DataNode %s already contains Region %s",
-              migrateRegionReq.getToId(), migrateRegionReq.getRegionId());
+              migrateRegionReq.getToId(), regionId);
     }
 
     if (failMessage != null) {
@@ -843,7 +906,6 @@ public class ProcedureManager {
                 new Pair<>("Coordinator", coordinator)),
             req.getModel());
 
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (configManager
             .getPartitionManager()
             .getAllReplicaSetsMap(regionId.getType())
@@ -1082,82 +1144,154 @@ public class ProcedureManager {
   public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
-      TConsensusGroupId regionGroupId;
-      Optional<TConsensusGroupId> optional =
-          configManager
-              .getPartitionManager()
-              .generateTConsensusGroupIdByRegionId(migrateRegionReq.getRegionId());
-      if (optional.isPresent()) {
-        regionGroupId = optional.get();
-      } else {
-        LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
+      // The source and destination DataNodes are fixed for the whole statement, so resolve them
+      // once and reuse them for every region.
+      final TDataNodeConfiguration originalDataNodeConfiguration =
+          configManager.getNodeManager().getRegisteredDataNode(migrateRegionReq.getFromId());
+      final TDataNodeConfiguration destDataNodeConfiguration =
+          configManager.getNodeManager().getRegisteredDataNode(migrateRegionReq.getToId());
+      if (originalDataNodeConfiguration == null) {
         return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
-            .setMessage(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
+            .setMessage(
+                String.format(
+                    "Source DataNode %s does not exist in the cluster",
+                    migrateRegionReq.getFromId()));
+      }
+      if (destDataNodeConfiguration == null) {
+        return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    "Target DataNode %s does not exist in the cluster",
+                    migrateRegionReq.getToId()));
+      }
+      final TDataNodeLocation originalDataNode = originalDataNodeConfiguration.getLocation();
+      final TDataNodeLocation destDataNode = destDataNodeConfiguration.getLocation();
+      final RegionMaintainHandler handler = env.getRegionMaintainHandler();
+
+      TSStatus resp = new TSStatus();
+      StringBuilder messageBuilder = new StringBuilder();
+      int total = 0, success = 0;
+      // dedup region ids while preserving the user-specified order
+      for (int theRegionId : new LinkedHashSet<>(migrateRegionReq.getRegionIds())) {
+        total++;
+        TSStatus subStatus =
+            migrateOneRegion(
+                migrateRegionReq, theRegionId, originalDataNode, destDataNode, handler);
+        if (subStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          messageBuilder.append("region ").append(theRegionId).append(": Successfully submitted\n");
+          success++;
+        } else {
+          messageBuilder
+              .append("region ")
+              .append(theRegionId)
+              .append(": ")
+              .append(subStatus.getMessage())
+              .append('\n');
+        }
+        resp.addToSubStatus(subStatus);
       }
 
-      // find original dn and dest dn
-      final TDataNodeLocation originalDataNode =
-          configManager
-              .getNodeManager()
-              .getRegisteredDataNode(migrateRegionReq.getFromId())
-              .getLocation();
-      final TDataNodeLocation destDataNode =
-          configManager
-              .getNodeManager()
-              .getRegisteredDataNode(migrateRegionReq.getToId())
-              .getLocation();
-      // select coordinator for adding peer
-      RegionMaintainHandler handler = env.getRegionMaintainHandler();
-      // TODO: choose the DataNode which has lowest load
-      final TDataNodeLocation coordinatorForAddPeer =
-          handler
-              .filterDataNodeWithOtherRegionReplica(
-                  regionGroupId,
-                  destDataNode,
-                  NodeStatus.Running,
-                  NodeStatus.Removing,
-                  NodeStatus.ReadOnly)
-              .orElse(null);
-      // Select coordinator for removing peer
-      // For now, destDataNode temporarily acts as the coordinatorForRemovePeer
-      final TDataNodeLocation coordinatorForRemovePeer = destDataNode;
-
-      TSStatus status =
-          checkMigrateRegion(
-              migrateRegionReq,
-              regionGroupId,
-              originalDataNode,
-              destDataNode,
-              coordinatorForAddPeer);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
-      }
-
-      // finally, submit procedure
-      this.executor.submitProcedure(
-          new RegionMigrateProcedure(
-              regionGroupId,
-              originalDataNode,
-              destDataNode,
-              coordinatorForAddPeer,
-              coordinatorForRemovePeer));
-      LOGGER.info(
-          ManagerMessages
-              .MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE,
-          regionGroupId,
-          originalDataNode,
-          destDataNode,
-          coordinatorForAddPeer,
-          coordinatorForRemovePeer);
-
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      messageBuilder.insert(
+          0,
+          String.format(
+              "Total regions: %d, successfully submitted: %d, failed to submit: %d\n",
+              total, success, total - success));
+      resp.setCode(
+          total == success
+              ? TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              : TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      resp.setMessage(messageBuilder.toString());
+      return resp;
     }
+  }
+
+  private TSStatus migrateOneRegion(
+      TMigrateRegionReq migrateRegionReq,
+      int theRegionId,
+      TDataNodeLocation originalDataNode,
+      TDataNodeLocation destDataNode,
+      RegionMaintainHandler handler) {
+    TConsensusGroupId regionGroupId;
+    Optional<TConsensusGroupId> optional =
+        configManager.getPartitionManager().generateTConsensusGroupIdByRegionId(theRegionId);
+    if (optional.isPresent()) {
+      regionGroupId = optional.get();
+    } else {
+      LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
+      return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
+          .setMessage(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
+    }
+
+    // select coordinator for adding peer
+    // (future improvement: choose the DataNode which has the lowest load)
+    final TDataNodeLocation coordinatorForAddPeer =
+        handler
+            .filterDataNodeWithOtherRegionReplica(
+                regionGroupId,
+                destDataNode,
+                NodeStatus.Running,
+                NodeStatus.Removing,
+                NodeStatus.ReadOnly)
+            .orElse(null);
+    // Select coordinator for removing peer
+    // For now, destDataNode temporarily acts as the coordinatorForRemovePeer
+    final TDataNodeLocation coordinatorForRemovePeer = destDataNode;
+
+    TSStatus status =
+        checkMigrateRegion(
+            migrateRegionReq,
+            theRegionId,
+            regionGroupId,
+            originalDataNode,
+            destDataNode,
+            coordinatorForAddPeer);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    // finally, submit procedure
+    this.executor.submitProcedure(
+        new RegionMigrateProcedure(
+            regionGroupId,
+            originalDataNode,
+            destDataNode,
+            coordinatorForAddPeer,
+            coordinatorForRemovePeer));
+    LOGGER.info(
+        ManagerMessages
+            .MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE,
+        regionGroupId,
+        originalDataNode,
+        destDataNode,
+        coordinatorForAddPeer,
+        coordinatorForRemovePeer);
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /**
+   * Resolve the location of a registered DataNode, or return {@code null} if the given id does not
+   * belong to any registered DataNode (e.g. it is a ConfigNode id or simply does not exist). {@link
+   * org.apache.iotdb.confignode.manager.node.NodeManager#getRegisteredDataNode} returns an empty
+   * {@link TDataNodeConfiguration} whose location is {@code null} in that case, so callers must not
+   * dereference the result blindly.
+   */
+  private TDataNodeLocation getRegisteredDataNodeLocationOrNull(int dataNodeId) {
+    return configManager.getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
   }
 
   public TSStatus reconstructRegion(TReconstructRegionReq req) {
     RegionMaintainHandler handler = env.getRegionMaintainHandler();
     final TDataNodeLocation targetDataNode =
-        configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+        getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+    if (targetDataNode == null) {
+      // The target id is not a registered DataNode. Reject here instead of pushing a null down into
+      // checkReconstructRegion, which would otherwise throw a NullPointerException.
+      return new TSStatus(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode())
+          .setMessage(
+              String.format(
+                  "Target DataNode %s does not exist in the cluster", req.getDataNodeId()));
+    }
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       List<ReconstructRegionProcedure> procedures = new ArrayList<>();
@@ -1169,7 +1303,9 @@ public class ProcedureManager {
                 .orElseThrow(
                     () ->
                         new IllegalArgumentException(
-                            ManagerMessages.REGION_ID + x + " is invalid"));
+                            ManagerMessages.REGION_ID
+                                + x
+                                + ManagerMessages.EXCEPTION_INVALID_2928F475));
         final TDataNodeLocation coordinator =
             handler
                 .filterDataNodeWithOtherRegionReplica(
@@ -1261,7 +1397,15 @@ public class ProcedureManager {
 
       // find target dn
       final TDataNodeLocation targetDataNode =
-          configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+          getRegisteredDataNodeLocationOrNull(req.getDataNodeId());
+      if (targetDataNode == null) {
+        // The target id is not a registered DataNode. Reject here instead of pushing a null down
+        // into checkExtendRegion, which would otherwise throw a NullPointerException.
+        return new TSStatus(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    "Target DataNode %s does not exist in the cluster", req.getDataNodeId()));
+      }
       // select coordinator for adding peer
       RegionMaintainHandler handler = env.getRegionMaintainHandler();
       // TODO: choose the DataNode which has lowest load
@@ -1400,7 +1544,8 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create trigger[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    ManagerMessages
+                        .MESSAGE_FAIL_CREATE_TRIGGER_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_11869523,
                     triggerInformation.getTriggerName()));
       }
     } catch (IOException e) {
@@ -1453,7 +1598,8 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create pipe plugin[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    ManagerMessages
+                        .MESSAGE_FAIL_CREATE_PIPE_PLUGIN_ARG_SIZE_JAR_TOO_LARGE_YOU_D194A893,
                     pipePluginMeta.getPluginName()));
       }
     } catch (IOException e) {
@@ -1521,7 +1667,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (final Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1537,7 +1683,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (final Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1546,7 +1692,8 @@ public class ProcedureManager {
 
   public TSStatus startConsensusPipe(String pipeName) {
     try {
-      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName);
+      StartPipeProcedureV2 procedure =
+          new StartPipeProcedureV2(pipeName, resolveIsTableModel(pipeName));
       executor.submitProcedure(procedure);
       return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
@@ -1555,15 +1702,19 @@ public class ProcedureManager {
   }
 
   public TSStatus startPipe(String pipeName) {
+    return startPipe(pipeName, false);
+  }
+
+  public TSStatus startPipe(String pipeName, boolean isTableModel) {
     try {
-      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName);
+      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName, isTableModel);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1572,7 +1723,8 @@ public class ProcedureManager {
 
   public TSStatus stopConsensusPipe(String pipeName) {
     try {
-      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName);
+      StopPipeProcedureV2 procedure =
+          new StopPipeProcedureV2(pipeName, resolveIsTableModel(pipeName));
       executor.submitProcedure(procedure);
       return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
@@ -1581,15 +1733,19 @@ public class ProcedureManager {
   }
 
   public TSStatus stopPipe(String pipeName) {
+    return stopPipe(pipeName, false);
+  }
+
+  public TSStatus stopPipe(String pipeName, boolean isTableModel) {
     try {
-      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName);
+      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName, isTableModel);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1598,7 +1754,8 @@ public class ProcedureManager {
 
   public TSStatus dropConsensusPipe(String pipeName) {
     try {
-      DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      DropPipeProcedureV2 procedure =
+          new DropPipeProcedureV2(pipeName, resolveIsTableModel(pipeName));
       executor.submitProcedure(procedure);
       return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
@@ -1612,7 +1769,8 @@ public class ProcedureManager {
    */
   public void dropConsensusPipeAsync(String pipeName) {
     try {
-      DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      DropPipeProcedureV2 procedure =
+          new DropPipeProcedureV2(pipeName, resolveIsTableModel(pipeName));
       executor.submitProcedure(procedure);
       LOGGER.info(ManagerMessages.SUBMITTED_ASYNC_CONSENSUS_PIPE_DROP, pipeName);
     } catch (Exception e) {
@@ -1622,19 +1780,27 @@ public class ProcedureManager {
   }
 
   public TSStatus dropPipe(String pipeName) {
+    return dropPipe(pipeName, false);
+  }
+
+  public TSStatus dropPipe(String pipeName, boolean isTableModel) {
     try {
-      final DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      final DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName, isTableModel);
       executor.submitProcedure(procedure);
       final TSStatus status = waitingProcedureFinished(procedure, PROCEDURE_WAIT_TIME_OUT << 1);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status, procedure));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
+  }
+
+  private boolean resolveIsTableModel(String pipeName) {
+    return configManager.getPipeManager().getPipeTaskCoordinator().resolveIsTableModel(pipeName);
   }
 
   private TSStatus handleConsensusPipeProcedure(Procedure<?> procedure) {
@@ -1643,12 +1809,12 @@ public class ProcedureManager {
       return status;
     } else {
       // if time out, optimistically believe that this procedure will execute successfully.
-      if (status.getMessage().equals(PROCEDURE_TIMEOUT_MESSAGE)) {
+      if (isProcedureTimeout(status)) {
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
       // otherwise, some exceptions must have occurred, throw them.
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-          .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+          .setMessage(wrapTimeoutMessageForPipeProcedure(status));
     }
   }
 
@@ -1662,6 +1828,25 @@ public class ProcedureManager {
           ManagerMessages.PIPEHANDLELEADERCHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID, procedureId);
     } catch (Exception e) {
       LOGGER.warn(ManagerMessages.PIPEHANDLELEADERCHANGEPROCEDURE_WAS_FAILED_TO_SUBMIT, e);
+    }
+  }
+
+  public void subscriptionHandleLeaderChange(
+      Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap,
+      long runtimeVersion) {
+    try {
+      final long procedureId =
+          executor.submitProcedure(
+              new SubscriptionHandleLeaderChangeProcedure(
+                  regionGroupToOldAndNewLeaderPairMap, runtimeVersion));
+      LOGGER.info(
+          ManagerMessages
+              .LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID_ARG_6DBD6075,
+          procedureId);
+    } catch (Exception e) {
+      LOGGER.warn(
+          ManagerMessages.LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_FAILED_SUBMIT_58FAB03F,
+          e);
     }
   }
 
@@ -1693,7 +1878,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1709,7 +1894,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1718,6 +1903,7 @@ public class ProcedureManager {
 
   public TSStatus createTopic(TCreateTopicReq req) {
     try {
+      injectTreeViewSourceAttributes(req.getTopicAttributes());
       CreateTopicProcedure procedure = new CreateTopicProcedure(req);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
@@ -1725,12 +1911,146 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
+  }
+
+  public TSStatus alterTopic(TAlterTopicReq req) {
+    final SubscriptionCoordinator subscriptionCoordinator =
+        configManager.getSubscriptionManager().getSubscriptionCoordinator();
+    final boolean isTableModel = new TopicConfig(req.getTopicAttributes()).isTableTopic();
+    subscriptionCoordinator.lockTopicAlteration(req.getTopicName(), isTableModel);
+    boolean isOwnerLeaseRenewalBlocked = false;
+    try {
+      isOwnerLeaseRenewalBlocked =
+          subscriptionCoordinator.blockOwnerLeaseRenewalIfOwnerTransfer(req);
+      // Owner transfers wait for the previous owner's lease to drain (lease duration + one
+      // heartbeat interval, measured on the ConfigNode clock) inside the call below before the
+      // updated meta is built; epoch fencing on DataNodes guarantees correctness in the meantime.
+      final TopicMeta updatedTopicMeta =
+          subscriptionCoordinator.buildAlteredTopicMetaAfterOwnerLeaseExpired(req);
+      if (updatedTopicMeta == null) {
+        return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    ManagerMessages.FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED,
+                    req.getTopicName()));
+      }
+
+      final Map<String, String> attributesBeforeInjection =
+          new HashMap<>(updatedTopicMeta.getConfig().getAttribute());
+      injectTreeViewSourceAttributes(updatedTopicMeta.getConfig().getAttribute());
+
+      final Map<String, String> updatedTopicAttributes = new HashMap<>();
+      if (Objects.nonNull(req.getTopicAttributes())) {
+        updatedTopicAttributes.putAll(req.getTopicAttributes());
+      }
+      updatedTopicMeta
+          .getConfig()
+          .getAttribute()
+          .forEach(
+              (key, value) -> {
+                if (!attributesBeforeInjection.containsKey(key)
+                    || !Objects.equals(attributesBeforeInjection.get(key), value)) {
+                  updatedTopicAttributes.put(key, value);
+                }
+              });
+
+      AlterTopicProcedure procedure =
+          new AlterTopicProcedure(updatedTopicMeta, updatedTopicAttributes);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+          .setMessage(wrapTimeoutMessageForPipeProcedure(status));
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    } finally {
+      if (isOwnerLeaseRenewalBlocked) {
+        subscriptionCoordinator.unblockOwnerLeaseRenewal(req.getTopicName(), isTableModel);
+      }
+      subscriptionCoordinator.unlockTopicAlteration(req.getTopicName(), isTableModel);
+    }
+  }
+
+  private void injectTreeViewSourceAttributes(final Map<String, String> topicAttributes) {
+    if (Objects.isNull(topicAttributes)) {
+      return;
+    }
+
+    final TopicConfig topicConfig = new TopicConfig(topicAttributes);
+    if (!topicConfig.isTableTopic()) {
+      return;
+    }
+
+    final String database =
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
+    final String tableName =
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
+    if (isDefaultTopicPattern(database, TopicConstant.DATABASE_DEFAULT_VALUE)
+        || isDefaultTopicPattern(tableName, TopicConstant.TABLE_DEFAULT_VALUE)
+        || !isLiteralTopicPattern(database)
+        || !isLiteralTopicPattern(tableName)) {
+      return;
+    }
+
+    final Optional<TsTable> table;
+    try {
+      table = configManager.getClusterSchemaManager().getTableIfExists(database, tableName);
+    } catch (final MetadataException e) {
+      LOGGER.debug(
+          "Skip injecting tree-view source attributes for topic table {}.{} because schema lookup failed",
+          database,
+          tableName,
+          e);
+      return;
+    }
+    table.ifPresent(viewTable -> injectTreeViewSourceAttributes(topicAttributes, viewTable));
+  }
+
+  @TestOnly
+  static void injectTreeViewSourceAttributes(
+      final Map<String, String> topicAttributes, final TsTable table) {
+    if (Objects.isNull(topicAttributes)
+        || Objects.isNull(table)
+        || !TreeViewSchema.isTreeViewTable(table)) {
+      return;
+    }
+    topicAttributes.putIfAbsent(
+        PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, Boolean.TRUE.toString());
+    topicAttributes.putIfAbsent(
+        PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.FALSE.toString());
+    if (!containsKeyIgnoreCase(topicAttributes, PipeSourceConstant.SOURCE_PATTERN_KEY)
+        && !containsKeyIgnoreCase(topicAttributes, PipeSourceConstant.SOURCE_PATH_KEY)
+        && !containsKeyIgnoreCase(
+            topicAttributes, PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY)) {
+      topicAttributes.put(
+          PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY,
+          TreeViewSchema.getPrefixPattern(table).toString());
+    }
+  }
+
+  private static boolean isDefaultTopicPattern(final String pattern, final String defaultPattern) {
+    return Objects.isNull(pattern) || defaultPattern.equals(pattern.trim());
+  }
+
+  private static boolean isLiteralTopicPattern(final String pattern) {
+    final String regexMetaCharacters = ".*+?[](){}\\|^$";
+    return Objects.nonNull(pattern)
+        && pattern.chars().noneMatch(c -> regexMetaCharacters.indexOf((char) c) >= 0);
+  }
+
+  private static boolean containsKeyIgnoreCase(
+      final Map<String, String> attributes, final String targetKey) {
+    return attributes.keySet().stream().anyMatch(targetKey::equalsIgnoreCase);
   }
 
   public TSStatus dropTopic(String topicName) {
@@ -1742,7 +2062,23 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus dropTopic(String topicName, boolean isTableModel) {
+    try {
+      DropTopicProcedure procedure = new DropTopicProcedure(topicName, isTableModel);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      } else {
+        return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1758,7 +2094,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
@@ -1775,7 +2111,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
@@ -1792,7 +2128,7 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
@@ -1809,7 +2145,24 @@ public class ProcedureManager {
         return status;
       } else {
         return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus commitProgressSync() {
+    try {
+      CommitProgressSyncProcedure procedure = new CommitProgressSyncProcedure();
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      } else {
+        return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
@@ -1824,14 +2177,14 @@ public class ProcedureManager {
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
-      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(status.getMessage())) {
+      } else if (isProcedureTimeout(status)) {
         // we assume that a timeout has occurred in the procedure related to the pipe in the
         // subscription procedure
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
@@ -1846,14 +2199,14 @@ public class ProcedureManager {
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
-      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(status.getMessage())) {
+      } else if (isProcedureTimeout(status)) {
         // we assume that a timeout has occurred in the procedure related to the pipe in the
         // subscription procedure
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
@@ -1911,7 +2264,7 @@ public class ProcedureManager {
     if (!procedure.isFinished()) {
       // The procedure is still executing
       status =
-          RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, PROCEDURE_TIMEOUT_MESSAGE);
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_REQUEST_TIME_OUT, PROCEDURE_TIMEOUT_MESSAGE);
     } else {
       if (procedure.isSuccess()) {
         if (procedure.getResult() != null) {
@@ -1941,12 +2294,25 @@ public class ProcedureManager {
     return status;
   }
 
-  private static String wrapTimeoutMessageForPipeProcedure(String message) {
-    if (message.equals(PROCEDURE_TIMEOUT_MESSAGE)) {
-      return message
-          + " Please manually check later whether the procedure is executed successfully.";
+  private static boolean isProcedureTimeout(final TSStatus status) {
+    return status.getCode() == TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode();
+  }
+
+  private static String wrapTimeoutMessageForPipeProcedure(final TSStatus status) {
+    if (isProcedureTimeout(status)) {
+      return String.format(
+          ManagerMessages
+              .MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D,
+          status.getMessage());
     }
-    return message;
+    return status.getMessage();
+  }
+
+  private static String wrapTimeoutMessageForPipeProcedure(
+      final TSStatus status, final AbstractOperatePipeProcedureV2 procedure) {
+    return isProcedureTimeout(status)
+        ? procedure.getTimeoutDiagnosticMessage()
+        : status.getMessage();
   }
 
   public static void sleepWithoutInterrupt(final long timeToSleep) {
@@ -2180,10 +2546,16 @@ public class ProcedureManager {
     }
   }
 
+  // only care about the AbstractAlterOrDropTableProcedure(except the drop table/view)
+  // and the DeleteDatabaseProcedure
   public Map<String, List<String>> getAllExecutingTables() {
     final Map<String, List<String>> result = new HashMap<>();
     for (final Procedure<?> procedure : executor.getProcedures().values()) {
       if (procedure.isFinished()) {
+        continue;
+      }
+      // the table with pre-delete status will be collected by getAllPreDeleteTables()
+      if (procedure instanceof DropTableProcedure) {
         continue;
       }
       // CreateTableOrViewProcedure is covered by the default process, thus we can ignore it here
@@ -2350,6 +2722,18 @@ public class ProcedureManager {
     }
 
     return false;
+  }
+
+  public Optional<DataPartitionTableIntegrityCheckProcedure>
+      getUnfinishedDataPartitionTableIntegrityCheckProcedure() {
+    for (Procedure<ConfigNodeProcedureEnv> procedure : getExecutor().getProcedures().values()) {
+      if (!procedure.isFinished()
+          && procedure instanceof DataPartitionTableIntegrityCheckProcedure) {
+        return Optional.of((DataPartitionTableIntegrityCheckProcedure) procedure);
+      }
+    }
+
+    return Optional.empty();
   }
 
   // ======================================================

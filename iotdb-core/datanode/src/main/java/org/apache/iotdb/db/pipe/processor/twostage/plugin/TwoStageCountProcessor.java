@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.plugin;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
@@ -101,6 +103,9 @@ public class TwoStageCountProcessor implements PipeProcessor {
   private final Queue<Pair<long[], ProgressIndex> /* ([timestamp, local count], progress index) */>
       localCommitQueue = new ConcurrentLinkedQueue<>();
 
+  private UserEntity sourceUserEntity;
+  private String sourcePassword;
+
   private TwoStageAggregateSender twoStageAggregateSender;
   private final Queue<Pair<Long, Long> /* (timestamp, global count) */> globalCountQueue =
       new ConcurrentLinkedQueue<>();
@@ -138,6 +143,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     creationTime = runtimeEnvironment.getCreationTime();
     regionId = runtimeEnvironment.getRegionId();
     pipeTaskMeta = runtimeEnvironment.getPipeTaskMeta();
+    sourceUserEntity = runtimeEnvironment.getSourceUserEntity();
+    sourcePassword = runtimeEnvironment.getSourcePassword();
     dataBaseName =
         StorageEngine.getInstance()
             .getDataRegion(new DataRegionId(runtimeEnvironment.getRegionId()))
@@ -146,24 +153,17 @@ public class TwoStageCountProcessor implements PipeProcessor {
       isTableModel = PathUtils.isTableModelDatabase(dataBaseName);
     }
 
-    outputSeries = new PartialPath(parameters.getString(_PROCESSOR_OUTPUT_SERIES_KEY));
+    outputSeries = parseOutputSeries(parameters);
 
     if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
-      if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
-        pipeTaskMeta.updateProgressIndex(
-            new StateProgressIndex(Long.MIN_VALUE, new HashMap<>(), MinimumProgressIndex.INSTANCE));
-      }
-
-      final StateProgressIndex stateProgressIndex =
-          (StateProgressIndex) pipeTaskMeta.getProgressIndex();
+      final StateProgressIndex stateProgressIndex = initializeStateProgressIndex(pipeTaskMeta);
       localCommitProgressIndex.set(stateProgressIndex.getInnerProgressIndex());
       final Binary localCountState = stateProgressIndex.getState().get(LOCAL_COUNT_STATE_KEY);
       localCount.set(
           Objects.isNull(localCountState) ? 0 : Long.parseLong(localCountState.toString()));
     }
     LOGGER.info(
-        "TwoStageCountProcessor customized by thread {}: pipeName={}, creationTime={}, regionId={}, outputSeries={}, "
-            + "localCommitProgressIndex={}, localCount={}",
+        DataNodePipeMessages.TWOSTAGECOUNTPROCESSOR_CUSTOMIZED_BY_THREAD_PIPENAME_CREATIONTIME_RE,
         Thread.currentThread().getName(),
         pipeName,
         creationTime,
@@ -175,7 +175,35 @@ public class TwoStageCountProcessor implements PipeProcessor {
     PipeCombineHandlerManager.getInstance()
         .register(
             pipeName, creationTime, (combineId) -> new CountOperator(combineId, globalCountQueue));
-    twoStageAggregateSender = new TwoStageAggregateSender(pipeName, creationTime);
+    twoStageAggregateSender =
+        new TwoStageAggregateSender(pipeName, creationTime, sourceUserEntity, sourcePassword);
+  }
+
+  static PartialPath parseOutputSeries(final PipeParameters parameters)
+      throws IllegalPathException {
+    return new PartialPath(
+        parameters.getStringByKeys(PROCESSOR_OUTPUT_SERIES_KEY, _PROCESSOR_OUTPUT_SERIES_KEY));
+  }
+
+  static StateProgressIndex initializeStateProgressIndex(final PipeTaskMeta pipeTaskMeta) {
+    final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    if (progressIndex instanceof StateProgressIndex stateProgressIndex) {
+      return stateProgressIndex;
+    }
+
+    final ProgressIndex updatedProgressIndex =
+        pipeTaskMeta.updateProgressIndex(
+            new StateProgressIndex(
+                Long.MIN_VALUE, Collections.emptyMap(), MinimumProgressIndex.INSTANCE));
+    return updatedProgressIndex
+        .getProgressIndexByType(StateProgressIndex.class)
+        .orElseThrow(
+            () ->
+                new PipeException(
+                    String.format(
+                        DataNodePipeMessages
+                            .EXCEPTION_FAILED_TO_INITIALIZE_STATEPROGRESSINDEX_FROM_PROGRESS_INDEX_ARG_E95617F9,
+                        updatedProgressIndex)));
   }
 
   @Override

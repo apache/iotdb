@@ -40,10 +40,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.zip.CRC32;
@@ -97,7 +99,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   }
 
   private void receive() throws IOException {
-    final InputStream inputStream = new BufferedInputStream(socket.getInputStream());
+    final ReadProgressInputStream readProgressInputStream =
+        new ReadProgressInputStream(socket.getInputStream());
+    final InputStream inputStream = new BufferedInputStream(readProgressInputStream);
 
     try {
       final byte[] data = readData(inputStream);
@@ -128,6 +132,18 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
                   .setType(ReadWriteIOUtils.readShort(byteBuffer))
                   .setBody(byteBuffer.slice());
       handleReq(req, System.currentTimeMillis());
+    } catch (final SocketTimeoutException e) {
+      // It is normal for an air gap sender to remain idle. Only close the connection when the
+      // timeout occurs after a request has started, because the stream can no longer be decoded
+      // reliably in that case. Do not send FAIL without receiving a complete request.
+      if (readProgressInputStream.hasReadAnyByte()) {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_EXCEPTION_DURING_HANDLING,
+            receiverId,
+            socket,
+            e);
+        socket.close();
+      }
     } catch (final PipeConnectionException e) {
       LOGGER.info(
           DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_SOCKET_CLOSED_WHEN,
@@ -155,10 +171,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || status.getCode()
             == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
-      LOGGER.info(
-          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED,
-          receiverId,
-          resp.getStatus());
       ok();
     } else if (status.getCode()
         == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
@@ -167,7 +179,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.info(DataNodePipeMessages.TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP);
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
         handleReq(req, startTime);
@@ -231,8 +242,11 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     if (length > maxLength) {
       throw new IOException(
           String.format(
-              "AirGap payload length (%d) exceeds maximum allowed (%d). Closing connection from %s",
-              length, maxLength, socket.getRemoteSocketAddress()));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_AIRGAP_PAYLOAD_LENGTH_D_EXCEEDS_MAXIMUM_ALLOWED_D_CLOSING_D1712B3D,
+              length,
+              maxLength,
+              socket.getRemoteSocketAddress()));
     }
 
     final byte[] resultBuffer = new byte[length];
@@ -264,7 +278,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       if (isELanguage) {
         throw new IOException(
             String.format(
-                "Detected suspicious nested E-Language prefix. Closing connection from %s",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_DETECTED_SUSPICIOUS_NESTED_E_LANGUAGE_PREFIX_CLOSING_CONNECTION_69C76172,
                 socket.getRemoteSocketAddress()));
       }
       isELanguagePayload = true;
@@ -325,6 +340,37 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
             DataNodePipeMessages.SOCKET_CLOSED_WHEN_EXECUTING_SKIPTILLENOUGH);
       }
       currentSkippedBytes += skippedBytes;
+    }
+  }
+
+  private static class ReadProgressInputStream extends FilterInputStream {
+
+    private boolean hasReadAnyByte;
+
+    private ReadProgressInputStream(final InputStream inputStream) {
+      super(inputStream);
+    }
+
+    @Override
+    public int read() throws IOException {
+      final int result = super.read();
+      if (result >= 0) {
+        hasReadAnyByte = true;
+      }
+      return result;
+    }
+
+    @Override
+    public int read(final byte[] buffer, final int offset, final int length) throws IOException {
+      final int result = super.read(buffer, offset, length);
+      if (result > 0) {
+        hasReadAnyByte = true;
+      }
+      return result;
+    }
+
+    private boolean hasReadAnyByte() {
+      return hasReadAnyByte;
     }
   }
 }

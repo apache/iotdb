@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.an.AINodeClient;
 import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -186,7 +187,8 @@ public class InferenceOperator implements ProcessOperator {
       try {
         if (!inferenceExecutionFuture.isDone()) {
           throw new IllegalStateException(
-              "The operator cannot continue until the forecast execution is done.");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THE_OPERATOR_CANNOT_CONTINUE_UNTIL_THE_FORECAST_EXECUTION_AF8A3145);
         }
 
         TInferenceResp inferenceResp = inferenceExecutionFuture.get();
@@ -229,7 +231,8 @@ public class InferenceOperator implements ProcessOperator {
       if (inputTsBlock.getValueColumnCount() > 1) {
         throw new SemanticException(
             String.format(
-                "Call inference function should not contain more than one input column, found [%d] input columns.",
+                DataNodeQueryMessages
+                    .CALL_INFERENCE_FUNCTION_SHOULD_NOT_CONTAIN_MORE_THAN_ONE_INPUT_COLUMN_FOUND_D_INPUT,
                 inputTsBlock.getValueColumnCount()));
       }
       for (int columnIndex = 0; columnIndex < inputTsBlock.getValueColumnCount(); columnIndex++) {

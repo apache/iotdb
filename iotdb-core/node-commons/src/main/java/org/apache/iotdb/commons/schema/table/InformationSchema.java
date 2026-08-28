@@ -108,7 +108,17 @@ public class InformationSchema {
             ColumnHeaderConstant.SCHEMA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_SCHEMA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
+    databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATABASES, databaseTable);
 
     final TsTable tableTable = new TsTable(TABLES);
@@ -128,6 +138,10 @@ public class InformationSchema {
             ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.NEED_LAST_CACHE_TABLE_MODEL, TSDataType.BOOLEAN));
+    tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
 
     final TsTable columnTable = new TsTable(COLUMNS);
@@ -219,6 +233,12 @@ public class InformationSchema {
     pipeTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.ESTIMATED_REMAINING_SECONDS_TABLE_MODEL, TSDataType.DOUBLE));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.IS_DEGRADED_TABLE_MODEL, TSDataType.BOOLEAN));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.RECENT_FAILURES_TABLE_MODEL, TSDataType.STRING));
     schemaTables.put(PIPES, pipeTable);
 
     final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);
@@ -357,6 +377,8 @@ public class InformationSchema {
     tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
     tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.REGION_ID_TABLE_MODEL, TSDataType.INT32));
@@ -430,6 +452,7 @@ public class InformationSchema {
         ImmutableSet.of(
             ColumnHeaderConstant.DATABASE.toLowerCase(),
             ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
+            ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL,
             ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL,
             ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
             ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));

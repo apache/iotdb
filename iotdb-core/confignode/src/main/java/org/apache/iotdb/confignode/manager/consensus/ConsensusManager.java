@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -44,6 +45,9 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -77,13 +81,22 @@ public class ConsensusManager {
       new ConfigRegionId(CONF.getConfigRegionId());
 
   private final IManager configManager;
+  private final ConfigRegionStateMachine stateMachine;
   private IConsensus consensusImpl;
 
   private boolean isInitialized;
 
   public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine) {
     this.configManager = configManager;
+    this.stateMachine = stateMachine;
     setConsensusLayer(stateMachine);
+  }
+
+  @TestOnly
+  ConsensusManager(IManager configManager, IConsensus consensusImpl) {
+    this.configManager = configManager;
+    this.consensusImpl = consensusImpl;
+    this.stateMachine = null;
   }
 
   public void start() throws IOException {
@@ -223,6 +236,8 @@ public class ConsensusManager {
                                       .setClientRetryMaxSleepTimeMs(
                                           CONF.getConfigNodeRatisMaxSleepTimeMs())
                                       .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                                      .setReconfigurationMaxRetryAttempts(
+                                          CONF.getConfigNodeRatisReconfigurationMaxRetryAttempts())
                                       .build())
                               .setImpl(
                                   RatisConfig.Impl.newBuilder()
@@ -266,7 +281,7 @@ public class ConsensusManager {
       if (oldWalDir.exists() && !oldWalDir.renameTo(new File(getConfigRegionDir()))) {
         LOGGER.warn(
             ManagerMessages.UPGRADE_CONFIGNODE_CONSENSUS_WAL_DIR_FOR_SIMPLECONSENSUS_FROM_VERSION_1
-                + "you maybe need to rename the simple dir to 0_0 manually.");
+                + ManagerMessages.LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9);
       }
     }
   }
@@ -289,7 +304,13 @@ public class ConsensusManager {
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
     }
-    consensusImpl.createLocalPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
+    try {
+      consensusImpl.createLocalPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
+    } catch (ConsensusGroupAlreadyExistException e) {
+      LOGGER.info(
+          ManagerMessages.LOG_CONFIGNODE_LOCAL_PEER_HAS_ALREADY_BEEN_CREATED_ARG_FA75E88F,
+          e.getMessage());
+    }
   }
 
   /**
@@ -306,6 +327,11 @@ public class ConsensusManager {
               DEFAULT_CONSENSUS_GROUP_ID,
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
+    } catch (PeerAlreadyInConsensusGroupException e) {
+      LOGGER.info(
+          ManagerMessages.LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_ADDED_ARG_A8F958B0,
+          configNodeLocation,
+          e.getMessage());
     } catch (ConsensusException e) {
       throw new AddPeerException(configNodeLocation);
     }
@@ -326,6 +352,12 @@ public class ConsensusManager {
               DEFAULT_CONSENSUS_GROUP_ID,
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
+      return true;
+    } catch (PeerNotInConsensusGroupException e) {
+      LOGGER.info(
+          ManagerMessages.LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_REMOVED_ARG_FACD71EE,
+          configNodeLocation,
+          e.getMessage());
       return true;
     } catch (ConsensusException e) {
       return false;
@@ -424,39 +456,61 @@ public class ConsensusManager {
    *     NEED_REDIRECTION otherwise
    */
   public TSStatus confirmLeader() {
-    TSStatus result = new TSStatus();
-    if (isLeaderReady()) {
-      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-      if (isLeader()) {
-        long startTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
-          if (isLeaderReady()) {
-            result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-            return result;
-          }
-          try {
-            Thread.sleep(RETRY_WAIT_TIME_MS);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn(
-                ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_CONFIGNODE_LEADER_READY);
-            break;
-          }
-        }
-        result.setMessage(
-            "The current ConfigNode is leader but not ready yet, please try again later.");
-      } else {
-        result.setMessage(
-            "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
-      }
+    return confirmLeader(true);
+  }
+
+  private TSStatus confirmLeader(final boolean checkLoadReady) {
+    if (!isLeader()) {
+      TSStatus result = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+      result.setMessage(
+          ManagerMessages
+              .MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D);
       TConfigNodeLocation leaderLocation = getLeaderLocation();
       if (leaderLocation != null) {
         result.setRedirectNode(leaderLocation.getInternalEndPoint());
       }
+      return result;
     }
-    return result;
+
+    waitForLeaderReady();
+
+    if (!isLeaderReady()) {
+      return getLeaderWarmingUpStatus(
+          ManagerMessages
+              .MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645);
+    }
+    if (!stateMachine.areLeaderServicesReady()) {
+      return getLeaderWarmingUpStatus(
+          ManagerMessages.MESSAGE_CURRENT_CONFIGNODE_LEADER_SERVICE_NOT_READY);
+    }
+    if (checkLoadReady && !configManager.getLoadManager().isLoadReady()) {
+      return getLeaderWarmingUpStatus(configManager.getLoadManager().getLoadReadyReason());
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TSStatus confirmLeaderForInternalProcedure() {
+    return confirmLeader(false);
+  }
+
+  private void waitForLeaderReady() {
+    long startTime = System.currentTimeMillis();
+    while (!isLeaderReady() && System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
+      try {
+        Thread.sleep(RETRY_WAIT_TIME_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn(
+            ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_CONFIGNODE_LEADER_READY);
+        return;
+      }
+    }
+  }
+
+  private TSStatus getLeaderWarmingUpStatus(String message) {
+    return new TSStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode())
+        .setMessage(message);
   }
 
   public ConsensusGroupId getConsensusGroupId() {

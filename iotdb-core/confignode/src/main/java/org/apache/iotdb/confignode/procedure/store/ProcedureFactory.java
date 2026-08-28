@@ -73,7 +73,9 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPrope
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.CommitProgressSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.runtime.SubscriptionHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
@@ -376,6 +378,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case ALTER_TOPIC_PROCEDURE:
         procedure = new AlterTopicProcedure();
         break;
+      case ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE:
+        procedure = new AlterTopicProcedure(true);
+        break;
       case TOPIC_META_SYNC_PROCEDURE:
         procedure = new TopicMetaSyncProcedure();
         break;
@@ -396,6 +401,12 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case CONSUMER_GROUP_META_SYNC_PROCEDURE:
         procedure = new ConsumerGroupMetaSyncProcedure();
+        break;
+      case COMMIT_PROGRESS_SYNC_PROCEDURE:
+        procedure = new CommitProgressSyncProcedure();
+        break;
+      case SUBSCRIPTION_HANDLE_LEADER_CHANGE_PROCEDURE:
+        procedure = new SubscriptionHandleLeaderChangeProcedure();
         break;
       case CREATE_MANY_DATABASES_PROCEDURE:
         procedure = new CreateManyDatabasesProcedure();
@@ -532,7 +543,9 @@ public class ProcedureFactory implements IProcedureFactory {
     } else if (procedure instanceof DropTopicProcedure) {
       return ProcedureType.DROP_TOPIC_PROCEDURE;
     } else if (procedure instanceof AlterTopicProcedure) {
-      return ProcedureType.ALTER_TOPIC_PROCEDURE;
+      return ((AlterTopicProcedure) procedure).shouldMergeUpdatedTopicAttributes()
+          ? ProcedureType.ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE
+          : ProcedureType.ALTER_TOPIC_PROCEDURE;
     } else if (procedure instanceof TopicMetaSyncProcedure) {
       return ProcedureType.TOPIC_META_SYNC_PROCEDURE;
     } else if (procedure instanceof CreateSubscriptionProcedure) {
@@ -547,6 +560,10 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ALTER_CONSUMER_GROUP_PROCEDURE;
     } else if (procedure instanceof ConsumerGroupMetaSyncProcedure) {
       return ProcedureType.CONSUMER_GROUP_META_SYNC_PROCEDURE;
+    } else if (procedure instanceof CommitProgressSyncProcedure) {
+      return ProcedureType.COMMIT_PROGRESS_SYNC_PROCEDURE;
+    } else if (procedure instanceof SubscriptionHandleLeaderChangeProcedure) {
+      return ProcedureType.SUBSCRIPTION_HANDLE_LEADER_CHANGE_PROCEDURE;
     } else if (procedure instanceof DeleteLogicalViewProcedure) {
       return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AlterLogicalViewProcedure) {
@@ -565,7 +582,9 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE;
     }
     throw new UnsupportedOperationException(
-        ProcedureMessages.PROCEDURE_TYPE + procedure.getClass() + " is not supported");
+        ProcedureMessages.PROCEDURE_TYPE
+            + procedure.getClass()
+            + ProcedureMessages.EXCEPTION_NOT_SUPPORTED_0A83F963);
   }
 
   private static class ProcedureFactoryHolder {

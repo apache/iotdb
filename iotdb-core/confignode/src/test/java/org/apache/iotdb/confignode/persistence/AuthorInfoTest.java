@@ -649,7 +649,9 @@ public class AuthorInfoTest {
   }
 
   @Test
-  public void createUserWithRawPassword() {
+  public void createUserWithRawPassword() throws AuthException {
+    cleanUserAndRole();
+
     TSStatus status;
     AuthorPlan authorPlan;
     authorPlan =
@@ -666,6 +668,46 @@ public class AuthorInfoTest {
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     TPermissionInfoResp result = authorInfo.login("testuser", "password123456", false);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
+
+    final boolean originalEnforceStrongPassword =
+        CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword();
+    CommonDescriptor.getInstance().getConfig().setEnforceStrongPassword(true);
+    try {
+      authorPlan =
+          new AuthorTreePlan(
+              ConfigPhysicalPlanType.CreateUser,
+              "legacyuser",
+              "",
+              "legacyuser",
+              "",
+              new HashSet<>(),
+              false,
+              new ArrayList<>());
+      status = authorInfo.authorNonQuery(authorPlan);
+      assertEquals(TSStatusCode.ILLEGAL_PASSWORD.getStatusCode(), status.getCode());
+
+      assertEquals(
+          TSStatusCode.USER_NOT_EXIST.getStatusCode(),
+          authorInfo.login("legacyuser", "legacyuser", true).getStatus().getCode());
+      authorPlan =
+          new AuthorTreePlan(
+              ConfigPhysicalPlanType.CreateUserWithRawPassword,
+              "legacyuser",
+              "",
+              "legacyuser",
+              "",
+              new HashSet<>(),
+              false,
+              new ArrayList<>());
+      status = authorInfo.authorNonQuery(authorPlan);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      result = authorInfo.login("legacyuser", "legacyuser", true);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setEnforceStrongPassword(originalEnforceStrongPassword);
+    }
   }
 
   private void checkAuthorNonQueryReturn(AuthorPlan plan) {

@@ -24,11 +24,11 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinke
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.EOFException;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -61,22 +61,21 @@ public class PlainQueueSerializer<E> implements QueueSerializer<E> {
       ConcurrentIterableLinkedQueue<E> queue,
       Function<ByteBuffer, E> elementDeserializationFunction)
       throws IOException {
-    try (FileChannel channel = inputStream.getChannel()) {
-      queue.setFirstIndex(ReadWriteIOUtils.readLong(inputStream));
-      while (true) {
-        if (inputStream.available() == 0) {
-          return;
-        }
-        int capacity = ReadWriteIOUtils.readInt(inputStream);
-        ByteBuffer buffer = ByteBuffer.allocate(capacity);
-        channel.read(buffer);
-        buffer.flip();
-        E element = elementDeserializationFunction.apply(buffer);
-        if (element == null) {
-          throw new IOException(PipeMessages.FAILED_TO_LOAD_SNAPSHOT);
-        }
-        queue.add(element);
+    queue.setFirstIndex(ReadWriteIOUtils.readLong(inputStream));
+    while (true) {
+      if (inputStream.available() == 0) {
+        return;
       }
+      int capacity = ReadWriteIOUtils.readInt(inputStream);
+      byte[] bytes = inputStream.readNBytes(capacity);
+      if (bytes.length != capacity) {
+        throw new EOFException();
+      }
+      E element = elementDeserializationFunction.apply(ByteBuffer.wrap(bytes));
+      if (element == null) {
+        throw new IOException(PipeMessages.FAILED_TO_LOAD_SNAPSHOT);
+      }
+      queue.add(element);
     }
   }
 }

@@ -32,6 +32,12 @@ import org.apache.iotdb.calc.execution.operator.process.fill.linear.DoubleLinear
 import org.apache.iotdb.calc.execution.operator.process.fill.linear.FloatLinearFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.linear.IntLinearFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.linear.LongLinearFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.next.BinaryNextFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.next.BooleanNextFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.next.DoubleNextFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.next.FloatNextFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.next.IntNextFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.next.LongNextFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.previous.BinaryPreviousFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.previous.BinaryPreviousFillWithTimeDuration;
 import org.apache.iotdb.calc.execution.operator.process.fill.previous.BooleanPreviousFill;
@@ -105,40 +111,7 @@ public class CommonOperatorUtils {
       List<TSDataType> inputDataTypes,
       TimeDuration timeDurationThreshold,
       ZoneId zoneId) {
-    IFillFilter filter;
-    if (timeDurationThreshold == null) {
-      filter = null;
-    } else if (!timeDurationThreshold.containsMonth()) {
-      filter = new FixedIntervalFillFilter(timeDurationThreshold.nonMonthDuration);
-    } else {
-      switch (TIMESTAMP_PRECISION) {
-        case "ms":
-          filter =
-              new MonthIntervalMSFillFilter(
-                  timeDurationThreshold.monthDuration,
-                  timeDurationThreshold.nonMonthDuration,
-                  zoneId);
-          break;
-        case "us":
-          filter =
-              new MonthIntervalUSFillFilter(
-                  timeDurationThreshold.monthDuration,
-                  timeDurationThreshold.nonMonthDuration,
-                  zoneId);
-          break;
-        case "ns":
-          filter =
-              new MonthIntervalNSFillFilter(
-                  timeDurationThreshold.monthDuration,
-                  timeDurationThreshold.nonMonthDuration,
-                  zoneId);
-          break;
-        default:
-          // this case will never reach
-          throw new UnsupportedOperationException(
-              String.format(QueryMessages.UNSUPPORTED_TIME_PRECISION, TIMESTAMP_PRECISION));
-      }
-    }
+    IFillFilter filter = createFillFilter(timeDurationThreshold, zoneId);
 
     IFill[] previousFill = new IFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
@@ -187,5 +160,69 @@ public class CommonOperatorUtils {
       }
     }
     return previousFill;
+  }
+
+  public static ILinearFill[] getNextFill(
+      int inputColumns,
+      List<TSDataType> inputDataTypes,
+      TimeDuration timeDurationThreshold,
+      ZoneId zoneId) {
+    IFillFilter filter = createFillFilter(timeDurationThreshold, zoneId);
+
+    ILinearFill[] nextFill = new ILinearFill[inputColumns];
+    for (int i = 0; i < inputColumns; i++) {
+      switch (inputDataTypes.get(i)) {
+        case BOOLEAN:
+          nextFill[i] = new BooleanNextFill(filter);
+          break;
+        case TEXT:
+        case STRING:
+        case BLOB:
+        case OBJECT:
+          nextFill[i] = new BinaryNextFill(filter);
+          break;
+        case INT32:
+        case DATE:
+          nextFill[i] = new IntNextFill(filter);
+          break;
+        case INT64:
+        case TIMESTAMP:
+          nextFill[i] = new LongNextFill(filter);
+          break;
+        case FLOAT:
+          nextFill[i] = new FloatNextFill(filter);
+          break;
+        case DOUBLE:
+          nextFill[i] = new DoubleNextFill(filter);
+          break;
+        default:
+          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
+      }
+    }
+    return nextFill;
+  }
+
+  private static IFillFilter createFillFilter(TimeDuration timeDurationThreshold, ZoneId zoneId) {
+    if (timeDurationThreshold == null) {
+      return null;
+    }
+    if (!timeDurationThreshold.containsMonth()) {
+      return new FixedIntervalFillFilter(timeDurationThreshold.nonMonthDuration);
+    }
+    switch (TIMESTAMP_PRECISION) {
+      case "ms":
+        return new MonthIntervalMSFillFilter(
+            timeDurationThreshold.monthDuration, timeDurationThreshold.nonMonthDuration, zoneId);
+      case "us":
+        return new MonthIntervalUSFillFilter(
+            timeDurationThreshold.monthDuration, timeDurationThreshold.nonMonthDuration, zoneId);
+      case "ns":
+        return new MonthIntervalNSFillFilter(
+            timeDurationThreshold.monthDuration, timeDurationThreshold.nonMonthDuration, zoneId);
+      default:
+        // this case will never reach
+        throw new UnsupportedOperationException(
+            String.format(QueryMessages.UNSUPPORTED_TIME_PRECISION, TIMESTAMP_PRECISION));
+    }
   }
 }

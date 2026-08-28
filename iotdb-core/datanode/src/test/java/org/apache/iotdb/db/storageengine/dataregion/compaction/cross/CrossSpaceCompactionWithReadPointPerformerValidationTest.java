@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
@@ -2101,7 +2102,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
           WriteProcessException,
           StorageEngineException,
           InterruptedException,
-          MergeException {
+          MergeException,
+          DiskSpaceInsufficientException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 10, 4500, 500, 500, 0, 100, false, false);

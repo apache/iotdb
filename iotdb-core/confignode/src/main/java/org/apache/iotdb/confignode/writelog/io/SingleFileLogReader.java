@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.writelog.io;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
@@ -29,10 +30,8 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
 
@@ -76,10 +75,7 @@ public class SingleFileLogReader implements ILogReader {
       }
       buffer = new byte[logSize];
 
-      int readLen = logStream.read(buffer, 0, logSize);
-      if (readLen < logSize) {
-        throw new IOException(ConfigNodeMessages.REACH_EOF);
-      }
+      logStream.readFully(buffer, 0, logSize);
 
       final long checkSum = logStream.readLong();
       checkSummer.reset();
@@ -88,8 +84,8 @@ public class SingleFileLogReader implements ILogReader {
         throw new IOException(
             String.format(
                 ConfigNodeMessages.THE_CHECK_SUM_OF_THE_NO_LOG_BATCH_IS_INCORRECT
-                    + "file: "
-                    + "%d Calculated: %d.",
+                    + ConfigNodeMessages.EXCEPTION_FILE_11296840
+                    + ConfigNodeMessages.EXCEPTION_ARG_CALCULATED_ARG_0EEEE191,
                 idx,
                 checkSum,
                 checkSummer.getValue()));
@@ -104,7 +100,8 @@ public class SingleFileLogReader implements ILogReader {
       fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
     } catch (Exception e) {
       logger.error(
-          "Cannot read more PhysicalPlans from {}, successfully read index is {}. The reason is",
+          ConfigNodeMessages
+              .LOG_CANNOT_READ_MORE_PHYSICALPLANS_ARG_SUCCESSFULLY_READ_INDEX_ARG_REASON_2EC90E78,
           idx,
           filepath,
           e);
@@ -149,9 +146,8 @@ public class SingleFileLogReader implements ILogReader {
   }
 
   private void truncateBrokenLogs() {
-    try (FileOutputStream outputStream = new FileOutputStream(filepath, true);
-        FileChannel channel = outputStream.getChannel()) {
-      channel.truncate(unbrokenLogsSize);
+    try {
+      FileUtils.truncateFile(new File(filepath), unbrokenLogsSize);
     } catch (IOException e) {
       logger.error(ConfigNodeMessages.FAIL_TO_TRUNCATE_LOG_FILE_TO_SIZE, unbrokenLogsSize, e);
     }

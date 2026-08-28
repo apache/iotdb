@@ -272,6 +272,52 @@ public class AccumulatorTest {
   }
 
   @Test
+  public void extremeAccumulatorMinValueTest() {
+    Accumulator intAccumulator =
+        AccumulatorFactory.createBuiltinAccumulator(
+            TAggregationType.EXTREME,
+            Collections.singletonList(TSDataType.INT32),
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
+    TsBlockBuilder intBlockBuilder =
+        new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    intBlockBuilder.getTimeColumnBuilder().writeLong(0);
+    intBlockBuilder.getValueColumnBuilders()[0].writeInt(Integer.MAX_VALUE);
+    intBlockBuilder.declarePosition();
+    intBlockBuilder.getTimeColumnBuilder().writeLong(1);
+    intBlockBuilder.getValueColumnBuilders()[0].writeInt(Integer.MIN_VALUE);
+    intBlockBuilder.declarePosition();
+    TsBlock intBlock = intBlockBuilder.build();
+    intAccumulator.addInput(new Column[] {intBlock.getTimeColumn(), intBlock.getColumn(0)}, null);
+    ColumnBuilder intFinalResult = new IntColumnBuilder(null, 1);
+    intAccumulator.outputFinal(intFinalResult);
+    Assert.assertEquals(Integer.MIN_VALUE, intFinalResult.build().getInt(0));
+
+    Accumulator longAccumulator =
+        AccumulatorFactory.createBuiltinAccumulator(
+            TAggregationType.EXTREME,
+            Collections.singletonList(TSDataType.INT64),
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
+    TsBlockBuilder longBlockBuilder =
+        new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
+    longBlockBuilder.getTimeColumnBuilder().writeLong(0);
+    longBlockBuilder.getValueColumnBuilders()[0].writeLong(Long.MAX_VALUE);
+    longBlockBuilder.declarePosition();
+    longBlockBuilder.getTimeColumnBuilder().writeLong(1);
+    longBlockBuilder.getValueColumnBuilders()[0].writeLong(Long.MIN_VALUE);
+    longBlockBuilder.declarePosition();
+    TsBlock longBlock = longBlockBuilder.build();
+    longAccumulator.addInput(
+        new Column[] {longBlock.getTimeColumn(), longBlock.getColumn(0)}, null);
+    ColumnBuilder longFinalResult = new LongColumnBuilder(null, 1);
+    longAccumulator.outputFinal(longFinalResult);
+    Assert.assertEquals(Long.MIN_VALUE, longFinalResult.build().getLong(0));
+  }
+
+  @Test
   public void firstValueAccumulatorTest() {
     Accumulator firstValueAccumulator =
         AccumulatorFactory.createBuiltinAccumulator(

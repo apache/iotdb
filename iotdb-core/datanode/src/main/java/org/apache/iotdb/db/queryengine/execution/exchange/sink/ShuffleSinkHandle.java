@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -63,6 +64,10 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private volatile boolean closed = false;
 
+  // close() and abort() invoke channel callbacks, so they cannot be protected by this handle's
+  // lock.
+  private final AtomicBoolean terminationClaimed = new AtomicBoolean(false);
+
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
   private final Lock lock = new ReentrantLock();
@@ -83,12 +88,21 @@ public class ShuffleSinkHandle implements ISinkHandle {
       ShuffleStrategyEnum shuffleStrategyEnum,
       MPPDataExchangeManager.SinkListener sinkListener) {
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
     this.downStreamChannelList =
-        Validate.notNull(downStreamChannelList, "downStreamChannelList can not be null.");
+        Validate.notNull(
+            downStreamChannelList,
+            DataNodeQueryMessages.EXCEPTION_DOWNSTREAMCHANNELLIST_CAN_NOT_BE_NULL_DOT_417AD5A3);
     this.downStreamChannelIndex =
-        Validate.notNull(downStreamChannelIndex, "downStreamChannelIndex can not be null.");
-    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
+        Validate.notNull(
+            downStreamChannelIndex,
+            DataNodeQueryMessages.EXCEPTION_DOWNSTREAMCHANNELINDEX_CAN_NOT_BE_NULL_DOT_A1D5A266);
+    this.sinkListener =
+        Validate.notNull(
+            sinkListener,
+            DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
     this.channelNum = downStreamChannelList.size();
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
@@ -192,37 +206,43 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public boolean abort() {
-    if (aborted || closed) {
+    if (aborted || closed || !terminationClaimed.compareAndSet(false, true)) {
       return false;
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(DataNodeQueryMessages.START_ABORT_SHUFFLE_SINK_HANDLE);
-    }
-    boolean meetError = false;
-    Exception firstException = null;
-    boolean selfAborted = true;
-    for (ISink channel : downStreamChannelList) {
-      try {
-        selfAborted = channel.abort();
-      } catch (Exception e) {
-        if (!meetError) {
-          firstException = e;
-          meetError = true;
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.START_ABORT_SHUFFLE_SINK_HANDLE);
+      }
+      boolean meetError = false;
+      Exception firstException = null;
+      boolean selfAborted = true;
+      for (ISink channel : downStreamChannelList) {
+        try {
+          selfAborted = channel.abort();
+        } catch (Exception e) {
+          if (!meetError) {
+            firstException = e;
+            meetError = true;
+          }
         }
       }
-    }
-    if (meetError) {
-      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_ABORT_CHANNEL, firstException);
-    }
-    if (selfAborted) {
-      sinkListener.onAborted(this);
-      aborted = true;
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
+      if (meetError) {
+        LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_ABORT_CHANNEL, firstException);
       }
-      return true;
-    } else {
-      return false;
+      if (selfAborted) {
+        sinkListener.onAborted(this);
+        aborted = true;
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } finally {
+      if (!aborted) {
+        terminationClaimed.set(false);
+      }
     }
   }
 
@@ -232,37 +252,43 @@ public class ShuffleSinkHandle implements ISinkHandle {
   // Lock ShuffleSinkHandle and wait to lock LocalSinkChannel
   @Override
   public boolean close() {
-    if (closed || aborted) {
+    if (closed || aborted || !terminationClaimed.compareAndSet(false, true)) {
       return false;
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(DataNodeQueryMessages.START_CLOSE_SHUFFLE_SINK_HANDLE);
-    }
-    boolean meetError = false;
-    Exception firstException = null;
-    boolean selfClosed = true;
-    for (ISink channel : downStreamChannelList) {
-      try {
-        selfClosed = channel.close();
-      } catch (Exception e) {
-        if (!meetError) {
-          firstException = e;
-          meetError = true;
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.START_CLOSE_SHUFFLE_SINK_HANDLE);
+      }
+      boolean meetError = false;
+      Exception firstException = null;
+      boolean selfClosed = true;
+      for (ISink channel : downStreamChannelList) {
+        try {
+          selfClosed = channel.close();
+        } catch (Exception e) {
+          if (!meetError) {
+            firstException = e;
+            meetError = true;
+          }
         }
       }
-    }
-    if (meetError) {
-      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_CLOSE_CHANNEL, firstException);
-    }
-    if (selfClosed) {
-      sinkListener.onFinish(this);
-      closed = true;
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
+      if (meetError) {
+        LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_CLOSE_CHANNEL, firstException);
       }
-      return true;
-    } else {
-      return false;
+      if (selfClosed) {
+        sinkListener.onFinish(this);
+        closed = true;
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } finally {
+      if (!closed) {
+        terminationClaimed.set(false);
+      }
     }
   }
 
@@ -328,7 +354,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
       // do nothing
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "PlainShuffleStrategy needs to do nothing, current channel index is {}",
+            DataNodeQueryMessages
+                .PLAINSHUFFLESTRATEGY_NEEDS_TO_DO_NOTHING_CURRENT_CHANNEL_INDEX_IS_ARG,
             downStreamChannelIndex.getCurrentIndex());
       }
     }

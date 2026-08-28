@@ -28,12 +28,16 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskExecutionGuard;
+import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtaskYieldException;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
+import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTablePrivilegeParseVisitor;
 import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTreePrivilegeParseVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -61,6 +65,8 @@ public class PipeEventCollector implements EventCollector {
   private final boolean skipParsing;
 
   private final boolean isUsedForConsensusPipe;
+  private PipeProcessorSubtaskExecutionGuard processorExecutionGuard =
+      PipeProcessorSubtaskExecutionGuard.disabled();
 
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
   private boolean hasNoGeneratedEvent = true;
@@ -81,6 +87,11 @@ public class PipeEventCollector implements EventCollector {
     this.isUsedForConsensusPipe = isUsedInConsensusPipe;
   }
 
+  public void setProcessorExecutionGuard(
+      final PipeProcessorSubtaskExecutionGuard processorExecutionGuard) {
+    this.processorExecutionGuard = processorExecutionGuard;
+  }
+
   @Override
   public void collect(final Event event) {
     try {
@@ -95,6 +106,8 @@ public class PipeEventCollector implements EventCollector {
       } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
       }
+    } catch (final PipeProcessorSubtaskYieldException e) {
+      throw e;
     } catch (final PipeException e) {
       throw e;
     } catch (final Exception e) {
@@ -129,7 +142,7 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
-    if (!sourceEvent.waitForTsFileClose()) {
+    if (!sourceEvent.waitForTsFileClose(processorExecutionGuard)) {
       LOGGER.warn(
           DataNodePipeMessages.PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T,
           sourceEvent.getTsFile());
@@ -138,14 +151,21 @@ public class PipeEventCollector implements EventCollector {
 
     if (skipParsing || !forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
+      if (sourceEvent.isGeneratedByHistoricalExtractor()) {
+        PipeTerminateEvent.markHistoricalTsFileUnsplit(
+            sourceEvent.getPipeName(), sourceEvent.getCreationTime(), regionId);
+      }
       return;
     }
 
-    try {
-      sourceEvent.consumeTabletInsertionEventsWithRetry(
-          this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
-    } finally {
-      sourceEvent.close();
+    sourceEvent.consumeTabletInsertionEventsWithRetry(
+        this::collectParsedRawTableEvent,
+        "PipeEventCollector::parseAndCollectEvent",
+        processorExecutionGuard);
+    sourceEvent.close();
+    if (sourceEvent.isGeneratedByHistoricalExtractor()) {
+      PipeTerminateEvent.markHistoricalTsFileSplit(
+          sourceEvent.getPipeName(), sourceEvent.getCreationTime(), regionId);
     }
   }
 
@@ -193,12 +213,14 @@ public class PipeEventCollector implements EventCollector {
                 .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern())
                 .flatMap(
                     planNode ->
-                        IoTDBSchemaRegionSource.TABLE_PRIVILEGE_PARSE_VISITOR.process(
-                            planNode,
-                            new UserEntity(
-                                Long.parseLong(deleteDataEvent.getUserId()),
-                                deleteDataEvent.getUserName(),
-                                deleteDataEvent.getCliHostname()))))
+                        new PipePlanTablePrivilegeParseVisitor(
+                                deleteDataEvent.isSkipIfNoPrivileges())
+                            .process(
+                                planNode,
+                                new UserEntity(
+                                    Long.parseLong(deleteDataEvent.getUserId()),
+                                    deleteDataEvent.getUserName(),
+                                    deleteDataEvent.getCliHostname()))))
         .map(
             planNode ->
                 new PipeDeleteDataNodeEvent(
@@ -238,7 +260,10 @@ public class PipeEventCollector implements EventCollector {
       enrichedEvent.setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
 
       if (enrichedEvent.getPipeName() != null
-          && pendingQueue.isPipeDropped(enrichedEvent.getPipeName(), creationTime, regionId)) {
+          && (pendingQueue.isEventFromDroppedPipe(enrichedEvent)
+              || (enrichedEvent.getCommitterKey() == null
+                  && pendingQueue.isPipeDropped(
+                      enrichedEvent.getPipeName(), creationTime, regionId)))) {
         enrichedEvent.clearReferenceCount(PipeEventCollector.class.getName());
         return;
       }

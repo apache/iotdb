@@ -94,6 +94,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
   private volatile List<Tablet> tablets;
+  // Calculated together with tablets so downstream batching does not rescan Tablet internals.
+  private volatile long tabletsMemoryUsageInBytes;
 
   private List<TabletInsertionEventParser> eventParsers;
 
@@ -193,7 +195,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          String.format("Increase reference count error. Holder Message: %s", holderMessage), e);
+          String.format(
+              DataNodePipeMessages.INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT, holderMessage),
+          e);
       return false;
     }
   }
@@ -210,7 +214,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          String.format("Decrease reference count error. Holder Message: %s", holderMessage), e);
+          String.format(
+              DataNodePipeMessages.DECREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT, holderMessage),
+          e);
       return false;
     } finally {
       if (Objects.nonNull(pipeName)) {
@@ -316,8 +322,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       } else {
         throw new AccessDeniedException(
             String.format(
-                "No privilege for SELECT for user %s at table %s.%s",
-                userName, tableModelDatabaseName, tableName));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
+                userName,
+                tableModelDatabaseName,
+                tableName));
       }
     }
   }
@@ -363,12 +372,14 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       }
 
       if (insertNode instanceof InsertTabletNode) {
-        final long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
-        if (Objects.isNull(timestamps) || timestamps.length == 0) {
+        final InsertTabletNode insertTabletNode = (InsertTabletNode) insertNode;
+        final long[] timestamps = insertTabletNode.getTimes();
+        final int rowCount = insertTabletNode.getRowCount();
+        if (Objects.isNull(timestamps) || rowCount <= 0) {
           return false;
         }
         // We assume that `timestamps` is ordered.
-        return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+        return startTime <= timestamps[rowCount - 1] && timestamps[0] <= endTime;
       }
 
       if (insertNode instanceof InsertRowsNode) {
@@ -472,20 +483,29 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   // TODO: for table model insertion, we need to get the database name
   public synchronized List<Tablet> convertToTablets() {
     if (Objects.isNull(tablets)) {
-      tablets =
-          initEventParsers().stream()
-              .map(TabletInsertionEventParser::convertToTablet)
-              .collect(Collectors.toList());
+      final List<TabletInsertionEventParser> parsers = initEventParsers();
+      final List<Tablet> convertedTablets = new ArrayList<>(parsers.size());
+      long tabletMemoryUsageInBytes = 0;
+      for (final TabletInsertionEventParser parser : parsers) {
+        final Tablet tablet = parser.convertToTablet();
+        convertedTablets.add(tablet);
+        // Tablet.ramBytesUsed() is required for the memory block to account for the actual
+        // retained tablet size. Calculate it while converting to avoid a second stream traversal.
+        tabletMemoryUsageInBytes += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
+      }
+      tablets = convertedTablets;
+      tabletsMemoryUsageInBytes = tabletMemoryUsageInBytes;
       allocatedMemoryBlock.compareAndSet(
           null,
           PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(
-                  tablets.stream()
-                      .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-                      .reduce(Long::sum)
-                      .orElse(0L)));
+              .forceAllocateForTabletWithRetry(tabletMemoryUsageInBytes));
     }
     return tablets;
+  }
+
+  public long getTabletsMemoryUsageInBytes() {
+    convertToTablets();
+    return tabletsMemoryUsageInBytes;
   }
 
   /////////////////////////// event parser ///////////////////////////
@@ -496,35 +516,27 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         return eventParsers;
       }
 
-      eventParsers = new ArrayList<>();
       final InsertNode node = getInsertNode();
       if (Objects.isNull(node)) {
         throw new PipeException(DataNodePipeMessages.INSERTNODE_HAS_BEEN_RELEASED);
       }
+      eventParsers = new ArrayList<>(getEventParserCount(node));
+      final UserEntity userEntity =
+          shouldParse4Privilege
+              ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
+              : null;
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
           eventParsers.add(
               new TabletInsertionEventTreePatternParser(
-                  pipeTaskMeta,
-                  this,
-                  node,
-                  treePattern,
-                  shouldParse4Privilege
-                      ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
-                      : null));
+                  pipeTaskMeta, this, node, treePattern, userEntity));
           break;
         case INSERT_ROWS:
           for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
             eventParsers.add(
                 new TabletInsertionEventTreePatternParser(
-                    pipeTaskMeta,
-                    this,
-                    insertRowNode,
-                    treePattern,
-                    shouldParse4Privilege
-                        ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
-                        : null));
+                    pipeTaskMeta, this, insertRowNode, treePattern, userEntity));
           }
           break;
         case RELATIONAL_INSERT_ROW:
@@ -554,6 +566,16 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     } catch (final Exception e) {
       throw new PipeException(DataNodePipeMessages.INITIALIZE_DATA_CONTAINER_ERROR, e);
     }
+  }
+
+  private static int getEventParserCount(final InsertNode node) {
+    if (node instanceof InsertRowsNode) {
+      return ((InsertRowsNode) node).getInsertRowNodeList().size();
+    }
+    if (node instanceof RelationalInsertRowsNode) {
+      return ((RelationalInsertRowsNode) node).getInsertRowNodeList().size();
+    }
+    return 1;
   }
 
   public long count() {

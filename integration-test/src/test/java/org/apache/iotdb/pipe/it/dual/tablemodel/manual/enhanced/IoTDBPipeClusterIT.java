@@ -83,17 +83,23 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
+    senderEnv
+        .getConfig()
+        .getDataNodeConfig()
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
 
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -102,6 +108,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
+    receiverEnv
+        .getConfig()
+        .getDataNodeConfig()
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
 
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment(3, 3, 180);
@@ -120,7 +130,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
   private void testMachineDowntime(String sink) {
     StringBuilder a = new StringBuilder();
     for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
-      a.append(nodeWrapper.getIp()).append(":").append(nodeWrapper.getPort());
+      a.append(nodeWrapper.getIpAndPortString());
       a.append(",");
     }
     a.deleteCharAt(a.length() - 1);
@@ -136,6 +146,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("source", "iotdb-source");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
@@ -204,6 +215,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("source", "iotdb-source");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("start-time", "0");
@@ -282,6 +294,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           sourceAttributes.put("source", "iotdb-source");
           sourceAttributes.put("database-name", "test");
           sourceAttributes.put("capture.table", "true");
+          sourceAttributes.put("__system.sql-dialect", "table");
           sourceAttributes.put("table-name", "test");
           sourceAttributes.put("start-time", "0");
           sourceAttributes.put("end-time", "300");
@@ -305,6 +318,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
 
           TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+          // Avoid electing a stale follower after stopping the current test1 leader.
+          flushTableDataRegionReplicasAfterReplicationComplete(
+              senderEnv, Collections.singletonList("test1"));
 
           final int leaderIndex = restartTableDataRegionLeader(client, "test1");
           if (leaderIndex == -1) { // ensure the leader is stopped
@@ -316,7 +332,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv);
 
           TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
-          waitForTableDataRegionReplicationComplete(Arrays.asList("test", "test1"));
+          flushTableDataRegionReplicasAfterReplicationComplete(
+              senderEnv, Arrays.asList("test", "test1"));
+          flushTableDataRegionReplicasAfterReplicationComplete(
+              receiverEnv, Collections.singletonList("test"));
         }
 
         try {
@@ -336,6 +355,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
           sourceAttributes.put("database-name", "test1");
           sourceAttributes.put("capture.table", "true");
+          sourceAttributes.put("__system.sql-dialect", "table");
           sourceAttributes.put("table-name", "test1");
           sourceAttributes.put("start-time", "0");
           sourceAttributes.put("end-time", "300");
@@ -420,14 +440,22 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     return -1;
   }
 
-  private void waitForTableDataRegionReplicationComplete(final List<String> databases) {
+  private void flushTableDataRegionReplicasAfterReplicationComplete(
+      final BaseEnv env, final List<String> databases) {
+    waitForTableDataRegionReplicationComplete(env, databases);
+    TestUtils.executeNonQueryWithRetry(env, "flush");
+    waitForTableDataRegionReplicationComplete(env, databases);
+  }
+
+  private void waitForTableDataRegionReplicationComplete(
+      final BaseEnv env, final List<String> databases) {
     await()
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .atMost(2, TimeUnit.MINUTES)
         .untilAsserted(
             () -> {
               try (final SyncConfigNodeIServiceClient client =
-                  (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+                  (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
                 final List<TRegionInfo> leaderRegionInfoList =
                     showTableDataRegionLeaders(databases, client);
                 Assert.assertFalse(
@@ -436,14 +464,14 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
                 for (final TRegionInfo regionInfo : leaderRegionInfoList) {
                   final DataNodeWrapper leaderNode =
-                      findDataNodeWrapperByPort(regionInfo.getClientRpcPort());
+                      findDataNodeWrapperByPort(env, regionInfo.getClientRpcPort());
                   final String metricsUrl =
                       "http://"
                           + leaderNode.getIp()
                           + ":"
                           + leaderNode.getMetricPort()
                           + "/metrics";
-                  final String metricsContent = senderEnv.getUrlContent(metricsUrl, null);
+                  final String metricsContent = env.getUrlContent(metricsUrl, null);
                   Assert.assertNotNull(
                       "Failed to fetch metrics from leader DataNode at " + metricsUrl,
                       metricsContent);
@@ -472,8 +500,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     return result;
   }
 
-  private DataNodeWrapper findDataNodeWrapperByPort(final int port) {
-    for (final DataNodeWrapper dataNodeWrapper : senderEnv.getDataNodeWrapperList()) {
+  private DataNodeWrapper findDataNodeWrapperByPort(final BaseEnv env, final int port) {
+    for (final DataNodeWrapper dataNodeWrapper : env.getDataNodeWrapperList()) {
       if (dataNodeWrapper.getPort() == port) {
         return dataNodeWrapper;
       }
@@ -532,6 +560,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 
@@ -585,6 +614,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test1");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test1");
       sourceAttributes.put("user", "root");
 
@@ -628,6 +658,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test1");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test1");
       sourceAttributes.put("user", "root");
 
@@ -699,6 +730,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 
@@ -778,6 +810,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 
@@ -845,6 +878,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 
@@ -895,6 +929,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
     sourceAttributes.put("database-name", "test");
     sourceAttributes.put("capture.table", "true");
+    sourceAttributes.put("__system.sql-dialect", "table");
     sourceAttributes.put("table-name", "test");
     sourceAttributes.put("user", "root");
 
@@ -1004,6 +1039,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
     sourceAttributes.put("database-name", "test");
     sourceAttributes.put("capture.table", "true");
+    sourceAttributes.put("__system.sql-dialect", "table");
     sourceAttributes.put("table-name", "test");
     sourceAttributes.put("user", "root");
 
@@ -1086,6 +1122,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       sourceAttributes.put("source", "iotdb-source");
       sourceAttributes.put("database-name", "test");
       sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("__system.sql-dialect", "table");
       sourceAttributes.put("table-name", "test");
       sourceAttributes.put("user", "root");
 

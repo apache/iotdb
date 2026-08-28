@@ -12,6 +12,10 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   pull_request:
     branches:
       - master
@@ -22,6 +26,10 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -63,11 +71,11 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
     steps:
       - uses: actions/checkout@v5
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           distribution: corretto
-          java-version: 17
+          java-version: 21
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages

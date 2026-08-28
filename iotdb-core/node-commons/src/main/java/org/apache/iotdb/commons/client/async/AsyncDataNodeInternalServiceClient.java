@@ -137,10 +137,7 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
    */
   public synchronized void setTimeoutTemporarily(long timeout) {
     if (originalTimeout != -1) {
-      logger.warn(
-          "This client's timeout has been set to {}. If you need to set it to {}, please call the recoverTimeout() first.",
-          originalTimeout,
-          timeout);
+      logger.warn(ClientMessages.TIMEOUT_ALREADY_SET, originalTimeout, timeout);
     }
     originalTimeout = getTimeout();
     setTimeout(timeout);
@@ -202,7 +199,7 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
           new AsyncDataNodeInternalServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

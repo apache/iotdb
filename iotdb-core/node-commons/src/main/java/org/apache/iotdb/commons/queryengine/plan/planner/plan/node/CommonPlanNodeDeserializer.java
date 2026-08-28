@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
@@ -140,6 +141,8 @@ public class CommonPlanNodeDeserializer implements IPlanNodeDeserializer {
         return RowNumberNode.deserialize(buffer);
       case 1039:
         return ValuesNode.deserialize(buffer);
+      case 1043:
+        return NextFillNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException(QueryMessages.INVALID_NODE_TYPE + nodeType);
     }

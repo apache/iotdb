@@ -21,10 +21,14 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionParameterNotValidException;
 import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
+import org.apache.iotdb.session.subscription.payload.PollResult;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.util.CollectionUtils;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
@@ -32,14 +36,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Properties;
+import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledFuture;
@@ -66,7 +75,16 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private final boolean autoCommit;
   private final long autoCommitIntervalMs;
 
+  private final List<SubscriptionMessageProcessor> processors = new ArrayList<>();
+
+  private final Set<SubscriptionCommitContext> processorBufferedCommitContexts =
+      ConcurrentHashMap.newKeySet();
+
+  private final Queue<SubscriptionMessage> pendingDrainedMessages = new ConcurrentLinkedQueue<>();
+
   private SortedMap<Long, Set<SubscriptionCommitContext>> uncommittedCommitContexts;
+
+  private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -118,10 +136,15 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       return;
     }
 
-    super.open();
-
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    try {
+      super.open();
+    } catch (final SubscriptionException e) {
+      isClosed.set(true);
+      throw e;
+    }
+    emptyPollLogThrottler.reset();
 
     // submit auto poll worker if enabling auto commit
     if (autoCommit) {
@@ -136,13 +159,52 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       return;
     }
 
+    if (!processors.isEmpty()) {
+      if (autoCommit) {
+        final List<SubscriptionMessage> drainedMessages = drainProcessorPipeline();
+        if (!drainedMessages.isEmpty()) {
+          try {
+            commitSync(drainedMessages);
+          } catch (final SubscriptionException e) {
+            LOGGER.warn(
+                SubscriptionMessages.LOG_FAILED_COMMIT_DRAINED_PROCESSOR_MESSAGES_CLOSE_4264DB35,
+                e);
+          }
+        }
+      } else {
+        final List<SubscriptionMessage> drainedMessages = drainProcessorPipeline();
+        if (!drainedMessages.isEmpty()) {
+          pendingDrainedMessages.addAll(drainedMessages);
+        }
+        ensureNoManualBufferedMessagesOnClose();
+      }
+    }
+
+    if (autoCommit && !pendingDrainedMessages.isEmpty()) {
+      final List<SubscriptionMessage> drainedMessages = drainPendingDrainedMessages();
+      if (!drainedMessages.isEmpty()) {
+        try {
+          commitSync(drainedMessages);
+        } catch (final SubscriptionException e) {
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_FAILED_COMMIT_PENDING_DRAINED_PROCESSOR_MESSAGES_CLOSE_644B5DDD,
+              e);
+        }
+      }
+    }
+
+    if (!autoCommit) {
+      ensureNoManualBufferedMessagesOnClose();
+    }
+
     if (autoCommit) {
       // commit all uncommitted messages
       commitAllUncommittedMessages();
     }
 
-    super.close();
     isClosed.set(true);
+    super.close();
   }
 
   /////////////////////////////// poll & commit ///////////////////////////////
@@ -175,7 +237,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
           .forEach(
               topicName ->
                   LOGGER.warn(
-                      "SubscriptionPullConsumer {} does not subscribe to topic {}",
+                      SubscriptionMessages
+                          .LOG_SUBSCRIPTIONPULLCONSUMER_ARG_DOES_NOT_SUBSCRIBE_TOPIC_ARG_F40BE4D1,
                       this,
                       topicName));
     } else {
@@ -187,31 +250,254 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     }
 
     final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
-    if (messages.isEmpty()) {
-      LOGGER.info(
-          "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
-          this,
-          CollectionUtils.getLimitedString(parsedTopicNames, 32),
-          timeoutMs);
+    if (messages.isEmpty() && processors.isEmpty()) {
+      final OptionalLong consecutiveEmptyPollCount =
+          emptyPollLogThrottler.markEmptyPollAndMaybeGetCount();
+      if (consecutiveEmptyPollCount.isPresent()) {
+        LOGGER.info(
+            SubscriptionMessages.PULL_CONSUMER_POLL_EMPTY_MESSAGE,
+            this,
+            CollectionUtils.getLimitedString(parsedTopicNames, 32),
+            timeoutMs,
+            consecutiveEmptyPollCount.getAsLong());
+      }
       return messages;
     }
 
-    // add to uncommitted messages
-    if (autoCommit) {
-      final long currentTimestamp = System.currentTimeMillis();
-      long index = currentTimestamp / autoCommitIntervalMs;
-      if (currentTimestamp % autoCommitIntervalMs == 0) {
-        index -= 1;
+    // Apply processor chain if configured
+    List<SubscriptionMessage> processed = messages;
+    if (!processors.isEmpty()) {
+      for (final SubscriptionMessageProcessor processor : processors) {
+        processed = processor.process(processed);
       }
-      uncommittedCommitContexts
-          .computeIfAbsent(index, o -> new ConcurrentSkipListSet<>())
-          .addAll(
-              messages.stream()
-                  .map(SubscriptionMessage::getCommitContext)
-                  .collect(Collectors.toList()));
+      refreshProcessorBufferedCommitContexts();
     }
 
-    return messages;
+    processed = filterUserVisibleMessages(processed);
+
+    if (processed.isEmpty()) {
+      return processed;
+    }
+
+    emptyPollLogThrottler.reset();
+    trackAutoCommitMessages(processed);
+
+    return processed;
+  }
+
+  protected List<SubscriptionMessage> drainBufferedMessages() throws SubscriptionException {
+    if (isClosed()) {
+      final String errorMessage =
+          String.format(
+              "%s is not yet open, please open the subscription consumer before draining buffered messages.",
+              this);
+      LOGGER.error(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+
+    final List<SubscriptionMessage> drainedMessages = drainPendingDrainedMessages();
+    if (!drainedMessages.isEmpty()) {
+      trackAutoCommitMessages(drainedMessages);
+      return drainedMessages;
+    }
+
+    if (processors.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    drainedMessages.addAll(drainProcessorPipeline());
+    trackAutoCommitMessages(drainedMessages);
+    return drainedMessages;
+  }
+
+  /////////////////////////////// processor ///////////////////////////////
+
+  /**
+   * Adds a message processor to the pipeline. Processors are applied in order on each poll() call.
+   *
+   * @param processor the processor to add
+   */
+  protected AbstractSubscriptionPullConsumer addProcessor(
+      final SubscriptionMessageProcessor processor) {
+    processors.add(processor);
+    return this;
+  }
+
+  @Override
+  List<SubscriptionCommitContext> getProcessorBufferedCommitContexts(final int dataNodeId) {
+    if (processorBufferedCommitContexts.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final List<SubscriptionCommitContext> result = new ArrayList<>();
+    for (final SubscriptionCommitContext commitContext : processorBufferedCommitContexts) {
+      if (Objects.nonNull(commitContext) && commitContext.getDataNodeId() == dataNodeId) {
+        result.add(commitContext);
+      }
+    }
+    return result;
+  }
+
+  private void refreshProcessorBufferedCommitContexts() {
+    processorBufferedCommitContexts.clear();
+    for (final SubscriptionMessageProcessor processor : processors) {
+      final List<SubscriptionCommitContext> bufferedCommitContexts =
+          processor.getBufferedCommitContexts();
+      if (Objects.isNull(bufferedCommitContexts)) {
+        continue;
+      }
+      for (final SubscriptionCommitContext commitContext : bufferedCommitContexts) {
+        if (Objects.nonNull(commitContext) && commitContext.isCommittable()) {
+          processorBufferedCommitContexts.add(commitContext);
+        }
+      }
+    }
+  }
+
+  private List<SubscriptionMessage> drainProcessorPipeline() {
+    List<SubscriptionMessage> drainedMessages = Collections.emptyList();
+    for (final SubscriptionMessageProcessor processor : processors) {
+      if (!drainedMessages.isEmpty()) {
+        drainedMessages = processor.process(drainedMessages);
+        if (Objects.isNull(drainedMessages)) {
+          drainedMessages = Collections.emptyList();
+        }
+      }
+
+      final List<SubscriptionMessage> flushedMessages = processor.flush();
+      drainedMessages = appendMessages(drainedMessages, flushedMessages);
+    }
+
+    refreshProcessorBufferedCommitContexts();
+    return filterUserVisibleMessages(drainedMessages);
+  }
+
+  private static List<SubscriptionMessage> appendMessages(
+      final List<SubscriptionMessage> baseMessages,
+      final List<SubscriptionMessage> appendedMessages) {
+    if (Objects.isNull(appendedMessages) || appendedMessages.isEmpty()) {
+      return baseMessages;
+    }
+    if (baseMessages.isEmpty()) {
+      return appendedMessages;
+    }
+
+    final List<SubscriptionMessage> mergedMessages =
+        new ArrayList<>(baseMessages.size() + appendedMessages.size());
+    mergedMessages.addAll(baseMessages);
+    mergedMessages.addAll(appendedMessages);
+    return mergedMessages;
+  }
+
+  private List<SubscriptionMessage> drainPendingDrainedMessages() {
+    final List<SubscriptionMessage> drainedMessages = new ArrayList<>();
+    SubscriptionMessage message;
+    while (Objects.nonNull(message = pendingDrainedMessages.poll())) {
+      drainedMessages.add(message);
+    }
+    return drainedMessages;
+  }
+
+  private boolean hasProcessorBufferedMessages() {
+    if (!processorBufferedCommitContexts.isEmpty()) {
+      return true;
+    }
+
+    for (final SubscriptionMessageProcessor processor : processors) {
+      if (processor.getBufferedCount() > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void ensureNoManualBufferedMessagesOnClose() throws SubscriptionException {
+    if (pendingDrainedMessages.isEmpty() && !hasProcessorBufferedMessages()) {
+      return;
+    }
+
+    final String errorMessage =
+        String.format(
+            "SubscriptionPullConsumer %s still has processor-buffered or drained messages when closing in manual-commit mode. Call drainBufferedMessages() and commit the returned messages before close.",
+            this);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionException(errorMessage);
+  }
+
+  private void ensureTopicScopedProcessorResetSupported(final String topicName)
+      throws SubscriptionException {
+    if (processors.isEmpty() || subscribedTopics.size() <= 1) {
+      return;
+    }
+
+    for (final SubscriptionMessageProcessor processor : processors) {
+      if (!processor.supportsTopicScopedReset()) {
+        throw new SubscriptionParameterNotValidException(
+            String.format(
+                SubscriptionMessages
+                    .EXCEPTION_SUBSCRIPTIONPULLCONSUMER_ARG_CANNOT_SEEK_TOPIC_ARG_SUBSCRIBED_MULTIPLE_TOPICS_BECAUSE_B99BCABC,
+                this,
+                topicName,
+                processor.getClass().getName()));
+      }
+    }
+  }
+
+  private void resetProcessors(final String topicName) {
+    for (final SubscriptionMessageProcessor processor : processors) {
+      if (processor.supportsTopicScopedReset()) {
+        processor.reset(topicName);
+      } else {
+        processor.reset();
+      }
+    }
+    refreshProcessorBufferedCommitContexts();
+  }
+
+  private void clearUncommittedCommitContexts(final String topicName) {
+    for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
+        uncommittedCommitContexts.entrySet()) {
+      entry
+          .getValue()
+          .removeIf(
+              commitContext ->
+                  Objects.nonNull(commitContext)
+                      && Objects.equals(topicName, commitContext.getTopicName()));
+      if (entry.getValue().isEmpty()) {
+        uncommittedCommitContexts.remove(entry.getKey());
+      }
+    }
+  }
+
+  /**
+   * Polls with processor metadata. Returns a {@link PollResult} containing the messages, the total
+   * number of buffered messages across all processors, and the current watermark.
+   */
+  protected PollResult pollWithInfo(final long timeoutMs) throws SubscriptionException {
+    final List<SubscriptionMessage> messages = poll(timeoutMs);
+    int totalBuffered = 0;
+    long watermark = -1;
+    for (final SubscriptionMessageProcessor processor : processors) {
+      totalBuffered += processor.getBufferedCount();
+      if (processor instanceof WatermarkProcessor) {
+        watermark = ((WatermarkProcessor) processor).getWatermark();
+      }
+    }
+    return new PollResult(messages, totalBuffered, watermark);
+  }
+
+  protected PollResult pollWithInfo(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    final List<SubscriptionMessage> messages = poll(topicNames, timeoutMs);
+    int totalBuffered = 0;
+    long watermark = -1;
+    for (final SubscriptionMessageProcessor processor : processors) {
+      totalBuffered += processor.getBufferedCount();
+      if (processor instanceof WatermarkProcessor) {
+        watermark = ((WatermarkProcessor) processor).getWatermark();
+      }
+    }
+    return new PollResult(messages, totalBuffered, watermark);
   }
 
   /////////////////////////////// commit ///////////////////////////////
@@ -241,6 +527,96 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   protected void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     super.commitAsync(messages, callback);
+  }
+
+  private List<SubscriptionMessage> filterUserVisibleMessages(
+      final List<SubscriptionMessage> messages) {
+    if (messages.isEmpty()) {
+      return messages;
+    }
+
+    final List<SubscriptionMessage> result = new ArrayList<>(messages.size());
+    for (final SubscriptionMessage message : messages) {
+      if (message.getMessageType() == SubscriptionMessageType.WATERMARK.getType()) {
+        final long timestamp = message.getWatermarkTimestamp();
+        if (timestamp > latestWatermarkTimestamp) {
+          latestWatermarkTimestamp = timestamp;
+        }
+        continue;
+      }
+      result.add(message);
+    }
+    return result;
+  }
+
+  private void trackAutoCommitMessages(final List<SubscriptionMessage> messages) {
+    if (!autoCommit || messages.isEmpty()) {
+      return;
+    }
+
+    final long currentTimestamp = System.currentTimeMillis();
+    long index = currentTimestamp / autoCommitIntervalMs;
+    if (currentTimestamp % autoCommitIntervalMs == 0) {
+      index -= 1;
+    }
+    uncommittedCommitContexts
+        .computeIfAbsent(index, o -> new ConcurrentSkipListSet<>())
+        .addAll(
+            messages.stream()
+                .map(SubscriptionMessage::getCommitContext)
+                .collect(Collectors.toList()));
+  }
+
+  /////////////////////////////// seek ///////////////////////////////
+
+  /**
+   * Clears uncommitted auto-commit messages after seek to prevent stale acks from committing events
+   * that belonged to the pre-seek position.
+   */
+  @Override
+  public void seekToBeginning(final String topicName) throws SubscriptionException {
+    final String parsedTopicName = IdentifierUtils.checkAndParseIdentifier(topicName);
+    ensureTopicScopedProcessorResetSupported(parsedTopicName);
+    super.seekToBeginning(parsedTopicName);
+    resetProcessors(parsedTopicName);
+    if (autoCommit) {
+      clearUncommittedCommitContexts(parsedTopicName);
+    }
+  }
+
+  @Override
+  public void seekToEnd(final String topicName) throws SubscriptionException {
+    final String parsedTopicName = IdentifierUtils.checkAndParseIdentifier(topicName);
+    ensureTopicScopedProcessorResetSupported(parsedTopicName);
+    super.seekToEnd(parsedTopicName);
+    resetProcessors(parsedTopicName);
+    if (autoCommit) {
+      clearUncommittedCommitContexts(parsedTopicName);
+    }
+  }
+
+  @Override
+  public void seek(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    final String parsedTopicName = IdentifierUtils.checkAndParseIdentifier(topicName);
+    ensureTopicScopedProcessorResetSupported(parsedTopicName);
+    super.seek(parsedTopicName, topicProgress);
+    resetProcessors(parsedTopicName);
+    if (autoCommit) {
+      clearUncommittedCommitContexts(parsedTopicName);
+    }
+  }
+
+  @Override
+  public void seekAfter(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    final String parsedTopicName = IdentifierUtils.checkAndParseIdentifier(topicName);
+    ensureTopicScopedProcessorResetSupported(parsedTopicName);
+    super.seekAfter(parsedTopicName, topicProgress);
+    resetProcessors(parsedTopicName);
+    if (autoCommit) {
+      clearUncommittedCommitContexts(parsedTopicName);
+    }
   }
 
   /////////////////////////////// auto commit ///////////////////////////////
@@ -279,8 +655,19 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
           uncommittedCommitContexts.headMap(index).entrySet()) {
         try {
-          ackCommitContexts(entry.getValue());
-          uncommittedCommitContexts.remove(entry.getKey());
+          final Set<SubscriptionCommitContext> removableCommitContexts =
+              ackCommitContextsWithPartialProgress(entry.getValue());
+          if (removableCommitContexts.isEmpty()) {
+            continue;
+          }
+          if (removableCommitContexts.size() == entry.getValue().size()) {
+            uncommittedCommitContexts.remove(entry.getKey());
+            continue;
+          }
+          entry.getValue().removeAll(removableCommitContexts);
+          if (entry.getValue().isEmpty()) {
+            uncommittedCommitContexts.remove(entry.getKey());
+          }
         } catch (final Exception e) {
           LOGGER.warn(SubscriptionMessages.AUTO_COMMIT_UNEXPECTED, e);
         }
@@ -292,8 +679,19 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
         uncommittedCommitContexts.entrySet()) {
       try {
-        ackCommitContexts(entry.getValue());
-        uncommittedCommitContexts.remove(entry.getKey());
+        final Set<SubscriptionCommitContext> removableCommitContexts =
+            ackCommitContextsWithPartialProgress(entry.getValue());
+        if (removableCommitContexts.isEmpty()) {
+          continue;
+        }
+        if (removableCommitContexts.size() == entry.getValue().size()) {
+          uncommittedCommitContexts.remove(entry.getKey());
+          continue;
+        }
+        entry.getValue().removeAll(removableCommitContexts);
+        if (entry.getValue().isEmpty()) {
+          uncommittedCommitContexts.remove(entry.getKey());
+        }
       } catch (final Exception e) {
         LOGGER.warn(SubscriptionMessages.COMMIT_DURING_CLOSE_UNEXPECTED, e);
       }

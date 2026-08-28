@@ -155,6 +155,13 @@ public class TypeInferenceUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException(
@@ -177,7 +184,7 @@ public class TypeInferenceUtils {
           return;
         }
         throw new SemanticException(
-            "Aggregate functions [MIN_VALUE, MAX_VALUE] only support data types [INT32, INT64, FLOAT, DOUBLE, STRING, DATE, TIMESTAMP]");
+            DataNodeMiscMessages.AGGREGATE_MIN_MAX_VALUE_ONLY_SUPPORT_ALLOWED_TYPES);
       case SqlConstant.AVG:
       case SqlConstant.SUM:
       case SqlConstant.EXTREME:
@@ -191,7 +198,22 @@ public class TypeInferenceUtils {
           return;
         }
         throw new SemanticException(
-            "Aggregate functions [AVG, SUM, EXTREME, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+            DataNodeMiscMessages.AGGREGATE_AVG_SUM_STDDEV_ONLY_SUPPORT_NUMERIC_TYPES);
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
+        if (dataType.isNumeric() || TSDataType.TIMESTAMP.equals(dataType)) {
+          return;
+        }
+        throw new SemanticException(
+            DataNodeMiscMessages.AGGREGATE_SKEWNESS_KURTOSIS_ONLY_SUPPORT_NUMERIC_TYPES);
+      // For the two-argument aggregation functions CORR, COVAR_POP, COVAR_SAMP,
+      // REGR_SLOPE, and REGR_INTERCEPT, type validation is performed in
+      // verifyIsAggregationDataTypeMatchedForBothInputs.
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_TIME:
@@ -207,13 +229,36 @@ public class TypeInferenceUtils {
         if (dataType != TSDataType.BOOLEAN) {
           throw new SemanticException(
               String.format(
-                  "Input series of Aggregation function [%s] only supports data type [BOOLEAN]",
+                  DataNodeMiscMessages.AGGREGATE_FUNCTION_INPUT_SERIES_ONLY_SUPPORTS_BOOLEAN,
                   aggrFuncName));
         }
         return;
       default:
         throw new IllegalArgumentException(
             DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION + aggrFuncName);
+    }
+  }
+
+  public static void verifyIsAggregationDataTypeMatchedForBothInputs(
+      String aggrFuncName, TSDataType firstDataType, TSDataType secondDataType) {
+    switch (aggrFuncName.toLowerCase()) {
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+        if ((firstDataType != null
+                && !firstDataType.isNumeric()
+                && !TSDataType.TIMESTAMP.equals(firstDataType))
+            || (secondDataType != null
+                && !secondDataType.isNumeric()
+                && !TSDataType.TIMESTAMP.equals(secondDataType))) {
+          throw new SemanticException(
+              DataNodeMiscMessages.AGGREGATE_CORR_COVAR_REGR_ONLY_SUPPORT_NUMERIC_TYPES);
+        }
+        return;
+      default:
+        break;
     }
   }
 
@@ -247,6 +292,13 @@ public class TypeInferenceUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         return;
@@ -273,15 +325,12 @@ public class TypeInferenceUtils {
             return;
           } else {
             throw new SemanticException(
-                String.format(
-                    "Please check input keep condition of Aggregation function [%s]",
-                    functionName));
+                String.format(DataNodeMiscMessages.CHECK_AGGREGATION_KEEP_CONDITION, functionName));
           }
         } else {
           throw new SemanticException(
               String.format(
-                  "Keep condition of Aggregation function [%s] need to be constant or compare expression constructed by keep and a long number",
-                  functionName));
+                  DataNodeMiscMessages.AGGREGATION_KEEP_CONDITION_REQUIREMENT, functionName));
         }
       default:
         throw new IllegalArgumentException(

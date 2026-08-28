@@ -67,14 +67,22 @@ public class MemUtils {
    * memory before insertion
    */
   public static long getRowRecordSize(List<TSDataType> dataTypes, Object[] value) {
-    int emptyRecordCount = 0;
+    return getRowRecordSize(dataTypes, value, null);
+  }
+
+  public static long getRowRecordSize(
+      List<TSDataType> dataTypes, Object[] value, TsTableColumnCategory[] columnCategories) {
+    // dataTypes contains only non-null FIELD types, in the same order as non-null FIELD values.
+    if (dataTypes == null) {
+      return 0L;
+    }
+    int dataTypeIndex = 0;
     long memSize = 0L;
-    for (int i = 0; i < value.length; i++) {
-      if (value[i] == null) {
-        emptyRecordCount++;
+    for (int i = 0; value != null && i < value.length && dataTypeIndex < dataTypes.size(); i++) {
+      if (value[i] == null || !isFieldColumn(columnCategories, i)) {
         continue;
       }
-      memSize += getRecordSize(dataTypes.get(i - emptyRecordCount), value[i], false);
+      memSize += getRecordSize(dataTypes.get(dataTypeIndex++), value[i], false);
     }
     return memSize;
   }
@@ -85,15 +93,21 @@ public class MemUtils {
    */
   public static long getAlignedRowRecordSize(
       List<TSDataType> dataTypes, Object[] value, TsTableColumnCategory[] columnCategories) {
+    // dataTypes contains only non-null FIELD types, in the same order as non-null FIELD values.
+    if (dataTypes == null) {
+      return 8L + 4L;
+    }
     // time and index size
     long memSize = 8L + 4L;
-    for (int i = 0; i < dataTypes.size(); i++) {
-      if (value[i] == null
-          || dataTypes.get(i).isBinary()
-          || columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD) {
+    int dataTypeIndex = 0;
+    for (int i = 0; value != null && i < value.length && dataTypeIndex < dataTypes.size(); i++) {
+      if (value[i] == null || !isFieldColumn(columnCategories, i)) {
         continue;
       }
-      memSize += dataTypes.get(i).getDataTypeSize();
+      TSDataType dataType = dataTypes.get(dataTypeIndex++);
+      if (!dataType.isBinary()) {
+        memSize += dataType.getDataTypeSize();
+      }
     }
     return memSize;
   }
@@ -126,8 +140,10 @@ public class MemUtils {
       return 0L;
     }
     long memSize = 0;
-    for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
-      if (insertTabletNode.getMeasurements()[i] == null) {
+    for (int i = 0;
+        insertTabletNode.getMeasurements() != null && i < insertTabletNode.getMeasurements().length;
+        i++) {
+      if (!isWritableTabletMeasurement(insertTabletNode, i, true)) {
         continue;
       }
       // Time column memSize
@@ -143,8 +159,10 @@ public class MemUtils {
       return 0L;
     }
     long memSize = 0;
-    for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
-      if (!insertTabletNode.isValidMeasurement(i)) {
+    for (int i = 0;
+        insertTabletNode.getMeasurements() != null && i < insertTabletNode.getMeasurements().length;
+        i++) {
+      if (!isWritableTabletMeasurement(insertTabletNode, i, true)) {
         continue;
       }
       if (results == null) {
@@ -161,6 +179,31 @@ public class MemUtils {
     // time and index column memSize for vector
     memSize += (end - start) * (8L + 4L);
     return memSize;
+  }
+
+  private static boolean isWritableTabletMeasurement(
+      InsertTabletNode insertTabletNode, int index, boolean fieldOnly) {
+    return insertTabletNode.getMeasurements() != null
+        && index >= 0
+        && index < insertTabletNode.getMeasurements().length
+        && insertTabletNode.getMeasurements()[index] != null
+        && insertTabletNode.getColumns() != null
+        && index < insertTabletNode.getColumns().length
+        && insertTabletNode.getColumns()[index] != null
+        && insertTabletNode.getDataTypes() != null
+        && index < insertTabletNode.getDataTypes().length
+        && insertTabletNode.getDataTypes()[index] != null
+        && insertTabletNode.getMeasurementSchemas() != null
+        && index < insertTabletNode.getMeasurementSchemas().length
+        && insertTabletNode.getMeasurementSchemas()[index] != null
+        && (!fieldOnly || isFieldColumn(insertTabletNode.getColumnCategories(), index));
+  }
+
+  private static boolean isFieldColumn(TsTableColumnCategory[] columnCategories, int columnIndex) {
+    return columnCategories == null
+        || columnIndex >= 0
+            && columnIndex < columnCategories.length
+            && columnCategories[columnIndex] == TsTableColumnCategory.FIELD;
   }
 
   /** Calculate how much memory will be used if the given record is written to sequence file. */

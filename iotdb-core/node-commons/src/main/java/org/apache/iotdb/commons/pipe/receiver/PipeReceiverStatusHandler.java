@@ -22,8 +22,11 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.IoTConsensusV2RetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
+import org.apache.iotdb.commons.pipe.resource.PipeStopStrategy;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -49,6 +52,7 @@ public class PipeReceiverStatusHandler {
   private static final String NO_PERMISSION = "No permission";
   private static final String UNCLASSIFIED_EXCEPTION = "Unclassified exception";
   private static final String NO_PERMISSION_STR = "No permissions for this operation";
+  private static final int MAX_RECORD_MESSAGE_LENGTH_IN_LOG = 2048;
 
   private final boolean isRetryAllowedWhenConflictOccurs;
   private final long retryMaxMillisWhenConflictOccurs;
@@ -119,6 +123,14 @@ public class PipeReceiverStatusHandler {
       return;
     }
 
+    if (!PipeStopStrategy.accept(null, status)) {
+      PipeLogger.log(
+          LOGGER::info, PipeMessages.TEMPORARY_UNAVAILABLE_RETRY, status, exceptionMessage);
+      final PipeResourceFailureType failureType =
+          PipeStopStrategy.getResourceFailureType(null, status);
+      throw new PipeRuntimeSinkResourceException(exceptionMessage, failureType);
+    }
+
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND
@@ -132,14 +144,6 @@ public class PipeReceiverStatusHandler {
           return;
         }
 
-      case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
-        {
-          PipeLogger.log(
-              LOGGER::info, PipeMessages.TEMPORARY_UNAVAILABLE_RETRY, status, exceptionMessage);
-          throw new PipeRuntimeSinkNonReportTimeConfigurableException(
-              exceptionMessage, Long.MAX_VALUE);
-        }
-
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
       case 1815: // PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION
         if (!isRetryAllowedWhenConflictOccurs) {
@@ -147,6 +151,7 @@ public class PipeReceiverStatusHandler {
               PipeMessages.USER_CONFLICT_NOT_ALLOWED,
               shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
               status);
+          logDiscardedUserConflictData("retry is not allowed", recordMessage, status);
           return;
         }
 
@@ -160,6 +165,7 @@ public class PipeReceiverStatusHandler {
                 PipeMessages.USER_CONFLICT_RETRY_TIMEOUT,
                 shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
                 status);
+            logDiscardedUserConflictData("retry timeout", recordMessage, status);
             resetExceptionStatus();
             return;
           }
@@ -168,7 +174,7 @@ public class PipeReceiverStatusHandler {
               PipeMessages.USER_CONFLICT_WILL_RETRY,
               retryMaxMillisWhenConflictOccurs == Long.MAX_VALUE
                   ? "forever"
-                  : "for at least "
+                  : PipeMessages.MESSAGE_FOR_AT_LEAST_ADE37405
                       + (retryMaxMillisWhenConflictOccurs
                               + exceptionFirstEncounteredTime.get()
                               - System.currentTimeMillis())
@@ -264,6 +270,32 @@ public class PipeReceiverStatusHandler {
 
   private static String getNoPermission(final boolean noPermission) {
     return noPermission ? NO_PERMISSION : UNCLASSIFIED_EXCEPTION;
+  }
+
+  private void logDiscardedUserConflictData(
+      final String reason, final String recordMessage, final TSStatus status) {
+    if (!LOGGER.isWarnEnabled()) {
+      return;
+    }
+
+    LOGGER.warn(
+        PipeMessages.LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5,
+        reason,
+        summarizeRecordMessage(recordMessage),
+        status.getMessage(),
+        status);
+  }
+
+  private String summarizeRecordMessage(final String recordMessage) {
+    if (Objects.isNull(recordMessage) || recordMessage.isEmpty()) {
+      return "<empty>";
+    }
+
+    final String normalizedRecordMessage =
+        recordMessage.replace('\r', ' ').replace('\n', ' ').trim();
+    return normalizedRecordMessage.length() <= MAX_RECORD_MESSAGE_LENGTH_IN_LOG
+        ? normalizedRecordMessage
+        : normalizedRecordMessage.substring(0, MAX_RECORD_MESSAGE_LENGTH_IN_LOG) + "...(truncated)";
   }
 
   private void recordExceptionStatusIfNecessary(final String message) {

@@ -24,6 +24,7 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.tool.common.Constants;
 
@@ -65,14 +66,13 @@ public class ExportDataTable extends AbstractExportData {
   public void init() throws IoTDBConnectionException, StatementExecutionException {
     TableSessionBuilder tableSessionBuilder =
         new TableSessionBuilder()
-            .nodeUrls(Collections.singletonList(host + ":" + port))
+            .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port)))
             .username(username)
             .password(password)
             .database(database)
             .thriftMaxFrameSize(rpcMaxFrameSize);
     if (useSsl) {
-      tableSessionBuilder =
-          tableSessionBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      tableSessionBuilder = configureSsl(tableSessionBuilder);
     }
     tableSession = tableSessionBuilder.build();
     SessionDataSet sessionDataSet = tableSession.executeQueryStatement("show databases", timeout);

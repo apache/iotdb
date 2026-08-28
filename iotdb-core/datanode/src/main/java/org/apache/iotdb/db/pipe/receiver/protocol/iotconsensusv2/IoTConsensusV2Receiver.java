@@ -27,6 +27,9 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverFilePathUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTConsensusV2RequestType;
@@ -45,7 +48,6 @@ import org.apache.iotdb.consensus.pipe.IoTConsensusV2ServerImpl;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2ReceiverMetrics;
@@ -65,8 +67,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -148,7 +148,8 @@ public class IoTConsensusV2Receiver {
     }
 
     try {
-      this.folderManager = new FolderManager(receiveDirs, DirectoryStrategyType.SEQUENCE_STRATEGY);
+      this.folderManager =
+          new FolderManager(receiveDirs, DirectoryStrategyType.SEQUENCE_STRATEGY, false);
       this.iotConsensusV2TsFileWriterPool = new IoTConsensusV2TsFileWriterPool(consensusPipeName);
     } catch (Exception e) {
       LOGGER.error(DataNodePipeMessages.FAIL_TO_CREATE_IOTCONSENSUSV2_RECEIVER_FILE_FOLDERS, e);
@@ -365,7 +366,8 @@ public class IoTConsensusV2Receiver {
             // filename. However, for other files (mod, snapshot, etc.) the content varies for the
             // same name in different times, then we must rewrite the file to apply the newest
             // version.
-            writingFileWriter.setLength(0);
+            org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
+            writingFileWriter.seek(0);
           }
 
           final TSStatus status =
@@ -668,8 +670,7 @@ public class IoTConsensusV2Receiver {
                       + "The original file has length %s, but receiver file has length %s.",
                   fileName, fileLength, writingFileWriter.length()));
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to seal file {} when check non final seal, because the length of file is not correct. "
-              + "The original file has length {}, but receiver file has length {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_WHEN_1,
           consensusPipeName,
           fileName,
           fileLength,
@@ -716,8 +717,7 @@ public class IoTConsensusV2Receiver {
     // we will read the actual point count from the TsFile.
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "IoTConsensusV2-PipeName-{}: The point count of TsFile {} is not given by sender, "
-              + "will read actual point count from TsFile.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_THE_POINT_COUNT_OF_TSFILE,
           consensusPipeName,
           tsFileAbsolutePath);
     }
@@ -771,8 +771,7 @@ public class IoTConsensusV2Receiver {
         writingFile != null && writingFile.exists() && writingFileWriter != null;
     if (!isWritingFileAvailable) {
       LOGGER.info(
-          "IoTConsensusV2-PipeName-{}: Writing file {} is not available. "
-              + "Writing file is null: {}, writing file exists: {}, writing file writer is null: {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_WRITING_FILE_IS_NOT_AVAILABLE,
           consensusPipeName,
           writingFile,
           writingFile == null,
@@ -811,8 +810,7 @@ public class IoTConsensusV2Receiver {
                       + "The original file has length %s, but receiver file has length %s.",
                   fileName, fileLength, writingFileWriter.length()));
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to seal file {} when check final seal file, because the length of file is not correct. "
-              + "The original file has length {}, but receiver file has length {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_WHEN,
           consensusPipeName,
           fileName,
           fileLength,
@@ -872,8 +870,7 @@ public class IoTConsensusV2Receiver {
     }
 
     LOGGER.info(
-        "IoTConsensusV2-PipeName-{}: Writing file {} is not existed or name is not correct, try to create it. "
-            + "Current writing file is {}.",
+        DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_WRITING_FILE_IS_NOT_EXISTED,
         consensusPipeName,
         fileName,
         tsFileWriter.getWritingFile() == null ? "null" : tsFileWriter.getWritingFile().getPath());
@@ -943,8 +940,10 @@ public class IoTConsensusV2Receiver {
             newReceiverDir.getPath());
         throw new IOException(
             String.format(
-                "IoTConsensusV2-PipeName-%s: Failed to create receiver file dir %s. Because parent system dir have been deleted due to system concurrently exit.",
-                consensusPipeName, newReceiverDir.getPath()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_RECEIVER_FILE_DD67E854,
+                consensusPipeName,
+                newReceiverDir.getPath()));
       }
       // Remove exists dir
       deleteFileOrDirectoryIfExists(
@@ -957,8 +956,10 @@ public class IoTConsensusV2Receiver {
             newReceiverDir.getPath());
         throw new IOException(
             String.format(
-                "IoTConsensusV2-PipeName-%s: Failed to create receiver file dir %s. May because authority or dir already exists etc.",
-                consensusPipeName, newReceiverDir.getPath()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_RECEIVER_FILE_5ADC430A,
+                consensusPipeName,
+                newReceiverDir.getPath()));
       }
       this.receiveDirs.add(newReceiverDir.getPath());
     }
@@ -1152,8 +1153,10 @@ public class IoTConsensusV2Receiver {
       if (folderManager == null) {
         throw new IOException(
             String.format(
-                "IoTConsensusV2-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir",
-                consensusPipeName, index));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_TSFILEWRITER_85EC8DD2,
+                consensusPipeName,
+                index));
       }
       this.localWritingDir =
           folderManager.getNextWithRetry(
@@ -1192,8 +1195,10 @@ public class IoTConsensusV2Receiver {
       if (this.localWritingDir == null) {
         throw new IOException(
             String.format(
-                "IoTConsensusV2-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir",
-                consensusPipeName, index));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_TSFILEWRITER_85EC8DD2,
+                consensusPipeName,
+                index));
       }
     }
 

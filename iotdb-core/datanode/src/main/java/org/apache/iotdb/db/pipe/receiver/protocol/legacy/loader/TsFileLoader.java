@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader;
 
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -38,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.time.ZoneId;
 
 /** This loader is used to load tsFiles. If .mods file exists, it will be loaded as well. */
 public class TsFileLoader implements ILoader {
@@ -54,14 +51,15 @@ public class TsFileLoader implements ILoader {
   }
 
   @Override
-  public void load() {
+  public void load(final SessionInfo sessionInfo) {
     try {
-      LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      LoadTsFileStatement statement = LoadTsFileStatement.createForPipe(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
       statement.setConvertOnTypeMismatch(true);
       statement.setDatabaseLevel(parseSgLevel());
       statement.setVerifySchema(true);
-      statement.setAutoCreateDatabase(false);
+      statement.setAutoCreateDatabase(
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
 
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
@@ -69,13 +67,7 @@ public class TsFileLoader implements ILoader {
               .executeForTreeModel(
                   statement,
                   queryId,
-                  new SessionInfo(
-                      0,
-                      new UserEntity(
-                          AuthorityChecker.SUPER_USER_ID,
-                          AuthorityChecker.SUPER_USER,
-                          IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
-                      ZoneId.systemDefault()),
+                  sessionInfo,
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
@@ -86,7 +78,10 @@ public class TsFileLoader implements ILoader {
         LOGGER.error(DataNodePipeMessages.LOAD_TSFILE_ERROR_STATEMENT, tsFile.getPath(), statement);
         LOGGER.error(DataNodePipeMessages.LOAD_TSFILE_RESULT_STATUS, result.status);
         throw new LoadFileException(
-            String.format("Can not execute load TsFile statement: %s", statement));
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_CAN_NOT_EXECUTE_LOAD_TSFILE_STATEMENT_S_8CC1A096,
+                statement));
       }
     } catch (Exception e) {
       throw new PipeException(e.getMessage());

@@ -57,6 +57,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
@@ -98,7 +99,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   }
 
   @Override
-  public void reinitialize() {
+  public void reinitialize() throws IOException {
     setLastAppliedTermIndex(null);
     loadSnapshot(snapshotStorage.findLatestSnapshotDir());
     if (getLifeCycleState() == LifeCycle.State.PAUSED) {
@@ -152,6 +153,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
           deserializedRequest.markAsGeneratedByRemoteConsensusLeader();
         }
         final TSStatus result = applicationStateMachine.write(deserializedRequest);
+        if (result.getCode() == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()
+            && waitBeforeRetry()) {
+          continue;
+        }
         ret = new ResponseMessage(result);
         break;
       } catch (Throwable rte) {
@@ -160,13 +165,11 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             new ResponseMessage(
                 new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
                     .setMessage(RatisMessages.INTERNAL_ERROR_STATEMACHINE_RUNTIME_EXCEPTION + rte));
-        if (Utils.stallApply(consensusGroupType)) {
-          waitUntilSystemAllowApply();
-        } else {
+        if (!Utils.stallApply(consensusGroupType) || !waitUntilSystemAllowApply()) {
           break;
         }
       }
-    } while (Utils.stallApply(consensusGroupType));
+    } while (true);
 
     if (isLeader) {
       // only record time cost for data region in Performance Overview Dashboard
@@ -182,16 +185,35 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     return CompletableFuture.completedFuture(ret);
   }
 
-  private void waitUntilSystemAllowApply() {
+  /**
+   * @return true if the wait completed normally, false if interrupted
+   */
+  private boolean waitUntilSystemAllowApply() {
     try {
       Retriable.attemptUntilTrue(
           () -> !Utils.stallApply(consensusGroupType),
           TimeDuration.ONE_MINUTE,
           "waitUntilSystemAllowApply",
           logger);
+      return true;
     } catch (InterruptedException e) {
       logger.warn(RatisMessages.INTERRUPTED_WAITING_SYSTEM_READY, this, e);
       Thread.currentThread().interrupt();
+      return false;
+    }
+  }
+
+  /**
+   * @return true if the sleep completed normally, false if interrupted
+   */
+  private boolean waitBeforeRetry() {
+    try {
+      TimeUnit.MINUTES.sleep(1);
+      return true;
+    } catch (InterruptedException e) {
+      logger.warn(RatisMessages.INTERRUPTED_WAITING_SYSTEM_READY, this, e);
+      Thread.currentThread().interrupt();
+      return false;
     }
   }
 
@@ -254,21 +276,37 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private void deleteIncompleteSnapshot(File snapshotDir) throws IOException {
     // this takeSnapshot failed, clean up files and directories
     // statemachine is supposed to clear snapshotDir on failure
-    boolean isEmpty = snapshotDir.delete();
-    if (!isEmpty) {
+    try {
+      Files.deleteIfExists(snapshotDir.toPath());
+    } catch (IOException deleteException) {
       logger.info(RatisMessages.SNAPSHOT_DIR_INCOMPLETE_DELETING, snapshotDir.getAbsolutePath());
-      FileUtils.deleteFully(snapshotDir);
+      try {
+        FileUtils.deleteFully(snapshotDir);
+      } catch (IOException cleanupException) {
+        deleteException.addSuppressed(cleanupException);
+        throw deleteException;
+      }
     }
   }
 
-  private void loadSnapshot(File latestSnapshotDir) {
+  private void loadSnapshot(File latestSnapshotDir) throws IOException {
     snapshotStorage.updateSnapshotCache();
     if (latestSnapshotDir == null) {
       return;
     }
 
     // require the application statemachine to load the latest snapshot
-    applicationStateMachine.loadSnapshot(latestSnapshotDir);
+    if (!applicationStateMachine.loadSnapshot(latestSnapshotDir)) {
+      // The application state machine rejected this snapshot. Do not advance lastAppliedTermIndex:
+      // claiming the snapshot as applied would let Ratis proceed as if it were installed and run on
+      // incomplete data (silent data loss). Fail (re)initialization instead so the snapshot install
+      // is treated as failed and can be retried.
+      throw new IOException(
+          String.format(
+              RatisMessages.EXCEPTION_ARG_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_A12E23D7,
+              this,
+              latestSnapshotDir));
+    }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
     updateLastAppliedTermIndex(snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
   }

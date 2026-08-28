@@ -27,6 +27,7 @@ import org.apache.iotdb.session.subscription.consumer.ConsumeListener;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.util.CollectionUtils;
 
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,6 +62,8 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   // avoid interval less than or equal to zero
   private final long autoPollIntervalMs;
   private final long autoPollTimeoutMs;
+
+  private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -123,10 +127,15 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
       return;
     }
 
-    super.open();
-
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    try {
+      super.open();
+    } catch (final SubscriptionException e) {
+      isClosed.set(true);
+      throw e;
+    }
+    emptyPollLogThrottler.reset();
 
     // submit auto poll worker
     submitAutoPollWorker();
@@ -138,8 +147,8 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
       return;
     }
 
-    super.close();
     isClosed.set(true);
+    super.close();
   }
 
   @Override
@@ -181,15 +190,36 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
       try {
         final List<SubscriptionMessage> messages =
             multiplePoll(subscribedTopics.keySet(), autoPollTimeoutMs);
+        // Update watermark timestamp before stripping watermark events
+        for (final SubscriptionMessage m : messages) {
+          if (m.getMessageType() == SubscriptionMessageType.WATERMARK.getType()) {
+            final long ts = m.getWatermarkTimestamp();
+            if (ts > latestWatermarkTimestamp) {
+              latestWatermarkTimestamp = ts;
+            }
+          }
+        }
+        // Strip system messages — push consumer does not use processors
+        messages.removeIf(
+            m -> {
+              final short type = m.getMessageType();
+              return type == SubscriptionMessageType.WATERMARK.getType();
+            });
         if (messages.isEmpty()) {
-          LOGGER.info(
-              "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
-              this,
-              CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
-              autoPollTimeoutMs);
+          final OptionalLong consecutiveEmptyPollCount =
+              emptyPollLogThrottler.markEmptyPollAndMaybeGetCount();
+          if (consecutiveEmptyPollCount.isPresent()) {
+            LOGGER.info(
+                SubscriptionMessages.PUSH_CONSUMER_POLL_EMPTY_MESSAGE,
+                AbstractSubscriptionPushConsumer.this,
+                CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
+                autoPollTimeoutMs,
+                consecutiveEmptyPollCount.getAsLong());
+          }
           return;
         }
 
+        emptyPollLogThrottler.reset();
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);
         }
@@ -208,7 +238,10 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
             }
           } catch (final Exception e) {
             LOGGER.warn(
-                "Consumer listener raised an exception while consuming message: {}", message, e);
+                SubscriptionMessages
+                    .LOG_CONSUMER_LISTENER_RAISED_EXCEPTION_CONSUMING_MESSAGE_ARG_867EE46D,
+                message,
+                e);
             messagesToNack.add(message);
           }
         }

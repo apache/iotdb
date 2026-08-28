@@ -27,9 +27,12 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafil
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,7 +55,7 @@ public class SchemaFileLogReader {
   }
 
   public List<byte[]> collectUpdatedEntries() throws IOException, SchemaFileLogCorruptedException {
-    if (inputStream == null || inputStream.getChannel().size() == 0) {
+    if (inputStream == null || Files.size(logFile.toPath()) == 0) {
       return Collections.emptyList();
     }
 
@@ -91,8 +94,9 @@ public class SchemaFileLogReader {
         }
       }
 
-      // corrupted within one entry
-      if (inputStream.read(tempBytes, 1, tempBytes.length - 1) < tempBytes.length - 2) {
+      try {
+        new DataInputStream(inputStream).readFully(tempBytes, 1, tempBytes.length - 1);
+      } catch (EOFException e) {
         throw new SchemaFileLogCorruptedException(
             logFile.getAbsolutePath(), DataNodeSchemaMessages.SCHEMA_FILE_LOG_INCOMPLETE_ENTRY);
       }

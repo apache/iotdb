@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkReques
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
@@ -116,9 +118,14 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
   }
 
   public static PipeTransferTabletRawReqV2 toTPipeTransferRawReq(final ByteBuffer buffer) {
+    return toTPipeTransferRawReq(buffer, new TabletStringInternPool());
+  }
+
+  public static PipeTransferTabletRawReqV2 toTPipeTransferRawReq(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
     final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
 
-    tabletReq.deserializeTPipeTransferRawReq(buffer);
+    tabletReq.deserializeTPipeTransferRawReq(buffer, tabletStringInternPool);
     tabletReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
 
@@ -137,7 +144,8 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
     tabletReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(tablet, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       tablet.serialize(outputStream);
       ReadWriteIOUtils.write(isAligned, outputStream);
@@ -153,7 +161,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       final TPipeTransferReq transferReq) {
     final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
 
-    tabletReq.deserializeTPipeTransferRawReq(transferReq.body);
+    tabletReq.deserializeTPipeTransferRawReq(transferReq.body, new TabletStringInternPool());
     tabletReq.body = transferReq.body;
 
     tabletReq.version = transferReq.version;
@@ -166,7 +174,8 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
   public static byte[] toTPipeTransferBytes(
       final Tablet tablet, final boolean isAligned, final String dataBaseName) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateAirGapSerializedSize(tablet, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW_V2.getType(), outputStream);
@@ -175,6 +184,14 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       ReadWriteIOUtils.write(dataBaseName, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
+  }
+
+  static int calculateSerializedSize(final Tablet tablet, final String dataBaseName) {
+    return tablet.serializedSize() + Byte.BYTES + ReadWriteIOUtils.sizeToWrite(dataBaseName);
+  }
+
+  static int calculateAirGapSerializedSize(final Tablet tablet, final String dataBaseName) {
+    return Byte.BYTES + Short.BYTES + calculateSerializedSize(tablet, dataBaseName);
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -202,11 +219,17 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
   /////////////////////////////// Util ///////////////////////////////
 
   public void deserializeTPipeTransferRawReq(final ByteBuffer buffer) {
+    deserializeTPipeTransferRawReq(buffer, new TabletStringInternPool());
+  }
+
+  public void deserializeTPipeTransferRawReq(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
     final int startPosition = buffer.position();
     try {
       // V2: read databaseName, readDatabaseName = true
       final InsertTabletStatement insertTabletStatement =
-          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, true);
+          TabletStatementConverter.deserializeStatementFromTabletFormat(
+              buffer, true, tabletStringInternPool);
       this.isAligned = insertTabletStatement.isAligned();
       // databaseName is already set in deserializeStatementFromTabletFormat when
       // readDatabaseName=true
@@ -216,9 +239,14 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       // If Statement deserialization fails, fallback to Tablet format
       // Reset buffer position for Tablet deserialization
       buffer.position(startPosition);
-      this.tablet = Tablet.deserialize(buffer);
+      this.tablet =
+          PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
       this.isAligned = ReadWriteIOUtils.readBool(buffer);
-      this.dataBaseName = ReadWriteIOUtils.readString(buffer);
+      final String dataBaseName = ReadWriteIOUtils.readString(buffer);
+      this.dataBaseName =
+          Objects.nonNull(tabletStringInternPool)
+              ? tabletStringInternPool.intern(dataBaseName)
+              : dataBaseName;
     }
   }
 }

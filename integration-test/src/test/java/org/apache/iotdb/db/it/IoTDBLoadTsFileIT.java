@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -86,7 +89,7 @@ public class IoTDBLoadTsFileIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setDatanodeMemoryProportion("1:10:1:1:1:1");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDatanodeMemoryProportion("1:10:1:1:1:0");
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
@@ -888,6 +891,28 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  public void testLoadDataNodeInternalDataDirectoryIsRejectedWithoutLeakingPath() throws Exception {
+    final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    final File dataDir = new File(dataNodeWrapper.getDataPath());
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(String.format("load \"%s\"", dataDir.getAbsolutePath()));
+        Assert.fail("Expected LOAD from the DataNode internal data directory to be rejected.");
+      } catch (final SQLException e) {
+        Assert.assertTrue(
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "Cannot load files because the specified directory contains IoTDB data."));
+        Assert.assertFalse(e.getMessage(), e.getMessage().contains(dataDir.getAbsolutePath()));
+      }
+    }
+  }
+
+  @Test
   public void testLoadWithMods() throws Exception {
     final long writtenPoint1;
     // device 0, device 1, sg 0
@@ -983,6 +1008,62 @@ public class IoTDBLoadTsFileIT {
         Assert.assertFalse(resultSet.next());
       }
     }
+  }
+
+  @Test
+  public void testAsyncLoadKeepsSameNamedTsFilesWithModsIsolated() throws Exception {
+    registerSchema();
+
+    long expectedPointCount = 0;
+    // Before each file group had its own transfer directory, these same-named TsFiles and mods
+    // were renamed independently in one shared directory and could be paired with the wrong file.
+    for (int i = 0; i < 2; i++) {
+      final File sourceDir = new File(tmpDir, "source-" + i);
+      Assert.assertTrue(sourceDir.mkdirs());
+      try (final TsFileGenerator generator =
+          new TsFileGenerator(new File(sourceDir, "1-0-0-0.tsfile"))) {
+        generator.resetRandom(i);
+        generator.registerTimeseries(
+            SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
+        generator.generateData(SchemaConfig.DEVICE_0, 20, 1, false, TimeUnit.SECONDS.toMillis(i));
+        // Each group contributes 20 points and its own mods deletes exactly one. Losing either
+        // TsFile-to-mods pairing therefore leaves 39 points instead of the expected 38.
+        expectedPointCount += generator.getTotalNumber() - 1;
+      }
+      try (final ModificationFile modificationFile =
+          new ModificationFile(
+              new File(sourceDir, "1-0-0-0.tsfile" + ModificationFile.FILE_SUFFIX), false)) {
+        modificationFile.write(
+            new TreeDeletionEntry(
+                new MeasurementPath(
+                    SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementName()),
+                TimeUnit.SECONDS.toMillis(i) + 1,
+                TimeUnit.SECONDS.toMillis(i) + 1));
+      }
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "load \"%s\" with ('async'='true','database-level'='2','on-success'='delete')",
+              tmpDir.getAbsolutePath()));
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        EnvFactory.getEnv(),
+        "select count("
+            + SchemaConfig.MEASUREMENT_00.getMeasurementName()
+            + ") from "
+            + SchemaConfig.DEVICE_0,
+        Collections.singletonMap(
+            "count("
+                + SchemaConfig.DEVICE_0
+                + "."
+                + SchemaConfig.MEASUREMENT_00.getMeasurementName()
+                + ")",
+            Long.toString(expectedPointCount)),
+        30);
   }
 
   @Test

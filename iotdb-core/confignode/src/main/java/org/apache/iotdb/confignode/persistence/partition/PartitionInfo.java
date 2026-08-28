@@ -1028,7 +1028,8 @@ public class PartitionInfo implements SnapshotProcessor {
     } finally {
       // with or without success, delete temporary files anyway
       for (int retry = 0; retry < 5; retry++) {
-        if (!tmpFile.exists() || tmpFile.delete()) {
+        if (!tmpFile.exists()
+            || org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpFile)) {
           break;
         } else {
           LOGGER.warn(

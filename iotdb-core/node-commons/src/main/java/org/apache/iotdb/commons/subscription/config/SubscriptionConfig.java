@@ -31,7 +31,7 @@ public class SubscriptionConfig {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   public boolean getSubscriptionEnabled() {
-    return false;
+    return COMMON_CONFIG.getSubscriptionEnabled();
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {
@@ -40,6 +40,10 @@ public class SubscriptionConfig {
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
+  }
+
+  public int getSubscriptionConsensusPrefetchExecutorMaxThreadNum() {
+    return COMMON_CONFIG.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
   }
 
   public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
@@ -138,17 +142,73 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
   }
 
+  public long getSubscriptionOwnerLeaseDurationMsMin() {
+    return COMMON_CONFIG.getSubscriptionOwnerLeaseDurationMsMin();
+  }
+
+  // Consensus subscription batching parameters
+  public int getSubscriptionConsensusBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxDelayInMs();
+  }
+
+  public long getSubscriptionConsensusBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxSizeInBytes();
+  }
+
+  public int getSubscriptionConsensusBatchMaxTabletCount() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxTabletCount();
+  }
+
+  public int getSubscriptionConsensusBatchMaxWalEntries() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxWalEntries();
+  }
+
+  public int getSubscriptionConsensusCommitPersistInterval() {
+    return COMMON_CONFIG.getSubscriptionConsensusCommitPersistInterval();
+  }
+
+  public boolean isSubscriptionConsensusCommitFsyncEnabled() {
+    return COMMON_CONFIG.isSubscriptionConsensusCommitFsyncEnabled();
+  }
+
+  public long getSubscriptionConsensusConsumerEvictionTimeoutMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusConsumerEvictionTimeoutMs();
+  }
+
+  public boolean isSubscriptionConsensusLagBasedPriority() {
+    return COMMON_CONFIG.isSubscriptionConsensusLagBasedPriority();
+  }
+
+  public int getSubscriptionConsensusPrefetchingQueueCapacity() {
+    return COMMON_CONFIG.getSubscriptionConsensusPrefetchingQueueCapacity();
+  }
+
+  public long getSubscriptionConsensusWatermarkIntervalMs() {
+    if (!COMMON_CONFIG.isSubscriptionConsensusWatermarkEnabled()) {
+      return -1;
+    }
+    return COMMON_CONFIG.getSubscriptionConsensusWatermarkIntervalMs();
+  }
+
+  public long getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info(PipeMessages.LOG_SUBSCRIPTIONENABLED_ARG_6F9EC0F9, getSubscriptionEnabled());
     LOGGER.info(
         PipeMessages.CONFIG_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE,
         getSubscriptionCacheMemoryUsagePercentage());
     LOGGER.info(
         PipeMessages.CONFIG_SUBSCRIPTION_SUBTASK_EXECUTOR_MAX_THREAD_NUM,
         getSubscriptionSubtaskExecutorMaxThreadNum());
+    LOGGER.info(
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSPREFETCHEXECUTORMAXTHREADNUM_ARG_94D0BD76,
+        getSubscriptionConsensusPrefetchExecutorMaxThreadNum());
 
     LOGGER.info(
         PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_TABLET_BATCH_MAX_DELAY_IN_MS,
@@ -223,6 +283,22 @@ public class SubscriptionConfig {
     LOGGER.info(
         PipeMessages.CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES,
         getSubscriptionMetaSyncerSyncIntervalMinutes());
+
+    LOGGER.info(
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSBATCHMAXDELAYINMS_ARG_38C2CB8B,
+        getSubscriptionConsensusBatchMaxDelayInMs());
+    LOGGER.info(
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSBATCHMAXSIZEINBYTES_ARG_F8D28441,
+        getSubscriptionConsensusBatchMaxSizeInBytes());
+    LOGGER.info(
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSBATCHMAXTABLETCOUNT_ARG_60BB1D6A,
+        getSubscriptionConsensusBatchMaxTabletCount());
+    LOGGER.info(
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSBATCHMAXWALENTRIES_ARG_9BF1CAE4,
+        getSubscriptionConsensusBatchMaxWalEntries());
+    LOGGER.info(
+        PipeMessages.LOG_SUBSCRIPTIONCONSENSUSIDLESAFETIMEBARRIERINTERVALMS_ARG_A6944544,
+        getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

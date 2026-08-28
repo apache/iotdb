@@ -29,20 +29,22 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DirectoryChecker {
   private static final Logger logger = LoggerFactory.getLogger(DirectoryChecker.class);
   private static final String LOCK_FILE_NAME = ".iotdb-lock";
-  private final List<RandomAccessFile> randomAccessFileList = new ArrayList<>();
+  private final List<FileChannel> fileChannelList = new ArrayList<>();
   private final List<File> fileList = new ArrayList<>();
 
   private DirectoryChecker() {}
@@ -51,24 +53,30 @@ public class DirectoryChecker {
     return DirectoryCheckerHolder.INSTANCE;
   }
 
-  @SuppressWarnings("java:S2095") // will be closed by randomAccessFileList
+  @SuppressWarnings("java:S2095") // will be closed by fileChannelList
   public void registerDirectory(File dir) throws ConfigurationException, IOException {
     if (dir.exists() && !dir.isDirectory()) {
       throw new ConfigurationException(
           String.format(
-              "Unable to create directory %s because there is file under the path, please check configuration and restart.",
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_BECAUSE_THERE_IS_FILE_UNDER_1C59ACFC,
               dir.getAbsolutePath()));
     } else if (!dir.exists()) {
       if (!dir.mkdirs()) {
         throw new ConfigurationException(
             String.format(
-                "Unable to create directory %s, please check configuration and restart.",
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_PLEASE_CHECK_CONFIGURATION_BA580B67,
                 dir.getAbsolutePath()));
       }
     }
     File file = new File(dir, LOCK_FILE_NAME);
-    RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
-    FileChannel channel = randomAccessFile.getChannel();
+    FileChannel channel =
+        FileChannel.open(
+            file.toPath(),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.READ,
+            StandardOpenOption.WRITE);
     FileLock lock = null;
     try {
       // Try acquiring the lock without blocking. This method returns
@@ -79,16 +87,26 @@ public class DirectoryChecker {
     }
     // File is already locked other virtual machine
     if (lock == null) {
-      randomAccessFile.close();
+      String lockOwner = Files.readString(file.toPath());
+      channel.close();
       throw new ConfigurationException(
           String.format(
-              "Conflict is detected in directory %s, which may be being used by another IoTDB (ProcessId=%s). Please check configuration and restart.",
-              dir.getAbsolutePath(), randomAccessFile.readLine()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_CONFLICT_IS_DETECTED_IN_DIRECTORY_S_WHICH_MAY_BE_BEING_USED_CB5C77FC,
+              dir.getAbsolutePath(),
+              lockOwner));
     }
-    randomAccessFile.writeBytes(ProcessIdUtils.getProcessId());
+    channel.truncate(0);
+    channel.position(0);
+    ByteBuffer processId =
+        ByteBuffer.wrap(ProcessIdUtils.getProcessId().getBytes(StandardCharsets.UTF_8));
+    while (processId.hasRemaining()) {
+      channel.write(processId);
+    }
+    channel.force(true);
     // add to list
     fileList.add(file);
-    randomAccessFileList.add(randomAccessFile);
+    fileChannelList.add(channel);
   }
 
   public boolean isCrossDisk(String[] dirs) throws IOException {
@@ -121,8 +139,8 @@ public class DirectoryChecker {
 
   public void deregisterAll() {
     try {
-      for (RandomAccessFile randomAccessFile : randomAccessFileList) {
-        randomAccessFile.close();
+      for (FileChannel fileChannel : fileChannelList) {
+        fileChannel.close();
         // it will release lock automatically after close
       }
       for (File file : fileList) {

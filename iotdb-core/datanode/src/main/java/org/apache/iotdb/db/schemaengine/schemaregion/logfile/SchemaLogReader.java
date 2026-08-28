@@ -20,22 +20,21 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.channels.FileChannel;
 import java.util.NoSuchElementException;
 
 /**
@@ -143,16 +142,15 @@ public class SchemaLogReader<T> implements AutoCloseable {
   }
 
   private void truncateBrokenLogs() {
-    try (FileOutputStream outputStream = new FileOutputStream(logFile, true);
-        FileChannel channel = outputStream.getChannel()) {
-      if (currentIndex != channel.size()) {
+    try {
+      final long fileSize = logFile.length();
+      if (currentIndex != fileSize) {
         LOGGER.warn(
             DataNodeSchemaMessages.LOG_FILE_END_CORRUPTED_TRUNCATE,
             logFile.getName(),
             currentIndex,
-            channel.size());
-        channel.truncate(currentIndex);
-        channel.force(true);
+            fileSize);
+        FileUtils.truncateFile(logFile, currentIndex);
       }
       isFileCorrupted = false;
     } catch (IOException e) {

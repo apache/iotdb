@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -162,20 +163,29 @@ public class ProcedureInfo implements SnapshotProcessor {
   }
 
   private static Optional<Procedure> loadProcedure(Path procedureFilePath) {
-    try (FileInputStream fis = new FileInputStream(procedureFilePath.toFile())) {
+    try (FileChannel channel = FileChannel.open(procedureFilePath)) {
       Procedure procedure = null;
-      try (FileChannel channel = fis.getChannel()) {
-        ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_LOAD_BUFFER_SIZE);
-        if (channel.read(byteBuffer) > 0) {
-          byteBuffer.flip();
-          procedure = ProcedureFactory.getInstance().create(byteBuffer);
-          byteBuffer.clear();
-        }
-        return Optional.ofNullable(procedure);
+      final long fileSize = channel.size();
+      if (fileSize > PROCEDURE_LOAD_BUFFER_SIZE) {
+        throw new IOException(
+            String.format(
+                ConfigNodeMessages
+                    .EXCEPTION_PROCEDURE_FILE_ARG_EXCEEDS_THE_LOAD_BUFFER_LIMIT_ARG_ACTUAL_SIZE_ARG_62375B4C,
+                procedureFilePath,
+                PROCEDURE_LOAD_BUFFER_SIZE,
+                fileSize));
       }
+      ByteBuffer byteBuffer = ByteBuffer.allocate((int) fileSize);
+      if (fileSize > 0) {
+        IOUtils.readFully(channel, byteBuffer);
+        byteBuffer.flip();
+        procedure = ProcedureFactory.getInstance().create(byteBuffer);
+        byteBuffer.clear();
+      }
+      return Optional.ofNullable(procedure);
     } catch (Exception e) {
       LOGGER.error(ConfigNodeMessages.LOAD_FAILED_IT_WILL_BE_DELETED, procedureFilePath, e);
-      if (!procedureFilePath.toFile().delete()) {
+      if (!FileUtils.deleteFileIfExist(procedureFilePath.toFile())) {
         LOGGER.error(
             ConfigNodeMessages.DELETED_FAILED_TAKE_APPROPRIATE_ACTION, procedureFilePath, e);
       }

@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -34,6 +36,7 @@ import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -77,13 +80,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class IoTConsensus implements IConsensus {
@@ -94,12 +97,27 @@ public class IoTConsensus implements IConsensus {
   private final TEndPoint thisNode;
   private final int thisNodeId;
   private final File storageDir;
+  private final List<String> recvSnapshotDirs;
+  private final DirectoryStrategyType recvFolderStrategyType;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, IoTConsensusServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
   private IoTConsensusConfig config;
+
+  /**
+   * Optional callback invoked after a new local peer is created via {@link #createLocalPeer}. Used
+   * by the subscription system to auto-bind prefetching queues to new DataRegions.
+   */
+  public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onNewPeerCreated;
+
+  /**
+   * Optional callback invoked before a local peer is deleted via {@link #deleteLocalPeer}. Used by
+   * the subscription system to unbind and clean up prefetching queues before the region is removed.
+   */
+  public static volatile Consumer<ConsensusGroupId> onPeerRemoved;
+
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
@@ -110,9 +128,13 @@ public class IoTConsensus implements IConsensus {
     this.thisNode = config.getThisNodeEndPoint();
     this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
+    this.recvSnapshotDirs = config.getRecvSnapshotDirs();
+    this.recvFolderStrategyType = config.getDirectoryStrategyType();
     this.config = config.getIotConsensusConfig();
     this.registry = registry;
-    this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
+    this.service =
+        new IoTConsensusRPCService(
+            thisNode, config.getIotConsensusConfig(), config.getTrustedChannelFailureHandler());
     this.clientManager =
         new IClientManager.Factory<TEndPoint, AsyncIoTConsensusServiceClient>()
             .createClientManager(
@@ -177,8 +199,10 @@ public class IoTConsensus implements IConsensus {
           IoTConsensusServerImpl consensus =
               new IoTConsensusServerImpl(
                   path.toString(),
+                  recvSnapshotDirs,
+                  recvFolderStrategyType,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
-                  new TreeSet<>(),
+                  Collections.emptyList(),
                   registry.apply(consensusGroupId),
                   backgroundTaskService,
                   clientManager,
@@ -186,6 +210,8 @@ public class IoTConsensus implements IConsensus {
                   config);
           stateMachineMap.put(consensusGroupId, consensus);
         }
+      } catch (DiskSpaceInsufficientException e) {
+        throw new IOException(e);
       }
     }
     if (correctPeerListBeforeStart != null) {
@@ -283,16 +309,23 @@ public class IoTConsensus implements IConsensus {
                     return null;
                   }
 
-                  IoTConsensusServerImpl impl =
-                      new IoTConsensusServerImpl(
-                          path,
-                          new Peer(groupId, thisNodeId, thisNode),
-                          new TreeSet<>(peers),
-                          registry.apply(groupId),
-                          backgroundTaskService,
-                          clientManager,
-                          syncClientManager,
-                          config);
+                  IoTConsensusServerImpl impl = null;
+                  try {
+                    impl =
+                        new IoTConsensusServerImpl(
+                            path,
+                            recvSnapshotDirs,
+                            recvFolderStrategyType,
+                            new Peer(groupId, thisNodeId, thisNode),
+                            peers,
+                            registry.apply(groupId),
+                            backgroundTaskService,
+                            clientManager,
+                            syncClientManager,
+                            config);
+                  } catch (DiskSpaceInsufficientException e) {
+                    throw new RuntimeException(e);
+                  }
                   impl.start();
                   return impl;
                 }))
@@ -305,11 +338,37 @@ public class IoTConsensus implements IConsensus {
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
+
+    // Notify subscription system about new peer creation for auto-binding
+    final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onNewPeerCreated;
+    if (callback != null) {
+      try {
+        callback.accept(groupId, stateMachineMap.get(groupId));
+      } catch (final Exception e) {
+        logger.warn(
+            IoTConsensusMessages.LOG_ONNEWPEERCREATED_CALLBACK_FAILED_GROUP_ARG_2671FCDA,
+            groupId,
+            e);
+      }
+    }
   }
 
   @Override
   public void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException {
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
+
+    // Notify subscription system before stopping the peer, so that subscription queues can
+    // properly unregister from the still-alive serverImpl.
+    final Consumer<ConsensusGroupId> removeCallback = onPeerRemoved;
+    if (removeCallback != null) {
+      try {
+        removeCallback.accept(groupId);
+      } catch (final Exception e) {
+        logger.warn(
+            IoTConsensusMessages.LOG_ONPEERREMOVED_CALLBACK_FAILED_GROUP_ARG_9B79CBAF, groupId, e);
+      }
+    }
+
     AtomicBoolean exist = new AtomicBoolean(false);
     stateMachineMap.computeIfPresent(
         groupId,
@@ -321,7 +380,9 @@ public class IoTConsensus implements IConsensus {
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
+    FileUtils.deleteFileOrDirectoryWithRateLimiter(
+        new File(buildPeerDir(storageDir, groupId)),
+        RegionMigrationFileRemoveRateLimiter.getInstance()::acquire);
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 

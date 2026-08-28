@@ -54,6 +54,14 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
     return parameters;
   }
 
+  public static boolean isTreeModelDataAllowedToBeCaptured(final Map<String, String> parameters) {
+    return parameters.containsKey(TREE) || !parameters.containsKey(TABLE);
+  }
+
+  public static boolean isTableModelDataAllowedToBeCaptured(final Map<String, String> parameters) {
+    return parameters.containsKey(TABLE);
+  }
+
   protected abstract PipeRequestType getPlanType();
 
   /////////////////////////////// Thrift ///////////////////////////////

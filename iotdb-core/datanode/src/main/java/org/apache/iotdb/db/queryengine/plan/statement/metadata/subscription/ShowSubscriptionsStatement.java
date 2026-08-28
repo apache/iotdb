@@ -33,6 +33,7 @@ public class ShowSubscriptionsStatement extends Statement implements IConfigStat
 
   private String topicName;
   private boolean isTableModel;
+  private boolean details;
 
   public ShowSubscriptionsStatement() {
     super();
@@ -47,12 +48,20 @@ public class ShowSubscriptionsStatement extends Statement implements IConfigStat
     return isTableModel;
   }
 
+  public boolean isDetails() {
+    return details;
+  }
+
   public void setTopicName(final String topicName) {
     this.topicName = topicName;
   }
 
   public void setTableModel(final boolean tableModel) {
     this.isTableModel = tableModel;
+  }
+
+  public void setDetails(final boolean details) {
+    this.details = details;
   }
 
   @Override

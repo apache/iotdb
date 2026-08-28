@@ -45,6 +45,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     return this;
   }
@@ -249,12 +254,6 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus) {
-    return this;
-  }
-
-  @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
     return this;
   }
@@ -281,6 +280,21 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
     return this;
   }
 
@@ -340,11 +354,12 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+  public CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode) {
     return this;
   }
 
-  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+  @Override
+  public CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode) {
     return this;
   }
 
@@ -355,6 +370,12 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
+      long subscriptionOwnerLeaseDurationMsMin) {
     return this;
   }
 
@@ -375,6 +396,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
     return this;
   }
 
@@ -427,6 +453,16 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
       int subscriptionPrefetchTsFileBatchMaxDelayInMs) {
     return this;
@@ -460,6 +496,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSslProtocol(String sslProtocol) {
     return this;
   }
 

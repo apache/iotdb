@@ -33,6 +33,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -222,22 +223,29 @@ public class IoTDBLoadTsFileWithModIT {
                 tmpDir.getAbsolutePath(), databaseName));
 
         boolean databaseFound = false;
-        out:
         for (int i = 0; i < 10; i++) {
           try (final ResultSet resultSet = statement.executeQuery("show databases")) {
             while (resultSet.next()) {
               final String currentDatabase = resultSet.getString(1);
               if (databaseName.equalsIgnoreCase(currentDatabase)) {
                 databaseFound = true;
-                break out;
+                break;
               }
             }
+          } catch (InconsistentDataException ignored) {
+            // Async load propagates the new database metadata to different DataNodes at
+            // slightly different times, so "show databases" may be inconsistent transiently.
+          }
 
-            try {
-              Thread.sleep(1000);
-            } catch (InterruptedException e) {
-              break;
-            }
+          if (databaseFound) {
+            break;
+          }
+
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            break;
           }
         }
         Assert.assertTrue(

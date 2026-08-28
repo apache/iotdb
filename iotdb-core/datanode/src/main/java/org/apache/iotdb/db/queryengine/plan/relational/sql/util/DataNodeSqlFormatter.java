@@ -26,12 +26,15 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
@@ -60,6 +63,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -134,7 +140,21 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
 
   @Override
   public Void visitShowDB(ShowDB node, Integer indent) {
-    builder.append("SHOW DATABASE");
+    builder.append("SHOW DATABASES");
+    return null;
+  }
+
+  @Override
+  public Void visitCountDB(CountDB node, Integer indent) {
+    builder.append("COUNT DATABASES");
+    return null;
+  }
+
+  @Override
+  public Void visitShowCreateDatabase(ShowCreateDatabase node, Integer indent) {
+    builder
+        .append("SHOW CREATE DATABASE ")
+        .append(ShowCreateTableTask.getIdentifier(node.getDatabase()));
     return null;
   }
 
@@ -698,6 +718,14 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
   }
 
   @Override
+  public Void visitShowCreatePipe(ShowCreatePipe node, Integer context) {
+    builder
+        .append("SHOW CREATE PIPE ")
+        .append(ShowCreateTableTask.getIdentifier(node.getPipeName()));
+    return null;
+  }
+
+  @Override
   public Void visitCreatePipePlugin(CreatePipePlugin node, Integer context) {
     builder.append("CREATE PIPEPLUGIN ");
     if (node.hasIfNotExistsCondition()) {
@@ -765,6 +793,31 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
   }
 
   @Override
+  public Void visitAlterTopic(AlterTopic node, Integer context) {
+    builder.append("ALTER TOPIC ");
+    builder.append(node.getTopicName());
+    builder.append(" \n");
+
+    builder
+        .append("WITH (")
+        .append("\n")
+        .append(
+            node.getTopicAttributes().entrySet().stream()
+                .map(
+                    entry ->
+                        indentString(1)
+                            + "\""
+                            + entry.getKey()
+                            + "\" = \""
+                            + entry.getValue()
+                            + "\"")
+                .collect(joining(", " + "\n")))
+        .append(")\n");
+
+    return null;
+  }
+
+  @Override
   public Void visitDropTopic(DropTopic node, Integer context) {
     builder.append("DROP TOPIC ");
     if (node.hasIfExistsCondition()) {
@@ -787,11 +840,24 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
   }
 
   @Override
+  public Void visitShowCreateTopic(ShowCreateTopic node, Integer context) {
+    builder
+        .append("SHOW CREATE TOPIC ")
+        .append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
+
+    return null;
+  }
+
+  @Override
   public Void visitShowSubscriptions(ShowSubscriptions node, Integer context) {
+    builder.append("SHOW SUBSCRIPTIONS");
+    if (node.isDetails()) {
+      builder.append(" DETAILS");
+    }
     if (Objects.isNull(node.getTopicName())) {
-      builder.append("SHOW SUBSCRIPTIONS");
+      return null;
     } else {
-      builder.append("SHOW SUBSCRIPTIONS ON ").append(node.getTopicName());
+      builder.append(" ON ").append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
     }
 
     return null;

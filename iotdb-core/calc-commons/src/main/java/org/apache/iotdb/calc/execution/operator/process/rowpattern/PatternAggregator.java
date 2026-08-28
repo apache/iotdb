@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher.Array
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
 
@@ -74,11 +75,15 @@ public class PatternAggregator {
       TableAccumulator accumulator,
       List<Integer> argumentChannels,
       PatternAggregationTracker patternAggregationTracker) {
-    this.boundSignature = requireNonNull(boundSignature, "boundSignature is null");
-    this.accumulator = requireNonNull(accumulator, "accumulato is null");
+    this.boundSignature =
+        requireNonNull(boundSignature, CalcMessages.EXCEPTION_BOUNDSIGNATURE_IS_NULL_D1077180);
+    this.accumulator =
+        requireNonNull(accumulator, CalcMessages.EXCEPTION_ACCUMULATO_IS_NULL_D51F532F);
     this.argumentChannels = argumentChannels;
     this.patternAggregationTracker =
-        requireNonNull(patternAggregationTracker, "patternAggregationTracker is null");
+        requireNonNull(
+            patternAggregationTracker,
+            CalcMessages.EXCEPTION_PATTERNAGGREGATIONTRACKER_IS_NULL_82EC5B1C);
     accumulator.reset();
   }
 
@@ -169,7 +174,8 @@ public class PatternAggregator {
     } catch (UnsupportedOperationException e) {
       throw new SemanticException(
           String.format(
-              "aggregate function %s does not support copying", boundSignature.getName()));
+              CalcMessages.EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_COPYING_3E03976C,
+              boundSignature.getName()));
     }
 
     return new PatternAggregator(

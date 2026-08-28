@@ -122,7 +122,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
 
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId(""), pathList, deleteStartTime, deleteEndTime);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -143,7 +143,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
 
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId(""), pathList, deleteStartTime, deleteEndTime);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -226,15 +226,19 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
   public int serializedSize() {
     int size = FIXED_SERIALIZED_SIZE;
     for (PartialPath path : pathList) {
-      size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
+      size += WALWriteUtils.sizeToWrite(path.getFullPath());
     }
     return size;
   }
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(PlanNodeType.DELETE_DATA.getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(encodedSearchIndex);
     buffer.putInt(pathList.size());
     for (PartialPath path : pathList) {
       WALWriteUtils.write(path.getFullPath(), buffer);
@@ -389,7 +393,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
                 firstOne.getDeleteStartTime() == deleteDataNode.getDeleteStartTime()
                     && firstOne.getDeleteEndTime() == deleteDataNode.getDeleteEndTime())) {
       throw new IllegalArgumentException(
-          "DeleteDataNodes which start time or end time are not same cannot be merged");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_DELETEDATANODES_WHICH_START_TIME_OR_END_TIME_ARE_NOT_SAME_F396951C);
     }
     List<MeasurementPath> pathList =
         deleteDataNodes.stream()
@@ -403,6 +408,9 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
             pathList,
             firstOne.getDeleteStartTime(),
             firstOne.getDeleteEndTime())
-        .setSearchIndex(firstOne.searchIndex);
+        .setSearchIndex(firstOne.searchIndex)
+        .setPhysicalTime(firstOne.getPhysicalTime())
+        .setNodeId(firstOne.getNodeId())
+        .setSyncIndex(firstOne.getSyncIndex());
   }
 }

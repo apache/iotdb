@@ -21,13 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.allocation;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFakeNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +53,8 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
       // folderManager remains null when disk space is insufficient during initialization
       // It will be lazily initialized later when disk space becomes available
       logger.error(
-          "Fail to create wal node allocation strategy because all disks of wal folders are full.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAIL_TO_CREATE_WAL_NODE_ALLOCATION_STRATEGY_BECAUSE_ALL_72801644,
           e);
     }
   }

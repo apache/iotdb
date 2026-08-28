@@ -79,6 +79,14 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitShowCreateDatabase(final ShowCreateDatabase node, final C context) {
+    return visitStatement(node, context);
+  }
+
+  default R visitCountDB(final CountDB node, final C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitCreateTable(final CreateTable node, final C context) {
     return visitStatement(node, context);
   }
@@ -315,6 +323,10 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitShowCreatePipe(ShowCreatePipe node, C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitCreatePipePlugin(CreatePipePlugin node, C context) {
     return visitStatement(node, context);
   }
@@ -339,11 +351,19 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitAlterTopic(AlterTopic node, C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitDropTopic(DropTopic node, C context) {
     return visitStatement(node, context);
   }
 
   default R visitShowTopics(ShowTopics node, C context) {
+    return visitStatement(node, context);
+  }
+
+  default R visitShowCreateTopic(ShowCreateTopic node, C context) {
     return visitStatement(node, context);
   }
 

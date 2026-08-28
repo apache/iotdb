@@ -56,7 +56,7 @@ public class TestConstant {
   public static final String DATA_TYPE_STR = ColumnHeaderConstant.DATATYPE;
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final double DELTA = 1e-6;
-  public static final double NULL = Double.MIN_VALUE;
+  public static final double NULL = Double.NaN;
 
   public static String[] createSql =
       new String[] {
@@ -143,6 +143,34 @@ public class TestConstant {
 
   public static String varSamp(String path) {
     return String.format("var_samp(%s)", path);
+  }
+
+  public static String corr(String path) {
+    return String.format("corr(%s)", path);
+  }
+
+  public static String covarPop(String path) {
+    return String.format("covar_pop(%s)", path);
+  }
+
+  public static String covarSamp(String path) {
+    return String.format("covar_samp(%s)", path);
+  }
+
+  public static String regrSlope(String path) {
+    return String.format("regr_slope(%s)", path);
+  }
+
+  public static String regrIntercept(String path) {
+    return String.format("regr_intercept(%s)", path);
+  }
+
+  public static String kurtosis(String path) {
+    return String.format("kurtosis(%s)", path);
+  }
+
+  public static String skewness(String path) {
+    return String.format("skewness(%s)", path);
   }
 
   public static String countUDAF(String path) {

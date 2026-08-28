@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingEx
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.rest.protocol.exception.RequestLimitExceededException;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -35,7 +36,7 @@ import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.Response.Status;
 
 import java.io.IOException;
 
@@ -46,7 +47,10 @@ public class ExceptionHandler {
 
   public static ExecutionStatus tryCatchException(Exception e) {
     ExecutionStatus responseResult = new ExecutionStatus();
-    if (e instanceof QueryProcessException) {
+    if (e instanceof RequestLimitExceededException) {
+      responseResult.setMessage(e.getMessage());
+      responseResult.setCode(413);
+    } else if (e instanceof QueryProcessException) {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(((QueryProcessException) e).getErrorCode());
     } else if (e instanceof DatabaseNotSetException) {
@@ -91,5 +95,9 @@ public class ExceptionHandler {
     }
     LOGGER.warn(e.getMessage(), e);
     return responseResult;
+  }
+
+  public static int getHttpStatus(Exception e) {
+    return e instanceof RequestLimitExceededException ? 413 : Status.OK.getStatusCode();
   }
 }

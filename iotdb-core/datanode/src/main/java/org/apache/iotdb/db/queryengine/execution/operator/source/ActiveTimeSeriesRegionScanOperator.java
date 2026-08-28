@@ -35,15 +35,22 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSourceOperator {
   // Timeseries which need to be checked.
   private final Map<IDeviceID, Map<String, TimeseriesContext>> timeSeriesToSchemasInfo;
-  private static final Binary VIEW_TYPE = new Binary("BASE".getBytes());
+  private final Set<String> countedLogicalViews;
+  private static final Binary BASE_VIEW_TYPE =
+      new Binary("BASE".getBytes(TSFileConfig.STRING_CHARSET));
+  private static final Binary LOGICAL_VIEW_TYPE =
+      new Binary("VIEW".getBytes(TSFileConfig.STRING_CHARSET));
   private final Binary dataBaseName;
+  private final String dataBaseNameString;
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ActiveTimeSeriesRegionScanOperator.class)
           + RamUsageEstimator.shallowSizeOfInstance(Map.class)
@@ -60,15 +67,15 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.timeSeriesToSchemasInfo = timeSeriesToSchemasInfo;
+    this.countedLogicalViews = new HashSet<>();
     this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter, ttlCache);
-    this.dataBaseName =
-        new Binary(
-            operatorContext
-                .getDriverContext()
-                .getFragmentInstanceContext()
-                .getDataRegion()
-                .getDatabaseName()
-                .getBytes(TSFileConfig.STRING_CHARSET));
+    this.dataBaseNameString =
+        operatorContext
+            .getDriverContext()
+            .getFragmentInstanceContext()
+            .getDataRegion()
+            .getDatabaseName();
+    this.dataBaseName = new Binary(this.dataBaseNameString.getBytes(TSFileConfig.STRING_CHARSET));
   }
 
   @Override
@@ -92,16 +99,22 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
 
   @Override
   protected void updateActiveData() {
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-
     Map<IDeviceID, List<String>> activeTimeSeries =
         ((RegionScanForActiveTimeSeriesUtil) regionScanUtil).getActiveTimeSeries();
 
     if (outputCount) {
       for (Map.Entry<IDeviceID, List<String>> entry : activeTimeSeries.entrySet()) {
         List<String> timeSeriesList = entry.getValue();
-        count += timeSeriesList.size();
+        Map<String, TimeseriesContext> timeSeriesInfo = timeSeriesToSchemasInfo.get(entry.getKey());
+        for (String timeSeries : timeSeriesList) {
+          TimeseriesContext schemaInfo = timeSeriesInfo.get(timeSeries);
+          count += schemaInfo.getActiveCountMultiplier();
+          for (String logicalView : schemaInfo.getActiveLogicalViewCountSet()) {
+            if (countedLogicalViews.add(logicalView)) {
+              count++;
+            }
+          }
+        }
         removeTimeseriesListFromDevice(entry.getKey(), timeSeriesList);
       }
       return;
@@ -114,24 +127,47 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
       Map<String, TimeseriesContext> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
       for (String timeSeries : timeSeriesList) {
         TimeseriesContext schemaInfo = timeSeriesInfo.get(timeSeries);
-        timeColumnBuilder.writeLong(-1);
-        columnBuilders[0].writeBinary(
-            new Binary(contactDeviceAndMeasurement(deviceStr, timeSeries)));
-
-        checkAndAppend(schemaInfo.getAlias(), columnBuilders[1]); // Measurement
-        columnBuilders[2].writeBinary(dataBaseName); // Database
-        checkAndAppend(schemaInfo.getDataType(), columnBuilders[3]); // DataType
-        checkAndAppend(schemaInfo.getEncoding(), columnBuilders[4]); // Encoding
-        checkAndAppend(schemaInfo.getCompression(), columnBuilders[5]); // Compression
-        checkAndAppend(schemaInfo.getTags(), columnBuilders[6]); // Tags
-        checkAndAppend(schemaInfo.getAttributes(), columnBuilders[7]); // Attributes
-        checkAndAppend(schemaInfo.getDeadband(), columnBuilders[8]); // Description
-        checkAndAppend(schemaInfo.getDeadbandParameters(), columnBuilders[9]); // DeadbandParameters
-        columnBuilders[10].writeBinary(VIEW_TYPE); // ViewType
-        resultTsBlockBuilder.declarePosition();
+        if (schemaInfo.getActiveCountMultiplier() > 0) {
+          appendTimeseries(
+              contactDeviceAndMeasurement(deviceStr, timeSeries), schemaInfo, BASE_VIEW_TYPE);
+        }
+        for (Map.Entry<String, TimeseriesContext> logicalViewEntry :
+            schemaInfo.getActiveLogicalViewContextMap().entrySet()) {
+          if (countedLogicalViews.add(logicalViewEntry.getKey())) {
+            appendTimeseries(
+                logicalViewEntry.getKey().getBytes(TSFileConfig.STRING_CHARSET),
+                logicalViewEntry.getValue(),
+                LOGICAL_VIEW_TYPE);
+          }
+        }
       }
       removeTimeseriesListFromDevice(deviceID, timeSeriesList);
     }
+  }
+
+  private void appendTimeseries(
+      byte[] timeseriesPath, TimeseriesContext schemaInfo, Binary viewType) {
+    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
+    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
+
+    timeColumnBuilder.writeLong(-1);
+    columnBuilders[0].writeBinary(new Binary(timeseriesPath));
+
+    checkAndAppend(schemaInfo.getAlias(), columnBuilders[1]); // Measurement
+    if (schemaInfo.getDatabase() == null || dataBaseNameString.equals(schemaInfo.getDatabase())) {
+      columnBuilders[2].writeBinary(dataBaseName); // Database
+    } else {
+      checkAndAppend(schemaInfo.getDatabase(), columnBuilders[2]); // Database
+    }
+    checkAndAppend(schemaInfo.getDataType(), columnBuilders[3]); // DataType
+    checkAndAppend(schemaInfo.getEncoding(), columnBuilders[4]); // Encoding
+    checkAndAppend(schemaInfo.getCompression(), columnBuilders[5]); // Compression
+    checkAndAppend(schemaInfo.getTags(), columnBuilders[6]); // Tags
+    checkAndAppend(schemaInfo.getAttributes(), columnBuilders[7]); // Attributes
+    checkAndAppend(schemaInfo.getDeadband(), columnBuilders[8]); // Description
+    checkAndAppend(schemaInfo.getDeadbandParameters(), columnBuilders[9]); // DeadbandParameters
+    columnBuilders[10].writeBinary(viewType); // ViewType
+    resultTsBlockBuilder.declarePosition();
   }
 
   private void removeTimeseriesListFromDevice(IDeviceID deviceID, List<String> timeSeriesList) {

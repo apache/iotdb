@@ -23,6 +23,7 @@ public enum FillPolicy {
   PREVIOUS((byte) 0),
   LINEAR((byte) 1),
   CONSTANT((byte) 2),
+  NEXT((byte) 3),
   ;
 
   FillPolicy(byte fillMethod) {

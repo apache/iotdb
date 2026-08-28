@@ -43,6 +43,7 @@ public class TabletDecoder {
   private final List<TSEncoding> columnEncodings;
   private final IUnCompressor unCompressor;
   private final int rowSize;
+  private final boolean allValueColumnsPlain;
 
   /**
    * @param compressionType the overall compression
@@ -60,6 +61,7 @@ public class TabletDecoder {
     this.columnEncodings = columnEncodings;
     this.unCompressor = IUnCompressor.getUnCompressor(compressionType);
     this.rowSize = rowSize;
+    this.allValueColumnsPlain = allValueColumnsPlain(dataTypes, columnEncodings);
   }
 
   public long[] decodeTime(ByteBuffer buffer) {
@@ -103,7 +105,7 @@ public class TabletDecoder {
       return output;
     } catch (IOException e) {
       throw new IoTDBRuntimeException(
-          "Failed to decompress compressedBuffer",
+          DataNodeMiscMessages.MISC_EXCEPTION_FAILED_TO_DECOMPRESS_COMPRESSEDBUFFER_56398D3E,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -112,6 +114,10 @@ public class TabletDecoder {
   private long[] decodeColumnForTimeStamp(ByteBuffer buffer, int rowCount) {
     TSDataType dataType = TSDataType.INT64;
     TSEncoding encodingType = columnEncodings.get(0);
+
+    if (encodingType == TSEncoding.PLAIN) {
+      return QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount);
+    }
 
     Decoder decoder = Decoder.getDecoderByType(encodingType, dataType);
     long[] result = new long[rowCount];
@@ -129,14 +135,38 @@ public class TabletDecoder {
     RPCServiceThriftHandlerMetrics.getInstance().recordCompressionSizeTimer(compressedSize);
 
     long startDecodeTime = System.nanoTime();
-    Object[] columns = new Object[dataTypes.length];
-    for (int i = 0; i < dataTypes.length; i++) {
-      columns[i] = decodeColumn(uncompressed, i);
+    Object[] columns;
+    if (allValueColumnsPlain) {
+      columns =
+          QueryDataSetUtils.readTabletValuesFromBuffer(
+              uncompressed, dataTypes, dataTypes.length, rowSize);
+    } else {
+      columns = new Object[dataTypes.length];
+      for (int i = 0; i < dataTypes.length; i++) {
+        columns[i] = decodeColumn(uncompressed, i);
+      }
     }
 
     RPCServiceThriftHandlerMetrics.getInstance()
         .recordDecodeLatencyTimer(System.nanoTime() - startDecodeTime);
     return new Pair<>(columns, uncompressed);
+  }
+
+  private static boolean allValueColumnsPlain(
+      TSDataType[] dataTypes, List<TSEncoding> columnEncodings) {
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (columnEncodings.get(i + 1) != TSEncoding.PLAIN || !supportsPlainFastPath(dataTypes[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean supportsPlainFastPath(TSDataType dataType) {
+    return switch (dataType) {
+      case BOOLEAN, DATE, INT32, TIMESTAMP, INT64, FLOAT, DOUBLE, STRING, BLOB, TEXT -> true;
+      case VECTOR, UNKNOWN, OBJECT -> false;
+    };
   }
 
   private Object decodeColumn(ByteBuffer uncompressed, int columnIndex) {

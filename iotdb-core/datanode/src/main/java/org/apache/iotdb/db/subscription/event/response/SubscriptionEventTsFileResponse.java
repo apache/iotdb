@@ -22,10 +22,12 @@ package org.apache.iotdb.db.subscription.event.response;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -64,6 +66,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   private final File tsFile;
   @Nullable private final String databaseName;
   private final SubscriptionCommitContext commitContext;
+  private final ColumnFilterMatcher columnFilterMatcher;
+  private final Map<String, Map<String, Boolean>> timeSelectedByTable;
 
   public SubscriptionEventTsFileResponse(
       final File tsFile,
@@ -74,6 +78,12 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     this.tsFile = tsFile;
     this.databaseName = databaseName;
     this.commitContext = commitContext;
+    this.columnFilterMatcher =
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                commitContext.getTopicName(),
+                SubscriptionAgent.consumer().isTableModel(commitContext.getConsumerGroupId()));
+    this.timeSelectedByTable = columnFilterMatcher.getTimeSelectedByTable(databaseName);
 
     init();
   }
@@ -91,7 +101,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     final CachedSubscriptionPollResponse previousResponse;
     if (Objects.isNull(previousResponse = poll())) {
       LOGGER.warn(
-          "SubscriptionEventTsFileResponse {} is empty when fetching next response (broken invariant)",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONEVENTTSFILERESPONSE_IS_EMPTY_WHEN_FETCHING_NEXT_DFD60DF1,
           this);
     } else {
       previousResponse.closeMemoryBlock();
@@ -114,7 +125,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   private void init() {
     if (!isEmpty()) {
       LOGGER.warn(
-          "SubscriptionEventTsFileResponse {} is not empty when initializing (broken invariant)",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONEVENTTSFILERESPONSE_IS_NOT_EMPTY_WHEN_INITIALIZING_C9DE83C9,
           this);
       return;
     }
@@ -123,7 +135,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
         new CachedSubscriptionPollResponse(
             SubscriptionPollResponseType.FILE_INIT.getType(),
             new FileInitPayload(tsFile.getName()),
-            commitContext));
+            commitContext,
+            isTimeSelected(),
+            timeSelectedByTable));
   }
 
   private synchronized Optional<CachedSubscriptionPollResponse> generateNextTsFileResponse(
@@ -136,7 +150,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     final SubscriptionPollResponse previousResponse = peekLast();
     if (Objects.isNull(previousResponse)) {
       LOGGER.warn(
-          "SubscriptionEventTsFileResponse {} is empty when generating next response (broken invariant)",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONEVENTTSFILERESPONSE_IS_EMPTY_WHEN_GENERATING_B8D03E93,
           this);
       return Optional.empty();
     }
@@ -174,7 +189,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.FILE_SEAL.getType(),
           new FileSealPayload(tsFile.getName(), tsFile.length(), databaseName),
-          commitContext);
+          commitContext,
+          isTimeSelected(),
+          timeSelectedByTable);
     }
 
     final long bufferSize;
@@ -193,22 +210,16 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       final PipeTsFileMemoryBlock memoryBlock =
           PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(bufferSize);
       final byte[] readBuffer = new byte[(int) bufferSize];
-
-      final int readLength = reader.read(readBuffer);
-      if (readLength != bufferSize) {
-        memoryBlock.close();
-        throw new SubscriptionException(
-            String.format(
-                "inconsistent read length (broken invariant), expected: %s, actual: %s",
-                bufferSize, readLength));
-      }
+      reader.readFully(readBuffer);
 
       // generate subscription poll response with piece payload
       final CachedSubscriptionPollResponse response =
           new CachedSubscriptionPollResponse(
               SubscriptionPollResponseType.FILE_PIECE.getType(),
-              new FilePiecePayload(tsFile.getName(), writingOffset + readLength, readBuffer),
-              commitContext);
+              new FilePiecePayload(tsFile.getName(), writingOffset + bufferSize, readBuffer),
+              commitContext,
+              isTimeSelected(),
+              timeSelectedByTable);
 
       // set fixed memory block for response
       response.setMemoryBlock(memoryBlock);
@@ -235,13 +246,13 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
       if (elapsedRecordTimeSeconds > 10.0) {
         LOGGER.info(
-            "Wait for resource enough for slicing tsfile {} for {} seconds.",
+            DataNodePipeMessages.WAIT_FOR_RESOURCE_ENOUGH_FOR_SLICING_TSFILE,
             tsFile,
             waitTimeSeconds);
         lastRecordTime = currentTime;
       } else if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Wait for resource enough for slicing tsfile {} for {} seconds.",
+            DataNodePipeMessages.WAIT_FOR_RESOURCE_ENOUGH_FOR_SLICING_TSFILE,
             tsFile,
             waitTimeSeconds);
       }
@@ -250,14 +261,20 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
         // should contain 'TimeoutException' in exception message
         // see org.apache.iotdb.rpc.subscription.exception.SubscriptionTimeoutException.KEYWORD
         throw new SubscriptionException(
-            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_TIMEOUTEXCEPTION_WAITED_S_SECONDS_8B31A3A5,
+                waitTimeSeconds));
       }
     }
 
     final long currentTime = System.currentTimeMillis();
     final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
     LOGGER.info(
-        "Wait for resource enough for slicing tsfile {} for {} seconds.", tsFile, waitTimeSeconds);
+        DataNodePipeMessages.WAIT_FOR_RESOURCE_ENOUGH_FOR_SLICING_TSFILE, tsFile, waitTimeSeconds);
+  }
+
+  private boolean isTimeSelected() {
+    return columnFilterMatcher.isTimeSelected();
   }
 
   /////////////////////////////// stringify ///////////////////////////////

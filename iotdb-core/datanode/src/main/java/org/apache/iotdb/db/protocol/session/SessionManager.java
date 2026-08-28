@@ -48,6 +48,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.tsfile.external.commons.lang3.StringUtils;
@@ -138,7 +139,10 @@ public class SessionManager implements SessionManagerMBean {
 
     final long userId = AuthorityChecker.getUserId(username).orElse(-1L);
 
-    boolean enableLoginLock = userId != -1;
+    // Pipe/CQ/Select-Into use InternalClientSession for password validation and should not
+    // participate in user@ip login lock (empty client address shares one lock bucket).
+    final boolean enableLoginLock =
+        userId != -1 && session.getConnectionType() != TSConnectionType.INTERNAL;
     LoginLockManager loginLockManager = LoginLockManager.getInstance();
     if (enableLoginLock && loginLockManager.checkLock(userId, session.getClientAddress())) {
       // Generic authentication error
@@ -363,6 +367,31 @@ public class SessionManager implements SessionManagerMBean {
   /** this method can be only used in client-thread model. */
   public IClientSession getCurrSession() {
     return currSession.get();
+  }
+
+  /**
+   * Temporarily install a session into the current thread. Used by UDF internal queries that need
+   * ThreadLocal session visibility without {@link #registerSession(IClientSession)}.
+   */
+  public void setCurrSession(IClientSession session) {
+    currSession.set(session);
+    sessions.putIfAbsent(session, placeHolder);
+  }
+
+  /**
+   * Restore the previous ThreadLocal session and remove the temporarily installed session from
+   * {@code sessions}.
+   */
+  public void restoreSession(IClientSession previous, IClientSession installedSession) {
+    if (installedSession != null) {
+      sessions.remove(installedSession);
+    }
+    if (previous != null) {
+      currSession.set(previous);
+    } else {
+      currSession.remove();
+      currSessionIdleTime.remove();
+    }
   }
 
   /** get current session and update session idle time. */

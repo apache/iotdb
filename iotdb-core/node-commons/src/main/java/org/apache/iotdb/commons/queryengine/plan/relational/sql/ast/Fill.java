@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.base.MoreObjects;
@@ -41,18 +42,18 @@ public class Fill extends Node {
   // used for constant fill
   private final Literal fillValue;
 
-  // used for previous fill
+  // used for previous fill or next fill
   private final TimeDuration timeBound;
 
-  // used for linear fill or previous fill
+  // used for linear fill, previous fill, or next fill
   private final LongLiteral timeColumnIndex;
 
-  // used for linear fill or previous fill
+  // used for linear fill, previous fill, or next fill
   private final List<LongLiteral> fillGroupingElements;
 
   // used for constant fill
   public Fill(NodeLocation location, Literal fillValue) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.fillValue = fillValue;
     this.timeBound = null;
     this.timeColumnIndex = null;
@@ -66,18 +67,33 @@ public class Fill extends Node {
       TimeDuration timeBound,
       LongLiteral timeColumnIndex,
       List<LongLiteral> fillGroupingElements) {
-    super(requireNonNull(location, "location is null"));
+    this(location, FillPolicy.PREVIOUS, timeBound, timeColumnIndex, fillGroupingElements);
+  }
+
+  // used for previous fill or next fill
+  public Fill(
+      NodeLocation location,
+      FillPolicy fillMethod,
+      TimeDuration timeBound,
+      LongLiteral timeColumnIndex,
+      List<LongLiteral> fillGroupingElements) {
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    fillMethod = requireNonNull(fillMethod, QueryMessages.EXCEPTION_FILLMETHOD_IS_NULL_2E5A83E6);
+    if (fillMethod != FillPolicy.PREVIOUS && fillMethod != FillPolicy.NEXT) {
+      throw new IllegalArgumentException(
+          QueryMessages.EXCEPTION_UNSUPPORTED_FILL_METHOD_0809912A + fillMethod);
+    }
     this.fillValue = null;
     this.timeBound = timeBound;
     this.timeColumnIndex = timeColumnIndex;
-    this.fillMethod = FillPolicy.PREVIOUS;
+    this.fillMethod = fillMethod;
     this.fillGroupingElements = fillGroupingElements;
   }
 
   // used for linear fill
   public Fill(
       NodeLocation location, LongLiteral timeColumnIndex, List<LongLiteral> fillGroupingElements) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.fillValue = null;
     this.timeBound = null;
     this.timeColumnIndex = timeColumnIndex;

@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.pipe.sink.util.builder;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.BitMap;
@@ -82,10 +82,16 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
       return new ArrayList<>(0);
     }
     final List<Pair<String, File>> pairList = new ArrayList<>();
-    for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
-      pairList.addAll(writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey()));
+    try {
+      for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
+        pairList.addAll(writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey()));
+      }
+      return pairList;
+    } catch (final IOException | RuntimeException e) {
+      pairList.forEach(
+          pair -> org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(pair.right));
+      throw e;
     }
-    return pairList;
   }
 
   @Override
@@ -149,7 +155,13 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
     // Try making the tsfile size as large as possible
     while (!device2TabletsLinkedList.isEmpty()) {
       if (Objects.isNull(fileWriter)) {
-        fileWriter = new TsFileWriter(createFile());
+        final File file = createFile();
+        try {
+          fileWriter = new TsFileWriter(file);
+        } catch (final IOException | RuntimeException e) {
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
+          throw e;
+        }
       }
 
       try {
@@ -177,14 +189,18 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
         }
 
         for (final Pair<String, File> sealedFile : sealedFiles) {
-          final boolean deleteSuccess = FileUtils.deleteQuietly(sealedFile.right);
+          final boolean deleteSuccess =
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(sealedFile.right);
           LOGGER.warn(
               DataNodePipeMessages.BATCH_ID_DELETE_THE_TSFILE_AFTER_FAILED,
               currentBatchId.get(),
               deleteSuccess ? "Successfully" : "Failed to",
               sealedFile.right.getPath(),
               file.getPath(),
-              deleteSuccess ? "" : "Maybe the tsfile needs to be deleted manually.");
+              deleteSuccess
+                  ? ""
+                  : DataNodePipeMessages
+                      .MESSAGE_MAYBE_THE_TSFILE_NEEDS_TO_BE_DELETED_MANUALLY_342E28E2);
         }
         sealedFiles.clear();
 
@@ -243,7 +259,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedColumnCategories.addAll(tablet.getColumnTypes());
         aggregatedValues.addAll(Arrays.asList(tablet.getValues()));
-        aggregatedBitMaps.addAll(Arrays.asList(tablet.getBitMaps()));
+        aggregatedBitMaps.addAll(Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
         // Remove the aggregated tablet
         tablets.pollFirst();
       } else {

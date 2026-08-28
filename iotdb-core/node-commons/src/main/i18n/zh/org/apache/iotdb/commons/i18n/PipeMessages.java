@@ -47,6 +47,10 @@ public final class PipeMessages {
   public static final String CONFIG_IS_PIPE_ENABLE_MEMORY_CHECK =
       "IsPipeEnableMemoryCheck: {}";
   public static final String CONFIG_PIPE_TSFILE_PARSER_MEMORY = "PipeTsFileParserMemory: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM =
+      "PipeTsFileParserInFlightMaxNum: {}";
+  public static final String CONFIG_PIPE_TSFILE_PARSER_IN_FLIGHT_MAX_NUM_PER_PIPE_REGION =
+      "PipeTsFileParserInFlightMaxNumPerPipeRegion: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_INSERT_NODE =
       "SinkBatchMemoryInsertNode: {}";
   public static final String CONFIG_SINK_BATCH_MEMORY_TSFILE = "SinkBatchMemoryTsFile: {}";
@@ -144,6 +148,10 @@ public final class PipeMessages {
           "PipeAsyncSinkForcedRetryTotalEventQueueSizeThreshold: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_RETRY_EXECUTION_TIME_MS_PER_CALL =
       "PipeAsyncSinkMaxRetryExecutionTimeMsPerCall: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_MAX_DURATION_MS =
+      "PipeAsyncSinkRetryMaxDurationMs: {}";
+  public static final String CONFIG_PIPE_ASYNC_SINK_RETRY_PROBE_INTERVAL_MS =
+      "PipeAsyncSinkRetryProbeIntervalMs: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_SELECTOR_NUMBER =
       "PipeAsyncSinkSelectorNumber: {}";
   public static final String CONFIG_PIPE_ASYNC_SINK_MAX_CLIENT_NUMBER =
@@ -186,7 +194,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_RECEIVER_LOAD_CONVERSION_ENABLED =
       "PipeReceiverLoadConversionEnabled: {}";
   public static final String CONFIG_PIPE_PERIODICAL_LOG_MIN_INTERVAL_SECONDS =
-      "PipePeriodicalLogMinIntervalSeconds: {}";
+      "LoggerPeriodicalLogMinIntervalSeconds: {}";
   public static final String CONFIG_PIPE_RETRY_LOCALLY_FOR_PARALLEL_OR_USER_CONFLICT =
       "PipeRetryLocallyForParallelOrUserConflict: {}";
   public static final String CONFIG_PIPE_META_REPORT_MAX_LOG_NUM_PER_ROUND =
@@ -198,7 +206,7 @@ public final class PipeMessages {
   public static final String CONFIG_PIPE_TSFILE_PIN_MAX_LOG_INTERVAL_ROUNDS =
       "PipeTsFilePinMaxLogIntervalRounds: {}";
   public static final String CONFIG_PIPE_LOGGER_CACHE_MAX_SIZE_IN_BYTES =
-      "PipeLoggerCacheMaxSizeInBytes: {}";
+      "LoggerCacheMaxSizeInBytes: {}";
   public static final String CONFIG_PIPE_MEMORY_MANAGEMENT_ENABLED =
       "PipeMemoryManagementEnabled: {}";
   public static final String CONFIG_PIPE_MEMORY_ALLOCATE_MAX_RETRIES =
@@ -255,6 +263,12 @@ public final class PipeMessages {
   // ===================== PipeTaskAgent =====================
 
   public static final String NOT_ENOUGH_MEMORY_FOR_PIPE = "pipe 内存不足。";
+  public static final String NOT_ENOUGH_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE
+          + "需要内存：%d 字节，空闲内存：%d 字节，保留内存：%d 字节，"
+          + "总内存：%d 字节";
+  public static final String NOT_ENOUGH_FLOATING_MEMORY_FOR_PIPE_FORMAT =
+      NOT_ENOUGH_MEMORY_FOR_PIPE + "需要浮动内存：%d 字节，空闲浮动内存：%d 字节";
   public static final String UNKNOWN_PIPE_STATUS = "Pipe %s 的状态 %s 未知";
   public static final String UNEXPECTED_PIPE_STATUS = "意外的 pipe 状态 %s：";
   public static final String INTERRUPTED_ACQUIRING_READ_LOCK =
@@ -379,6 +393,20 @@ public final class PipeMessages {
       "执行子任务 {}（创建时间：{}，类名：{}）失败，原因：{}。将无限重试。";
   public static final String RETRY_EXECUTING_SUBTASK_FOREVER =
       "重试执行子任务 {}（创建时间：{}，类名：{}），重试次数 {}，上次异常：{}";
+  public static final String PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATTERN_OR_PATH =
+      "Pipe：%s 不能与 %s 或 %s 同时使用。";
+  public static final String PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATH_EXCLUSION =
+      "Pipe：%s 不能与 %s 同时使用。";
+  public static final String PATH_AND_PATTERN_CANNOT_BE_USED_TOGETHER =
+      "Pipe：%s 和 %s 不能同时使用。";
+  public static final String PARAMETER_ONLY_SUPPORTS_SINGLE_PATTERN =
+      "Pipe：参数 %s 当前只支持单个 pattern。";
+  public static final String FAILED_TO_PERFORM_PATTERN_COVERAGE_CHECK =
+      "Pipe：对 inclusion [{}] 和 exclusion [{}] 执行 pattern 覆盖检查失败。";
+  public static final String EXCLUSION_PATTERN_FULLY_COVERS_INCLUSION_PATTERN =
+      "Pipe：给定 exclusion pattern 完全覆盖了 inclusion pattern。该 pipe pattern 不会匹配任何内容。Inclusion: [%s], Exclusion: [%s]";
+  public static final String EXCLUSION_PATTERN_COVERS_PART_OF_INCLUSION_PATHS =
+      "Pipe：给定 exclusion pattern 覆盖了 {} / {} 条 inclusion 路径。这些路径将被排除。Inclusion: [{}], Exclusion: [{}]";
 
   // ===================== PipeAbstractSinkSubtask =====================
 
@@ -391,10 +419,10 @@ public final class PipeMessages {
   public static final String NON_CRITICAL_EXCEPTION_WILL_THROW_CRITICAL =
       "发生非 PipeRuntimeSinkCriticalException，将抛出 PipeRuntimeSinkCriticalException。";
   public static final String PIPE_CONNECTION_EXCEPTION_RETRYING =
-      "发生 PipeConnectionException，%s 正在重试与目标系统握手。";
+      "发生 PipeConnectionException，%s 正在重试与目标系统握手。根因：%s。";
   public static final String HANDSHAKE_SUCCESS = "{} 与目标系统握手成功。";
   public static final String HANDSHAKE_FAILED_RETRYING =
-      "{} 与目标系统握手失败，已重试 {} 次，最多重试 {} 次。";
+      "{} 与目标系统握手失败，已重试 {} 次，最多重试 {} 次。根因：{}。";
   public static final String INTERRUPTED_WHILE_SLEEPING_RETRY_HANDSHAKE =
       "休眠时被中断，将重试与目标系统握手。";
   public static final String HANDSHAKE_FAILED_STOPPING =
@@ -446,6 +474,10 @@ public final class PipeMessages {
 
   // ===================== IoTDBSslSyncSink =====================
 
+  public static final String SSL_TRUST_STORE_PAIR_REQUIRED_WHEN_SSL_ENABLED =
+      "启用 SSL 传输时，请在同一别名下指定完整的 trust-store 参数对：%s 和 %s、%s 和 %s，或 %s 和 %s";
+  public static final String SSL_KEY_STORE_PATH_AND_PASSWORD_MUST_BE_SPECIFIED_TOGETHER =
+      "SSL key-store 路径和密码必须在同一别名下同时指定：%s 和 %s、%s 和 %s，或 %s 和 %s";
   public static final String SYNC_CLIENT_MANAGER_CLOSED =
       "IoTDB sync 客户端管理器已关闭";
   public static final String REDIRECT_FILE_POSITION = "重定向文件位置到 {}。";
@@ -463,9 +495,9 @@ public final class PipeMessages {
   public static final String FAILED_TO_CONNECT_TO_TARGET =
       "连接目标服务器失败（ip：{}，端口：{}），原因：{}。已忽略。";
   public static final String HANDSHAKE_ERROR_RECEIVING_END =
-      "握手错误，可能由接收端错误引起。已忽略。";
+      "握手错误，可能由接收端错误引起。已忽略。根因：{}。";
   public static final String HANDSHAKE_ERROR_WITH_TARGET =
-      "与目标服务器握手失败，socket：%s";
+      "与目标服务器握手失败，endpoint：%s";
   public static final String HANDSHAKE_SUCCESS_SOCKET = "握手成功。Socket：{}";
   public static final String FAILED_TO_CLOSE_CLIENT = "关闭客户端 {} 失败。";
   public static final String UNKNOWN_LOAD_BALANCE_STRATEGY =
@@ -557,6 +589,8 @@ public final class PipeMessages {
       "接收器 id = %s：握手失败，响应状态 = %s。";
   public static final String RECEIVER_HANDSHAKE_FAILED_LOGIN =
       "接收器 id = %s：因登录失败导致握手失败，响应状态 = %s。";
+  public static final String RECEIVER_TEMPORARILY_OUT_OF_MEMORY_FORMAT =
+      "执行 %s 时暂时内存不足。请求内存：%d bytes。根因：%s";
   public static final String RECEIVER_USER_LOGIN_SUCCESS =
       "接收器 id = {}：用户 {} 登录成功。";
   public static final String RECEIVER_EXITED =
@@ -695,6 +729,7 @@ public final class PipeMessages {
       "用户冲突异常：重试超时。将被忽略。事件：{}。状态：{}";
   public static final String USER_CONFLICT_WILL_RETRY =
       "用户冲突异常：将重试 {}。状态：{}";
+  public static final String MESSAGE_FOR_AT_LEAST_ADE37405 = "至少 ";
   public static final String USER_CONFLICT_NOT_ALLOWED =
       "用户冲突异常：因不允许重试而被忽略。事件：{}。状态：{}";
   public static final String OTHER_EXCEPTION_RETRY_TIMEOUT =
@@ -838,5 +873,65 @@ public final class PipeMessages {
       "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}";
   public static final String CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES =
       "SubscriptionMetaSyncerSyncIntervalMinutes: {}";
+
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C = "不支持的 PipeRuntimeException 类型 %s.";
+  public static final String LOG_SUBSCRIPTIONENABLED_ARG_6F9EC0F9 = "SubscriptionEnabled: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSPREFETCHEXECUTORMAXTHREADNUM_ARG_94D0BD76 = "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXDELAYINMS_ARG_38C2CB8B = "SubscriptionConsensusBatchMaxDelayInMs: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXSIZEINBYTES_ARG_F8D28441 = "SubscriptionConsensusBatchMaxSizeInBytes: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXTABLETCOUNT_ARG_60BB1D6A = "SubscriptionConsensusBatchMaxTabletCount: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXWALENTRIES_ARG_9BF1CAE4 = "SubscriptionConsensusBatchMaxWalEntries: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSIDLESAFETIMEBARRIERINTERVALMS_ARG_A6944544 = "SubscriptionConsensusIdleSafeTimeBarrierIntervalMs: {}";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_LENGTH_EBC10484 = "读取 region progress key 长度时遇到意外 EOF";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE = "读取 region progress key 时遇到意外 EOF";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0 = "读取 region progress value 长度时遇到意外 EOF";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521 = "读取 region progress value 时遇到意外 EOF";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_ENTRY_COUNT_B43DED2F = "region progress entry 数量无效：%d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_KEY_LENGTH_7C3A3C98 = "region progress key 长度无效：%d";
+  public static final String EXCEPTION_INVALID_REGION_PROGRESS_VALUE_LENGTH_6192D17F = "region progress value 长度无效：%d";
+  public static final String EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 = "添加 subscription 到 consumer group meta 失败：consumer %s 不存在于 consumer group %s";
+  public static final String EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 = "从 consumer group meta 移除 subscription 失败：consumer %s 不存在于 consumer group %s";
+  public static final String EXCEPTION_FAILED_TO_CREATE_CONSUMER_ARG_BECAUSE_INCONSISTENT_SQL_DIALECT_UNDER_THE_SAME_CONSUMER_GROUP_EXPECTED_ARG_ACTUAL_ARG_A7DA3FB9 = "创建 consumer %s 失败，因为同一 consumer group 下的 SQL dialect 不一致，预期为 %s，实际为 %s";
+  public static final String EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 = "路径模式 %s 对 source 无效。仅允许前缀或完整路径。";
+  public static final String EXCEPTION_CAPTURE_TREE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_29A08445 = "启用 double living 时，capture.tree 不能指定为 false";
+  public static final String EXCEPTION_CAPTURE_TABLE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_8AEB8F7B = "启用 double living 时，capture.table 不能指定为 false";
+  public static final String EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1 = "启用 double living 时，forwarding-pipe-requests 不能指定为 true";
+  public static final String EXCEPTION_PARAMETERS_SET_ARG_NOT_ALLOWED_SKIPIF_2B9AA054 = "参数集 %s 中的参数不允许用于 'skipif'";
+  public static final String LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5 = "用户冲突异常：已丢弃数据信息，原因：{}。数据：{}。接收端消息：{}。状态：{}";
+  public static final String LOG_RE_INCREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_B8DAAAEE = "对已释放的 event 重新增加引用计数：{}，堆栈跟踪：{}";
+  public static final String LOG_INCREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_94C472FC = "增加引用计数失败，EnrichedEvent: {}，堆栈跟踪: {}";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_STACK_99FCAB8B = "减少已释放 event 的引用计数：{}，堆栈跟踪：{}";
+  public static final String LOG_RESOURCE_REFERENCE_COUNT_DECREASED_0_BUT_FAILED_RELEASE_RESOURCE_ENRICHEDEVENT_A02A86AF =
+      "资源引用计数已降为 0，但释放资源失败，EnrichedEvent：{}，堆栈跟踪：{}";
+  public static final String LOG_REFERENCE_COUNT_DECREASED_ARG_EVENT_ARG_STACK_TRACE_ARG_A4BF56FC = "引用计数已降至 {}，event: {}，堆栈跟踪: {}";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_6A2024AB = "减少引用计数失败，EnrichedEvent: {}，堆栈跟踪: {}";
+  public static final String LOG_BROKEN_INVARIANT_DETECT_INVISIBLE_EXTRACTOR_PARAMETERS_ARG_ADAD3038 = "不变量被破坏：检测到不可见的 extractor 参数 {}";
+  public static final String LOG_UNKNOWN_PATTERN_FORMAT_ARG_USE_PREFIX_MATCHING_FORMAT_DEFAULT_E7B9EFEC = "未知模式格式：{}，默认使用前缀匹配格式。";
+  public static final String LOG_PIPE_LISTENING_QUEUE_SNAPSHOT_CACHE_UPDATED_ARG_414EE914 = "Pipe listening queue 快照缓存已更新：{}";
+  public static final String LOG_FAILED_SERIALIZE_FILE_BECAUSE_FILE_ARG_ALREADY_EXIST_FACC5C4C = "序列化到文件失败，原因：文件 {} 已存在。";
+  public static final String LOG_FAILED_DESERIALIZE_FILE_FILE_ARG_DOES_NOT_EXIST_2356708C = "从文件反序列化失败，文件 {} 不存在。";
+  public static final String EXCEPTION_UNKNOWN_PIPE_RUNTIME_META_VERSION_C2F4B575 = "未知的 pipe runtime meta 版本: ";
+  public static final String EXCEPTION_ROOT_CAUSE_A22E94DE = "，根本原因: ";
+  public static final String LOG_SUCCESSFULLY_EXECUTED_SUBTASK_ARG_ARG_AFTER_ARG_RETRIES_70972F07 = "重试 {} 次后成功执行 subtask {}({})。";
+  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGINMETAKEEPER_NULL_0C9BD2E2 = "反射 PipePlugin 实例失败，原因：PipePluginMetaKeeper 为空。";
+  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PLUGIN_NAME_NULL_416BD04D = "反射 PipePlugin 实例失败，原因：插件名为空。";
+  public static final String LOG_IOTDBSINK_ARG_ARG_4E140C06 = "IoTDBSink {} = {}";
+  public static final String EXCEPTION_SOCKET_ARG_CLOSED_WILL_TRY_HANDSHAKE_02562BF1 = "Socket %s 已关闭，将尝试握手";
+  public static final String EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C = "传输文件 %s 时发生网络错误，原因：%s。";
+  public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE = "Origin request type 不匹配：期望 {}，实际 {}";
+  public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 = "Origin body size 不匹配：期望 {}，实际 {}";
+  public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "无效的 slice index：期望 {}，实际 {}";
+  public static final String LOG_PIPE_ARG_ARG_ENCOUNTERED_AN_UNEXPECTED_HYBRIDPROGRESSINDEX_IN_ARG_PROGRESS_INDEX_ARG_7C578B17 =
+      "Pipe {}@{} 在 {} 中遇到了非预期的 HybridProgressIndex。进度索引：{}。";
+  public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "解压后长度应介于 0 和 %d 之间，但实际为 %d。";
+  public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+  public static final String MESSAGE_NO_DATAPARTITIONTABLE_GENERATION_TASK_FOUND_4414BE55 = "未找到 DataPartitionTable 生成任务";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_IN_PROGRESS_ARGPCTPCT_F433CBA8 = "DataPartitionTable 生成进行中：%.1f%%";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_COMPLETED_SUCCESSFULLY_E076E3B2 = "DataPartitionTable 生成已成功完成";
+  public static final String MESSAGE_DATAPARTITIONTABLE_GENERATION_FAILED_D85CD23A = "DataPartitionTable 生成失败：";
+  public static final String MESSAGE_UNKNOWN_TASK_STATUS_E05D98F0 = "未知任务状态：";
 
 }

@@ -64,7 +64,8 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
                         commonConfig.getTrustStorePath(),
                         commonConfig.getTrustStorePwd(),
                         commonConfig.getKeyStorePath(),
-                        commonConfig.getKeyStorePwd())
+                        commonConfig.getKeyStorePwd(),
+                        commonConfig.getSslProtocol())
                     : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         new TSocket(
                             TConfigurationConst.defaultTConfiguration,

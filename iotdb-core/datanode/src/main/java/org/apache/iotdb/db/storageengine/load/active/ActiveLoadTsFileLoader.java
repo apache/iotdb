@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
@@ -88,11 +89,21 @@ public class ActiveLoadTsFileLoader {
 
   public void tryTriggerTsFileLoad(
       String absolutePath, String pendingDir, boolean isTabletMode, boolean isGeneratedByPipe) {
+    tryTriggerTsFileLoad(absolutePath, pendingDir, isTabletMode, isGeneratedByPipe, null);
+  }
+
+  public void tryTriggerTsFileLoad(
+      String absolutePath,
+      String pendingDir,
+      boolean isTabletMode,
+      boolean isGeneratedByPipe,
+      String conversionTaskId) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       return;
     }
 
-    if (pendingQueue.enqueue(absolutePath, pendingDir, isGeneratedByPipe, isTabletMode)) {
+    if (pendingQueue.enqueue(
+        absolutePath, pendingDir, isGeneratedByPipe, isTabletMode, conversionTaskId)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }
@@ -111,7 +122,8 @@ public class ActiveLoadTsFileLoader {
                 });
           } catch (final IOException e) {
             LOGGER.warn(
-                "Error occurred during creating fail directory {} for active load.",
+                StorageEngineMessages
+                    .STORAGE_LOG_ERROR_OCCURRED_DURING_CREATING_FAIL_DIRECTORY_FOR_ACTIVE_7D3BEB38,
                 failDirFile.getAbsoluteFile(),
                 e);
           }
@@ -156,6 +168,36 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
+  public void stop() {
+    final WrappedThreadPoolExecutor executor = activeLoadExecutor.getAndSet(null);
+    if (executor == null) {
+      pendingQueue.clearPending();
+      return;
+    }
+
+    boolean isTerminated = false;
+    try {
+      executor.shutdownNow();
+      isTerminated = executor.awaitTermination(30, TimeUnit.SECONDS);
+      if (!isTerminated) {
+        LOGGER.warn(
+            StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
+            ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
+      }
+    } catch (final InterruptedException e) {
+      LOGGER.warn(
+          StorageEngineMessages.STILL_NOT_EXIT_AFTER_30S,
+          ThreadName.ACTIVE_LOAD_TSFILE_LOADER.getName());
+      Thread.currentThread().interrupt();
+    } finally {
+      if (isTerminated) {
+        pendingQueue.clear();
+      } else {
+        pendingQueue.clearPending();
+      }
+    }
+  }
+
   private void tryLoadPendingTsFiles() {
     final IClientSession session =
         new InternalClientSession(
@@ -178,7 +220,8 @@ public class ActiveLoadTsFileLoader {
           if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
               || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
             LOGGER.info(
-                "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
+                StorageEngineMessages
+                    .STORAGE_LOG_SUCCESSFULLY_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_ADB5FEC9,
                 loadEntry.get().getFile(),
                 loadEntry.get().isGeneratedByPipe());
           } else {
@@ -190,6 +233,7 @@ public class ActiveLoadTsFileLoader {
           handleOtherException(loadEntry.get(), e);
         } finally {
           pendingQueue.removeFromLoading(loadEntry.get().getFile());
+          cleanupEmptyDirectories(loadEntry.get());
         }
       }
     } finally {
@@ -202,18 +246,22 @@ public class ActiveLoadTsFileLoader {
         Math.max(1, IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds() << 1);
     long currentRetryTimes = 0;
 
-    while (true) {
+    while (!Thread.currentThread().isInterrupted()) {
       final ActiveLoadPendingQueue.ActiveLoadEntry entry = pendingQueue.dequeueFromPending();
       if (Objects.nonNull(entry)) {
         return Optional.of(entry);
       }
 
       LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
+      if (Thread.currentThread().isInterrupted()) {
+        return Optional.empty();
+      }
 
       if (currentRetryTimes++ >= maxRetryTimes) {
         return Optional.empty();
       }
     }
+    return Optional.empty();
   }
 
   private TSStatus loadTsFile(
@@ -233,18 +281,47 @@ public class ActiveLoadTsFileLoader {
             ? ActiveLoadPathHelper.findPendingDirectory(tsFile)
             : new File(entry.getPendingDir());
     final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
-    ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+    final String conversionTaskId = entry.getConversionTaskId();
+    PipeTsFileConversionTaskManager.registerIfAbsent(conversionTaskId);
+    PipeTsFileConversionTaskManager.markReceiverOwned(conversionTaskId);
+    PipeTsFileConversionTaskManager.markRunning(conversionTaskId);
+    PipeTsFileConversionTaskManager.enter(conversionTaskId);
+    try {
+      ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+      final String userName =
+          attributes.getOrDefault(ActiveLoadPathHelper.USER_KEY, AuthorityChecker.SUPER_USER);
+      final Optional<Long> userId = AuthorityChecker.getUserId(userName);
+      if (!userId.isPresent()) {
+        PipeTsFileConversionTaskManager.markFailed(
+            conversionTaskId, new TSStatus(TSStatusCode.USER_NOT_EXIST.getStatusCode()));
+        return new TSStatus(TSStatusCode.USER_NOT_EXIST.getStatusCode())
+            .setMessage(StorageEngineMessages.USER_IN_ACTIVE_LOAD_PATH_DOES_NOT_EXIST);
+      }
+      session.setUserId(userId.get());
+      session.setUsername(userName);
 
-    final File parentFile;
-    if (statement.getDatabase() == null && entry.isTableModel()) {
-      statement.setDatabase(
-          files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
-              ? null
-              : parentFile.getName());
+      final File parentFile;
+      if (statement.getDatabase() == null && entry.isTableModel()) {
+        statement.setDatabase(
+            files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
+                ? null
+                : parentFile.getName());
+      }
+
+      final TSStatus result =
+          executeStatement(
+              entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement,
+              session);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        PipeTsFileConversionTaskManager.markSuccess(conversionTaskId);
+      } else {
+        PipeTsFileConversionTaskManager.markPaused(conversionTaskId, result);
+      }
+      return result;
+    } finally {
+      PipeTsFileConversionTaskManager.leave();
     }
-
-    return executeStatement(
-        entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement, session);
   }
 
   private TSStatus executeStatement(final Statement statement, final IClientSession session) {
@@ -269,9 +346,11 @@ public class ActiveLoadTsFileLoader {
 
   private void handleLoadFailure(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final TSStatus status) {
-    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, status.getMessage())) {
+    if (!ActiveLoadFailedMessageHandler.isStatusShouldRetry(entry, status)) {
+      PipeTsFileConversionTaskManager.markFailed(entry.getConversionTaskId(), status);
       LOGGER.warn(
-          "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_STATUS_FILE_F43E9EF7,
           entry.getFile(),
           entry.isGeneratedByPipe(),
           status);
@@ -280,8 +359,11 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void handleFileNotFoundException(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    PipeTsFileConversionTaskManager.markFailed(
+        entry.getConversionTaskId(), new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
     LOGGER.warn(
-        "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
+        StorageEngineMessages
+            .STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_FILE_5EE1FA08,
         entry.getFile(),
         entry.isGeneratedByPipe());
     removeFileAndResourceAndModsToFailDir(entry.getFile());
@@ -289,9 +371,18 @@ public class ActiveLoadTsFileLoader {
 
   private void handleOtherException(
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final Exception e) {
-    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, e.getMessage())) {
+    if (ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, e.getMessage())) {
+      PipeTsFileConversionTaskManager.markPaused(
+          entry.getConversionTaskId(),
+          new TSStatus(TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+              .setMessage(e.getMessage()));
+    } else {
+      PipeTsFileConversionTaskManager.markFailed(
+          entry.getConversionTaskId(),
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
       LOGGER.warn(
-          "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_BECAUSE_OF_07946D74,
           entry.getFile(),
           entry.isGeneratedByPipe(),
           e);
@@ -322,6 +413,32 @@ public class ActiveLoadTsFileLoader {
           });
     } catch (final IOException e) {
       LOGGER.warn(StorageEngineMessages.ERROR_MOVING_FILE_TO_FAIL_DIR, filePath, e);
+    }
+  }
+
+  private void cleanupEmptyDirectories(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    final File pendingDir =
+        entry.getPendingDir() == null
+            ? ActiveLoadPathHelper.findPendingDirectory(new File(entry.getFile()))
+            : new File(entry.getPendingDir());
+    if (pendingDir == null) {
+      return;
+    }
+
+    final Path pendingPath = pendingDir.toPath().toAbsolutePath().normalize();
+    Path currentPath = new File(entry.getFile()).toPath().toAbsolutePath().normalize().getParent();
+    while (currentPath != null
+        && currentPath.startsWith(pendingPath)
+        && !currentPath.equals(pendingPath)) {
+      try {
+        Files.delete(currentPath);
+      } catch (final IOException e) {
+        if (Files.exists(currentPath)) {
+          LOGGER.debug(StorageEngineMessages.FAILED_DELETE_FOLDER_CLEANING_UP, currentPath, e);
+        }
+        return;
+      }
+      currentPath = currentPath.getParent();
     }
   }
 

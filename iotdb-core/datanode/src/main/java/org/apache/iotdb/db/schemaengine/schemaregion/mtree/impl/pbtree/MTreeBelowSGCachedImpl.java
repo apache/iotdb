@@ -138,6 +138,68 @@ public class MTreeBelowSGCachedImpl {
   private final int levelOfDB;
   private final CachedSchemaRegionStatistics regionStatistics;
 
+  private IDeviceMNode<ICachedMNode> setToEntityAndUpdateFlags(final ICachedMNode node)
+      throws MetadataException {
+    final boolean wasDevice = node.isDevice();
+    if (!node.isDeviceDescendantComputed()) {
+      node.setHasDeviceDescendant(hasDeviceDescendantInChildren(node));
+      node.setDeviceDescendantComputed(true);
+    }
+    final IDeviceMNode<ICachedMNode> deviceMNode = store.setToEntity(node);
+    if (!wasDevice) {
+      markAncestorsHavingDeviceDescendant(node);
+    }
+    return deviceMNode;
+  }
+
+  private void markAncestorsHavingDeviceDescendant(final ICachedMNode deviceNode) {
+    ICachedMNode current = deviceNode.getParent();
+    while (current != null && !current.hasDeviceDescendant()) {
+      current.setHasDeviceDescendant(true);
+      current.setDeviceDescendantComputed(true);
+      current = current.getParent();
+    }
+  }
+
+  private boolean hasDeviceDescendantInChildren(final ICachedMNode node) throws MetadataException {
+    try (final IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(node)) {
+      while (iterator.hasNext()) {
+        final ICachedMNode child = iterator.next();
+        try {
+          if (child.isDevice() || hasDeviceDescendant(child)) {
+            return true;
+          }
+        } finally {
+          unPinMNode(child);
+        }
+      }
+      return false;
+    }
+  }
+
+  private boolean hasDeviceDescendant(final ICachedMNode node) throws MetadataException {
+    if (node.isMeasurement()) {
+      node.setHasDeviceDescendant(false);
+      node.setDeviceDescendantComputed(true);
+      return false;
+    }
+    if (!node.isDeviceDescendantComputed()) {
+      node.setHasDeviceDescendant(hasDeviceDescendantInChildren(node));
+      node.setDeviceDescendantComputed(true);
+    }
+    return node.hasDeviceDescendant();
+  }
+
+  private void refreshAncestorsHavingDeviceDescendant(ICachedMNode startNode)
+      throws MetadataException {
+    ICachedMNode current = startNode;
+    while (current != null) {
+      current.setHasDeviceDescendant(hasDeviceDescendantInChildren(current));
+      current.setDeviceDescendantComputed(true);
+      current = current.getParent();
+    }
+  }
+
   // region MTree initialization, clear and serialization
   public MTreeBelowSGCachedImpl(
       PartialPath storageGroupPath,
@@ -354,7 +416,7 @@ public class MTreeBelowSGCachedImpl {
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();
           } else {
-            entityMNode = store.setToEntity(device);
+            entityMNode = setToEntityAndUpdateFlags(device);
             device = entityMNode.getAsMNode();
           }
 
@@ -435,7 +497,9 @@ public class MTreeBelowSGCachedImpl {
                       devicePath.concatAsMeasurementPath(measurements.get(i)));
                 } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
                   throw new MeasurementAlreadyExistException(
-                      devicePath.getFullPath() + "." + measurements.get(i),
+                      devicePath.getFullPath()
+                          + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                          + measurements.get(i),
                       node.getAsMeasurementMNode().getMeasurementPath());
                 } else {
                   existingMeasurementIndexes.add(i);
@@ -443,7 +507,9 @@ public class MTreeBelowSGCachedImpl {
                 }
               } else {
                 throw new PathAlreadyExistException(
-                    devicePath.getFullPath() + "." + measurements.get(i));
+                    devicePath.getFullPath()
+                        + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                        + measurements.get(i));
               }
             }
 
@@ -451,7 +517,10 @@ public class MTreeBelowSGCachedImpl {
                 && aliasList.get(i) != null
                 && store.hasChild(device, aliasList.get(i))) {
               throw new AliasAlreadyExistException(
-                  devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
+                  devicePath.getFullPath()
+                      + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                      + measurements.get(i),
+                  aliasList.get(i));
             }
           }
 
@@ -459,7 +528,7 @@ public class MTreeBelowSGCachedImpl {
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();
           } else {
-            entityMNode = store.setToEntity(device);
+            entityMNode = setToEntityAndUpdateFlags(device);
             entityMNode.setAligned(true);
             device = entityMNode.getAsMNode();
           }
@@ -514,12 +583,11 @@ public class MTreeBelowSGCachedImpl {
           if (cachedMNode != null) {
             unPinMNode(cachedMNode);
             throw new MetadataException(
-                DataNodeSchemaMessages.ALIAS_DUPLICATED
-                    + alias
-                    + ", fullPath: "
-                    + fullPath
-                    + ", otherMeasurement: "
-                    + cachedMNode.getFullPath());
+                String.format(
+                    DataNodeSchemaMessages.ALIAS_DUPLICATED_FULLPATH_OTHER_MEASUREMENT_FMT,
+                    alias,
+                    fullPath,
+                    cachedMNode.getFullPath()));
           }
           if (measurementMNode.getAlias() != null) {
             device.deleteAliasChild(measurementMNode.getAlias());
@@ -563,14 +631,18 @@ public class MTreeBelowSGCachedImpl {
                 failingMeasurementMap.put(
                     i,
                     new MeasurementAlreadyExistException(
-                        devicePath.getFullPath() + "." + measurementList.get(i),
+                        devicePath.getFullPath()
+                            + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                            + measurementList.get(i),
                         node.getAsMeasurementMNode().getMeasurementPath()));
               }
             } else {
               failingMeasurementMap.put(
                   i,
                   new PathAlreadyExistException(
-                      devicePath.getFullPath() + "." + measurementList.get(i)));
+                      devicePath.getFullPath()
+                          + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                          + measurementList.get(i)));
             }
           }
           if (aliasList != null
@@ -579,7 +651,10 @@ public class MTreeBelowSGCachedImpl {
             failingMeasurementMap.put(
                 i,
                 new AliasAlreadyExistException(
-                    devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
+                    devicePath.getFullPath()
+                        + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                        + measurementList.get(i),
+                    aliasList.get(i)));
           }
         } catch (MetadataException e) {
           failingMeasurementMap.put(i, e);
@@ -685,8 +760,7 @@ public class MTreeBelowSGCachedImpl {
         boolean hasMeasurement = false;
         boolean hasNonViewMeasurement = false;
         ICachedMNode child;
-        IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode);
-        try {
+        try (final IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode)) {
           while (iterator.hasNext()) {
             child = iterator.next();
             unPinMNode(child);
@@ -698,12 +772,11 @@ public class MTreeBelowSGCachedImpl {
               }
             }
           }
-        } finally {
-          iterator.close();
         }
 
         if (!hasMeasurement) {
           curNode = store.setToInternal(entityMNode);
+          refreshAncestorsHavingDeviceDescendant(curNode.getParent());
         } else if (!hasNonViewMeasurement) {
           // has some measurement but they are all logical view
           store.updateMNode(entityMNode.getAsMNode(), o -> o.getAsDeviceMNode().setAligned(null));
@@ -730,14 +803,11 @@ public class MTreeBelowSGCachedImpl {
   }
 
   private boolean isEmptyInternalMNode(ICachedMNode node) throws MetadataException {
-    IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(node);
-    try {
+    try (final IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(node)) {
       return !IoTDBConstant.PATH_ROOT.equals(node.getName())
           && !node.isMeasurement()
           && !(node.isDevice() && node.getAsDeviceMNode().isUseTemplate())
           && !iterator.hasNext();
-    } finally {
-      iterator.close();
     }
   }
 
@@ -1076,7 +1146,7 @@ public class MTreeBelowSGCachedImpl {
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();
           } else {
-            entityMNode = store.setToEntity(device);
+            entityMNode = setToEntityAndUpdateFlags(device);
             // this parent has no measurement before. The leafName is his first child who is a
             // logical
             // view.
@@ -1198,7 +1268,7 @@ public class MTreeBelowSGCachedImpl {
         if (cur.isDevice()) {
           entityMNode = cur.getAsDeviceMNode();
         } else {
-          entityMNode = store.setToEntity(cur);
+          entityMNode = setToEntityAndUpdateFlags(cur);
         }
 
         if (entityMNode.isUseTemplate()) {
@@ -1244,7 +1314,7 @@ public class MTreeBelowSGCachedImpl {
       if (cur.isDevice()) {
         entityMNode = cur.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(cur);
+        entityMNode = setToEntityAndUpdateFlags(cur);
       }
 
       store.updateMNode(

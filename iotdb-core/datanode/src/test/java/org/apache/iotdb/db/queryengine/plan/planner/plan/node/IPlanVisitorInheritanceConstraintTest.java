@@ -24,9 +24,12 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,7 +41,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 public class IPlanVisitorInheritanceConstraintTest {
 
@@ -58,11 +60,8 @@ public class IPlanVisitorInheritanceConstraintTest {
     final Path iotdbCoreDir = projectRoot.resolve("iotdb-core");
 
     final Map<String, List<TypeDefinition>> typeDefinitions = new HashMap<>();
-    try (Stream<Path> paths = Files.walk(iotdbCoreDir)) {
-      paths
-          .filter(path -> path.toString().endsWith(".java"))
-          .filter(path -> path.toString().contains("/src/main/java/"))
-          .forEach(path -> collectTypeDefinitions(iotdbCoreDir, path, typeDefinitions));
+    for (Path sourceRoot : collectSourceRoots(iotdbCoreDir)) {
+      collectTypeDefinitionsUnderSourceRoot(iotdbCoreDir, sourceRoot, typeDefinitions);
     }
 
     final List<String> violations = new ArrayList<>();
@@ -105,6 +104,49 @@ public class IPlanVisitorInheritanceConstraintTest {
     throw new IllegalStateException(
         "Cannot resolve datanode module base directory. "
             + "Please run the test from the iotdb project workspace.");
+  }
+
+  private static List<Path> collectSourceRoots(final Path moduleDir) {
+    final List<Path> sourceRoots = new ArrayList<>();
+    try {
+      Files.walkFileTree(
+          moduleDir,
+          new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(
+                final Path dir, final BasicFileAttributes attrs) {
+              if ("target".equals(dir.getFileName().toString())) {
+                return FileVisitResult.SKIP_SUBTREE;
+              }
+              if (dir.endsWith(Paths.get("src", "main", "java"))) {
+                sourceRoots.add(dir);
+                return FileVisitResult.SKIP_SUBTREE;
+              }
+              return FileVisitResult.CONTINUE;
+            }
+          });
+    } catch (final IOException e) {
+      throw new RuntimeException("Failed to collect source roots under " + moduleDir, e);
+    }
+    return sourceRoots;
+  }
+
+  private static void collectTypeDefinitionsUnderSourceRoot(
+      final Path scanRoot,
+      final Path sourceRoot,
+      final Map<String, List<TypeDefinition>> typeDefinitions)
+      throws IOException {
+    Files.walkFileTree(
+        sourceRoot,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
+            if (file.toString().endsWith(".java")) {
+              collectTypeDefinitions(scanRoot, file, typeDefinitions);
+            }
+            return FileVisitResult.CONTINUE;
+          }
+        });
   }
 
   private static void collectTypeDefinitions(

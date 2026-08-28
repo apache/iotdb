@@ -48,7 +48,14 @@ public enum BuiltinAggregationFunction {
   VAR_POP("var_pop"),
   VAR_SAMP("var_samp"),
   MAX_BY("max_by"),
-  MIN_BY("min_by");
+  MIN_BY("min_by"),
+  CORR("corr"),
+  COVAR_POP("covar_pop"),
+  COVAR_SAMP("covar_samp"),
+  REGR_SLOPE("regr_slope"),
+  REGR_INTERCEPT("regr_intercept"),
+  SKEWNESS("skewness"),
+  KURTOSIS("kurtosis");
 
   private final String functionName;
 
@@ -99,6 +106,13 @@ public enum BuiltinAggregationFunction {
       case "var_samp":
       case "max_by":
       case "min_by":
+      case "corr":
+      case "covar_pop":
+      case "covar_samp":
+      case "regr_slope":
+      case "regr_intercept":
+      case "skewness":
+      case "kurtosis":
         return false;
       default:
         throw new IllegalArgumentException(
@@ -134,6 +148,13 @@ public enum BuiltinAggregationFunction {
       case "var_samp":
       case "max_by":
       case "min_by":
+      case "corr":
+      case "covar_pop":
+      case "covar_samp":
+      case "regr_slope":
+      case "regr_intercept":
+      case "skewness":
+      case "kurtosis":
         return true;
       case "count_if":
       case "count_time":

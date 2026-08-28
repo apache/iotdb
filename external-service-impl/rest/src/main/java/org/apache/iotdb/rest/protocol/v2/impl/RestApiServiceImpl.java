@@ -46,6 +46,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rest.protocol.handler.AuthorizationHandler;
+import org.apache.iotdb.rest.protocol.handler.QueryRowLimitUtils;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rest.protocol.utils.InsertTabletSortDataUtils;
 import org.apache.iotdb.rest.protocol.v2.NotFoundException;
@@ -59,22 +60,19 @@ import org.apache.iotdb.rest.protocol.v2.handler.StatementConstructionHandler;
 import org.apache.iotdb.rest.protocol.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.rest.protocol.v2.model.InsertTabletRequest;
 import org.apache.iotdb.rest.protocol.v2.model.PrefixPathList;
-import org.apache.iotdb.rest.protocol.v2.model.QueryDataSet;
 import org.apache.iotdb.rest.protocol.v2.model.SQL;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,14 +96,15 @@ public class RestApiServiceImpl extends RestApiService {
   private final ISchemaFetcher schemaFetcher;
   private final AuthorizationHandler authorizationHandler;
 
-  private final Integer defaultQueryRowLimit;
+  private final int defaultQueryRowLimit;
 
   public RestApiServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
     defaultQueryRowLimit =
-        IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();
+        QueryRowLimitUtils.normalizeRowSizeLimit(
+            IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit());
   }
 
   @Override
@@ -179,42 +178,16 @@ public class RestApiServiceImpl extends RestApiService {
         }
       }
 
-      // Cache hit: build response directly
-      QueryDataSet targetDataSet = new QueryDataSet();
-
-      FastLastHandler.setupTargetDataSet(targetDataSet);
-      List<Object> timeseries = new ArrayList<>();
-      List<Object> valueList = new ArrayList<>();
-      List<Object> dataTypeList = new ArrayList<>();
-
-      for (final Map.Entry<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>>
-          result : resultMap.entrySet()) {
-        for (final Map.Entry<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>
-            device2MeasurementLastEntry : result.getValue().entrySet()) {
-          final String deviceWithSeparator =
-              device2MeasurementLastEntry.getKey().toString() + TsFileConstant.PATH_SEPARATOR;
-          for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
-              device2MeasurementLastEntry.getValue().entrySet()) {
-            final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
-            valueList.add(tvPair.getValue().getStringValue());
-            dataTypeList.add(tvPair.getValue().getDataType().name());
-            targetDataSet.addTimestampsItem(tvPair.getTimestamp());
-            timeseries.add(deviceWithSeparator + measurementLastEntry.getKey());
-          }
-        }
-      }
-      if (!timeseries.isEmpty()) {
-        targetDataSet.addValuesItem(timeseries);
-        targetDataSet.addValuesItem(valueList);
-        targetDataSet.addValuesItem(dataTypeList);
-      }
+      // Cache hit: build response directly (capped by defaultQueryRowLimit).
       finish = true;
-      return Response.ok().entity(targetDataSet).build();
+      return FastLastHandler.fillLastValueDataSet(resultMap, defaultQueryRowLimit);
 
     } catch (Exception e) {
       finish = true;
       t = e;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long endTime = System.nanoTime();
       long costTime = endTime - startTime;
@@ -294,7 +267,8 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
 
-      Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      Response response =
+          authorizationHandler.checkAuthority(securityContext, statement, sql.getSql());
       if (response != null) {
         return response;
       }
@@ -313,7 +287,9 @@ public class RestApiServiceImpl extends RestApiService {
       return responseGenerateHelper(result);
     } catch (Exception e) {
       finish = true;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       if (statement != null) {
@@ -393,11 +369,13 @@ public class RestApiServiceImpl extends RestApiService {
         return QueryDataSetHandler.fillQueryDataSet(
             queryExecution,
             statement,
-            sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
+            QueryRowLimitUtils.resolveActualRowSizeLimit(sql.getRowLimit(), defaultQueryRowLimit));
       }
     } catch (Exception e) {
       finish = true;
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(statement)
@@ -447,7 +425,9 @@ public class RestApiServiceImpl extends RestApiService {
       return responseGenerateHelper(result);
 
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertRowsStatement)
@@ -501,7 +481,9 @@ public class RestApiServiceImpl extends RestApiService {
               false);
       return responseGenerateHelper(result);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertTabletStatement)

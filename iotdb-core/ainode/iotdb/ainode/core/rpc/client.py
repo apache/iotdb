@@ -66,6 +66,7 @@ class ConfigNodeClient(object):
             "Fail to connect to any config node. Please check status of ConfigNodes"
         )
         self._RETRY_NUM = 10
+        self._STARTUP_RETRY_NUM = 60
         self._RETRY_INTERVAL_IN_S = 1
 
         self._try_to_connect()
@@ -163,6 +164,12 @@ class ConfigNodeClient(object):
             else:
                 self._config_leader = None
             return True
+        if status.code == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.get_status_code():
+            logger.info(
+                "ConfigNode leader is warming up before serving AINode, will wait and retry. Reason: {}",
+                status.message,
+            )
+            return True
         return False
 
     def node_register(
@@ -177,7 +184,7 @@ class ConfigNodeClient(object):
             versionInfo=version_info,
         )
 
-        for _ in range(0, self._RETRY_NUM):
+        for _ in range(0, self._STARTUP_RETRY_NUM):
             try:
                 resp = self._client.registerAINode(req)
                 if not self._update_config_node_leader(resp.status):
@@ -208,7 +215,7 @@ class ConfigNodeClient(object):
             versionInfo=version_info,
         )
 
-        for _ in range(0, self._RETRY_NUM):
+        for _ in range(0, self._STARTUP_RETRY_NUM):
             try:
                 resp = self._client.restartAINode(req)
                 if not self._update_config_node_leader(resp.status):

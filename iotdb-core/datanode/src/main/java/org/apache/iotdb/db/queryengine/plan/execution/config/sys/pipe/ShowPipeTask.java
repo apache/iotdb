@@ -42,6 +42,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class ShowPipeTask implements IConfigTask {
@@ -129,6 +130,19 @@ public class ShowPipeTask implements IConfigTask {
                   tPipeInfo.isSetEstimatedRemainingTime()
                       ? String.format("%.2f", remainingTime)
                       : "Unknown",
+                  TSFileConfig.STRING_CHARSET));
+      if (tPipeInfo.isSetIsDegraded()) {
+        builder.getColumnBuilder(9).writeBoolean(tPipeInfo.isIsDegraded());
+      } else {
+        builder.getColumnBuilder(9).appendNull();
+      }
+      builder
+          .getColumnBuilder(10)
+          .writeBinary(
+              new Binary(
+                  tPipeInfo.isSetRecentFailures()
+                      ? new TreeMap<>(tPipeInfo.getRecentFailures()).toString()
+                      : "{}",
                   TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }

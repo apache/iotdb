@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -83,15 +84,21 @@ public class SetOperationNodeTranslator {
   public SetOperationNodeTranslator(
       Metadata metadata, SymbolAllocator symbolAllocator, QueryId idAllocator) {
 
-    this.metadata = requireNonNull(metadata, "metadata is null");
-    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-    this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
+    this.symbolAllocator =
+        requireNonNull(
+            symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+    this.idAllocator =
+        requireNonNull(idAllocator, DataNodeQueryMessages.EXCEPTION_IDALLOCATOR_IS_NULL_752B308D);
   }
 
   /** for intersect distinct and except distinct , use true and false for markers */
   public TranslationResult makeSetContainmentPlanForDistinct(SetOperationNode node) {
 
-    checkArgument(!(node instanceof UnionNode), "Cannot simplify a UnionNode");
+    checkArgument(
+        !(node instanceof UnionNode),
+        DataNodeQueryMessages.EXCEPTION_CANNOT_SIMPLIFY_A_UNIONNODE_9D5B09A7);
     List<Symbol> markers = allocateSymbols(node.getChildren().size(), MARKER, BOOLEAN);
 
     // 1. add the marker column to the origin planNode
@@ -115,7 +122,9 @@ public class SetOperationNodeTranslator {
   /** for intersect all and except all, use true and false for markers */
   public TranslationResult makeSetContainmentPlanForAll(SetOperationNode node) {
 
-    checkArgument(!(node instanceof UnionNode), "Cannot simplify a UnionNode");
+    checkArgument(
+        !(node instanceof UnionNode),
+        DataNodeQueryMessages.EXCEPTION_CANNOT_SIMPLIFY_A_UNIONNODE_9D5B09A7);
     List<Symbol> markers = allocateSymbols(node.getChildren().size(), MARKER, BOOLEAN);
 
     // for every child of SetOperation node, add the marker column for the child
@@ -157,7 +166,8 @@ public class SetOperationNodeTranslator {
 
     checkArgument(
         markers.size() == countOutputs.size(),
-        "the size of markers should be same as the size of count output symbols");
+        DataNodeQueryMessages
+            .EXCEPTION_THE_SIZE_OF_MARKERS_SHOULD_BE_SAME_AS_THE_SIZE_OF_COUNT_OUTPUT_SYMBOLS_6DBDD287);
 
     // Add group node above the union node to assist partitioning, preparing for the window node
     ImmutableMap.Builder<Symbol, SortOrder> sortOrderings = ImmutableMap.builder();
@@ -333,10 +343,15 @@ public class SetOperationNodeTranslator {
 
     public TranslationResult(
         PlanNode planNode, List<Symbol> countSymbols, Optional<Symbol> rowNumberSymbol) {
-      this.planNode = requireNonNull(planNode, "planNode is null");
+      this.planNode =
+          requireNonNull(planNode, DataNodeQueryMessages.EXCEPTION_PLANNODE_IS_NULL_49FBBFCF);
       this.countSymbols =
-          ImmutableList.copyOf(requireNonNull(countSymbols, "countSymbols is null"));
-      this.rowNumberSymbol = requireNonNull(rowNumberSymbol, "rowNumberSymbol is null");
+          ImmutableList.copyOf(
+              requireNonNull(
+                  countSymbols, DataNodeQueryMessages.EXCEPTION_COUNTSYMBOLS_IS_NULL_416D96FB));
+      this.rowNumberSymbol =
+          requireNonNull(
+              rowNumberSymbol, DataNodeQueryMessages.EXCEPTION_ROWNUMBERSYMBOL_IS_NULL_BA30E0AA);
     }
 
     public List<Symbol> getCountSymbols() {
@@ -344,7 +359,9 @@ public class SetOperationNodeTranslator {
     }
 
     public Symbol getRowNumberSymbol() {
-      checkState(rowNumberSymbol.isPresent(), "rowNumberSymbol is empty");
+      checkState(
+          rowNumberSymbol.isPresent(),
+          DataNodeQueryMessages.EXCEPTION_ROWNUMBERSYMBOL_IS_EMPTY_34FE9565);
       return rowNumberSymbol.get();
     }
 

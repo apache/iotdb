@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.generator;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -112,9 +112,10 @@ public class TsFileNameGenerator {
             if (!targetDir.exists()) {
               if (!targetDir.mkdirs() && !targetDir.exists()) {
                 throw new IOException(
-                    "Directory creation failed: "
-                        + tsFileDir
-                        + " (Permission denied or parent not writable)");
+                    String.format(
+                        StorageEngineMessages
+                            .STORAGE_EXCEPTION_DIRECTORY_CREATION_FAILED_S_PERMISSION_DENIED_OR_PARENT_2855777B,
+                        tsFileDir));
               }
             }
             return tsFileDir

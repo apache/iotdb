@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.source.schemaregion;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
@@ -31,7 +32,8 @@ public class PipeTableStatementToPlanVisitor implements AstVisitor<PlanNode, Voi
   public PlanNode visitNode(final Node node, final Void context) {
     throw new UnsupportedOperationException(
         String.format(
-            "PipeStatementToPlanVisitor does not support visiting general statement, Statement: %s",
+            DataNodePipeMessages
+                .PIPE_EXCEPTION_PIPESTATEMENTTOPLANVISITOR_DOES_NOT_SUPPORT_VISITING_GENERAL_590C6BD7,
             node));
   }
 

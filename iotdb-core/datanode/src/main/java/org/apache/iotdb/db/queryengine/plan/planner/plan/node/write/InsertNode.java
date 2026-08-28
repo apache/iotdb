@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -111,6 +113,9 @@ public abstract class InsertNode extends SearchNode {
             .collect(Collectors.toList());
     InsertNode result = mergeInsertNode(insertNodes);
     result.setSearchIndex(insertNodes.get(0).getSearchIndex());
+    result.setPhysicalTime(insertNodes.get(0).getPhysicalTime());
+    result.setNodeId(insertNodes.get(0).getNodeId());
+    result.setSyncIndex(insertNodes.get(0).getSyncIndex());
     result.setTargetPath(insertNodes.get(0).getTargetPath());
     return result;
   }
@@ -149,6 +154,12 @@ public abstract class InsertNode extends SearchNode {
     this.dataRegionReplicaSet = dataRegionReplicaSet;
   }
 
+  @Override
+  public void clearUselessFieldsAfterRouting() {
+    super.clearUselessFieldsAfterRouting();
+    setDataRegionReplicaSet(null);
+  }
+
   public PartialPath getTargetPath() {
     return targetPath;
   }
@@ -171,6 +182,7 @@ public abstract class InsertNode extends SearchNode {
 
   public void setMeasurementSchemas(MeasurementSchema[] measurementSchemas) {
     this.measurementSchemas = measurementSchemas;
+    measurementColumnCnt = -1;
   }
 
   public String[] getMeasurements() {
@@ -186,13 +198,23 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public boolean isValidMeasurement(int i) {
-    return measurementSchemas != null
+    return isValidMeasurement(i, true);
+  }
+
+  public boolean isValidMeasurement(int i, boolean countFieldOnly) {
+    return measurements != null
+        && i >= 0
+        && i < measurements.length
+        && measurements[i] != null
+        && measurementSchemas != null
+        && i < measurementSchemas.length
         && measurementSchemas[i] != null
-        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD);
+        && (!countFieldOnly || isFieldMeasurement(i));
   }
 
   public void setMeasurements(String[] measurements) {
     this.measurements = measurements;
+    measurementColumnCnt = -1;
   }
 
   public TSDataType[] getDataTypes() {
@@ -214,7 +236,7 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public TSDataType getDataType(int index) {
-    return dataTypes[index];
+    return dataTypes == null || index < 0 || index >= dataTypes.length ? null : dataTypes[index];
   }
 
   public void setDataTypes(TSDataType[] dataTypes) {
@@ -263,6 +285,43 @@ public abstract class InsertNode extends SearchNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new NotImplementedException(
         DataNodeQueryMessages.SERIALIZEATTRIBUTES_OF_INSERTNODE_IS_NOT_IMPLEMENTED);
+  }
+
+  /**
+   * Returns the exact number of bytes written by {@link #serializeToByteBuffer()}.
+   *
+   * @return the serialized buffer size
+   */
+  public final int serializeToByteBufferSize() {
+    // InsertNode has no children, so PlanNode.serialize only writes the child count here.
+    return serializedAttributesSize() + serializedPlanNodeIdSize() + Integer.BYTES;
+  }
+
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS(serializeToByteBufferSize());
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (final IOException e) {
+      throw new SerializationRunTimeException(e);
+    }
+  }
+
+  /**
+   * Returns the exact number of bytes written by the attribute serializer.
+   *
+   * @return the serialized attribute size
+   */
+  protected abstract int serializedAttributesSize();
+
+  /**
+   * Returns the exact number of bytes written by the plan node id serializer.
+   *
+   * @return the serialized plan node id size
+   */
+  protected int serializedPlanNodeIdSize() {
+    return ReadWriteIOUtils.sizeToWrite(getPlanNodeId().getId());
   }
 
   // region Serialization methods for WAL
@@ -324,8 +383,14 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public boolean hasValidMeasurements() {
-    for (Object o : measurements) {
-      if (o != null) {
+    if (measurements == null) {
+      return false;
+    }
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null
+          && (columnCategories == null
+              || i < columnCategories.length
+                  && columnCategories[i] == TsTableColumnCategory.FIELD)) {
         return true;
       }
     }
@@ -340,16 +405,45 @@ public abstract class InsertNode extends SearchNode {
     return failedMeasurementNumber;
   }
 
+  protected int getValidMeasurementNumber() {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        validMeasurementNumber++;
+      }
+    }
+    return validMeasurementNumber;
+  }
+
+  public int getValidMeasurementNumber(boolean countFieldOnly) {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (isValidMeasurement(i, countFieldOnly)) {
+        validMeasurementNumber++;
+      }
+    }
+    return validMeasurementNumber;
+  }
+
   public boolean isMeasurementFailed(int index) {
-    return measurements[index] == null;
+    return measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null;
+  }
+
+  protected boolean isWritableFieldMeasurement(int index) {
+    return !isMeasurementFailed(index) && isFieldMeasurement(index);
+  }
+
+  public boolean isFieldMeasurement(int index) {
+    return columnCategories == null
+        || index < columnCategories.length
+            && columnCategories[index] == TsTableColumnCategory.FIELD;
   }
 
   public boolean allMeasurementFailed() {
-    if (measurements != null) {
-      return failedMeasurementNumber
-          >= measurements.length - (tagColumnIndices == null ? 0 : tagColumnIndices.size());
-    }
-    return true;
+    return measurements == null || !hasValidMeasurements();
   }
 
   // endregion
@@ -405,10 +499,12 @@ public abstract class InsertNode extends SearchNode {
 
   public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
     this.columnCategories = columnCategories;
+    measurementColumnCnt = -1;
+    tagColumnIndices = null;
     if (columnCategories != null) {
       tagColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
+        if (columnCategories[i] == TsTableColumnCategory.TAG) {
           tagColumnIndices.add(i);
         }
       }
@@ -427,13 +523,19 @@ public abstract class InsertNode extends SearchNode {
   public String[] getRawMeasurements() {
     String[] measurements = getMeasurements();
     MeasurementSchema[] measurementSchemas = getMeasurementSchemas();
-    String[] rawMeasurements = new String[measurements.length];
+    String[] rawMeasurements = measurements;
     for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
+      if (measurementSchemas != null
+          && i < measurementSchemas.length
+          && measurementSchemas[i] != null) {
         // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementName();
-      } else {
-        rawMeasurements[i] = measurements[i];
+        String rawMeasurement = measurementSchemas[i].getMeasurementName();
+        if (!Objects.equals(rawMeasurement, measurements[i])) {
+          if (rawMeasurements == measurements) {
+            rawMeasurements = Arrays.copyOf(measurements, measurements.length);
+          }
+          rawMeasurements[i] = rawMeasurement;
+        }
       }
     }
     return rawMeasurements;

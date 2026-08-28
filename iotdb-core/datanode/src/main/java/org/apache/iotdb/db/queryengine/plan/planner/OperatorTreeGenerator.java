@@ -36,6 +36,7 @@ import org.apache.iotdb.calc.execution.operator.process.fill.constant.FloatConst
 import org.apache.iotdb.calc.execution.operator.process.fill.constant.IntConstantFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
@@ -159,7 +160,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ColumnTransformerVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimatorFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -377,7 +377,9 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     context.getDriverContext().setInputDriver(true);
 
     if (!predicateCanPushIntoScan) {
-      checkState(!context.isBuildPlanUseTemplate(), "Push down predicate is not supported yet");
+      checkState(
+          !context.isBuildPlanUseTemplate(),
+          DataNodeQueryMessages.EXCEPTION_PUSH_DOWN_PREDICATE_IS_NOT_SUPPORTED_YET_178F04A1);
       Operator rootOperator =
           constructFilterOperator(
               pushDownPredicate,
@@ -587,7 +589,10 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       int index = inputColumnNames.indexOf(outputColumnName);
       if (index < 0 && !outputColumnName.equals(TIMESTAMP_EXPRESSION_STRING)) {
         throw new IllegalStateException(
-            String.format("Cannot find column [%s] in child's output", outputColumnName));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_CANNOT_FIND_COLUMN_S_IN_CHILD_S_OUTPUT_10FBE4C8,
+                outputColumnName));
       }
       remainingColumnIndexList.add(index);
     }
@@ -719,7 +724,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     for (AggregationDescriptor descriptor : aggregationDescriptorList) {
       checkArgument(
           descriptor.getInputExpressions().size() == 1,
-          "descriptor's input expression size is not 1");
+          DataNodeQueryMessages
+              .EXCEPTION_DESCRIPTOR_QUOTE_S_INPUT_EXPRESSION_SIZE_IS_NOT_1_DA4BED50);
 
       Expression expression = descriptor.getInputExpressions().get(0);
       if (expression instanceof TimeSeriesOperand) {
@@ -760,8 +766,10 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
                 Collections.singletonList(new InputLocation[] {new InputLocation(0, -1)})));
       } else {
         throw new IllegalArgumentException(
-            "descriptor's input expression must be TimeSeriesOperand/TimestampOperand, current is "
-                + expression);
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DESCRIPTOR_S_INPUT_EXPRESSION_MUST_BE_TIMESERIESOPERAND_F4F66475,
+                expression));
       }
     }
 
@@ -984,7 +992,9 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             node.isPrefixPath(),
             node.getSchemaFilter(),
             node.getTemplateMap(),
-            node.getScope()));
+            node.getScope(),
+            node.isIncludeSystemDatabase(),
+            node.isIncludeAuditDatabase()));
   }
 
   @Override
@@ -1006,7 +1016,9 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             node.isPrefixPath(),
             node.getSchemaFilter(),
             node.getTemplateMap(),
-            node.getScope()));
+            node.getScope(),
+            node.isIncludeSystemDatabase(),
+            node.isIncludeAuditDatabase()));
   }
 
   @Override
@@ -1179,7 +1191,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     if (!sortItemList.get(0).getSortKey().equalsIgnoreCase("Device")) {
       throw new IllegalStateException(
-          "AggregationMergeSortNode without order by device should not appear here");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_AGGREGATIONMERGESORTNODE_WITHOUT_ORDER_BY_DEVICE_SHOULD_7AED85D1);
     }
 
     boolean timeAscending = true;
@@ -1684,7 +1697,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
   public Operator visitGroupByLevel(GroupByLevelNode node, LocalExecutionPlanContext context) {
     checkArgument(
         !node.getGroupByLevelDescriptors().isEmpty(),
-        "GroupByLevel descriptorList cannot be empty");
+        DataNodeQueryMessages.EXCEPTION_GROUPBYLEVEL_DESCRIPTORLIST_CANNOT_BE_EMPTY_34604314);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == ASC;
     List<TreeAggregator> aggregators = new ArrayList<>();
@@ -1737,10 +1750,13 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
 
   @Override
   public Operator visitGroupByTag(GroupByTagNode node, LocalExecutionPlanContext context) {
-    checkArgument(!node.getTagKeys().isEmpty(), "GroupByTag tag keys cannot be empty");
+    checkArgument(
+        !node.getTagKeys().isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_GROUPBYTAG_TAG_KEYS_CANNOT_BE_EMPTY_5D649624);
     checkArgument(
         node.getTagValuesToAggregationDescriptors().size() >= 1,
-        "GroupByTag aggregation descriptors cannot be empty");
+        DataNodeQueryMessages
+            .EXCEPTION_GROUPBYTAG_AGGREGATION_DESCRIPTORS_CANNOT_BE_EMPTY_82EC14EB);
 
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
@@ -1808,7 +1824,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       SlidingWindowAggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
         !node.getAggregationDescriptorList().isEmpty(),
-        "Aggregation descriptorList cannot be empty");
+        DataNodeQueryMessages.EXCEPTION_AGGREGATION_DESCRIPTORLIST_CANNOT_BE_EMPTY_490C1740);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -1914,7 +1930,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       Map<String, List<InputLocation>> layout) {
     checkArgument(
         !node.getAggregationDescriptorList().isEmpty(),
-        "Aggregation descriptorList cannot be empty");
+        DataNodeQueryMessages.EXCEPTION_AGGREGATION_DESCRIPTORLIST_CANNOT_BE_EMPTY_490C1740);
     Operator child = node.getChild().accept(this, context);
     boolean ascending = node.getScanOrder() == ASC;
     List<TreeAggregator> aggregators = new ArrayList<>();
@@ -2043,7 +2059,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
   public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
         !node.getAggregationDescriptorList().isEmpty(),
-        "Aggregation descriptorList cannot be empty");
+        DataNodeQueryMessages.EXCEPTION_AGGREGATION_DESCRIPTORLIST_CANNOT_BE_EMPTY_490C1740);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == ASC;
     List<TreeAggregator> aggregators = new ArrayList<>();
@@ -2591,7 +2607,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     }
 
     checkArgument(
-        MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
+        MPP_DATA_EXCHANGE_MANAGER != null,
+        DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
     ISinkHandle sinkHandle =
@@ -2633,7 +2650,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
     checkArgument(
-        MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
+        MPP_DATA_EXCHANGE_MANAGER != null,
+        DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
     ISinkHandle sinkHandle =
@@ -2930,7 +2948,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
 
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
-      } else if (timeValuePair.getValue() == TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE) {
+      } else if (timeValuePair.getValue() == TableDeviceLastCache.PLACEHOLDER_NO_VALUE) {
         // there is no data for this time series, just ignore
       } else if (!LastQueryUtil.satisfyFilter(filter, timeValuePair)) {
         // cached last value is not satisfied
@@ -3203,7 +3221,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "Unexpected PlanNode in getOutputColumnTypesOfTimeJoinNode, type: %s",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNEXPECTED_PLANNODE_IN_GETOUTPUTCOLUMNTYPESOFTIMEJOINNODE_00FAAEED,
                 child.getOutputColumnNames()));
       }
     }
@@ -3745,30 +3764,49 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     for (Map.Entry<PartialPath, List<TimeseriesContext>> entry : entryMap.getValue().entrySet()) {
       PartialPath path = entry.getKey();
       if (path instanceof MeasurementPath) {
-        timeseriesSchemaInfoMap.put(path.getMeasurement(), entry.getValue().get(0));
-        context.addPath(
-            new NonAlignedFullPath(
-                path.getIDeviceID(),
-                new MeasurementSchema(
-                    path.getMeasurement(),
-                    TSDataType.valueOf(entry.getValue().get(0).getDataType()))));
+        String measurement = path.getMeasurement();
+        TimeseriesContext timeseriesContext = entry.getValue().get(0);
+        TimeseriesContext existingContext = timeseriesSchemaInfoMap.get(measurement);
+        if (existingContext == null) {
+          timeseriesSchemaInfoMap.put(measurement, timeseriesContext);
+          context.addPath(
+              new NonAlignedFullPath(
+                  path.getIDeviceID(),
+                  new MeasurementSchema(
+                      measurement, TSDataType.valueOf(timeseriesContext.getDataType()))));
+        } else {
+          timeseriesSchemaInfoMap.put(
+              measurement, existingContext.mergeActiveCount(timeseriesContext));
+        }
       } else if (path instanceof AlignedPath) {
         AlignedPath alignedPath = (AlignedPath) path;
         List<String> measurementList = alignedPath.getMeasurementList();
         if (measurementList.size() != entry.getValue().size()) {
           throw new IllegalArgumentException(
-              "The size of measurementList and timeseriesSchemaInfoList should be equal in aligned path.");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THE_SIZE_OF_MEASUREMENTLIST_AND_TIMESERIESSCHEMAINFOLIST_A6649661);
         }
         int size = measurementList.size();
         List<IMeasurementSchema> schemaList = new ArrayList<>(size);
+        List<String> newMeasurementList = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-          timeseriesSchemaInfoMap.put(measurementList.get(i), entry.getValue().get(i));
-          schemaList.add(
-              new MeasurementSchema(
-                  measurementList.get(i),
-                  TSDataType.valueOf(entry.getValue().get(i).getDataType())));
+          String measurement = measurementList.get(i);
+          TimeseriesContext timeseriesContext = entry.getValue().get(i);
+          TimeseriesContext existingContext = timeseriesSchemaInfoMap.get(measurement);
+          if (existingContext == null) {
+            timeseriesSchemaInfoMap.put(measurement, timeseriesContext);
+            newMeasurementList.add(measurement);
+            schemaList.add(
+                new MeasurementSchema(
+                    measurement, TSDataType.valueOf(timeseriesContext.getDataType())));
+          } else {
+            timeseriesSchemaInfoMap.put(
+                measurement, existingContext.mergeActiveCount(timeseriesContext));
+          }
         }
-        context.addPath(new AlignedFullPath(path.getIDeviceID(), measurementList, schemaList));
+        if (!newMeasurementList.isEmpty()) {
+          context.addPath(new AlignedFullPath(path.getIDeviceID(), newMeasurementList, schemaList));
+        }
       }
     }
     return timeseriesSchemaInfoMap;

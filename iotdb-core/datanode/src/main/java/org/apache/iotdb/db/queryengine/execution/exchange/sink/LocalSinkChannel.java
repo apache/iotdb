@@ -65,8 +65,12 @@ public class LocalSinkChannel implements ISinkChannel {
           + RamUsageEstimator.shallowSizeOfInstance(SharedTsBlockQueue.class);
 
   public LocalSinkChannel(SharedTsBlockQueue queue, SinkListener sinkListener) {
-    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
-    this.queue = Validate.notNull(queue, "queue can not be null.");
+    this.sinkListener =
+        Validate.notNull(
+            sinkListener,
+            DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
+    this.queue =
+        Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
     this.queue.setSinkChannel(this);
     blocked = queue.getCanAddTsBlock();
   }
@@ -76,9 +80,15 @@ public class LocalSinkChannel implements ISinkChannel {
       SharedTsBlockQueue queue,
       SinkListener sinkListener) {
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
-    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
-    this.queue = Validate.notNull(queue, "queue can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
+    this.sinkListener =
+        Validate.notNull(
+            sinkListener,
+            DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
+    this.queue =
+        Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
     this.queue.setSinkChannel(this);
     // SinkChannel can send data after SourceHandle asks it to
     blocked = queue.getCanAddTsBlock();
@@ -134,7 +144,7 @@ public class LocalSinkChannel implements ISinkChannel {
   public void send(TsBlock tsBlock) {
     long startTime = System.nanoTime();
     try {
-      Validate.notNull(tsBlock, "tsBlocks is null");
+      Validate.notNull(tsBlock, DataNodeQueryMessages.EXCEPTION_TSBLOCKS_IS_NULL_02287FD8);
       synchronized (this) {
         checkState();
         if (closed) {

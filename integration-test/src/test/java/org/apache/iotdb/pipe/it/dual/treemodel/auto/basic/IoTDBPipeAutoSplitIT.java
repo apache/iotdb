@@ -61,6 +61,7 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
@@ -71,6 +72,7 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
@@ -99,12 +101,7 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(2, showPipeResult.size());
-      Assert.assertTrue(
-          (Objects.equals(showPipeResult.get(0).id, "a2b_history")
-                  && Objects.equals(showPipeResult.get(1).id, "a2b_realtime"))
-              || (Objects.equals(showPipeResult.get(1).id, "a2b_history")
-                  && Objects.equals(showPipeResult.get(0).id, "a2b_realtime")));
+      assertAutoSplitResult(showPipeResult, "a2b");
     }
 
     // Do not split for pipes without insertion or non-full
@@ -149,10 +146,11 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertTrue(
-          showPipeResult.stream()
-              .filter(i -> Objects.equals(i.id, "a2b_history"))
-              .anyMatch(i -> i.pipeConnector.contains("enable-send-tsfile-limit=false")));
+      assertAutoSplitResult(showPipeResult, "a2b");
+      showPipeResult.stream()
+          .filter(i -> Objects.equals(i.id, "a2b_history"))
+          .forEach(
+              i -> Assert.assertTrue(i.pipeConnector.contains("enable-send-tsfile-limit=false")));
     }
 
     TestUtils.assertDataEventuallyOnEnv(
@@ -160,5 +158,19 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
         "select * from root.test.device",
         "Time,root.test.device.field,",
         Collections.singleton("1,2.0,"));
+  }
+
+  private void assertAutoSplitResult(
+      final List<TShowPipeInfo> showPipeResult, final String pipeName) {
+    // The history pipe may have already been auto-dropped after snapshot transfer completes.
+    Assert.assertTrue(
+        showPipeResult.stream().anyMatch(i -> Objects.equals(i.id, pipeName + "_realtime")));
+    Assert.assertFalse(showPipeResult.stream().anyMatch(i -> Objects.equals(i.id, pipeName)));
+    Assert.assertTrue(
+        showPipeResult.stream()
+            .allMatch(
+                i ->
+                    Objects.equals(i.id, pipeName + "_history")
+                        || Objects.equals(i.id, pipeName + "_realtime")));
   }
 }

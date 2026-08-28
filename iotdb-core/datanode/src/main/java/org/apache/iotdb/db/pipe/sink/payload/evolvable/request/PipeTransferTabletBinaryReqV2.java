@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -60,7 +61,8 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
         || insertNode instanceof InsertRowsNode)) {
       throw new UnsupportedOperationException(
           String.format(
-              "Unknown InsertNode type %s when constructing statement from insert node.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_UNKNOWN_INSERTNODE_TYPE_S_WHEN_CONSTRUCTING_STATEMENT_FROM_4A055174,
               insertNode));
     }
 
@@ -117,10 +119,14 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
 
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_BINARY_V2.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(byteBuffer, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(byteBuffer.limit(), outputStream);
-      outputStream.write(byteBuffer.array(), 0, byteBuffer.limit());
+      ReadWriteIOUtils.write(byteBuffer.remaining(), outputStream);
+      outputStream.write(
+          byteBuffer.array(),
+          byteBuffer.arrayOffset() + byteBuffer.position(),
+          byteBuffer.remaining());
       ReadWriteIOUtils.write(dataBaseName, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
@@ -149,15 +155,27 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
 
   public static byte[] toTPipeTransferBytes(final ByteBuffer byteBuffer, final String dataBaseName)
       throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateAirGapSerializedSize(byteBuffer, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_BINARY_V2.getType(), outputStream);
-      ReadWriteIOUtils.write(byteBuffer.limit(), outputStream);
-      outputStream.write(byteBuffer.array(), 0, byteBuffer.limit());
+      ReadWriteIOUtils.write(byteBuffer.remaining(), outputStream);
+      outputStream.write(
+          byteBuffer.array(),
+          byteBuffer.arrayOffset() + byteBuffer.position(),
+          byteBuffer.remaining());
       ReadWriteIOUtils.write(dataBaseName, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
+  }
+
+  static int calculateSerializedSize(final ByteBuffer byteBuffer, final String dataBaseName) {
+    return Integer.BYTES + byteBuffer.remaining() + ReadWriteIOUtils.sizeToWrite(dataBaseName);
+  }
+
+  static int calculateAirGapSerializedSize(final ByteBuffer byteBuffer, final String dataBaseName) {
+    return Byte.BYTES + Short.BYTES + calculateSerializedSize(byteBuffer, dataBaseName);
   }
 
   /////////////////////////////// Object ///////////////////////////////

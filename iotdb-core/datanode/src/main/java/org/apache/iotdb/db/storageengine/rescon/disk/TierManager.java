@@ -20,14 +20,12 @@ package org.apache.iotdb.db.storageengine.rescon.disk;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import com.google.common.io.BaseEncoding;
@@ -64,21 +62,21 @@ public class TierManager {
   /**
    * seq folder manager of each storage tier, managing both data directories and multi-dir strategy
    */
-  private final List<FolderManager> seqTiers = new ArrayList<>();
+  private volatile List<FolderManager> seqTiers = new ArrayList<>();
 
   /**
    * unSeq folder manager of each storage tier, managing both data directories and multi-dir
    * strategy
    */
-  private final List<FolderManager> unSeqTiers = new ArrayList<>();
+  private volatile List<FolderManager> unSeqTiers = new ArrayList<>();
 
-  private final List<FolderManager> objectTiers = new ArrayList<>();
+  private volatile List<FolderManager> objectTiers = new ArrayList<>();
 
   /** seq file folder's rawFsPath path -> tier level */
-  private final Map<String, Integer> seqDir2TierLevel = new HashMap<>();
+  private volatile Map<String, Integer> seqDir2TierLevel = new HashMap<>();
 
   /** unSeq file folder's rawFsPath path -> tier level */
-  private final Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
+  private volatile Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
 
   private List<String> objectDirs;
 
@@ -97,19 +95,17 @@ public class TierManager {
   }
 
   public synchronized void initFolders() {
-    try {
-      String strategyName = Class.forName(config.getMultiDirStrategyClassName()).getSimpleName();
-      if (strategyName.equals(MaxDiskUsableSpaceFirstStrategy.class.getSimpleName())) {
-        directoryStrategyType = DirectoryStrategyType.MAX_DISK_USABLE_SPACE_FIRST_STRATEGY;
-      } else if (strategyName.equals(MinFolderOccupiedSpaceFirstStrategy.class.getSimpleName())) {
-        directoryStrategyType = DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY;
-      } else if (strategyName.equals(RandomOnDiskUsableSpaceStrategy.class.getSimpleName())) {
-        directoryStrategyType = DirectoryStrategyType.RANDOM_ON_DISK_USABLE_SPACE_STRATEGY;
-      }
-    } catch (Exception e) {
-      logger.error(
-          "Can't find strategy {} for mult-directories.", config.getMultiDirStrategyClassName(), e);
-    }
+    initFolders(seqTiers, unSeqTiers, objectTiers, seqDir2TierLevel, unSeqDir2TierLevel);
+  }
+
+  private void initFolders(
+      List<FolderManager> seqTiers,
+      List<FolderManager> unSeqTiers,
+      List<FolderManager> objectTiers,
+      Map<String, Integer> seqDir2TierLevel,
+      Map<String, Integer> unSeqDir2TierLevel) {
+    directoryStrategyType =
+        DirectoryStrategyType.fromClassName(config.getMultiDirStrategyClassName());
 
     config.updatePath();
     String[][] tierDirs = config.getTierDataDirs();
@@ -217,13 +213,19 @@ public class TierManager {
 
   public synchronized void resetFolders() {
     long startTime = System.currentTimeMillis();
-    seqTiers.clear();
-    unSeqTiers.clear();
-    objectTiers.clear();
-    seqDir2TierLevel.clear();
-    unSeqDir2TierLevel.clear();
+    List<FolderManager> newSeqTiers = new ArrayList<>();
+    List<FolderManager> newUnSeqTiers = new ArrayList<>();
+    List<FolderManager> newObjectTiers = new ArrayList<>();
+    Map<String, Integer> newSeqDir2TierLevel = new HashMap<>();
+    Map<String, Integer> newUnSeqDir2TierLevel = new HashMap<>();
 
-    initFolders();
+    initFolders(
+        newSeqTiers, newUnSeqTiers, newObjectTiers, newSeqDir2TierLevel, newUnSeqDir2TierLevel);
+    seqTiers = newSeqTiers;
+    unSeqTiers = newUnSeqTiers;
+    objectTiers = newObjectTiers;
+    seqDir2TierLevel = newSeqDir2TierLevel;
+    unSeqDir2TierLevel = newUnSeqDir2TierLevel;
     long endTime = System.currentTimeMillis();
     logger.info(StorageEngineMessages.FOLDERS_RESET_SUCCESSFULLY, (endTime - startTime));
   }
@@ -238,7 +240,9 @@ public class TierManager {
         logger.info(StorageEngineMessages.FOLDER_NOT_EXIST_CREATE_IT, file.getPath());
       } else {
         logger.info(
-            "create folder {} failed. Is the folder existed: {}", file.getPath(), file.exists());
+            StorageEngineMessages.STORAGE_LOG_CREATE_FOLDER_FAILED_IS_THE_FOLDER_EXISTED_18E29D51,
+            file.getPath(),
+            file.exists());
       }
     }
   }

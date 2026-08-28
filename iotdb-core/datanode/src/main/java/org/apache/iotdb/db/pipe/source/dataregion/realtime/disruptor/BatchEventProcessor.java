@@ -82,11 +82,14 @@ public final class BatchEventProcessor<T> implements Runnable {
         nextSequence = processAvailableEvents(nextSequence, availableSequence);
 
       } catch (final InterruptedException ex) {
-        if (running) {
-          Thread.currentThread().interrupt();
-          LOGGER.info(DataNodePipeMessages.PROCESSOR_INTERRUPTED);
+        if (!running) {
+          break;
         }
-        break;
+        // A transient interrupt should not permanently stop the consumer thread. Otherwise the
+        // gating sequence will stop advancing and producers may block forever on a full ring
+        // buffer, making the later close path appear stuck.
+        Thread.interrupted();
+        LOGGER.warn(DataNodePipeMessages.PROCESSOR_INTERRUPTED_UNEXPECTEDLY);
       } catch (final Throwable ex) {
         exceptionHandler.handleEventException(ex, nextSequence, ringBuffer.get(nextSequence));
         sequence.set(nextSequence);

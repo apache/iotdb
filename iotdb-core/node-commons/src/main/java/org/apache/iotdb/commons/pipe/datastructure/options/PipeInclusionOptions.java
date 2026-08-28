@@ -125,7 +125,7 @@ public class PipeInclusionOptions {
                 Arrays.asList(
                     "data.delete",
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.ordinary.drop",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
                     "schema.timeseries.template.unset",
@@ -140,7 +140,7 @@ public class PipeInclusionOptions {
             new HashSet<>(
                 Arrays.asList(
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.ordinary.drop",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
                     "schema.timeseries.template.unset",
@@ -255,6 +255,21 @@ public class PipeInclusionOptions {
       throw exception.get();
     }
     return options;
+  }
+
+  public static boolean areOptionsEnabled(final PipeParameters parameters, final String... options)
+      throws IllegalPathException {
+    final Set<PartialPath> inclusionOptions = parseOptions(getInclusionString(parameters));
+    final Set<PartialPath> exclusionOptions = parseOptions(getExclusionString(parameters));
+
+    for (final String option : options) {
+      final PartialPath optionPath = new PartialPath(option);
+      if (inclusionOptions.stream().noneMatch(optionPath::matchPrefixPath)
+          || exclusionOptions.stream().anyMatch(optionPath::matchPrefixPath)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private PipeInclusionOptions() {

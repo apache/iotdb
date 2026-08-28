@@ -74,7 +74,9 @@ public class AuthorInfo implements SnapshotProcessor {
       throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
     }
     ConfigPhysicalPlanType configPhysicalPlanType;
-    if (authorType >= AuthorType.RENAME_USER.ordinal()) {
+    if (authorType == AuthorType.ACCOUNT_UNLOCK.ordinal()) {
+      return ConfigPhysicalPlanType.AccountUnlock;
+    } else if (authorType >= AuthorType.RENAME_USER.ordinal()) {
       AuthorType type = AuthorType.values()[authorType];
       switch (type) {
         case RENAME_USER:
@@ -105,6 +107,8 @@ public class AuthorInfo implements SnapshotProcessor {
     ConfigPhysicalPlanType configPhysicalPlanType;
     if (authorRType == AuthorRType.RENAME_USER.ordinal()) {
       configPhysicalPlanType = ConfigPhysicalPlanType.RRenameUser;
+    } else if (authorRType == AuthorRType.ACCOUNT_UNLOCK.ordinal()) {
+      configPhysicalPlanType = ConfigPhysicalPlanType.RAccountUnlock;
     } else {
       configPhysicalPlanType =
           ConfigPhysicalPlanType.values()[
