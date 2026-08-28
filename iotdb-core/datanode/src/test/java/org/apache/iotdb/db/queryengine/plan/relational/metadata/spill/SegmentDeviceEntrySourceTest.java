@@ -164,6 +164,30 @@ public class SegmentDeviceEntrySourceTest {
   }
 
   @Test
+  public void testSegmentReleaseIsIdempotentAfterForcedQueryCleanup() throws Exception {
+    String queryId = "q-release-after-force-cleanup";
+    PlanNodeId planNodeId = new PlanNodeId("scan-release");
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    Path ownerDirectory = manager.register(queryId, planNodeId);
+    Path dataSetDirectory = ownerDirectory.resolve("fi");
+    Files.createDirectories(dataSetDirectory);
+    Files.write(dataSetDirectory.resolve("segment-000000.bin"), new byte[] {1});
+
+    manager.deregisterQuery(queryId);
+
+    DeviceEntryDataSetHandle handle =
+        new DeviceEntryDataSetHandle(
+            queryId, planNodeId, new TEndPoint("127.0.0.1", 1), 1, 1, false);
+    try (LocalSegmentDeviceEntrySource source = new LocalSegmentDeviceEntrySource(handle)) {
+      assertTrue(source.nextBatch().isEmpty());
+      assertFalse(source.hasNextBatch());
+    }
+
+    manager.deleteSegment(queryId, planNodeId, 0);
+    manager.finishSegmentDataSet(queryId, planNodeId.getId());
+  }
+
+  @Test
   public void testRejectsInvalidHandleCountsAndTruncatedPayload() {
     TEndPoint endPoint = new TEndPoint("127.0.0.1", 1);
     PlanNodeId planNodeId = new PlanNodeId("scan-invalid");
@@ -219,7 +243,7 @@ public class SegmentDeviceEntrySourceTest {
         executor.submit(
             () -> {
               start.await();
-              manager.deregisterQuery(queryId, false);
+              manager.deregisterQuery(queryId);
               return null;
             }));
     start.countDown();
@@ -233,7 +257,7 @@ public class SegmentDeviceEntrySourceTest {
   }
 
   @Test
-  public void testQueryCleanupDeletesRawButWaitsForFragmentOwners() throws Exception {
+  public void testQueryCleanupDeletesAllOwners() throws Exception {
     String queryId = "q-deferred-cleanup";
     PlanNodeId rawPlanNodeId = new PlanNodeId("scan-raw");
     PlanNodeId fragmentPlanNodeId = new PlanNodeId("scan-fragment");
@@ -254,15 +278,8 @@ public class SegmentDeviceEntrySourceTest {
     Path emptyFragmentOwner = manager.register(queryId, emptyFragmentPlanNodeId);
     Files.createDirectories(emptyFragmentOwner.resolve("fi"));
 
-    manager.deregisterQuery(queryId, false);
+    manager.deregisterQuery(queryId);
 
-    assertFalse(
-        Files.exists(queryDirectory.resolve("device-entry").resolve(queryId).resolve("scan-raw")));
-    assertTrue(Files.isDirectory(emptyFragmentOwner));
-    assertTrue(Files.isRegularFile(manager.resolveSegment(queryId, fragmentPlanNodeId, 0)));
-
-    manager.finishSegmentDataSet(queryId, emptyFragmentPlanNodeId.getId());
-    manager.finishSegmentDataSet(queryId, fragmentPlanNodeId.getId());
     assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
   }
 
@@ -276,7 +293,7 @@ public class SegmentDeviceEntrySourceTest {
     Files.createDirectories(fragmentDirectory);
     Files.write(fragmentDirectory.resolve("segment-000000.bin"), new byte[] {1});
 
-    manager.deregisterQuery(queryId, true);
+    manager.deregisterQuery(queryId);
 
     assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
   }

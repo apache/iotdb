@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
+import java.util.Collections;
 import java.util.List;
 
 public final class LocalSegmentDeviceEntrySource extends SegmentDeviceEntrySource {
@@ -42,10 +44,22 @@ public final class LocalSegmentDeviceEntrySource extends SegmentDeviceEntrySourc
   @Override
   public List<DeviceEntry> nextBatch() throws IOException {
     int segmentId = nextSegmentId;
-    List<DeviceEntry> result =
-        deserialize(
-            spillManager.readSegment(
-                handle.getQueryId(), handle.getPlanNodeId().getId(), segmentId));
+    List<DeviceEntry> result;
+    try {
+      result =
+          deserialize(
+              spillManager.readSegment(
+                  handle.getQueryId(), handle.getPlanNodeId().getId(), segmentId));
+    } catch (NoSuchFileException e) {
+      // A failed query can remove the owner before an already scheduled driver enters nextBatch.
+      // Treat that cancellation race as EOF, but preserve errors for a still-registered owner.
+      if (spillManager.isOwnerRegistered(handle.getQueryId(), handle.getPlanNodeId().getId())) {
+        throw e;
+      }
+      nextSegmentId = handle.getSegmentCount();
+      finished = true;
+      return Collections.emptyList();
+    }
     releaseSegment(segmentId);
     nextSegmentId++;
     return result;

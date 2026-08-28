@@ -440,8 +440,7 @@ public class QueryExecution implements IQueryExecution {
     }
     context.releaseExternalTsFileQueryResources();
     try {
-      DeviceEntrySpillManager.getInstance()
-          .deregisterQuery(context.getQueryId().getId(), t != null);
+      DeviceEntrySpillManager.getInstance().deregisterQuery(context.getQueryId().getId());
     } catch (Exception e) {
       LOGGER.warn(
           DataNodeQueryMessages

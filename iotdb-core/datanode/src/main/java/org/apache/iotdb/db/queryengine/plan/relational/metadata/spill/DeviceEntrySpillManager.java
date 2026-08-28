@@ -27,6 +27,7 @@ import org.apache.tsfile.external.commons.io.FileUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
@@ -75,32 +76,12 @@ public final class DeviceEntrySpillManager {
     }
   }
 
-  public void deregisterQuery(String queryId, boolean force) throws IOException {
+  public void deregisterQuery(String queryId) throws IOException {
     Object queryLock = queryLock(queryId);
     synchronized (queryLock) {
-      if (force) {
-        FileUtils.deleteDirectory(resolveQueryDirectory(queryId).toFile());
-        queryDirectories.remove(queryId);
-        queryLocks.remove(queryId, queryLock);
-        return;
-      }
-      Set<Path> owners = queryDirectories.get(queryId);
-      if (owners != null) {
-        for (Path owner : List.copyOf(owners)) {
-          if (Files.isDirectory(owner.resolve("raw"))) {
-            FileUtils.deleteDirectory(owner.toFile());
-            owners.remove(owner);
-          }
-        }
-      }
-      if (owners == null || owners.isEmpty()) {
-        queryDirectories.remove(queryId);
-        try {
-          FileUtils.deleteDirectory(resolveQueryDirectory(queryId).toFile());
-        } finally {
-          queryLocks.remove(queryId, queryLock);
-        }
-      }
+      FileUtils.deleteDirectory(resolveQueryDirectory(queryId).toFile());
+      queryDirectories.remove(queryId);
+      queryLocks.remove(queryId, queryLock);
     }
   }
 
@@ -142,7 +123,14 @@ public final class DeviceEntrySpillManager {
 
   public void deleteSegment(String queryId, String dataSetId, int segmentId) throws IOException {
     synchronized (queryLock(queryId)) {
-      Files.deleteIfExists(getRegisteredSegmentPath(queryId, dataSetId, segmentId));
+      try {
+        Files.deleteIfExists(getRegisteredSegmentPath(queryId, dataSetId, segmentId));
+      } catch (NoSuchFileException e) {
+        if (isOwnerRegistered(queryId, dataSetId)) {
+          throw e;
+        }
+        // Query cleanup may have already removed the whole query directory.
+      }
     }
   }
 
@@ -156,6 +144,15 @@ public final class DeviceEntrySpillManager {
       Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId);
       deregisterOwner(queryId, ownerDirectory);
     }
+  }
+
+  boolean isOwnerRegistered(String queryId, String planNodeId) {
+    Set<Path> owners = queryDirectories.get(queryId);
+    if (owners == null) {
+      return false;
+    }
+    Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId).normalize();
+    return owners.stream().map(Path::normalize).anyMatch(ownerDirectory::equals);
   }
 
   private Path resolveRegisteredDataSetDirectory(String queryId, String dataSetId)
