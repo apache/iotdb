@@ -22,13 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 public final class LocalSegmentDeviceEntrySource extends SegmentDeviceEntrySource {
 
   private final DeviceEntrySpillManager spillManager;
+  private boolean finished;
 
   public LocalSegmentDeviceEntrySource(DeviceEntryDataSetHandle handle) {
     this(handle, DeviceEntrySpillManager.getInstance());
@@ -43,22 +42,32 @@ public final class LocalSegmentDeviceEntrySource extends SegmentDeviceEntrySourc
   @Override
   public List<DeviceEntry> nextBatch() throws IOException {
     int segmentId = nextSegmentId;
-    Path segment = acquireSegment(segmentId);
-    List<DeviceEntry> result = deserialize(Files.readAllBytes(segment));
+    List<DeviceEntry> result =
+        deserialize(
+            spillManager.readSegment(
+                handle.getQueryId(), handle.getPlanNodeId().getId(), segmentId));
     releaseSegment(segmentId);
     nextSegmentId++;
     return result;
   }
 
-  private Path acquireSegment(int segmentId) throws IOException {
-    return spillManager.resolveSegment(handle.getQueryId(), handle.getPlanNodeId(), segmentId);
-  }
-
   private void releaseSegment(int segmentId) throws IOException {
     if (segmentId + 1 == handle.getSegmentCount()) {
-      spillManager.finishSegmentDataSet(handle.getQueryId(), handle.getPlanNodeId().getId());
+      finish();
     } else {
       spillManager.deleteSegment(handle.getQueryId(), handle.getPlanNodeId(), segmentId);
     }
+  }
+
+  private void finish() throws IOException {
+    if (!finished) {
+      spillManager.finishSegmentDataSet(handle.getQueryId(), handle.getPlanNodeId().getId());
+      finished = true;
+    }
+  }
+
+  @Override
+  public void close() throws IOException {
+    finish();
   }
 }

@@ -32,13 +32,20 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class SegmentDeviceEntrySourceTest {
@@ -95,6 +102,35 @@ public class SegmentDeviceEntrySourceTest {
   }
 
   @Test
+  public void testClosingLocalSourceEarlyCleansRemainingSegments() throws Exception {
+    PlanNodeId planNodeId = new PlanNodeId("scan-early-close");
+    SpilledDeviceEntryDataSet dataSet;
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer("q-early-close", planNodeId, 128, false)) {
+      for (DeviceEntry entry : createEntries(20)) {
+        materializer.append(entry);
+      }
+      materializer.forceSpill();
+      dataSet = (SpilledDeviceEntryDataSet) materializer.finish();
+    }
+
+    DeviceEntryDataSetHandle handle =
+        new DeviceEntryDataSetHandle(
+            "q-early-close",
+            planNodeId,
+            new TEndPoint("127.0.0.1", 1),
+            dataSet.getSegments().size(),
+            20,
+            false);
+    try (LocalSegmentDeviceEntrySource source = new LocalSegmentDeviceEntrySource(handle)) {
+      source.nextBatch();
+    }
+
+    assertFalse(
+        Files.exists(queryDirectory.resolve("device-entry/q-early-close/scan-early-close")));
+  }
+
+  @Test
   public void testRemoteSourceFetchesSegmentsAndFinishes() throws Exception {
     List<DeviceEntry> expected = createEntries(3);
     RecordingFetcher fetcher = new RecordingFetcher(expected);
@@ -125,6 +161,124 @@ public class SegmentDeviceEntrySourceTest {
         .finishSegmentDataSet("unregistered-query", "unregistered-scan");
     DeviceEntrySpillManager.getInstance()
         .finishSegmentDataSet("unregistered-query", "unregistered-scan");
+  }
+
+  @Test
+  public void testRejectsInvalidHandleCountsAndTruncatedPayload() {
+    TEndPoint endPoint = new TEndPoint("127.0.0.1", 1);
+    PlanNodeId planNodeId = new PlanNodeId("scan-invalid");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new DeviceEntryDataSetHandle("q-invalid", planNodeId, endPoint, -1, 0, false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new DeviceEntryDataSetHandle("q-invalid", planNodeId, endPoint, 0, -1, false));
+
+    DeviceEntryDataSetHandle handle =
+        new DeviceEntryDataSetHandle("q-invalid", planNodeId, endPoint, 1, 1, false);
+    SegmentDeviceEntrySource source =
+        new SegmentDeviceEntrySource(handle) {
+          @Override
+          public List<DeviceEntry> nextBatch() throws IOException {
+            return deserialize(new byte[] {0, 0, 0, 4, 1});
+          }
+        };
+    assertThrows(IOException.class, source::nextBatch);
+  }
+
+  @Test
+  public void testConcurrentOwnerAndQueryCleanupLeavesNoFiles() throws Exception {
+    String queryId = "q-concurrent-cleanup";
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    int ownerCount = 32;
+    for (int owner = 0; owner < ownerCount; owner++) {
+      try (DeviceEntryMaterializer materializer =
+          new DeviceEntryMaterializer(queryId, new PlanNodeId("scan-" + owner), 128, false)) {
+        for (DeviceEntry entry : createEntries(20)) {
+          materializer.append(entry);
+        }
+        materializer.forceSpill();
+        materializer.finish();
+      }
+    }
+
+    ExecutorService executor = Executors.newFixedThreadPool(ownerCount + 1);
+    CountDownLatch start = new CountDownLatch(1);
+    List<Future<?>> futures = new ArrayList<>();
+    for (int owner = 0; owner < ownerCount; owner++) {
+      String planNodeId = "scan-" + owner;
+      futures.add(
+          executor.submit(
+              () -> {
+                start.await();
+                manager.finishSegmentDataSet(queryId, planNodeId);
+                return null;
+              }));
+    }
+    futures.add(
+        executor.submit(
+            () -> {
+              start.await();
+              manager.deregisterQuery(queryId, false);
+              return null;
+            }));
+    start.countDown();
+    executor.shutdown();
+    assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+    for (Future<?> future : futures) {
+      future.get();
+    }
+
+    assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
+  }
+
+  @Test
+  public void testQueryCleanupDeletesRawButWaitsForFragmentOwners() throws Exception {
+    String queryId = "q-deferred-cleanup";
+    PlanNodeId rawPlanNodeId = new PlanNodeId("scan-raw");
+    PlanNodeId fragmentPlanNodeId = new PlanNodeId("scan-fragment");
+    PlanNodeId emptyFragmentPlanNodeId = new PlanNodeId("scan-empty-fragment");
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer(queryId, rawPlanNodeId, 128, true)) {
+      for (DeviceEntry entry : createEntries(20)) {
+        materializer.append(entry);
+      }
+      materializer.forceSpill();
+      materializer.finish();
+    }
+    Path fragmentOwner = manager.register(queryId, fragmentPlanNodeId);
+    Path fragmentDirectory = fragmentOwner.resolve("fi");
+    Files.createDirectories(fragmentDirectory);
+    Files.write(fragmentDirectory.resolve("segment-000000.bin"), new byte[] {1});
+    Path emptyFragmentOwner = manager.register(queryId, emptyFragmentPlanNodeId);
+    Files.createDirectories(emptyFragmentOwner.resolve("fi"));
+
+    manager.deregisterQuery(queryId, false);
+
+    assertFalse(
+        Files.exists(queryDirectory.resolve("device-entry").resolve(queryId).resolve("scan-raw")));
+    assertTrue(Files.isDirectory(emptyFragmentOwner));
+    assertTrue(Files.isRegularFile(manager.resolveSegment(queryId, fragmentPlanNodeId, 0)));
+
+    manager.finishSegmentDataSet(queryId, emptyFragmentPlanNodeId.getId());
+    manager.finishSegmentDataSet(queryId, fragmentPlanNodeId.getId());
+    assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
+  }
+
+  @Test
+  public void testFailedQueryCleanupDeletesActiveFragmentOwners() throws Exception {
+    String queryId = "q-failed-cleanup";
+    PlanNodeId fragmentPlanNodeId = new PlanNodeId("scan-fragment");
+    DeviceEntrySpillManager manager = DeviceEntrySpillManager.getInstance();
+    Path fragmentOwner = manager.register(queryId, fragmentPlanNodeId);
+    Path fragmentDirectory = fragmentOwner.resolve("fi");
+    Files.createDirectories(fragmentDirectory);
+    Files.write(fragmentDirectory.resolve("segment-000000.bin"), new byte[] {1});
+
+    manager.deregisterQuery(queryId, true);
+
+    assertFalse(Files.exists(queryDirectory.resolve("device-entry").resolve(queryId)));
   }
 
   private static List<DeviceEntry> createEntries(int count) {

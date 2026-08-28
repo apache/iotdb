@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import java.io.IOException;
@@ -33,12 +34,14 @@ public interface DeviceEntryDataSet extends AutoCloseable {
   DeviceEntryReader openReader() throws IOException;
 
   default DeviceEntryReader openConsumingReader() throws IOException {
-    throw new UnsupportedOperationException("Open consuming reader is not supported");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4);
   }
 
   default List<DeviceEntry> getInlineEntries() {
     throw new UnsupportedOperationException(
-        "Only InMemoryDeviceEntryDataSet supports get inline device entries");
+        DataNodeQueryMessages
+            .EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB);
   }
 
   @Override

@@ -4578,7 +4578,11 @@ public final class DataNodeQueryMessages {
   public static final String
       LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5 =
           "异步清理 DeviceEntry 数据集失败：queryId=%s，planNodeId=%s";
-  public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_QUERYID_ARG_ADF95D63 =
+  public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC =
       "清理 query %s 的 DeviceEntry spill 目录失败";
+  public static final String EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4 =
+      "不支持打开消费型读取器";
+  public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
+      "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
 
 }

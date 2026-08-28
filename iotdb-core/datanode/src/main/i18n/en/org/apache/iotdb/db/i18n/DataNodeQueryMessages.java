@@ -3821,7 +3821,11 @@ public final class DataNodeQueryMessages {
   public static final String
       LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5 =
           "Failed to clean DeviceEntry data set asynchronously: queryId=%s, planNodeId=%s";
-  public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_QUERYID_ARG_ADF95D63 =
+  public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC =
       "Failed to clean DeviceEntry spill directory for query %s";
+  public static final String EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4 =
+      "Open consuming reader is not supported";
+  public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
+      "Only InMemoryDeviceEntryDataSet supports get inline device entries";
 
 }

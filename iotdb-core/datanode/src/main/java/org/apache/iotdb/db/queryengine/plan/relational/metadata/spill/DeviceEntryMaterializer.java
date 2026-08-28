@@ -63,7 +63,7 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
         return 0;
       }
     }
-    long releasedRamBytes = getBufferedRamBytes();
+    long releasedRamBytes = getBufferedRamBytes() + entry.ramBytesUsed();
     ensureSpiller(false);
     spiller.append(entry.serializeToBytes());
     incrementEntryCount();

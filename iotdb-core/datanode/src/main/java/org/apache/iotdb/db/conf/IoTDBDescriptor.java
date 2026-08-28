@@ -2452,6 +2452,9 @@ public class IoTDBDescriptor {
     ConfigurationFileUtils.updateAppliedProperties(
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
     ConfigurationFileUtils.updateAppliedProperties(
+        "table_query_device_entry_batch_size_in_bytes",
+        Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
         DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
   }
 

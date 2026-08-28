@@ -141,11 +141,15 @@ public abstract class DeviceEntry implements Accountable {
 
   public static Binary deserializeBinary(final ByteBuffer byteBuffer) {
     int length = readInt(byteBuffer);
-    if (length <= 0) {
+    if (length < 0) {
       return null;
     }
     byte[] bytes = readBytes(byteBuffer, length);
     return new Binary(bytes);
+  }
+
+  public static int compareDeviceId(final DeviceEntry left, final DeviceEntry right) {
+    return left.getDeviceID().compareTo(right.getDeviceID());
   }
 
   public enum DeviceEntryType {

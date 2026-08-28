@@ -62,6 +62,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
 
   private QueryDataSource queryDataSource;
   private QueryDataSourceLease currentLease;
+  private boolean batchLeasePending;
   private int currentDeviceIndex;
   private Operator currentDeviceRootOperator;
   private List<Operator> dataSourceOperators;
@@ -138,6 +139,23 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     }
   }
 
+  @Override
+  public boolean isFinished() throws Exception {
+    if (batchLeasePending) {
+      return false;
+    }
+    if (currentDeviceRootOperator == null) {
+      return batchQueryDataSource && !deviceEntrySource.hasNextBatch();
+    }
+    if (currentDeviceRootOperator.hasNext() || !currentDeviceInit) {
+      return false;
+    }
+    if (currentDeviceIndex + 1 < deviceEntries.size()) {
+      return false;
+    }
+    return !batchQueryDataSource || !deviceEntrySource.hasNextBatch();
+  }
+
   private boolean prepareNextDeviceBatch() throws Exception {
     while (deviceEntries.isEmpty()) {
       if (!deviceEntrySource.hasNextBatch()) {
@@ -164,8 +182,10 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
       }
       currentLease = operatorContext.getInstanceContext().initBatchQueryDataSource(paths);
       if (currentLease == null) {
+        batchLeasePending = true;
         return false;
       }
+      batchLeasePending = false;
       queryDataSource = currentLease.getDataSource();
     }
     currentDeviceIndex = 0;
@@ -202,11 +222,6 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
       currentLease.close();
       currentLease = null;
     }
-  }
-
-  @Override
-  public boolean isFinished() throws Exception {
-    return !hasNext();
   }
 
   private void nextDevice() throws Exception {

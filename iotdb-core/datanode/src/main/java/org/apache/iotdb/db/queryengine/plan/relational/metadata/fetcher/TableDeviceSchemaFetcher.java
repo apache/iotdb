@@ -76,7 +76,6 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -337,7 +336,7 @@ public class TableDeviceSchemaFetcher {
           queryContext.getQueryId().getId(),
           planNodeId,
           batchSize,
-          Comparator.comparing(entry -> entry.getDeviceID().toString()),
+          DeviceEntry::compareDeviceId,
           true,
           true,
           queryContext);

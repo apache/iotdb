@@ -72,6 +72,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   private final boolean batchQueryDataSource;
   private QueryDataSourceLease currentLease;
   private boolean currentBatchInitialized;
+  private boolean batchLeasePending;
 
   protected final Ordering scanOrder;
   protected final SeriesScanOptions seriesScanOptions;
@@ -236,6 +237,9 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     if (seriesScanOptions.limitConsumedUp()) {
       return true;
     }
+    if (batchLeasePending) {
+      return false;
+    }
     if (!batchQueryDataSource) {
       if (currentDeviceIndex >= deviceCount) {
         return true;
@@ -334,8 +338,10 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       currentLease =
           ((OperatorContext) operatorContext).getInstanceContext().initBatchQueryDataSource(paths);
       if (currentLease == null) {
+        batchLeasePending = true;
         return false;
       }
+      batchLeasePending = false;
       queryDataSource = currentLease.getDataSource();
     }
     constructAlignedSeriesScanUtil();

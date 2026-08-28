@@ -223,8 +223,10 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
             .getInstanceContext()
             .initBatchQueryDataSource(paths);
     if (currentLease == null) {
+      batchLeasePending = true;
       return false;
     }
+    batchLeasePending = false;
     queryDataSource = currentLease.getDataSource();
     constructCurrentDeviceOperatorTree();
     initQueryDataSource(queryDataSource);

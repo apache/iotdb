@@ -32,7 +32,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.IOException;
+
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -70,6 +73,17 @@ public class DeviceEntryRpcSegmentFetcherTest {
 
     assertArrayEquals(payload, fetcher.fetch(handle, 0));
     verify(client, times(3)).fetchDeviceEntrySegment(any());
+  }
+
+  @Test
+  public void testFetchDoesNotRetryServerFailure() throws Exception {
+    when(client.fetchDeviceEntrySegment(any()))
+        .thenReturn(
+            new TFetchDeviceEntrySegmentResp(
+                new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())));
+
+    assertThrows(IOException.class, () -> fetcher.fetch(handle, 0));
+    verify(client, times(1)).fetchDeviceEntrySegment(any());
   }
 
   @Test

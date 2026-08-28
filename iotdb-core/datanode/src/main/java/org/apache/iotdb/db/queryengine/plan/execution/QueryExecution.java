@@ -439,16 +439,15 @@ public class QueryExecution implements IQueryExecution {
       cleanUpResultHandle();
     }
     context.releaseExternalTsFileQueryResources();
-    if (t != null) {
-      try {
-        DeviceEntrySpillManager.getInstance().deregisterQuery(context.getQueryId().getId());
-      } catch (Exception e) {
-        LOGGER.warn(
-            DataNodeQueryMessages
-                .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_QUERYID_ARG_ADF95D63,
-            context.getQueryId().getId(),
-            e);
-      }
+    try {
+      DeviceEntrySpillManager.getInstance()
+          .deregisterQuery(context.getQueryId().getId(), t != null);
+    } catch (Exception e) {
+      LOGGER.warn(
+          DataNodeQueryMessages
+              .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+          context.getQueryId().getId(),
+          e);
     }
   }
 

@@ -88,6 +88,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   protected final boolean batchQueryDataSource;
   protected QueryDataSourceLease currentLease;
   protected boolean currentBatchInitialized;
+  protected boolean batchLeasePending;
   protected int currentDeviceIndex;
   protected List<String> measurementColumnNames;
   protected Set<String> allSensors;
@@ -170,7 +171,12 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       return !hasNextWithTimer();
     }
     if (!finished && !currentBatchInitialized && !prepareNextDeviceBatch()) {
-      finished = deviceEntries.isEmpty() && !deviceEntrySource.hasNextBatch();
+      if (!batchLeasePending) {
+        finished = deviceEntries.isEmpty() && !deviceEntrySource.hasNextBatch();
+      }
+    }
+    if (batchLeasePending) {
+      return false;
     }
     if (!finished) {
       finished = !hasNextWithTimer();
@@ -785,8 +791,10 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       currentLease =
           ((OperatorContext) operatorContext).getInstanceContext().initBatchQueryDataSource(paths);
       if (currentLease == null) {
+        batchLeasePending = true;
         return false;
       }
+      batchLeasePending = false;
       queryDataSource = currentLease.getDataSource();
     }
     constructAlignedSeriesScanUtil();

@@ -885,9 +885,11 @@ public class PartitionCache {
         if (param.getDeviceID() == null) {
           return null;
         }
-        seriesSlots.put(
-            partitionExecutor.getSeriesPartitionSlot(param.getDeviceID()),
-            param.getTimePartitionSlotList());
+        seriesSlots
+            .computeIfAbsent(
+                partitionExecutor.getSeriesPartitionSlot(param.getDeviceID()),
+                ignored -> new ArrayList<>())
+            .addAll(param.getTimePartitionSlotList());
       }
       querySlots.put(entry.getKey(), seriesSlots);
     }

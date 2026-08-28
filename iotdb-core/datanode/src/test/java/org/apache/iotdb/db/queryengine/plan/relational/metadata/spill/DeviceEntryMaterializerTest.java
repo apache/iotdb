@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -43,6 +44,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class DeviceEntryMaterializerTest {
@@ -131,6 +133,13 @@ public class DeviceEntryMaterializerTest {
     }
     assertTrue(segments.size() > 1);
     assertTrue(Files.size(segments.get(0)) > 0);
+    assertThrows(
+        IllegalArgumentException.class, () -> manager.resolveSegment("q-segment", "../scan-0", 0));
+    assertThrows(
+        IllegalArgumentException.class, () -> manager.resolveSegment("q-segment", "scan-0", -1));
+    assertThrows(
+        NoSuchFileException.class,
+        () -> manager.resolveSegment("q-segment", "scan-0", segments.size()));
     dataSet.close();
   }
 
@@ -190,6 +199,53 @@ public class DeviceEntryMaterializerTest {
       }
     }
     assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testDirectSpillReleasesCurrentEntryReservation() throws Exception {
+    DeviceEntry entry = createEntries(1).get(0);
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer("q-release", new PlanNodeId("scan-0"), 1, false)) {
+      assertEquals(entry.ramBytesUsed(), materializer.appendWithMemoryControl(entry));
+    }
+  }
+
+  @Test
+  public void testSpillPreservesEmptyBinaryAttribute() throws Exception {
+    DeviceEntry expected =
+        new AlignedDeviceEntry(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table", "device"}),
+            new Binary[] {new Binary(new byte[0]), null});
+    try (DeviceEntryMaterializer materializer =
+        new DeviceEntryMaterializer("q-empty-binary", new PlanNodeId("scan-0"), 1, true)) {
+      materializer.append(expected);
+      materializer.forceSpill();
+      try (DeviceEntryDataSet dataSet = materializer.finish();
+          DeviceEntryReader reader = dataSet.openReader()) {
+        assertEquals(expected, reader.next());
+      }
+    }
+  }
+
+  @Test
+  public void testDistinctSpillDoesNotCollideDottedDeviceSegments() throws Exception {
+    DeviceEntry first =
+        new AlignedDeviceEntry(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table", "a.b", "c"}),
+            new Binary[0]);
+    DeviceEntry second =
+        new AlignedDeviceEntry(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table", "a", "b.c"}),
+            new Binary[0]);
+    try (DeviceEntrySortedMaterializer materializer =
+        new DeviceEntrySortedMaterializer(
+            "q-dotted", new PlanNodeId("scan-0"), 1, DeviceEntry::compareDeviceId, true)) {
+      materializer.appendWithMemoryControl(first);
+      materializer.appendWithMemoryControl(second);
+      try (DeviceEntryDataSet dataSet = materializer.finish()) {
+        assertEquals(2, dataSet.getEntryCount());
+      }
+    }
   }
 
   @Test
