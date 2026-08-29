@@ -30,14 +30,18 @@ export IOTDB_DATA_HOME=${IOTDB_DATA_HOME:-${IOTDB_HOME}}
 export IOTDB_LOG_DIR=${IOTDB_LOG_DIR:-${IOTDB_HOME}/logs}
 mkdir -p "${IOTDB_LOG_DIR}"
 
-# Refuse to start when any node port is already occupied.
-for p in 10710 10720 6667 10730 10740 10750 10760; do
-    (echo > /dev/tcp/127.0.0.1/$p) 2>/dev/null && { echo "ERROR: port $p is already in use, IoTDB Edge cannot start."; exit 1; }
-done
+source "$(dirname "$0")/../conf/iotdb-common.sh"
+export CONFIGNODE_HOME=${IOTDB_HOME}
+export CONFIGNODE_DATA_HOME=${IOTDB_DATA_HOME}
+export CONFIGNODE_CONF=${IOTDB_CONF}
+export CONFIGNODE_LOG_DIR=${IOTDB_LOG_DIR}
 
-if [ -f "${IOTDB_CONF}/iotdb-common.sh" ]; then
-    . "${IOTDB_CONF}/iotdb-common.sh"
-fi
+# Reuse the same configuration-aware port checks as the standard launchers.
+checkAllVariables
+checkAllConfigNodeVariables
+checkConfigNodePortUsages
+checkDataNodePortUsages
+
 . "${IOTDB_CONF}/edge-env.sh"
 
 # find java in JAVA_HOME

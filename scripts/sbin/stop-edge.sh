@@ -22,24 +22,93 @@
 
 IOTDB_HOME="$(cd "$(dirname "$0")"/.. && pwd)"
 
-if [ -f "${IOTDB_HOME}/edge.pid" ]; then
-    PID=$(cat "${IOTDB_HOME}/edge.pid")
-    if kill -0 "$PID" 2>/dev/null; then
-        kill "$PID"
-        for i in $(seq 1 30); do
-            kill -0 "$PID" 2>/dev/null || break
-            sleep 1
-        done
-        if kill -0 "$PID" 2>/dev/null; then
-            kill -9 "$PID"
-        fi
-        echo "IoTDB Edge process $PID stopped."
-    else
-        echo "IoTDB Edge process $PID is not running."
+PID_FILE="${IOTDB_HOME}/edge.pid"
+
+is_same_edge_home() {
+    local command_line="$1"
+    case "$command_line" in
+        *"-DIOTDB_HOME=${IOTDB_HOME} "*|*"-DIOTDB_HOME=${IOTDB_HOME}")
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+is_edge_process() {
+    local pid="$1"
+    local command_line
+    command_line=$(ps -ww -p "$pid" -o command= 2>/dev/null)
+    [ -n "$command_line" ] || return 1
+    printf '%s\n' "$command_line" | grep -F -- "org.apache.iotdb.edge.EdgeNode" >/dev/null || return 1
+    is_same_edge_home "$command_line"
+}
+
+find_edge_processes() {
+    local process_line
+    local pid
+    while IFS= read -r process_line; do
+        printf '%s\n' "$process_line" | grep -F -- "org.apache.iotdb.edge.EdgeNode" >/dev/null || continue
+        is_same_edge_home "$process_line" || continue
+        pid=$(printf '%s\n' "$process_line" | awk '{print $1}')
+        printf '%s\n' "$pid"
+    done < <(ps -axww -o pid= -o command= 2>/dev/null)
+}
+
+stop_edge_process() {
+    local pid="$1"
+    if ! is_edge_process "$pid"; then
+        echo "Refusing to stop PID $pid because it is not IoTDB Edge from ${IOTDB_HOME}."
+        return 1
     fi
-    rm -f "${IOTDB_HOME}/edge.pid"
-else
-    echo "No pid file found, trying to stop by process name."
-    pkill -f "org.apache.iotdb.edge.EdgeNode" 2>/dev/null
+    if ! kill "$pid" 2>/dev/null; then
+        echo "Failed to stop IoTDB Edge process $pid."
+        return 1
+    fi
+    for i in $(seq 1 30); do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 1
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+        if ! is_edge_process "$pid"; then
+            echo "Refusing to force-stop PID $pid because it no longer belongs to this IoTDB Edge installation."
+            return 1
+        fi
+        kill -9 "$pid" 2>/dev/null
+    fi
+    echo "IoTDB Edge process $pid stopped."
+}
+
+PID=""
+if [ -f "$PID_FILE" ]; then
+    PID=$(cat "$PID_FILE")
+    case "$PID" in
+        ''|*[!0-9]*)
+            echo "Ignoring invalid PID file ${PID_FILE}."
+            PID=""
+            ;;
+    esac
+    if [ -n "$PID" ] && ! is_edge_process "$PID"; then
+        echo "Ignoring stale PID file ${PID_FILE}; PID $PID does not belong to this IoTDB Edge installation."
+        PID=""
+    fi
+    rm -f "$PID_FILE"
+fi
+
+if [ -n "$PID" ]; then
+    stop_edge_process "$PID"
+    exit $?
+fi
+
+FOUND=false
+while IFS= read -r PID; do
+    [ -n "$PID" ] || continue
+    FOUND=true
+    stop_edge_process "$PID" || exit 1
+done < <(find_edge_processes)
+
+if [ "$FOUND" = false ]; then
+    echo "No IoTDB Edge process from ${IOTDB_HOME} is running."
 fi
 exit 0

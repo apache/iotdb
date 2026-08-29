@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Entry point of the IoTDB Edge distribution: starts the ConfigNode and the DataNode services
@@ -62,14 +63,14 @@ public final class EdgeNode {
   public static void main(String[] args) throws Exception {
     LOGGER.info(ConfigNodeMessages.LOG_STARTING_IOTDB_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_77F32605);
 
-    final Throwable[] configNodeError = new Throwable[1];
+    final AtomicReference<Throwable> configNodeError = new AtomicReference<>();
     Thread configNodeThread =
         new Thread(
             () -> {
               try {
                 ConfigNode.main(new String[] {"-s"});
               } catch (Throwable t) {
-                configNodeError[0] = t;
+                configNodeError.set(t);
               }
             },
             "EdgeNode-ConfigNode-Bootstrap");
@@ -77,12 +78,9 @@ public final class EdgeNode {
 
     int internalPort = ConfigNodeDescriptor.getInstance().getConf().getInternalPort();
     waitPortOpen(internalPort, configNodeError);
-    if (configNodeError[0] != null) {
-      throw new IllegalStateException(
-          ConfigNodeMessages.EXCEPTION_IOTDB_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_02EEE59A,
-          configNodeError[0]);
-    }
+    throwIfConfigNodeBootstrapFailed(configNodeError);
     Thread.sleep(LEADER_ELECTION_GRACE_MS);
+    throwIfConfigNodeBootstrapFailed(configNodeError);
     LOGGER.info(ConfigNodeMessages.LOG_IOTDB_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_6729159E);
 
     // DataNode.main returns after a successful start; the services of both nodes keep the JVM
@@ -90,11 +88,19 @@ public final class EdgeNode {
     DataNode.main(new String[] {"-s"});
   }
 
-  private static void waitPortOpen(int port, Throwable[] configNodeError)
+  private static void throwIfConfigNodeBootstrapFailed(AtomicReference<Throwable> configNodeError) {
+    Throwable error = configNodeError.get();
+    if (error != null) {
+      throw new IllegalStateException(
+          ConfigNodeMessages.EXCEPTION_IOTDB_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_02EEE59A, error);
+    }
+  }
+
+  private static void waitPortOpen(int port, AtomicReference<Throwable> configNodeError)
       throws InterruptedException {
     long deadline = System.currentTimeMillis() + CONFIG_NODE_READY_TIMEOUT_MS;
     while (System.currentTimeMillis() < deadline) {
-      if (configNodeError[0] != null) {
+      if (configNodeError.get() != null) {
         return;
       }
       try (Socket socket = new Socket()) {

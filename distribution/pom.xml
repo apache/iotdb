@@ -89,23 +89,9 @@
                                 <descriptor>src/assembly/confignode.xml</descriptor>
                                 <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
-                            </descriptors>
-                            <finalName>apache-iotdb-${project.version}</finalName>
-                        </configuration>
-                    </execution>
-                    <!-- Edge distribution: ConfigNode + DataNode merged in one JVM,
-                         with resource-constrained default configuration. -->
-                    <execution>
-                        <id>edge-bin</id>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <descriptors>
                                 <descriptor>src/assembly/edge.xml</descriptor>
                             </descriptors>
-                            <finalName>apache-iotdb-edge-${project.version}</finalName>
+                            <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
                     </execution>
                 </executions>
@@ -138,7 +124,7 @@
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-external-service-impl-bin.zip</include>
-                                        <include>apache-iotdb-edge-${project.version}-all-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-edge-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>

@@ -20,12 +20,12 @@
 
 -->
 <assembly>
-    <id>all-bin</id>
+    <id>edge-bin</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>apache-iotdb-edge-${project.version}-all-bin</baseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-edge-bin</baseDirectory>
     <dependencySets>
         <dependencySet>
             <includes>
@@ -61,9 +61,15 @@
             <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
             <excludes>
                 <exclude>iotdb-system.properties</exclude>
+                <exclude>edge/**</exclude>
             </excludes>
         </fileSet>
-        <!-- edge-specific configuration: tuned iotdb-system.properties + merged logback. -->
+        <!-- edge-specific system configuration. -->
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf/edge</directory>
+        </fileSet>
+        <!-- merged logback configuration for the single Edge process. -->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/src/assembly/resources/conf-edge</directory>
@@ -102,12 +108,19 @@
             </includes>
             <fileMode>0755</fileMode>
         </fileSet>
+        <!-- Keep node-independent tools. Edge does not package the standalone node launchers or
+             environment files required by the excluded destructive, daemon, and health scripts. -->
         <fileSet>
             <outputDirectory>tools</outputDirectory>
             <directory>${project.basedir}/../scripts/tools</directory>
             <excludes>
                 <exclude>*ainode.*</exclude>
                 <exclude>**/*ainode.*</exclude>
+                <exclude>ops/daemon-*.sh</exclude>
+                <exclude>ops/destroy-*.sh</exclude>
+                <exclude>ops/health_check.sh</exclude>
+                <exclude>windows/ops/destroy-*.bat</exclude>
+                <exclude>windows/ops/health_check.bat</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
