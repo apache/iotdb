@@ -55,9 +55,9 @@ public class SessionWindow implements IWindow {
       return true;
     }
     if (index == 0) {
-      return Math.abs(column.getLong(index) - lastTsBlockTime) <= timeInterval;
+      return isTimeDistanceLessThanOrEqual(column.getLong(index), lastTsBlockTime);
     }
-    return Math.abs(column.getLong(index) - column.getLong(index - 1)) <= timeInterval;
+    return isTimeDistanceLessThanOrEqual(column.getLong(index), column.getLong(index - 1));
   }
 
   @Override
@@ -89,17 +89,18 @@ public class SessionWindow implements IWindow {
   public boolean contains(Column column) {
     TimeColumn timeColumn = (TimeColumn) column;
 
+    long columnStartTime = column.getLong(0);
     long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
     long maxTime = Math.max(timeColumn.getStartTime(), timeColumn.getEndTime());
 
     boolean contains =
-        Math.abs(column.getLong(0) - lastTsBlockTime) < timeInterval
-            && maxTime - minTime <= timeInterval;
+        isTimeDistanceLessThan(columnStartTime, lastTsBlockTime)
+            && isTimeDistanceLessThanOrEqual(maxTime, minTime);
     if (contains) {
       if (!initializedTimeValue) {
         startTime = Long.MAX_VALUE;
         endTime = Long.MIN_VALUE;
-        lastTsBlockTime = column.getLong(0);
+        lastTsBlockTime = columnStartTime;
         timeValue = ascending ? maxTime : minTime;
         initializedTimeValue = true;
       }
@@ -112,6 +113,22 @@ public class SessionWindow implements IWindow {
 
   public long getTimeInterval() {
     return timeInterval;
+  }
+
+  boolean isTimeDistanceLessThanOrEqual(long left, long right) {
+    return compareTimeDistance(left, right) <= 0;
+  }
+
+  private boolean isTimeDistanceLessThan(long left, long right) {
+    return compareTimeDistance(left, right) < 0;
+  }
+
+  private int compareTimeDistance(long left, long right) {
+    if (timeInterval < 0) {
+      return 1;
+    }
+    long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, timeInterval);
   }
 
   public long getTimeValue() {
