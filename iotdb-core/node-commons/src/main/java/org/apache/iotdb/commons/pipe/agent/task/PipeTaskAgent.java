@@ -643,8 +643,14 @@ public abstract class PipeTaskAgent {
       return false;
     }
 
-    // Trigger drop() method for each pipe task by parallel stream
+    // Stop all tasks before discarding receiver runtime sessions. A single pipe task may be
+    // dropped when its region leader changes, while the other tasks of the same pipe are still
+    // running. Receiver runtime sessions can only be discarded after the whole pipe is stopped.
     final long startTime = System.currentTimeMillis();
+    runPipeTasks(pipeTasks.values(), PipeTask::stop);
+    runPipeTasks(
+        pipeTasks.values(),
+        pipeTask -> pipeTask.discardReceiverRuntimeSessions(pipeName, creationTime));
     runPipeTasks(pipeTasks.values(), PipeTask::drop);
     LOGGER.info(PipeMessages.DROP_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
 
@@ -677,8 +683,16 @@ public abstract class PipeTaskAgent {
       return false;
     }
 
-    // Trigger drop() method for each pipe task by parallel stream
+    // Stop all tasks before discarding receiver runtime sessions. A single pipe task may be
+    // dropped when its region leader changes, while the other tasks of the same pipe are still
+    // running. Receiver runtime sessions can only be discarded after the whole pipe is stopped.
     final long startTime = System.currentTimeMillis();
+    runPipeTasks(pipeTasks.values(), PipeTask::stop);
+    runPipeTasks(
+        pipeTasks.values(),
+        pipeTask ->
+            pipeTask.discardReceiverRuntimeSessions(
+                pipeName, existedPipeMeta.getStaticMeta().getCreationTime()));
     runPipeTasks(pipeTasks.values(), PipeTask::drop);
     LOGGER.info(PipeMessages.DROP_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
 
@@ -705,6 +719,9 @@ public abstract class PipeTaskAgent {
 
     // Trigger start() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
+    runPipeTasks(
+        pipeTasks.values(),
+        pipeTask -> pipeTask.registerReceiverRuntimeSessions(pipeName, creationTime));
     runPipeTasks(pipeTasks.values(), PipeTask::start);
     LOGGER.info(
         PipeMessages.START_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
@@ -739,6 +756,9 @@ public abstract class PipeTaskAgent {
     // Trigger stop() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
     runPipeTasks(pipeTasks.values(), PipeTask::stop);
+    runPipeTasks(
+        pipeTasks.values(),
+        pipeTask -> pipeTask.discardReceiverRuntimeSessions(pipeName, creationTime));
     LOGGER.info(PipeMessages.STOP_ALL_PIPE_TASKS, pipeName, System.currentTimeMillis() - startTime);
 
     // Set pipe meta status to STOPPED

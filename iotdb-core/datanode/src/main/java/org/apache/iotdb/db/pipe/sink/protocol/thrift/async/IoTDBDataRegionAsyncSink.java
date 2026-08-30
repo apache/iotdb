@@ -209,6 +209,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
             shouldMarkAsPipeRequest,
             false,
             skipIfNoPrivileges);
+    clientManager.setPipeInfo(pipeName, creationTime);
 
     transferTsFileClientManager =
         new IoTDBDataNodeAsyncClientManager(
@@ -225,6 +226,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
             shouldMarkAsPipeRequest,
             isSplitTSFileBatchModeEnabled,
             skipIfNoPrivileges);
+    transferTsFileClientManager.setPipeInfo(pipeName, creationTime);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
@@ -1097,6 +1099,33 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     receiverBackoffMap.clear();
 
     super.close();
+  }
+
+  @Override
+  public synchronized void discardReceiverRuntimeSessions() {
+    syncSink.discardReceiverRuntimeSessions();
+
+    if (clientManager != null) {
+      clientManager.discardReceiverRuntimeSessions();
+    }
+
+    if (transferTsFileClientManager != null) {
+      transferTsFileClientManager.discardReceiverRuntimeSessions();
+    }
+  }
+
+  @Override
+  public synchronized void discardReceiverRuntimeSessions(
+      final String pipeName, final long creationTime) {
+    // The synchronous sink provides the lifecycle handshake. The pipe-aware cleanup applies to all
+    // receiver sessions without closing connections still shared by other pipes.
+    syncSink.discardReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
+  @Override
+  public synchronized void registerReceiverRuntimeSessions(
+      final String pipeName, final long creationTime) {
+    syncSink.registerReceiverRuntimeSessions(pipeName, creationTime);
   }
 
   public synchronized void clearRetryEventsReferenceCount() {

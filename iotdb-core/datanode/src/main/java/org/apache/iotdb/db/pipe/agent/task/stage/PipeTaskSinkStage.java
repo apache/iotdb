@@ -80,6 +80,18 @@ public class PipeTaskSinkStage extends PipeTaskStage {
   }
 
   @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    PipeSinkSubtaskManager.instance()
+        .registerReceiverRuntimeSessions(sinkSubtaskId, pipeName, creationTime);
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    PipeSinkSubtaskManager.instance()
+        .discardReceiverRuntimeSessions(sinkSubtaskId, pipeName, creationTime);
+  }
+
+  @Override
   public void dropSubtask() throws PipeException {
     PipeSinkSubtaskManager.instance().deregister(pipeName, creationTime, regionId, sinkSubtaskId);
   }

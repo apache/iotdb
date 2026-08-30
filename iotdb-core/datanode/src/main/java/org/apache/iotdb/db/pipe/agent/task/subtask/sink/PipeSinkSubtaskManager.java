@@ -237,6 +237,30 @@ public class PipeSinkSubtaskManager {
     }
   }
 
+  public synchronized void discardReceiverRuntimeSessions(
+      final String attributeSortedString, final String pipeName, final long creationTime) {
+    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      throwNoSuchSubtaskException(attributeSortedString);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+      lifeCycle.discardReceiverRuntimeSessions(pipeName, creationTime);
+    }
+  }
+
+  public synchronized void registerReceiverRuntimeSessions(
+      final String attributeSortedString, final String pipeName, final long creationTime) {
+    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+      throwNoSuchSubtaskException(attributeSortedString);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+      lifeCycle.registerReceiverRuntimeSessions(pipeName, creationTime);
+    }
+  }
+
   public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue(
       final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
