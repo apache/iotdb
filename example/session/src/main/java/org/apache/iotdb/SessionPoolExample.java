@@ -18,7 +18,9 @@
  */
 
 package org.apache.iotdb;
-
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -72,7 +74,15 @@ public class SessionPoolExample {
     // Choose the SessionPool you going to use
     constructRedirectSessionPool();
 
-    service = Executors.newFixedThreadPool(10);
+//    before：
+//    service = Executors.newFixedThreadPool(10);
+
+//    after：
+    service = new ThreadPoolExecutor(
+            10, 10,
+            0L, TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(1000)
+    );
     insertRecord();
     Thread.sleep(1000);
     queryByIterator();
