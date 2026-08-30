@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * {@link PipeTaskCoordinatorLock} is a cross-thread lock for pipe task coordinator. It is used to
@@ -42,12 +43,14 @@ public class PipeTaskCoordinatorLock {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinatorLock.class);
 
   private final Semaphore semaphore = new Semaphore(1);
+  private final AtomicBoolean locked = new AtomicBoolean(false);
 
   public void lock() {
     LOGGER.debug(
         ManagerMessages.PIPETASKCOORDINATOR_LOCK_WAITING_FOR_THREAD,
         Thread.currentThread().getName());
     semaphore.acquireUninterruptibly();
+    locked.set(true);
     LOGGER.debug(
         ManagerMessages.PIPETASKCOORDINATOR_LOCK_ACQUIRED_BY_THREAD,
         Thread.currentThread().getName());
@@ -59,6 +62,7 @@ public class PipeTaskCoordinatorLock {
           ManagerMessages.PIPETASKCOORDINATOR_LOCK_WAITING_FOR_THREAD,
           Thread.currentThread().getName());
       if (semaphore.tryAcquire(10, TimeUnit.SECONDS)) {
+        locked.set(true);
         LOGGER.debug(
             ManagerMessages.PIPETASKCOORDINATOR_LOCK_ACQUIRED_BY_THREAD,
             Thread.currentThread().getName());
@@ -81,6 +85,9 @@ public class PipeTaskCoordinatorLock {
   }
 
   public void unlock() {
+    if (!locked.compareAndSet(true, false)) {
+      return;
+    }
     semaphore.release();
     LOGGER.debug(
         ManagerMessages.PIPETASKCOORDINATOR_LOCK_RELEASED_BY_THREAD,
@@ -88,6 +95,6 @@ public class PipeTaskCoordinatorLock {
   }
 
   public boolean isLocked() {
-    return semaphore.availablePermits() == 0;
+    return locked.get();
   }
 }
