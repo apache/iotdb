@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -103,6 +104,13 @@ public class DataNodeRegionManager {
     return consensusGroupId instanceof DataRegionId
         ? dataRegionLockMap.get(consensusGroupId)
         : schemaRegionLockMap.get(consensusGroupId);
+  }
+
+  public boolean isRegionExists(final ConsensusGroupId consensusGroupId) {
+    return Objects.nonNull(
+        consensusGroupId instanceof DataRegionId
+            ? storageEngine.getDataRegion((DataRegionId) consensusGroupId)
+            : schemaEngine.getSchemaRegion((SchemaRegionId) consensusGroupId));
   }
 
   public TSStatus createSchemaRegion(
