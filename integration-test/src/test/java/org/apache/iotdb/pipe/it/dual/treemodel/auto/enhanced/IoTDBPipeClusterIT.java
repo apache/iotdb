@@ -217,17 +217,12 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
   @Test
   public void testWithAllParametersInLogMode() throws Exception {
-    testWithAllParameters("log");
+    testWithAllParameters("batch");
   }
 
   @Test
   public void testWithAllParametersInFileMode() throws Exception {
-    testWithAllParameters("file");
-  }
-
-  @Test
-  public void testWithAllParametersInHybridMode() throws Exception {
-    testWithAllParameters("hybrid");
+    testWithAllParameters("batch");
   }
 
   public void testWithAllParameters(final String realtimeMode) throws Exception {

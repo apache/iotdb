@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT3;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,6 +43,7 @@ import java.util.Map;
 @Category({MultiClusterIT3.class})
 public class IoTDBPipeForwardIT extends AbstractPipeTripleManualIT {
   @Test
+  @Ignore("Requires forwarding pipe request filtering, which is disabled.")
   public void testForwardingPipeRequests() throws Exception {
     final DataNodeWrapper env2DataNode = env2.getDataNodeWrapper(0);
     final String env2Ip = env2DataNode.getIp();

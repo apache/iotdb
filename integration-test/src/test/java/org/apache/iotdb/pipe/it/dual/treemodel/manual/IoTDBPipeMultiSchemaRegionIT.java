@@ -64,7 +64,6 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualTreeModelManua
 
       sourceAttributes.put("source.inclusion", "all");
       sourceAttributes.put("source.inclusion.exclusion", "");
-      sourceAttributes.put("source.forwarding-pipe-requests", "false");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");

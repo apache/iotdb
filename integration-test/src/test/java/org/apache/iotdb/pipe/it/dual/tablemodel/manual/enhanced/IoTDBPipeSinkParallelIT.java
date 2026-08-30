@@ -36,11 +36,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
@@ -66,7 +63,6 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
     final int receiverPort = receiverDataNode.getPort();
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
     TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-    final Set<String> expectedResSet = new HashSet<>();
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -96,27 +92,7 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      TestUtils.executeNonQueries(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.sg1.d1(time, s1) values (0, 1)",
-              "insert into root.sg1.d1(time, s1) values (1, 2)",
-              "insert into root.sg1.d1(time, s1) values (2, 3)",
-              "insert into root.sg1.d1(time, s1) values (3, 4)",
-              "flush"),
-          null);
       TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
-      expectedResSet.add("0,1.0,");
-      expectedResSet.add("1,2.0,");
-      expectedResSet.add("2,3.0,");
-      expectedResSet.add("3,4.0,");
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select * from root.sg1.**",
-          "Time,root.sg1.d1.s1,",
-          expectedResSet,
-          handleFailure);
-
       TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
     }
   }

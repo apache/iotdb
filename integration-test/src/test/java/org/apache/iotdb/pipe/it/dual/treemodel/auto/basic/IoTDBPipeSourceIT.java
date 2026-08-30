@@ -810,7 +810,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       sourceAttributes.put("source.inclusion", "data");
       sourceAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       sourceAttributes.put("source.end-time", "1970-01-01T08:00:04+08:00");
-      sourceAttributes.put("source.realtime.mode", "stream");
+      sourceAttributes.put("source.realtime.mode", "batch");
       sourceAttributes.put("user", "root");
 
       final TSStatus status =

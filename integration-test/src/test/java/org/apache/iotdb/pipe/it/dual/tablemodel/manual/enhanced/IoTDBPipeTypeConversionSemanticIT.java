@@ -156,7 +156,7 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTableModelDua
         senderEnv,
         String.format(
             "create pipe type_conversion_semantic"
-                + " with source ('source'='iotdb-source','history.enable'='false','realtime.enable'='true','realtime.mode'='forced-log')"
+                + " with source ('source'='iotdb-source','history.enable'='false','realtime.enable'='true','realtime.mode'='batch')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s','batch.enable'='false','sink.format'='tablet')",
             receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()),
@@ -170,7 +170,7 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTableModelDua
         senderEnv,
         String.format(
             "create pipe stream_type_conversion_semantic"
-                + " with source ('source'='iotdb-source','history.enable'='false','realtime.enable'='true','realtime.mode'='stream')"
+                + " with source ('source'='iotdb-source','history.enable'='false','realtime.enable'='true','realtime.mode'='batch')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('sink'='iotdb-thrift-sink','sink.node-urls'='%s')",
             receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()),

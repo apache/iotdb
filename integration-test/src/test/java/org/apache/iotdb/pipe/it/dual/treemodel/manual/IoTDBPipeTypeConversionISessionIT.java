@@ -397,7 +397,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='%s')",
             diff,
-            isTSFile ? "file" : "forced-log",
+            "batch",
             !isTSFile,
             isTSFile,
             receiverEnv.getIP(),

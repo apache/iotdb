@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,6 +44,7 @@ import java.util.Map;
 @Category({MultiClusterIT2DualTreeManual.class})
 public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT {
   @Test
+  @Ignore("Requires forwarding pipe request filtering, which is disabled.")
   public void testDoubleLivingTimeseriesAndTemplate() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 

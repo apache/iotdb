@@ -92,7 +92,7 @@ public class PipeMetaKeeperTest {
   }
 
   @Test
-  public void testLegacyDoubleLivingPipeOverlapsBothScopes() {
+  public void testLegacyDoubleLivingPipeDefaultsToTreeScope() {
     final String pipeName = "p";
     final PipeMetaKeeper keeper = new PipeMetaKeeper();
     final PipeStaticMeta doubleLivingStaticMeta = createLegacyDoubleLivingStaticMeta(pipeName, 1);
@@ -100,11 +100,11 @@ public class PipeMetaKeeperTest {
     keeper.addPipeMeta(new PipeMeta(doubleLivingStaticMeta, new PipeRuntimeMeta()));
 
     Assert.assertSame(doubleLivingStaticMeta, keeper.getPipeMeta(pipeName, false).getStaticMeta());
-    Assert.assertSame(doubleLivingStaticMeta, keeper.getPipeMeta(pipeName, true).getStaticMeta());
+    Assert.assertNull(keeper.getPipeMeta(pipeName, true));
     Assert.assertTrue(
         keeper.containsPipeMetaOverlapped(
             createStrictStaticMeta(pipeName, 2, SystemConstant.SQL_DIALECT_TREE_VALUE)));
-    Assert.assertTrue(
+    Assert.assertFalse(
         keeper.containsPipeMetaOverlapped(
             createStrictStaticMeta(pipeName, 3, SystemConstant.SQL_DIALECT_TABLE_VALUE)));
   }

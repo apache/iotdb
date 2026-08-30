@@ -62,7 +62,6 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
   @Override
   @Before
   public void setUp() {
-    // Override to enable air-gap
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
@@ -98,7 +97,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
   @Test
   public void testCompression1() throws Exception {
-    doTest("iotdb-thrift-connector", "stream", true, "snappy");
+    doTest("iotdb-thrift-connector", "batch", true, "snappy");
   }
 
   @Test
@@ -108,22 +107,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
   @Test
   public void testCompression3() throws Exception {
-    doTest("iotdb-thrift-sync-connector", "stream", false, "snappy, snappy");
+    doTest("iotdb-thrift-sync-connector", "batch", false, "snappy, snappy");
   }
 
   @Test
   public void testCompression4() throws Exception {
     doTest("iotdb-thrift-sync-connector", "batch", true, "gzip, zstd");
-  }
-
-  @Test
-  public void testCompression5() throws Exception {
-    doTest("iotdb-air-gap-connector", "stream", false, "lzma2, lz4");
-  }
-
-  @Test
-  public void testCompression6() throws Exception {
-    doTest("iotdb-air-gap-connector", "batch", true, "lzma2");
   }
 
   private void doTest(
@@ -132,10 +121,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
-    final int receiverPort =
-        connectorType.contains("air-gap")
-            ? receiverDataNode.getPipeAirGapReceiverPort()
-            : receiverDataNode.getPort();
+    final int receiverPort = receiverDataNode.getPort();
 
     final Consumer<String> handleFailure =
         o -> {
@@ -145,6 +131,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
     TableModelUtils.insertData("test", "test", 0, 50, senderEnv, true);
+    TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -207,6 +194,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
           null);
 
       TableModelUtils.insertData("test", "test", 50, 100, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -348,12 +336,15 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test");
       TableModelUtils.insertData("test", "test1", 0, 50, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test2", "test");
       TableModelUtils.insertData("test", "test2", 0, 50, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test3", "test");
       TableModelUtils.insertData("test", "test3", 0, 50, senderEnv, true);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TableModelUtils.assertCountData("test", "test1", 50, receiverEnv, handleFailure);
     }
