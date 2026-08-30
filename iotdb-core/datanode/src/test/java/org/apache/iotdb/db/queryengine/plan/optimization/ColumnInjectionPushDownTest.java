@@ -31,7 +31,6 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -295,7 +294,7 @@ public class ColumnInjectionPushDownTest {
 
     List<String> outputColumnNames = Arrays.asList("Device", "__endTime", "count(s1)");
     List<String> devices = Arrays.asList("root.sg.d1", "root.sg.d2.a");
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new LinkedHashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2));
     deviceToMeasurementIndexesMap.put("root.sg.d2.a", Arrays.asList(1, 2));
 
@@ -373,7 +372,7 @@ public class ColumnInjectionPushDownTest {
 
     List<String> outputColumnNames = Arrays.asList("Device", "__endTime", "count(s1)");
     List<String> devices = Arrays.asList("root.sg.d1", "root.sg.d2.a");
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new LinkedHashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2));
     deviceToMeasurementIndexesMap.put("root.sg.d2.a", Arrays.asList(1, 2));
 
@@ -453,7 +452,7 @@ public class ColumnInjectionPushDownTest {
 
     List<String> outputColumnNames = Arrays.asList("Device", "__endTime", "count(s1)");
     List<String> devices = Arrays.asList("root.sg.d1", "root.sg.d2.a");
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new LinkedHashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2));
     deviceToMeasurementIndexesMap.put("root.sg.d2.a", Arrays.asList(1, 2));
 
