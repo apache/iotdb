@@ -92,6 +92,10 @@ mvn clean verify -DskipUTs -Dit.test=ClassName -DfailIfNoTests=false -Dfailsafe.
 
 # Run a single test method within an IT class (use ClassName#methodName)
 mvn clean verify -DskipUTs -Dit.test=ClassName#methodName -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -PTableSimpleIT -P with-integration-tests
+
+# Build the Edge distribution and run its dedicated Tree/Table read-write IT
+mvn clean package -DskipTests -pl distribution -am
+mvn verify -DskipUTs -Dit.test=IoTDBEdgeBasicIT -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -P EdgeIT -P with-integration-tests
 ```
 
 When verifying a new feature, only run the specific IT classes/methods that were added or modified in the current branch — do not run all ITs.
