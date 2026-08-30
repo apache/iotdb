@@ -51,218 +51,147 @@ import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class PipeConfigTablePatternParseVisitorTest {
+
+  private static final String MATCH_DATABASE = "db1";
+  private static final String QUALIFIED_MATCH_DATABASE = "root.db1";
+  private static final String MISMATCH_DATABASE = "da";
+  private static final String MATCH_TABLE = "ab";
+  private static final String MISMATCH_TABLE = "ac";
+
   private final TablePattern tablePattern = new TablePattern(true, "^db[0-9]", "a.*b");
 
   @Test
-  public void testCreateDatabase() {
-    testInput(
-        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("db1")),
-        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("da")),
-        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("dc")));
+  public void testDatabasePlans() {
+    final List<Function<String, ConfigPhysicalPlan>> planFactories =
+        Arrays.asList(
+            database ->
+                new DatabaseSchemaPlan(
+                    ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema(database)),
+            database ->
+                new DatabaseSchemaPlan(
+                    ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema(database)),
+            DeleteDatabasePlan::new);
+
+    planFactories.forEach(this::assertDatabasePlanMatches);
   }
 
   @Test
-  public void testAlterDatabase() {
-    testInput(
-        new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("db1")),
-        new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("da")),
-        new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("dc")));
+  public void testTablePlans() {
+    final List<BiFunction<String, String, ConfigPhysicalPlan>> planFactories =
+        Arrays.asList(
+            (database, table) -> new PipeCreateTableOrViewPlan(database, new TsTable(table)),
+            (database, table) ->
+                new AddTableColumnPlan(database, table, Collections.emptyList(), false),
+            (database, table) ->
+                new AddTableViewColumnPlan(database, table, Collections.emptyList(), false),
+            (database, table) ->
+                new SetTablePropertiesPlan(database, table, Collections.singletonMap("ttl", "2")),
+            (database, table) ->
+                new SetViewPropertiesPlan(database, table, Collections.singletonMap("ttl", "2")),
+            (database, table) -> new CommitDeleteColumnPlan(database, table, "a"),
+            (database, table) -> new CommitDeleteViewColumnPlan(database, table, "a"),
+            (database, table) -> new RenameTableColumnPlan(database, table, "old", "new"),
+            (database, table) -> new RenameViewColumnPlan(database, table, "old", "new"),
+            CommitDeleteTablePlan::new,
+            CommitDeleteViewPlan::new,
+            (database, table) ->
+                new PipeDeleteDevicesPlan(database, table, new byte[0], new byte[0], new byte[0]),
+            (database, table) -> new SetTableCommentPlan(database, table, "a"),
+            (database, table) -> new SetViewCommentPlan(database, table, "a"),
+            (database, table) -> new SetTableColumnCommentPlan(database, table, "a", "a"),
+            (database, table) -> new RenameTablePlan(database, table, MISMATCH_TABLE),
+            (database, table) -> new RenameViewPlan(database, table, MISMATCH_TABLE),
+            (database, table) ->
+                new AlterColumnDataTypePlan(database, table, "a", TSDataType.INT64));
+
+    planFactories.forEach(this::assertTablePlanMatches);
   }
 
   @Test
-  public void testDeleteDatabase() {
-    testInput(
-        new DeleteDatabasePlan("db1"), new DeleteDatabasePlan("da"), new DeleteDatabasePlan("dc"));
-  }
-
-  @Test
-  public void testCreateTableOrView() {
-    testInput(
-        new PipeCreateTableOrViewPlan("db1", new TsTable("ab")),
-        new PipeCreateTableOrViewPlan("db1", new TsTable("ac")),
-        new PipeCreateTableOrViewPlan("da", new TsTable("a2b")));
-  }
-
-  @Test
-  public void testAddTableColumn() {
-    testInput(
-        new AddTableColumnPlan("db1", "ab", new ArrayList<>(), false),
-        new AddTableColumnPlan("db1", "ac", new ArrayList<>(), false),
-        new AddTableColumnPlan("da", "ac", new ArrayList<>(), false));
-  }
-
-  @Test
-  public void testAddViewColumn() {
-    testInput(
-        new AddTableViewColumnPlan("db1", "ab", new ArrayList<>(), false),
-        new AddTableViewColumnPlan("db1", "ac", new ArrayList<>(), false),
-        new AddTableViewColumnPlan("da", "ac", new ArrayList<>(), false));
-  }
-
-  @Test
-  public void testSetTableProperties() {
-    testInput(
-        new SetTablePropertiesPlan("db1", "ab", Collections.singletonMap("ttl", "2")),
-        new SetTablePropertiesPlan("db1", "ac", Collections.singletonMap("ttl", "2")),
-        new SetTablePropertiesPlan("da", "ac", Collections.singletonMap("ttl", "2")));
-  }
-
-  @Test
-  public void testSetViewProperties() {
-    testInput(
-        new SetViewPropertiesPlan("db1", "ab", Collections.singletonMap("ttl", "2")),
-        new SetViewPropertiesPlan("db1", "ac", Collections.singletonMap("ttl", "2")),
-        new SetViewPropertiesPlan("da", "ac", Collections.singletonMap("ttl", "2")));
-  }
-
-  @Test
-  public void testCommitDeleteColumn() {
-    testInput(
-        new CommitDeleteColumnPlan("db1", "ab", "a"),
-        new CommitDeleteColumnPlan("db1", "ac", "a"),
-        new CommitDeleteColumnPlan("da", "ac", "a"));
-  }
-
-  @Test
-  public void testCommitDeleteViewColumn() {
-    testInput(
-        new CommitDeleteViewColumnPlan("db1", "ab", "a"),
-        new CommitDeleteViewColumnPlan("db1", "ac", "a"),
-        new CommitDeleteViewColumnPlan("da", "ac", "a"));
-  }
-
-  @Test
-  public void testRenameTableColumn() {
-    testInput(
-        new RenameTableColumnPlan("db1", "ab", "old", "new"),
-        new RenameTableColumnPlan("db1", "ac", "old", "new"),
-        new RenameTableColumnPlan("da", "ac", "old", "new"));
-  }
-
-  @Test
-  public void testRenameViewColumn() {
-    testInput(
-        new RenameViewColumnPlan("db1", "ab", "old", "new"),
-        new RenameViewColumnPlan("db1", "ac", "old", "new"),
-        new RenameViewColumnPlan("da", "ac", "old", "new"));
-  }
-
-  @Test
-  public void testCommitDeleteTable() {
-    testInput(
-        new CommitDeleteTablePlan("db1", "ab"),
-        new CommitDeleteTablePlan("db1", "ac"),
-        new CommitDeleteTablePlan("da", "ac"));
-  }
-
-  @Test
-  public void testCommitDeleteView() {
-    testInput(
-        new CommitDeleteViewPlan("db1", "ab"),
-        new CommitDeleteViewPlan("db1", "ac"),
-        new CommitDeleteViewPlan("da", "ac"));
-  }
-
-  // Match the oldName instead of the new one
-  @Test
-  public void testRenameTable() {
-    testInput(
-        new RenameTablePlan("db1", "ab", "ac"),
-        new RenameTablePlan("db1", "ac", "ab"),
-        new RenameTablePlan("da", "ac", "ab"));
-  }
-
-  @Test
-  public void testRenameView() {
-    testInput(
-        new RenameViewPlan("db1", "ab", "ac"),
-        new RenameViewPlan("db1", "ac", "ab"),
-        new RenameViewPlan("da", "ac", "ab"));
-  }
-
-  @Test
-  public void testPipeDeleteDevices() {
-    testInput(
-        new PipeDeleteDevicesPlan("db1", "ab", new byte[0], new byte[0], new byte[0]),
-        new PipeDeleteDevicesPlan("db1", "ac", new byte[0], new byte[0], new byte[0]),
-        new PipeDeleteDevicesPlan("da", "ac", new byte[0], new byte[0], new byte[0]));
-  }
-
-  @Test
-  public void testSetTableComment() {
-    testInput(
-        new SetTableCommentPlan("db1", "ab", "a"),
-        new SetTableCommentPlan("db1", "ac", "a"),
-        new SetTableCommentPlan("da", "ac", "a"));
-  }
-
-  @Test
-  public void testSetViewComment() {
-    testInput(
-        new SetViewCommentPlan("db1", "ab", "a"),
-        new SetViewCommentPlan("db1", "ac", "a"),
-        new SetViewCommentPlan("da", "ac", "a"));
-  }
-
-  @Test
-  public void testSetTableColumnComment() {
-    testInput(
-        new SetTableColumnCommentPlan("db1", "ab", "a", "a"),
-        new SetTableColumnCommentPlan("db1", "ac", "a", "a"),
-        new SetTableColumnCommentPlan("da", "ac", "a", "a"));
-  }
-
-  @Test
-  public void testAuth() {
-    testInput(
-        new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RGrantRoleAll, "", "role", "", "", -1, false),
-        new AuthorRelationalPlan(
+  public void testAuthorDatabasePlans() {
+    final List<ConfigPhysicalPlanType> planTypes =
+        Arrays.asList(
             ConfigPhysicalPlanType.RGrantUserDBPriv,
-            "user",
-            "",
-            "da",
-            "",
-            PrivilegeType.SELECT.ordinal(),
-            false),
-        new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RGrantUserTBPriv,
-            "user",
-            "",
-            "db1",
-            "ac",
-            PrivilegeType.DROP.ordinal(),
-            false));
-  }
+            ConfigPhysicalPlanType.RGrantRoleDBPriv,
+            ConfigPhysicalPlanType.RRevokeUserDBPriv,
+            ConfigPhysicalPlanType.RRevokeRoleDBPriv);
 
-  private void testInput(
-      final ConfigPhysicalPlan trueInput,
-      final ConfigPhysicalPlan falseInput1,
-      final ConfigPhysicalPlan falseInput2) {
-    Assert.assertEquals(
-        trueInput,
-        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
-            .process(trueInput, tablePattern)
-            .orElseThrow(AssertionError::new));
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
-            .process(falseInput1, tablePattern)
-            .isPresent());
-    Assert.assertFalse(
-        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
-            .process(falseInput2, tablePattern)
-            .isPresent());
+    planTypes.forEach(this::assertAuthorDatabasePlanMatches);
   }
 
   @Test
-  public void testAlterTableColumnDataType() {
-    testInput(
-        new AlterColumnDataTypePlan("db1", "ab", "a", TSDataType.INT64),
-        new AlterColumnDataTypePlan("db1", "ac", "a", TSDataType.BLOB),
-        new AlterColumnDataTypePlan("da", "ac", "a", TSDataType.DATE));
+  public void testAuthorTablePlans() {
+    final List<ConfigPhysicalPlanType> planTypes =
+        Arrays.asList(
+            ConfigPhysicalPlanType.RGrantUserTBPriv,
+            ConfigPhysicalPlanType.RGrantRoleTBPriv,
+            ConfigPhysicalPlanType.RRevokeUserTBPriv,
+            ConfigPhysicalPlanType.RRevokeRoleTBPriv);
+
+    planTypes.forEach(this::assertAuthorTablePlanMatches);
+  }
+
+  @Test
+  public void testUnscopedAuthorPlanPassesThrough() {
+    assertPatternMatches(
+        authorPlan(ConfigPhysicalPlanType.RGrantRoleAll, "", "", PrivilegeType.SELECT));
+  }
+
+  private void assertDatabasePlanMatches(final Function<String, ConfigPhysicalPlan> planFactory) {
+    assertPatternMatches(
+        planFactory.apply(QUALIFIED_MATCH_DATABASE), planFactory.apply(MISMATCH_DATABASE));
+  }
+
+  private void assertTablePlanMatches(
+      final BiFunction<String, String, ConfigPhysicalPlan> planFactory) {
+    assertPatternMatches(
+        planFactory.apply(QUALIFIED_MATCH_DATABASE, MATCH_TABLE),
+        planFactory.apply(QUALIFIED_MATCH_DATABASE, MISMATCH_TABLE),
+        planFactory.apply(MISMATCH_DATABASE, MATCH_TABLE));
+  }
+
+  private void assertAuthorDatabasePlanMatches(final ConfigPhysicalPlanType type) {
+    assertPatternMatches(
+        authorPlan(type, MATCH_DATABASE, "", PrivilegeType.SELECT),
+        authorPlan(type, MISMATCH_DATABASE, "", PrivilegeType.SELECT));
+  }
+
+  private void assertAuthorTablePlanMatches(final ConfigPhysicalPlanType type) {
+    assertPatternMatches(
+        authorPlan(type, MATCH_DATABASE, MATCH_TABLE, PrivilegeType.SELECT),
+        authorPlan(type, MATCH_DATABASE, MISMATCH_TABLE, PrivilegeType.SELECT),
+        authorPlan(type, MISMATCH_DATABASE, MATCH_TABLE, PrivilegeType.SELECT));
+  }
+
+  private void assertPatternMatches(
+      final ConfigPhysicalPlan matchedInput, final ConfigPhysicalPlan... filteredInputs) {
+    Assert.assertEquals(
+        matchedInput,
+        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+            .process(matchedInput, tablePattern)
+            .orElseThrow(AssertionError::new));
+    Arrays.stream(filteredInputs)
+        .forEach(
+            filteredInput ->
+                Assert.assertFalse(
+                    IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+                        .process(filteredInput, tablePattern)
+                        .isPresent()));
+  }
+
+  private AuthorRelationalPlan authorPlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String table,
+      final PrivilegeType privilegeType) {
+    return new AuthorRelationalPlan(
+        type, "user", "role", database, table, privilegeType.ordinal(), false);
   }
 }

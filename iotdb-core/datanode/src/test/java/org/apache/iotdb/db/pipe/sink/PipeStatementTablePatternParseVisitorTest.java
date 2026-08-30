@@ -30,28 +30,42 @@ import java.util.Collections;
 
 public class PipeStatementTablePatternParseVisitorTest {
 
+  private static final String MATCH_DATABASE = "db1";
+  private static final String MISMATCH_DATABASE = "da";
+  private static final String MATCH_TABLE = "ab";
+  private static final String MISMATCH_TABLE = "ac";
+
   private final TablePattern tablePattern = new TablePattern(true, "^db[0-9]", "a.*b");
+  private final PipeStatementTablePatternParseVisitor visitor =
+      new PipeStatementTablePatternParseVisitor();
 
   @Test
   public void testCreateOrUpdateDevice() {
-    final CreateOrUpdateDevice trueInput =
-        new CreateOrUpdateDevice(
-            "db1", "ab", Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
-    final CreateOrUpdateDevice falseInput1 =
-        new CreateOrUpdateDevice(
-            "db1", "ac", Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
-    final CreateOrUpdateDevice falseInput2 =
-        new CreateOrUpdateDevice(
-            "da", "a2b", Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+    final CreateOrUpdateDevice matchedInput = createOrUpdateDevice(MATCH_DATABASE, MATCH_TABLE);
 
     Assert.assertEquals(
-        trueInput,
-        new PipeStatementTablePatternParseVisitor()
-            .process(trueInput, tablePattern)
+        matchedInput, visitor.process(matchedInput, tablePattern).orElseThrow(AssertionError::new));
+    assertPatternFilters(createOrUpdateDevice(MATCH_DATABASE, MISMATCH_TABLE));
+    assertPatternFilters(createOrUpdateDevice(MISMATCH_DATABASE, MATCH_TABLE));
+  }
+
+  @Test
+  public void testCreateOrUpdateDeviceMatchesDefaultPattern() {
+    final CreateOrUpdateDevice input = createOrUpdateDevice(MISMATCH_DATABASE, MISMATCH_TABLE);
+
+    Assert.assertEquals(
+        input,
+        visitor
+            .process(input, new TablePattern(true, null, null))
             .orElseThrow(AssertionError::new));
-    Assert.assertFalse(
-        new PipeStatementTablePatternParseVisitor().process(falseInput1, tablePattern).isPresent());
-    Assert.assertFalse(
-        new PipeStatementTablePatternParseVisitor().process(falseInput2, tablePattern).isPresent());
+  }
+
+  private void assertPatternFilters(final CreateOrUpdateDevice input) {
+    Assert.assertFalse(visitor.process(input, tablePattern).isPresent());
+  }
+
+  private CreateOrUpdateDevice createOrUpdateDevice(final String database, final String table) {
+    return new CreateOrUpdateDevice(
+        database, table, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
   }
 }

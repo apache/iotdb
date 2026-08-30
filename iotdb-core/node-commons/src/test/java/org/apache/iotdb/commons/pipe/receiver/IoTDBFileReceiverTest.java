@@ -54,120 +54,178 @@ public class IoTDBFileReceiverTest {
 
   @Test
   public void testRejectPathTraversalFileName() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      final IOException exception =
-          Assert.assertThrows(
-              IOException.class, () -> receiver.createWritingFile("../outside.tsfile", true));
-      Assert.assertTrue(exception.getMessage().contains("Illegal fileName"));
-    } finally {
-      receiver.handleExit();
-    }
+    withReceiver(
+        receiver -> {
+          final IOException exception =
+              Assert.assertThrows(
+                  IOException.class, () -> receiver.createWritingFile("../outside.tsfile", true));
+          Assert.assertTrue(exception.getMessage().contains("Illegal fileName"));
+        });
   }
 
   @Test
   public void testAllowNormalFileName() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      receiver.createWritingFile("normal.tsfile", true);
-      Assert.assertTrue(receiver.getWritingFileInBaseDir("normal.tsfile").exists());
-    } finally {
-      receiver.handleExit();
-    }
+    withReceiver(
+        receiver -> {
+          receiver.createWritingFile("normal.tsfile", true);
+          Assert.assertTrue(receiver.getWritingFileInBaseDir("normal.tsfile").exists());
+        });
   }
 
   @Test
   public void testRejectPathTraversalFileNameInSealRequest() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      receiver.createWritingFile("normal.tsfile", false);
+    withReceiver(
+        receiver -> {
+          receiver.createWritingFile("normal.tsfile", false);
 
-      final TPipeTransferResp response =
-          receiver.sealFiles(
-              Arrays.asList("../outside.mod", "normal.tsfile"), Arrays.asList(0L, 0L));
+          final TPipeTransferResp response =
+              receiver.sealFiles(
+                  Arrays.asList("../outside.mod", "normal.tsfile"), Arrays.asList(0L, 0L));
 
-      Assert.assertEquals(
-          TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
-      Assert.assertTrue(response.getStatus().getMessage().contains("Illegal fileName"));
-    } finally {
-      receiver.handleExit();
-    }
+          Assert.assertEquals(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(),
+              response.getStatus().getCode());
+          Assert.assertTrue(response.getStatus().getMessage().contains("Illegal fileName"));
+        });
   }
 
   @Test
   public void testHandshakeResetsWritingFileState() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      receiver.handshake();
-      receiver.createWritingFile("normal.tsfile", true);
-      receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+    withReceiver(
+        receiver -> {
+          receiver.handshake();
+          receiver.createWritingFile("normal.tsfile", true);
+          receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
 
-      final File oldReceiverDir = receiver.getCurrentReceiverDir();
-      Assert.assertNotNull(receiver.getCurrentWritingFile());
-      Assert.assertNotNull(receiver.getCurrentWritingFileWriter());
+          final File oldReceiverDir = receiver.getCurrentReceiverDir();
+          Assert.assertNotNull(receiver.getCurrentWritingFile());
+          Assert.assertNotNull(receiver.getCurrentWritingFileWriter());
 
-      receiver.handshake();
+          receiver.handshake();
 
-      Assert.assertFalse(oldReceiverDir.exists());
-      Assert.assertNull(receiver.getCurrentWritingFile());
-      Assert.assertNull(receiver.getCurrentWritingFileWriter());
-      Assert.assertNotEquals(
-          oldReceiverDir.getAbsolutePath(), receiver.getCurrentReceiverDir().getAbsolutePath());
-    } finally {
-      receiver.handleExit();
-    }
+          Assert.assertFalse(oldReceiverDir.exists());
+          Assert.assertNull(receiver.getCurrentWritingFile());
+          Assert.assertNull(receiver.getCurrentWritingFileWriter());
+          Assert.assertNotEquals(
+              oldReceiverDir.getAbsolutePath(), receiver.getCurrentReceiverDir().getAbsolutePath());
+        });
   }
 
   @Test
   public void testHandshakeV1ClearsPipeCredential() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      receiver.setHasPipeHandshakeCredential(true);
+    withReceiver(
+        receiver -> {
+          receiver.setHasPipeHandshakeCredential(true);
 
-      receiver.handshake();
+          receiver.handshake();
 
-      Assert.assertFalse(receiver.hasPipeHandshakeCredential());
-    } finally {
-      receiver.handleExit();
-    }
+          Assert.assertFalse(receiver.hasPipeHandshakeCredential());
+        });
   }
 
   @Test
   public void testHandshakeV2RequiresCredentials() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      final TPipeTransferResp response = receiver.handshakeV2(buildHandshakeV2Params(false));
+    withReceiver(
+        receiver -> {
+          final TPipeTransferResp response = receiver.handshakeV2(buildHandshakeV2Params(false));
 
-      Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), response.getStatus().getCode());
-      Assert.assertEquals(0, receiver.getLoginCallCount());
-    } finally {
-      receiver.handleExit();
-    }
+          Assert.assertEquals(
+              TSStatusCode.NOT_LOGIN.getStatusCode(), response.getStatus().getCode());
+          Assert.assertEquals(0, receiver.getLoginCallCount());
+        });
   }
 
   @Test
   public void testHandshakeV2AuthenticatesImmediately() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      final TPipeTransferResp response = receiver.handshakeV2(buildHandshakeV2Params(true));
+    withReceiver(
+        receiver -> {
+          final TPipeTransferResp response = receiver.handshakeV2(buildHandshakeV2Params(true));
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
-      Assert.assertEquals(1, receiver.getLoginCallCount());
-      Assert.assertTrue(receiver.hasPipeHandshakeCredential());
-    } finally {
-      receiver.handleExit();
-    }
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+          Assert.assertEquals(1, receiver.getLoginCallCount());
+          Assert.assertTrue(receiver.hasPipeHandshakeCredential());
+        });
   }
 
-  private Map<String, String> buildHandshakeV2Params(final boolean includeCredentials) {
+  @Test
+  public void testSealFileV1SuccessKeepsTransferredFileForLoader() throws Exception {
+    withReceiver(
+        receiver -> {
+          receiver.createWritingFile("normal.tsfile", true);
+          receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+
+          final File transferredFile = receiver.getWritingFileInBaseDir("normal.tsfile");
+          final TPipeTransferResp response = receiver.sealFileV1("normal.tsfile", 3L);
+
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+          Assert.assertTrue(transferredFile.exists());
+          Assert.assertEquals(transferredFile.getAbsolutePath(), receiver.getLoadedFileV1Path());
+          Assert.assertNull(receiver.getCurrentWritingFile());
+          Assert.assertNull(receiver.getCurrentWritingFileWriter());
+        });
+  }
+
+  @Test
+  public void testSealFileV1FailureDeletesTransferredFile() throws Exception {
+    withReceiver(
+        receiver -> {
+          receiver.createWritingFile("normal.tsfile", true);
+          receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+          receiver.setLoadFileV1Status(
+              new TSStatus(TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode()));
+
+          final File transferredFile = receiver.getWritingFileInBaseDir("normal.tsfile");
+          final TPipeTransferResp response = receiver.sealFileV1("normal.tsfile", 3L);
+
+          Assert.assertEquals(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(),
+              response.getStatus().getCode());
+          Assert.assertFalse(transferredFile.exists());
+          Assert.assertNull(receiver.getCurrentWritingFile());
+          Assert.assertNull(receiver.getCurrentWritingFileWriter());
+        });
+  }
+
+  @Test
+  public void testFilePieceMemoryAllocationFailureReturnsTemporaryUnavailable() throws Exception {
+    withReceiver(
+        receiver -> {
+          receiver.setFailFilePieceMemoryAllocation(true);
+
+          final TPipeTransferResp response =
+              receiver.writeFilePiece("normal.tsfile", 0, new byte[] {1, 2, 3});
+          final PipeTransferFilePieceResp filePieceResp =
+              PipeTransferFilePieceResp.fromTPipeTransferResp(response);
+
+          Assert.assertEquals(
+              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
+              response.getStatus().getCode());
+          Assert.assertTrue(response.getStatus().getMessage().contains("no memory for file piece"));
+          Assert.assertEquals(
+              PipeTransferFilePieceResp.ERROR_END_OFFSET, filePieceResp.getEndWritingOffset());
+          Assert.assertFalse(receiver.getWritingFileInBaseDir("normal.tsfile").exists());
+        });
+  }
+
+  @Test
+  public void testFilePieceMemoryAllocationIsClosedAfterWrite() throws Exception {
+    withReceiver(
+        receiver -> {
+          final TPipeTransferResp response =
+              receiver.writeFilePiece("normal.tsfile", 0, new byte[] {1, 2, 3});
+          final PipeTransferFilePieceResp filePieceResp =
+              PipeTransferFilePieceResp.fromTPipeTransferResp(response);
+
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+          Assert.assertEquals(3, filePieceResp.getEndWritingOffset());
+          Assert.assertEquals(1, receiver.getFilePieceMemoryCloseCount());
+        });
+  }
+
+  private static Map<String, String> buildHandshakeV2Params(final boolean includeCredentials) {
     final Map<String, String> params = new HashMap<>();
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, "sender-cluster");
     params.put(
@@ -180,76 +238,27 @@ public class IoTDBFileReceiverTest {
     return params;
   }
 
-  @Test
-  public void testSealFileV1FailureDeletesTransferredFile() throws Exception {
+  private static void withReceiver(final ReceiverConsumer action) throws Exception {
     final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
     final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
     try {
-      receiver.createWritingFile("normal.tsfile", true);
-      receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
-      receiver.setLoadFileV1Status(
-          new TSStatus(TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode()));
-
-      final File transferredFile = receiver.getWritingFileInBaseDir("normal.tsfile");
-      final TPipeTransferResp response = receiver.sealFileV1("normal.tsfile", 3L);
-
-      Assert.assertEquals(
-          TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
-      Assert.assertFalse(transferredFile.exists());
-      Assert.assertNull(receiver.getCurrentWritingFile());
-      Assert.assertNull(receiver.getCurrentWritingFileWriter());
+      action.accept(receiver);
     } finally {
       receiver.handleExit();
     }
   }
 
-  @Test
-  public void testFilePieceMemoryAllocationFailureReturnsTemporaryUnavailable() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      receiver.setFailFilePieceMemoryAllocation(true);
+  @FunctionalInterface
+  private interface ReceiverConsumer {
 
-      final TPipeTransferResp response =
-          receiver.writeFilePiece("normal.tsfile", 0, new byte[] {1, 2, 3});
-      final PipeTransferFilePieceResp filePieceResp =
-          PipeTransferFilePieceResp.fromTPipeTransferResp(response);
-
-      Assert.assertEquals(
-          TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
-          response.getStatus().getCode());
-      Assert.assertTrue(response.getStatus().getMessage().contains("no memory for file piece"));
-      Assert.assertEquals(
-          PipeTransferFilePieceResp.ERROR_END_OFFSET, filePieceResp.getEndWritingOffset());
-      Assert.assertFalse(receiver.getWritingFileInBaseDir("normal.tsfile").exists());
-    } finally {
-      receiver.handleExit();
-    }
-  }
-
-  @Test
-  public void testFilePieceMemoryAllocationIsClosedAfterWrite() throws Exception {
-    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
-    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
-    try {
-      final TPipeTransferResp response =
-          receiver.writeFilePiece("normal.tsfile", 0, new byte[] {1, 2, 3});
-      final PipeTransferFilePieceResp filePieceResp =
-          PipeTransferFilePieceResp.fromTPipeTransferResp(response);
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
-      Assert.assertEquals(3, filePieceResp.getEndWritingOffset());
-      Assert.assertEquals(1, receiver.getFilePieceMemoryCloseCount());
-    } finally {
-      receiver.handleExit();
-    }
+    void accept(DummyFileReceiver receiver) throws Exception;
   }
 
   private static class DummyFileReceiver extends IoTDBFileReceiver {
 
     private final File receiverFileBaseDir;
     private TSStatus loadFileV1Status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    private String loadedFileV1Path;
     private int loginCallCount = 0;
     private boolean failFilePieceMemoryAllocation = false;
     private int filePieceMemoryCloseCount = 0;
@@ -279,6 +288,10 @@ public class IoTDBFileReceiverTest {
 
     void setLoadFileV1Status(final TSStatus status) {
       loadFileV1Status = status;
+    }
+
+    String getLoadedFileV1Path() {
+      return loadedFileV1Path;
     }
 
     void setHasPipeHandshakeCredential(final boolean hasPipeHandshakeCredential) {
@@ -384,6 +397,7 @@ public class IoTDBFileReceiverTest {
     @Override
     protected TSStatus loadFileV1(
         final PipeTransferFileSealReqV1 req, final String fileAbsolutePath) {
+      loadedFileV1Path = fileAbsolutePath;
       return loadFileV1Status;
     }
 
@@ -391,7 +405,7 @@ public class IoTDBFileReceiverTest {
     protected TSStatus loadFileV2(
         final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
         throws IllegalPathException {
-      return new TSStatus(200);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
 
     @Override
@@ -400,7 +414,7 @@ public class IoTDBFileReceiverTest {
     }
 
     @Override
-    public TPipeTransferResp receive(TPipeTransferReq req) {
+    public TPipeTransferResp receive(final TPipeTransferReq req) {
       return null;
     }
   }
