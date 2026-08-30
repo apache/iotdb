@@ -4362,7 +4362,7 @@ public class IoTDBConfig {
   }
 
   public void setLoadTsFileSpiltPartitionMaxSize(int loadTsFileSpiltPartitionMaxSize) {
-    if (loadTsFileSpiltPartitionMaxSize <= 0) {
+    if (loadTsFileSpiltPartitionMaxSize < 0) {
       throw new IllegalArgumentException(
           DataNodeMiscMessages
               .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23);

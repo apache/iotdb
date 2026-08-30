@@ -46,6 +46,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
@@ -382,6 +383,17 @@ public class RegionWriteExecutor {
       context.getRegionWriteValidationRWLock().writeLock().lock();
       try {
         return PlanVisitor.super.visitWriteObjectFile(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().writeLock().unlock();
+      }
+    }
+
+    @Override
+    public RegionExecutionResult visitLoadTsFileConsensus(
+        final LoadTsFileConsensusNode node, final WritePlanNodeExecutionContext context) {
+      context.getRegionWriteValidationRWLock().writeLock().lock();
+      try {
+        return PlanVisitor.super.visitLoadTsFileConsensus(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().writeLock().unlock();
       }

@@ -1160,6 +1160,9 @@ public final class DataNodeQueryMessages {
       "Start load TsFile {} locally.";
   public static final String LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS =
       "Load: all failed TsFiles are converted to tablets and inserted.";
+  public static final String
+      LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3 =
+          "Load: failed to load some TsFiles by converting them into tablets. Failed TsFiles: %s";
 
   // --- Plan / Statement ---
 
@@ -2686,6 +2689,8 @@ public final class DataNodeQueryMessages {
       "LoadTsFileScheduler: Region migration was detected during loading TsFile {}, will convert to insertion to avoid data loss";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "Load TsFile {} Successfully, load process [{}/{}]";
+  public static final String LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_D5EE56E9 =
+      "LOAD batch finished, deleting %d source TsFiles after load";
   public static final String CAN_NOT_LOAD_TSFILE_ARG_LOAD_PROCESS_ARG_ARG =
       "Can not Load TsFile {}, load process [{}/{}]";
   public static final String LOAD_TSFILE_S_FAILED_WILL_TRY_TO_CONVERT_TO_TABLETS_AND_INSERT_FAILED_TSFILES_ARG =
@@ -2696,6 +2701,8 @@ public final class DataNodeQueryMessages {
       "Parse or send TsFile %s error.";
   public static final String DISPATCH_ONE_PIECE_TO_REPLICASET_ARG_ERROR_RESULT_STATUS_CODE_ARG =
       "Dispatch one piece to ReplicaSet {} error. Result status code {}. ";
+  public static final String LOG_LOAD_CONSENSUS_SUBMIT_TRANSIENT_FAILURE_RETRY_D7E1D9A6 =
+      "Transient failure while submitting LOAD consensus {} (load {}) to {}, will retry ({}/{}): {}";
   public static final String RESULT_STATUS_MESSAGE_ARG_DISPATCH_PIECE_NODE_ERROR_PERCENT_NARG =
       "Result status message {}. Dispatch piece node error:%n{}";
   public static final String SUB_STATUS_CODE_ARG_SUB_STATUS_MESSAGE_ARG =
@@ -3799,6 +3806,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46 = "The second argument of 'percentile' function percentage must be a double literal";
   public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "Data type mismatch for measurement %s%s%s, type in TsFile: %s, type in IoTDB: %s";
   public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "Failed to release external TsFile query resource";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2 = "Unknown LoadTsFileConsensusOp ordinal: ";
   public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "Outer query timeout exceeded before IoTDBLocal query starts";
   public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "Failed to close UDF result set at index {}";
   public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "Internal query execution not found";
@@ -3818,5 +3826,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases is null";
   public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
       "Has no permission to execute %s, because only the superuser can alter him/herself.";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
+      "Invalid LOAD consensus piece ref: path %s, offset %d, size %d";
 
 }

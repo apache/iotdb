@@ -1141,6 +1141,9 @@ public final class DataNodeQueryMessages {
       "开始本地加载 TsFile {}。";
   public static final String LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS =
       "加载：所有失败的 TsFile 已转换为 Tablet 并插入。";
+  public static final String
+      LOG_LOAD_FAILED_TO_LOAD_SOME_TSFILES_BY_CONVERTING_THEM_INTO_TABLETS_FAILED_TSFILES_ARG_7D9DB9C3 =
+          "加载：部分 TsFile 通过转换为 Tablet 仍加载失败。失败的 TsFile：%s";
 
   // --- Plan / Statement ---
 
@@ -3163,6 +3166,8 @@ public final class DataNodeQueryMessages {
       "LoadTsFileScheduler：加载 TsFile {} 期间检测到 Region 迁移，将转换为 insertion 以避免数据丢失。";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "成功加载 TsFile {}，加载进度 [{}/{}]";
+  public static final String LOG_LOAD_BATCH_FINISHED_DELETING_ARG_SOURCE_TSFILES_AFTER_LOAD_D5EE56E9 =
+      "LOAD 批次结束，删除 %d 个源 TsFile";
   public static final String CAN_NOT_LOAD_TSFILE_ARG_LOAD_PROCESS_ARG_ARG =
 
       "无法加载 TsFile {}，加载进度 [{}/{}]。";
@@ -3178,6 +3183,8 @@ public final class DataNodeQueryMessages {
   public static final String DISPATCH_ONE_PIECE_TO_REPLICASET_ARG_ERROR_RESULT_STATUS_CODE_ARG =
 
       "分发 TsFile 片段到 ReplicaSet {} 出错。结果状态码 {}。 ";
+  public static final String LOG_LOAD_CONSENSUS_SUBMIT_TRANSIENT_FAILURE_RETRY_D7E1D9A6 =
+      "提交 LOAD 共识 {}（load {}）到 {} 时遇到瞬时失败，将重试（{}/{}）：{}";
   public static final String RESULT_STATUS_MESSAGE_ARG_DISPATCH_PIECE_NODE_ERROR_PERCENT_NARG =
 
       "结果状态消息 {}。分发片段节点出错：%n{}";
@@ -4555,6 +4562,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_THE_SECOND_ARGUMENT_OF_PERCENTILE_FUNCTION_PERCENTAGE_MUST_BE_A_DOUBLE_LITERAL_D9464B46 = "'percentile' 函数的第二个参数 percentage 必须是 double 字面量";
   public static final String EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD = "测点 %s%s%s 的数据类型不匹配，TsFile 中类型：%s，IoTDB 中类型：%s";
   public static final String MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978 = "释放外部 TsFile 查询资源失败";
+  public static final String EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2 = "未知的 LoadTsFileConsensusOp 序号：";
   public static final String EXCEPTION_OUTER_QUERY_TIMEOUT_EXCEEDED_BEFORE_IOTDBLOCAL_QUERY_STARTS_800BFA63 = "在 IoTDBLocal 查询开始前，外层查询已超时";
   public static final String MESSAGE_FAILED_TO_CLOSE_UDF_RESULT_SET_AT_INDEX_ARG_A293B7EC = "关闭索引 {} 处的 UDF 结果集失败";
   public static final String EXCEPTION_INTERNAL_QUERY_EXECUTION_NOT_FOUND_62642542 = "未找到内部查询执行";
@@ -4575,5 +4583,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_VISIBLEALIASES_IS_NULL_630B27F1 = "visibleAliases 不能为空";
   public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
       "无权执行 %s，因为只有超级用户可以修改其自身。";
+  public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
+      "无效的 LOAD 共识分片引用：路径 %s，偏移 %d，大小 %d";
 
 }
