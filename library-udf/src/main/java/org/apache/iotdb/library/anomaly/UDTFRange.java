@@ -40,7 +40,17 @@ public class UDTFRange implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
+        .validateRequiredAttribute("lower_bound")
+        .validateRequiredAttribute("upper_bound")
+        .validate(
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
+            "parameter \"lower_bound\" and \"upper_bound\" should be finite, and \"lower_bound\" should be smaller than \"upper_bound\".",
+            validator.getParameters().getDouble("lower_bound"),
+            validator.getParameters().getDouble("upper_bound"));
   }
 
   @Override
@@ -56,6 +66,9 @@ public class UDTFRange implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     int intValue;
     long longValue;
     float floatValue;
@@ -77,13 +90,14 @@ public class UDTFRange implements UDTF {
         break;
       case FLOAT:
         floatValue = row.getFloat(0);
-        if (floatValue > upperBound || floatValue < lowerBound) {
+        if (Float.isFinite(floatValue) && (floatValue > upperBound || floatValue < lowerBound)) {
           collector.putFloat(timestamp, floatValue);
         }
         break;
       case DOUBLE:
         doubleValue = row.getDouble(0);
-        if (doubleValue > upperBound || doubleValue < lowerBound) {
+        if (Double.isFinite(doubleValue)
+            && (doubleValue > upperBound || doubleValue < lowerBound)) {
           collector.putDouble(timestamp, doubleValue);
         }
         break;

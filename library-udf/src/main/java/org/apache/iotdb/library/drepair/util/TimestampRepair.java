@@ -41,8 +41,12 @@ public class TimestampRepair {
     ArrayList<Double> originList = new ArrayList<>();
     while (dataIterator.hasNextRow()) {
       Row row = dataIterator.next();
-      double v = Util.getValueAsDouble(row);
       timeList.add(row.getTime());
+      if (row.isNull(0)) {
+        originList.add(Double.NaN);
+        continue;
+      }
+      double v = Util.getValueAsDouble(row);
       if (!Double.isFinite(v)) {
         originList.add(Double.NaN);
       } else {
@@ -52,6 +56,13 @@ public class TimestampRepair {
     time = Util.toLongArray(timeList);
     original = Util.toDoubleArray(originList);
     n = time.length;
+    repaired = new long[n];
+    repairedValue = new double[n];
+    if (n <= 2) {
+      this.deltaT = intervalMode > 0 ? intervalMode : 1;
+      this.start0 = n == 0 ? 0 : time[0];
+      return;
+    }
     TimestampInterval trParam = new TimestampInterval(time, original);
     this.deltaT = trParam.getInterval(intervalMode);
     this.start0 = trParam.getStart0(startPointMode);

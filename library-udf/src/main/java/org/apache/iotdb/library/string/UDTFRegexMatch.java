@@ -35,6 +35,7 @@ import org.apache.tsfile.utils.Binary;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /** This function matches substring according to given regex from an input series. */
 public class UDTFRegexMatch implements UDTF {
@@ -46,14 +47,24 @@ public class UDTFRegexMatch implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.TEXT)
+        .validateRequiredAttribute("regex")
         .validate(
-            regex -> ((String) regex).length() > 0,
+            regex -> ((String) regex).length() > 0 && isValidRegex((String) regex),
             "regexp has to be a valid regular expression.",
-            validator.getParameters().getStringOrDefault("regex", ""))
+            validator.getParameters().getString("regex"))
         .validate(
             group -> (int) group >= 0,
             "group index has to be a non-negative integer.",
             validator.getParameters().getIntOrDefault("group", 0));
+  }
+
+  private static boolean isValidRegex(String regex) {
+    try {
+      Pattern.compile(regex);
+      return true;
+    } catch (PatternSyntaxException e) {
+      return false;
+    }
   }
 
   @Override
@@ -68,6 +79,9 @@ public class UDTFRegexMatch implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     Matcher matcher = pattern.matcher(row.getString(0));
     if (matcher.find() && matcher.groupCount() >= group) {
       collector.putString(row.getTime(), matcher.group(group));
