@@ -254,6 +254,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeDataNodeAgent.task()
           .stopAllPipesWithCriticalExceptionAndTrackException(pipeTaskMeta, pipeRuntimeException);
+    } else {
+      pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
     }
   }
 

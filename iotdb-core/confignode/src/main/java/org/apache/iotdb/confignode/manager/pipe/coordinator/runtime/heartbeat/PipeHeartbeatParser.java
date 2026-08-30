@@ -265,7 +265,6 @@ public class PipeHeartbeatParser {
         // Update runtime exception
         final PipeTaskMeta pipeTaskMetaFromCoordinator = runtimeMetaFromCoordinator.getValue();
         final PipeRuntimeMeta pipeRuntimeMeta = pipeMetaFromCoordinator.getRuntimeMeta();
-        pipeTaskMetaFromCoordinator.clearExceptionMessages();
         for (final PipeRuntimeException exception : runtimeMetaFromAgent.getExceptionMessages()) {
           if (exception.getTimeStamp() <= pipeRuntimeMeta.getExceptionsClearTime()) {
             needPushPipeMetaToDataNodes.set(true);

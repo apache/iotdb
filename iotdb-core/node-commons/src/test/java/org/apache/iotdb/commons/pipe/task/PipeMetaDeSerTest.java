@@ -45,6 +45,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -200,5 +201,17 @@ public class PipeMetaDeSerTest {
     Assert.assertTrue(freshTaskMeta.hasExceptionMessages());
     Assert.assertFalse(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().containsKey(1));
     Assert.assertTrue(runtimeMeta.getNodeId2PipeRuntimeExceptionMap().containsKey(2));
+  }
+
+  @Test
+  public void testPipeTaskMetaKeepsOnlyLatestException() {
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    pipeTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("first", 100L));
+    pipeTaskMeta.trackExceptionMessage(new PipeRuntimeCriticalException("latest", 200L));
+
+    final Iterator<?> exceptions = pipeTaskMeta.getExceptionMessages().iterator();
+    Assert.assertTrue(exceptions.hasNext());
+    Assert.assertEquals(new PipeRuntimeCriticalException("latest", 200L), exceptions.next());
+    Assert.assertFalse(exceptions.hasNext());
   }
 }

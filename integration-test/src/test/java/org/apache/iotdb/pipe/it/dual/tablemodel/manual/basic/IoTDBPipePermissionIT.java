@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -71,6 +72,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMetaSyncerInitialSyncDelayMinutes(1)
+        .setPipeMetaSyncerSyncIntervalMinutes(1)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
@@ -88,6 +91,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2)
         .setDnConnectionTimeoutMs(600000)
+        .setPipeMetaSyncerInitialSyncDelayMinutes(1)
+        .setPipeMetaSyncerSyncIntervalMinutes(1)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
@@ -185,8 +190,16 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         "information_schema");
 
     // Grant some privilege
-    TestUtils.executeNonQuery(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab");
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        senderEnv,
+        Arrays.asList("grant MANAGE_USER to user thulab", "grant INSERT on any to user thulab"),
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        "test",
+        BaseEnv.TABLE_SQL_DIALECT,
+        null)) {
+      return;
+    }
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
 

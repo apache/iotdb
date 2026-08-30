@@ -175,7 +175,9 @@ public class PipeHeartbeatParserTest {
     final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
     context.parser.parseHeartbeat(DATA_NODE_ID, heartbeat);
 
-    Assert.assertFalse(coordinatorTaskMeta.hasExceptionMessages());
+    Assert.assertTrue(coordinatorTaskMeta.hasExceptionMessages());
+    Assert.assertEquals(
+        "stale failure", coordinatorTaskMeta.getExceptionMessages().iterator().next().getMessage());
     Assert.assertEquals(PipeStatus.RUNNING, runtimeMeta.getStatus().get());
     verify(context.procedureManager, times(1)).pipeHandleMetaChange(false, true);
   }
