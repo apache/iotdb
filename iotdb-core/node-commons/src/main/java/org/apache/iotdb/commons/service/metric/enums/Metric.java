@@ -94,6 +94,7 @@ public enum Metric {
   PAM_ALLOCATED_FAILURE_COUNT("primitive_array_manager_allocated_failure_count"),
   PAM_RELEASED_FAILURE_COUNT("primitive_array_manager_released_failure_count"),
   TABLE_DISK_USAGE_CACHE("table_disk_usage_cache"),
+  FILE_SYSTEM_EXCEPTION_COUNT("file_system_exception_count"),
 
   // compaction related
   DATA_WRITTEN("data_written"),

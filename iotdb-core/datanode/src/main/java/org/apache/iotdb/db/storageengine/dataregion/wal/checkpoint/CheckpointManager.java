@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
@@ -238,6 +239,7 @@ public class CheckpointManager implements AutoCloseable {
                 .STORAGE_LOG_FAIL_TO_ROLL_WAL_NODE_S_CHECKPOINT_WRITER_CHANGE_SYSTEM_791DDAB7,
             identifier,
             e);
+        DataNodeExceptionMetrics.getInstance().recordFileSystemException(e);
         CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
       }
     } finally {

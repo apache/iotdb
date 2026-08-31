@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
@@ -1867,6 +1868,7 @@ public class TsFileProcessor {
                 dataRegionName,
                 tsFileResource.getTsFile().getAbsolutePath(),
                 e);
+            DataNodeExceptionMetrics.getInstance().recordFileSystemException(e);
             CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
             try {
               logger.error(
@@ -1975,6 +1977,7 @@ public class TsFileProcessor {
           logger.debug(StorageEngineMessages.FLUSHING_MEMTABLES_CLEAR, dataRegionName);
         }
       } catch (Exception e) {
+        DataNodeExceptionMetrics.getInstance().recordFileSystemException(e);
         logger.error(
             StorageEngineMessages.STORAGE_LOG_MARKING_OR_ENDING_FILE_MEET_ERROR_5653B904,
             dataRegionName,

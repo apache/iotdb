@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointManager;
@@ -641,6 +642,7 @@ public class WALBuffer extends AbstractWALBuffer {
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.fail(e);
           }
+          DataNodeExceptionMetrics.getInstance().recordFileSystemException(e);
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
