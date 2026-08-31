@@ -91,7 +91,12 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
       ensureSpiller(true);
       dataSet =
           new SpilledDeviceEntryDataSet(
-              queryId(), ownerDirectory(), spiller.finish(), entryCount());
+              queryId(),
+              ownerDirectory(),
+              spiller.finish(),
+              entryCount(),
+              isRawSegment() ? ioContextOnSpill() : null,
+              isRawSegment());
     }
     recordDeviceEntryCount();
     markFinished();

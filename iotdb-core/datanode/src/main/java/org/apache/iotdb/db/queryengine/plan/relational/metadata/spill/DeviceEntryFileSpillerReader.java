@@ -40,14 +40,6 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
   private Path currentSegment;
   private DeviceEntry next;
 
-  public DeviceEntryFileSpillerReader(List<Path> segments) {
-    this(segments, false, null, false);
-  }
-
-  public DeviceEntryFileSpillerReader(List<Path> segments, boolean deleteSegmentAfterRead) {
-    this(segments, deleteSegmentAfterRead, null, false);
-  }
-
   public DeviceEntryFileSpillerReader(
       List<Path> segments,
       boolean deleteSegmentAfterRead,

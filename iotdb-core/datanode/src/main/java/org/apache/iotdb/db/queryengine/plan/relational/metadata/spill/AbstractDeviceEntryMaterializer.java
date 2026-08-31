@@ -48,11 +48,6 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   private MPPQueryContext queryContext;
 
   protected AbstractDeviceEntryMaterializer(
-      String queryId, PlanNodeId planNodeId, long thresholdInBytes) {
-    this(queryId, planNodeId, thresholdInBytes, false);
-  }
-
-  protected AbstractDeviceEntryMaterializer(
       String queryId, PlanNodeId planNodeId, long thresholdInBytes, boolean rawSegment) {
     if (thresholdInBytes <= 0) {
       throw new IllegalArgumentException();
@@ -137,6 +132,10 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   protected final DeviceEntryIOContext ioContextOnSpill() {
     return queryContext == null ? null : queryContext.getOrCreateDeviceEntryIOContext();
+  }
+
+  protected final boolean isRawSegment() {
+    return rawSegment;
   }
 
   protected final DeviceEntryDiskSpiller createSpiller(Path directory) throws IOException {

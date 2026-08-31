@@ -182,7 +182,13 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       }
       setEntryCount(finalEntryCount);
       dataSet =
-          new SpilledDeviceEntryDataSet(queryId(), ownerDirectory(), finalSegments, entryCount());
+          new SpilledDeviceEntryDataSet(
+              queryId(),
+              ownerDirectory(),
+              finalSegments,
+              entryCount(),
+              isRawSegment() ? ioContextOnSpill() : null,
+              isRawSegment());
       recordDeviceEntryCount();
       markFinished();
       deleteRunDirectoryBestEffort();
