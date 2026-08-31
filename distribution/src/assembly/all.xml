@@ -156,6 +156,7 @@
                 <exclude>**/*ainode.*</exclude>
                 <exclude>ops/daemon-datanode.sh</exclude>
                 <exclude>ops/daemon-confignode.sh</exclude>
+                <exclude>**/*edge.*</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
