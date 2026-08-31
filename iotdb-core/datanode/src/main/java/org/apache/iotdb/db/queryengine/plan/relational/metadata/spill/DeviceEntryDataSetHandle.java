@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -45,6 +46,11 @@ public final class DeviceEntryDataSetHandle {
       int segmentCount,
       int entryCount,
       boolean ordered) {
+    if (segmentCount < 0 || entryCount < 0) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages
+              .EXCEPTION_DEVICEENTRY_SEGMENT_AND_ENTRY_COUNTS_MUST_BE_NON_NEGATIVE_7C6E569C);
+    }
     this.queryId = queryId;
     this.planNodeId = planNodeId;
     this.coordinatorMppDataExchangeEndPoint = coordinatorMppDataExchangeEndPoint;

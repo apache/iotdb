@@ -256,7 +256,10 @@ public class IoTDBConfig {
   private String queryDir =
       IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
-  /** Maximum DeviceEntry bytes kept in memory before a table-query spill. */
+  /**
+   * Maximum DeviceEntry bytes kept in memory before a table-query spill, capped by the effective
+   * Thrift frame size.
+   */
   private long tableQueryDeviceEntryBatchSizeInBytes;
 
   /** External lib directory, stores user-uploaded JAR files */

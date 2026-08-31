@@ -3825,6 +3825,9 @@ public final class DataNodeQueryMessages {
       "Failed to clean DeviceEntry spill directory for query %s";
   public static final String EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A =
       "DeviceEntry spill segment was removed during query cleanup: %s";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SEGMENT_AND_ENTRY_COUNTS_MUST_BE_NON_NEGATIVE_7C6E569C =
+          "DeviceEntry segment count and entry count must be non-negative";
   public static final String EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4 =
       "Open consuming reader is not supported";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =

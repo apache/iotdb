@@ -715,19 +715,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_topk_runtime_filter", String.valueOf(conf.isEnableTopKRuntimeFilter()))));
 
-    long deviceEntryBatchSize =
-        Long.parseLong(
-            properties.getProperty(
-                "table_query_device_entry_batch_size_in_bytes",
-                Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes())));
-    if (deviceEntryBatchSize <= 0) {
-      deviceEntryBatchSize =
-          memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
-              / memoryConfig.getQueryThreadCount()
-              / 4;
-    }
-    conf.setTableQueryDeviceEntryBatchSizeInBytes(deviceEntryBatchSize);
-
     conf.setCandidateCompactionTaskQueueSize(
         Integer.parseInt(
             properties.getProperty(
@@ -833,6 +820,8 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+
+    loadTableQueryDeviceEntryBatchSize(properties);
 
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
@@ -2249,18 +2238,7 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "enable_topk_runtime_filter"))));
 
-      long deviceEntryBatchSize =
-          Long.parseLong(
-              properties.getProperty(
-                  "table_query_device_entry_batch_size_in_bytes",
-                  Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes())));
-      if (deviceEntryBatchSize <= 0) {
-        deviceEntryBatchSize =
-            memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
-                / memoryConfig.getQueryThreadCount()
-                / 4;
-      }
-      conf.setTableQueryDeviceEntryBatchSizeInBytes(deviceEntryBatchSize);
+      loadTableQueryDeviceEntryBatchSize(properties);
 
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
@@ -2456,6 +2434,22 @@ public class IoTDBDescriptor {
         Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes()));
     ConfigurationFileUtils.updateAppliedProperties(
         DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
+  }
+
+  private void loadTableQueryDeviceEntryBatchSize(TrimProperties properties) {
+    long deviceEntryBatchSize =
+        Long.parseLong(
+            properties.getProperty(
+                "table_query_device_entry_batch_size_in_bytes",
+                Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes())));
+    if (deviceEntryBatchSize <= 0) {
+      deviceEntryBatchSize =
+          memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
+              / memoryConfig.getQueryThreadCount()
+              / 4;
+    }
+    conf.setTableQueryDeviceEntryBatchSizeInBytes(
+        Math.min(deviceEntryBatchSize, conf.getThriftMaxFrameSize()));
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {

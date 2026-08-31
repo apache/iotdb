@@ -4584,6 +4584,9 @@ public final class DataNodeQueryMessages {
       "查询清理期间 DeviceEntry spill segment 已被删除：%s";
   public static final String EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A =
       "查询清理期间 DeviceEntry spill segment 已被删除：%s";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SEGMENT_AND_ENTRY_COUNTS_MUST_BE_NON_NEGATIVE_7C6E569C =
+          "DeviceEntry segment count 和 entry count 不能为负数";
   public static final String EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4 =
       "不支持打开消费型读取器";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
