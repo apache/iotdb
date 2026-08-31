@@ -27,6 +27,9 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverFilePathUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTConsensusV2RequestType;
@@ -45,8 +48,8 @@ import org.apache.iotdb.consensus.pipe.IoTConsensusV2ServerImpl;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2ReceiverMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2DeleteNodeReq;
@@ -64,8 +67,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -142,17 +143,16 @@ public class IoTConsensusV2Receiver {
     try {
       initiateTsFileBufferFolder(receiverBaseDirsName);
     } catch (Exception e) {
-      LOGGER.error("Fail to initiate file buffer folder, Error msg: {}", e.getMessage());
+      LOGGER.error(DataNodePipeMessages.FAIL_TO_INITIATE_FILE_BUFFER_FOLDER_ERROR, e.getMessage());
       throw new RuntimeException(e);
     }
 
     try {
-      this.folderManager = new FolderManager(receiveDirs, DirectoryStrategyType.SEQUENCE_STRATEGY);
+      this.folderManager =
+          new FolderManager(receiveDirs, DirectoryStrategyType.SEQUENCE_STRATEGY, false);
       this.iotConsensusV2TsFileWriterPool = new IoTConsensusV2TsFileWriterPool(consensusPipeName);
     } catch (Exception e) {
-      LOGGER.error(
-          "Fail to create iotConsensusV2 receiver file folders allocation strategy because all disks of folders are full.",
-          e);
+      LOGGER.error(DataNodePipeMessages.FAIL_TO_CREATE_IOTCONSENSUSV2_RECEIVER_FILE_FOLDERS, e);
       throw new RuntimeException(e);
     }
 
@@ -211,7 +211,8 @@ public class IoTConsensusV2Receiver {
             TSStatusCode.PIPE_TYPE_ERROR,
             String.format("IoTConsensusV2 Unknown PipeRequestType %s.", rawRequestType));
     if (LOGGER.isWarnEnabled()) {
-      LOGGER.warn("IoTConsensusV2 Unknown PipeRequestType, response status = {}.", status);
+      LOGGER.warn(
+          DataNodePipeMessages.IOTCONSENSUSV2_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS, status);
     }
     return new TIoTConsensusV2TransferResp(status);
   }
@@ -279,7 +280,7 @@ public class IoTConsensusV2Receiver {
             return handleTransferFileSealWithMods(
                 IoTConsensusV2TsFileSealWithModReq.fromTIoTConsensusV2TransferReq(req));
           case TRANSFER_TABLET_BATCH:
-            LOGGER.info("IoTConsensusV2 transfer batch hasn't been implemented yet.");
+            LOGGER.info(DataNodePipeMessages.IOTCONSENSUSV2_TRANSFER_BATCH_HASN_T_BEEN_IMPLEMENTED);
           default:
             break;
         }
@@ -291,13 +292,13 @@ public class IoTConsensusV2Receiver {
               TSStatusCode.IOT_CONSENSUS_V2_TYPE_ERROR,
               String.format("Unknown IoTConsensusV2RequestType %s.", rawRequestType));
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Unknown PipeRequestType, response status = {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS,
           consensusPipeName,
           status);
       return new TIoTConsensusV2TransferResp(status);
     } catch (Exception e) {
       final String error = String.format("Serialization error during pipe receiving, %s", e);
-      LOGGER.warn("IoTConsensusV2-PipeName-{}: {}", consensusPipeName, error, e);
+      LOGGER.warn(DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME, consensusPipeName, error, e);
       return new TIoTConsensusV2TransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
@@ -344,7 +345,8 @@ public class IoTConsensusV2Receiver {
     try {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "IoTConsensusV2-PipeName-{}: starting to receive tsFile pieces", consensusPipeName);
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_STARTING_TO_RECEIVE_TSFILE_PIECES,
+            consensusPipeName);
       }
       long startBorrowTsFileWriterNanos = System.nanoTime();
       IoTConsensusV2TsFileWriter tsFileWriter =
@@ -364,7 +366,8 @@ public class IoTConsensusV2Receiver {
             // filename. However, for other files (mod, snapshot, etc.) the content varies for the
             // same name in different times, then we must rewrite the file to apply the newest
             // version.
-            writingFileWriter.setLength(0);
+            org.apache.iotdb.commons.utils.FileUtils.truncateFile(writingFile, 0);
+            writingFileWriter.seek(0);
           }
 
           final TSStatus status =
@@ -374,7 +377,7 @@ public class IoTConsensusV2Receiver {
                       "Request sender to reset file reader's offset from %s to %s.",
                       req.getStartWritingOffset(), writingFileWriter.length()));
           LOGGER.warn(
-              "IoTConsensusV2-PipeName-{}: File offset reset requested by receiver, response status = {}.",
+              DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FILE_OFFSET_RESET_REQUESTED_BY,
               consensusPipeName,
               status);
           return IoTConsensusV2TransferFilePieceResp.toTIoTConsensusV2TransferResp(
@@ -391,7 +394,7 @@ public class IoTConsensusV2Receiver {
             RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
       } catch (Exception e) {
         LOGGER.warn(
-            "IoTConsensusV2-PipeName-{}: Failed to write file piece from req {}.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_WRITE_FILE_PIECE,
             consensusPipeName,
             req,
             e);
@@ -418,7 +421,9 @@ public class IoTConsensusV2Receiver {
 
   private TIoTConsensusV2TransferResp handleTransferFileSeal(
       final IoTConsensusV2TsFileSealReq req) {
-    LOGGER.info("IoTConsensusV2-PipeName-{}: starting to receive tsFile seal", consensusPipeName);
+    LOGGER.info(
+        DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_STARTING_TO_RECEIVE_TSFILE_SEAL,
+        consensusPipeName);
     long startBorrowTsFileWriterNanos = System.nanoTime();
     IoTConsensusV2TsFileWriter tsFileWriter =
         iotConsensusV2TsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
@@ -468,12 +473,12 @@ public class IoTConsensusV2Receiver {
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
-            "IoTConsensusV2-PipeName-{}: Seal file {} successfully.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_SEAL_FILE_SUCCESSFULLY,
             consensusPipeName,
             fileAbsolutePath);
       } else {
         LOGGER.warn(
-            "IoTConsensusV2-PipeName-{}: Failed to seal file {}, because {}.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_BECAUSE_2,
             consensusPipeName,
             fileAbsolutePath,
             status.getMessage());
@@ -481,7 +486,7 @@ public class IoTConsensusV2Receiver {
       return new TIoTConsensusV2TransferResp(status);
     } catch (IOException e) {
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to seal file {} from req {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_FROM,
           consensusPipeName,
           writingFile,
           req,
@@ -492,7 +497,7 @@ public class IoTConsensusV2Receiver {
               String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
     } catch (LoadFileException e) {
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to load file {} from req {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_LOAD_FILE_FROM,
           consensusPipeName,
           writingFile,
           req,
@@ -512,7 +517,8 @@ public class IoTConsensusV2Receiver {
   private TIoTConsensusV2TransferResp handleTransferFileSealWithMods(
       final IoTConsensusV2TsFileSealWithModReq req) {
     LOGGER.info(
-        "IoTConsensusV2-PipeName-{}: starting to receive tsFile seal with mods", consensusPipeName);
+        DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_STARTING_TO_RECEIVE_TSFILE_SEAL_1,
+        consensusPipeName);
     long startBorrowTsFileWriterNanos = System.nanoTime();
     IoTConsensusV2TsFileWriter tsFileWriter =
         iotConsensusV2TsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
@@ -598,12 +604,12 @@ public class IoTConsensusV2Receiver {
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
-            "IoTConsensusV2-PipeName-{}: Seal file with mods {} successfully.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_SEAL_FILE_WITH_MODS_SUCCESSFULLY,
             consensusPipeName,
             fileAbsolutePaths);
       } else {
         LOGGER.warn(
-            "IoTConsensusV2-PipeName-{}: Failed to seal file {}, status is {}.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_STATUS,
             consensusPipeName,
             fileAbsolutePaths,
             status);
@@ -612,7 +618,7 @@ public class IoTConsensusV2Receiver {
     } catch (Exception e) {
       final Throwable rootCause = e instanceof IllegalArgumentException ? e.getCause() : e;
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to seal file {} from req {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_FROM,
           consensusPipeName,
           req.getFileNames(),
           req,
@@ -649,7 +655,7 @@ public class IoTConsensusV2Receiver {
               TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
               String.format("Failed to seal file %s, the file does not exist.", fileName));
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to seal file {}, because the file does not exist.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_BECAUSE,
           consensusPipeName,
           fileName);
       return new TIoTConsensusV2TransferResp(status);
@@ -664,8 +670,7 @@ public class IoTConsensusV2Receiver {
                       + "The original file has length %s, but receiver file has length %s.",
                   fileName, fileLength, writingFileWriter.length()));
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to seal file {} when check non final seal, because the length of file is not correct. "
-              + "The original file has length {}, but receiver file has length {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_WHEN_1,
           consensusPipeName,
           fileName,
           fileLength,
@@ -694,7 +699,7 @@ public class IoTConsensusV2Receiver {
       // Data region is null indicates that dr has been removed or migrated. In those cases, there
       // is no need to replicate data. we just return success to avoid leader keeping retry
       LOGGER.info(
-          "IoTConsensusV2-PipeName-{}: skip load tsfile-{} when sealing, because this region has been removed or migrated.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_SKIP_LOAD_TSFILE_WHEN_SEALING,
           consensusPipeName,
           filePath);
     }
@@ -712,8 +717,7 @@ public class IoTConsensusV2Receiver {
     // we will read the actual point count from the TsFile.
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "IoTConsensusV2-PipeName-{}: The point count of TsFile {} is not given by sender, "
-              + "will read actual point count from TsFile.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_THE_POINT_COUNT_OF_TSFILE,
           consensusPipeName,
           tsFileAbsolutePath);
     }
@@ -723,7 +727,7 @@ public class IoTConsensusV2Receiver {
       updateWritePointCountMetrics(counter.count());
     } catch (IOException e) {
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to read TsFile when counting points: {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_READ_TSFILE_WHEN,
           consensusPipeName,
           tsFileAbsolutePath,
           e);
@@ -767,8 +771,7 @@ public class IoTConsensusV2Receiver {
         writingFile != null && writingFile.exists() && writingFileWriter != null;
     if (!isWritingFileAvailable) {
       LOGGER.info(
-          "IoTConsensusV2-PipeName-{}: Writing file {} is not available. "
-              + "Writing file is null: {}, writing file exists: {}, writing file writer is null: {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_WRITING_FILE_IS_NOT_AVAILABLE,
           consensusPipeName,
           writingFile,
           writingFile == null,
@@ -791,7 +794,7 @@ public class IoTConsensusV2Receiver {
               String.format(
                   "Failed to seal file %s, because writing file is %s.", fileName, writingFile));
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to seal file {}, because writing file is {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_BECAUSE_1,
           consensusPipeName,
           fileName,
           writingFile);
@@ -807,8 +810,7 @@ public class IoTConsensusV2Receiver {
                       + "The original file has length %s, but receiver file has length %s.",
                   fileName, fileLength, writingFileWriter.length()));
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to seal file {} when check final seal file, because the length of file is not correct. "
-              + "The original file has length {}, but receiver file has length {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_WHEN,
           consensusPipeName,
           fileName,
           fileLength,
@@ -832,7 +834,7 @@ public class IoTConsensusV2Receiver {
               .equals(resolveWritingFilePath(tsFileWriter, fileName));
     } catch (final IOException e) {
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Illegal file name {} when checking writing file.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_ILLEGAL_FILE_NAME_WHEN_CHECKING,
           consensusPipeName,
           fileName,
           e);
@@ -848,7 +850,7 @@ public class IoTConsensusV2Receiver {
     final boolean offsetCorrect = writingFileWriter.length() == offset;
     if (!offsetCorrect) {
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Writing file {}'s offset is {}, but request sender's offset is {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_WRITING_FILE_S_OFFSET_IS,
           consensusPipeName,
           writingFile.getPath(),
           writingFileWriter.length(),
@@ -868,8 +870,7 @@ public class IoTConsensusV2Receiver {
     }
 
     LOGGER.info(
-        "IoTConsensusV2-PipeName-{}: Writing file {} is not existed or name is not correct, try to create it. "
-            + "Current writing file is {}.",
+        DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_WRITING_FILE_IS_NOT_EXISTED,
         consensusPipeName,
         fileName,
         tsFileWriter.getWritingFile() == null ? "null" : tsFileWriter.getWritingFile().getPath());
@@ -890,12 +891,12 @@ public class IoTConsensusV2Receiver {
     if (!tsFileWriter.getLocalWritingDir().exists()) {
       if (tsFileWriter.getLocalWritingDir().mkdirs()) {
         LOGGER.info(
-            "IoTConsensusV2-PipeName-{}: Receiver file dir {} was created.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_RECEIVER_FILE_DIR_WAS_CREATED,
             consensusPipeName,
             tsFileWriter.getLocalWritingDir().getPath());
       } else {
         LOGGER.error(
-            "IoTConsensusV2-PipeName-{}: Failed to create receiver file dir {}.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_FILE,
             consensusPipeName,
             tsFileWriter.getLocalWritingDir().getPath());
       }
@@ -905,7 +906,7 @@ public class IoTConsensusV2Receiver {
     tsFileWriter.setWritingFile(resolveWritingFilePath(tsFileWriter, fileName).toFile());
     tsFileWriter.setWritingFileWriter(new RandomAccessFile(tsFileWriter.getWritingFile(), "rw"));
     LOGGER.info(
-        "IoTConsensusV2-PipeName-{}: Writing file {} was created. Ready to write file pieces.",
+        DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_WRITING_FILE_WAS_CREATED_READY,
         consensusPipeName,
         tsFileWriter.getWritingFile().getPath());
   }
@@ -917,7 +918,7 @@ public class IoTConsensusV2Receiver {
           tsFileWriter.getLocalWritingDir().toPath(), fileName);
     } catch (final IOException e) {
       LOGGER.error(
-          "IoTConsensusV2-PipeName-{}: Path traversal attempt detected! Filename: {}",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_PATH_TRAVERSAL_ATTEMPT_DETECTED_FILENAME,
           consensusPipeName,
           fileName);
       throw e;
@@ -934,13 +935,15 @@ public class IoTConsensusV2Receiver {
       final File systemDir = new File(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
       if (!systemDir.exists()) {
         LOGGER.warn(
-            "IoTConsensusV2-PipeName-{}: Failed to create receiver file dir {}. Because parent system dir have been deleted due to system concurrently exit.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_FILE_1,
             consensusPipeName,
             newReceiverDir.getPath());
         throw new IOException(
             String.format(
-                "IoTConsensusV2-PipeName-%s: Failed to create receiver file dir %s. Because parent system dir have been deleted due to system concurrently exit.",
-                consensusPipeName, newReceiverDir.getPath()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_RECEIVER_FILE_DD67E854,
+                consensusPipeName,
+                newReceiverDir.getPath()));
       }
       // Remove exists dir
       deleteFileOrDirectoryIfExists(
@@ -948,13 +951,15 @@ public class IoTConsensusV2Receiver {
 
       if (!newReceiverDir.mkdirs()) {
         LOGGER.warn(
-            "IoTConsensusV2-PipeName-{}: Failed to create receiver file dir {}. May because authority or dir already exists etc.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_FILE_2,
             consensusPipeName,
             newReceiverDir.getPath());
         throw new IOException(
             String.format(
-                "IoTConsensusV2-PipeName-%s: Failed to create receiver file dir %s. May because authority or dir already exists etc.",
-                consensusPipeName, newReceiverDir.getPath()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_RECEIVER_FILE_5ADC430A,
+                consensusPipeName,
+                newReceiverDir.getPath()));
       }
       this.receiveDirs.add(newReceiverDir.getPath());
     }
@@ -986,15 +991,16 @@ public class IoTConsensusV2Receiver {
     scheduledTsFileWriterCheckerPool.shutdownNow();
     try {
       if (!scheduledTsFileWriterCheckerPool.awaitTermination(30, TimeUnit.SECONDS)) {
-        LOGGER.warn("TsFileChecker did not terminate within {}s", 30);
+        LOGGER.warn(DataNodePipeMessages.TSFILECHECKER_DID_NOT_TERMINATE_WITHIN_S, 30);
       }
     } catch (InterruptedException e) {
-      LOGGER.warn("TsFileChecker Thread {} still doesn't exit after 30s", consensusPipeName);
+      LOGGER.warn(
+          DataNodePipeMessages.TSFILECHECKER_THREAD_STILL_DOESN_T_EXIT_AFTER, consensusPipeName);
       Thread.currentThread().interrupt();
     }
     // Clear the tsFileWriters, receiverBuffer and receiver base dirs
     requestExecutor.clear(false, true);
-    LOGGER.info("Receiver-{} exit successfully.", consensusPipeName.toString());
+    LOGGER.info(DataNodePipeMessages.RECEIVER_EXIT_SUCCESSFULLY, consensusPipeName.toString());
   }
 
   public void closeExecutor() {
@@ -1027,7 +1033,7 @@ public class IoTConsensusV2Receiver {
               IOTDB_CONFIG.getTsFileWriterCheckInterval(),
               TimeUnit.MILLISECONDS);
       LOGGER.info(
-          "Register {} with interval in seconds {} successfully.",
+          DataNodePipeMessages.REGISTER_WITH_INTERVAL_IN_SECONDS_SUCCESSFULLY,
           ThreadName.IOT_CONSENSUS_V2_TSFILE_WRITER_CHECKER.getName(),
           IOTDB_CONFIG.getTsFileWriterCheckInterval());
     }
@@ -1093,7 +1099,7 @@ public class IoTConsensusV2Receiver {
                     >= IOTDB_CONFIG.getTsFileWriterZombieThreshold()) {
                   releaseTsFileWriter(writer, false);
                   LOGGER.info(
-                      "IoTConsensusV2-PipeName-{}: tsfile writer-{} is cleaned up because no new requests were received for too long.",
+                      DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_TSFILE_WRITER_IS_CLEANED_UP,
                       consensusPipeName,
                       writer.index);
                 }
@@ -1113,7 +1119,8 @@ public class IoTConsensusV2Receiver {
               } catch (final InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOGGER.warn(
-                    "IoTConsensusV2-PipeName-{}: receiver thread get interrupted when exiting.",
+                    DataNodePipeMessages
+                        .IOTCONSENSUSV2_PIPENAME_RECEIVER_THREAD_GET_INTERRUPTED_WHEN,
                     consensusPipeName.toString());
                 // avoid infinite loop
                 break;
@@ -1146,15 +1153,17 @@ public class IoTConsensusV2Receiver {
       if (folderManager == null) {
         throw new IOException(
             String.format(
-                "IoTConsensusV2-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir",
-                consensusPipeName, index));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_TSFILEWRITER_85EC8DD2,
+                consensusPipeName,
+                index));
       }
       this.localWritingDir =
           folderManager.getNextWithRetry(
               receiverBasePath -> {
                 if (receiverBasePath == null) {
                   LOGGER.warn(
-                      "IoTConsensusV2-PipeName-{}: Failed to get base directory",
+                      DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_GET_BASE_DIRECTORY,
                       consensusPipeName);
                   return null;
                 }
@@ -1167,14 +1176,16 @@ public class IoTConsensusV2Receiver {
 
                 if (writingDir.mkdirs()) {
                   LOGGER.info(
-                      "IoTConsensusV2-PipeName-{}: tsfileWriter-{} roll to writing path {}",
+                      DataNodePipeMessages
+                          .IOTCONSENSUSV2_PIPENAME_TSFILEWRITER_ROLL_TO_WRITING_PATH,
                       consensusPipeName,
                       index,
                       writingDir.getPath());
                   return writingDir;
                 }
                 LOGGER.warn(
-                    "IoTConsensusV2-PipeName-{}: Failed to create receiver tsFileWriter-{} file dir {}",
+                    DataNodePipeMessages
+                        .IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_TSFILEWRITER,
                     consensusPipeName,
                     index,
                     writingDir.getPath());
@@ -1184,8 +1195,10 @@ public class IoTConsensusV2Receiver {
       if (this.localWritingDir == null) {
         throw new IOException(
             String.format(
-                "IoTConsensusV2-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir",
-                consensusPipeName, index));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_TSFILEWRITER_85EC8DD2,
+                consensusPipeName,
+                index));
       }
     }
 
@@ -1201,7 +1214,7 @@ public class IoTConsensusV2Receiver {
       this.writingFile = writingFile;
       if (writingFile == null) {
         LOGGER.info(
-            "IoTConsensusV2-{}: TsFileWriter-{} set null writing file",
+            DataNodePipeMessages.IOTCONSENSUSV2_TSFILEWRITER_SET_NULL_WRITING_FILE,
             consensusPipeName.toString(),
             index);
       }
@@ -1215,7 +1228,7 @@ public class IoTConsensusV2Receiver {
       this.writingFileWriter = writingFileWriter;
       if (writingFileWriter == null) {
         LOGGER.info(
-            "IoTConsensusV2-{}: TsFileWriter-{} set null writing file writer",
+            DataNodePipeMessages.IOTCONSENSUSV2_TSFILEWRITER_SET_NULL_WRITING_FILE_WRITER,
             consensusPipeName.toString(),
             index);
       } else {
@@ -1263,7 +1276,7 @@ public class IoTConsensusV2Receiver {
       this.commitIdOfCorrespondingHolderEvent = null;
       this.isUsed = false;
       LOGGER.info(
-          "IoTConsensusV2-PipeName-{}: tsFileWriter-{} returned self",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_TSFILEWRITER_RETURNED_SELF,
           consensusPipeName.toString(),
           index);
     }
@@ -1278,7 +1291,7 @@ public class IoTConsensusV2Receiver {
         }
         tsFileWriter.getWritingFileWriter().close();
         LOGGER.info(
-            "IoTConsensusV2-PipeName-{}: Current writing file writer {} was closed.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_CURRENT_WRITING_FILE_WRITER_WAS,
             consensusPipeName,
             tsFileWriter.getWritingFile() == null
                 ? "null"
@@ -1286,7 +1299,7 @@ public class IoTConsensusV2Receiver {
         tsFileWriter.setWritingFileWriter(null);
       } catch (IOException e) {
         LOGGER.warn(
-            "IoTConsensusV2-PipeName-{}: Failed to close current writing file writer {}, because {}.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_CLOSE_CURRENT_WRITING,
             consensusPipeName,
             tsFileWriter.getWritingFile() == null
                 ? "null"
@@ -1297,7 +1310,7 @@ public class IoTConsensusV2Receiver {
     } else {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "IoTConsensusV2-PipeName-{}: Current writing file writer is null. No need to close.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_CURRENT_WRITING_FILE_WRITER_IS,
             consensusPipeName.toString());
       }
     }
@@ -1328,13 +1341,13 @@ public class IoTConsensusV2Receiver {
           RetryUtils.retryOnException(() -> FileUtils.delete(file));
         }
         LOGGER.info(
-            "IoTConsensusV2-PipeName-{}: {} {} was deleted.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_WAS_DELETED,
             consensusPipeName,
             reason,
             file.getPath());
       } catch (IOException e) {
         LOGGER.warn(
-            "IoTConsensusV2-PipeName-{}: {} Failed to delete {}, because {}.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_DELETE_BECAUSE,
             consensusPipeName,
             reason,
             file.getPath(),
@@ -1344,7 +1357,7 @@ public class IoTConsensusV2Receiver {
     } else {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "IoTConsensusV2-PipeName-{}: {} {} is not existed. No need to delete.",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_IS_NOT_EXISTED_NO_NEED,
             consensusPipeName,
             reason,
             file.getPath());
@@ -1367,7 +1380,7 @@ public class IoTConsensusV2Receiver {
       tsFileWriter.returnSelf(consensusPipeName);
     } catch (IOException | DiskSpaceInsufficientException e) {
       LOGGER.warn(
-          "IoTConsensusV2-PipeName-{}: Failed to return tsFileWriter {}.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_FAILED_TO_RETURN_TSFILEWRITER,
           consensusPipeName,
           tsFileWriter,
           e);
@@ -1462,7 +1475,7 @@ public class IoTConsensusV2Receiver {
         }
 
         LOGGER.info(
-            "IoTConsensusV2-PipeName-{}: start to receive no.{} event",
+            DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_START_TO_RECEIVE_NO_EVENT,
             consensusPipeName,
             tCommitId);
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
@@ -1527,7 +1540,7 @@ public class IoTConsensusV2Receiver {
           if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getIotConsensusV2PipelineSize()
               && reqExecutionOrderBuffer.first().equals(requestMeta)) {
             LOGGER.info(
-                "IoTConsensusV2-PipeName-{}: no.{} event get executed because receiver buffer's len >= pipeline, current receiver syncIndex {}, current buffer len {}",
+                DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_NO_EVENT_GET_EXECUTED_BECAUSE,
                 consensusPipeName,
                 tCommitId,
                 onSyncedReplicateIndex,
@@ -1573,7 +1586,7 @@ public class IoTConsensusV2Receiver {
                 // if current event is the first event in reqBuffer, we can process it.
                 if (reqExecutionOrderBuffer.first().equals(requestMeta)) {
                   LOGGER.info(
-                      "IoTConsensusV2-PipeName-{}: no.{} event get executed after awaiting timeout, current receiver syncIndex: {}",
+                      DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_NO_EVENT_GET_EXECUTED_AFTER,
                       consensusPipeName,
                       tCommitId,
                       onSyncedReplicateIndex);
@@ -1600,7 +1613,7 @@ public class IoTConsensusV2Receiver {
                               "Waiting for the previous event times out, returns an error to let the sender retry and continue scheduling."));
                   // TODO: Turn it to debug after GA
                   LOGGER.info(
-                      "IoTConsensusV2-{}: Waiting for the previous event times out, current peek {}, current id {}",
+                      DataNodePipeMessages.IOTCONSENSUSV2_WAITING_FOR_THE_PREVIOUS_EVENT_TIMES,
                       consensusPipeName,
                       reqExecutionOrderBuffer.first().commitId,
                       tCommitId);
@@ -1610,7 +1623,8 @@ public class IoTConsensusV2Receiver {
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
               LOGGER.warn(
-                  "IoTConsensusV2-PipeName-{}: current waiting is interrupted. onSyncedCommitIndex: {}. Exception: ",
+                  DataNodePipeMessages
+                      .IOTCONSENSUSV2_PIPENAME_CURRENT_WAITING_IS_INTERRUPTED_ONSYNCEDCOMMITINDEX,
                   consensusPipeName,
                   tCommitId.getReplicateIndex(),
                   e);
@@ -1636,7 +1650,7 @@ public class IoTConsensusV2Receiver {
      */
     private void resetWithNewestRebootTime(int connectorRebootTimes) {
       LOGGER.info(
-          "IoTConsensusV2-PipeName-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_RECEIVER_DETECTED_AN_NEWER_REBOOTTIMES,
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after dataNode reboots, it's
       // safe to clear all events in buffer.
@@ -1648,7 +1662,8 @@ public class IoTConsensusV2Receiver {
 
     private void resetWithNewestRestartTime(int pipeTaskRestartTimes) {
       LOGGER.info(
-          "IoTConsensusV2-PipeName-{}: receiver detected an newer pipeTaskRestartTimes, which indicates the pipe task has restarted. receiver will reset all its data.",
+          DataNodePipeMessages
+              .IOTCONSENSUSV2_PIPENAME_RECEIVER_DETECTED_AN_NEWER_PIPETASKRESTARTTIMES,
           consensusPipeName);
       // since pipe task will resend all data that hasn't synchronized after restarts, it's safe to
       // clear all events in buffer.
@@ -1658,7 +1673,7 @@ public class IoTConsensusV2Receiver {
 
     private void onSuccess(TCommitId commitId, boolean isTransferTsFileSeal) {
       LOGGER.info(
-          "IoTConsensusV2-PipeName-{}: process no.{} event successfully!",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_PROCESS_NO_EVENT_SUCCESSFULLY,
           consensusPipeName,
           commitId);
       RequestMeta curMeta = reqExecutionOrderBuffer.pollFirst();
@@ -1715,7 +1730,7 @@ public class IoTConsensusV2Receiver {
                       "IoTConsensusV2 receiver received a deprecated request, which may because %s. Consider to discard it.",
                       msg)));
       LOGGER.info(
-          "IoTConsensusV2-PipeName-{}: received a deprecated request-{}, which may because {}. ",
+          DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_RECEIVED_A_DEPRECATED_REQUEST_WHICH,
           consensusPipeName,
           tCommitId,
           msg);

@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpres
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -83,17 +84,19 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
 
   @Override
   public Filter visitIsNullPredicate(IsNullPredicate node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NULL);
   }
 
   @Override
   public Filter visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support IS NOT NULL");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NOT_NULL);
   }
 
   @Override
   public Filter visitLikePredicate(LikePredicate node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support LIKE");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_LIKE);
   }
 
   @Override
@@ -109,7 +112,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       case AND:
         return FilterFactory.and(filterList);
       default:
-        throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
     }
   }
 
@@ -137,7 +141,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.gtEq(value);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else if (node.getLeft() instanceof SymbolReference) {
       value = getLongValue(node.getRight());
@@ -155,7 +160,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.ltEq(value);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else if (node.getRight() instanceof Extract) {
       Extract extract = (Extract) node.getRight();
@@ -176,7 +182,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.extractTimeGtEq(value, field, zoneId, currPrecision);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else if (node.getLeft() instanceof Extract) {
       Extract extract = (Extract) node.getLeft();
@@ -197,32 +204,34 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.extractTimeLtEq(value, field, zoneId, currPrecision);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else {
       throw new IllegalStateException(
-          "Either left or right operand of ComparisonExpression should have time column.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_EITHER_LEFT_OR_RIGHT_OPERAND_OF_COMPARISONEXPRESSION_SHOULD_FC89CE57);
     }
   }
 
   @Override
   public Filter visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not CASE WHEN");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_CASE_WHEN);
   }
 
   @Override
   public Filter visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not CASE WHEN");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_CASE_WHEN);
   }
 
   @Override
   public Filter visitIfExpression(IfExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not IF");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_IF);
   }
 
   @Override
   public Filter visitNullIfExpression(NullIfExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not NULLIF");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_NULLIF);
   }
 
   @Override
@@ -254,7 +263,10 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       // 1 NOT BETWEEN time AND 0 => TRUE
       checkArgument(
           value <= maxValue,
-          String.format("Predicate [%s] should be simplified in previous step", node));
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_PREDICATE_LEFT_BRACKET_ARG_RIGHT_BRACKET_SHOULD_BE_SIMPLIFIED_IN_PREVIOUS_STEP_9262C154,
+              node));
       return TimeFilterApi.ltEq(value);
     } else if (thirdExpression instanceof SymbolReference) {
       // thirdExpression is TIMESTAMP
@@ -270,7 +282,10 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       // 1 NOT BETWEEN 0 AND time => time < 1
       checkArgument(
           value >= minValue,
-          String.format("Predicate [%s] should be simplified in previous step", node));
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_PREDICATE_LEFT_BRACKET_ARG_RIGHT_BRACKET_SHOULD_BE_SIMPLIFIED_IN_PREVIOUS_STEP_9262C154,
+              node));
       return TimeFilterApi.gtEq(value);
     } else if (firstExpression instanceof Extract) {
       long minValue = getLongValue(secondExpression);
@@ -288,13 +303,16 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
               TimeFilterApi.extractTimeLtEq(maxValue, field, zoneId, currPrecision)));
     } else if (secondExpression instanceof Extract) {
       throw new IllegalStateException(
-          "Should not reach here before GlobalTimePredicateExtractVisitor support Extract push-down in second child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_GLOBALTIMEPREDICATEEXTRACTVISITOR_3ECC819B);
     } else if (thirdExpression instanceof Extract) {
       throw new IllegalStateException(
-          "Should not reach here before GlobalTimePredicateExtractVisitor support Extract push-down in third child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_GLOBALTIMEPREDICATEEXTRACTVISITOR_FB8489E8);
     } else {
       throw new IllegalStateException(
-          "Three operand of between expression should have time column.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THREE_OPERAND_OF_BETWEEN_EXPRESSION_SHOULD_HAVE_TIME_COLUMN_25ED881D);
     }
   }
 

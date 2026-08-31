@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBAirGapSink;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV1Req;
@@ -106,7 +107,7 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
   protected byte[] getTransferSingleFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
-        "The config region air gap connector does not support transferring single file piece bytes.");
+        ManagerMessages.THE_CONFIG_REGION_AIR_GAP_CONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING);
   }
 
   @Override
@@ -118,13 +119,13 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBConfigRegionAirGapConnector can't transfer TabletInsertionEvent.");
+        ManagerMessages.IOTDBCONFIGREGIONAIRGAPCONNECTOR_CAN_T_TRANSFER_TABLETINSERTIONEVENT);
   }
 
   @Override
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBConfigRegionAirGapConnector can't transfer TsFileInsertionEvent.");
+        ManagerMessages.IOTDBCONFIGREGIONAIRGAPCONNECTOR_CAN_T_TRANSFER_TSFILEINSERTIONEVENT);
   }
 
   @Override
@@ -139,7 +140,8 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
         doTransferWrapper(socket, (PipeConfigRegionSnapshotEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
-            "IoTDBConfigRegionAirGapConnector does not support transferring generic event: {}.",
+            ManagerMessages
+                .IOTDBCONFIGREGIONAIRGAPCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
             event);
       }
     } catch (final IOException e) {
@@ -147,8 +149,9 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
 
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer event %s, because %s.",
-              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
+              ManagerMessages.NETWORK_ERROR_WHEN_TRANSFER_EVENT_BECAUSE,
+              ((EnrichedEvent) event).coreReportMessage(),
+              e.getMessage()),
           e);
     }
   }
@@ -256,7 +259,7 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
           pipeConfigRegionSnapshotEvent.toString(),
           true);
     } else {
-      LOGGER.info("Successfully transferred config region snapshot {}.", snapshot);
+      LOGGER.info(ManagerMessages.SUCCESSFULLY_TRANSFERRED_CONFIG_REGION_SNAPSHOT, snapshot);
     }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -44,17 +45,18 @@ public class LongLiteral extends Literal {
       this.value = value;
       this.parsedValue = parse(value);
     } catch (NumberFormatException e) {
-      throw new ParsingException("Invalid numeric literal: " + value);
+      throw new ParsingException(String.format(QueryMessages.INVALID_NUMERIC_LITERAL, value));
     }
   }
 
   public LongLiteral(NodeLocation location, String value) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     try {
       this.value = value;
       this.parsedValue = parse(value);
     } catch (NumberFormatException e) {
-      throw new ParsingException("Invalid numeric literal: " + value, location);
+      throw new ParsingException(
+          String.format(QueryMessages.INVALID_NUMERIC_LITERAL, value), location);
     }
   }
 

@@ -21,6 +21,9 @@ package org.apache.iotdb.db.queryengine.execution.driver;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -64,17 +67,27 @@ public class DataDriver extends Driver {
         } else {
           return true;
         }
+      } catch (MetadataLeaseFencedException e) {
+        LOGGER.info(
+            DataNodeSchemaMessages.METADATA_LEASE_IS_FENCED, driverContext.getDriverTaskID(), e);
+        handleInitFailure(e, blockedFuture);
       } catch (Throwable t) {
         LOGGER.error(
-            "Failed to do the initialization for driver {} ", driverContext.getDriverTaskID(), t);
-        driverContext.failed(t);
-        blockedFuture.setException(t);
-        throwIfUnchecked(t);
-        // should never happen
-        throw new AssertionError(t);
+            DataNodeQueryMessages.FAILED_TO_DO_THE_INITIALIZATION_FOR_DRIVER_ARG,
+            driverContext.getDriverTaskID(),
+            t);
+        handleInitFailure(t, blockedFuture);
       }
     }
     return true;
+  }
+
+  private void handleInitFailure(Throwable t, SettableFuture<?> blockedFuture) {
+    driverContext.failed(t);
+    blockedFuture.setException(t);
+    throwIfUnchecked(t);
+    // should never happen
+    throw new AssertionError(t);
   }
 
   @Override
@@ -103,7 +116,8 @@ public class DataDriver extends Driver {
           // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
           // for some reasons, we may get null QueryDataSource here.
           // And it's safe for us to throw this exception here in such case.
-          throw new IllegalStateException("QueryDataSource should never be null!");
+          throw new IllegalStateException(
+              DataNodeQueryMessages.QUERYDATASOURCE_SHOULD_NEVER_BE_NULL);
         } else if (dataSource == UNFINISHED_QUERY_DATA_SOURCE) {
           // init query data source timeout. Maybe failed to acquire the read lock within the
           // specified time

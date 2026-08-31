@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.tools.validate;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.tools.utils.TsFileValidationScan;
 
 import org.slf4j.Logger;
@@ -228,7 +229,7 @@ public class TsFileValidationTool {
   private static boolean checkIsDirectory(File dir) {
     boolean res = true;
     if (!dir.isDirectory()) {
-      logger.error("{} is not a directory or does not exist, skip it.", dir.getAbsolutePath());
+      logger.error(DataNodeMiscMessages.NOT_DIRECTORY_OR_NOT_EXIST, dir.getAbsolutePath());
       res = false;
     }
     return res;

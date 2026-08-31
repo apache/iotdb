@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -97,7 +98,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           InterruptedException,
           MetadataException,
           PageException,
-          LoadFileException {
+          LoadFileException,
+          DiskSpaceInsufficientException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -132,7 +134,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           InterruptedException,
           MetadataException,
           PageException,
-          LoadFileException {
+          LoadFileException,
+          DiskSpaceInsufficientException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -167,7 +170,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           InterruptedException,
           MetadataException,
           PageException,
-          LoadFileException {
+          LoadFileException,
+          DiskSpaceInsufficientException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -206,7 +210,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           InterruptedException,
           MetadataException,
           PageException,
-          LoadFileException {
+          LoadFileException,
+          DiskSpaceInsufficientException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -319,7 +324,8 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
           IOException,
           PageException,
           InterruptedException,
-          MetadataException {
+          MetadataException,
+          DiskSpaceInsufficientException {
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
 

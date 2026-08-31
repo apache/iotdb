@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -102,11 +103,12 @@ public class FileTimeIndexCacheRecorder {
                   buffer.flip();
                   writer.write(buffer);
                 } catch (IOException e) {
-                  LOGGER.warn("Meet error when record FileTimeIndexCache: {}", e.getMessage());
+                  LOGGER.warn(
+                      StorageEngineMessages.ERROR_RECORD_FILE_TIME_INDEX_CACHE, e.getMessage());
                 }
               });
       if (!result) {
-        LOGGER.warn("Meet error when record FileTimeIndexCache");
+        LOGGER.warn(StorageEngineMessages.ERROR_RECORD_FILE_TIME_INDEX_CACHE_NO_DETAIL);
       }
     }
   }
@@ -155,11 +157,12 @@ public class FileTimeIndexCacheRecorder {
                     }
                   }
                 } catch (IOException e) {
-                  LOGGER.warn("Meet error when compact FileTimeIndexCache: {}", e.getMessage());
+                  LOGGER.warn(
+                      StorageEngineMessages.ERROR_COMPACT_FILE_TIME_INDEX_CACHE, e.getMessage());
                 }
               });
       if (!result) {
-        LOGGER.warn("Meet error when compact FileTimeIndexCache");
+        LOGGER.warn(StorageEngineMessages.ERROR_COMPACT_FILE_TIME_INDEX_CACHE_NO_DETAIL);
       }
     }
   }
@@ -172,15 +175,21 @@ public class FileTimeIndexCacheRecorder {
           try {
             if (!dataRegionSysDir.exists() && !dataRegionSysDir.mkdirs()) {
               LOGGER.debug(
-                  "DataRegionSysDir has existed，filePath:{}", dataRegionSysDir.getAbsolutePath());
+                  StorageEngineMessages.STORAGE_LOG_DATAREGIONSYSDIR_HAS_EXISTED_FILEPATH_53009475,
+                  dataRegionSysDir.getAbsolutePath());
             }
             if (!logFile.createNewFile()) {
-              LOGGER.debug("FileTimeIndex file has existed，filePath:{}", logFile.getAbsolutePath());
+              LOGGER.debug(
+                  StorageEngineMessages.FILE_TIME_INDEX_FILE_ALREADY_EXISTS,
+                  logFile.getAbsolutePath());
             }
             return new FileTimeIndexCacheWriter(logFile, true);
           } catch (IOException e) {
             LOGGER.error(
-                "FileTimeIndex log file create filed，filePath:{}", logFile.getAbsolutePath(), e);
+                StorageEngineMessages
+                    .STORAGE_LOG_FILETIMEINDEX_LOG_FILE_CREATE_FILED_FILEPATH_D675FBD5,
+                logFile.getAbsolutePath(),
+                e);
             throw new RuntimeException(e);
           }
         });
@@ -199,7 +208,7 @@ public class FileTimeIndexCacheRecorder {
         writer.close();
         deleteFileOrDirectory(writer.getLogFile(), true);
       } catch (IOException e) {
-        LOGGER.warn("Meet error when close FileTimeIndexCache: {}", e.getMessage());
+        LOGGER.warn(StorageEngineMessages.ERROR_CLOSE_FILE_TIME_INDEX_CACHE, e.getMessage());
       }
     }
   }

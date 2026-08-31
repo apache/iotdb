@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.customizer.config;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 public abstract class UDFConfigurations {
@@ -31,7 +32,7 @@ public abstract class UDFConfigurations {
 
   public void check() {
     if (outputDataType == null) {
-      throw new RuntimeException("UDF outputDataType is not set.");
+      throw new RuntimeException(UdfApiMessages.UDF_OUTPUT_DATA_TYPE_NOT_SET);
     }
   }
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -91,14 +92,22 @@ public class CommonUtils {
             return Integer.parseInt(StringUtils.trim(value));
           } catch (NumberFormatException e) {
             throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
+                String.format(
+                    DataNodeMiscMessages
+                        .MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0,
+                    value,
+                    dataType));
           }
         case INT64:
           try {
             return Long.parseLong(StringUtils.trim(value));
           } catch (NumberFormatException e) {
             throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
+                String.format(
+                    DataNodeMiscMessages
+                        .MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0,
+                    value,
+                    dataType));
           }
         case TIMESTAMP:
           try {
@@ -110,12 +119,12 @@ public class CommonUtils {
             }
           } catch (Throwable e) {
             throw new NumberFormatException(
-                "data type is not consistent, input "
-                    + value
-                    + ", registered "
-                    + dataType
-                    + " because "
-                    + e.getMessage());
+                String.format(
+                    DataNodeMiscMessages
+                        .MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_BECAUSE_50C4BF31,
+                    value,
+                    dataType,
+                    e.getMessage()));
           }
         case DATE:
           return parseIntFromString(value);
@@ -125,10 +134,14 @@ public class CommonUtils {
             f = Float.parseFloat(value);
           } catch (NumberFormatException e) {
             throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
+                String.format(
+                    DataNodeMiscMessages
+                        .MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0,
+                    value,
+                    dataType));
           }
           if (Float.isInfinite(f)) {
-            throw new NumberFormatException("The input float value is Infinity");
+            throw new NumberFormatException(DataNodeMiscMessages.INPUT_FLOAT_INFINITY);
           }
           return f;
         case DOUBLE:
@@ -137,10 +150,14 @@ public class CommonUtils {
             d = Double.parseDouble(value);
           } catch (NumberFormatException e) {
             throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
+                String.format(
+                    DataNodeMiscMessages
+                        .MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0,
+                    value,
+                    dataType));
           }
           if (Double.isInfinite(d)) {
-            throw new NumberFormatException("The input double value is Infinity");
+            throw new NumberFormatException(DataNodeMiscMessages.INPUT_DOUBLE_INFINITY);
           }
           return d;
         case TEXT:
@@ -167,9 +184,13 @@ public class CommonUtils {
           return new Binary(parseBlobStringToByteArray(value));
         case OBJECT:
           throw new NumberFormatException(
-              "data type is not consistent, input " + value + ", registered " + dataType);
+              String.format(
+                  DataNodeMiscMessages
+                      .MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0,
+                  value,
+                  dataType));
         default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
+          throw new QueryProcessException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
       }
     } catch (NumberFormatException e) {
       throw new QueryProcessException(e.getMessage());
@@ -187,12 +208,12 @@ public class CommonUtils {
       }
     } catch (Throwable e) {
       throw new NumberFormatException(
-          "data type is not consistent, input "
-              + value
-              + ", registered "
-              + TSDataType.DATE
-              + " because "
-              + e.getMessage());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_BECAUSE_50C4BF31,
+              value,
+              TSDataType.DATE,
+              e.getMessage()));
     }
   }
 
@@ -204,7 +225,7 @@ public class CommonUtils {
     if (SqlConstant.BOOLEAN_TRUE_NUM.equals(value) || SqlConstant.BOOLEAN_TRUE.equals(value)) {
       return true;
     }
-    throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+    throw new QueryProcessException(DataNodeMiscMessages.BOOLEAN_PARSE_ERROR);
   }
 
   public static String getContentOfRequest(
@@ -396,7 +417,9 @@ public class CommonUtils {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+            String.format(
+                DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                dataType));
     }
     return valueColumn;
   }

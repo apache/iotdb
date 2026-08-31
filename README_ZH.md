@@ -28,7 +28,7 @@
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8+-blue.svg)
+![](https://img.shields.io/badge/java--language-17+-blue.svg)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Central](https://img.shields.io/maven-central/v/org.apache.iotdb/iotdb-parent.svg)](https://central.sonatype.com/artifact/org.apache.iotdb/iotdb-parent)
@@ -86,7 +86,7 @@ IoTDB的主要特点如下:
 ## 环境准备
 
 要使用IoTDB，您需要:
-1. Java >= 1.8 (目前 1.8 到 25 已经被验证可用。请确保环变量境路径已正确设置)。
+1. Java >= 17 (目前 17 到 25 已经被验证可用。请确保环变量境路径已正确设置)。
 2. Maven >= 3.6 (如果希望从源代码编译和安装IoTDB)。
 3. 设置 max open files 为 65535，以避免"too many open files"错误。
 4. （可选） 将 somaxconn 设置为 65535 以避免系统在高负载时出现 "connection reset" 错误。 
@@ -160,6 +160,19 @@ git checkout rel/x.x
 
 编译完成后, IoTDB 二进制包将生成在: "distribution/target".
 
+### 源码编译 IoTDB Edge
+
+上述发行版构建还会生成 `apache-iotdb-<version>-edge-bin.zip`。IoTDB Edge 在同一个 JVM 中运行 ConfigNode 和 DataNode，适用于资源受限的单机部署。它是新增制品，不会替换任何已有发行包。
+
+解压后，可在 `conf/iotdb-system.properties` 中调整配置，并使用以下脚本启停 Edge 进程：
+
+```bash
+sbin/start-edge.sh
+sbin/stop-edge.sh
+```
+
+Windows 环境请使用 `sbin\windows\start-edge.bat` 和 `sbin\windows\stop-edge.bat`。Edge 包会保留与合并进程兼容的工具脚本。
+
 ### 只编译 cli
 
 在 iotdb/iotdb-client 目录下执行:
@@ -169,6 +182,16 @@ git checkout rel/x.x
 ```
 
 编译完成后, IoTDB cli 将生成在 "cli/target".
+
+### 编译中文日志和错误信息版本
+
+IoTDB 支持编译时国际化（i18n），可将日志和错误信息切换为中文。默认编译使用英文，如需中文版本，请激活 `with-zh-locale` Maven profile：
+
+```
+> mvn clean package -pl distribution -am -DskipTests -P with-zh-locale
+```
+
+该机制通过在编译时将源码目录从 `src/main/i18n/en`（默认）替换为 `src/main/i18n/zh` 实现，各模块在对应目录下维护翻译后的 Java 消息常量类。
 
 ### 编译其他模块
 

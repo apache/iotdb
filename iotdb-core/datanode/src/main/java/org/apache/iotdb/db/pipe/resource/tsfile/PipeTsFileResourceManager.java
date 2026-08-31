@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -38,6 +40,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTsFileResourceManager {
@@ -53,7 +56,15 @@ public class PipeTsFileResourceManager {
   // PipeName -> TsFilePath -> PipeTsFileResource
   private final Map<String, Map<String, PipeTsFileResource>>
       hardlinkOrCopiedFileToPipeTsFileResourceMap = new ConcurrentHashMap<>();
+  private final Map<String, String> pipeNameToPipeTsFileDirPathMap = new ConcurrentHashMap<>();
+  private final Set<String> pipeTsFileResourcePipeNameSetUnderDeletion =
+      ConcurrentHashMap.newKeySet();
   private final PipeTsFileResourceSegmentLock segmentLock = new PipeTsFileResourceSegmentLock();
+
+  public static String getPipeTsFileResourcePipeName(
+      final @Nullable String pipeName, final long creationTime) {
+    return Objects.isNull(pipeName) ? null : pipeName + "_" + creationTime;
+  }
 
   public File increaseFileReference(
       final File file, final boolean isTsFile, final @Nullable String pipeName) throws IOException {
@@ -111,26 +122,39 @@ public class PipeTsFileResourceManager {
 
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
-      resultFile =
-          isTsFile
-              ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
-              : FileUtils.copyFile(source, hardlinkOrCopiedFile);
-
-      // If the file is not a hardlink or copied file, and there is no related hardlink or copied
-      // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
-      // the hardlink or copied file, and return the hardlink or copied file.
-      if (Objects.nonNull(pipeName)) {
-        hardlinkOrCopiedFileToPipeTsFileResourceMap
-            .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
-            .put(resultFile.getPath(), new PipeTsFileResource(resultFile));
+      final PipeTsFileResource existingResource =
+          getResourceMap(pipeName).get(hardlinkOrCopiedFile.getPath());
+      if (existingResource != null) {
+        existingResource.increaseReferenceCount();
+        resultFile = existingResource.getFile();
       } else {
-        hardlinkOrCopiedFileToTsFilePublicResourceMap.put(
-            resultFile.getPath(), new PipeTsFilePublicResource(resultFile));
+        resultFile =
+            isTsFile
+                ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
+                : FileUtils.copyFile(source, hardlinkOrCopiedFile);
+
+        // Create the hardlink or copy and its reference-counted resource only when none exists.
+        if (Objects.nonNull(pipeName)) {
+          pipeNameToPipeTsFileDirPathMap.putIfAbsent(
+              pipeName, hardlinkOrCopiedFile.getParentFile().getPath());
+          hardlinkOrCopiedFileToPipeTsFileResourceMap
+              .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
+              .put(resultFile.getPath(), new PipeTsFileResource(resultFile));
+        } else {
+          hardlinkOrCopiedFileToTsFilePublicResourceMap.put(
+              resultFile.getPath(), new PipeTsFilePublicResource(resultFile));
+        }
       }
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
-    increasePublicReference(resultFile, pipeName, isTsFile);
+    try {
+      increasePublicReference(resultFile, pipeName, isTsFile);
+    } catch (final IOException e) {
+      // The private reference must not outlive a failed public reference increase.
+      decreaseFileReference(resultFile, pipeName, false);
+      throw e;
+    }
     return resultFile;
   }
 
@@ -169,8 +193,8 @@ public class PipeTsFileResourceManager {
     } catch (final Exception e) {
       throw new IOException(
           String.format(
-              "failed to get hardlink or copied file in pipe dir "
-                  + "for file %s, it is not a tsfile, mod file or resource file",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_GET_HARDLINK_OR_COPIED_FILE_IN_PIPE_DIR_FOR_FILE_F009D86E,
               file.getPath()),
           e);
     }
@@ -215,11 +239,19 @@ public class PipeTsFileResourceManager {
    */
   public void decreaseFileReference(
       final File hardlinkOrCopiedFile, final @Nullable String pipeName) {
+    decreaseFileReference(hardlinkOrCopiedFile, pipeName, true);
+  }
+
+  private void decreaseFileReference(
+      final File hardlinkOrCopiedFile,
+      final @Nullable String pipeName,
+      final boolean decreasePublicReference) {
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
       final String filePath = hardlinkOrCopiedFile.getPath();
       final PipeTsFileResource resource = getResourceMap(pipeName).get(filePath);
-      if (resource != null && resource.decreaseReferenceCount()) {
+      if (resource != null
+          && resource.decreaseReferenceCount(shouldDeleteFileWhenNoReference(pipeName))) {
         getResourceMap(pipeName).remove(filePath);
       }
     } finally {
@@ -228,7 +260,9 @@ public class PipeTsFileResourceManager {
 
     // Decrease the assigner's file to clear hard-link and memory cache
     // Note that it does not exist for historical files
-    decreasePublicReferenceIfExists(hardlinkOrCopiedFile, pipeName);
+    if (decreasePublicReference) {
+      decreasePublicReferenceIfExists(hardlinkOrCopiedFile, pipeName);
+    }
   }
 
   private void decreasePublicReferenceIfExists(final File file, final @Nullable String pipeName) {
@@ -238,6 +272,35 @@ public class PipeTsFileResourceManager {
     // Increase the assigner's file to avoid hard-link or memory cache cleaning
     // Note that it does not exist for historical files
     decreaseFileReference(new File(getCommonFilePath(file)), null);
+  }
+
+  private boolean shouldDeleteFileWhenNoReference(
+      final @Nullable String pipeTsFileResourcePipeName) {
+    return Objects.isNull(pipeTsFileResourcePipeName)
+        || !pipeTsFileResourcePipeNameSetUnderDeletion.contains(pipeTsFileResourcePipeName);
+  }
+
+  public void markPipeTsFileDirUnderDeletion(final @Nonnull String pipeTsFileResourcePipeName) {
+    pipeTsFileResourcePipeNameSetUnderDeletion.add(pipeTsFileResourcePipeName);
+  }
+
+  public void unmarkPipeTsFileDirUnderDeletion(final @Nonnull String pipeTsFileResourcePipeName) {
+    pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
+  }
+
+  public void cleanPipeTsFileDir(final @Nonnull String pipeTsFileResourcePipeName) {
+    final String pipeTsFileDirPath =
+        pipeNameToPipeTsFileDirPathMap.remove(pipeTsFileResourcePipeName);
+    hardlinkOrCopiedFileToPipeTsFileResourceMap.remove(pipeTsFileResourcePipeName);
+
+    if (Objects.isNull(pipeTsFileDirPath)) {
+      pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
+      return;
+    }
+
+    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.submitStalePipeDirForPeriodicalCleanup(
+        new File(pipeTsFileDirPath));
+    pipeTsFileResourcePipeNameSetUnderDeletion.remove(pipeTsFileResourcePipeName);
   }
 
   // Warning: Shall not be called by the assigner
@@ -339,6 +402,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
+  /** Returns the shared public resource map when {@code pipeName} is null. */
   public Map<String, ? extends PipeTsFileResource> getResourceMap(final @Nullable String pipeName) {
     return Objects.nonNull(pipeName)
         ? hardlinkOrCopiedFileToPipeTsFileResourceMap.computeIfAbsent(
@@ -386,7 +450,7 @@ public class PipeTsFileResourceManager {
               try {
                 return resource.getFileSize();
               } catch (Exception e) {
-                LOGGER.warn("failed to get file size of linked TsFile {}: ", resource, e);
+                LOGGER.warn(DataNodePipeMessages.FAILED_TO_GET_FILE_SIZE_OF_LINKED, resource, e);
                 return 0;
               }
             })

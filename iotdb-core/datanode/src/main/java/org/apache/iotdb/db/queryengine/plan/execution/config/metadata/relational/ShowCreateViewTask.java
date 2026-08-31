@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -61,9 +62,9 @@ public class ShowCreateViewTask extends AbstractTableTask {
       final TsTable table, final SettableFuture<ConfigTaskResult> future) {
     if (!TreeViewSchema.isTreeViewTable(table)) {
       throw new SemanticException(
-          "The table "
+          DataNodeQueryMessages.THE_TABLE
               + table.getTableName()
-              + " is a base table, does not support show create view.");
+              + DataNodeQueryMessages.IS_A_BASE_TABLE_DOES_NOT_SUPPORT_SHOW_CREATE_VIEW);
     }
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showCreateViewColumnHeaders.stream()
@@ -120,7 +121,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
         case ATTRIBUTE:
         default:
           throw new UnsupportedOperationException(
-              "Unsupported column type: " + schema.getColumnCategory());
+              DataNodeQueryMessages.UNSUPPORTED_COLUMN_TYPE + schema.getColumnCategory());
       }
       if (Objects.nonNull(schema.getProps().get(TsTable.COMMENT_KEY))) {
         builder.append(" COMMENT ").append(getString(schema.getProps().get(TsTable.COMMENT_KEY)));

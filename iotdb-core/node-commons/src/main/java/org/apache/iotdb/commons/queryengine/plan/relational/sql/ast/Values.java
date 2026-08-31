@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -35,12 +37,14 @@ public final class Values extends QueryBody {
 
   public Values(List<Expression> rows) {
     super(null);
-    this.rows = ImmutableList.copyOf(requireNonNull(rows, "rows is null"));
+    this.rows =
+        ImmutableList.copyOf(requireNonNull(rows, QueryMessages.EXCEPTION_ROWS_IS_NULL_B8BF74DE));
   }
 
   public Values(NodeLocation location, List<Expression> rows) {
-    super(requireNonNull(location, "location is null"));
-    this.rows = ImmutableList.copyOf(requireNonNull(rows, "rows is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.rows =
+        ImmutableList.copyOf(requireNonNull(rows, QueryMessages.EXCEPTION_ROWS_IS_NULL_B8BF74DE));
   }
 
   public List<Expression> getRows() {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -37,9 +39,9 @@ public class SubsetDefinition extends Node {
 
   public SubsetDefinition(NodeLocation location, Identifier name, List<Identifier> identifiers) {
     super(location);
-    this.name = requireNonNull(name, "name is null");
-    requireNonNull(identifiers, "identifiers is null");
-    checkArgument(!identifiers.isEmpty(), "identifiers is empty");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    requireNonNull(identifiers, QueryMessages.EXCEPTION_IDENTIFIERS_IS_NULL_72CDC3BE);
+    checkArgument(!identifiers.isEmpty(), QueryMessages.EXCEPTION_IDENTIFIERS_IS_EMPTY_410ED65C);
     this.identifiers = identifiers;
   }
 

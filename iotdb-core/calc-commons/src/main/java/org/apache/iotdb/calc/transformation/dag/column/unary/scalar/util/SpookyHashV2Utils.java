@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar.util;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -238,7 +240,7 @@ public class SpookyHashV2Utils {
         h3 += MAGIC_CONSTANT;
         break;
       default:
-        throw new AssertionError("Unexpected value for remainder: " + remainder);
+        throw new AssertionError(CalcMessages.UNEXPECTED_VALUE_FOR_REMAINDER + remainder);
     }
 
     // end
@@ -412,7 +414,7 @@ public class SpookyHashV2Utils {
       case 0:
         break;
       default:
-        throw new AssertionError("Unexpected value for sequences: " + sequences);
+        throw new AssertionError(CalcMessages.UNEXPECTED_VALUE_FOR_SEQUENCES + sequences);
     }
 
     current += SIZE_OF_LONG * sequences;
@@ -437,7 +439,8 @@ public class SpookyHashV2Utils {
       case 0:
         break;
       default:
-        throw new AssertionError("Unexpected size for last sequence: " + (limit - current));
+        throw new AssertionError(
+            CalcMessages.UNEXPECTED_SIZE_FOR_LAST_SEQUENCE + (limit - current));
     }
 
     switch (sequences) {
@@ -478,7 +481,7 @@ public class SpookyHashV2Utils {
         h0 += last;
         break;
       default:
-        throw new AssertionError("Unexpected value for sequences: " + sequences);
+        throw new AssertionError(CalcMessages.UNEXPECTED_VALUE_FOR_SEQUENCES + sequences);
     }
 
     // Place "remaining" as the value of the last byte of the block

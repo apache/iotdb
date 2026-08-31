@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -112,13 +113,14 @@ public class ReadOnlyMemChunk {
         floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
       } catch (NumberFormatException e) {
         logger.warn(
-            "The format of MAX_POINT_NUMBER {}  is not correct."
-                + " Using default float precision.",
+            StorageEngineMessages
+                .STORAGE_LOG_THE_FORMAT_OF_MAX_POINT_NUMBER_IS_NOT_CORRECT_USING_DEFAULT_1B78AF69,
             props.get(Encoder.MAX_POINT_NUMBER));
       }
       if (floatPrecision < 0) {
         logger.warn(
-            "The MAX_POINT_NUMBER shouldn't be less than 0." + " Using default float precision {}.",
+            StorageEngineMessages
+                .STORAGE_LOG_THE_MAX_POINT_NUMBER_SHOULDN_T_BE_LESS_THAN_0_USING_DEFAULT_12745217,
             TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
         floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       }
@@ -128,7 +130,7 @@ public class ReadOnlyMemChunk {
     this.deletionList = deletionList;
     this.tvListQueryMap = tvListQueryMap;
     this.pageStatisticsList = new ArrayList<>();
-    this.context.addTVListToSet(tvListQueryMap);
+    this.context.addTVListToSet(tvListQueryMap.keySet());
   }
 
   public void sortTvLists() {
@@ -137,11 +139,11 @@ public class ReadOnlyMemChunk {
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
         entry.setValue(tvList.sort());
-        long tvListRamSize = tvList.calculateRamSize().getRamSize();
         tvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long tvListRamSize = tvList.calculateRamSize().getRamSize();
             long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
@@ -216,7 +218,9 @@ public class ReadOnlyMemChunk {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
+                String.format(
+                    StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    dataType));
         }
       }
     }
@@ -294,11 +298,11 @@ public class ReadOnlyMemChunk {
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
         entry.setValue(tvList.sort());
-        long tvListRamSize = tvList.calculateRamSize().getRamSize();
         tvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long tvListRamSize = tvList.calculateRamSize().getRamSize();
             long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);

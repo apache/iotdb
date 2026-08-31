@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.process.join.merge.comparator;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
@@ -88,7 +90,7 @@ public class JoinKeyComparatorFactory {
             : DescBinaryTypeJoinKeyComparator.getInstance();
       default:
         // other types are not supported.
-        throw new UnsupportedOperationException("Unsupported data type: " + type);
+        throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_DATA_TYPE + type);
     }
   }
 }

@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -82,11 +83,17 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
       result = grabPlanNode(indexedRequest);
     } else if (request instanceof BatchIndexedConsensusRequest) {
       BatchIndexedConsensusRequest batchRequest = (BatchIndexedConsensusRequest) request;
+      final IndexedConsensusRequest lastIndexedRequest =
+          batchRequest.getRequests().isEmpty()
+              ? null
+              : batchRequest.getRequests().get(batchRequest.getRequests().size() - 1);
       DeserializedBatchIndexedConsensusRequest deserializedRequest =
           new DeserializedBatchIndexedConsensusRequest(
               batchRequest.getStartSyncIndex(),
               batchRequest.getEndSyncIndex(),
-              batchRequest.getRequests().size());
+              batchRequest.getRequests().size(),
+              batchRequest.getSourcePeerId(),
+              lastIndexedRequest != null ? lastIndexedRequest.getPhysicalTime() : 0L);
       for (IndexedConsensusRequest indexedRequest : batchRequest.getRequests()) {
         final PlanNode planNode = grabPlanNode(indexedRequest);
         if (planNode instanceof ComparableConsensusRequest) {
@@ -113,8 +120,9 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
     } else if (request instanceof PlanNode) {
       node = (PlanNode) request;
     } else {
-      LOGGER.error("Unexpected IConsensusRequest : {}", request);
-      throw new IllegalArgumentException("Unexpected IConsensusRequest!");
+      LOGGER.error(DataNodeMiscMessages.UNEXPECTED_CONSENSUS_REQUEST, request);
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages.UNEXPECTED_CONSENSUS_REQUEST_EXCEPTION);
     }
     return node;
   }

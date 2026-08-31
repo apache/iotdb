@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.trigger.api.enums;
 
+import org.apache.iotdb.trigger.api.i18n.TriggerApiMessages;
+
 public enum TriggerType {
   STATEFUL((byte) 0, "STATEFUL"),
   STATELESS((byte) 1, "STATELESS");
@@ -47,7 +49,8 @@ public enum TriggerType {
       case 1:
         return STATELESS;
       default:
-        throw new IllegalArgumentException(String.format("No such trigger type (id: %d)", id));
+        throw new IllegalArgumentException(
+            String.format(TriggerApiMessages.NO_SUCH_TRIGGER_TYPE, id));
     }
   }
 }

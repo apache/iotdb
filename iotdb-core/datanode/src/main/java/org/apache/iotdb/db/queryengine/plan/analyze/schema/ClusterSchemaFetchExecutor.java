@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -58,6 +60,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 class ClusterSchemaFetchExecutor {
 
@@ -263,7 +267,9 @@ class ClusterSchemaFetchExecutor {
       ExecutionResult executionResult = executionStatement(queryId, fetchStatement, context);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new QuerySchemaFetchFailedException(
-            String.format("Fetch Schema failed, because %s", executionResult.status.getMessage()),
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_FETCH_SCHEMA_FAILED_BECAUSE_S_BE584DCE,
+                executionResult.status.getMessage()),
             executionResult.status.getCode());
       }
       IQueryExecution queryExecution = coordinator.getQueryExecution(queryId);
@@ -283,7 +289,10 @@ class ClusterSchemaFetchExecutor {
             } catch (IoTDBException e) {
               t = e;
               throw new QuerySchemaFetchFailedException(
-                  String.format("Fetch Schema failed: %s", e.getMessage()), e.getErrorCode());
+                  String.format(
+                      DataNodeQueryMessages.QUERY_EXCEPTION_FETCH_SCHEMA_FAILED_S_1C7B0050,
+                      e.getMessage()),
+                  e.getErrorCode());
             }
             if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
               break;
@@ -294,8 +303,10 @@ class ClusterSchemaFetchExecutor {
             }
           }
         } else {
-          throw new RuntimeException(
-              String.format("Fetch Schema failed, because queryExecution is null for %s", queryId));
+          throw new IoTDBRuntimeException(
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXECUTION_MISSING, executionResult.queryId.getId()),
+              TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         }
 
         result.setDatabases(databaseSet);
@@ -327,6 +338,8 @@ class ClusterSchemaFetchExecutor {
         // for data from old version
         ClusterSchemaTree deserializedSchemaTree = ClusterSchemaTree.deserialize(inputStream);
         if (context != null) {
+          context.recordSchemaFetchDeserializedColumns(
+              deserializedSchemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left.size());
           context.reserveMemoryForSchemaTree(deserializedSchemaTree.ramBytesUsed());
         }
         resultSchemaTree.mergeSchemaTree(deserializedSchemaTree);
@@ -337,14 +350,20 @@ class ClusterSchemaFetchExecutor {
             context.reserveMemoryForSchemaTree(memCost);
           }
         }
+        long measurementCountBeforeDeserialization = deserializer.getMeasurementCount();
         deserializer.deserializeFromBatch(inputStream);
+        if (context != null) {
+          context.recordSchemaFetchDeserializedColumns(
+              deserializer.getMeasurementCount() - measurementCountBeforeDeserialization);
+        }
         if (type == 3) {
           // 'type == 3' indicates this batch is finished
           resultSchemaTree.mergeSchemaTree(deserializer.finish());
         }
       } else {
         throw new RuntimeException(
-            new MetadataException("Failed to fetch schema because of unrecognized data"));
+            new MetadataException(
+                DataNodeQueryMessages.FAILED_TO_FETCH_SCHEMA_BECAUSE_OF_UNRECOGNIZED_DATA));
       }
     } catch (MemoryNotEnoughException e) {
       throw e;

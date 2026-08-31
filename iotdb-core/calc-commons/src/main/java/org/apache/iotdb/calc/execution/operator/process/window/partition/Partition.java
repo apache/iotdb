@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process.window.partition;
 
 import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -217,7 +218,7 @@ public class Partition {
     if (segmentIndex != segments.size()) {
       return new PartitionIndex(segmentIndex, rowIndex);
     } else {
-      throw new IndexOutOfBoundsException("Index out of Partition's bounds!");
+      throw new IndexOutOfBoundsException(CalcMessages.INDEX_OUT_OF_PARTITION_BOUNDS);
     }
   }
 

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -30,6 +32,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
@@ -37,8 +40,6 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
@@ -248,13 +249,15 @@ public class DriverScheduler implements IDriverScheduler, IService {
           .getThrottleQuotaLimit()
           .checkCpu(sessionInfo.getUserName(), usedCpu.get())) {
         throw new CpuNotEnoughException(
-            "There is not enough cpu to execute current fragment instance");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_CPU_TO_EXECUTE_CURRENT_FRAGMENT_INSTANCE_E7719FB8);
       }
       if (!DataNodeThrottleQuotaManager.getInstance()
           .getThrottleQuotaLimit()
           .checkMemory(sessionInfo.getUserName(), estimatedMemory.get())) {
         throw new MemoryNotEnoughException(
-            "There is no enough memory to execute current fragment instance");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THERE_IS_NO_ENOUGH_MEMORY_TO_EXECUTE_CURRENT_FRAGMENT_INSTANCE_CB632843);
       }
     }
 
@@ -346,16 +349,18 @@ public class DriverScheduler implements IDriverScheduler, IService {
             return;
           case READY:
             task.setStatus(DriverTaskStatus.ABORTED);
-            readyQueue.remove(task.getDriverTaskId());
+            if (readyQueue.remove(task.getDriverTaskId()) == null) {
+              readyQueue.decreaseReservedSize(task);
+            }
             break;
           case BLOCKED:
             task.setStatus(DriverTaskStatus.ABORTED);
             blockedTasks.remove(task);
-            readyQueue.decreaseReservedSize();
+            readyQueue.decreaseReservedSize(task);
             break;
           case RUNNING:
             task.setStatus(DriverTaskStatus.ABORTED);
-            readyQueue.decreaseReservedSize();
+            readyQueue.decreaseReservedSize(task);
             break;
           case FINISHED:
             break;
@@ -389,7 +394,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           try {
             task.getDriver().failed(task.getAbortCause().get());
           } catch (Exception e) {
-            logger.error("Clear DriverTask failed", e);
+            logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
           }
         }
         if (task.getStatus() == DriverTaskStatus.ABORTED) {
@@ -400,7 +405,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
                     task.getDriverTaskId().getFragmentId().getId(),
                     task.getDriverTaskId().getFragmentInstanceId().getInstanceId()));
           } catch (Exception e) {
-            logger.error("Clear DriverTask failed", e);
+            logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
           }
         }
       } finally {
@@ -419,6 +424,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   public long getReadyQueueTaskCount() {
     return readyQueue.size();
+  }
+
+  public long getReadyQueueReservedTaskCount() {
+    return readyQueue.getReservedSize();
   }
 
   public long getBlockQueueTaskCount() {
@@ -496,6 +505,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       task.lock();
       try {
         if (task.getStatus() != DriverTaskStatus.READY) {
+          readyQueue.decreaseReservedSize(task);
           return false;
         }
 
@@ -552,7 +562,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.FINISHED);
-        readyQueue.decreaseReservedSize();
+        readyQueue.decreaseReservedSize(task);
       } finally {
         task.unlock();
       }
@@ -580,7 +590,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
             return;
           }
           logger.info(
-              "The task {} is aborted. All other tasks in the same query will be cancelled",
+              DataNodeQueryMessages
+                  .THE_TASK_ARG_IS_ABORTED_ALL_OTHER_TASKS_IN_THE_SAME_QUERY_WILL_BE_CANCELLED,
               task.getDriverTaskId());
         } finally {
           task.unlock();

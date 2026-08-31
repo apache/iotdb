@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.pipe.api.collector.TabletCollector;
 
 import org.apache.tsfile.write.record.Tablet;
@@ -33,6 +32,12 @@ public class PipeTabletCollector extends PipeRawTabletEventConverter implements 
   }
 
   public PipeTabletCollector(
+      PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, boolean isAligned) {
+    this(pipeTaskMeta, sourceEvent);
+    this.isAligned = isAligned;
+  }
+
+  public PipeTabletCollector(
       PipeTaskMeta pipeTaskMeta,
       EnrichedEvent sourceEvent,
       String sourceEventDataBase,
@@ -40,16 +45,30 @@ public class PipeTabletCollector extends PipeRawTabletEventConverter implements 
     super(pipeTaskMeta, sourceEvent, sourceEventDataBase, isTableModel);
   }
 
+  public PipeTabletCollector(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel,
+      String rawTableModelDataBaseName,
+      String rawTreeModelDataBaseName) {
+    super(
+        pipeTaskMeta,
+        sourceEvent,
+        sourceEventDataBase,
+        isTableModel,
+        rawTableModelDataBaseName,
+        rawTreeModelDataBaseName);
+  }
+
   @Override
   public void collectTablet(final Tablet tablet) {
-    final PipeInsertionEvent pipeInsertionEvent =
-        sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
     tabletInsertionEventList.add(
         new PipeRawTabletInsertionEvent(
             isTableModel,
             sourceEventDataBaseName,
-            pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTableModelDataBase(),
-            pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTreeModelDataBase(),
+            rawTableModelDataBaseName,
+            rawTreeModelDataBaseName,
             tablet,
             isAligned,
             sourceEvent == null ? null : sourceEvent.getPipeName(),

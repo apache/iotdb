@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -461,7 +462,8 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
         break;
       default:
         throw new UDFParameterNotValidException(
-            "Illegal aggregation method. Aggregation type should be avg, min, max, sum, extreme, variance.");
+            CommonMessages
+                .EXCEPTION_ILLEGAL_AGGREGATION_METHOD_AGGREGATION_TYPE_SHOULD_AVG_MIN_MAX_SUM_2D7BEC96);
     }
   }
 

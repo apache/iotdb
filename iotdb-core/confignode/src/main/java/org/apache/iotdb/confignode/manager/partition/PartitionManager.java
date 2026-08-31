@@ -32,6 +32,8 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -71,6 +73,8 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
@@ -89,6 +93,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -107,6 +112,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -129,10 +135,6 @@ public class PartitionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final RegionGroupExtensionPolicy SCHEMA_REGION_GROUP_EXTENSION_POLICY =
-      CONF.getSchemaRegionGroupExtensionPolicy();
-  private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
-      CONF.getDataRegionGroupExtensionPolicy();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
@@ -141,10 +143,10 @@ public class PartitionManager {
   private SeriesPartitionExecutor executor;
 
   private static final String CONSENSUS_READ_ERROR =
-      "Failed in the read API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   public static final String CONSENSUS_WRITE_ERROR =
-      "Failed in the write API executing the consensus layer due to: ";
+      ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
@@ -230,7 +232,8 @@ public class PartitionManager {
             new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                 .setMessage(
                     String.format(
-                        "Create SchemaPartition failed because the database: %s is not exists",
+                        ManagerMessages
+                            .MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_D8AE1679,
                         database)),
             false,
             null);
@@ -265,7 +268,8 @@ public class PartitionManager {
               new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                   .setMessage(
                       String.format(
-                          "Create SchemaPartition failed because the database: %s does not exist",
+                          ManagerMessages
+                              .MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_2617832C,
                           database)),
               false,
               null);
@@ -306,7 +310,12 @@ public class PartitionManager {
           return resp;
         }
 
-        LOGGER.error("Create SchemaPartition failed because: ", e);
+        if (LoggerPeriodicalLogReducer.shouldLog(
+            ManagerMessages.CREATE_SCHEMAPARTITION_FAILED_BECAUSE
+                + e.getClass().getName()
+                + String.valueOf(e.getMessage()))) {
+          LOGGER.error(ManagerMessages.CREATE_SCHEMAPARTITION_FAILED_BECAUSE, e);
+        }
         resp.setStatus(
             new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
                 .setMessage(e.getMessage()));
@@ -346,8 +355,11 @@ public class PartitionManager {
 
       final String errMsg =
           String.format(
-              "Lacked %d/%d SchemaPartition allocation result when get or create schema partitions for databases: %s",
-              unassignedSlotNum.get(), totalSlotNum.get(), errDatabases);
+              ManagerMessages
+                  .LACKED_SCHEMAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_SCHEMA_PARTITIONS_FOR_DATABASES,
+              unassignedSlotNum.get(),
+              totalSlotNum.get(),
+              errDatabases);
       LOGGER.error(errMsg);
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
@@ -375,7 +387,8 @@ public class PartitionManager {
             new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                 .setMessage(
                     String.format(
-                        "Create DataPartition failed because the database: %s is not exists",
+                        ManagerMessages
+                            .MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_F223D5C2,
                         database)),
             false,
             null);
@@ -410,7 +423,8 @@ public class PartitionManager {
               new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
                   .setMessage(
                       String.format(
-                          "Create DataPartition failed because the database: %s does not exist",
+                          ManagerMessages
+                              .MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_D7A8C1FC,
                           database)),
               false,
               null);
@@ -451,7 +465,7 @@ public class PartitionManager {
           return resp;
         }
 
-        LOGGER.error("Create DataPartition failed because: ", e);
+        LOGGER.error(ManagerMessages.CREATE_DATAPARTITION_FAILED_BECAUSE, e);
         if (e instanceof DatabaseNotExistsException) {
           resp.setStatus(
               new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
@@ -508,8 +522,11 @@ public class PartitionManager {
 
       String errMsg =
           String.format(
-              "Lacked %d/%d DataPartition allocation result when get or create data partitions for databases: %s",
-              unassignedSlotNum.get(), totalSlotNum.get(), errDatabases);
+              ManagerMessages
+                  .LACKED_DATAPARTITION_ALLOCATION_RESULT_WHEN_GET_OR_CREATE_DATA_PARTITIONS_FOR_DATABASES,
+              unassignedSlotNum.get(),
+              totalSlotNum.get(),
+              errDatabases);
       LOGGER.error(errMsg);
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
@@ -526,7 +543,7 @@ public class PartitionManager {
         || !dataPartitionTableIntegrityCheckProcedureRunning.compareAndSet(false, true)) {
       return RpcUtils.getStatus(
           TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-          "DataPartitionTableIntegrityCheckProcedure is already submitted.");
+          ManagerMessages.DATAPARTITIONTABLEINTEGRITYCHECKPROCEDURE_IS_ALREADY_SUBMITTED);
     }
 
     synchronized (this) {
@@ -541,6 +558,21 @@ public class PartitionManager {
     dataPartitionTableIntegrityCheckProcedureRunning.set(false);
   }
 
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    return configManager
+        .getProcedureManager()
+        .getUnfinishedDataPartitionTableIntegrityCheckProcedure()
+        .map(DataPartitionTableIntegrityCheckProcedure::getProgress)
+        .orElseGet(
+            () ->
+                new TShowRepairDataPartitionTableProgressResp(
+                        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
+                        RepairDataPartitionTableProgressState.IDLE.name(),
+                        0.0)
+                    .setMessage(
+                        ManagerMessages.NO_RUNNING_DATAPARTITIONTABLE_INTEGRITY_CHECK_PROCEDURE));
+  }
+
   private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {
     TSStatus status = getConsensusManager().confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -552,7 +584,8 @@ public class PartitionManager {
       return getConsensusManager().write(plan);
     } catch (ConsensusException e) {
       // The allocation might fail due to consensus error
-      LOGGER.error("Write partition allocation result failed because: {}", e.getMessage());
+      LOGGER.error(
+          ManagerMessages.WRITE_PARTITION_ALLOCATION_RESULT_FAILED_BECAUSE, e.getMessage());
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -579,7 +612,7 @@ public class PartitionManager {
 
     try {
       if (TConsensusGroupType.SchemaRegion.equals(consensusGroupType)) {
-        switch (SCHEMA_REGION_GROUP_EXTENSION_POLICY) {
+        switch (CONF.getSchemaRegionGroupExtensionPolicy()) {
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
                 unassignedPartitionSlotsCountMap, consensusGroupType);
@@ -589,7 +622,7 @@ public class PartitionManager {
                 unassignedPartitionSlotsCountMap, consensusGroupType);
         }
       } else {
-        switch (DATA_REGION_GROUP_EXTENSION_POLICY) {
+        switch (CONF.getDataRegionGroupExtensionPolicy()) {
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
                 unassignedPartitionSlotsCountMap, consensusGroupType);
@@ -600,11 +633,11 @@ public class PartitionManager {
         }
       }
     } catch (NotEnoughDataNodeException e) {
-      LOGGER.error("Extend region group failed", e);
+      LOGGER.error(ManagerMessages.EXTEND_REGION_GROUP_FAILED, e);
       result.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       result.setMessage(e.getMessage());
     } catch (DatabaseNotExistsException e) {
-      LOGGER.error("Extend region group failed", e);
+      LOGGER.error(ManagerMessages.EXTEND_REGION_GROUP_FAILED, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       result.setMessage(e.getMessage());
     }
@@ -622,14 +655,14 @@ public class PartitionManager {
 
     for (final Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
       final String database = entry.getKey();
-      final int minRegionGroupNum =
-          getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
+      final int maxRegionGroupNum =
+          getClusterSchemaManager().getMaxRegionGroupNum(database, consensusGroupType);
       final int allocatedRegionGroupCount =
           partitionInfo.getRegionGroupCount(database, consensusGroupType);
 
-      // Extend RegionGroups until allocatedRegionGroupCount == minRegionGroupNum
-      if (allocatedRegionGroupCount < minRegionGroupNum) {
-        allotmentMap.put(database, minRegionGroupNum - allocatedRegionGroupCount);
+      // Extend RegionGroups until allocatedRegionGroupCount == maxRegionGroupNum
+      if (allocatedRegionGroupCount < maxRegionGroupNum) {
+        allotmentMap.put(database, maxRegionGroupNum - allocatedRegionGroupCount);
       }
     }
 
@@ -711,7 +744,7 @@ public class PartitionManager {
     if (!allotmentMap.isEmpty()) {
       final CreateRegionGroupsPlan createRegionGroupsPlan =
           getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
-      LOGGER.info("[CreateRegionGroups] Starting to create the following RegionGroups:");
+      LOGGER.info(ManagerMessages.CREATEREGIONGROUPS_STARTING_TO_CREATE_THE_FOLLOWING_REGIONGROUPS);
       createRegionGroupsPlan.planLog(LOGGER);
       return getProcedureManager().createRegionGroups(consensusGroupType, createRegionGroupsPlan);
     } else {
@@ -991,6 +1024,24 @@ public class PartitionManager {
     }
 
     if (result.isEmpty()) {
+      // Diagnostic for the intermittent "no available RegionGroup" CI failures: dump every
+      // RegionGroup visible in PartitionInfo for this Database together with its LoadCache status.
+      // This pinpoints whether PartitionInfo simply has no RegionGroup yet (newly created
+      // RegionGroup not exposed) or it has some but all of them are currently Disabled.
+      // Only logged on the failure path right before throwing, so it never floods the log.
+      final Map<TConsensusGroupId, RegionGroupStatus> visibleRegionGroupStatusMap =
+          new LinkedHashMap<>();
+      regionGroupSlotsCounter.forEach(
+          slotsCounter ->
+              visibleRegionGroupStatusMap.put(
+                  slotsCounter.getRight(),
+                  getLoadManager().getRegionGroupStatus(slotsCounter.getRight())));
+      LOGGER.warn(
+          ManagerMessages
+              .MESSAGE_NO_AVAILABLE_ARG_REGIONGROUP_FOR_DATABASE_ARG_REGIONGROUPS_VISIBLE_IN_PARTITIONINFO_AND_THEIR_LOADCACHE_STATUS_ARG_615F5D49,
+          type,
+          database,
+          visibleRegionGroupStatusMap);
       throw new NoAvailableRegionGroupException(type, Collections.singletonList(database));
     }
 
@@ -1041,7 +1092,7 @@ public class PartitionManager {
     }
     String msg =
         String.format(
-            "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist",
+            ManagerMessages.SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST,
             regionId);
     LOGGER.warn(msg);
     return Optional.empty();
@@ -1379,7 +1430,7 @@ public class PartitionManager {
                             RegionCreateTask schemaRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
                             LOGGER.info(
-                                "Start to create Region: {} on DataNode: {}",
+                                ManagerMessages.START_TO_CREATE_REGION_ON_DATANODE,
                                 schemaRegionCreateTask.getRegionReplicaSet().getRegionId(),
                                 schemaRegionCreateTask.getTargetDataNode());
                             createSchemaRegionHandler.putRequest(
@@ -1397,8 +1448,8 @@ public class PartitionManager {
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createSchemaRegionHandler.getResponseMap().entrySet()) {
-                            if (entry.getValue().getCode()
-                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                            if (isRegionMaintainTaskCompleted(
+                                RegionMaintainType.CREATE, entry.getValue())) {
                               successfulTask.add(
                                   new TConsensusGroupId(
                                       TConsensusGroupType.SchemaRegion, entry.getKey()));
@@ -1415,7 +1466,7 @@ public class PartitionManager {
                             RegionCreateTask dataRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
                             LOGGER.info(
-                                "Start to create Region: {} on DataNode: {}",
+                                ManagerMessages.START_TO_CREATE_REGION_ON_DATANODE,
                                 dataRegionCreateTask.getRegionReplicaSet().getRegionId(),
                                 dataRegionCreateTask.getTargetDataNode());
                             createDataRegionHandler.putRequest(
@@ -1433,8 +1484,8 @@ public class PartitionManager {
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createDataRegionHandler.getResponseMap().entrySet()) {
-                            if (entry.getValue().getCode()
-                                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                            if (isRegionMaintainTaskCompleted(
+                                RegionMaintainType.CREATE, entry.getValue())) {
                               successfulTask.add(
                                   new TConsensusGroupId(
                                       TConsensusGroupType.DataRegion, entry.getKey()));
@@ -1451,7 +1502,7 @@ public class PartitionManager {
                       for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                         RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;
                         LOGGER.info(
-                            "Start to delete Region: {} on DataNode: {}",
+                            ManagerMessages.START_TO_DELETE_REGION_ON_DATANODE,
                             regionDeleteTask.getRegionId(),
                             regionDeleteTask.getTargetDataNode());
                         deleteRegionHandler.putRequest(
@@ -1468,12 +1519,13 @@ public class PartitionManager {
                           .sendAsyncRequestWithRetry(deleteRegionHandler);
 
                       LOGGER.info(
-                          "Deleting regions costs {}ms", (System.currentTimeMillis() - startTime));
+                          ManagerMessages.DELETING_REGIONS_COSTS_MS,
+                          (System.currentTimeMillis() - startTime));
 
                       for (Map.Entry<Integer, TSStatus> entry :
                           deleteRegionHandler.getResponseMap().entrySet()) {
-                        if (entry.getValue().getCode()
-                            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                        if (isRegionMaintainTaskCompleted(
+                            RegionMaintainType.DELETE, entry.getValue())) {
                           successfulTask.add(regionIdMap.get(entry.getKey()));
                         }
                       }
@@ -1519,6 +1571,16 @@ public class PartitionManager {
             });
   }
 
+  static boolean isRegionMaintainTaskCompleted(
+      RegionMaintainType regionMaintainType, TSStatus status) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
+    }
+    return regionMaintainType == RegionMaintainType.CREATE
+        ? status.getCode() == TSStatusCode.REGION_ALREADY_EXISTS.getStatusCode()
+        : status.getCode() == TSStatusCode.REGION_NOT_EXIST.getStatusCode();
+  }
+
   public void startRegionCleaner() {
     synchronized (scheduleMonitor) {
       if (currentRegionMaintainerFuture == null) {
@@ -1530,7 +1592,7 @@ public class PartitionManager {
                 0,
                 REGION_MAINTAINER_WORK_INTERVAL,
                 TimeUnit.SECONDS);
-        LOGGER.info("RegionCleaner is started successfully.");
+        LOGGER.info(ManagerMessages.REGIONCLEANER_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -1541,7 +1603,7 @@ public class PartitionManager {
         /* Stop the RegionCleaner service */
         currentRegionMaintainerFuture.cancel(false);
         currentRegionMaintainerFuture = null;
-        LOGGER.info("RegionCleaner is stopped successfully.");
+        LOGGER.info(ManagerMessages.REGIONCLEANER_IS_STOPPED_SUCCESSFULLY);
       }
     }
   }

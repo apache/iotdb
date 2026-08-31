@@ -283,6 +283,29 @@ public class MemChunkDeserializeTest {
     }
   }
 
+  @Test
+  public void testNonAlignedMemChunkGroupSerializedSizeWithNonAsciiMeasurement()
+      throws IOException {
+    String measurement = "\u6e29\u5ea6";
+    WritableMemChunk series =
+        new WritableMemChunk(
+            new MeasurementSchema(measurement, TSDataType.INT32, TSEncoding.PLAIN));
+    series.writeNonAlignedPoint(1, 1);
+
+    WritableMemChunkGroup group = new WritableMemChunkGroup();
+    group.getMemChunkMap().put(measurement, series);
+
+    WALByteBufferForTest walBuffer =
+        new WALByteBufferForTest(ByteBuffer.allocate(group.serializedSize()));
+    group.serializeToWAL(walBuffer);
+    Assert.assertEquals(group.serializedSize(), walBuffer.getBuffer().position());
+
+    DataInputStream inputStream =
+        new DataInputStream(new ByteArrayInputStream(walBuffer.getBuffer().array()));
+    WritableMemChunkGroup deserialized = WritableMemChunkGroup.deserialize(inputStream);
+    Assert.assertTrue(deserialized.getMemChunkMap().containsKey(measurement));
+  }
+
   private WritableMemChunk createWritableMemChunkFromBytes(WritableMemChunk series)
       throws IOException {
     int serializedSize = series.serializedSize();

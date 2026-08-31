@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -55,6 +56,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final SchemaFilter schemaFilter;
   private final Map<Integer, Template> templateMap;
   private final boolean needViewDetail;
+  private final boolean includeSystemDatabase;
+  private final boolean includeAuditDatabase;
   private final Ordering timeseriesOrdering;
 
   TimeSeriesSchemaSource(
@@ -65,6 +68,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
       boolean needViewDetail,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase,
       PathPatternTree scope,
       Ordering timeseriesOrdering) {
     this.pathPattern = pathPattern;
@@ -74,6 +79,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
     this.needViewDetail = needViewDetail;
+    this.includeSystemDatabase = includeSystemDatabase;
+    this.includeAuditDatabase = includeAuditDatabase;
     this.scope = scope;
     this.timeseriesOrdering = timeseriesOrdering;
   }
@@ -139,6 +146,19 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   @Override
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(true);
+  }
+
+  @Override
+  public boolean shouldSkipSchemaRegion(final ISchemaRegion schemaRegion) {
+    final String database = schemaRegion.getDatabaseFullPath();
+    if (SchemaConstant.SYSTEM_DATABASE.equals(database)) {
+      return !includeSystemDatabase;
+    }
+    if (SchemaConstant.AUDIT_DATABASE.equals(database)
+        || Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
+      return !includeAuditDatabase;
+    }
+    return false;
   }
 
   public static String mapToString(Map<String, String> map) {

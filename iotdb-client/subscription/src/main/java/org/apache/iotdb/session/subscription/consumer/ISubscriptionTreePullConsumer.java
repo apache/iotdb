@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
 import java.time.Duration;
@@ -128,6 +129,17 @@ public interface ISubscriptionTreePullConsumer extends AutoCloseable {
   List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs);
 
   /**
+   * Drains messages currently buffered inside client-side processors.
+   *
+   * <p>Manual-commit consumers should call this before closing when processors may still hold
+   * messages, then commit the returned messages explicitly after they have been processed.
+   *
+   * @return drained user-visible messages, or an empty list if no processor has buffered output
+   * @throws SubscriptionException if draining fails
+   */
+  List<SubscriptionMessage> drainBufferedMessages() throws SubscriptionException;
+
+  /**
    * Commits a single message synchronously, indicating that it has been successfully processed.
    *
    * @param message the message to commit
@@ -178,6 +190,19 @@ public interface ISubscriptionTreePullConsumer extends AutoCloseable {
    */
   void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback);
+
+  void seekToBeginning(final String topicName) throws SubscriptionException;
+
+  void seekToEnd(final String topicName) throws SubscriptionException;
+
+  TopicProgress positions(final String topicName) throws SubscriptionException;
+
+  TopicProgress committedPositions(final String topicName) throws SubscriptionException;
+
+  void seek(final String topicName, final TopicProgress topicProgress) throws SubscriptionException;
+
+  void seekAfter(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException;
 
   /**
    * Retrieves the unique identifier of this consumer. If no consumer ID was provided at the time of

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -54,7 +55,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     try {
       checkProcWalDir(procedureWalDir);
     } catch (IOException e) {
-      LOG.error("ConfigProcedureStore start failed ", e);
+      LOG.error(ConfigNodeMessages.CONFIGPROCEDURESTORE_START_FAILED, e);
     }
   }
 
@@ -90,13 +91,15 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
 
   @Override
   public void update(Procedure<ConfigNodeProcedureEnv> procedure) throws Exception {
-    Objects.requireNonNull(ProcedureFactory.getProcedureType(procedure), "Procedure type is null");
+    Objects.requireNonNull(
+        ProcedureFactory.getProcedureType(procedure),
+        ConfigNodeMessages.EXCEPTION_PROCEDURE_TYPE_IS_NULL_93147BD3);
     final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);
     try {
       configManager.getConsensusManager().write(updateProcedurePlan);
     } catch (ConsensusException e) {
       LOG.warn(
-          "pid={} Failed in the write update API executing the consensus layer due to: ",
+          ConfigNodeMessages.LOG_PID_ARG_FAILED_WRITE_UPDATE_API_EXECUTING_CONSENSUS_LAYER_824FB30E,
           procedure.getProcId(),
           e);
       // In consensus layer API, do nothing but just throw an exception to let upper caller handle
@@ -120,7 +123,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
       configManager.getConsensusManager().write(deleteProcedurePlan);
     } catch (ConsensusException e) {
       LOG.warn(
-          "pid={} Failed in the write delete API executing the consensus layer due to: ",
+          ConfigNodeMessages.LOG_PID_ARG_FAILED_WRITE_DELETE_API_EXECUTING_CONSENSUS_LAYER_0E758BF5,
           procId,
           e);
       // In consensus layer API, do nothing but just throw an exception to let upper caller handle
@@ -169,11 +172,11 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     File dir = new File(CommonDescriptor.getInstance().getConfig().getProcedureWalFolder());
     if (!dir.exists()) {
       if (dir.mkdirs()) {
-        LOG.info("Make procedure wal dir: {}", dir);
+        LOG.info(ConfigNodeMessages.MAKE_PROCEDURE_WAL_DIR, dir);
       } else {
         throw new IOException(
             String.format(
-                "Start ConfigNode failed, because couldn't make system dirs: %s.",
+                ConfigNodeMessages.START_CONFIGNODE_FAILED_BECAUSE_COULDN_T_MAKE_SYSTEM_DIRS,
                 dir.getAbsolutePath()));
       }
     }

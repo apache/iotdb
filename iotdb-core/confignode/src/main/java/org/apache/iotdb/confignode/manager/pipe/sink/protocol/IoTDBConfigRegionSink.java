@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSslSyncSink;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.sink.client.IoTDBConfigNodeSyncClientManager;
@@ -67,6 +68,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      final String keyStorePath,
+      final String keyStorePwd,
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
@@ -83,6 +86,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
         useSSL,
         Objects.nonNull(trustStorePath) ? ConfigNodeConfig.addHomeDir(trustStorePath) : null,
         trustStorePwd,
+        Objects.nonNull(keyStorePath) ? ConfigNodeConfig.addHomeDir(keyStorePath) : null,
+        keyStorePwd,
         loadBalanceStrategy,
         userEntity,
         password,
@@ -97,7 +102,7 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
   protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
-        "The config region sink does not support transferring single file piece req.");
+        ManagerMessages.THE_CONFIG_REGION_SINK_DOES_NOT_SUPPORT_TRANSFERRING_SINGLE_FILE);
   }
 
   @Override
@@ -114,13 +119,13 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBConfigRegionSink can't transfer TabletInsertionEvent.");
+        ManagerMessages.IOTDBCONFIGREGIONSINK_CAN_T_TRANSFER_TABLETINSERTIONEVENT);
   }
 
   @Override
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBConfigRegionSink can't transfer TsFileInsertionEvent.");
+        ManagerMessages.IOTDBCONFIGREGIONSINK_CAN_T_TRANSFER_TSFILEINSERTIONEVENT);
   }
 
   @Override
@@ -130,7 +135,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
     } else if (event instanceof PipeConfigRegionSnapshotEvent) {
       doTransferWrapper((PipeConfigRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBConfigRegionSink does not support transferring generic event: {}.", event);
+      LOGGER.warn(
+          ManagerMessages.IOTDBCONFIGREGIONSINK_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT, event);
     }
   }
 
@@ -169,8 +175,9 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer config region write plan %s, because %s.",
-              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), e.getMessage()),
+              ManagerMessages.NETWORK_ERROR_WHEN_TRANSFER_CONFIG_REGION_WRITE_PLAN_BECAUSE,
+              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(),
+              e.getMessage()),
           e);
     }
 
@@ -191,7 +198,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
           true);
     }
 
-    LOGGER.info("Successfully transferred config event {}.", pipeConfigRegionWritePlanEvent);
+    LOGGER.info(
+        ManagerMessages.SUCCESSFULLY_TRANSFERRED_CONFIG_EVENT, pipeConfigRegionWritePlanEvent);
   }
 
   private void doTransferWrapper(final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
@@ -259,8 +267,9 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when seal config region snapshot %s, because %s.",
-              snapshotFile, e.getMessage()),
+              ManagerMessages.NETWORK_ERROR_WHEN_SEAL_CONFIG_REGION_SNAPSHOT_BECAUSE,
+              snapshotFile,
+              e.getMessage()),
           e);
     }
 
@@ -281,6 +290,6 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
           true);
     }
 
-    LOGGER.info("Successfully transferred config region snapshot {}.", snapshotFile);
+    LOGGER.info(ManagerMessages.SUCCESSFULLY_TRANSFERRED_CONFIG_REGION_SNAPSHOT, snapshotFile);
   }
 }

@@ -30,12 +30,15 @@ import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsDrawer;
+import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsJsonDrawer;
 import org.apache.iotdb.db.queryengine.statistics.QueryStatisticsFetcher;
 import org.apache.iotdb.db.queryengine.statistics.StatisticLine;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -79,23 +82,36 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   private final boolean verbose;
   private boolean outputResult = false;
   private final List<FragmentInstance> instances;
+  private final ExplainOutputFormat outputFormat;
 
-  private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer =
-      new FragmentInstanceStatisticsDrawer();
+  private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer;
+  private final FragmentInstanceStatisticsJsonDrawer fragmentInstanceStatisticsJsonDrawer;
 
   private final ScheduledFuture<?> logRecordTask;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
   private final MPPQueryContext mppQueryContext;
 
+  @Deprecated
   public ExplainAnalyzeOperator(
       OperatorContext operatorContext,
       Operator child,
       long queryId,
       boolean verbose,
       long timeout) {
+    this(operatorContext, child, queryId, verbose, timeout, ExplainOutputFormat.TEXT);
+  }
+
+  public ExplainAnalyzeOperator(
+      OperatorContext operatorContext,
+      Operator child,
+      long queryId,
+      boolean verbose,
+      long timeout,
+      ExplainOutputFormat outputFormat) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.verbose = verbose;
+    this.outputFormat = outputFormat;
     Coordinator coordinator = Coordinator.getInstance();
 
     this.clientManager = coordinator.getInternalServiceClientManager();
@@ -103,7 +119,16 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     QueryExecution queryExecution = (QueryExecution) coordinator.getQueryExecution(queryId);
     this.instances = queryExecution.getDistributedPlan().getInstances();
     mppQueryContext = queryExecution.getContext();
-    fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext);
+
+    if (outputFormat == ExplainOutputFormat.JSON) {
+      this.fragmentInstanceStatisticsDrawer = null;
+      this.fragmentInstanceStatisticsJsonDrawer = new FragmentInstanceStatisticsJsonDrawer();
+      fragmentInstanceStatisticsJsonDrawer.renderPlanStatistics(mppQueryContext);
+    } else {
+      this.fragmentInstanceStatisticsDrawer = new FragmentInstanceStatisticsDrawer();
+      this.fragmentInstanceStatisticsJsonDrawer = null;
+      fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext);
+    }
 
     // The time interval guarantees the result of EXPLAIN ANALYZE will be printed at least three
     // times.
@@ -130,7 +155,11 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       return null;
     }
 
-    fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
+    if (outputFormat == ExplainOutputFormat.JSON) {
+      fragmentInstanceStatisticsJsonDrawer.renderDispatchCost(mppQueryContext);
+    } else {
+      fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
+    }
 
     // fetch statics from all fragment instances
     TsBlock result = buildResult();
@@ -160,6 +189,14 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     return analyzeResult;
   }
 
+  private String buildFragmentInstanceStatisticsJson(
+      List<FragmentInstance> instances, boolean verbose) throws FragmentInstanceFetchException {
+    Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics =
+        QueryStatisticsFetcher.fetchAllStatistics(instances, clientManager);
+    return fragmentInstanceStatisticsJsonDrawer.renderFragmentInstancesAsJson(
+        instances, allStatistics, verbose);
+  }
+
   // We will log the intermediate result of analyze if timeout
   // It can be used to analyze deadlock problem.
   private void logIntermediateResultIfTimeout() {
@@ -168,21 +205,28 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
             String.format(
                 "%s-Explain-Analyze-Logger",
                 operatorContext.getInstanceContext().getId().getQueryId()))) {
-      List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
-
       StringBuilder logContent = new StringBuilder();
       logContent.append("\n").append(LOG_TITLE).append("\n");
-      for (String line : analyzeResult) {
-        logContent.append(line).append("\n");
+      if (outputFormat == ExplainOutputFormat.JSON) {
+        logContent.append(buildFragmentInstanceStatisticsJson(instances, verbose)).append("\n");
+      } else {
+        List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
+        for (String line : analyzeResult) {
+          logContent.append(line).append("\n");
+        }
       }
       String res = logContent.toString();
       logger.info(res);
     } catch (Exception e) {
-      logger.error("Error occurred when logging intermediate result of analyze.", e);
+      logger.error(
+          DataNodeQueryMessages.ERROR_OCCURRED_WHEN_LOGGING_INTERMEDIATE_RESULT_OF_ANALYZE, e);
     }
   }
 
   private TsBlock buildResult() throws FragmentInstanceFetchException {
+    if (outputFormat == ExplainOutputFormat.JSON) {
+      return buildJsonResult();
+    }
     Map<NodeRef<Table>, Pair<Integer, List<String>>> cteAnalyzeResults =
         mppQueryContext.getCteExplainResults();
     List<String> mainAnalyzeResult = buildFragmentInstanceStatistics(instances, verbose);
@@ -197,6 +241,18 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       columnBuilder.writeBinary(new Binary(line.getBytes()));
       builder.declarePosition();
     }
+    return builder.build();
+  }
+
+  private TsBlock buildJsonResult() throws FragmentInstanceFetchException {
+    String jsonResult = buildFragmentInstanceStatisticsJson(instances, verbose);
+
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder columnBuilder = builder.getColumnBuilder(0);
+    timeColumnBuilder.writeLong(0);
+    columnBuilder.writeBinary(new Binary(jsonResult.getBytes()));
+    builder.declarePosition();
     return builder.build();
   }
 
@@ -275,10 +331,11 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     if (logRecordTask != null) {
       boolean cancelResult = logRecordTask.cancel(true);
       if (!cancelResult) {
-        logger.debug("cancel state tracking task failed. {}", logRecordTask.isCancelled());
+        logger.debug(
+            DataNodeQueryMessages.CANCEL_STATE_TRACKING_TASK_FAILED, logRecordTask.isCancelled());
       }
     } else {
-      logger.debug("trackTask not started");
+      logger.debug(DataNodeQueryMessages.TRACK_TASK_NOT_STARTED);
     }
   }
 

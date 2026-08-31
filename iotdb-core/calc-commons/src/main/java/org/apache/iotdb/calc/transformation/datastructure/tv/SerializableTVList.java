@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.datastructure.tv;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.datastructure.SerializableList;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -105,7 +106,7 @@ public class SerializableTVList implements SerializableList {
 
     int capacity = (int) (memoryLimitInMB * MB / 2 / (rowLength));
     if (capacity <= 0) {
-      throw new RuntimeException("Memory is not enough for current query.");
+      throw new RuntimeException(CalcMessages.MEMORY_IS_NOT_ENOUGH_FOR_CURRENT_QUERY);
     }
     return capacity;
   }

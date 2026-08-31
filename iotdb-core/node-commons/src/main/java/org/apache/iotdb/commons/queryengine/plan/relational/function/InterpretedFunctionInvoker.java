@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 
@@ -39,7 +40,7 @@ public class InterpretedFunctionInvoker {
       List<? extends Type> argumentTypes,
       List<Object> arguments) {
     throw new UnsupportedOperationException(
-        String.format("BuiltinScalarFunctio %s cannot be invoked.", function));
+        String.format(QueryMessages.BUILTIN_SCALAR_FUNCTION_CANNOT_BE_INVOKED, function));
   }
 
   public Object invoke(
@@ -48,7 +49,7 @@ public class InterpretedFunctionInvoker {
       List<? extends Type> argumentTypes,
       List<Object> arguments) {
     throw new UnsupportedOperationException(
-        String.format("OperatorType %s cannot be invoked.", operatorType));
+        String.format(QueryMessages.OPERATOR_TYPE_CANNOT_BE_INVOKED, operatorType));
     //    switch (operatorType) {
     //      case ADD:
     //        Object left = arguments.get(0);

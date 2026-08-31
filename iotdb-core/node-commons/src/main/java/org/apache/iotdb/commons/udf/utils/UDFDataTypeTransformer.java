@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.utils;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -86,7 +87,7 @@ public class UDFDataTypeTransformer {
       case OBJECT:
         return Type.OBJECT;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 
@@ -118,7 +119,7 @@ public class UDFDataTypeTransformer {
       case OBJECT:
         return ObjectType.OBJECT;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 
@@ -147,7 +148,7 @@ public class UDFDataTypeTransformer {
       case 12:
         return Type.OBJECT;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 }

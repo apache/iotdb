@@ -26,17 +26,23 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
+import org.apache.iotdb.commons.utils.RegionMigrationRateLimiter;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -130,17 +136,17 @@ public class IoTDBDescriptor {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.error("Failed to update config file", e);
+      LOGGER.error(DataNodeMiscMessages.FAILED_UPDATE_CONFIG_FILE, e);
     }
   }
 
   protected IoTDBDescriptor() {
-    loadProps();
+    boolean hasLoadedProperties = loadProps();
     ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
         ServiceLoader.load(IPropertiesLoader.class);
     boolean hasProperties = false;
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
-      LOGGER.info("Will reload properties from {} ", loader.getClass().getName());
+      LOGGER.info(DataNodeMiscMessages.WILL_RELOAD_PROPERTIES, loader.getClass().getName());
       hasProperties = true;
       Properties properties = loader.loadProperties();
       TrimProperties trimProperties = new TrimProperties();
@@ -149,7 +155,8 @@ public class IoTDBDescriptor {
         loadProperties(trimProperties);
       } catch (Exception e) {
         LOGGER.error(
-            "Failed to reload properties from {}, reject DataNode startup.",
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_RELOAD_PROPERTIES_FROM_REJECT_DATANODE_STARTUP_74E66EEC,
             loader.getClass().getName(),
             e);
         System.exit(-1);
@@ -160,8 +167,8 @@ public class IoTDBDescriptor {
           .getConfig()
           .setCustomizedProperties(loader.getCustomizedProperties());
     }
-    // if there are no properties, we need to init memory config
-    if (!hasProperties) {
+    // If no configuration source initialized the memory config, initialize it with defaults.
+    if (!hasLoadedProperties && !hasProperties) {
       memoryConfig.init(new TrimProperties());
     }
   }
@@ -192,8 +199,8 @@ public class IoTDBDescriptor {
         return uri;
       }
       LOGGER.warn(
-          "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-              + "config file {}, use default configuration",
+          DataNodeMiscMessages
+              .MISC_LOG_CANNOT_FIND_IOTDB_HOME_OR_IOTDB_CONF_ENVIRONMENT_VARIABLE_BE01B2FE,
           configFileName);
       // update all data seriesPath
       conf.updatePath();
@@ -213,32 +220,32 @@ public class IoTDBDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
-      LOGGER.warn("get url failed", e);
+      LOGGER.warn(DataNodeMiscMessages.GET_URL_FAILED, e);
       return null;
     }
   }
 
   /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void loadProps() {
+  private boolean loadProps() {
     TrimProperties commonProperties = new TrimProperties();
     // if new properties file exist, skip old properties files
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("Start to read config file {}", url);
+        LOGGER.info(DataNodeMiscMessages.START_READ_CONFIG_FILE, url);
         Properties properties = new Properties();
         properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (FileNotFoundException e) {
-        LOGGER.error("Fail to find config file {}, reject DataNode startup.", url, e);
+        LOGGER.error(DataNodeMiscMessages.FAIL_FIND_CONFIG_FILE, url, e);
         System.exit(-1);
       } catch (IOException e) {
-        LOGGER.error("Cannot load config file, reject DataNode startup.", e);
+        LOGGER.error(DataNodeMiscMessages.CANNOT_LOAD_CONFIG_FILE, e);
         System.exit(-1);
       } catch (Exception e) {
-        LOGGER.error("Incorrect format in config file, reject DataNode startup.", e);
+        LOGGER.error(DataNodeMiscMessages.INCORRECT_FORMAT_CONFIG_FILE, e);
         System.exit(-1);
       } finally {
         // update all data seriesPath
@@ -249,10 +256,13 @@ public class IoTDBDescriptor {
             .getMetricConfig()
             .updateRpcInstance(NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
       }
+      return true;
     } else {
       LOGGER.warn(
-          "Couldn't load the configuration {} from any of the known sources.",
+          DataNodeMiscMessages
+              .MISC_LOG_COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN_SOURCES_EE3ED103,
           CommonConfig.SYSTEM_CONFIG_NAME);
+      return false;
     }
   }
 
@@ -283,7 +293,8 @@ public class IoTDBDescriptor {
       conf.setMaxClientNumForEachNode(
           Integer.parseInt(properties.getProperty("dn_max_connection_for_internal_service")));
       LOGGER.warn(
-          "The parameter dn_max_connection_for_internal_service is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
+          DataNodeMiscMessages
+              .MISC_LOG_THE_PARAMETER_DN_MAX_CONNECTION_FOR_INTERNAL_SERVICE_IS_D2F24BEB);
     }
     conf.setMaxClientNumForEachNode(
         Integer.parseInt(
@@ -368,7 +379,8 @@ public class IoTDBDescriptor {
     try {
       conf.checkMultiDirStrategyClassName();
     } catch (Exception e) {
-      conf.setMultiDirStrategyClassName(oldMultiDirStrategyClassName.trim());
+      conf.setMultiDirStrategyClassName(
+          oldMultiDirStrategyClassName == null ? null : oldMultiDirStrategyClassName.trim());
       throw e;
     }
 
@@ -699,6 +711,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_tsfile_validation", String.valueOf(conf.isEnableTsFileValidation()))));
 
+    conf.setEnableTopKRuntimeFilter(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_topk_runtime_filter", String.valueOf(conf.isEnableTopKRuntimeFilter()))));
+
     conf.setCandidateCompactionTaskQueueSize(
         Integer.parseInt(
             properties.getProperty(
@@ -998,6 +1015,12 @@ public class IoTDBDescriptor {
                 "device_schema_request_cache_wait_time_ms",
                 String.valueOf(conf.getDeviceSchemaRequestCacheWaitTimeMs()))));
 
+    conf.setCheckDnLeaseStatusIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "check_dn_lease_status_interval_ms",
+                String.valueOf(conf.getCheckDnLeaseStatusIntervalMs()))));
+
     // Commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
@@ -1147,8 +1170,8 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getPartitionTableRecoverWorkerNum())));
     if (partitionTableRecoverWorkerNum <= 0) {
       LOGGER.warn(
-          "partition_table_recover_worker_num should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
+          DataNodeMiscMessages
+              .MISC_LOG_PARTITION_TABLE_RECOVER_WORKER_NUM_SHOULD_BE_GREATER_THAN_74A2512B,
           partitionTableRecoverWorkerNum,
           conf.getPartitionTableRecoverWorkerNum());
       partitionTableRecoverWorkerNum = conf.getPartitionTableRecoverWorkerNum();
@@ -1157,12 +1180,11 @@ public class IoTDBDescriptor {
     int partitionTableRecoverMaxReadMBsPerSecond =
         Integer.parseInt(
             properties.getProperty(
-                "partition_table_recover_max_read_megabytes_per_second",
+                "partition_table_recover_max_read_mb_per_sec",
                 String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond())));
     if (partitionTableRecoverMaxReadMBsPerSecond <= 0) {
       LOGGER.warn(
-          "partition_table_recover_max_read_megabytes_per_second should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
+          DataNodeMiscMessages.MISC_LOG_PARTITION_TABLE_RECOVER_MAX_READ_MB_PER_SEC_SHOULD_42BCDFBC,
           partitionTableRecoverMaxReadMBsPerSecond,
           conf.getPartitionTableRecoverMaxReadMBsPerSecond());
       partitionTableRecoverMaxReadMBsPerSecond = conf.getPartitionTableRecoverMaxReadMBsPerSecond();
@@ -1187,7 +1209,7 @@ public class IoTDBDescriptor {
                 "delay_analyzer_window_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue("delay_analyzer_window_size")));
     if (delayAnalyzerWindowSize > 0) {
-      LOGGER.info("[DelayAnalyzer] Set delay_analyzer_window_size to {}", delayAnalyzerWindowSize);
+      LOGGER.info(DataNodeMiscMessages.SET_DELAY_ANALYZER_WINDOW_SIZE, delayAnalyzerWindowSize);
       conf.setDelayAnalyzerWindowSize(delayAnalyzerWindowSize);
     }
 
@@ -1230,6 +1252,11 @@ public class IoTDBDescriptor {
     if (maxSubTaskNumForInformationTableScan > 0) {
       conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
     }
+
+    // Reflect the in-memory effective values (which the setters above may have rewritten) into
+    // lastAppliedProperties, so that `show configuration` displays effective values rather than
+    // the raw config-file values.
+    overlayEffectiveConfigurationValues();
   }
 
   private void loadFixedSizeLimitForQuery(
@@ -1284,6 +1311,28 @@ public class IoTDBDescriptor {
                 "region_migration_speed_limit_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "region_migration_speed_limit_bytes_per_second"))));
+    RegionMigrationRateLimiter.getInstance()
+        .init(conf.getRegionMigrationSpeedLimitBytesPerSecond());
+    conf.setRegionMigrationFileRemoveSpeedLimitBytesPerSecond(
+        Long.parseLong(
+            properties.getProperty(
+                "region_migration_file_remove_speed_limit_bytes_per_second",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "region_migration_file_remove_speed_limit_bytes_per_second"))));
+    RegionMigrationFileRemoveRateLimiter.getInstance()
+        .init(conf.getRegionMigrationFileRemoveSpeedLimitBytesPerSecond());
+    conf.setDataRegionIotSnapshotTransmissionProgressLogIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_iot_snapshot_transmission_progress_log_interval_ms",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "data_region_iot_snapshot_transmission_progress_log_interval_ms"))));
+    conf.setKeepSameDiskWhenLoadingSnapshot(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "keep_same_disk_when_loading_snapshot",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "keep_same_disk_when_loading_snapshot"))));
   }
 
   private void loadIoTConsensusV2Props(TrimProperties properties) throws IOException {
@@ -1366,6 +1415,12 @@ public class IoTDBDescriptor {
     if (conf.getWALCacheShrinkClearEnabled() != WALInsertNodeCacheShrinkClearEnabled) {
       conf.setWALCacheShrinkClearEnabled(WALInsertNodeCacheShrinkClearEnabled);
     }
+
+    conf.setWalFileListCacheEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "wal_file_list_cache_enabled",
+                Boolean.toString(conf.isWalFileListCacheEnabled()))));
 
     loadWALHotModifiedProps(properties);
   }
@@ -1758,6 +1813,11 @@ public class IoTDBDescriptor {
     }
 
     long throttleDownThresholdInByte = Long.parseLong(getWalThrottleThreshold(properties));
+    if (throttleDownThresholdInByte < 0) {
+      throttleDownThresholdInByte =
+          Long.parseLong(
+              ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[1]));
+    }
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -1777,7 +1837,8 @@ public class IoTDBDescriptor {
     String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[0], null);
     if (old_throttleThreshold != null) {
       LOGGER.warn(
-          "The throttle threshold params: {} is deprecated, please use {}",
+          DataNodeMiscMessages
+              .MISC_LOG_THE_THROTTLE_THRESHOLD_PARAMS_IS_DEPRECATED_PLEASE_USE_AA0E8EC7,
           DEFAULT_WAL_THRESHOLD_NAME[0],
           DEFAULT_WAL_THRESHOLD_NAME[1]);
       return old_throttleThreshold;
@@ -1806,7 +1867,7 @@ public class IoTDBDescriptor {
       try {
         newThrottleThreshold = Math.min(newThrottleThreshold, fileStore.getUsableSpace());
       } catch (IOException e) {
-        LOGGER.error("Failed to get file size of {}, because", fileStore, e);
+        LOGGER.error(DataNodeMiscMessages.FAILED_GET_FILE_SIZE, fileStore, e);
       }
     }
     newThrottleThreshold = (long) (newThrottleThreshold * dirUseProportion * walFileStores.size());
@@ -1898,7 +1959,7 @@ public class IoTDBDescriptor {
                     ConfigurationFileUtils.getConfigurationDefaultValue("page_size_in_byte"))));
     if (TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
         > TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()) {
-      LOGGER.warn("page_size is greater than group size, will set it as the same with group size");
+      LOGGER.warn(DataNodeMiscMessages.PAGE_SIZE_GREATER_THAN_GROUP_SIZE);
       TSFileDescriptor.getInstance()
           .getConfig()
           .setPageSizeInByte(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte());
@@ -1993,7 +2054,7 @@ public class IoTDBDescriptor {
     if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
       conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME).trim());
     } else {
-      LOGGER.info("MQTT host is not configured, will use dn_rpc_address.");
+      LOGGER.info(DataNodeMiscMessages.MQTT_HOST_NOT_CONFIGURED);
       conf.setMqttHost(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
     }
 
@@ -2099,7 +2160,6 @@ public class IoTDBDescriptor {
 
   public synchronized void loadHotModifiedProps(TrimProperties properties)
       throws QueryProcessException, IOException {
-    ConfigurationFileUtils.updateAppliedProperties(properties, true);
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
@@ -2176,6 +2236,13 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "enable_tsfile_validation"))));
 
+      conf.setEnableTopKRuntimeFilter(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_topk_runtime_filter",
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "enable_topk_runtime_filter"))));
+
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
       loadWALHotModifiedProps(properties);
@@ -2188,6 +2255,12 @@ public class IoTDBDescriptor {
 
       // update load config
       loadLoadTsFileHotModifiedProp(properties);
+
+      // update CQ semantic-check config pushed from ConfigNode
+      loadCqMinEveryIntervalInMs(properties);
+
+      // update query routing consistency config pushed from ConfigNode
+      loadReadConsistencyLevel(properties);
 
       // update pipe config
       loadPipeHotModifiedProp(properties);
@@ -2206,6 +2279,11 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("enable_wal_compression")));
       conf.setWALCompressionAlgorithm(
           enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
+
+      // update subscription consensus config:
+      // - batching properties take effect on running queues because they are read dynamically
+      // - retention defaults only affect queues created after reload
+      commonDescriptor.loadHotModifiedSubscriptionConsensusProps(properties);
 
       // update Consensus config
       reloadConsensusProps(properties);
@@ -2228,6 +2306,12 @@ public class IoTDBDescriptor {
         BinaryAllocator.getInstance().close(true);
       }
 
+      // update disk_space_warning_threshold; also refresh the static copy in JVMCommonUtils that
+      // the ReadOnly disk guard reads, otherwise the new threshold would not take effect until
+      // restart. Parsing / validation is shared with the ConfigNode hot-reload path.
+      JVMCommonUtils.setDiskSpaceWarningThreshold(
+          commonDescriptor.loadHotModifiedDiskSpaceWarningThreshold(properties));
+
       commonDescriptor
           .getConfig()
           .setTimestampPrecisionCheckEnabled(
@@ -2249,6 +2333,9 @@ public class IoTDBDescriptor {
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
+
+      // update REST runtime limit config
+      IoTDBRestServiceDescriptor.getInstance().loadHotModifiedProps(properties);
 
       // update cache_eviction_memory_computation_threshold
       conf.setCacheEvictionMemoryComputationThreshold(
@@ -2308,12 +2395,45 @@ public class IoTDBDescriptor {
         conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
       }
 
+      ConfigurationFileUtils.updateAppliedProperties(properties, true);
+      // Overwrite the keys whose setters above may have rewritten, so `show configuration`
+      // displays the effective values rather than the raw file values.
+      IoTDBRestServiceDescriptor.getInstance().overwriteAppliedRuntimeLimitProperties();
+      overlayEffectiveConfigurationValues();
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
+      throw new QueryProcessException(
+          String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
+  }
+
+  // `show configuration` (table model) renders ConfigurationFileUtils.getAppliedProperties().
+  // That map is populated from the raw config-file values, but several hot-reloaded parameters
+  // have setters that rewrite the loaded value before it takes effect, e.g.:
+  //   - `if (x > 0) setX(x)` skips non-positive values (keeps the previous/default value);
+  //   - loadFixedSizeLimitForQuery rewrites `<=0` to a computed default.
+  // For those keys the displayed value would otherwise diverge from the effective one. This
+  // method overwrites them with the post-setter effective value. It is invoked after the setters
+  // in both the startup (loadProperties) and hot-reload (loadHotModifiedProps) paths, so that
+  // local *and* remote `show configuration` (which reads each node's own map over RPC) stay
+  // correct.
+  private void overlayEffectiveConfigurationValues() {
+    ConfigurationFileUtils.updateAppliedProperties(
+        "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "max_sub_task_num_for_information_table_scan",
+        Integer.toString(conf.getMaxSubTaskNumForInformationTableScan()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "sort_buffer_size_in_bytes",
+        Long.toString(commonDescriptor.getConfig().getSortBufferSize()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
@@ -2328,7 +2448,8 @@ public class IoTDBDescriptor {
         commonDescriptor.getConfig().setQuerySamplingRateLimit(rateLimit);
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to parse query_sample_throughput_bytes_per_sec {} to integer",
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_PARSE_QUERY_SAMPLE_THROUGHPUT_BYTES_PER_SEC_TO_00144244,
             querySamplingRateLimitNumber);
       }
     }
@@ -2344,7 +2465,7 @@ public class IoTDBDescriptor {
       try {
         pattern = Pattern.compile(trustedUriPattern);
       } catch (Exception e) {
-        LOGGER.warn("Failed to parse trusted_uri_pattern {}", trustedUriPattern);
+        LOGGER.warn(DataNodeMiscMessages.FAILED_PARSE_TRUSTED_URI, trustedUriPattern);
         pattern = commonDescriptor.getConfig().getTrustedUriPattern();
       }
     } else {
@@ -2356,20 +2477,23 @@ public class IoTDBDescriptor {
   public synchronized void loadHotModifiedProps() throws QueryProcessException {
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url == null) {
-      LOGGER.warn("Couldn't load the configuration from any of the known sources.");
+      LOGGER.warn(DataNodeMiscMessages.COULD_NOT_LOAD_CONFIG);
       return;
     }
 
     TrimProperties commonProperties = new TrimProperties();
     try (InputStream inputStream = url.openStream()) {
-      LOGGER.info("Start to reload config file {}", url);
+      LOGGER.info(DataNodeMiscMessages.START_RELOAD_CONFIG_FILE, url);
       commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       ConfigurationFileUtils.loadConfigurationDefaultValueFromTemplate();
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
-      LOGGER.warn("Fail to reload config file {}", url, e);
+      LOGGER.warn(DataNodeMiscMessages.FAIL_RELOAD_CONFIG_FILE, url, e);
       throw new QueryProcessException(
-          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+          String.format(
+              DataNodeMiscMessages.MISC_EXCEPTION_FAIL_TO_RELOAD_CONFIG_FILE_S_BECAUSE_S_93CCAB8D,
+              url,
+              e.getMessage()));
     } finally {
       ConfigurationFileUtils.releaseDefault();
     }
@@ -2378,7 +2502,7 @@ public class IoTDBDescriptor {
 
   public void reloadMetricProperties(TrimProperties properties) {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(properties, false);
-    LOGGER.info("Reload metric service in level {}", reloadLevel);
+    LOGGER.info(DataNodeMiscMessages.RELOAD_METRIC_SERVICE, reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
       IoTDBInternalReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
@@ -2456,6 +2580,16 @@ public class IoTDBDescriptor {
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
+    conf.setLoadTsFileAllowedDirs(
+        Arrays.stream(properties.getProperty("load_tsfile_allowed_dirs", "").trim().split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadTsFileSourcePathCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_tsfile_source_path_check_enable",
+                Boolean.toString(conf.isLoadTsFileSourcePathCheckEnabled()))));
+
     conf.setLoadTabletConversionThresholdBytes(
         Long.parseLong(
             properties.getProperty(
@@ -2480,6 +2614,9 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
@@ -2573,6 +2710,23 @@ public class IoTDBDescriptor {
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_write_throughput_bytes_per_second"))));
 
+    conf.setLoadTsFileAllowedDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_tsfile_allowed_dirs",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "load_tsfile_allowed_dirs"))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadTsFileSourcePathCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_tsfile_source_path_check_enable",
+                Boolean.toString(conf.isLoadTsFileSourcePathCheckEnabled()))));
+
     conf.setLoadActiveListeningEnable(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -2597,6 +2751,9 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+    conf.setLoadActiveListeningPipeDir(
+        properties.getProperty(
+            "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(
@@ -2625,7 +2782,8 @@ public class IoTDBDescriptor {
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
-    PipePeriodicalLogReducer.update();
+    PipeDataNodeResourceManager.memory().notifyNextTsFileParserMemoryReservation();
+    LoggerPeriodicalLogReducer.update();
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -2673,9 +2831,10 @@ public class IoTDBDescriptor {
           maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
     } catch (Exception e) {
       throw new RuntimeException(
-          "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
-              + " should be an integer, which is "
-              + readerTransformerCollectorMemoryProportion,
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962,
+              readerTransformerCollectorMemoryProportion),
           e);
     }
   }
@@ -2774,14 +2933,43 @@ public class IoTDBDescriptor {
             false));
   }
 
+  private void loadCqMinEveryIntervalInMs(TrimProperties properties) throws IOException {
+    long cqMinEveryIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "continuous_query_min_every_interval_in_ms",
+                String.valueOf(conf.getCqMinEveryIntervalInMs())));
+    if (cqMinEveryIntervalInMs <= 0) {
+      throw new IOException(
+          DataNodeMiscMessages
+                  .EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4
+              + cqMinEveryIntervalInMs
+              + ".");
+    }
+    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
+  }
+
+  private void loadReadConsistencyLevel(TrimProperties properties) throws IOException {
+    String readConsistencyLevel =
+        properties.getProperty(
+            "read_consistency_level", conf.getReadConsistencyLevel().name().toLowerCase());
+    if (!"strong".equals(readConsistencyLevel) && !"weak".equals(readConsistencyLevel)) {
+      throw new IOException(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949,
+              readConsistencyLevel));
+    }
+    conf.setReadConsistencyLevel(readConsistencyLevel);
+  }
+
   public void loadClusterProps(TrimProperties properties) throws IOException {
     String configNodeUrls = properties.getProperty(IoTDBConstant.DN_SEED_CONFIG_NODE);
     if (configNodeUrls == null) {
       configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
       LOGGER.warn(
-          "The parameter dn_target_config_node_list has been abandoned, "
-              + "only the first ConfigNode address will be used to join in the cluster. "
-              + "Please use dn_seed_config_node instead.");
+          DataNodeMiscMessages
+              .MISC_LOG_THE_PARAMETER_DN_TARGET_CONFIG_NODE_LIST_HAS_BEEN_ABANDONED_6C0DE50B);
     }
     if (configNodeUrls != null) {
       try {
@@ -2789,7 +2977,9 @@ public class IoTDBDescriptor {
         conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls).get(0));
       } catch (BadNodeUrlException e) {
         LOGGER.error(
-            "ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710", e);
+            DataNodeMiscMessages
+                .MISC_LOG_CONFIGNODES_ARE_SET_IN_WRONG_FORMAT_PLEASE_SET_THEM_LIKE_18E97679,
+            e);
       }
     }
 
@@ -2929,6 +3119,17 @@ public class IoTDBDescriptor {
     conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
     conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
     conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
+
+    // Optional fields: an old ConfigNode (rolling upgrade) will not set them, in which case the
+    // DataNode keeps its local default instead of overwriting it with 0.
+    if (ratisConfig.isSetDataReconfigurationMaxRetryAttempts()) {
+      conf.setDataRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getDataReconfigurationMaxRetryAttempts());
+    }
+    if (ratisConfig.isSetSchemaReconfigurationMaxRetryAttempts()) {
+      conf.setSchemaRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getSchemaReconfigurationMaxRetryAttempts());
+    }
 
     conf.setDataRatisConsensusPreserveWhenPurge(ratisConfig.getDataPreserveWhenPurge());
     conf.setSchemaRatisConsensusPreserveWhenPurge(ratisConfig.getSchemaPreserveWhenPurge());

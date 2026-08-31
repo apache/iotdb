@@ -30,6 +30,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,6 +47,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.fail;
 
@@ -63,6 +65,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -71,11 +74,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:0");
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -92,16 +96,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
-  public void testWithSyncSink() throws Exception {
-    testWithSink("iotdb-thrift-sync-sink");
-  }
-
-  @Test
-  public void testWithAsyncSink() throws Exception {
-    testWithSink("iotdb-thrift-async-sink");
-  }
-
-  private void testWithSink(final String sink) throws Exception {
+  public void testWithSyncAndAsyncSink() throws Exception {
     TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
@@ -110,6 +105,15 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "grant role `admin` to `thulab`",
             "grant WRITE, READ, SYSTEM, SECURITY on root.** to role `admin`"),
         null);
+
+    testWithSink("iotdb-thrift-sync-sink", "sync");
+    testWithSink("iotdb-thrift-async-sink", "async");
+  }
+
+  private void testWithSink(final String sink, final String suffix) throws Exception {
+    final String sourceUser = "user_" + suffix;
+    final String pipeName = "testPipe_" + suffix;
+    final String device = "root.ln." + suffix + ".wt01";
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -120,10 +124,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create user user 'passwd123456'",
-              "create timeseries root.ln.wf02.wt01.temperature with datatype=INT64,encoding=PLAIN",
-              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"),
+              "create user " + sourceUser + " 'passwd123456'",
+              "create timeseries " + device + ".temperature with datatype=INT64,encoding=PLAIN",
+              "create timeseries " + device + ".status with datatype=BOOLEAN,encoding=PLAIN",
+              "insert into "
+                  + device
+                  + "(time, temperature, status) values (1800000000000, 23, true)"),
           null);
       awaitUntilFlush(senderEnv);
 
@@ -142,37 +148,57 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", sinkAttributes)
+              new TCreatePipeReq(pipeName, sinkAttributes)
                   .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe(pipeName).getCode());
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "list user",
-          "UserId,User,",
-          new HashSet<>(Arrays.asList("0,root,", "10001,user,", "10000,thulab,")));
+      assertUserEventuallyExists(sourceUser);
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add(
-          "root.ln.wf02.wt01.temperature,null,root.ln,INT64,PLAIN,LZ4,null,null,null,null,BASE,");
+          device + ".temperature,null,root.ln,INT64,PLAIN,LZ4,null,null,null,null,BASE,");
       expectedResSet.add(
-          "root.ln.wf02.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,");
+          device + ".status,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show timeseries root.ln.**",
+          "show timeseries " + device + ".**",
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           expectedResSet);
       expectedResSet.clear();
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.ln.**",
-          "Time,root.ln.wf02.wt01.temperature,root.ln.wf02.wt01.status,",
+          "select * from " + device,
+          "Time," + device + ".temperature," + device + ".status,",
           Collections.singleton("1800000000000,23,true,"));
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe(pipeName).getCode());
     }
+  }
+
+  private void assertUserEventuallyExists(final String username) {
+    Awaitility.await()
+        .atMost(1, TimeUnit.MINUTES)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              try (final Connection connection = receiverEnv.getConnection();
+                  final Statement statement = connection.createStatement();
+                  final ResultSet resultSet = statement.executeQuery("list user")) {
+                boolean found = false;
+                while (resultSet.next()) {
+                  if (username.equals(resultSet.getString("User"))) {
+                    found = true;
+                    break;
+                  }
+                }
+                Assert.assertTrue(found);
+              }
+            });
   }
 
   @Test
@@ -236,7 +262,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
-  public void testSourcePermissionRestart() throws SQLException {
+  public void testSourcePermissionForDataAndTwoStageProcessor() throws Exception {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       TestUtils.executeNonQuery(senderEnv, "create user `thulab` 'passwD@123456'", connection);
@@ -275,6 +301,75 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           "count(root.vehicle.plane.pressure),",
           Collections.singleton("1,"));
     }
+
+    testCountPointProcessorUsesSourceCredentials();
+  }
+
+  private void testCountPointProcessorUsesSourceCredentials() throws Exception {
+    final String sourceDevice = "root.twostage_source.d1";
+    final String processorOutputSeries = "root.twostage_source.result.point_count";
+    // The processor uses the configured output series as the tablet device and its measurement
+    // node as the tablet measurement.
+    final String outputDevice = processorOutputSeries;
+    final String outputSeries = outputDevice + ".point_count";
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "CREATE DATABASE root.twostage_source",
+            "CREATE TIMESERIES " + sourceDevice + ".s1 WITH DATATYPE=INT32,ENCODING=RLE"),
+        null);
+    TestUtils.executeNonQueries(
+        receiverEnv,
+        Arrays.asList(
+            "CREATE DATABASE root.twostage_source",
+            "CREATE TIMESERIES " + outputSeries + " WITH DATATYPE=INT64,ENCODING=RLE",
+            "INSERT INTO " + outputDevice + "(time,point_count) VALUES (0,0)"),
+        null);
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.path", sourceDevice + ".s1");
+    sourceAttributes.put("source.watermark.interval-ms", "500");
+    sourceAttributes.put("user", "thulab");
+    sourceAttributes.put("password", "passwD@123456");
+
+    final Map<String, String> processorAttributes = new HashMap<>();
+    processorAttributes.put("processor", "count-point-processor");
+    processorAttributes.put("processor.output.series", processorOutputSeries);
+
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sinkAttributes.put("sink", "iotdb-thrift-sink");
+    sinkAttributes.put("sink.batch.enable", "false");
+    sinkAttributes.put("sink.ip", receiverDataNode.getIp());
+    sinkAttributes.put("sink.port", Integer.toString(receiverDataNode.getPort()));
+    sinkAttributes.put("sink.user", "root");
+    sinkAttributes.put("sink.password", "root");
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final TSStatus createStatus =
+          client.createPipe(
+              new TCreatePipeReq("countPointPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), createStatus.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.startPipe("countPointPipe").getCode());
+    }
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Collections.singletonList(
+            "INSERT INTO " + sourceDevice + "(time,s1) VALUES (1,1),(2,2),(3,3)"),
+        null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "SELECT MAX_VALUE(point_count) FROM " + outputDevice,
+        "MAX_VALUE(" + outputSeries + "),",
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -590,12 +685,17 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         "count(root.vehicle.plane.pressure),",
         Collections.singleton("1,"));
 
+    // After restart, the pipe keeps retrying with the stale password and may trigger login lock.
+    statement.execute("alter user thulab account unlock");
+
     try {
       statement.execute("alter pipe a2b modify source ('password'='fake')");
+      fail();
     } catch (final SQLException e) {
       Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
     }
 
+    statement.execute("alter user thulab account unlock");
     statement.execute("alter pipe a2b modify source ('password'='newST@ongPassword')");
 
     // Test empty alter
@@ -620,6 +720,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     statement = connection.createStatement();
     TestUtils.executeNonQuery(
         senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+    statement.execute("alter user thulab account unlock");
     statement.execute("alter user thulab set password 'newST@ongPassword'");
     statement.execute("alter pipe a2b");
 

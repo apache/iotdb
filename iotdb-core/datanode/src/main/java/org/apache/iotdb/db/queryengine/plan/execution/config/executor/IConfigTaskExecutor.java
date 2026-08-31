@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Mig
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -75,6 +77,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
@@ -158,6 +161,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> repairDataPartitionTable();
 
+  SettableFuture<ConfigTaskResult> showRepairDataPartitionTableProgress();
+
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
   SettableFuture<ConfigTaskResult> clearCache(boolean onCluster, Set<CacheClearOptions> options);
@@ -234,6 +239,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showPipes(
       ShowPipesStatement showPipesStatement, String userName);
 
+  SettableFuture<ConfigTaskResult> showCreatePipe(String pipeName, String userName);
+
   SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement);
 
@@ -242,9 +249,13 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement);
 
+  SettableFuture<ConfigTaskResult> alterTopic(AlterTopicStatement alterTopicStatement);
+
   SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement);
 
   SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement);
+
+  SettableFuture<ConfigTaskResult> showCreateTopic(String topicName);
 
   SettableFuture<ConfigTaskResult> alterEncodingCompressor(
       String queryId, AlterEncodingCompressorStatement alterEncodingCompressorStatement);
@@ -331,7 +342,12 @@ public interface IConfigTaskExecutor {
   // =============================== table syntax =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(
-      final ShowDB showDB, final Predicate<String> canSeenDB);
+      final ShowDB showDB, final Predicate<String> canSeeDB);
+
+  SettableFuture<ConfigTaskResult> countDatabases(
+      final CountDB countDB, final Predicate<String> canSeeDB);
+
+  SettableFuture<ConfigTaskResult> showCreateDatabase(final String database);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 
@@ -355,9 +371,10 @@ public interface IConfigTaskExecutor {
       final Boolean isShowCreateView);
 
   SettableFuture<ConfigTaskResult> showTables(
-      final String database, final Predicate<String> canSeenDB, final boolean isDetails);
+      final String database, final Predicate<String> checkCanShowTable, final boolean isDetails);
 
-  TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
+  TFetchTableResp fetchTables(
+      final Map<String, Set<String>> fetchTableMap, final TableNodeStatus tableNodeStatus);
 
   SettableFuture<ConfigTaskResult> alterTableRenameTable(
       final String database,

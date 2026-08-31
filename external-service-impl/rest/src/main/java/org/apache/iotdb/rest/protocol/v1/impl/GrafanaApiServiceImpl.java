@@ -21,6 +21,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rest.protocol.handler.AuthorizationHandler;
+import org.apache.iotdb.rest.protocol.handler.QueryRowLimitUtils;
 import org.apache.iotdb.rest.protocol.v1.GrafanaApiService;
 import org.apache.iotdb.rest.protocol.v1.handler.ExceptionHandler;
 import org.apache.iotdb.rest.protocol.v1.handler.QueryDataSetHandler;
@@ -48,8 +50,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.google.common.base.Joiner;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
 import java.util.List;
@@ -68,11 +70,15 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   private final AuthorizationHandler authorizationHandler;
 
   private final long timePrecision; // the default timestamp precision is ms
+  private final int defaultQueryRowLimit;
 
   public GrafanaApiServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
+    defaultQueryRowLimit =
+        QueryRowLimitUtils.normalizeRowSizeLimit(
+            IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit());
 
     switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":
@@ -132,10 +138,13 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       }
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        return QueryDataSetHandler.fillGrafanaVariablesResult(queryExecution, statement);
+        return QueryDataSetHandler.fillGrafanaVariablesResult(
+            queryExecution, statement, defaultQueryRowLimit);
       }
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
@@ -204,13 +213,17 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         if (((QueryStatement) statement).isAggregationQuery()
             && !((QueryStatement) statement).isGroupByTime()) {
-          return QueryDataSetHandler.fillAggregationPlanDataSet(queryExecution, 0);
+          return QueryDataSetHandler.fillAggregationPlanDataSet(
+              queryExecution, defaultQueryRowLimit);
         } else {
-          return QueryDataSetHandler.fillDataSetWithTimestamps(queryExecution, 0, timePrecision);
+          return QueryDataSetHandler.fillDataSetWithTimestamps(
+              queryExecution, defaultQueryRowLimit, timePrecision);
         }
       }
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
@@ -269,13 +282,15 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
 
         try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-          return QueryDataSetHandler.fillGrafanaNodesResult(queryExecution);
+          return QueryDataSetHandler.fillGrafanaNodesResult(queryExecution, defaultQueryRowLimit);
         }
       } else {
-        return QueryDataSetHandler.fillGrafanaNodesResult(null);
+        return QueryDataSetHandler.fillGrafanaNodesResult(null, defaultQueryRowLimit);
       }
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);

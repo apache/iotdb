@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -40,7 +42,7 @@ public final class IrRowPatternFlattener {
     @Override
     protected IrRowPattern visitIrRowPattern(IrRowPattern node, Boolean inExclusion) {
       throw new UnsupportedOperationException(
-          "unsupported node type: " + node.getClass().getName());
+          String.format(QueryMessages.UNSUPPORTED_IR_NODE_TYPE, node.getClass().getName()));
     }
 
     @Override

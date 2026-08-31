@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.library.dlearn.util.cluster;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 import java.util.Arrays;
 
 /**
@@ -109,21 +111,21 @@ public class KMeans {
 
   private static void validate(double[][] samples, int k, int maxIterations) {
     if (samples == null || samples.length == 0) {
-      throw new IllegalArgumentException("samples must be non-empty.");
+      throw new IllegalArgumentException(LibraryUdfMessages.SAMPLES_MUST_BE_NON_EMPTY);
     }
     if (k < 2 || k > samples.length) {
-      throw new IllegalArgumentException("k must satisfy 2 <= k <= samples.length.");
+      throw new IllegalArgumentException(LibraryUdfMessages.K_MUST_SATISFY_RANGE);
     }
     if (maxIterations < 1) {
-      throw new IllegalArgumentException("maxIterations must be at least 1.");
+      throw new IllegalArgumentException(LibraryUdfMessages.MAX_ITERATIONS_MUST_BE_AT_LEAST_1);
     }
     int dim = samples[0].length;
     if (dim == 0) {
-      throw new IllegalArgumentException("sample dimension must be positive.");
+      throw new IllegalArgumentException(LibraryUdfMessages.SAMPLE_DIMENSION_MUST_BE_POSITIVE);
     }
     for (double[] row : samples) {
       if (row == null || row.length != dim) {
-        throw new IllegalArgumentException("All samples must have the same length.");
+        throw new IllegalArgumentException(LibraryUdfMessages.ALL_SAMPLES_MUST_HAVE_SAME_LENGTH);
       }
     }
   }

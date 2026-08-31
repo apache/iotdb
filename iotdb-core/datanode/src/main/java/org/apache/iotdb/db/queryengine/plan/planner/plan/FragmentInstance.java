@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
@@ -297,7 +298,8 @@ public class FragmentInstance implements IConsensusRequest {
       ReadWriteIOUtils.write(isHighestPriority, outputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
-      LOGGER.error("Unexpected error occurs when serializing this FragmentInstance.", e);
+      LOGGER.error(
+          DataNodeQueryMessages.UNEXPECTED_ERROR_OCCURS_WHEN_SERIALIZING_THIS_FRAGMENTINSTANCE, e);
       throw new SerializationRunTimeException(e);
     }
   }

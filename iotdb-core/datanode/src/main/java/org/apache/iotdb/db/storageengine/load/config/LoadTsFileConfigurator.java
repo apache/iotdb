@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.config;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 
@@ -54,6 +55,9 @@ public class LoadTsFileConfigurator {
       case VERIFY_KEY:
         validateVerifyParam(value);
         break;
+      case AUTO_CREATE_SCHEMA_KEY:
+        validateAutoCreateSchemaParam(value);
+        break;
       case PIPE_GENERATED_KEY:
         validatePipeGeneratedParam(value);
         break;
@@ -61,18 +65,18 @@ public class LoadTsFileConfigurator {
         validateAsyncLoadParam(value);
         break;
       default:
-        throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
+        throw new SemanticException(
+            String.format(StorageEngineMessages.INVALID_PARAMETER_FOR_LOAD_TSFILE_COMMAND, key));
     }
   }
 
   public static void validateSynonymParameters(final Map<String, String> parameters) {
     if (parameters.containsKey(DATABASE_KEY) && parameters.containsKey(DATABASE_NAME_KEY)) {
       throw new SemanticException(
-          "The parameter key '"
-              + DATABASE_KEY
-              + "' and '"
-              + DATABASE_NAME_KEY
-              + "' cannot co-exist.");
+          String.format(
+              StorageEngineMessages.LOAD_TSFILE_DATABASE_KEY_AND_NAME_CANNOT_COEXIST,
+              DATABASE_KEY,
+              DATABASE_NAME_KEY));
     }
   }
 
@@ -87,14 +91,13 @@ public class LoadTsFileConfigurator {
       if (level < DATABASE_LEVEL_MIN_VALUE) {
         throw new SemanticException(
             String.format(
-                "Given database level %d is less than the minimum value %d, please input a valid database level.",
-                level, DATABASE_LEVEL_MIN_VALUE));
+                StorageEngineMessages.DATABASE_LEVEL_LESS_THAN_MINIMUM,
+                level,
+                DATABASE_LEVEL_MIN_VALUE));
       }
     } catch (final NumberFormatException e) {
       throw new SemanticException(
-          String.format(
-              "Given database level %s is not a valid integer, please input a valid database level.",
-              databaseLevel));
+          String.format(StorageEngineMessages.DATABASE_LEVEL_NOT_VALID_INTEGER, databaseLevel));
     }
   }
 
@@ -125,9 +128,7 @@ public class LoadTsFileConfigurator {
   public static void validateOnSuccessParam(final String onSuccess) {
     if (!ON_SUCCESS_VALUE_SET.contains(onSuccess)) {
       throw new SemanticException(
-          String.format(
-              "Given on-success value '%s' is not supported, please input a valid on-success value.",
-              onSuccess));
+          String.format(StorageEngineMessages.ON_SUCCESS_VALUE_NOT_SUPPORTED, onSuccess));
     }
   }
 
@@ -144,8 +145,9 @@ public class LoadTsFileConfigurator {
         && !"false".equalsIgnoreCase(convertOnTypeMismatch)) {
       throw new SemanticException(
           String.format(
-              "Given %s value '%s' is not supported, please input a valid boolean value.",
-              CONVERT_ON_TYPE_MISMATCH_KEY, convertOnTypeMismatch));
+              StorageEngineMessages.PARAMETER_VALUE_NOT_SUPPORTED_BOOLEAN,
+              CONVERT_ON_TYPE_MISMATCH_KEY,
+              convertOnTypeMismatch));
     }
   }
 
@@ -176,8 +178,7 @@ public class LoadTsFileConfigurator {
     if (!"true".equalsIgnoreCase(verify) && !"false".equalsIgnoreCase(verify)) {
       throw new SemanticException(
           String.format(
-              "Given %s value '%s' is not supported, please input a valid boolean value.",
-              VERIFY_KEY, verify));
+              StorageEngineMessages.PARAMETER_VALUE_NOT_SUPPORTED_BOOLEAN, VERIFY_KEY, verify));
     }
   }
 
@@ -186,14 +187,35 @@ public class LoadTsFileConfigurator {
         loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
   }
 
+  public static final String AUTO_CREATE_SCHEMA_KEY = "auto-create-schema";
+  private static final boolean AUTO_CREATE_SCHEMA_DEFAULT_VALUE = true;
+
+  public static void validateAutoCreateSchemaParam(final String autoCreateSchema) {
+    if (!"true".equalsIgnoreCase(autoCreateSchema) && !"false".equalsIgnoreCase(autoCreateSchema)) {
+      throw new SemanticException(
+          String.format(
+              StorageEngineMessages.PARAMETER_VALUE_NOT_SUPPORTED_BOOLEAN,
+              AUTO_CREATE_SCHEMA_KEY,
+              autoCreateSchema));
+    }
+  }
+
+  public static boolean parseOrGetDefaultAutoCreateSchema(
+      final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(
+            AUTO_CREATE_SCHEMA_KEY, String.valueOf(AUTO_CREATE_SCHEMA_DEFAULT_VALUE)));
+  }
+
   public static final String PIPE_GENERATED_KEY = "pipe-generated";
 
   public static void validatePipeGeneratedParam(final String pipeGenerated) {
     if (!"true".equalsIgnoreCase(pipeGenerated) && !"false".equalsIgnoreCase(pipeGenerated)) {
       throw new SemanticException(
           String.format(
-              "Given %s value '%s' is not supported, please input a valid boolean value.",
-              PIPE_GENERATED_KEY, pipeGenerated));
+              StorageEngineMessages.PARAMETER_VALUE_NOT_SUPPORTED_BOOLEAN,
+              PIPE_GENERATED_KEY,
+              pipeGenerated));
     }
   }
 
@@ -208,8 +230,9 @@ public class LoadTsFileConfigurator {
     if (!"true".equalsIgnoreCase(asyncLoad) && !"false".equalsIgnoreCase(asyncLoad)) {
       throw new SemanticException(
           String.format(
-              "Given %s value '%s' is not supported, please input a valid boolean value.",
-              ASYNC_LOAD_KEY, asyncLoad));
+              StorageEngineMessages.PARAMETER_VALUE_NOT_SUPPORTED_BOOLEAN,
+              ASYNC_LOAD_KEY,
+              asyncLoad));
     }
   }
 
@@ -219,6 +242,6 @@ public class LoadTsFileConfigurator {
   }
 
   private LoadTsFileConfigurator() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(StorageEngineMessages.UTILITY_CLASS);
   }
 }

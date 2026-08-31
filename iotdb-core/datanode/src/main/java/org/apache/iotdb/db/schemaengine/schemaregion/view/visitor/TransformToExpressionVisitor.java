@@ -55,6 +55,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.unary.NegationViewExp
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.RegularViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.UnaryViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.DivisionExpression;
@@ -96,14 +97,13 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
 
   @Override
   public Expression visitExpression(ViewExpression expression, Void context) {
-    throw new UnsupportedOperationException(
-        "visitExpression in TransformToExpressionVisitor is not supported.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.VISIT_EXPRESSION_NOT_SUPPORTED);
   }
 
   // region leaf operand
   @Override
   public Expression visitLeafOperand(LeafViewOperand leafViewOperand, Void context) {
-    throw new UnsupportedOperationException("Can not construct abstract class.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.CANNOT_CONSTRUCT_ABSTRACT_CLASS);
   }
 
   @Override
@@ -136,7 +136,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Unary Expressions
   @Override
   public Expression visitUnaryExpression(UnaryViewExpression unaryViewExpression, Void context) {
-    throw new UnsupportedOperationException("Can not construct abstract class.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.CANNOT_CONSTRUCT_ABSTRACT_CLASS);
   }
 
   @Override
@@ -187,7 +187,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   @Override
   // region Binary Expressions
   public Expression visitBinaryExpression(BinaryViewExpression binaryViewExpression, Void context) {
-    throw new UnsupportedOperationException("Can not construct abstract class.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.CANNOT_CONSTRUCT_ABSTRACT_CLASS);
   }
 
   private Pair<Expression, Expression> getExpressionsForBinaryExpression(
@@ -200,7 +200,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Binary : Arithmetic Binary Expression
   public Expression visitArithmeticBinaryExpression(
       ArithmeticBinaryViewExpression arithmeticBinaryExpression, Void context) {
-    throw new UnsupportedOperationException("Can not construct abstract class.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.CANNOT_CONSTRUCT_ABSTRACT_CLASS);
   }
 
   public Expression visitAdditionExpression(
@@ -239,7 +239,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Binary: Compare Binary Expression
   public Expression visitCompareBinaryExpression(
       CompareBinaryViewExpression compareBinaryExpression, Void context) {
-    throw new UnsupportedOperationException("Can not construct abstract class.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.CANNOT_CONSTRUCT_ABSTRACT_CLASS);
   }
 
   public Expression visitEqualToExpression(EqualToViewExpression equalToExpression, Void context) {
@@ -284,7 +284,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Binary : Logic Binary Expression
   public Expression visitLogicBinaryExpression(
       LogicBinaryViewExpression logicBinaryExpression, Void context) {
-    throw new UnsupportedOperationException("Can not construct abstract class.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.CANNOT_CONSTRUCT_ABSTRACT_CLASS);
   }
 
   public Expression visitLogicAndExpression(
@@ -305,7 +305,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Ternary Expressions
   public Expression visitTernaryExpression(
       TernaryViewExpression ternaryViewExpression, Void context) {
-    throw new UnsupportedOperationException("Can not construct abstract class.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.CANNOT_CONSTRUCT_ABSTRACT_CLASS);
   }
 
   public Expression visitBetweenExpression(

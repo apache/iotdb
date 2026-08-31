@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.transformation.dag.column;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.AbstractIntType;
@@ -58,7 +60,7 @@ public class TreeCaseWhenThenColumnTransformer extends AbstractCaseWhenThenColum
     } else if (returnType instanceof AbstractVarcharType || returnType instanceof BlobType) {
       builder.writeBinary(thenColumnType.getBinary(column, index));
     } else {
-      throw new UnsupportedOperationException("Unsupported Type");
+      throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_TYPE_BINARY);
     }
   }
 }

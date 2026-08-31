@@ -27,6 +27,8 @@ import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.SubscriptionMessageProcessor;
+import org.apache.iotdb.session.subscription.payload.PollResult;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
@@ -52,6 +54,8 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
       final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
+      final String ownerId,
+      final Long ownerEpoch,
       final int thriftMaxFrameSize,
       final long heartbeatIntervalMs,
       final int connectionTimeoutInMs) {
@@ -62,6 +66,8 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
         encryptedPassword,
         consumerId,
         consumerGroupId,
+        ownerId,
+        ownerEpoch,
         thriftMaxFrameSize,
         heartbeatIntervalMs,
         connectionTimeoutInMs);
@@ -85,6 +91,8 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
             .encryptedPassword(builder.encryptedPassword)
             .consumerId(builder.consumerId)
             .consumerGroupId(builder.consumerGroupId)
+            .ownerId(builder.ownerId)
+            .ownerEpoch(builder.ownerEpoch)
             .heartbeatIntervalMs(builder.heartbeatIntervalMs)
             .endpointsSyncIntervalMs(builder.endpointsSyncIntervalMs)
             .fileSaveDir(builder.fileSaveDir)
@@ -177,6 +185,11 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
   }
 
   @Override
+  public List<SubscriptionMessage> drainBufferedMessages() throws SubscriptionException {
+    return super.drainBufferedMessages();
+  }
+
+  @Override
   public void commitSync(final SubscriptionMessage message) throws SubscriptionException {
     super.commitSync(message);
   }
@@ -223,6 +236,26 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
     return super.allTopicMessagesHaveBeenConsumed();
   }
 
+  /////////////////////////////// processor ///////////////////////////////
+
+  public SubscriptionTreePullConsumer addProcessor(final SubscriptionMessageProcessor processor) {
+    super.addProcessor(processor);
+    return this;
+  }
+
+  public PollResult pollWithInfo(final long timeoutMs) throws SubscriptionException {
+    return super.pollWithInfo(timeoutMs);
+  }
+
+  public PollResult pollWithInfo(final Duration timeout) throws SubscriptionException {
+    return super.pollWithInfo(timeout.toMillis());
+  }
+
+  public PollResult pollWithInfo(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    return super.pollWithInfo(topicNames, timeoutMs);
+  }
+
   /////////////////////////////// builder ///////////////////////////////
 
   @Deprecated // keep for forward compatibility
@@ -238,6 +271,8 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
 
     private String consumerId;
     private String consumerGroupId;
+    private String ownerId;
+    private Long ownerEpoch;
 
     private long heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
     private long endpointsSyncIntervalMs =
@@ -296,6 +331,19 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
         return this;
       }
       this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
+      return this;
+    }
+
+    public Builder ownerId(@Nullable final String ownerId) {
+      if (Objects.isNull(ownerId)) {
+        return this;
+      }
+      this.ownerId = ownerId;
+      return this;
+    }
+
+    public Builder ownerEpoch(final long ownerEpoch) {
+      this.ownerEpoch = ownerEpoch;
       return this;
     }
 

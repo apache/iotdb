@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.security.encrypt;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -70,7 +72,7 @@ public class AsymmetricEncryptFactory {
       cl = ClassLoader.getSystemClassLoader();
     }
     if (cl == null) {
-      throw new EncryptDecryptException("A ClassLoader to load the class could not be determined.");
+      throw new EncryptDecryptException(CommonMessages.CLASSLOADER_NOT_DETERMINED);
     }
     return cl;
   }

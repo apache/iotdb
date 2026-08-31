@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
@@ -372,7 +373,7 @@ public abstract class Expression extends StatementNode implements Accountable {
         break;
 
       default:
-        throw new IllegalArgumentException("Invalid expression type: " + type);
+        throw new IllegalArgumentException(DataNodeQueryMessages.INVALID_EXPRESSION_TYPE + type);
     }
 
     boolean hasInputColumnIndex = ReadWriteIOUtils.readBool(byteBuffer);

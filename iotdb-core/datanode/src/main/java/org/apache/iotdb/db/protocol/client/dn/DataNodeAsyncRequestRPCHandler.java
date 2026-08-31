@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +78,8 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
         keepSilent = false;
         break;
       default:
-        throw new UnsupportedOperationException("request type is not supported: " + requestType);
+        throw new UnsupportedOperationException(
+            DataNodeMiscMessages.REQUEST_TYPE_NOT_SUPPORTED + requestType);
     }
     return new AsyncTSStatusRPCHandler(
         requestType,

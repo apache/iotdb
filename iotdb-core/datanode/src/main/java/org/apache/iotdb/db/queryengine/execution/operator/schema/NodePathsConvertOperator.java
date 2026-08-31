@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -56,8 +57,11 @@ public class NodePathsConvertOperator implements ProcessOperator {
   private final List<TSDataType> outputDataTypes;
 
   public NodePathsConvertOperator(OperatorContext operatorContext, Operator child) {
-    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    this.child = requireNonNull(child, "child operator is null");
+    this.operatorContext =
+        requireNonNull(
+            operatorContext, DataNodeQueryMessages.EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB);
+    this.child =
+        requireNonNull(child, DataNodeQueryMessages.EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C);
     this.outputDataTypes =
         ColumnHeaderConstant.showChildNodesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -88,7 +92,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
       try {
         partialPath = new PartialPath(path);
       } catch (IllegalPathException e) {
-        LOGGER.warn("Failed to convert node path to PartialPath {}", path);
+        LOGGER.warn(DataNodeQueryMessages.FAILED_TO_CONVERT_NODE_PATH_TO_PARTIALPATH, path);
         continue;
       }
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);

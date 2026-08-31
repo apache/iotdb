@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
@@ -95,6 +97,64 @@ public class PipeStaticMeta {
                 Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             .toLowerCase());
+  }
+
+  public boolean mayNeedCompatibleRootUserForIoTDBSource() {
+    final String pluginName =
+        sourceParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    return PipeType.USER.equals(getPipeType())
+        && (pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName()))
+        && !sourceParameters.hasAnyAttributes(
+            PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+            PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY,
+            PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+  }
+
+  public boolean mayNeedCompatibleRootUserForWriteBackSink() {
+    final String pluginName =
+        sinkParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+
+    return PipeType.USER.equals(getPipeType())
+        && (pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+            || pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName()))
+        && !sinkParameters.hasAnyAttributes(
+            PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+            PipeSinkConstant.SINK_IOTDB_USER_KEY,
+            PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+            PipeSinkConstant.SINK_IOTDB_USERNAME_KEY,
+            PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+            PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
+  }
+
+  public void enrichSourceWithRootUserForCompatibility(
+      final String rootUserName, final String password) {
+    sourceParameters
+        .getAttribute()
+        .put(PipeSourceConstant.SOURCE_IOTDB_USER_ID, String.valueOf(IoTDBConstant.SUPER_USER_ID));
+    sourceParameters.getAttribute().put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, rootUserName);
+    sourceParameters.getAttribute().put(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, password);
+  }
+
+  public void enrichWriteBackSinkWithRootUserForCompatibility(
+      final String rootUserName, final String password) {
+    sinkParameters
+        .getAttribute()
+        .put(PipeSinkConstant.SINK_IOTDB_USER_ID, String.valueOf(IoTDBConstant.SUPER_USER_ID));
+    sinkParameters.getAttribute().put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, rootUserName);
+    sinkParameters.getAttribute().put(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, password);
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -248,5 +308,9 @@ public class PipeStaticMeta {
     final Visibility visibility =
         VisibilityUtils.calculateFromExtractorParameters(sourceParameters);
     return VisibilityUtils.isCompatible(visibility, isTableModel);
+  }
+
+  public boolean visibleUnderTableModel() {
+    return visibleUnder(true);
   }
 }

@@ -19,14 +19,21 @@
 
 package org.apache.iotdb.confignode.manager.subscription;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinatorLock;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
@@ -40,16 +47,26 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicOwnerLeaseReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class SubscriptionCoordinator {
 
@@ -64,12 +81,32 @@ public class SubscriptionCoordinator {
   private AtomicReference<SubscriptionInfo> subscriptionInfoHolder;
 
   private final SubscriptionMetaSyncer subscriptionMetaSyncer;
+  private final SubscriptionOwnerLeaseSyncer subscriptionOwnerLeaseSyncer;
+
+  // Serialize client ALTER TOPIC requests per model-qualified topic. Besides preventing ordinary
+  // partial updates from being built from the same snapshot, this also ensures that only one
+  // owner-transfer request can own the renewal-block entry for a topic at a time.
+  private final Map<TopicModelKey, TopicAlterationLock> topicAlterationLocks = new HashMap<>();
+
+  // model-qualified topic -> blockSinceMs (ConfigNode local clock when owner-lease renewal was
+  // stopped for an in-flight owner transfer). Used to skip renewal and to bound the admission wait.
+  private final Map<TopicModelKey, Long> blockedOwnerLeaseRenewalTopics =
+      Collections.synchronizedMap(new HashMap<>());
+
+  private record TopicModelKey(String topicName, boolean isTableModel) {}
+
+  private static class TopicAlterationLock {
+
+    private final ReentrantLock lock = new ReentrantLock(true);
+    private int referenceCount;
+  }
 
   public SubscriptionCoordinator(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.configManager = configManager;
     this.subscriptionInfo = subscriptionInfo;
     this.coordinatorLock = new PipeTaskCoordinatorLock();
     this.subscriptionMetaSyncer = new SubscriptionMetaSyncer(configManager);
+    this.subscriptionOwnerLeaseSyncer = new SubscriptionOwnerLeaseSyncer(configManager);
   }
 
   public SubscriptionInfo getSubscriptionInfo() {
@@ -113,14 +150,50 @@ public class SubscriptionCoordinator {
     return coordinatorLock.isLocked();
   }
 
+  public void lockTopicAlteration(final String topicName) {
+    lockTopicAlteration(topicName, false);
+  }
+
+  public void lockTopicAlteration(final String topicName, final boolean isTableModel) {
+    final TopicModelKey topicModelKey = new TopicModelKey(topicName, isTableModel);
+    final TopicAlterationLock topicAlterationLock;
+    synchronized (topicAlterationLocks) {
+      topicAlterationLock =
+          topicAlterationLocks.computeIfAbsent(topicModelKey, ignored -> new TopicAlterationLock());
+      topicAlterationLock.referenceCount++;
+    }
+    topicAlterationLock.lock.lock();
+  }
+
+  public void unlockTopicAlteration(final String topicName) {
+    unlockTopicAlteration(topicName, false);
+  }
+
+  public void unlockTopicAlteration(final String topicName, final boolean isTableModel) {
+    final TopicModelKey topicModelKey = new TopicModelKey(topicName, isTableModel);
+    final TopicAlterationLock topicAlterationLock;
+    synchronized (topicAlterationLocks) {
+      topicAlterationLock = topicAlterationLocks.get(topicModelKey);
+    }
+
+    topicAlterationLock.lock.unlock();
+    synchronized (topicAlterationLocks) {
+      if (--topicAlterationLock.referenceCount == 0) {
+        topicAlterationLocks.remove(topicModelKey, topicAlterationLock);
+      }
+    }
+  }
+
   /////////////////////////////// Meta sync ///////////////////////////////
 
   public void startSubscriptionMetaSync() {
     subscriptionMetaSyncer.start();
+    subscriptionOwnerLeaseSyncer.start();
   }
 
   public void stopSubscriptionMetaSync() {
     subscriptionMetaSyncer.stop();
+    subscriptionOwnerLeaseSyncer.stop();
   }
 
   /**
@@ -140,12 +213,154 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().createTopic(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to create topic {} with attributes {}. Result status: {}.",
+          ManagerMessages.FAILED_TO_CREATE_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS,
           req.getTopicName(),
           req.getTopicAttributes(),
           status);
     }
     return status;
+  }
+
+  public TSStatus alterTopic(TAlterTopicReq req) {
+    final TSStatus status = configManager.getProcedureManager().alterTopic(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          ManagerMessages.FAILED_TO_ALTER_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS,
+          req.getTopicName(),
+          req.getTopicAttributes(),
+          status);
+    }
+    return status;
+  }
+
+  public boolean blockOwnerLeaseRenewalIfOwnerTransfer(TAlterTopicReq req) {
+    final TopicMeta currentTopicMeta =
+        subscriptionInfo.deepCopyTopicMeta(
+            req.getTopicName(), new TopicConfig(req.getTopicAttributes()).isTableTopic());
+    final TopicMeta updatedTopicMeta =
+        Objects.isNull(currentTopicMeta)
+            ? null
+            : currentTopicMeta.deepCopyWithUpdatedAttributes(req.getTopicAttributes());
+    if (Objects.isNull(currentTopicMeta)
+        || Objects.isNull(updatedTopicMeta)
+        || Objects.equals(currentTopicMeta.getOwnerId(), updatedTopicMeta.getOwnerId())) {
+      return false;
+    }
+
+    blockedOwnerLeaseRenewalTopics.put(
+        new TopicModelKey(req.getTopicName(), currentTopicMeta.visibleUnderTableModel()),
+        System.currentTimeMillis());
+    return true;
+  }
+
+  public void unblockOwnerLeaseRenewal(String topicName) {
+    unblockOwnerLeaseRenewal(topicName, false);
+  }
+
+  public void unblockOwnerLeaseRenewal(final String topicName, final boolean isTableModel) {
+    blockedOwnerLeaseRenewalTopics.remove(new TopicModelKey(topicName, isTableModel));
+  }
+
+  /**
+   * Block until it is safe to install the new owner: every DataNode must have let the old owner's
+   * lease expire. Since renewal was stopped at {@code blockSince}, a DataNode's lease can expire as
+   * late as {@code blockSince + H + L} (H covers propagation of the last renewal sent just before
+   * the block; L is the lease duration). We wait that long measured purely on this ConfigNode's own
+   * clock from {@code blockSince} — no cross-node timestamp comparison, so clock skew cannot shrink
+   * the window. This replaces any absolute-expire-timestamp comparison.
+   */
+  public TopicMeta buildAlteredTopicMetaAfterOwnerLeaseExpired(TAlterTopicReq req)
+      throws InterruptedException {
+    final TopicMeta currentTopicMeta =
+        subscriptionInfo.deepCopyTopicMeta(
+            req.getTopicName(), new TopicConfig(req.getTopicAttributes()).isTableTopic());
+    final TopicMeta updatedTopicMeta =
+        Objects.isNull(currentTopicMeta)
+            ? null
+            : currentTopicMeta.deepCopyWithUpdatedAttributes(req.getTopicAttributes());
+    if (Objects.isNull(currentTopicMeta)
+        || Objects.isNull(updatedTopicMeta)
+        || Objects.equals(currentTopicMeta.getOwnerId(), updatedTopicMeta.getOwnerId())) {
+      // Not an owner change: nothing to drain.
+      return updatedTopicMeta;
+    }
+
+    final Long leaseDurationMs = currentTopicMeta.getOwnerLeaseDurationMs();
+    if (Objects.isNull(leaseDurationMs)) {
+      // No lease configured, so there is nothing to drain.
+      return updatedTopicMeta;
+    }
+
+    waitForOwnerLeaseExpiration(
+        req.getTopicName(), currentTopicMeta.visibleUnderTableModel(), leaseDurationMs);
+
+    // Another alteration may have completed while this owner transfer was waiting for the old
+    // lease to drain. Rebuild from the latest TopicMeta so that this request only applies its own
+    // attributes instead of restoring the stale snapshot captured before the wait.
+    return buildAlteredTopicMeta(req);
+  }
+
+  void waitForOwnerLeaseExpiration(final String topicName, final long leaseDurationMs)
+      throws InterruptedException {
+    waitForOwnerLeaseExpiration(topicName, false, leaseDurationMs);
+  }
+
+  void waitForOwnerLeaseExpiration(
+      final String topicName, final boolean isTableModel, final long leaseDurationMs)
+      throws InterruptedException {
+    final Long blockSinceMs =
+        blockedOwnerLeaseRenewalTopics.get(new TopicModelKey(topicName, isTableModel));
+    if (Objects.isNull(blockSinceMs)) {
+      return;
+    }
+
+    final long drainDeadlineMs =
+        blockSinceMs + leaseDurationMs + SubscriptionOwnerLeaseSyncer.getHeartbeatIntervalMs();
+    long remainingMs;
+    while ((remainingMs = drainDeadlineMs - System.currentTimeMillis()) > 0) {
+      Thread.sleep(Math.min(remainingMs, 1000L));
+    }
+  }
+
+  public TopicMeta buildAlteredTopicMeta(TAlterTopicReq req) {
+    return subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(
+        req.getTopicName(), req.getTopicAttributes());
+  }
+
+  /**
+   * Build and push owner-lease renewals to all DataNodes via the dedicated subscription owner
+   * heartbeat (independent from the node heartbeat). Topics undergoing an owner transfer are
+   * skipped so their lease drains on the DataNodes. Best-effort: a DataNode that misses pushes will
+   * let its local lease expire and fence the owner (fail-closed).
+   */
+  public void pushTopicOwnerLeasesToDataNodes() {
+    final Set<String> blockedTreeTopicNames = new HashSet<>();
+    final Set<String> blockedTableTopicNames = new HashSet<>();
+    synchronized (blockedOwnerLeaseRenewalTopics) {
+      for (final TopicModelKey topicModelKey : blockedOwnerLeaseRenewalTopics.keySet()) {
+        (topicModelKey.isTableModel() ? blockedTableTopicNames : blockedTreeTopicNames)
+            .add(topicModelKey.topicName());
+      }
+    }
+
+    final List<TTopicOwnerLeaseEntry> ownerLeases =
+        subscriptionInfo.collectTopicOwnerLeaseEntries(
+            blockedTreeTopicNames, blockedTableTopicNames);
+    if (ownerLeases.isEmpty()) {
+      return;
+    }
+
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (dataNodeLocationMap.isEmpty()) {
+      return;
+    }
+
+    final TPushTopicOwnerLeaseReq request = new TPushTopicOwnerLeaseReq(ownerLeases);
+    final DataNodeAsyncRequestContext<TPushTopicOwnerLeaseReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.SUBSCRIPTION_PUSH_OWNER_LEASE, request, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
   }
 
   public TSStatus dropTopic(TDropTopicReq req) {
@@ -160,7 +375,7 @@ public class SubscriptionCoordinator {
               String.format(
                   "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
     }
-    return configManager.getProcedureManager().dropTopic(topicName);
+    return configManager.getProcedureManager().dropTopic(topicName, req.isTableModel);
   }
 
   public TShowTopicResp showTopic(TShowTopicReq req) {
@@ -169,7 +384,7 @@ public class SubscriptionCoordinator {
           .filter(req.topicName, req.isTableModel)
           .convertToTShowTopicResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed to show topic info.", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_SHOW_TOPIC_INFO, e);
       return new TopicTableResp(
               new TSStatus(TSStatusCode.SHOW_TOPIC_ERROR.getStatusCode())
                   .setMessage(e.getMessage()),
@@ -183,7 +398,7 @@ public class SubscriptionCoordinator {
       return ((TopicTableResp) configManager.getConsensusManager().read(new ShowTopicPlan()))
           .convertToTGetAllTopicInfoResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed to get all topic info.", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_GET_ALL_TOPIC_INFO, e);
       return new TGetAllTopicInfoResp(
           new TSStatus(TSStatusCode.SHOW_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage()),
           Collections.emptyList());
@@ -194,7 +409,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().createConsumer(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to create consumer {} in consumer group {}. Result status: {}.",
+          ManagerMessages.FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS,
           req.getConsumerId(),
           req.getConsumerGroupId(),
           status);
@@ -206,7 +421,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().dropConsumer(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to close consumer {} in consumer group {}. Result status: {}.",
+          ManagerMessages.FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS,
           req.getConsumerId(),
           req.getConsumerGroupId(),
           status);
@@ -218,7 +433,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().createSubscription(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Consumer {} in consumer group {} failed to subscribe topics {}. Result status: {}.",
+          ManagerMessages.CONSUMER_IN_CONSUMER_GROUP_FAILED_TO_SUBSCRIBE_TOPICS_RESULT_STATUS,
           req.getConsumerId(),
           req.getConsumerGroupId(),
           req.getTopicNames(),
@@ -231,7 +446,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().dropSubscription(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Consumer {} in consumer group {} failed to unsubscribe topics {}. Result status: {}.",
+          ManagerMessages.CONSUMER_IN_CONSUMER_GROUP_FAILED_TO_UNSUBSCRIBE_TOPICS_RESULT_STATUS,
           req.getConsumerId(),
           req.getConsumerGroupId(),
           req.getTopicNames(),
@@ -272,7 +487,7 @@ public class SubscriptionCoordinator {
           .filter(req.getTopicName(), req.isTableModel)
           .convertToTShowSubscriptionResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed to show subscription info.", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_SHOW_SUBSCRIPTION_INFO, e);
       return new SubscriptionTableResp(
               new TSStatus(TSStatusCode.SHOW_SUBSCRIPTION_ERROR.getStatusCode())
                   .setMessage(e.getMessage()),
@@ -288,7 +503,7 @@ public class SubscriptionCoordinator {
               configManager.getConsensusManager().read(new ShowSubscriptionPlan()))
           .convertToTGetAllSubscriptionInfoResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed to get all subscription info.", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_GET_ALL_SUBSCRIPTION_INFO, e);
       return new TGetAllSubscriptionInfoResp(
           new TSStatus(TSStatusCode.SHOW_SUBSCRIPTION_ERROR.getStatusCode())
               .setMessage(e.getMessage()),

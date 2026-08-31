@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.FunctionNullability;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
@@ -86,6 +87,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -99,7 +101,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecogniti
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StackableAstVisitor;
 
@@ -268,17 +269,33 @@ public class ExpressionAnalyzer {
       WarningCollector warningCollector,
       Function<Expression, Type> getPreanalyzedType,
       Function<Node, Analysis.ResolvedWindow> getResolvedWindow) {
-    this.metadata = requireNonNull(metadata, "metadata is null");
-    this.context = requireNonNull(context, "context is null");
-    this.accessControl = requireNonNull(accessControl, "accessControl is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
+    this.context =
+        requireNonNull(context, DataNodeQueryMessages.EXCEPTION_CONTEXT_IS_NULL_E329B664);
+    this.accessControl =
+        requireNonNull(
+            accessControl, DataNodeQueryMessages.EXCEPTION_ACCESSCONTROL_IS_NULL_F534EBDD);
     this.statementAnalyzerFactory =
-        requireNonNull(statementAnalyzerFactory, "statementAnalyzerFactory is null");
-    this.session = requireNonNull(session, "session is null");
-    this.symbolTypes = requireNonNull(symbolTypes, "symbolTypes is null");
-    this.parameters = requireNonNull(parameters, "parameters is null");
-    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-    this.getResolvedWindow = requireNonNull(getResolvedWindow, "getResolvedWindow is null");
-    this.getPreanalyzedType = requireNonNull(getPreanalyzedType, "getPreanalyzedType is null");
+        requireNonNull(
+            statementAnalyzerFactory,
+            DataNodeQueryMessages.EXCEPTION_STATEMENTANALYZERFACTORY_IS_NULL_D309BAB5);
+    this.session =
+        requireNonNull(session, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
+    this.symbolTypes =
+        requireNonNull(symbolTypes, DataNodeQueryMessages.EXCEPTION_SYMBOLTYPES_IS_NULL_DD16EA83);
+    this.parameters =
+        requireNonNull(parameters, DataNodeQueryMessages.EXCEPTION_PARAMETERS_IS_NULL_418C7892);
+    this.warningCollector =
+        requireNonNull(
+            warningCollector, DataNodeQueryMessages.EXCEPTION_WARNINGCOLLECTOR_IS_NULL_7A524A68);
+    this.getResolvedWindow =
+        requireNonNull(
+            getResolvedWindow, DataNodeQueryMessages.EXCEPTION_GETRESOLVEDWINDOW_IS_NULL_2438758C);
+    this.getPreanalyzedType =
+        requireNonNull(
+            getPreanalyzedType,
+            DataNodeQueryMessages.EXCEPTION_GETPREANALYZEDTYPE_IS_NULL_FBB2EC7D);
   }
 
   public static ExpressionAnalysis analyzeWindow(
@@ -339,8 +356,8 @@ public class ExpressionAnalyzer {
   }
 
   public Type setExpressionType(Expression expression, Type type) {
-    requireNonNull(expression, "expression cannot be null");
-    requireNonNull(type, "type cannot be null");
+    requireNonNull(expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_CANNOT_BE_NULL_EFF1A99C);
+    requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_CANNOT_BE_NULL_97A0A8D3);
 
     expressionTypes.put(NodeRef.of(expression), type);
 
@@ -352,10 +369,13 @@ public class ExpressionAnalyzer {
   }
 
   private Type getExpressionType(Expression expression) {
-    requireNonNull(expression, "expression cannot be null");
+    requireNonNull(expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_CANNOT_BE_NULL_EFF1A99C);
 
     Type type = expressionTypes.get(NodeRef.of(expression));
-    checkState(type != null, "Expression not yet analyzed: %s", expression);
+    checkState(
+        type != null,
+        DataNodeQueryMessages.EXCEPTION_EXPRESSION_NOT_YET_ANALYZED_COLON_ARG_0F4F19B7,
+        expression);
     return type;
   }
 
@@ -460,8 +480,11 @@ public class ExpressionAnalyzer {
     private final List<PatternFunctionAnalysis> patternRecognitionInputs = new ArrayList<>();
 
     public Visitor(Scope baseScope, WarningCollector warningCollector) {
-      this.baseScope = requireNonNull(baseScope, "baseScope is null");
-      this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+      this.baseScope =
+          requireNonNull(baseScope, DataNodeQueryMessages.EXCEPTION_BASESCOPE_IS_NULL_ABE8F618);
+      this.warningCollector =
+          requireNonNull(
+              warningCollector, DataNodeQueryMessages.EXCEPTION_WARNINGCOLLECTOR_IS_NULL_7A524A68);
     }
 
     public List<PatternFunctionAnalysis> getPatternRecognitionInputs() {
@@ -542,7 +565,9 @@ public class ExpressionAnalyzer {
           && context.getContext().getCorrelationSupport() != CorrelationSupport.ALLOWED) {
         throw new SemanticException(
             String.format(
-                "Reference to column '%s' from outer scope not allowed in this context", node));
+                DataNodeQueryMessages
+                    .REFERENCE_TO_COLUMN_S_FROM_OUTER_SCOPE_NOT_ALLOWED_IN_THIS_CONTEXT,
+                node));
       }
 
       FieldId fieldId = FieldId.from(resolvedField);
@@ -570,7 +595,11 @@ public class ExpressionAnalyzer {
           .ifPresent(source -> referencedFields.put(NodeRef.of(source), field));
 
       ResolvedField previous = columnReferences.put(NodeRef.of(node), resolvedField);
-      checkState(previous == null, "%s already known to refer to %s", node, previous);
+      checkState(
+          previous == null,
+          DataNodeQueryMessages.EXCEPTION_ARG_ALREADY_KNOWN_TO_REFER_TO_ARG_8C8B4F24,
+          node,
+          previous);
 
       return setExpressionType(node, field.getType());
     }
@@ -579,7 +608,7 @@ public class ExpressionAnalyzer {
     public Type visitDereferenceExpression(
         DereferenceExpression node, StackableAstVisitorContext<Context> context) {
       if (isQualifiedAllFieldsReference(node)) {
-        throw new SemanticException("<identifier>.* not allowed in this context");
+        throw new SemanticException(DataNodeQueryMessages.IDENTIFIER_NOT_ALLOWED_IN_THIS_CONTEXT);
       }
 
       QualifiedName qualifiedName = DereferenceExpression.getQualifiedName(node);
@@ -606,14 +635,18 @@ public class ExpressionAnalyzer {
             if (qualifiedName.getOriginalParts().size() > 2) {
               throw new SemanticException(
                   String.format(
-                      "Column %s prefixed with label %s cannot be resolved", unlabeledName, label));
+                      DataNodeQueryMessages.COLUMN_S_PREFIXED_WITH_LABEL_S_CANNOT_BE_RESOLVED,
+                      unlabeledName,
+                      label));
             }
             Optional<ResolvedField> resolvedField =
                 context.getContext().getScope().tryResolveField(node, unlabeledName);
             if (!resolvedField.isPresent()) {
               throw new SemanticException(
                   String.format(
-                      "Column %s prefixed with label %s cannot be resolved", unlabeledName, label));
+                      DataNodeQueryMessages.COLUMN_S_PREFIXED_WITH_LABEL_S_CANNOT_BE_RESOLVED,
+                      unlabeledName,
+                      label));
             }
             // Correlation is not allowed in pattern recognition context. Visitor's context for
             // pattern recognition has CorrelationSupport.DISALLOWED,
@@ -631,7 +664,7 @@ public class ExpressionAnalyzer {
           }
           // In the context of row pattern matching, qualified column references are not allowed.
           throw new SemanticException(
-              String.format("Column '%s' cannot be resolved", qualifiedName));
+              String.format(DataNodeQueryMessages.COLUMN_S_CANNOT_BE_RESOLVED, qualifiedName));
         }
 
         Scope scope = context.getContext().getScope();
@@ -647,13 +680,15 @@ public class ExpressionAnalyzer {
       Type baseType = process(node.getBase(), context);
       if (!(baseType instanceof RowType)) {
         throw new SemanticException(
-            String.format("Expression %s is not of type ROW", node.getBase()));
+            String.format(DataNodeQueryMessages.EXPRESSION_S_IS_NOT_OF_TYPE_ROW, node.getBase()));
       }
 
       RowType rowType = (RowType) baseType;
 
       Identifier field =
-          node.getField().orElseThrow(() -> new NoSuchElementException("No value present"));
+          node.getField()
+              .orElseThrow(
+                  () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT));
       String fieldName = field.getValue();
 
       boolean foundFieldName = false;
@@ -662,7 +697,7 @@ public class ExpressionAnalyzer {
         if (fieldName.equalsIgnoreCase(rowField.getName().orElse(null))) {
           if (foundFieldName) {
             throw new SemanticException(
-                String.format("Ambiguous row field reference: %s", fieldName));
+                String.format(DataNodeQueryMessages.AMBIGUOUS_ROW_FIELD_REFERENCE_S, fieldName));
           }
           foundFieldName = true;
           rowFieldType = rowField.getType();
@@ -743,7 +778,10 @@ public class ExpressionAnalyzer {
 
       if (!firstType.equals(secondType)) {
         throw new SemanticException(
-            String.format("Types are not comparable with NULLIF: %s vs %s", firstType, secondType));
+            String.format(
+                DataNodeQueryMessages.TYPES_ARE_NOT_COMPARABLE_WITH_NULLIF_S_VS_S,
+                firstType,
+                secondType));
       }
 
       return setExpressionType(node, firstType);
@@ -826,8 +864,10 @@ public class ExpressionAnalyzer {
         if (!operandType.equals(whenOperandType)) {
           throw new SemanticException(
               String.format(
-                  "CASE operand type does not match WHEN clause operand type: %s vs %s",
-                  operandType, whenOperandType));
+                  DataNodeQueryMessages
+                      .CASE_OPERAND_TYPE_DOES_NOT_MATCH_WHEN_CLAUSE_OPERAND_TYPE_S_VS_S,
+                  operandType,
+                  whenOperandType));
         }
       }
 
@@ -837,8 +877,10 @@ public class ExpressionAnalyzer {
           //          Expression whenOperand = whenClauses.get(i).getOperand();
           throw new SemanticException(
               String.format(
-                  "CASE operand type does not match WHEN clause operand type: %s vs %s",
-                  operandType, whenOperandType));
+                  DataNodeQueryMessages
+                      .CASE_OPERAND_TYPE_DOES_NOT_MATCH_WHEN_CLAUSE_OPERAND_TYPE_S_VS_S,
+                  operandType,
+                  whenOperandType));
           //          addOrReplaceExpressionCoercion(whenOperand, whenOperandType, operandType);
         }
       }
@@ -875,13 +917,14 @@ public class ExpressionAnalyzer {
             // that types can chose to implement, or piggyback on the existence of the negation
             // operator
             throw new SemanticException(
-                String.format("Unary '+' operator cannot by applied to %s type", type));
+                String.format(
+                    DataNodeQueryMessages.UNARY_OPERATOR_CANNOT_BY_APPLIED_TO_S_TYPE, type));
           }
           return setExpressionType(node, type);
         case MINUS:
           return getOperator(context, node, OperatorType.NEGATION, node.getValue());
         default:
-          throw new IllegalArgumentException("Unknown sign: " + node.getSign());
+          throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_SIGN + node.getSign());
       }
     }
 
@@ -903,7 +946,8 @@ public class ExpressionAnalyzer {
       if (!isCharType(valueType)) {
         throw new SemanticException(
             String.format(
-                "Left side of LIKE expression must evaluate to TEXT or STRING Type (actual: %s)",
+                DataNodeQueryMessages
+                    .LEFT_SIDE_OF_LIKE_EXPRESSION_MUST_EVALUATE_TO_TEXT_OR_STRING_TYPE_ACTUAL_S,
                 valueType));
       }
 
@@ -911,7 +955,8 @@ public class ExpressionAnalyzer {
       if (!isCharType(patternType)) {
         throw new SemanticException(
             String.format(
-                "Pattern for LIKE expression must evaluate to TEXT or STRING Type (actual: %s)",
+                DataNodeQueryMessages
+                    .PATTERN_FOR_LIKE_EXPRESSION_MUST_EVALUATE_TO_TEXT_OR_STRING_TYPE_ACTUAL_S,
                 patternType));
       }
       if (node.getEscape().isPresent()) {
@@ -920,7 +965,8 @@ public class ExpressionAnalyzer {
         if (!isCharType(escapeType)) {
           throw new SemanticException(
               String.format(
-                  "Escape for LIKE expression must evaluate to TEXT or STRING Type (actual: %s)",
+                  DataNodeQueryMessages
+                      .ESCAPE_FOR_LIKE_EXPRESSION_MUST_EVALUATE_TO_TEXT_OR_STRING_TYPE_ACTUAL_S,
                   escapeType));
         }
       }
@@ -964,7 +1010,7 @@ public class ExpressionAnalyzer {
     @Override
     public Type visitDecimalLiteral(
         DecimalLiteral node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("DecimalLiteral is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.DECIMALLITERAL_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
@@ -976,7 +1022,7 @@ public class ExpressionAnalyzer {
     @Override
     public Type visitGenericLiteral(
         GenericLiteral node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("GenericLiteral is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.GENERICLITERAL_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
@@ -1000,19 +1046,23 @@ public class ExpressionAnalyzer {
               allRowsReference -> {
                 if (!isRowPatternCount || node.getArguments().size() > 1) {
                   throw new SemanticException(
-                      "label.* syntax is only supported as the only argument of row pattern count function");
+                      DataNodeQueryMessages
+                          .LABEL_STAR_SYNTAX_IS_ONLY_SUPPORTED_AS_THE_ONLY_ARGUMENT_OF_ROW_PATTERN_COUNT_FUNCTION);
                 }
               });
 
       if (node.getWindow().isPresent()) {
         Analysis.ResolvedWindow window = getResolvedWindow.apply(node);
-        checkState(window != null, "no resolved window for: " + node);
+        checkState(
+            window != null,
+            DataNodeQueryMessages.EXCEPTION_NO_RESOLVED_WINDOW_FOR_COLON_AED19667 + node);
 
         analyzeWindow(window, context, (Node) node.getWindow().get());
         windowFunctions.add(NodeRef.of(node));
       } else {
         if (node.isDistinct() && !isAggregation) {
-          throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
+          throw new SemanticException(
+              DataNodeQueryMessages.DISTINCT_IS_NOT_SUPPORTED_FOR_NON_AGGREGATION_FUNCTIONS);
         }
       }
 
@@ -1020,7 +1070,8 @@ public class ExpressionAnalyzer {
         if (isAggregation) {
           if (node.isDistinct()) {
             throw new SemanticException(
-                "Cannot use DISTINCT with aggregate function in pattern recognition context");
+                DataNodeQueryMessages
+                    .CANNOT_USE_DISTINCT_WITH_AGGREGATE_FUNCTION_IN_PATTERN_RECOGNITION_CONTEXT);
           }
         } else if (isPatternRecognitionFunction(node)) {
           validatePatternRecognitionFunction(node);
@@ -1038,7 +1089,8 @@ public class ExpressionAnalyzer {
             case "NEXT":
               return setExpressionType(node, analyzePhysicalNavigation(node, context, name));
             default:
-              throw new SemanticException("unexpected pattern recognition function " + name);
+              throw new SemanticException(
+                  DataNodeQueryMessages.UNEXPECTED_PATTERN_RECOGNITION_FUNCTION + name);
           }
         }
       }
@@ -1048,19 +1100,23 @@ public class ExpressionAnalyzer {
         if (!context.getContext().isPatternRecognition()) {
           throw new SemanticException(
               String.format(
-                  "%s semantics is not supported out of pattern recognition context",
+                  DataNodeQueryMessages
+                      .S_SEMANTICS_IS_NOT_SUPPORTED_OUT_OF_PATTERN_RECOGNITION_CONTEXT,
                   processingMode.getMode()));
         }
         if (!isAggregation) {
           throw new SemanticException(
               String.format(
-                  "%s semantics is supported only for FIRST(), LAST() and aggregation functions. Actual: %s",
-                  processingMode.getMode(), node.getName()));
+                  DataNodeQueryMessages
+                      .S_SEMANTICS_IS_SUPPORTED_ONLY_FOR_FIRST_LAST_AND_AGGREGATION_FUNCTIONS_ACTUAL_S,
+                  processingMode.getMode(),
+                  node.getName()));
         }
       }
 
       if (node.isDistinct() && !isAggregation) {
-        throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
+        throw new SemanticException(
+            DataNodeQueryMessages.DISTINCT_IS_NOT_SUPPORTED_FOR_NON_AGGREGATION_FUNCTIONS);
       }
 
       int argumentsNum = node.getArguments().size();
@@ -1077,7 +1133,9 @@ public class ExpressionAnalyzer {
                 node.getArguments().get(1), (List<Field>) relationType.getVisibleFields())) {
               throw new SemanticException(
                   String.format(
-                      "The second argument of %s function must be actual time name", functionName));
+                      DataNodeQueryMessages
+                          .THE_SECOND_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME,
+                      functionName));
             }
           }
           break;
@@ -1090,7 +1148,9 @@ public class ExpressionAnalyzer {
                 node.getArguments().get(2), (List<Field>) relationType.getVisibleFields())) {
               throw new SemanticException(
                   String.format(
-                      "The third argument of %s function must be actual time name", functionName));
+                      DataNodeQueryMessages
+                          .THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME,
+                      functionName));
             }
           }
       }
@@ -1099,14 +1159,16 @@ public class ExpressionAnalyzer {
 
       if (node.getArguments().size() > 127) {
         throw new SemanticException(
-            String.format("Too many arguments for function call %s()", functionName));
+            String.format(
+                DataNodeQueryMessages.TOO_MANY_ARGUMENTS_FOR_FUNCTION_CALL_S, functionName));
       }
 
       for (Type argumentType : argumentTypes) {
         if (node.isDistinct() && !argumentType.isComparable()) {
           throw new SemanticException(
               String.format(
-                  "DISTINCT can only be applied to comparable types (actual: %s)", argumentType));
+                  DataNodeQueryMessages.DISTINCT_CAN_ONLY_BE_APPLIED_TO_COMPARABLE_TYPES_ACTUAL_S,
+                  argumentType));
         }
       }
 
@@ -1165,7 +1227,9 @@ public class ExpressionAnalyzer {
           String label = label((Identifier) allRowsDereference.getBase());
           if (!context.getContext().getPatternRecognitionContext().getLabels().contains(label)) {
             throw new SemanticException(
-                String.format("%s is not a primary pattern variable or subset name", label));
+                String.format(
+                    DataNodeQueryMessages.S_IS_NOT_A_PRIMARY_PATTERN_VARIABLE_OR_SUBSET_NAME,
+                    label));
           }
           labelDereferences.put(NodeRef.of(allRowsDereference), new LabelPrefixedReference(label));
         } else {
@@ -1194,20 +1258,26 @@ public class ExpressionAnalyzer {
           (argument instanceof DereferenceExpression)
               ? ((DereferenceExpression) argument)
                   .getField()
-                  .orElseThrow(() -> new SemanticException("the input field does not exist"))
+                  .orElseThrow(
+                      () ->
+                          new SemanticException(
+                              DataNodeQueryMessages.THE_INPUT_FIELD_DOES_NOT_EXIST))
                   .toString()
               : argument.toString();
 
       for (Field field : visibleFields) {
         if (field
             .getName()
-            .orElseThrow(() -> new SemanticException("the field in table does not have a name"))
+            .orElseThrow(
+                () ->
+                    new SemanticException(
+                        DataNodeQueryMessages.THE_FIELD_IN_TABLE_DOES_NOT_HAVE_A_NAME))
             .equalsIgnoreCase(argumentName)) {
           return field.getType() == TIMESTAMP;
         }
       }
       // should never reach here
-      throw new SemanticException("the input argument does not exist");
+      throw new SemanticException(DataNodeQueryMessages.THE_INPUT_ARGUMENT_DOES_NOT_EXIST);
     }
 
     /** Retrieves the effective time column name from the relation's visible fields. */
@@ -1232,13 +1302,15 @@ public class ExpressionAnalyzer {
           .orElseThrow(
               () ->
                   new SemanticException(
-                      "Missing valid time column. The table must contain either a column with the TIME category or at least one TIMESTAMP column."));
+                      DataNodeQueryMessages
+                          .MISSING_VALID_TIME_COLUMN_THE_TABLE_MUST_CONTAIN_EITHER_A_COLUMN_WITH_THE_TIME_CATEGORY));
     }
 
     private Type analyzeMatchNumber(
         FunctionCall node, StackableAstVisitorContext<Context> context) {
       if (!node.getArguments().isEmpty()) {
-        throw new SemanticException("MATCH_NUMBER pattern recognition function takes no arguments");
+        throw new SemanticException(
+            DataNodeQueryMessages.MATCH_NUMBER_PATTERN_RECOGNITION_FUNCTION_TAKES_NO_ARGUMENTS);
       }
 
       patternRecognitionInputs.add(new PatternFunctionAnalysis(node, new MatchNumberDescriptor()));
@@ -1249,7 +1321,8 @@ public class ExpressionAnalyzer {
     private Type analyzeClassifier(FunctionCall node, StackableAstVisitorContext<Context> context) {
       if (node.getArguments().size() > 1) {
         throw new SemanticException(
-            "CLASSIFIER pattern recognition function takes no arguments or 1 argument");
+            DataNodeQueryMessages
+                .CLASSIFIER_PATTERN_RECOGNITION_FUNCTION_TAKES_NO_ARGUMENTS_OR_1_ARGUMENT);
       }
 
       Optional<String> label = Optional.empty();
@@ -1258,7 +1331,8 @@ public class ExpressionAnalyzer {
         if (!(argument instanceof Identifier)) {
           throw new SemanticException(
               String.format(
-                  "CLASSIFIER function argument should be primary pattern variable or subset name. Actual: %s",
+                  DataNodeQueryMessages
+                      .CLASSIFIER_FUNCTION_ARGUMENT_SHOULD_BE_PRIMARY_PATTERN_VARIABLE_OR_SUBSET_NAME_ACTUAL_S,
                   argument.getClass().getSimpleName()));
         }
 
@@ -1271,7 +1345,8 @@ public class ExpressionAnalyzer {
             .contains(label.get())) {
           throw new SemanticException(
               String.format(
-                  "%s is not a primary pattern variable or subset name", identifier.getValue()));
+                  DataNodeQueryMessages.S_IS_NOT_A_PRIMARY_PATTERN_VARIABLE_OR_SUBSET_NAME,
+                  identifier.getValue()));
         }
       }
 
@@ -1331,7 +1406,8 @@ public class ExpressionAnalyzer {
           anchor = PatternRecognitionAnalysis.NavigationAnchor.LAST;
           break;
         default:
-          throw new IllegalStateException("Unexpected navigation anchor: " + name);
+          throw new IllegalStateException(
+              DataNodeQueryMessages.UNEXPECTED_NAVIGATION_ANCHOR + name);
       }
 
       Type type =
@@ -1365,7 +1441,8 @@ public class ExpressionAnalyzer {
           case RUNNING:
             return NavigationMode.RUNNING;
           default:
-            throw new IllegalArgumentException("Unexpected mode: " + mode.getMode());
+            throw new IllegalArgumentException(
+                DataNodeQueryMessages.UNEXPECTED_MODE + mode.getMode());
         }
       } else {
         return NavigationMode.RUNNING;
@@ -1384,7 +1461,8 @@ public class ExpressionAnalyzer {
       if (node.isDistinct()) {
         throw new SemanticException(
             String.format(
-                "Cannot use DISTINCT with %s pattern recognition function", node.getName()));
+                DataNodeQueryMessages.CANNOT_USE_DISTINCT_WITH_S_PATTERN_RECOGNITION_FUNCTION,
+                node.getName()));
       }
       String name = node.getName().getSuffix();
       if (node.getProcessingMode().isPresent()) {
@@ -1392,8 +1470,10 @@ public class ExpressionAnalyzer {
         if (!name.equalsIgnoreCase("RPR_FIRST") && !name.equalsIgnoreCase("RPR_LAST")) {
           throw new SemanticException(
               String.format(
-                  "%s semantics is not supported with %s pattern recognition function",
-                  processingMode.getMode(), node.getName()));
+                  DataNodeQueryMessages
+                      .S_SEMANTICS_IS_NOT_SUPPORTED_WITH_S_PATTERN_RECOGNITION_FUNCTION,
+                  processingMode.getMode(),
+                  node.getName()));
         }
       }
     }
@@ -1402,27 +1482,34 @@ public class ExpressionAnalyzer {
       if (node.getArguments().size() != 1 && node.getArguments().size() != 2) {
         throw new SemanticException(
             String.format(
-                "%s pattern recognition function requires 1 or 2 arguments", node.getName()));
+                DataNodeQueryMessages.S_PATTERN_RECOGNITION_FUNCTION_REQUIRES_1_OR_2_ARGUMENTS,
+                node.getName()));
       }
       if (node.getArguments().size() == 2) {
         if (!(node.getArguments().get(1) instanceof LongLiteral)) {
           throw new SemanticException(
               String.format(
-                  "%s pattern recognition navigation function requires a number as the second argument",
+                  DataNodeQueryMessages
+                      .S_PATTERN_RECOGNITION_NAVIGATION_FUNCTION_REQUIRES_A_NUMBER_AS_THE_SECOND_ARGUMENT,
                   node.getName()));
         }
         long offset = ((LongLiteral) node.getArguments().get(1)).getParsedValue();
         if (offset < 0) {
           throw new SemanticException(
               String.format(
-                  "%s pattern recognition navigation function requires a non-negative number as the second argument (actual: %s)",
-                  node.getName(), offset));
+                  DataNodeQueryMessages
+                      .S_PATTERN_RECOGNITION_NAVIGATION_FUNCTION_REQUIRES_A_NON_NEGATIVE_NUMBER_AS_THE_SECOND,
+                  node.getName(),
+                  offset));
         }
         if (offset > Integer.MAX_VALUE) {
           throw new SemanticException(
               String.format(
-                  "The second argument of %s pattern recognition navigation function must not exceed %s (actual: %s)",
-                  node.getName(), Integer.MAX_VALUE, offset));
+                  DataNodeQueryMessages
+                      .THE_SECOND_ARGUMENT_OF_S_PATTERN_RECOGNITION_NAVIGATION_FUNCTION_MUST_NOT_EXCEED_S,
+                  node.getName(),
+                  Integer.MAX_VALUE,
+                  offset));
         }
       }
     }
@@ -1442,13 +1529,16 @@ public class ExpressionAnalyzer {
         if (name.equalsIgnoreCase("RPR_FIRST") || name.equalsIgnoreCase("RPR_LAST")) {
           throw new SemanticException(
               String.format(
-                  "Cannot nest %s pattern navigation function inside %s pattern navigation function",
-                  nestedNavigationFunctions.get(0).getName(), name));
+                  DataNodeQueryMessages
+                      .CANNOT_NEST_S_PATTERN_NAVIGATION_FUNCTION_INSIDE_S_PATTERN_NAVIGATION_FUNCTION,
+                  nestedNavigationFunctions.get(0).getName(),
+                  name));
         }
         if (nestedNavigationFunctions.size() > 1) {
           throw new SemanticException(
               String.format(
-                  "Cannot nest multiple pattern navigation functions inside %s pattern navigation function",
+                  DataNodeQueryMessages
+                      .CANNOT_NEST_MULTIPLE_PATTERN_NAVIGATION_FUNCTIONS_INSIDE_S_PATTERN_NAVIGATION_FUNCTION,
                   name));
         }
         FunctionCall nested = getOnlyElement(nestedNavigationFunctions);
@@ -1456,12 +1546,14 @@ public class ExpressionAnalyzer {
         if (nestedName.equalsIgnoreCase("PREV") || nestedName.equalsIgnoreCase("NEXT")) {
           throw new SemanticException(
               String.format(
-                  "Cannot nest %s pattern navigation function inside %s pattern navigation function",
-                  nestedName, name));
+                  DataNodeQueryMessages
+                      .CANNOT_NEST_S_PATTERN_NAVIGATION_FUNCTION_INSIDE_S_PATTERN_NAVIGATION_FUNCTION,
+                  nestedName,
+                  name));
         }
         if (nested != node.getArguments().get(0)) {
           throw new SemanticException(
-              "Immediate nesting is required for pattern navigation functions");
+              DataNodeQueryMessages.IMMEDIATE_NESTING_IS_REQUIRED_FOR_PATTERN_NAVIGATION_FUNCTIONS);
         }
       }
     }
@@ -1527,7 +1619,9 @@ public class ExpressionAnalyzer {
       if (allLabels.size() > 1) {
         String name = node.getName().getSuffix();
         throw new SemanticException(
-            String.format("All labels and classifiers inside the call to '%s' must match", name));
+            String.format(
+                DataNodeQueryMessages.ALL_LABELS_AND_CLASSIFIERS_INSIDE_THE_CALL_TO_S_MUST_MATCH,
+                name));
       }
 
       Optional<String> label = Iterables.getOnlyElement(allLabels);
@@ -1548,7 +1642,8 @@ public class ExpressionAnalyzer {
       }
       if (argumentLabels.size() > 1) {
         throw new SemanticException(
-            "All aggregate function arguments must apply to rows matched with the same label");
+            DataNodeQueryMessages
+                .ALL_AGGREGATE_FUNCTION_ARGUMENTS_MUST_APPLY_TO_ROWS_MATCHED_WITH_THE_SAME_LABEL);
       }
 
       return argumentLabels.stream()
@@ -1595,8 +1690,9 @@ public class ExpressionAnalyzer {
               aggregation -> {
                 throw new SemanticException(
                     String.format(
-                        "Cannot nest %s aggregate function inside %s function",
-                        aggregation.getName(), node.getName()));
+                        DataNodeQueryMessages.CANNOT_NEST_S_AGGREGATE_FUNCTION_INSIDE_S_FUNCTION,
+                        aggregation.getName(),
+                        node.getName()));
               });
     }
 
@@ -1608,8 +1704,10 @@ public class ExpressionAnalyzer {
               navigation -> {
                 throw new SemanticException(
                     String.format(
-                        "Cannot nest %s pattern navigation function inside %s function",
-                        navigation.getName().getSuffix(), node.getName()));
+                        DataNodeQueryMessages
+                            .CANNOT_NEST_S_PATTERN_NAVIGATION_FUNCTION_INSIDE_S_FUNCTION,
+                        navigation.getName().getSuffix(),
+                        node.getName()));
               });
     }
 
@@ -1643,18 +1741,19 @@ public class ExpressionAnalyzer {
     public Type visitParameter(Parameter node, StackableAstVisitorContext<Context> context) {
 
       if (parameters.isEmpty()) {
-        throw new SemanticException("Query takes no parameters");
+        throw new SemanticException(DataNodeQueryMessages.QUERY_TAKES_NO_PARAMETERS);
       }
       if (node.getId() >= parameters.size()) {
         throw new SemanticException(
             String.format(
-                "Invalid parameter index %s, max value is %s",
-                node.getId(), parameters.size() - 1));
+                DataNodeQueryMessages.INVALID_PARAMETER_INDEX_S_MAX_VALUE_IS_S,
+                node.getId(),
+                parameters.size() - 1));
       }
 
       Expression providedValue = parameters.get(NodeRef.of(node));
       if (providedValue == null) {
-        throw new SemanticException("No value provided for parameter");
+        throw new SemanticException(DataNodeQueryMessages.NO_VALUE_PROVIDED_FOR_PARAMETER);
       }
       Type resultType = process(providedValue, context);
       return setExpressionType(node, resultType);
@@ -1669,7 +1768,8 @@ public class ExpressionAnalyzer {
         Type type = process(node.getExpression(), context);
 
         if (!(type instanceof TimestampType)) {
-          throw new SemanticException(String.format("Cannot extract from %s", type));
+          throw new SemanticException(
+              String.format(DataNodeQueryMessages.CANNOT_EXTRACT_FROM, type));
         }
       }
 
@@ -1686,12 +1786,20 @@ public class ExpressionAnalyzer {
       if (!isTwoTypeComparable(Arrays.asList(valueType, minType))
           || !isTwoTypeComparable(Arrays.asList(valueType, maxType))) {
         throw new SemanticException(
-            String.format("Cannot check if %s is BETWEEN %s and %s", valueType, minType, maxType));
+            String.format(
+                DataNodeQueryMessages.CANNOT_CHECK_IF_S_IS_BETWEEN_S_AND_S,
+                valueType,
+                minType,
+                maxType));
       }
 
       if (!valueType.isOrderable()) {
         throw new SemanticException(
-            String.format("Cannot check if %s is BETWEEN %s and %s", valueType, minType, maxType));
+            String.format(
+                DataNodeQueryMessages.CANNOT_CHECK_IF_S_IS_BETWEEN_S_AND_S,
+                valueType,
+                minType,
+                maxType));
       }
 
       return setExpressionType(node, BOOLEAN);
@@ -1704,16 +1812,18 @@ public class ExpressionAnalyzer {
       try {
         type = metadata.getType(toTypeSignature(node.getType()));
       } catch (TypeNotFoundException e) {
-        throw new SemanticException(String.format("Unknown type: %s", node.getType()));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNKNOWN_TYPE, node.getType()));
       }
 
       if (type.equals(UNKNOWN)) {
-        throw new SemanticException("UNKNOWN is not a valid type");
+        throw new SemanticException(DataNodeQueryMessages.UNKNOWN_IS_NOT_A_VALID_TYPE);
       }
 
       Type value = process(node.getExpression(), context);
       if (!value.equals(UNKNOWN) && !node.isTypeOnly() && (!metadata.canCoerce(value, type))) {
-        throw new SemanticException(String.format("Cannot cast %s to %s", value, type));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.CANNOT_CAST_TO, value, type));
       }
 
       return setExpressionType(node, type);
@@ -1764,8 +1874,10 @@ public class ExpressionAnalyzer {
             node, process(value, context), (SubqueryExpression) valueList, context);
       } else {
         throw new IllegalArgumentException(
-            "Unexpected value list type for InPredicate: "
-                + node.getValueList().getClass().getName());
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNEXPECTED_VALUE_LIST_TYPE_FOR_INPREDICATE_S_3D50B78B,
+                node.getValueList().getClass().getName()));
       }
 
       return setExpressionType(node, BOOLEAN);
@@ -1875,7 +1987,8 @@ public class ExpressionAnalyzer {
           if (!type.isComparable()) {
             throw new SemanticException(
                 String.format(
-                    "%s is not comparable, and therefore cannot be used in window function PARTITION BY",
+                    DataNodeQueryMessages
+                        .S_IS_NOT_COMPARABLE_AND_THEREFORE_CANNOT_BE_USED_IN_WINDOW_FUNCTION_PARTITION_BY,
                     type));
           }
         }
@@ -1888,7 +2001,8 @@ public class ExpressionAnalyzer {
           if (!type.isOrderable()) {
             throw new SemanticException(
                 String.format(
-                    "%s is not orderable, and therefore cannot be used in window function ORDER BY",
+                    DataNodeQueryMessages
+                        .S_IS_NOT_ORDERABLE_AND_THEREFORE_CANNOT_BE_USED_IN_WINDOW_FUNCTION_ORDER_BY,
                     type));
           }
         }
@@ -1902,22 +2016,26 @@ public class ExpressionAnalyzer {
         FrameBound.Type endType =
             frame.getEnd().orElse(new FrameBound(null, CURRENT_ROW)).getType();
         if (startType == UNBOUNDED_FOLLOWING) {
-          throw new SemanticException("Window frame start cannot be UNBOUNDED FOLLOWING");
+          throw new SemanticException(
+              DataNodeQueryMessages.WINDOW_FRAME_START_CANNOT_BE_UNBOUNDED_FOLLOWING);
         }
         if (endType == UNBOUNDED_PRECEDING) {
-          throw new SemanticException("Window frame end cannot be UNBOUNDED PRECEDING");
+          throw new SemanticException(
+              DataNodeQueryMessages.WINDOW_FRAME_END_CANNOT_BE_UNBOUNDED_PRECEDING);
         }
         if ((startType == CURRENT_ROW) && (endType == PRECEDING)) {
           throw new SemanticException(
-              "Window frame starting from CURRENT ROW cannot end with PRECEDING");
+              DataNodeQueryMessages
+                  .WINDOW_FRAME_STARTING_FROM_CURRENT_ROW_CANNOT_END_WITH_PRECEDING);
         }
         if ((startType == FOLLOWING) && (endType == PRECEDING)) {
           throw new SemanticException(
-              "Window frame starting from FOLLOWING cannot end with PRECEDING");
+              DataNodeQueryMessages.WINDOW_FRAME_STARTING_FROM_FOLLOWING_CANNOT_END_WITH_PRECEDING);
         }
         if ((startType == FOLLOWING) && (endType == CURRENT_ROW)) {
           throw new SemanticException(
-              "Window frame starting from FOLLOWING cannot end with CURRENT ROW");
+              DataNodeQueryMessages
+                  .WINDOW_FRAME_STARTING_FROM_FOLLOWING_CANNOT_END_WITH_CURRENT_ROW);
         }
 
         // analyze frame offset values
@@ -1928,7 +2046,8 @@ public class ExpressionAnalyzer {
             if (!isExactNumericWithScaleZero(type)) {
               throw new SemanticException(
                   String.format(
-                      "Window frame ROWS start value type must be exact numeric type with scale 0 (actual %s)",
+                      DataNodeQueryMessages
+                          .WINDOW_FRAME_ROWS_START_VALUE_TYPE_MUST_BE_EXACT_NUMERIC_TYPE_WITH_SCALE_0_ACTUAL_S,
                       type));
             }
           }
@@ -1938,7 +2057,8 @@ public class ExpressionAnalyzer {
             if (!isExactNumericWithScaleZero(type)) {
               throw new SemanticException(
                   String.format(
-                      "Window frame ROWS end value type must be exact numeric type with scale 0 (actual %s)",
+                      DataNodeQueryMessages
+                          .WINDOW_FRAME_ROWS_END_VALUE_TYPE_MUST_BE_EXACT_NUMERIC_TYPE_WITH_SCALE_0_ACTUAL_S,
                       type));
             }
           }
@@ -1957,33 +2077,38 @@ public class ExpressionAnalyzer {
           if (frame.getStart().getValue().isPresent()) {
             if (!window.getOrderBy().isPresent()) {
               throw new SemanticException(
-                  "Window frame of type GROUPS PRECEDING or FOLLOWING requires ORDER BY");
+                  DataNodeQueryMessages
+                      .WINDOW_FRAME_OF_TYPE_GROUPS_PRECEDING_OR_FOLLOWING_REQUIRES_ORDER_BY);
             }
             Expression startValue = frame.getStart().getValue().get();
             Type type = process(startValue, context);
             if (!isExactNumericWithScaleZero(type)) {
               throw new SemanticException(
                   String.format(
-                      "Window frame GROUPS start value type must be exact numeric type with scale 0 (actual %s)",
+                      DataNodeQueryMessages
+                          .WINDOW_FRAME_GROUPS_START_VALUE_TYPE_MUST_BE_EXACT_NUMERIC_TYPE_WITH_SCALE_0_ACTUAL_S,
                       type));
             }
           }
           if (frame.getEnd().isPresent() && frame.getEnd().get().getValue().isPresent()) {
             if (!window.getOrderBy().isPresent()) {
               throw new SemanticException(
-                  "Window frame of type GROUPS PRECEDING or FOLLOWING requires ORDER BY");
+                  DataNodeQueryMessages
+                      .WINDOW_FRAME_OF_TYPE_GROUPS_PRECEDING_OR_FOLLOWING_REQUIRES_ORDER_BY);
             }
             Expression endValue = frame.getEnd().get().getValue().get();
             Type type = process(endValue, context);
             if (!isExactNumericWithScaleZero(type)) {
               throw new SemanticException(
                   String.format(
-                      "Window frame ROWS end value type must be exact numeric type with scale 0 (actual %s)",
+                      DataNodeQueryMessages
+                          .WINDOW_FRAME_ROWS_END_VALUE_TYPE_MUST_BE_EXACT_NUMERIC_TYPE_WITH_SCALE_0_ACTUAL_S,
                       type));
             }
           }
         } else {
-          throw new SemanticException("Unsupported frame type: " + frame.getType());
+          throw new SemanticException(
+              DataNodeQueryMessages.UNSUPPORTED_FRAME_TYPE + frame.getType());
         }
       }
     }
@@ -2000,11 +2125,13 @@ public class ExpressionAnalyzer {
               .orElseThrow(
                   () ->
                       new SemanticException(
-                          "Window frame of type RANGE PRECEDING or FOLLOWING requires ORDER BY"));
+                          DataNodeQueryMessages
+                              .WINDOW_FRAME_OF_TYPE_RANGE_PRECEDING_OR_FOLLOWING_REQUIRES_ORDER_BY));
       if (orderBy.getSortItems().size() != 1) {
         throw new SemanticException(
             String.format(
-                "Window frame of type RANGE PRECEDING or FOLLOWING requires single sort item in ORDER BY (actual: %s)",
+                DataNodeQueryMessages
+                    .WINDOW_FRAME_OF_TYPE_RANGE_PRECEDING_OR_FOLLOWING_REQUIRES_SINGLE_SORT_ITEM_IN_ORDER_BY,
                 orderBy.getSortItems().size()));
       }
       Expression sortKey = Iterables.getOnlyElement(orderBy.getSortItems()).getSortKey();
@@ -2017,7 +2144,8 @@ public class ExpressionAnalyzer {
       if (!isNumericType(sortKeyType)) {
         throw new SemanticException(
             String.format(
-                "Window frame of type RANGE PRECEDING or FOLLOWING requires that sort item type be numeric, datetime or interval (actual: %s)",
+                DataNodeQueryMessages
+                    .WINDOW_FRAME_OF_TYPE_RANGE_PRECEDING_OR_FOLLOWING_REQUIRES_THAT_SORT_ITEM_TYPE_BE,
                 sortKeyType));
       }
 
@@ -2027,8 +2155,10 @@ public class ExpressionAnalyzer {
         if (!isNumericType(offsetValueType)) {
           throw new SemanticException(
               String.format(
-                  "Window frame RANGE value type (%s) not compatible with sort item type (%s)",
-                  offsetValueType, sortKeyType));
+                  DataNodeQueryMessages
+                      .WINDOW_FRAME_RANGE_VALUE_TYPE_S_NOT_COMPATIBLE_WITH_SORT_ITEM_TYPE_S,
+                  offsetValueType,
+                  sortKeyType));
         }
       }
     }
@@ -2081,7 +2211,8 @@ public class ExpressionAnalyzer {
           if (!comparisonType.isOrderable()) {
             throw new SemanticException(
                 String.format(
-                    "Type [%s] must be orderable in order to be used in quantified comparison",
+                    DataNodeQueryMessages
+                        .TYPE_S_MUST_BE_ORDERABLE_IN_ORDER_TO_BE_USED_IN_QUANTIFIED_COMPARISON,
                     comparisonType));
           }
           break;
@@ -2090,13 +2221,16 @@ public class ExpressionAnalyzer {
           if (!comparisonType.isComparable()) {
             throw new SemanticException(
                 String.format(
-                    "Type [%s] must be comparable in order to be used in quantified comparison",
+                    DataNodeQueryMessages
+                        .TYPE_S_MUST_BE_COMPARABLE_IN_ORDER_TO_BE_USED_IN_QUANTIFIED_COMPARISON,
                     comparisonType));
           }
           break;
         default:
           throw new IllegalStateException(
-              String.format("Unexpected comparison type: %s", node.getOperator()));
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_COMPARISON_TYPE_S_5D101FCB,
+                  node.getOperator()));
       }
 
       return setExpressionType(node, BOOLEAN);
@@ -2112,18 +2246,18 @@ public class ExpressionAnalyzer {
     @Override
     public Type visitExpression(Expression node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException(
-          String.format("not yet implemented: %s", node.getClass().getName()));
+          String.format(DataNodeQueryMessages.NOT_YET_IMPLEMENTED_S, node.getClass().getName()));
     }
 
     @Override
     public Type visitNode(Node node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException(
-          String.format("not yet implemented: %s", node.getClass().getName()));
+          String.format(DataNodeQueryMessages.NOT_YET_IMPLEMENTED_S, node.getClass().getName()));
     }
 
     @Override
     public Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("Columns only support to be used in SELECT and WHERE clause");
+      throw new SemanticException(DataNodeQueryMessages.COLUMNS_ONLY_SUPPORT_TO_BE_USED_IN_SELECT);
     }
 
     private Type getOperator(
@@ -2152,7 +2286,10 @@ public class ExpressionAnalyzer {
         //        if (!typeCoercion.canCoerce(actualType, expectedType)) {
         throw new SemanticException(
             String.format(
-                "%s must evaluate to a %s (actual: %s)", message, expectedType, actualType));
+                DataNodeQueryMessages.S_MUST_EVALUATE_TO_A_S_ACTUAL_S,
+                message,
+                expectedType,
+                actualType));
         //        }
         //        addOrReplaceExpressionCoercion(expression, actualType, expectedType);
       }
@@ -2183,7 +2320,8 @@ public class ExpressionAnalyzer {
       }
 
       if (!firstType.equals(secondType)) {
-        throw new SemanticException(String.format("%s: %s vs %s", message, firstType, secondType));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.TYPE_MISMATCH_FMT, message, firstType, secondType));
       }
 
       return firstType;
@@ -2213,8 +2351,12 @@ public class ExpressionAnalyzer {
           if (!isTwoTypeComparable(Arrays.asList(superType, type))) {
             throw new SemanticException(
                 String.format(
-                    "%s must be the same type or coercible to a common type. Cannot find common type between %s and %s, all types (without duplicates): %s",
-                    description, superType, type, typeExpressions.keySet()));
+                    DataNodeQueryMessages
+                        .S_MUST_BE_THE_SAME_TYPE_OR_COERCIBLE_TO_A_COMMON_TYPE_CANNOT_FIND_COMMON_TYPE_BETWEEN_S,
+                    description,
+                    superType,
+                    type,
+                    typeExpressions.keySet()));
           }
         }
         //        Optional<Type> newSuperType = typeCoercion.getCommonSuperType(superType, type);
@@ -2289,12 +2431,17 @@ public class ExpressionAnalyzer {
         List<Type> functionInputTypes,
         Optional<PatternRecognitionContext> patternRecognitionContext,
         CorrelationSupport correlationSupport) {
-      this.scope = requireNonNull(scope, "scope is null");
+      this.scope = requireNonNull(scope, DataNodeQueryMessages.EXCEPTION_SCOPE_IS_NULL_4F364BA2);
       this.functionInputTypes = functionInputTypes;
       //      this.fieldToLambdaArgumentDeclaration = fieldToLambdaArgumentDeclaration;
       this.patternRecognitionContext =
-          requireNonNull(patternRecognitionContext, "patternRecognitionContext is null");
-      this.correlationSupport = requireNonNull(correlationSupport, "correlationSupport is null");
+          requireNonNull(
+              patternRecognitionContext,
+              DataNodeQueryMessages.EXCEPTION_PATTERNRECOGNITIONCONTEXT_IS_NULL_59C665F1);
+      this.correlationSupport =
+          requireNonNull(
+              correlationSupport,
+              DataNodeQueryMessages.EXCEPTION_CORRELATIONSUPPORT_IS_NULL_E0D669BF);
     }
 
     public static Context notInLambda(Scope scope, CorrelationSupport correlationSupport) {
@@ -2304,7 +2451,9 @@ public class ExpressionAnalyzer {
     public Context expectingLambda(List<Type> functionInputTypes) {
       return new Context(
           scope,
-          requireNonNull(functionInputTypes, "functionInputTypes is null"),
+          requireNonNull(
+              functionInputTypes,
+              DataNodeQueryMessages.EXCEPTION_FUNCTIONINPUTTYPES_IS_NULL_3030658F),
           Optional.empty(),
           correlationSupport);
     }
@@ -2424,24 +2573,28 @@ public class ExpressionAnalyzer {
     QualifiedName qualifiedName = node.getName();
     if (qualifiedName.getParts().size() > 1) {
       throw new SemanticException(
-          "Pattern recognition function name must not be qualified: " + qualifiedName);
+          DataNodeQueryMessages.PATTERN_RECOGNITION_FUNCTION_NAME_MUST_NOT_BE_QUALIFIED
+              + qualifiedName);
     }
     Identifier identifier = qualifiedName.getOriginalParts().get(0);
     if (identifier.isDelimited()) {
       throw new SemanticException(
-          "Pattern recognition function name must not be delimited: " + identifier.getValue());
+          DataNodeQueryMessages.PATTERN_RECOGNITION_FUNCTION_NAME_MUST_NOT_BE_DELIMITED
+              + identifier.getValue());
     }
     String name = identifier.getValue().toUpperCase(ENGLISH);
     if (name.equals("LAST") || name.equals("FIRST")) {
       throw new SemanticException(
-          "Pattern recognition function names cannot be LAST or FIRST, use RPR_LAST or RPR_FIRST instead.");
+          DataNodeQueryMessages
+              .PATTERN_RECOGNITION_FUNCTION_NAMES_CANNOT_BE_LAST_OR_FIRST_USE_RPR_LAST_OR_RPR_FIRST);
     } else if (!(name.equals("RPR_FIRST")
         || name.equals("RPR_LAST")
         || name.equals("PREV")
         || name.equals("NEXT")
         || name.equals("CLASSIFIER")
         || name.equals("MATCH_NUMBER"))) {
-      throw new SemanticException("Unknown pattern recognition function: " + name);
+      throw new SemanticException(
+          DataNodeQueryMessages.UNKNOWN_PATTERN_RECOGNITION_FUNCTION + name);
     } else {
       return true;
     }
@@ -2669,10 +2822,10 @@ public class ExpressionAnalyzer {
         parameters,
         warningCollector,
         expression -> {
-          throw new IllegalStateException("Cannot access preanalyzed types");
+          throw new IllegalStateException(DataNodeQueryMessages.CANNOT_ACCESS_PREANALYZED_TYPES);
         },
         functionCall -> {
-          throw new IllegalStateException("Cannot access resolved windows");
+          throw new IllegalStateException(DataNodeQueryMessages.CANNOT_ACCESS_RESOLVED_WINDOWS);
         });
   }
 
@@ -2685,7 +2838,10 @@ public class ExpressionAnalyzer {
     private final Optional<Identifier> column;
 
     public LabelPrefixedReference(String label, Identifier column) {
-      this(label, Optional.of(requireNonNull(column, "column is null")));
+      this(
+          label,
+          Optional.of(
+              requireNonNull(column, DataNodeQueryMessages.EXCEPTION_COLUMN_IS_NULL_0C404041)));
     }
 
     public LabelPrefixedReference(String label) {
@@ -2693,8 +2849,8 @@ public class ExpressionAnalyzer {
     }
 
     private LabelPrefixedReference(String label, Optional<Identifier> column) {
-      this.label = requireNonNull(label, "label is null");
-      this.column = requireNonNull(column, "column is null");
+      this.label = requireNonNull(label, DataNodeQueryMessages.EXCEPTION_LABEL_IS_NULL_B21FE26B);
+      this.column = requireNonNull(column, DataNodeQueryMessages.EXCEPTION_COLUMN_IS_NULL_0C404041);
     }
 
     public String getLabel() {
@@ -2732,7 +2888,7 @@ public class ExpressionAnalyzer {
     }
 
     public Optional<String> getLabel() {
-      checkState(hasLabel, "no label available");
+      checkState(hasLabel, DataNodeQueryMessages.EXCEPTION_NO_LABEL_AVAILABLE_8508CE32);
       return label;
     }
   }

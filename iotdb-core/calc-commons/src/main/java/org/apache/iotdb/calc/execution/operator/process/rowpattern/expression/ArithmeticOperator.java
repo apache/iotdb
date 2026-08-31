@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 public enum ArithmeticOperator implements BinaryOperator {
@@ -49,7 +50,7 @@ public enum ArithmeticOperator implements BinaryOperator {
       if (left == null || right == null) return null;
       double r = normalizeToDouble(right);
       if (r == 0.0) {
-        throw new ArithmeticException("Division by zero");
+        throw new ArithmeticException(CalcMessages.DIVISION_BY_ZERO);
       }
       return normalizeToDouble(left) / r;
     }
@@ -60,7 +61,7 @@ public enum ArithmeticOperator implements BinaryOperator {
       if (left == null || right == null) return null;
       double r = normalizeToDouble(right);
       if (r == 0.0) {
-        throw new ArithmeticException("Modulus by zero");
+        throw new ArithmeticException(CalcMessages.MODULUS_BY_ZERO);
       }
       return normalizeToDouble(left) % r;
     }
@@ -73,10 +74,11 @@ public enum ArithmeticOperator implements BinaryOperator {
       try {
         return Double.parseDouble((String) obj);
       } catch (NumberFormatException e) {
-        throw new SemanticException("Cannot parse String to double: " + obj);
+        throw new SemanticException(CalcMessages.CANNOT_PARSE_STRING_TO_DOUBLE + obj);
       }
     } else {
-      throw new SemanticException("Unsupported type for arithmetic operation: " + obj.getClass());
+      throw new SemanticException(
+          CalcMessages.UNSUPPORTED_TYPE_FOR_ARITHMETIC_OPERATION + obj.getClass());
     }
   }
 }

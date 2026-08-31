@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
@@ -42,7 +43,7 @@ public interface ICompactionSelector {
    * the returned list is the source files of one compaction tasks.
    */
   default List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> resources) {
-    throw new RuntimeException("This kind of selector cannot be used to select inner space task");
+    throw new RuntimeException(StorageEngineMessages.SELECTOR_NOT_FOR_INNER_SPACE);
   }
 
   /*
@@ -54,12 +55,12 @@ public interface ICompactionSelector {
   default List<CrossCompactionTaskResource> selectCrossSpaceTask(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     {
-      throw new RuntimeException("This kind of selector cannot be used to select cross space task");
+      throw new RuntimeException(StorageEngineMessages.SELECTOR_NOT_FOR_CROSS_SPACE);
     }
   }
 
   default List<SettleCompactionTask> selectSettleTask(List<TsFileResource> tsFileResources) {
-    throw new RuntimeException("This kind of selector cannot be used to select settle task");
+    throw new RuntimeException(StorageEngineMessages.SELECTOR_NOT_FOR_SETTLE);
   }
 
   static AbstractCompactionEstimator getCompactionEstimator(
@@ -72,11 +73,13 @@ public interface ICompactionSelector {
         }
       default:
         throw new RuntimeException(
-            "Corresponding memory estimator for "
-                + compactionPerformer
-                + " performer of "
-                + (isInnerSpace ? "inner" : "cross")
-                + " space compaction is not existed.");
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_CORRESPONDING_MEMORY_ESTIMATOR_FOR_S_PERFORMER_OF_S_SPACE_D543D3EF,
+                compactionPerformer,
+                (isInnerSpace
+                    ? StorageEngineMessages.COMPACTION_INNER_SPACE
+                    : StorageEngineMessages.COMPACTION_CROSS_SPACE)));
     }
   }
 }

@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
 import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
@@ -99,13 +101,18 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        LOGGER.warn("DropPipePluginProcedure failed in state {}, will rollback", state, e);
+        LOGGER.warn(
+            ProcedureMessages.DROPPIPEPLUGINPROCEDURE_FAILED_IN_STATE_WILL_ROLLBACK, state, e);
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOGGER.error(
-            "Retrievable error trying to drop pipe plugin [{}], state: {}", pluginName, state, e);
+            ProcedureMessages.RETRIEVABLE_ERROR_TRYING_TO_DROP_PIPE_PLUGIN_STATE,
+            pluginName,
+            state,
+            e);
         if (getCycles() > RETRY_THRESHOLD) {
-          LOGGER.error("Fail to drop pipe plugin [{}] after {} retries", pluginName, getCycles());
+          LOGGER.error(
+              ProcedureMessages.FAIL_TO_DROP_PIPE_PLUGIN_AFTER_RETRIES, pluginName, getCycles());
           setFailure(new ProcedureException(e.getMessage()));
         }
       }
@@ -114,7 +121,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   }
 
   private Flow executeFromLock(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipePluginProcedure: executeFromLock({})", pluginName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPLUGINPROCEDURE_EXECUTEFROMLOCK, pluginName);
 
     final PipeTaskCoordinator pipeTaskCoordinator =
         env.getConfigManager().getPipeManager().getPipeTaskCoordinator();
@@ -132,7 +139,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
           .getPipePluginInfo()
           .validateBeforeDroppingPipePlugin(pluginName, isSetIfExistsCondition)) {
         LOGGER.info(
-            "Pipe plugin {} is not exist, end the DropPipePluginProcedure({})",
+            ProcedureMessages.PIPE_PLUGIN_IS_NOT_EXIST_END_THE_DROPPIPEPLUGINPROCEDURE,
             pluginName,
             pluginName);
         pipePluginCoordinator.unlock();
@@ -154,14 +161,14 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     try {
       env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
     }
     setNextState(DropPipePluginState.DROP_ON_DATA_NODES);
     return Flow.HAS_MORE_STATE;
   }
 
   private Flow executeFromDropOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipePluginProcedure: executeFromDropOnDataNodes({})", pluginName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPLUGINPROCEDURE_EXECUTEFROMDROPONDATANODES, pluginName);
 
     final List<TSStatus> dropStatusList = env.dropPipePluginOnDataNodes(pluginName, true);
     if (dropStatusList.stream().allMatch(this::isDropPipePluginSuccessOrNotExists)) {
@@ -170,7 +177,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     }
 
     throw new PipeException(
-        String.format("Failed to drop pipe plugin %s on data nodes", pluginName));
+        String.format(ProcedureMessages.FAILED_TO_DROP_PIPE_PLUGIN_ON_DATA_NODES, pluginName));
   }
 
   private boolean isDropPipePluginSuccessOrNotExists(final TSStatus status) {
@@ -186,12 +193,12 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   }
 
   private Flow executeFromDropOnConfigNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipePluginProcedure: executeFromDropOnConfigNodes({})", pluginName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPLUGINPROCEDURE_EXECUTEFROMDROPONCONFIGNODES, pluginName);
 
     try {
       env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
     }
 
     setNextState(DropPipePluginState.UNLOCK);
@@ -199,7 +206,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   }
 
   private Flow executeFromUnlock(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipePluginProcedure: executeFromUnlock({})", pluginName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPLUGINPROCEDURE_EXECUTEFROMUNLOCK, pluginName);
 
     env.getConfigManager().getPipeManager().getPipePluginCoordinator().unlock();
     env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
@@ -223,21 +230,22 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   }
 
   private void rollbackFromLock(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipePluginProcedure: rollbackFromLock({})", pluginName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPLUGINPROCEDURE_ROLLBACKFROMLOCK, pluginName);
 
     env.getConfigManager().getPipeManager().getPipePluginCoordinator().unlock();
     env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
   }
 
   private void rollbackFromDropOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipePluginProcedure: rollbackFromDropOnDataNodes({})", pluginName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPLUGINPROCEDURE_ROLLBACKFROMDROPONDATANODES, pluginName);
 
     // do nothing but wait for rolling back to the previous state: LOCK
     // TODO: we should drop the pipe plugin on data nodes properly with RuntimeAgent's help
   }
 
   private void rollbackFromDropOnConfigNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipePluginProcedure: rollbackFromDropOnConfigNodes({})", pluginName);
+    LOGGER.info(
+        ProcedureMessages.DROPPIPEPLUGINPROCEDURE_ROLLBACKFROMDROPONCONFIGNODES, pluginName);
 
     // do nothing but wait for rolling back to the previous state: DROP_ON_DATA_NODES
     // TODO: we should drop the pipe plugin on config nodes properly with RuntimeCoordinator's help
@@ -288,7 +296,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     if (that instanceof DropPipePluginProcedure) {
       final DropPipePluginProcedure thatProcedure = (DropPipePluginProcedure) that;
       return thatProcedure.getProcId() == getProcId()
-          && thatProcedure.getCurrentState().equals(this.getCurrentState())
+          && Objects.equals(thatProcedure.getCurrentState(), this.getCurrentState())
           && thatProcedure.getCycles() == this.getCycles()
           && (thatProcedure.pluginName).equals(pluginName);
     }

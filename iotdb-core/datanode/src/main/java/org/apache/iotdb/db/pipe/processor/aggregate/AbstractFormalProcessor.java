@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -37,7 +38,7 @@ public abstract class AbstractFormalProcessor implements PipeProcessor {
       final TabletInsertionEvent tabletInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     throw new UnsupportedOperationException(
-        "The abstract formal processor does not support process events");
+        DataNodePipeMessages.THE_ABSTRACT_FORMAL_PROCESSOR_DOES_NOT_SUPPORT);
   }
 
   @Override
@@ -45,13 +46,13 @@ public abstract class AbstractFormalProcessor implements PipeProcessor {
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     throw new UnsupportedOperationException(
-        "The abstract formal processor does not support process events");
+        DataNodePipeMessages.THE_ABSTRACT_FORMAL_PROCESSOR_DOES_NOT_SUPPORT);
   }
 
   @Override
   public final void process(final Event event, final EventCollector eventCollector)
       throws Exception {
     throw new UnsupportedOperationException(
-        "The abstract formal processor does not support process events");
+        DataNodePipeMessages.THE_ABSTRACT_FORMAL_PROCESSOR_DOES_NOT_SUPPORT);
   }
 }

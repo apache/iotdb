@@ -664,6 +664,31 @@ public final class PlanMatchPattern {
     return node(TopKNode.class, source).with(new TopKMatcher(orderBy, count, childrenDataInOrder));
   }
 
+  public static PlanMatchPattern topKWithRuntimeFilterSourceId(
+      String sourceId, PlanMatchPattern... sources) {
+    return topK(sources)
+        .with(
+            TopKNode.class,
+            node -> java.util.Objects.equals(sourceId, node.getTopKRuntimeFilterSourceId()));
+  }
+
+  public static PlanMatchPattern topKWithoutRuntimeFilter(PlanMatchPattern... sources) {
+    return topK(sources).with(TopKNode.class, node -> node.getTopKRuntimeFilterSourceId() == null);
+  }
+
+  public static PlanMatchPattern tableScanWithRuntimeFilter(String expectedTableName) {
+    return tableScan(expectedTableName)
+        .with(DeviceTableScanNode.class, node -> node.getTopKRuntimeFilterSourceId() != null);
+  }
+
+  public static PlanMatchPattern tableScanWithRuntimeFilter(
+      String expectedTableName, String sourceId) {
+    return tableScan(expectedTableName)
+        .with(
+            DeviceTableScanNode.class,
+            node -> java.util.Objects.equals(sourceId, node.getTopKRuntimeFilterSourceId()));
+  }
+
   /*public static PlanMatchPattern topN(long count, List<Ordering> orderBy, TopNNode.Step step, PlanMatchPattern source)
   {
       return node(TopNNode.class, source).with(new TopNMatcher(count, orderBy, step));

@@ -26,6 +26,7 @@ import org.apache.iotdb.library.drepair.util.MeanFill;
 import org.apache.iotdb.library.drepair.util.PreviousFill;
 import org.apache.iotdb.library.drepair.util.ScreenFill;
 import org.apache.iotdb.library.drepair.util.ValueFill;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -72,7 +73,7 @@ public class UDTFValueFill implements UDTF {
     } else if ("likelihood".equalsIgnoreCase(method)) {
       vf = new LikelihoodFill(rowWindow.getRowIterator());
     } else {
-      throw new UDFException("Illegal method");
+      throw new UDFException(LibraryUdfMessages.ILLEGAL_METHOD);
     }
     vf.fill();
     double[] repaired = vf.getFilled();

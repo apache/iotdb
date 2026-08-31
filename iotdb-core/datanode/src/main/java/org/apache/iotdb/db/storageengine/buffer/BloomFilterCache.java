@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
@@ -68,7 +69,9 @@ public class BloomFilterCache {
 
   private BloomFilterCache() {
     if (CACHE_ENABLE) {
-      LOGGER.info("BloomFilterCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+      LOGGER.info(
+          StorageEngineMessages.BLOOM_FILTER_CACHE_SIZE,
+          CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
@@ -98,16 +101,27 @@ public class BloomFilterCache {
       LongConsumer cacheHitAdder,
       LongConsumer cacheMissAdder)
       throws IOException {
-    BloomFilterLoader loader = new BloomFilterLoader(ioSizeRecorder);
+    return get(key, debug, ioSizeRecorder, cacheHitAdder, cacheMissAdder, false);
+  }
+
+  public BloomFilter get(
+      BloomFilterCacheKey key,
+      boolean debug,
+      LongConsumer ioSizeRecorder,
+      LongConsumer cacheHitAdder,
+      LongConsumer cacheMissAdder,
+      boolean externalTsFile)
+      throws IOException {
+    BloomFilterLoader loader = new BloomFilterLoader(ioSizeRecorder, externalTsFile);
     try {
-      if (!CACHE_ENABLE) {
+      if (!CACHE_ENABLE || externalTsFile) {
         return loader.apply(key);
       }
 
       BloomFilter bloomFilter = lruCache.get(key, loader);
 
       if (debug) {
-        DEBUG_LOGGER.info("get bloomFilter from cache where filePath is: {}", key.filePath);
+        DEBUG_LOGGER.info(StorageEngineMessages.GET_BLOOM_FILTER_FROM_CACHE, key.filePath);
       }
 
       return bloomFilter;
@@ -200,9 +214,15 @@ public class BloomFilterCache {
 
     private boolean cacheMiss = false;
     private final LongConsumer ioSizeRecorder;
+    private final boolean externalTsFile;
 
     private BloomFilterLoader(LongConsumer ioSizeRecorder) {
+      this(ioSizeRecorder, false);
+    }
+
+    private BloomFilterLoader(LongConsumer ioSizeRecorder, boolean externalTsFile) {
       this.ioSizeRecorder = ioSizeRecorder;
+      this.externalTsFile = externalTsFile;
     }
 
     @Override
@@ -215,7 +235,8 @@ public class BloomFilterCache {
                     bloomFilterCacheKey.filePath,
                     bloomFilterCacheKey.tsFileID,
                     true,
-                    ioSizeRecorder);
+                    ioSizeRecorder,
+                    externalTsFile);
         return reader.readBloomFilter(ioSizeRecorder);
       } catch (IOException e) {
         throw new IoTDBIORuntimeException(e);

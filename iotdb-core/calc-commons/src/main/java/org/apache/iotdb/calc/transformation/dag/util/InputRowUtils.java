@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.calc.transformation.dag.util;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 public class InputRowUtils {
 
   private InputRowUtils() {
-    throw new IllegalStateException("InputRowUtils should not be instantiated.");
+    throw new IllegalStateException(CalcMessages.INPUT_ROW_UTILS_SHOULD_NOT_BE_INSTANTIATED);
   }
 
   /**

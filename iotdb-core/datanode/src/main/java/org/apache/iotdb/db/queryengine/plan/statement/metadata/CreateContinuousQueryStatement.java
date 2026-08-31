@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
@@ -243,7 +244,9 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     if (minimumElapsed < minimumEvery) {
       throw new SemanticException(
           String.format(
-              "CQ: Every interval should not be lower than the `continuous_query_minimum_every_interval` [%d] configured.",
+              DataNodeQueryMessages
+                  .CQ_EVERY_INTERVAL_D_SHOULD_NOT_BE_LOWER_THAN_THE_CONTINUOUS_QUERY_MINIMUM_EVERY_INTERVAL,
+              everyInterval,
               minimumEvery));
     }
     if (!isPositive(everyDuration)) {
@@ -257,26 +260,28 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     }
     if (!dominates(startTimeOffsetDuration, endTimeOffsetDuration, true)) {
       throw new SemanticException(
-          "CQ: The start time offset should be greater than end time offset.");
+          DataNodeQueryMessages.CQ_THE_START_TIME_OFFSET_SHOULD_BE_GREATER_THAN_END_TIME_OFFSET);
     }
     if (!dominates(startTimeOffsetDuration, everyDuration, false)) {
       throw new SemanticException(
-          "CQ: The start time offset should be greater than or equal to every interval.");
+          DataNodeQueryMessages
+              .CQ_THE_START_TIME_OFFSET_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_EVERY_INTERVAL);
     }
 
     if (!queryBodyStatement.isSelectInto()) {
-      throw new SemanticException("CQ: The query body misses an INTO clause.");
+      throw new SemanticException(DataNodeQueryMessages.CQ_THE_QUERY_BODY_MISSES_AN_INTO_CLAUSE);
     }
     GroupByTimeComponent groupByTimeComponent = queryBodyStatement.getGroupByTimeComponent();
     if (groupByTimeComponent != null
         && (groupByTimeComponent.getStartTime() != 0 || groupByTimeComponent.getEndTime() != 0)) {
       throw new SemanticException(
-          "CQ: Specifying time range in GROUP BY TIME clause is prohibited.");
+          DataNodeQueryMessages.CQ_SPECIFYING_TIME_RANGE_IN_GROUP_BY_TIME_CLAUSE_IS_PROHIBITED);
     }
     if (queryBodyStatement.getWhereCondition() != null
         && PredicateUtils.checkIfTimeFilterExist(
             queryBodyStatement.getWhereCondition().getPredicate())) {
-      throw new SemanticException("CQ: Specifying time filters in the query body is prohibited.");
+      throw new SemanticException(
+          DataNodeQueryMessages.CQ_SPECIFYING_TIME_FILTERS_IN_THE_QUERY_BODY);
     }
   }
 

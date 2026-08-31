@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.aggregation.Accumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
@@ -76,26 +77,14 @@ public class SlidingWindowAggregatorFactory {
         (o1, o2) -> {
           int value1 = o1.getInt(0);
           int value2 = o2.getInt(0);
-          if (Math.abs(value1) > Math.abs(value2)
-              || (Math.abs(value1) == Math.abs(value2) && value1 > value2)) {
-            return 1;
-          } else if (value1 == value2) {
-            return 0;
-          }
-          return -1;
+          return compareExtreme(value1, value2);
         });
     extremeComparators.put(
         TSDataType.INT64,
         (o1, o2) -> {
           long value1 = o1.getLong(0);
           long value2 = o2.getLong(0);
-          if (Math.abs(value1) > Math.abs(value2)
-              || (Math.abs(value1) == Math.abs(value2) && value1 > value2)) {
-            return 1;
-          } else if (value1 == value2) {
-            return 0;
-          }
-          return -1;
+          return compareExtreme(value1, value2);
         });
     extremeComparators.put(
         TSDataType.FLOAT,
@@ -200,6 +189,13 @@ public class SlidingWindowAggregatorFactory {
       case VARIANCE:
       case VAR_POP:
       case VAR_SAMP:
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
+      case SKEWNESS:
+      case KURTOSIS:
       case UDAF: // Currently UDAF belongs to SmoothQueueSlidingWindowAggregator
         return new SmoothQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case MAX_VALUE:
@@ -228,13 +224,37 @@ public class SlidingWindowAggregatorFactory {
         return new MonotonicQueueSlidingWindowAggregator(
             accumulator, inputLocationList, step, minByComparators.get(dataTypes.get(1)));
       case COUNT_IF:
-        throw new SemanticException("COUNT_IF with slidingWindow is not supported now");
+        throw new SemanticException(
+            DataNodeQueryMessages.COUNT_IF_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW);
       case TIME_DURATION:
-        throw new SemanticException("TIME_DURATION with slidingWindow is not supported now");
+        throw new SemanticException(
+            DataNodeQueryMessages.TIME_DURATION_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW);
       case MODE:
-        throw new SemanticException("MODE with slidingWindow is not supported now");
+        throw new SemanticException(
+            DataNodeQueryMessages.MODE_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW);
       default:
-        throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.INVALID_AGGREGATION_TYPE + aggregationType);
     }
+  }
+
+  static int compareExtreme(int left, int right) {
+    int absComparison = Long.compare(Math.abs((long) left), Math.abs((long) right));
+    return absComparison == 0 ? Integer.compare(left, right) : absComparison;
+  }
+
+  static int compareExtreme(long left, long right) {
+    int absComparison = compareAbs(left, right);
+    return absComparison == 0 ? Long.compare(left, right) : absComparison;
+  }
+
+  private static int compareAbs(long left, long right) {
+    if (left == Long.MIN_VALUE) {
+      return right == Long.MIN_VALUE ? 0 : 1;
+    }
+    if (right == Long.MIN_VALUE) {
+      return -1;
+    }
+    return Long.compare(Math.abs(left), Math.abs(right));
   }
 }

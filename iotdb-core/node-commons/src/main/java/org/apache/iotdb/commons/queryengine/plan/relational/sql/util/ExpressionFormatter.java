@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.util;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
@@ -129,9 +130,13 @@ public final class ExpressionFormatter {
     public Formatter(
         Optional<Function<Literal, String>> literalFormatter,
         Optional<Function<SymbolReference, String>> symbolReferenceFormatter) {
-      this.literalFormatter = requireNonNull(literalFormatter, "literalFormatter is null");
+      this.literalFormatter =
+          requireNonNull(
+              literalFormatter, QueryMessages.EXCEPTION_LITERALFORMATTER_IS_NULL_3F4F4A2B);
       this.symbolReferenceFormatter =
-          requireNonNull(symbolReferenceFormatter, "symbolReferenceFormatter is null");
+          requireNonNull(
+              symbolReferenceFormatter,
+              QueryMessages.EXCEPTION_SYMBOLREFERENCEFORMATTER_IS_NULL_B9B540EC);
     }
 
     @Override
@@ -150,8 +155,9 @@ public final class ExpressionFormatter {
     public String visitExpression(Expression node, Void context) {
       throw new UnsupportedOperationException(
           String.format(
-              "not yet implemented: %s.visit%s",
-              getClass().getName(), node.getClass().getSimpleName()));
+              QueryMessages.NOT_YET_IMPLEMENTED_VISIT,
+              getClass().getName(),
+              node.getClass().getSimpleName()));
     }
 
     @Override
@@ -425,7 +431,8 @@ public final class ExpressionFormatter {
         case PLUS:
           return "+" + value;
         default:
-          throw new IllegalArgumentException("Unknown sign: " + node.getSign());
+          throw new IllegalArgumentException(
+              String.format(QueryMessages.UNKNOWN_SIGN, node.getSign()));
       }
     }
 
@@ -714,7 +721,8 @@ public final class ExpressionFormatter {
       case UNBOUNDED_FOLLOWING:
         return "UNBOUNDED FOLLOWING";
       default:
-        throw new IllegalArgumentException("Unsupported frame type: " + frameBound.getType());
+        throw new IllegalArgumentException(
+            String.format(QueryMessages.UNSUPPORTED_FRAME_TYPE, frameBound.getType()));
     }
   }
 

@@ -32,6 +32,8 @@ public interface CommonConfig {
 
   CommonConfig setMemtableSizeThreshold(long memtableSizeThreshold);
 
+  CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs);
+
   CommonConfig setPartitionInterval(long partitionInterval);
 
   CommonConfig setCompressor(String compressor);
@@ -72,6 +74,8 @@ public interface CommonConfig {
 
   CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode);
 
+  CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy);
+
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
   CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase);
@@ -111,9 +115,6 @@ public interface CommonConfig {
   CommonConfig setEnableAutoLeaderBalanceForRatisConsensus(
       boolean enableAutoLeaderBalanceForRatisConsensus);
 
-  CommonConfig setEnableAutoLeaderBalanceForIoTConsensus(
-      boolean enableAutoLeaderBalanceForIoTConsensus);
-
   CommonConfig setQueryThreadCount(int queryThreadCount);
 
   CommonConfig setWalBufferSize(int walBufferSize);
@@ -121,6 +122,12 @@ public interface CommonConfig {
   CommonConfig setDegreeOfParallelism(int degreeOfParallelism);
 
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
+
+  CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
+  CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
+  CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
@@ -144,13 +151,15 @@ public interface CommonConfig {
 
   CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
 
-  CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
+  CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode);
 
-  CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
+  CommonConfig setSchemaRegionPerDataNode(int schemaRegionPerDataNode);
 
   CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled);
 
   CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
+
+  CommonConfig setSubscriptionOwnerLeaseDurationMsMin(long subscriptionOwnerLeaseDurationMsMin);
 
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 
@@ -159,6 +168,8 @@ public interface CommonConfig {
   CommonConfig setWalMode(String walMode);
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
+
+  CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize);
 
   CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs);
 
@@ -190,6 +201,10 @@ public interface CommonConfig {
 
   CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
 
+  CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL);
+
+  CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth);
+
   CommonConfig setEnableInternalSSL(boolean enableInternalSSL);
 
   CommonConfig setKeyStorePath(String keyStorePath);
@@ -199,6 +214,8 @@ public interface CommonConfig {
   CommonConfig setTrustStorePath(String trustStorePath);
 
   CommonConfig setTrustStorePwd(String trustStorePwd);
+
+  CommonConfig setSslProtocol(String sslProtocol);
 
   CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
 

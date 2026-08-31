@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -43,14 +45,20 @@ public class CountAllAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of COUNT(*) should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages
+            .EXCEPTION_ARGUMENT_OF_COUNT_LEFT_PAREN_RIGHT_PAREN_SHOULD_BE_ONE_COLUMN_9158A9FE);
     int count = mask.getSelectedPositionCount();
     countState += count;
   }
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 1, "argument of COUNT(*) should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages
+            .EXCEPTION_ARGUMENT_OF_COUNT_LEFT_PAREN_RIGHT_PAREN_SHOULD_BE_ONE_COLUMN_9158A9FE);
     int count = arguments[0].getPositionCount();
     countState -= count;
   }
@@ -82,7 +90,8 @@ public class CountAllAccumulator implements TableAccumulator {
 
   @Override
   public void addStatistics(Statistics[] statistics) {
-    throw new UnsupportedOperationException("CountAllAccumulator does not support statistics.");
+    throw new UnsupportedOperationException(
+        CalcMessages.COUNT_ALL_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS);
   }
 
   @Override

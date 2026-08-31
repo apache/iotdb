@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.metric.source;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -73,7 +74,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
     ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::deregister);
     if (!extractorMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe config region extractor metrics, extractor map not empty");
+          ManagerMessages.FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR);
     }
   }
 
@@ -105,9 +106,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
 
   public void deregister(final String taskID) {
     if (!extractorMap.containsKey(taskID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe config region extractor metrics, IoTDBConfigRegionExtractor({}) does not exist",
-          taskID);
+      LOGGER.warn(ManagerMessages.FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_EXTRACTOR, taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {

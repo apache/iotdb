@@ -28,15 +28,17 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import javax.servlet.annotation.WebFilter;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.container.ContainerResponseFilter;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.ext.Provider;
+import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.container.ContainerResponseFilter;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.ext.Provider;
 
 import java.io.IOException;
 import java.time.DateTimeException;
@@ -52,20 +54,22 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
+  @Context private HttpServletRequest servletRequest;
+
   public AuthorizationFilter() throws AuthException {
     // do nothing
   }
 
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
+    String requestPath = containerRequestContext.getUriInfo().getPath();
 
-    if ("OPTIONS".equals(containerRequestContext.getMethod())
-        || "ping".equals(containerRequestContext.getUriInfo().getPath())
-        || (config.isEnableSwagger()
-            && "swagger.json".equals(containerRequestContext.getUriInfo().getPath()))) {
+    if ("OPTIONS".equals(containerRequestContext.getMethod()) || "ping".equals(requestPath)) {
       return;
-    } else if (!config.isEnableSwagger()
-        && "swagger.json".equals(containerRequestContext.getUriInfo().getPath())) {
+    } else if (isOpenApiPath(requestPath)) {
+      if (config.isEnableSwagger()) {
+        return;
+      }
       Response resp =
           Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity("").build();
       containerRequestContext.abortWith(resp);
@@ -97,7 +101,8 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
 
     String sessionid = UUID.randomUUID().toString();
     if (SESSION_MANAGER.getCurrSession() == null) {
-      RestClientSession restClientSession = new RestClientSession(sessionid);
+      String clientAddress = servletRequest == null ? sessionid : servletRequest.getRemoteAddr();
+      RestClientSession restClientSession = new RestClientSession(sessionid, clientAddress);
       restClientSession.setUsername(user.getUsername());
       SESSION_MANAGER.registerSession(restClientSession);
       SESSION_MANAGER.supplySession(
@@ -193,5 +198,11 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
         && SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()) != null) {
       SESSION_MANAGER.removeCurrSession();
     }
+  }
+
+  private boolean isOpenApiPath(String requestPath) {
+    return "openapi".equals(requestPath)
+        || "openapi.json".equals(requestPath)
+        || "openapi.yaml".equals(requestPath);
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.type;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -57,7 +58,8 @@ public class TypeSignatureTranslator {
       return toTypeSignature((GenericDataType) type, typeVariables);
     }
 
-    throw new UnsupportedOperationException("Unsupported DataType: " + type.getClass().getName());
+    throw new UnsupportedOperationException(
+        String.format(QueryMessages.UNSUPPORTED_DATA_TYPE, type.getClass().getName()));
   }
 
   private static TypeSignature toTypeSignature(GenericDataType type, Set<String> typeVariables) {
@@ -73,7 +75,7 @@ public class TypeSignatureTranslator {
 
     checkArgument(
         !typeVariables.contains(type.getName().getValue()),
-        "Base type name cannot be a type variable");
+        QueryMessages.EXCEPTION_BASE_TYPE_NAME_CANNOT_BE_A_TYPE_VARIABLE_71E810A9);
 
     for (DataTypeParameter parameter : type.getArguments()) {
       if (parameter instanceof NumericParameter) {
@@ -81,7 +83,7 @@ public class TypeSignatureTranslator {
         try {
           parameters.add(numericParameter(Long.parseLong(value)));
         } catch (NumberFormatException e) {
-          throw new SemanticException(String.format("Invalid type parameter: %s", value));
+          throw new SemanticException(String.format(QueryMessages.INVALID_TYPE_PARAMETER, value));
         }
       } else if (parameter instanceof TypeParameter) {
         DataType value = ((TypeParameter) parameter).getValue();
@@ -94,7 +96,8 @@ public class TypeSignatureTranslator {
         }
       } else {
         throw new UnsupportedOperationException(
-            "Unsupported type parameter kind: " + parameter.getClass().getName());
+            String.format(
+                QueryMessages.UNSUPPORTED_TYPE_PARAMETER_KIND, parameter.getClass().getName()));
       }
     }
 

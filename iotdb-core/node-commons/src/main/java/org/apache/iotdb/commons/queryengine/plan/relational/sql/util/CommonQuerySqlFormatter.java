@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.util;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CommonQueryAstVisitor;
@@ -96,12 +97,14 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
 
   @Override
   public Void visitNode(Node node, Integer indent) {
-    throw new UnsupportedOperationException("not yet implemented: " + node);
+    throw new UnsupportedOperationException(QueryMessages.NOT_YET_IMPLEMENTED + node);
   }
 
   @Override
   public Void visitExpression(Expression node, Integer indent) {
-    checkArgument(indent == 0, "visitExpression should only be called at root");
+    checkArgument(
+        indent == 0,
+        QueryMessages.EXCEPTION_VISITEXPRESSION_SHOULD_ONLY_BE_CALLED_AT_ROOT_93E4AAD4);
     builder.append(formatExpression(node));
     return null;
   }
@@ -157,7 +160,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                           elements.stream()
                               .map(CommonQuerySqlFormatter::formatExpression)
                               .collect(joining(", "))));
-    } else if (node.getFillMethod() == FillPolicy.PREVIOUS) {
+    } else if (node.getFillMethod() == FillPolicy.PREVIOUS
+        || node.getFillMethod() == FillPolicy.NEXT) {
       node.getTimeBound()
           .ifPresent(timeBound -> builder.append(" TIME_BOUND ").append(timeBound.toString()));
       node.getTimeColumnIndex()
@@ -172,7 +176,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                               .map(CommonQuerySqlFormatter::formatExpression)
                               .collect(joining(", "))));
     } else {
-      throw new IllegalArgumentException("Unknown fill method: " + node.getFillMethod());
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.UNKNOWN_FILL_METHOD, node.getFillMethod()));
     }
     return null;
   }
@@ -252,7 +257,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
         JoinOn on = (JoinOn) criteria;
         builder.append(" ON ").append(formatExpression(on.getExpression()));
       } else if (!(criteria instanceof NaturalJoin)) {
-        throw new UnsupportedOperationException("unknown join criteria: " + criteria);
+        throw new UnsupportedOperationException(
+            String.format(QueryMessages.UNKNOWN_JOIN_CRITERIA, criteria));
       }
     }
 
@@ -341,7 +347,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
   }
 
   protected String formatSimpleTableRelationName(Relation relation) {
-    throw new UnsupportedOperationException("unsupported relation: " + relation);
+    throw new UnsupportedOperationException(
+        String.format(QueryMessages.UNSUPPORTED_RELATION, relation));
   }
 
   protected SqlBuilder append(int indent, String value) {
@@ -374,7 +381,9 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
 
   @Override
   public Void visitRowPattern(RowPattern node, Integer indent) {
-    checkArgument(indent == 0, "visitRowPattern should only be called at root");
+    checkArgument(
+        indent == 0,
+        QueryMessages.EXCEPTION_VISITROWPATTERN_SHOULD_ONLY_BE_CALLED_AT_ROOT_9DE9F574);
     builder.append(formatPattern(node));
     return null;
   }
@@ -399,14 +408,19 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
 
     node.getGroupBy()
         .ifPresent(
-            groupBy ->
+            groupBy -> {
+              if (groupBy.isAll()) {
+                append(indent, "GROUP BY ALL").append('\n');
+              } else {
                 append(
                         indent,
                         "GROUP BY "
                             + (groupBy.isDistinct() ? " DISTINCT " : "")
                             + org.apache.iotdb.commons.queryengine.plan.relational.sql.util
                                 .ExpressionFormatter.formatGroupBy(groupBy.getGroupingElements()))
-                    .append('\n'));
+                    .append('\n');
+              }
+            });
 
     node.getHaving()
         .ifPresent(having -> append(indent, "HAVING " + formatExpression(having)).append('\n'));
@@ -571,7 +585,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
     private final StringBuilder builder;
 
     public SqlBuilder(StringBuilder builder) {
-      this.builder = requireNonNull(builder, "builder is null");
+      this.builder = requireNonNull(builder, QueryMessages.EXCEPTION_BUILDER_IS_NULL_ADE64E9B);
     }
 
     @CanIgnoreReturnValue
@@ -635,7 +649,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
           break;
         default:
           throw new IllegalStateException(
-              "unexpected rowsPerMatch: " + node.getRowsPerMatch().get());
+              QueryMessages.EXCEPTION_UNEXPECTED_ROWSPERMATCH_F9B931C9
+                  + node.getRowsPerMatch().get());
       }
       append(indent + 1, rowsPerMatch).append("\n");
     }
@@ -651,7 +666,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
         case LAST:
           checkState(
               node.getAfterMatchSkipTo().get().getIdentifier().isPresent(),
-              "missing identifier in AFTER MATCH SKIP TO LAST");
+              QueryMessages.EXCEPTION_MISSING_IDENTIFIER_IN_AFTER_MATCH_SKIP_TO_LAST_82A12A21);
           skipTo =
               "AFTER MATCH SKIP TO LAST "
                   + formatExpression(node.getAfterMatchSkipTo().get().getIdentifier().get());
@@ -659,13 +674,14 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
         case FIRST:
           checkState(
               node.getAfterMatchSkipTo().get().getIdentifier().isPresent(),
-              "missing identifier in AFTER MATCH SKIP TO FIRST");
+              QueryMessages.EXCEPTION_MISSING_IDENTIFIER_IN_AFTER_MATCH_SKIP_TO_FIRST_F988B839);
           skipTo =
               "AFTER MATCH SKIP TO FIRST "
                   + formatExpression(node.getAfterMatchSkipTo().get().getIdentifier().get());
           break;
         default:
-          throw new IllegalStateException("unexpected skipTo: " + node.getAfterMatchSkipTo().get());
+          throw new IllegalStateException(
+              String.format(QueryMessages.UNEXPECTED_SKIP_TO, node.getAfterMatchSkipTo().get()));
       }
       append(indent + 1, skipTo).append("\n");
     }

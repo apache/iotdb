@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
@@ -46,10 +47,13 @@ public class OperatorNotFoundException extends IoTDBException {
         formatErrorMessage(operatorType, argumentTypes, Optional.empty()),
         cause,
         OPERATOR_NOT_FOUND.getStatusCode());
-    this.operatorType = requireNonNull(operatorType, "operatorType is null");
+    this.operatorType =
+        requireNonNull(operatorType, DataNodeQueryMessages.EXCEPTION_OPERATORTYPE_IS_NULL_CEA6E3D3);
     this.returnType = null;
     this.argumentTypes =
-        ImmutableList.copyOf(requireNonNull(argumentTypes, "argumentTypes is null"));
+        ImmutableList.copyOf(
+            requireNonNull(
+                argumentTypes, DataNodeQueryMessages.EXCEPTION_ARGUMENTTYPES_IS_NULL_1E377BFD));
   }
 
   public OperatorNotFoundException(
@@ -61,10 +65,14 @@ public class OperatorNotFoundException extends IoTDBException {
         formatErrorMessage(operatorType, argumentTypes, Optional.of(returnType)),
         cause,
         OPERATOR_NOT_FOUND.getStatusCode());
-    this.operatorType = requireNonNull(operatorType, "operatorType is null");
+    this.operatorType =
+        requireNonNull(operatorType, DataNodeQueryMessages.EXCEPTION_OPERATORTYPE_IS_NULL_CEA6E3D3);
     this.argumentTypes =
-        ImmutableList.copyOf(requireNonNull(argumentTypes, "argumentTypes is null"));
-    this.returnType = requireNonNull(returnType, "returnType is null");
+        ImmutableList.copyOf(
+            requireNonNull(
+                argumentTypes, DataNodeQueryMessages.EXCEPTION_ARGUMENTTYPES_IS_NULL_1E377BFD));
+    this.returnType =
+        requireNonNull(returnType, DataNodeQueryMessages.EXCEPTION_RETURNTYPE_IS_NULL_07C7C6A5);
   }
 
   private static String formatErrorMessage(
@@ -90,9 +98,10 @@ public class OperatorNotFoundException extends IoTDBException {
             "Cannot check if %s is distinct from %s", argumentTypes.get(0), argumentTypes.get(1));
       case CAST:
         return format(
-            "Cannot cast %s to %s",
+            DataNodeQueryMessages.CANNOT_CAST_TO,
             argumentTypes.get(0),
-            returnType.orElseThrow(() -> new NoSuchElementException("No value present")));
+            returnType.orElseThrow(
+                () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)));
       case SUBSCRIPT:
         return format(
             "Cannot use %s for subscript of %s", argumentTypes.get(1), argumentTypes.get(0));

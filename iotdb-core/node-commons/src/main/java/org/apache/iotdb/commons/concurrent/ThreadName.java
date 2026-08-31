@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,12 +98,15 @@ public enum ThreadName {
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
   // -------------------------- ConfigNode-Recover --------------------------
   CONFIG_NODE_RECOVER("ConfigNode-Manager-Recovery"),
+  CONFIG_NODE_LEADER_SERVICES_TRANSITION("ConfigNode-Leader-Services-Transition"),
   // -------------------------- ConfigNode-Procedure ------------------------
   // TODO: Use Thread Pool to manage the procedure thread @Potato
   CONFIG_NODE_PROCEDURE_WORKER("ProcedureWorkerGroup"),
   CONFIG_NODE_TIMEOUT_EXECUTOR("ProcedureTimeoutExecutor"),
   CONFIG_NODE_WORKER_THREAD_MONITOR("ProcedureWorkerThreadMonitor"),
   CONFIG_NODE_RETRY_FAILED_TASK("Cluster-RetryFailedTasks-Service"),
+  RELOAD_TABLE_METADATA_CACHE("Reload-Table-Metadata-Cache"),
+  CHECK_DN_LEASE_STATUS("Check-DN-Lease-Status"),
   // -------------------------- IoTConsensusV2 --------------------------
   IOT_CONSENSUS_V2_RPC_SERVICE("IoTConsensusV2RPC-Service"),
   IOT_CONSENSUS_V2_RPC_PROCESSOR("IoTConsensusV2RPC-Processor"),
@@ -155,6 +160,9 @@ public enum ThreadName {
   PIPE_TERMINATE_EXECUTION_POOL("Pipe-Terminate-Execution-Pool"),
   LOAD_DATATYPE_CONVERT_POOL("Load-Datatype-Convert-Pool"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL("Subscription-Consensus-Prefetch-Executor-Pool"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_SCHEDULER("Subscription-Consensus-Prefetch-Scheduler"),
+  SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER("Subscription-Consensus-Progress-Broadcaster"),
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
@@ -317,6 +325,9 @@ public enum ThreadName {
               PIPE_AIR_GAP_RECEIVER,
               PIPE_PARALLEL_EXECUTION_POOL,
               SUBSCRIPTION_EXECUTOR_POOL,
+              SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL,
+              SUBSCRIPTION_CONSENSUS_PREFETCH_SCHEDULER,
+              SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER,
               SUBSCRIPTION_RUNTIME_META_SYNCER,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
@@ -366,7 +377,7 @@ public enum ThreadName {
       new HashSet<>(Arrays.asList(CONFIG_NODE_REGION_MAINTAINER));
 
   private static final Set<ThreadName> configNodeRecoverThreadNames =
-      new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER));
+      new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER, CONFIG_NODE_LEADER_SERVICES_TRANSITION));
 
   private static final Set<ThreadName> configNodeProcedureThreadNames =
       new HashSet<>(
@@ -374,7 +385,9 @@ public enum ThreadName {
               CONFIG_NODE_PROCEDURE_WORKER,
               CONFIG_NODE_WORKER_THREAD_MONITOR,
               CONFIG_NODE_TIMEOUT_EXECUTOR,
-              CONFIG_NODE_RETRY_FAILED_TASK));
+              CONFIG_NODE_RETRY_FAILED_TASK,
+              RELOAD_TABLE_METADATA_CACHE,
+              CHECK_DN_LEASE_STATUS));
 
   private static final Set<ThreadName> metricsThreadNames =
       new HashSet<>(
@@ -501,7 +514,7 @@ public enum ThreadName {
         }
       }
     }
-    LOGGER.debug("Unknown thread name: {}", givenThreadName);
+    LOGGER.debug(CommonMessages.UNKNOWN_THREAD_NAME, givenThreadName);
     return ThreadName.UNKNOWN;
   }
 }

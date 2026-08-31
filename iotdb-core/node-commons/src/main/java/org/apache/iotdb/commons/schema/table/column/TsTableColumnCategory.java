@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.commons.schema.table.column;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -52,7 +55,11 @@ public enum TsTableColumnCategory {
   }
 
   public static TsTableColumnCategory deserialize(final InputStream stream) throws IOException {
-    return deserialize((byte) stream.read());
+    final int category = stream.read();
+    if (category < 0) {
+      throw new EOFException();
+    }
+    return deserialize((byte) category);
   }
 
   public static TsTableColumnCategory deserialize(final ByteBuffer stream) {
@@ -85,7 +92,8 @@ public enum TsTableColumnCategory {
       case TIME:
         return ColumnCategory.TIME;
       default:
-        throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
+        throw new IllegalArgumentException(
+            String.format(SchemaMessages.UNSUPPORTED_COLUMN_TYPE_IN_TSFILE, this));
     }
   }
 
@@ -100,7 +108,7 @@ public enum TsTableColumnCategory {
       case TIME:
         return TIME;
       default:
-        throw new IllegalArgumentException("Unknown column type: " + columnType);
+        throw new IllegalArgumentException(SchemaMessages.UNKNOWN_COLUMN_TYPE + columnType);
     }
   }
 

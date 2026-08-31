@@ -25,6 +25,7 @@ import org.apache.iotdb.calc.execution.operator.process.rowpattern.PhysicalValue
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.PhysicalValuePointer;
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher.ArrayView;
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -167,7 +168,8 @@ public class PatternExpressionComputation {
         || type instanceof ObjectType) {
       return partition.getBinary(channel, position);
     } else {
-      throw new SemanticException("Unsupported type: " + type.getClass().getSimpleName());
+      throw new SemanticException(
+          CalcMessages.UNSUPPORTED_TYPE_CLASS + type.getClass().getSimpleName());
     }
   }
 }

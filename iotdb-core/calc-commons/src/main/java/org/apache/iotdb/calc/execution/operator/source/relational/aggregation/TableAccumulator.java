@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -31,7 +33,8 @@ public interface TableAccumulator {
   void addInput(Column[] arguments, AggregationMask mask);
 
   default void removeInput(Column[] arguments) {
-    throw new UnsupportedOperationException("This Accumulator does not support removing inputs!");
+    throw new UnsupportedOperationException(
+        CalcMessages.THIS_ACCUMULATOR_DOES_NOT_SUPPORT_REMOVING_INPUTS);
   }
 
   void addIntermediate(Column argument);

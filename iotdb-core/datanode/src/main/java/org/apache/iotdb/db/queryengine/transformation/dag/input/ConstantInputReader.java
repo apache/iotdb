@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
@@ -47,13 +48,15 @@ public class ConstantInputReader implements LayerReader {
 
   public ConstantInputReader(ConstantOperand expression) throws QueryProcessException {
     if (expression == null) {
-      throw new QueryProcessException("The expression cannot be null");
+      throw new QueryProcessException(DataNodeQueryMessages.THE_EXPRESSION_CANNOT_BE_NULL);
     }
 
     Object value = CommonUtils.parseValue(expression.getDataType(), expression.getValueString());
     if (value == null) {
       throw new QueryProcessException(
-          "Invalid constant operand: " + expression.getExpressionString());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_INVALID_CONSTANT_OPERAND_S_939F3B8D,
+              expression.getExpressionString()));
     }
 
     // Use RLEColumn to mimic column filled with same values
@@ -97,7 +100,8 @@ public class ConstantInputReader implements LayerReader {
       case TIMESTAMP:
       case DATE:
       default:
-        throw new QueryProcessException("Unsupported type: " + expression.getDataType());
+        throw new QueryProcessException(
+            DataNodeQueryMessages.UNSUPPORTED_TYPE + expression.getDataType());
     }
   }
 

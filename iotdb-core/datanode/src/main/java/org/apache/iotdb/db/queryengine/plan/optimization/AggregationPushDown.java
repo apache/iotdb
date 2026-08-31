@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.Multi
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
@@ -151,7 +152,9 @@ public class AggregationPushDown implements PlanOptimizer {
         }
       } else {
         throw new IllegalArgumentException(
-            String.format("Invalid Aggregation Expression: %s", expression.getExpressionString()));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_INVALID_AGGREGATION_EXPRESSION_S_B28EB91B,
+                expression.getExpressionString()));
       }
     }
     return false;
@@ -177,7 +180,9 @@ public class AggregationPushDown implements PlanOptimizer {
         }
       } else {
         throw new IllegalArgumentException(
-            String.format("Invalid Aggregation Expression: %s", expression.getExpressionString()));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_INVALID_AGGREGATION_EXPRESSION_S_B28EB91B,
+                expression.getExpressionString()));
       }
     }
     return false;
@@ -187,7 +192,7 @@ public class AggregationPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      throw new IllegalArgumentException("Unexpected plan node: " + node);
+      throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_PLAN_NODE + node);
     }
 
     @Override
@@ -230,7 +235,9 @@ public class AggregationPushDown implements PlanOptimizer {
       } catch (IllegalPathException e) {
         throw new IllegalStateException(
             String.format(
-                "Illegal device path: %s in AggregationPushDown rule.", node.getDevice()));
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_ILLEGAL_DEVICE_PATH_S_IN_AGGREGATIONPUSHDOWN_RULE_60D5F633,
+                node.getDevice()));
       }
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       node.setChild(rewrittenChild);
@@ -548,7 +555,8 @@ public class AggregationPushDown implements PlanOptimizer {
 
       if (!context.analysis.getDeviceTemplate().isDirectAligned()) {
         throw new IllegalStateException(
-            "Aggregation descriptors with non aligned template are not supported");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_AGGREGATION_DESCRIPTORS_WITH_NON_ALIGNED_TEMPLATE_ARE_NOT_6D3C7C0F);
       }
       AlignedPath alignedPath = new AlignedPath(devicePath);
       alignedPath.setMeasurementList(measurementList);
@@ -609,7 +617,7 @@ public class AggregationPushDown implements PlanOptimizer {
                 MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(aggScanNode));
         return aggScanNode;
       } else {
-        throw new IllegalArgumentException("unexpected path type");
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_PATH_TYPE);
       }
     }
 
@@ -646,7 +654,8 @@ public class AggregationPushDown implements PlanOptimizer {
 
     public RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
       this.analysis = analysis;
-      Validate.notNull(context, "Query context cannot be null.");
+      Validate.notNull(
+          context, DataNodeQueryMessages.EXCEPTION_QUERY_CONTEXT_CANNOT_BE_NULL_DOT_2D3369FE);
       this.context = context;
       this.isAlignByDevice = isAlignByDevice;
     }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.multi;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.read.common.type.Type;
@@ -37,7 +38,7 @@ public abstract class LogicalMultiColumnTransformer extends MultiColumnTransform
   protected void checkType() {
     for (ColumnTransformer child : columnTransformerList) {
       if (!child.typeEquals(TypeEnum.BOOLEAN)) {
-        throw new UnsupportedOperationException("Unsupported Type");
+        throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_TYPE_BINARY);
       }
     }
   }

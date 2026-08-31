@@ -27,6 +27,7 @@ import org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher.Match
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.RowComparator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowsPerMatch;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SkipToPosition;
@@ -387,7 +388,7 @@ public final class PatternPartitionExecutor {
       case FIRST:
         checkState(
             skipToNavigation.isPresent(),
-            "skip to navigation is missing for SKIP TO %s",
+            CalcMessages.EXCEPTION_SKIP_TO_NAVIGATION_IS_MISSING_FOR_SKIP_TO_ARG_8A303D73,
             skipToPosition.name());
         int position =
             skipToNavigation
@@ -400,16 +401,17 @@ public final class PatternPartitionExecutor {
                     patternStart);
         if (position == -1) {
           throw new SemanticException(
-              "AFTER MATCH SKIP TO failed: pattern variable is not present in match");
+              CalcMessages
+                  .EXCEPTION_AFTER_MATCH_SKIP_FAILED_PATTERN_VARIABLE_NOT_PRESENT_MATCH_2891B276);
         }
         if (position == patternStart) {
           throw new SemanticException(
-              "AFTER MATCH SKIP TO failed: cannot skip to first row of match");
+              CalcMessages.EXCEPTION_AFTER_MATCH_SKIP_FAILED_CANNOT_SKIP_FIRST_ROW_MATCH_71D4093B);
         }
         lastSkippedPosition = position - 1;
         break;
       default:
-        throw new IllegalStateException("unexpected SKIP TO position: " + skipToPosition);
+        throw new IllegalStateException(CalcMessages.UNEXPECTED_SKIP_TO_POSITION + skipToPosition);
     }
   }
 

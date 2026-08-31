@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
@@ -66,19 +67,30 @@ public abstract class TVList implements WALEntryValue {
   public static class RamInfo {
     private final int timestampsSize;
     private final long arrayMemCost;
+    private final long ramSize;
     private final int rowCount;
     private final List<TSDataType> dataTypes;
 
     public RamInfo(
         int timestampCount, long arrayMemCost, int rowCount, List<TSDataType> dataTypes) {
+      this(timestampCount, arrayMemCost, (long) timestampCount * arrayMemCost, rowCount, dataTypes);
+    }
+
+    public RamInfo(
+        int timestampCount,
+        long arrayMemCost,
+        long ramSize,
+        int rowCount,
+        List<TSDataType> dataTypes) {
       this.timestampsSize = timestampCount;
       this.rowCount = rowCount;
       this.arrayMemCost = arrayMemCost;
+      this.ramSize = ramSize;
       this.dataTypes = dataTypes;
     }
 
     public long getRamSize() {
-      return timestampsSize * arrayMemCost;
+      return ramSize;
     }
 
     public int getTimestampsSize() {
@@ -297,7 +309,7 @@ public abstract class TVList implements WALEntryValue {
    */
   private int binarySearchTimestampFirstGreaterOrEqualsPosition(long time, int low, int high) {
     if (!sorted && high >= seqRowCount) {
-      throw new UnsupportedOperationException("Current TVList is not sorted");
+      throw new UnsupportedOperationException(DataNodeMiscMessages.CURRENT_TV_LIST_NOT_SORTED);
     }
     int mid;
     while (low <= high) {
@@ -346,7 +358,7 @@ public abstract class TVList implements WALEntryValue {
    */
   private int binarySearchTimestampLastLessOrEqualsPosition(long time, int low, int high) {
     if (!sorted && high >= seqRowCount) {
-      throw new UnsupportedOperationException("Current TVList is not sorted");
+      throw new UnsupportedOperationException(DataNodeMiscMessages.CURRENT_TV_LIST_NOT_SORTED);
     }
 
     int mid;
@@ -435,7 +447,7 @@ public abstract class TVList implements WALEntryValue {
    */
   public boolean isNullValue(int unsortedRowIndex) {
     if (unsortedRowIndex >= rowCount) {
-      throw new IndexOutOfBoundsException("Index out of bound error!");
+      throw new IndexOutOfBoundsException(DataNodeMiscMessages.INDEX_OUT_OF_BOUND_ERROR);
     }
     if (bitMap == null || bitMap.get(unsortedRowIndex / ARRAY_SIZE) == null) {
       return false;
@@ -539,6 +551,7 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
+  @TestOnly
   public TVList getTvListByColumnIndex(
       List<Integer> columnIndexList, List<TSDataType> dataTypeList, boolean ignoreAllNullRows) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
@@ -568,7 +581,13 @@ public abstract class TVList implements WALEntryValue {
     return clone();
   }
 
-  public int delete(long lowerBound, long upperBound) {
+  /*
+   * Must be synchronized with sort() on the same TVList instance: a query may sort
+   * this list in place (sort() is synchronized), and a concurrent delete would
+   * otherwise read the half-rebuilt indices and throw IndexOutOfBoundsException
+   * or delete wrong rows.
+   */
+  public synchronized int delete(long lowerBound, long upperBound) {
     int deletedNumber = 0;
     long maxTime = Long.MIN_VALUE;
     long minTime = Long.MAX_VALUE;
@@ -804,6 +823,16 @@ public abstract class TVList implements WALEntryValue {
 
   public Set<QueryContext> getQueryContextSet() {
     return queryContextSet;
+  }
+
+  /**
+   * Get the union of all columns accessed by queries on this TVList. For non-AlignedTVList, returns
+   * empty set. This method should be called with queryListLock held for thread safety.
+   *
+   * @return set of accessed column indices, or empty set if no columns are tracked
+   */
+  public Set<Integer> getAccessedColumnsForQuery() {
+    return null;
   }
 
   public List<BitMap> getBitMap() {
@@ -1260,7 +1289,9 @@ public abstract class TVList implements WALEntryValue {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataType));
+              String.format(
+                  DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                  dataType));
       }
 
       // count the filtered row from time filter and other filter
@@ -1375,7 +1406,9 @@ public abstract class TVList implements WALEntryValue {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataType));
+                String.format(
+                    DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    dataType));
         }
         encodeInfo.pointNumInChunk++;
         if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk
@@ -1429,8 +1462,7 @@ public abstract class TVList implements WALEntryValue {
     if (System.currentTimeMillis() - defaultArrayNumLastUpdatedTimeMs > 10_000) {
       defaultArrayNumLastUpdatedTimeMs = System.currentTimeMillis();
       defaultArrayNum =
-          ((int) WritingMetrics.getInstance().getAvgPointHistogram().takeSnapshot().getMean()
-              / ARRAY_SIZE);
+          ((int) WritingMetrics.getInstance().getGlobalAvgSeriesPointNum() / ARRAY_SIZE);
     }
     return defaultArrayNum;
   }

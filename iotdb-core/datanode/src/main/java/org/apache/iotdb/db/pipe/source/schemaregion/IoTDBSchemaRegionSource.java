@@ -41,6 +41,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -96,6 +97,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
 
   // Local for exception
   private PipePlanTreePrivilegeParseVisitor treePrivilegeParseVisitor;
+  private PipePlanTablePrivilegeParseVisitor tablePrivilegeParseVisitor;
   private SchemaRegionId schemaRegionId;
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
@@ -114,7 +116,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
         .getSchemaRegionConsensusProtocolClass()
         .equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
       throw new PipeException(
-          "IoTDBSchemaRegionSource does not support transferring events under simple consensus");
+          DataNodePipeMessages.IOTDBSCHEMAREGIONSOURCE_DOES_NOT_SUPPORT_TRANSFERRING_EVENTS_UNDER);
     }
 
     super.customize(parameters, configuration);
@@ -122,6 +124,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
     schemaRegionId = new SchemaRegionId(regionId);
     listenedTypeSet = SchemaRegionListeningFilter.parseListeningPlanTypeSet(parameters);
     treePrivilegeParseVisitor = new PipePlanTreePrivilegeParseVisitor(skipIfNoPrivileges);
+    tablePrivilegeParseVisitor = new PipePlanTablePrivilegeParseVisitor(skipIfNoPrivileges);
 
     PipeSchemaRegionSourceMetrics.getInstance().register(this);
     if (regionId >= 0) {
@@ -170,7 +173,9 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
             .getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipePasswordCheckException(
-          String.format("Failed to check password for pipe %s.", pipeName));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_FAILED_TO_CHECK_PASSWORD_FOR_PIPE_S_0B1A5C73,
+              pipeName));
     }
   }
 
@@ -189,7 +194,8 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
     try {
       SchemaRegionConsensusImpl.getInstance().triggerSnapshot(schemaRegionId, true);
     } catch (final ConsensusException e) {
-      throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
+      throw new PipeException(
+          DataNodePipeMessages.EXCEPTION_ENCOUNTERED_WHEN_TRIGGERING_SCHEMA_REGION_SNAPSHOT, e);
     }
   }
 
@@ -290,7 +296,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
     final Optional<PlanNode> result =
         treePrivilegeParseVisitor
             .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userEntity)
-            .flatMap(planNode -> TABLE_PRIVILEGE_PARSE_VISITOR.process(planNode, userEntity));
+            .flatMap(planNode -> tablePrivilegeParseVisitor.process(planNode, userEntity));
     if (result.isPresent()) {
       return Optional.of(
           new PipeSchemaRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
@@ -299,7 +305,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
       return Optional.empty();
     }
     throw new AccessDeniedException(
-        "Not has privilege to transfer event: "
+        DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_EVENT
             + ((PipeSchemaRegionWritePlanEvent) event).getPlanNode());
   }
 

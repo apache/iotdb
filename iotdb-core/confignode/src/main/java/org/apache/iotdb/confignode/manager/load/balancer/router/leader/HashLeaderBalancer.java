@@ -43,7 +43,7 @@ public class HashLeaderBalancer extends AbstractLeaderBalancer {
         (gid, nodeSet) -> {
           List<Integer> nodeList = new ArrayList<>(nodeSet);
           nodeList.sort(null);
-          int startNodeIndex = Math.abs(gid.hashCode()) % nodeList.size();
+          int startNodeIndex = (int) (Math.abs((long) gid.hashCode()) % nodeList.size());
           int finalNodeId = nodeList.get(startNodeIndex);
           for (int i = 0; i < nodeList.size(); i++) {
             int currentNodeIndex = (startNodeIndex + i) % nodeList.size();

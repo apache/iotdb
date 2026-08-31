@@ -24,12 +24,10 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
-import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -64,14 +62,16 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final PipeInsertionEvent sourceEvent; // used to report progress
 
   // mods entry
-  protected PipeMemoryBlock allocatedMemoryBlockForModifications;
+  protected TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForModifications;
   protected PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
 
   protected long parseStartTimeNano = -1;
   protected boolean parseStartTimeRecorded = false;
   protected boolean parseEndTimeRecorded = false;
 
-  protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
+  protected final TsFileInsertionEventParserMemoryBlock allocatedMemoryBlockForTablet;
+
+  protected final TsFileInsertionEventParserMemoryManager memoryManager;
 
   protected TsFileSequenceReader tsFileSequenceReader;
 
@@ -90,6 +90,36 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       final boolean skipIfNoPrivileges,
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod) {
+    this(
+        tsFile,
+        pipeName,
+        creationTime,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent,
+        isWithMod,
+        TsFileInsertionEventParserMemoryManager.pipe());
+  }
+
+  protected TsFileInsertionEventParser(
+      final File tsFile,
+      final String pipeName,
+      final long creationTime,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.entity = entity;
@@ -106,14 +136,12 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+    this.memoryManager = memoryManager;
 
-    this.allocatedMemoryBlockForTablet =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
+    this.allocatedMemoryBlockForTablet = memoryManager.forceAllocateForTabletWithRetry(0);
 
-    LOGGER.info(
-        "TsFile {} has initialized {}, pipeName: {}, creation time: {}, pattern: {}, startTime: {}, endTime: {}, withMod: {}",
+    LOGGER.debug(
+        DataNodePipeMessages.TSFILE_HAS_INITIALIZED_PIPENAME_CREATION_TIME_PATTERN,
         tsFile,
         getClass().getSimpleName(),
         pipeName,
@@ -156,7 +184,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       PipeTsFileToTabletsMetrics.getInstance().recordTsFileToTabletTime(taskID, totalTimeNanos);
       parseEndTimeRecorded = true;
     } catch (final Exception e) {
-      LOGGER.warn("Failed to record parse end time for pipe {}", pipeName, e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_RECORD_PARSE_END_TIME_FOR, pipeName, e);
     }
   }
 
@@ -175,7 +203,14 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       final long tabletMemorySize = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
       PipeTsFileToTabletsMetrics.getInstance().recordTabletGenerated(taskID, tabletMemorySize);
     } catch (final Exception e) {
-      LOGGER.warn("Failed to record tablet metrics for pipe {}", pipeName, e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_RECORD_TABLET_METRICS_FOR_PIPE, pipeName, e);
+    }
+  }
+
+  protected void releaseTabletMemoryBlock() {
+    if (allocatedMemoryBlockForTablet != null
+        && allocatedMemoryBlockForTablet.getMemoryUsageInBytes() > 0) {
+      allocatedMemoryBlockForTablet.forceResize(0);
     }
   }
 
@@ -190,7 +225,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
         tsFileSequenceReader.close();
       }
     } catch (final IOException e) {
-      LOGGER.warn("Failed to close TsFileSequenceReader", e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_TSFILESEQUENCEREADER, e);
     }
 
     if (allocatedMemoryBlockForTablet != null) {

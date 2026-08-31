@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.commons.queryengine.common.NodeRef;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -93,7 +94,9 @@ public class IntermediateLayerVisitor
   public IntermediateLayer visitExpression(
       Expression expression, IntermediateLayerVisitorContext context) {
     throw new UnsupportedOperationException(
-        "Unsupported statement type: " + expression.getClass().getName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            expression.getClass().getName()));
   }
 
   @Override
@@ -296,7 +299,8 @@ public class IntermediateLayerVisitor
   @Override
   public IntermediateLayer visitCaseWhenThenExpression(
       CaseWhenThenExpression caseWhenThenExpression, IntermediateLayerVisitorContext context) {
-    throw new UnsupportedOperationException("CASE expression cannot be used with non-mappable UDF");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.CASE_EXPRESSION_CANNOT_BE_USED_WITH_NON_MAPPABLE);
   }
 
   private Transformer getConcreteUnaryTransformer(Expression expression, LayerReader parentReader) {
@@ -321,7 +325,9 @@ public class IntermediateLayerVisitor
         return new RegularTransformer(parentReader, regularExpression.getPattern());
       default:
         throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_737846D6,
+                expression.getExpressionType()));
     }
   }
 
@@ -359,7 +365,9 @@ public class IntermediateLayerVisitor
         return new LogicOrTransformer(leftParentLayerReader, rightParentLayerReader);
       default:
         throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_737846D6,
+                expression.getExpressionType()));
     }
   }
 
@@ -377,7 +385,9 @@ public class IntermediateLayerVisitor
           betweenExpression.isNotBetween());
     }
     throw new UnsupportedOperationException(
-        "Unsupported Expression Type: " + expression.getExpressionType());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_737846D6,
+            expression.getExpressionType()));
   }
 
   private UDFQueryTransformer getUdfTransformer(
@@ -411,7 +421,8 @@ public class IntermediateLayerVisitor
                 accessStrategy, context.memoryAssigner.assign()),
             executor);
       default:
-        throw new UnsupportedOperationException("Unsupported transformer access strategy");
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_TRANSFORMER_ACCESS_STRATEGY);
     }
   }
 

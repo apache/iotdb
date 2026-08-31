@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.connection;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.Triple;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -47,9 +48,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-  // Pipe name, creation time, region id
-  protected final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
-      ConcurrentHashMap.newKeySet();
+  protected final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
 
   protected BlockingPendingQueue(
       final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
@@ -78,7 +77,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
       eventCounter.increaseEventCount(event);
       return true;
     } catch (final InterruptedException e) {
-      LOGGER.info("pending queue put is interrupted.", e);
+      LOGGER.info(PipeMessages.PENDING_QUEUE_PUT_INTERRUPTED, e);
       Thread.currentThread().interrupt();
       return false;
     }
@@ -99,7 +98,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
               TimeUnit.MILLISECONDS);
       eventCounter.decreaseEventCount(event);
     } catch (final InterruptedException e) {
-      LOGGER.info("pending queue poll is interrupted.", e);
+      LOGGER.info(PipeMessages.PENDING_QUEUE_POLL_INTERRUPTED, e);
       Thread.currentThread().interrupt();
     }
     return event;
@@ -138,12 +137,15 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
-    droppedPipeTaskKeys.add(new Triple<>(pipeNameToDrop, creationTimeToDrop, regionId));
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public void discardEventsOfPipe(final CommitterKey committerKey) {
+    droppedPipeTaskKeys.add(committerKey);
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && isEventFromPipe(
-                  ((EnrichedEvent) event), pipeNameToDrop, creationTimeToDrop, regionId)) {
+              && isEventFromPipe((EnrichedEvent) event, committerKey)) {
             if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
               eventCounter.decreaseEventCount(event);
             }
@@ -191,16 +193,30 @@ public abstract class BlockingPendingQueue<E extends Event> {
         && regionId == event.getRegionId();
   }
 
+  protected static boolean isEventFromPipe(
+      final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
+  }
+
   protected boolean isEventFromDroppedPipe(final E event) {
     return event instanceof EnrichedEvent
         && ((EnrichedEvent) event).getPipeName() != null
-        && isPipeDropped(
-            ((EnrichedEvent) event).getPipeName(),
-            ((EnrichedEvent) event).getCreationTime(),
-            ((EnrichedEvent) event).getRegionId());
+        && isEventFromDroppedPipe((EnrichedEvent) event);
+  }
+
+  public boolean isEventFromDroppedPipe(final EnrichedEvent event) {
+    return droppedPipeTaskKeys.stream().anyMatch(key -> isEventFromPipe(event, key));
   }
 
   public boolean isPipeDropped(final String pipeName, final long creationTime, final int regionId) {
-    return droppedPipeTaskKeys.contains(new Triple<>(pipeName, creationTime, regionId));
+    return droppedPipeTaskKeys.stream()
+        .anyMatch(
+            key ->
+                key.getPipeName().equals(pipeName)
+                    && key.getCreationTime() == creationTime
+                    && key.getRegionId() == regionId);
   }
 }

@@ -27,10 +27,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -39,6 +40,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -57,7 +59,12 @@ import static org.apache.iotdb.db.queryengine.plan.relational.security.TreeAcces
 
 public class AccessControlImpl implements AccessControl {
 
-  public static final String READ_ONLY_DB_ERROR_MSG = "The database '%s' is read-only.";
+  static String getUnsupportedAuditDatabaseOperationMessage(String databaseName) {
+    return String.format(
+        DataNodeQueryMessages
+            .EXCEPTION_APACHE_IOTDB_DOES_NOT_SUPPORT_THIS_OPERATION_ON_DATABASE_ARG_B09ADFD7,
+        databaseName);
+  }
 
   protected final ITableAuthChecker authChecker;
 
@@ -71,7 +78,7 @@ public class AccessControlImpl implements AccessControl {
   private void checkAuditDatabase(String databaseName) {
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
       throw new AccessDeniedException(
-          String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
+          getUnsupportedAuditDatabaseOperationMessage(TABLE_MODEL_AUDIT_DATABASE));
     }
   }
 
@@ -202,7 +209,7 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanSelectFromDatabase4Pipe(
       final String userName, final String databaseName, IAuditEntity auditEntity) {
     if (Objects.isNull(userName)) {
-      throw new AccessDeniedException("User not exists");
+      throw new AccessDeniedException(DataNodeQueryMessages.USER_NOT_EXISTS);
     }
     authChecker.checkDatabasePrivilege(
         userName, databaseName, TableModelPrivilege.SELECT, auditEntity);
@@ -282,6 +289,9 @@ public class AccessControlImpl implements AccessControl {
         return;
       case RENAME_USER:
       case UPDATE_USER:
+        if (type == AuthorRType.UPDATE_USER) {
+          auditEntity.setSqlString(null);
+        }
         auditEntity.setAuditLogOperation(AuditLogOperation.DDL);
         if (statement.getUserName().equals(userName)) {
           // users can change the username and password of themselves
@@ -296,7 +306,8 @@ public class AccessControlImpl implements AccessControl {
           DNAuditLogger.getInstance()
               .recordObjectAuthenticationAuditLog(
                   auditEntity.setResult(false), statement::getUserName);
-          throw new AccessDeniedException("Only the superuser can alter him/herself.");
+          throw new AccessDeniedException(
+              DataNodeQueryMessages.ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF);
         }
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           // the superuser can alter anyone
@@ -540,6 +551,17 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
+  public void checkUserGlobalSysPrivilege(
+      IAuditEntity auditEntity, AuditLogOperation auditLogOperation, Supplier<String> auditObject) {
+    authChecker.checkGlobalPrivilege(
+        auditEntity.getUsername(),
+        TableModelPrivilege.SYSTEM,
+        auditLogOperation,
+        auditEntity,
+        auditObject);
+  }
+
+  @Override
   public boolean hasGlobalPrivilege(IAuditEntity entity, PrivilegeType privilegeType) {
     return AuthorityChecker.SUPER_USER_ID == entity.getUserId()
         || AuthorityChecker.checkSystemPermission(entity.getUsername(), privilegeType);
@@ -548,10 +570,29 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkMissingPrivileges(
       String username, Collection<PrivilegeType> privilegeTypes, IAuditEntity auditEntity) {
+    List<PrivilegeType> relatedPrivileges = new ArrayList<>(privilegeTypes);
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+      recordMissingPrivilegesAuditLog(auditEntity, relatedPrivileges, true);
       return;
     }
-    authChecker.checkGlobalPrivileges(username, privilegeTypes, auditEntity);
+    try {
+      authChecker.checkGlobalPrivileges(username, privilegeTypes, auditEntity);
+      recordMissingPrivilegesAuditLog(auditEntity, relatedPrivileges, true);
+    } catch (AccessDeniedException e) {
+      recordMissingPrivilegesAuditLog(auditEntity, relatedPrivileges, false);
+      throw e;
+    }
+  }
+
+  private static void recordMissingPrivilegesAuditLog(
+      IAuditEntity auditEntity, List<PrivilegeType> privilegeTypes, boolean result) {
+    DNAuditLogger.getInstance()
+        .recordObjectAuthenticationAuditLog(
+            auditEntity
+                .setResult(result)
+                .setAuditLogOperation(AuditLogOperation.CONTROL)
+                .setPrivilegeTypes(privilegeTypes),
+            () -> "");
   }
 
   @Override
@@ -565,11 +606,11 @@ public class AccessControlImpl implements AccessControl {
       IAuditEntity auditEntity, IDeviceID device, String measurementId) {
     try {
       PartialPath path = new MeasurementPath(device, measurementId);
-      // audit db is read-only
+      // Apache IoTDB does not support external writes to the audit database.
       if (includeByAuditTreeDB(path)
           && !auditEntity.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
         return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
-            .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+            .setMessage(getUnsupportedAuditDatabaseOperationMessage(TREE_MODEL_AUDIT_DATABASE));
       }
       return checkTimeSeriesPermission(
           auditEntity, () -> Collections.singletonList(path), PrivilegeType.WRITE_DATA);

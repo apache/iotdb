@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -52,7 +53,7 @@ public class InformationSchemaUtils {
     if (dbName.equals(INFORMATION_DATABASE)) {
       throw new SemanticException(
           new IoTDBException(
-              "The database 'information_schema' can only be queried",
+              DataNodeSchemaMessages.INFORMATION_SCHEMA_READ_ONLY,
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
     }
   }
@@ -73,8 +74,12 @@ public class InformationSchemaUtils {
     builder.getColumnBuilder(3).appendNull();
     builder.getColumnBuilder(4).appendNull();
     if (details) {
-      builder.getColumnBuilder(5).appendNull();
-      builder.getColumnBuilder(6).appendNull();
+      for (int columnIndex = 5;
+          columnIndex < builder.getValueColumnBuilders().length - 1;
+          columnIndex++) {
+        builder.getColumnBuilder(columnIndex).appendNull();
+      }
+      builder.getColumnBuilder(builder.getValueColumnBuilders().length - 1).writeBoolean(false);
     }
     builder.declarePosition();
   }
@@ -121,6 +126,7 @@ public class InformationSchemaUtils {
         builder
             .getColumnBuilder(4)
             .writeBinary(new Binary(TableType.SYSTEM_VIEW.getName(), TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(5).writeBoolean(false);
       }
       builder.declarePosition();
     }
@@ -151,7 +157,7 @@ public class InformationSchemaUtils {
       return true;
     }
     if (Objects.nonNull(isShowOrCreateView)) {
-      throw new SemanticException("The system view does not support show create.");
+      throw new SemanticException(DataNodeSchemaMessages.SYSTEM_VIEW_NOT_SUPPORT_SHOW_CREATE);
     }
     final TsTable table = getSchemaTables().get(tableName);
 

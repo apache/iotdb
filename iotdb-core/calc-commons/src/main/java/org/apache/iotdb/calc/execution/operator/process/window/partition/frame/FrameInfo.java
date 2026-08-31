@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.window.partition.frame;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
@@ -59,7 +60,7 @@ public class FrameInfo {
       case GROUPS:
         return FrameType.GROUPS;
       default:
-        throw new IllegalArgumentException("Unsupported frame bound type: " + frameType);
+        throw new IllegalArgumentException(CalcMessages.UNSUPPORTED_FRAME_BOUND_TYPE + frameType);
     }
   }
 
@@ -76,7 +77,8 @@ public class FrameInfo {
       case FOLLOWING:
         return FrameBoundType.FOLLOWING;
       default:
-        throw new IllegalArgumentException("Unsupported frame bound type: " + frameBoundType);
+        throw new IllegalArgumentException(
+            CalcMessages.UNSUPPORTED_FRAME_BOUND_TYPE + frameBoundType);
     }
   }
 

@@ -140,6 +140,9 @@ public class AlignedSeriesScanOperatorTest {
       int count = 0;
       while (seriesScanOperator.hasNext()) {
         TsBlock tsBlock = seriesScanOperator.next();
+        if (tsBlock == null || tsBlock.isEmpty()) {
+          continue;
+        }
         assertEquals(6, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BooleanColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
@@ -420,6 +423,9 @@ public class AlignedSeriesScanOperatorTest {
       int count = 0;
       while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
+        if (tsBlock == null || tsBlock.isEmpty()) {
+          continue;
+        }
         assertEquals(18, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BooleanColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
@@ -727,6 +733,9 @@ public class AlignedSeriesScanOperatorTest {
       int count = 499;
       while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
+        if (tsBlock == null || tsBlock.isEmpty()) {
+          continue;
+        }
         assertEquals(18, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BooleanColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);

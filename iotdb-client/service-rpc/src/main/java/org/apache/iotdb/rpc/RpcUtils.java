@@ -21,6 +21,7 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -150,8 +151,7 @@ public class RpcUtils {
   }
 
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
-    StringBuilder errMsgs =
-        new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
+    StringBuilder errMsgs = new StringBuilder();
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -159,7 +159,8 @@ public class RpcUtils {
       }
     }
     if (errMsgs.length() > 0) {
-      throw new BatchExecutionException(statuses, errMsgs.toString());
+      throw new BatchExecutionException(
+          statuses, TSStatusCode.MULTIPLE_ERROR.getStatusCode() + ": " + errMsgs);
     }
   }
 
@@ -180,9 +181,9 @@ public class RpcUtils {
       for (TSStatus subStatus : statusList) {
         if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && subStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          if (!msgSet.contains(status)) {
-            errMsg.append(status).append("; ");
-            msgSet.add(status);
+          if (!msgSet.contains(subStatus)) {
+            errMsg.append(subStatus).append("; ");
+            msgSet.add(subStatus);
           }
         }
       }
@@ -459,7 +460,7 @@ public class RpcUtils {
           case NANOSECOND:
             return 1_000_000_000;
           default:
-            throw new IllegalArgumentException("Unknown time precision: " + precision);
+            throw new IllegalArgumentException(RpcMessages.UNKNOWN_TIME_PRECISION + precision);
         }
       }
     }
@@ -475,7 +476,7 @@ public class RpcUtils {
       case 1_000_000_000:
         return NANOSECOND;
       default:
-        throw new IllegalArgumentException("Unknown time factor: " + timeFactor);
+        throw new IllegalArgumentException(RpcMessages.UNKNOWN_TIME_FACTOR + timeFactor);
     }
   }
 }

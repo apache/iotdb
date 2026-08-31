@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.copyto;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationPlan;
@@ -139,7 +140,8 @@ public interface CopyToOptions extends Accountable {
 
     public Builder withMemoryThreshold(long memoryThreshold) {
       if (memoryThreshold <= 0) {
-        throw new SemanticException("The memory threshold must be greater than 0.");
+        throw new SemanticException(
+            DataNodeQueryMessages.THE_MEMORY_THRESHOLD_MUST_BE_GREATER_THAN_0);
       }
       this.memoryThreshold = memoryThreshold;
       return this;

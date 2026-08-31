@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpre
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import javax.annotation.Nullable;
@@ -93,7 +94,8 @@ public class GapFillStartAndEndTimeExtractVisitor
       }
       return false;
     } else {
-      throw new IllegalStateException("Illegal state in visitLogicalExpression");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.ILLEGAL_STATE_IN_VISITLOGICALEXPRESSION);
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
@@ -108,7 +109,7 @@ public class MNodeFactoryLoader {
         }
       }
     }
-    throw new SchemaExecutionException("No satisfied MNodeFactory found");
+    throw new SchemaExecutionException(DataNodeSchemaMessages.NO_SATISFIED_MNODE_FACTORY);
   }
 
   public boolean isGenericMatch(Class<?> factory, Class<?> targetType) {

@@ -48,6 +48,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -291,5 +292,74 @@ public class LoadManagerTest {
     Assert.assertEquals(
         new Pair<>(new ConsensusGroupStatistics(newLeaderId), null),
         differentConsensusGroupStatisticsMap.get(regionGroupId));
+  }
+
+  @Test
+  public void testLoadWarmUpRequiresOnlyConfigNodeAndDataNodeSamples() {
+    LoadCache loadCache = new LoadCache();
+    TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 100);
+    Set<Integer> dataNodeIds = Stream.of(11, 12).collect(Collectors.toSet());
+
+    loadCache.createNodeHeartbeatCache(NodeType.ConfigNode, 10);
+    dataNodeIds.forEach(
+        dataNodeId -> loadCache.createNodeHeartbeatCache(NodeType.DataNode, dataNodeId));
+    loadCache.createNodeHeartbeatCache(NodeType.AINode, 13);
+    loadCache.createRegionGroupHeartbeatCache("root.warmup", regionGroupId, dataNodeIds);
+
+    Assert.assertEquals(
+        Collections.singletonList("nodes=[10, 11, 12]"),
+        loadCache.getNodeHeartbeatUnreadyReasons());
+
+    loadCache.cacheConfigNodeHeartbeatSample(10, new NodeHeartbeatSample(NodeStatus.Unknown));
+
+    dataNodeIds.forEach(
+        dataNodeId ->
+            loadCache.cacheDataNodeHeartbeatSample(
+                dataNodeId, new NodeHeartbeatSample(NodeStatus.Running)));
+    loadCache.updateNodeStatistics(false);
+
+    Assert.assertTrue(loadCache.getNodeHeartbeatUnreadyReasons().isEmpty());
+  }
+
+  @Test
+  public void testRegionAndConsensusGroupsDoNotBlockLoadWarmUp() {
+    LoadCache loadCache = new LoadCache();
+    TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 101);
+    Set<Integer> dataNodeIds = Stream.of(21, 22).collect(Collectors.toSet());
+
+    dataNodeIds.forEach(
+        dataNodeId -> loadCache.createNodeHeartbeatCache(NodeType.DataNode, dataNodeId));
+    loadCache.createRegionGroupHeartbeatCache("root.warmup", regionGroupId, dataNodeIds);
+    dataNodeIds.forEach(
+        dataNodeId -> {
+          loadCache.cacheDataNodeHeartbeatSample(
+              dataNodeId, new NodeHeartbeatSample(NodeStatus.Running));
+        });
+    loadCache.updateNodeStatistics(false);
+    loadCache.updateRegionGroupStatistics();
+    loadCache.updateConsensusGroupStatistics();
+
+    Assert.assertTrue(loadCache.getNodeHeartbeatUnreadyReasons().isEmpty());
+  }
+
+  @Test
+  public void testLoadWarmUpToleratesMissingFirstHeartbeatAfterThirtySeconds() {
+    LOAD_CACHE.clearHeartbeatCache();
+    LOAD_CACHE.createNodeHeartbeatCache(NodeType.DataNode, 31);
+
+    try {
+      LOAD_MANAGER.markLoadServicesStartedForTest(System.currentTimeMillis());
+
+      Assert.assertFalse(LOAD_MANAGER.isLoadReady());
+      Assert.assertTrue(LOAD_MANAGER.getLoadReadyReason().contains("waiting for first heartbeat"));
+
+      LOAD_MANAGER.markLoadServicesStartedForTest(
+          System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(31));
+
+      Assert.assertTrue(LOAD_MANAGER.isLoadReady());
+      Assert.assertTrue(LOAD_MANAGER.getLoadReadyReason().contains("Missing heartbeats"));
+    } finally {
+      LOAD_MANAGER.stopLoadServices();
+    }
   }
 }

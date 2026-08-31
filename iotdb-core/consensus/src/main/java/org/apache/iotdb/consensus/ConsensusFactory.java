@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus;
 
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.consensus.pipe.metric.IoTConsensusV2SyncLagManager;
 
 import org.slf4j.Logger;
@@ -31,8 +32,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
 
 public class ConsensusFactory {
-  public static final String CONSTRUCT_FAILED_MSG =
-      "Construct consensusImpl failed, Please check your consensus className %s";
+  public static final String CONSTRUCT_FAILED_MSG = ConsensusMessages.CONSTRUCT_FAILED_MSG;
 
   public static final String SIMPLE_CONSENSUS = "org.apache.iotdb.consensus.simple.SimpleConsensus";
   public static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
@@ -50,7 +50,7 @@ public class ConsensusFactory {
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 
   private ConsensusFactory() {
-    throw new IllegalStateException("Utility class ConsensusFactory");
+    throw new IllegalStateException(ConsensusMessages.UTILITY_CLASS_CONSENSUS_FACTORY);
   }
 
   // Downstream code compares against IOT_CONSENSUS_V2 directly, so persisted legacy names must be
@@ -87,7 +87,7 @@ public class ConsensusFactory {
         | InstantiationException
         | IllegalAccessException
         | InvocationTargetException e) {
-      logger.error("Couldn't Construct IConsensus class: {}", className, e);
+      logger.error(ConsensusMessages.COULD_NOT_CONSTRUCT_ICONSENSUS, className, e);
     }
     return Optional.empty();
   }

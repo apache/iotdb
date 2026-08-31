@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TShowConfigurationTemplateResp;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -145,6 +147,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde.DeserializedParam;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseType;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseVersion;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -267,7 +271,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  public static final String ERROR_CODE = "error code: ";
+  public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
+  private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -559,7 +564,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  private void clearUp(
+  public static void clearUp(
       IClientSession clientSession,
       Long statementId,
       Long queryId,
@@ -569,7 +574,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     clientSession.removeQueryId(statementId, queryId);
   }
 
-  private void clearUp(
+  private static void clearUp(
       IClientSession clientSession,
       Long statementId,
       Long queryId,
@@ -648,7 +653,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     @Override
     public Statement getTreeStatement(ZoneId zoneId) {
-      throw new UnsupportedOperationException("PreparedStatement is not supported for Tree model");
+      throw new UnsupportedOperationException(
+          DataNodeMiscMessages.PREPARED_STMT_NOT_SUPPORTED_FOR_TREE);
     }
 
     @Override
@@ -720,7 +726,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           String hexStr = "X'" + PreparedParameterSerde.bytesToHex(bytes) + "'";
           return new Pair<>(new BinaryLiteral(bytes), hexStr);
         default:
-          throw new IllegalArgumentException("Unknown parameter type: " + param.type);
+          throw new IllegalArgumentException(
+              DataNodeMiscMessages.UNKNOWN_PARAMETER_TYPE + param.type);
       }
     }
   }
@@ -1038,7 +1045,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     int dataRegionSize = dataRegionList.size();
     if (dataRegionSize != 1) {
       throw new IllegalArgumentException(
-          "dataRegionList.size() should only be 1 now,  current size is " + dataRegionSize);
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_DATAREGIONLIST_SIZE_SHOULD_ONLY_BE_1_NOW_CURRENT_SIZE_IS_282E453C,
+              dataRegionSize));
     }
 
     Filter timeFilter = TimeFilterApi.between(startTime, endTime - 1);
@@ -1180,7 +1190,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         RpcUtils.getTSExecuteStatementResp(
             new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
                 .setMessage(
-                    "The \"executeFastLastDataQueryForOnePrefixPath\" dos not support wildcards."));
+                    DataNodeMiscMessages
+                        .MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5));
       }
 
       final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> resultMap =
@@ -1227,7 +1238,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
-            if (tvPair != TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+            if (tvPair != TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN) {
               LastQueryUtil.appendLastValueRespectBlob(
                   builder,
                   tvPair.getTimestamp(),
@@ -1396,7 +1407,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             if (timeValuePair == null) {
               allCached = false;
               break;
-            } else if (timeValuePair.getValue() == null) {
+            } else if (timeValuePair == TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN
+                || timeValuePair.getValue() == null) {
               // there is no data for this sensor
               if (!canUseNullEntry) {
                 allCached = false;
@@ -1449,7 +1461,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
-        throw new RuntimeException("error code: " + result.status);
+        throw new RuntimeException(DataNodeMiscMessages.ERROR_CODE + result.status);
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
@@ -1633,7 +1645,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             req.zoneId,
             req.client_protocol,
             clientVersion,
-            sqlDialect);
+            sqlDialect,
+            parseUseEncryptedPassword(req));
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && database.isPresent()) {
@@ -1663,7 +1676,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       } else if ("table".equalsIgnoreCase(sqlDialect)) {
         return SqlDialect.TABLE;
       } else {
-        throw new IllegalArgumentException("Unknown sql_dialect: " + sqlDialect);
+        throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_SQL_DIALECT + sqlDialect);
       }
     } else {
       return SqlDialect.TREE;
@@ -1673,6 +1686,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private Optional<String> parseDatabase(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
     return configuration == null ? Optional.empty() : Optional.ofNullable(configuration.get("db"));
+  }
+
+  private boolean parseUseEncryptedPassword(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    return configuration != null
+        && Boolean.parseBoolean(configuration.get(USE_ENCRYPTED_PASSWORD_KEY));
   }
 
   @Override
@@ -1803,7 +1822,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     properties.setVersion(IoTDBConstant.VERSION);
     properties.setLogo(IoTDBConstant.LOGO);
     properties.setBuildInfo(IoTDBConstant.BUILD_INFO);
-    LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION_WITH_BUILD);
+    LOGGER.info(DataNodeMiscMessages.IOTDB_SERVER_VERSION, IoTDBConstant.VERSION_WITH_BUILD);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
@@ -2013,6 +2032,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
+      if (path.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteTimeSeriesStatement statement =
           StatementGenerator.createDeleteTimeSeriesStatement(path);
@@ -2246,7 +2268,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
           results.add(result.status);
         } catch (Exception e) {
-          LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
+          LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_BATCH_STATEMENT, e);
           TSStatus status =
               onQueryException(
                   e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
@@ -2647,8 +2669,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
-      req.setMeasurementsList(
-          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
+      PathUtils.checkIsLegalSingleMeasurementListsAndUpdateInPlace(req.getMeasurementsList());
 
       // Step 1: transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement = StatementGenerator.createStatement(req);
@@ -2714,8 +2735,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // check whether measurement is legal according to syntax convention (only for tree model)
       if (!req.isWriteToTable()) {
-        req.setMeasurements(
-            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
+        PathUtils.checkIsLegalSingleMeasurementsAndUpdateInPlace(req.getMeasurements());
       }
 
       // Step 1: transfer from TSInsertTabletReq to Statement
@@ -2849,43 +2869,43 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus testInsertTablet(TSInsertTabletReq req) {
-    LOGGER.debug("Test insert batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertTablets(TSInsertTabletsReq req) {
-    LOGGER.debug("Test insert batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertRecord(TSInsertRecordReq req) {
-    LOGGER.debug("Test insert row request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_ROW_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertStringRecord(TSInsertStringRecordReq req) {
-    LOGGER.debug("Test insert string record request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_STRING_RECORD_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertRecords(TSInsertRecordsReq req) {
-    LOGGER.debug("Test insert row in batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_ROW_IN_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
-    LOGGER.debug("Test insert rows in batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_ROWS_IN_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertStringRecords(TSInsertStringRecordsReq req) {
-    LOGGER.debug("Test insert string records request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_STRING_RECORDS_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
@@ -3180,7 +3200,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           try {
             tsBlock = queryExecution.getBatchResult();
           } catch (IoTDBException e) {
-            throw new RuntimeException("Fetch Schema failed. ", e);
+            throw new RuntimeException(DataNodeMiscMessages.FETCH_SCHEMA_FAILED, e);
           }
           if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
             break;
@@ -3395,24 +3415,61 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(final TSyncIdentityInfo info) throws TException {
-    return PipeDataNodeAgent.receiver()
-        .legacy()
-        .handshake(
-            info,
-            SESSION_MANAGER.getCurrSession().getClientAddress(),
-            partitionFetcher,
-            schemaFetcher);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .handshake(
+              info,
+              SESSION_MANAGER.getCurrSession().getClientAddress(),
+              partitionFetcher,
+              schemaFetcher);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSStatus sendPipeData(final ByteBuffer buff) throws TException {
-    return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .transportPipeData(
+              buff, SESSION_MANAGER.getSessionInfoOfTreeModel(SESSION_MANAGER.getCurrSession()));
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSStatus sendFile(final TSyncTransportMetaInfo metaInfo, final ByteBuffer buff)
       throws TException {
-    return PipeDataNodeAgent.receiver().legacy().transportFile(metaInfo, buff);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver().legacy().transportFile(metaInfo, buff);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private TSStatus checkLegacyPipeReceiverPermission() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return getNotLoggedInStatus();
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(clientSession.getUsername(), PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
   }
 
   @Override
@@ -3422,17 +3479,51 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) {
-    return SubscriptionAgent.receiver().handle(req);
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return getNotLoggedInPipeSubscribeResp();
+      }
+
+      return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSBackupConfigurationResp getBackupConfiguration() {
-    return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSBackupConfigurationResp(getNotLoggedInStatus());
+      }
+
+      return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSConnectionInfoResp fetchAllConnectionsInfo() {
-    return SESSION_MANAGER.getAllConnectionInfo();
+    try {
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return new TSConnectionInfoResp(Collections.emptyList());
+      }
+
+      return SESSION_MANAGER.getAllConnectionInfo();
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private TPipeSubscribeResp getNotLoggedInPipeSubscribeResp() {
+    return new TPipeSubscribeResp(
+        getNotLoggedInStatus(),
+        PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+        PipeSubscribeResponseType.ACK.getType());
   }
 
   @Override
@@ -3538,13 +3629,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 AuditEventType.LOGOUT,
                 AuditLogOperation.CONTROL,
                 true),
-            () -> String.format("Session-%s is closing", session));
+            () -> String.format(DataNodeMiscMessages.SESSION_CLOSING, session));
       }
       closeSession(req);
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
-    SubscriptionAgent.receiver().handleClientExit();
+    if (COMMON_CONFIG.getSubscriptionEnabled()) {
+      SubscriptionAgent.receiver().handleClientExit();
+    }
   }
 
   /**
@@ -3574,19 +3667,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     final int totalSubStatements = subStatements.size();
     boolean debug = statement.isDebug();
 
-    LOGGER.info(
-        "Start batch executing {} sub-statement(s) in tree model, queryId: {}",
-        totalSubStatements,
-        queryId);
+    LOGGER.info(DataNodeMiscMessages.START_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
 
     for (int i = 0; i < totalSubStatements; i++) {
       final Statement subStatement = subStatements.get(i);
 
       LOGGER.info(
-          "Executing sub-statement {}/{} in tree model, queryId: {}",
-          i + 1,
-          totalSubStatements,
-          queryId);
+          DataNodeMiscMessages.EXECUTING_SUB_STATEMENT_TREE, i + 1, totalSubStatements, queryId);
 
       result =
           COORDINATOR.executeForTreeModel(
@@ -3607,7 +3694,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         final int remaining = totalSubStatements - completed;
         final double percentage = (completed * 100.0) / totalSubStatements;
         LOGGER.warn(
-            "Failed to execute sub-statement {}/{} in tree model, queryId: {}, completed: {}, remaining: {}, progress: {}%, error: {}",
+            DataNodeMiscMessages.FAILED_EXECUTE_SUB_STATEMENT_TREE,
             i + 1,
             totalSubStatements,
             queryId,
@@ -3619,17 +3706,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       LOGGER.info(
-          "Successfully executed sub-statement {}/{} in tree model, queryId: {}",
+          DataNodeMiscMessages.SUCCESSFULLY_EXECUTED_SUB_STATEMENT_TREE,
           i + 1,
           totalSubStatements,
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info(
-          "Completed batch executing all {} sub-statement(s) in tree model, queryId: {}",
-          totalSubStatements,
-          queryId);
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.info(DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
     }
 
     return result;
@@ -3663,20 +3750,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     List<? extends org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement>
         subStatements = statement.getSubStatements();
     int totalSubStatements = subStatements.size();
-    LOGGER.info(
-        "Start batch executing {} sub-statement(s) in table model, queryId: {}",
-        totalSubStatements,
-        queryId);
+    LOGGER.info(DataNodeMiscMessages.START_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
 
     for (int i = 0; i < totalSubStatements; i++) {
       final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement subStatement =
           subStatements.get(i);
 
       LOGGER.info(
-          "Executing sub-statement {}/{} in table model, queryId: {}",
-          i + 1,
-          totalSubStatements,
-          queryId);
+          DataNodeMiscMessages.EXECUTING_SUB_STATEMENT_TABLE, i + 1, totalSubStatements, queryId);
 
       result =
           COORDINATOR.executeForTableModel(
@@ -3698,7 +3779,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         final int remaining = totalSubStatements - completed;
         final double percentage = (completed * 100.0) / totalSubStatements;
         LOGGER.warn(
-            "Failed to execute sub-statement {}/{} in table model, queryId: {}, completed: {}, remaining: {}, progress: {}%, error: {}",
+            DataNodeMiscMessages.FAILED_EXECUTE_SUB_STATEMENT_TABLE,
             i + 1,
             totalSubStatements,
             queryId,
@@ -3710,17 +3791,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       LOGGER.info(
-          "Successfully executed sub-statement {}/{} in table model, queryId: {}",
+          DataNodeMiscMessages.SUCCESSFULLY_EXECUTED_SUB_STATEMENT_TABLE,
           i + 1,
           totalSubStatements,
           queryId);
     }
 
-    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (result == null) {
+      throw new IllegalStateException();
+    }
+    if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
-          "Completed batch executing all {} sub-statement(s) in table model, queryId: {}",
-          totalSubStatements,
-          queryId);
+          DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
     }
 
     return result;

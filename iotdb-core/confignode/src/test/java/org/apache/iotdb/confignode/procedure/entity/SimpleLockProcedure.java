@@ -53,18 +53,21 @@ public class SimpleLockProcedure extends Procedure<TestProcEnv> {
 
       return ProcedureLockState.LOCK_ACQUIRED;
     }
-    SimpleProcedureScheduler scheduler = (SimpleProcedureScheduler) testProcEnv.getScheduler();
-    scheduler.addWaiting(this);
     System.out.println(procName + " wait for lock.");
     return ProcedureLockState.LOCK_EVENT_WAIT;
   }
 
   @Override
+  protected void waitForLock(TestProcEnv testProcEnv) {
+    SimpleProcedureScheduler scheduler = (SimpleProcedureScheduler) testProcEnv.getScheduler();
+    scheduler.waitProcedure(this, testProcEnv.getEnvLock());
+  }
+
+  @Override
   protected void releaseLock(TestProcEnv testProcEnv) {
     System.out.println(procName + " release lock.");
-    testProcEnv.getEnvLock().unlock();
     SimpleProcedureScheduler scheduler = (SimpleProcedureScheduler) testProcEnv.getScheduler();
-    scheduler.releaseWaiting();
+    scheduler.releaseWaiting(testProcEnv.getEnvLock());
   }
 
   @Override

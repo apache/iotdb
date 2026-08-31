@@ -92,9 +92,13 @@ public class IoTDBLastQueryAliasIT {
           "1,root.test.d1.alias1,3,INT32,",
         };
     resultSetEqualTest(
-        "select last alias3,alias2,alias1 from root.test.d1", expectedHeader, retArray);
+        "select last alias3,alias2,alias1 from root.test.d1 order by timeseries desc",
+        expectedHeader,
+        retArray);
     resultSetEqualTest(
-        "select last alias3,alias2,alias1 from root.test.d1", expectedHeader, retArray);
+        "select last alias3,alias2,alias1 from root.test.d1 order by timeseries desc",
+        expectedHeader,
+        retArray);
 
     retArray =
         new String[] {
@@ -123,9 +127,13 @@ public class IoTDBLastQueryAliasIT {
           "2,root.test.d2.alias1,4,INT32,",
         };
     resultSetEqualTest(
-        "select last alias3,alias2,alias1 from root.test.d2", expectedHeader, retArray);
+        "select last alias3,alias2,alias1 from root.test.d2 order by timeseries desc",
+        expectedHeader,
+        retArray);
     resultSetEqualTest(
-        "select last alias3,alias2,alias1 from root.test.d2", expectedHeader, retArray);
+        "select last alias3,alias2,alias1 from root.test.d2 order by timeseries desc",
+        expectedHeader,
+        retArray);
 
     retArray =
         new String[] {

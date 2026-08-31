@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.schema;
 
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -72,7 +73,7 @@ public enum PipeSchemaSerializableEventType {
         event = new PipeSchemaRegionSnapshotEvent(2);
         break;
       default:
-        throw new IllegalArgumentException("Invalid event type: " + eventType);
+        throw new IllegalArgumentException(DataNodePipeMessages.INVALID_EVENT_TYPE + eventType);
     }
     event.deserializeFromByteBuffer(buffer);
     return event;

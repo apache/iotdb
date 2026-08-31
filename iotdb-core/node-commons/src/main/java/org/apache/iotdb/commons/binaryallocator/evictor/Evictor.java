@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.binaryallocator.evictor;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +84,7 @@ public abstract class Evictor implements Runnable {
       return;
     }
 
-    LOGGER.info("Stopping {}", name);
+    LOGGER.info(CommonMessages.STOPPING_COMPONENT, name);
 
     cancel();
     executor.shutdown();
@@ -91,7 +92,7 @@ public abstract class Evictor implements Runnable {
       boolean result =
           executor.awaitTermination(shutdownTimeoutDuration.toMillis(), TimeUnit.MILLISECONDS);
       if (!result) {
-        LOGGER.info("unable to stop evictor after {} ms", shutdownTimeoutDuration.toMillis());
+        LOGGER.info(CommonMessages.UNABLE_TO_STOP_EVICTOR, shutdownTimeoutDuration.toMillis());
       }
     } catch (final InterruptedException ignored) {
       Thread.currentThread().interrupt();

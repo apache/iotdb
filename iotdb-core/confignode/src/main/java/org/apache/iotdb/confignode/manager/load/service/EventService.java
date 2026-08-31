@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
@@ -55,9 +56,6 @@ import java.util.concurrent.TimeUnit;
 public class EventService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EventService.class);
-
-  private static final long HEARTBEAT_INTERVAL =
-      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
 
   // Event executor service
   private final Object eventServiceMonitor = new Object();
@@ -100,9 +98,9 @@ public class EventService {
                 eventServiceExecutor,
                 this::broadcastChangeEventIfNecessary,
                 0,
-                HEARTBEAT_INTERVAL,
+                ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
                 TimeUnit.MILLISECONDS);
-        LOGGER.info("Event service is started successfully.");
+        LOGGER.info(ManagerMessages.EVENT_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -113,13 +111,31 @@ public class EventService {
       if (currentEventServiceFuture != null) {
         currentEventServiceFuture.cancel(false);
         currentEventServiceFuture = null;
-        LOGGER.info("Event service is stopped successfully.");
+        LOGGER.info(ManagerMessages.EVENT_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
       synchronized (this) {
         previousNodeStatisticsMap.clear();
         previousRegionGroupStatisticsMap.clear();
         previousConsensusGroupStatisticsMap.clear();
       }
+    }
+  }
+
+  /** Reload the event-check interval without rebuilding the service instance. */
+  public void reloadHeartbeatInterval() {
+    synchronized (eventServiceMonitor) {
+      if (currentEventServiceFuture == null) {
+        return;
+      }
+      currentEventServiceFuture.cancel(false);
+      currentEventServiceFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              eventServiceExecutor,
+              this::broadcastChangeEventIfNecessary,
+              0,
+              ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs(),
+              TimeUnit.MILLISECONDS);
+      LOGGER.info(ManagerMessages.EVENT_SERVICE_IS_STARTED_SUCCESSFULLY);
     }
   }
 
@@ -158,11 +174,11 @@ public class EventService {
 
   private void recordNodeStatistics(
       Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
-    LOGGER.info("[NodeStatistics] NodeStatisticsMap: ");
+    LOGGER.info(ManagerMessages.NODESTATISTICS_NODESTATISTICSMAP);
     for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
       LOGGER.info(
-          "[NodeStatistics]\t {}: {} -> {}",
+          ManagerMessages.NODESTATISTICS,
           "nodeId{" + nodeCacheEntry.getKey() + "}",
           nodeCacheEntry.getValue().getLeft(),
           nodeCacheEntry.getValue().getRight());
@@ -205,13 +221,13 @@ public class EventService {
   private void recordRegionGroupStatistics(
       Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
           differentRegionGroupStatisticsMap) {
-    LOGGER.info("[RegionGroupStatistics] RegionGroupStatisticsMap: ");
+    LOGGER.info(ManagerMessages.REGIONGROUPSTATISTICS_REGIONGROUPSTATISTICSMAP);
     for (Map.Entry<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
         regionGroupStatisticsEntry : differentRegionGroupStatisticsMap.entrySet()) {
       RegionGroupStatistics previousStatistics = regionGroupStatisticsEntry.getValue().getLeft();
       RegionGroupStatistics currentStatistics = regionGroupStatisticsEntry.getValue().getRight();
       LOGGER.info(
-          "[RegionGroupStatistics]\t RegionGroup {}: {} -> {}",
+          ManagerMessages.REGIONGROUPSTATISTICS_REGIONGROUP,
           regionGroupStatisticsEntry.getKey(),
           previousStatistics == null ? null : previousStatistics.getRegionGroupStatus(),
           currentStatistics == null ? null : currentStatistics.getRegionGroupStatus());
@@ -223,13 +239,13 @@ public class EventService {
       for (Integer leftId : leftIds) {
         if (rightIds.contains(leftId)) {
           LOGGER.info(
-              "[RegionGroupStatistics]\t Region in DataNode {}: {} -> {}",
+              ManagerMessages.REGIONGROUPSTATISTICS_REGION_IN_DATANODE,
               leftId,
               previousStatistics.getRegionStatus(leftId),
               currentStatistics.getRegionStatus(leftId));
         } else {
           LOGGER.info(
-              "[RegionGroupStatistics]\t Region in DataNode {}: {} -> null",
+              ManagerMessages.REGIONGROUPSTATISTICS_REGION_IN_DATANODE_NULL_2,
               leftId,
               previousStatistics.getRegionStatus(leftId));
         }
@@ -237,7 +253,7 @@ public class EventService {
       for (Integer rightId : rightIds) {
         if (!leftIds.contains(rightId)) {
           LOGGER.info(
-              "[RegionGroupStatistics]\t Region in DataNode {}: null -> {}",
+              ManagerMessages.REGIONGROUPSTATISTICS_REGION_IN_DATANODE_NULL,
               rightId,
               currentStatistics.getRegionStatus(rightId));
         }
@@ -284,14 +300,14 @@ public class EventService {
   private void recordConsensusGroupStatistics(
       Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
           differentConsensusGroupStatisticsMap) {
-    LOGGER.info("[ConsensusGroupStatistics] ConsensusGroupStatisticsMap: ");
+    LOGGER.info(ManagerMessages.CONSENSUSGROUPSTATISTICS_CONSENSUSGROUPSTATISTICSMAP);
     for (Map.Entry<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
         consensusGroupStatisticsEntry : differentConsensusGroupStatisticsMap.entrySet()) {
       if (!Objects.equals(
           consensusGroupStatisticsEntry.getValue().getRight(),
           consensusGroupStatisticsEntry.getValue().getLeft())) {
         LOGGER.info(
-            "[ConsensusGroupStatistics]\t {}: {} -> {}",
+            ManagerMessages.CONSENSUSGROUPSTATISTICS,
             consensusGroupStatisticsEntry.getKey(),
             consensusGroupStatisticsEntry.getValue().getLeft(),
             consensusGroupStatisticsEntry.getValue().getRight());

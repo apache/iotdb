@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import java.util.Locale;
 
 import static java.util.Objects.requireNonNull;
@@ -29,15 +31,15 @@ public class FunctionId {
   private final String id;
 
   public FunctionId(String id) {
-    requireNonNull(id, "id is null");
+    requireNonNull(id, QueryMessages.EXCEPTION_ID_IS_NULL_9D5D27B1);
     if (id.isEmpty()) {
-      throw new IllegalArgumentException("id must not be empty");
+      throw new IllegalArgumentException(QueryMessages.FUNCTION_ID_MUST_NOT_BE_EMPTY);
     }
     if (!id.toLowerCase(Locale.US).equals(id)) {
-      throw new IllegalArgumentException("id must be lowercase");
+      throw new IllegalArgumentException(QueryMessages.FUNCTION_ID_MUST_BE_LOWERCASE);
     }
     if (id.contains("@")) {
-      throw new IllegalArgumentException("id must not contain '@'");
+      throw new IllegalArgumentException(QueryMessages.FUNCTION_ID_MUST_NOT_CONTAIN_AT);
     }
     this.id = id;
   }

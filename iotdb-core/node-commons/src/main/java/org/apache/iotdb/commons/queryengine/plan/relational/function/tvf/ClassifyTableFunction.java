@@ -23,6 +23,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.ResultColumnAppender;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -100,8 +101,7 @@ public class ClassifyTableFunction implements TableFunction {
         return publicBAOS.toByteArray();
       } catch (IOException e) {
         throw new IoTDBRuntimeException(
-            String.format(
-                "Error occurred while serializing ForecastTableFunctionHandle: %s", e.getMessage()),
+            String.format(QueryMessages.SERIALIZE_FORECAST_HANDLE_ERROR, e.getMessage()),
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     }
@@ -172,7 +172,7 @@ public class ClassifyTableFunction implements TableFunction {
     // modelId should never be null or empty
     if (modelId == null || modelId.isEmpty()) {
       throw new SemanticException(
-          String.format("%s should never be null or empty", MODEL_ID_PARAMETER_NAME));
+          String.format(QueryMessages.PARAM_SHOULD_NOT_BE_NULL_OR_EMPTY, MODEL_ID_PARAMETER_NAME));
     }
 
     String timeColumn =
@@ -181,7 +181,8 @@ public class ClassifyTableFunction implements TableFunction {
 
     if (timeColumn.isEmpty()) {
       throw new SemanticException(
-          String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+          String.format(
+              QueryMessages.PARAM_SHOULD_NOT_BE_NULL_OR_EMPTY_DOT, TIMECOL_PARAMETER_NAME));
     }
 
     // predicated columns should never contain partition by columns and time column
@@ -230,9 +231,7 @@ public class ClassifyTableFunction implements TableFunction {
   private void checkType(Type type, String columnName) {
     if (!ALLOWED_INPUT_TYPES.contains(type)) {
       throw new SemanticException(
-          String.format(
-              "The type of the column [%s] is [%s], only INT32, INT64, FLOAT, DOUBLE is allowed",
-              columnName, type));
+          String.format(QueryMessages.COLUMN_TYPE_NOT_ALLOWED, columnName, type));
     }
   }
 
@@ -302,8 +301,7 @@ public class ClassifyTableFunction implements TableFunction {
       if (inputEndTime < inputStartTime) {
         throw new SemanticException(
             String.format(
-                "input end time should never less than start time, start time is %s, end time is %s",
-                inputStartTime, inputEndTime));
+                QueryMessages.INPUT_END_TIME_LESS_THAN_START_TIME, inputStartTime, inputEndTime));
       }
       int outputLength = inputRecords.size();
       for (Record inputRecord : inputRecords) {
@@ -315,8 +313,10 @@ public class ClassifyTableFunction implements TableFunction {
       if (predicatedResult.getPositionCount() != outputLength) {
         throw new IoTDBRuntimeException(
             String.format(
-                "Model %s output length is %s, doesn't equal to specified %s",
-                modelId, predicatedResult.getPositionCount(), outputLength),
+                QueryMessages.MODEL_OUTPUT_LENGTH_MISMATCH,
+                modelId,
+                predicatedResult.getPositionCount(),
+                outputLength),
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
 
@@ -369,8 +369,7 @@ public class ClassifyTableFunction implements TableFunction {
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         String message =
-            String.format(
-                "Error occurred while executing classify:[%s]", resp.getStatus().getMessage());
+            String.format(QueryMessages.CLASSIFY_EXECUTION_ERROR, resp.getStatus().getMessage());
         throw new IoTDBRuntimeException(message, resp.getStatus().getCode());
       }
       return SERDE.deserialize(resp.forecastResult.get(0));

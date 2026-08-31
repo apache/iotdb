@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.metrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -82,7 +83,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
         analysisAsyncMoveTimer.updateNanos(costTimeInNanos);
         break;
       default:
-        throw new UnsupportedOperationException("Unsupported stage: " + stage);
+        throw new UnsupportedOperationException(StorageEngineMessages.UNSUPPORTED_STAGE + stage);
     }
   }
 

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
@@ -170,21 +171,39 @@ public class SourceHandle implements ISourceHandle {
       boolean isHighestPriority,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.remoteEndpoint = Validate.notNull(remoteEndpoint, "remoteEndpoint can not be null.");
+    this.remoteEndpoint =
+        Validate.notNull(
+            remoteEndpoint,
+            DataNodeQueryMessages.EXCEPTION_REMOTEENDPOINT_CAN_NOT_BE_NULL_DOT_DE2B5885);
     this.remoteFragmentInstanceId =
-        Validate.notNull(remoteFragmentInstanceId, "remoteFragmentInstanceId can not be null.");
+        Validate.notNull(
+            remoteFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_REMOTEFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_C2449A29);
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
     this.fullFragmentInstanceId =
         FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId, "localPlanNodeId can not be null.");
+    this.localPlanNodeId =
+        Validate.notNull(
+            localPlanNodeId,
+            DataNodeQueryMessages.EXCEPTION_LOCALPLANNODEID_CAN_NOT_BE_NULL_DOT_44A34A33);
     this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
     this.localMemoryManager =
-        Validate.notNull(localMemoryManager, "localMemoryManager can not be null.");
-    this.executorService = Validate.notNull(executorService, "executorService can not be null.");
-    this.serde = Validate.notNull(serde, "serde can not be null.");
+        Validate.notNull(
+            localMemoryManager,
+            DataNodeQueryMessages.EXCEPTION_LOCALMEMORYMANAGER_CAN_NOT_BE_NULL_DOT_7A46C6CE);
+    this.executorService =
+        Validate.notNull(
+            executorService,
+            DataNodeQueryMessages.EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_BC459BD4);
+    this.serde =
+        Validate.notNull(serde, DataNodeQueryMessages.EXCEPTION_SERDE_CAN_NOT_BE_NULL_DOT_D46F66E7);
     this.sourceHandleListener =
-        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
+        Validate.notNull(
+            sourceHandleListener,
+            DataNodeQueryMessages.EXCEPTION_SOURCEHANDLELISTENER_CAN_NOT_BE_NULL_DOT_01817F52);
     this.isHighestPriority = isHighestPriority;
     this.bufferRetainedSizeInBytes = 0L;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
@@ -219,7 +238,7 @@ public class SourceHandle implements ISourceHandle {
       checkState();
 
       if (!blocked.isDone()) {
-        throw new IllegalStateException("Source handle is blocked.");
+        throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_BLOCKED);
       }
 
       ByteBuffer tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
@@ -228,10 +247,10 @@ public class SourceHandle implements ISourceHandle {
       }
       Long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
       if (retainedSize == null) {
-        throw new IllegalStateException("Reserved data block size is null.");
+        throw new IllegalStateException(DataNodeQueryMessages.RESERVED_DATA_BLOCK_SIZE_IS_NULL);
       }
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
+        LOGGER.debug(DataNodeQueryMessages.GET_TSBLOCK_FROM_BUFFER, currSequenceId, retainedSize);
       }
       currSequenceId += 1;
       if (retainedSize > 0) {
@@ -247,7 +266,7 @@ public class SourceHandle implements ISourceHandle {
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[WaitForMoreTsBlock]");
+          LOGGER.debug(DataNodeQueryMessages.WAIT_FOR_MORE_TSBLOCK);
         }
         blocked = SettableFuture.create();
       }
@@ -278,7 +297,7 @@ public class SourceHandle implements ISourceHandle {
     while (sequenceIdToDataBlockSize.containsKey(endSequenceId)) {
       Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
       if (bytesToReserve == null) {
-        throw new IllegalStateException("Data block size is null.");
+        throw new IllegalStateException(DataNodeQueryMessages.DATA_BLOCK_SIZE_IS_NULL);
       }
       MemoryReservationResult reserveResult =
           localMemoryManager
@@ -352,7 +371,7 @@ public class SourceHandle implements ISourceHandle {
 
   public synchronized void setNoMoreTsBlocks(int lastSequenceId) {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[ReceiveNoMoreTsBlockEvent]");
+      LOGGER.debug(DataNodeQueryMessages.RECEIVE_NO_MORE_TSBLOCK_EVENT);
     }
     this.lastSequenceId = lastSequenceId;
     if (!blocked.isDone() && remoteTsBlockedConsumedUp()) {
@@ -365,18 +384,35 @@ public class SourceHandle implements ISourceHandle {
 
   public synchronized void updatePendingDataBlockInfo(
       int startSequenceId, List<Long> dataBlockSizes) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "[ReceiveNewTsBlockNotification] [{}, {}), each size is: {}",
-          startSequenceId,
-          startSequenceId + dataBlockSizes.size(),
-          dataBlockSizes);
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodeQueryMessages.RECEIVENEWTSBLOCKNOTIFICATION_ARG_ARG_EACH_SIZE_IS_ARG,
+            startSequenceId,
+            startSequenceId + dataBlockSizes.size(),
+            dataBlockSizes);
+      }
+      for (int i = 0; i < dataBlockSizes.size(); i++) {
+        sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
+      }
+      if (canGetTsBlockFromRemote) {
+        trySubmitGetDataBlocksTask();
+      }
+    } catch (RuntimeException | Error t) {
+      // This method runs in the inbound RPC thread. Mark the local FI failed before the same
+      // exception is returned to the upstream FI through the existing Thrift error channel.
+      notifyFailure(t);
+      throw t;
     }
-    for (int i = 0; i < dataBlockSizes.size(); i++) {
-      sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
-    }
-    if (canGetTsBlockFromRemote) {
-      trySubmitGetDataBlocksTask();
+  }
+
+  private void notifyFailure(Throwable t) {
+    try {
+      sourceHandleListener.onFailure(this, t);
+    } catch (Throwable callbackFailure) {
+      if (callbackFailure != t) {
+        t.addSuppressed(callbackFailure);
+      }
     }
   }
 
@@ -522,9 +558,9 @@ public class SourceHandle implements ISourceHandle {
           throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
         }
       }
-      throw new IllegalStateException("Source handle is aborted.");
+      throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_ABORTED);
     } else if (closed) {
-      throw new IllegalStateException("SourceHandle is closed.");
+      throw new IllegalStateException(DataNodeQueryMessages.SOURCEHANDLE_IS_CLOSED);
     }
   }
 
@@ -560,17 +596,21 @@ public class SourceHandle implements ISourceHandle {
     GetDataBlocksTask(int startSequenceId, int endSequenceId, long reservedBytes) {
       Validate.isTrue(
           startSequenceId >= 0,
-          "Start sequence ID should be greater than or equal to zero. Start sequence ID: "
+          DataNodeQueryMessages
+                  .EXCEPTION_START_SEQUENCE_ID_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ZERO_DOT_START_SEQUENCE_ID__D3C0AAB7
               + startSequenceId);
       this.startSequenceId = startSequenceId;
       Validate.isTrue(
           endSequenceId > startSequenceId,
-          "End sequence ID should be greater than the start sequence ID. Start sequence ID: "
+          DataNodeQueryMessages
+                  .EXCEPTION_END_SEQUENCE_ID_SHOULD_BE_GREATER_THAN_THE_START_SEQUENCE_ID_DOT_START_SEQUENCE__DF1AA2A1
               + startSequenceId
-              + ", end sequence ID: "
+              + DataNodeQueryMessages.EXCEPTION_COMMA_END_SEQUENCE_ID_COLON_DB1AF173
               + endSequenceId);
       this.endSequenceId = endSequenceId;
-      Validate.isTrue(reservedBytes > 0L, "Reserved bytes should be greater than zero.");
+      Validate.isTrue(
+          reservedBytes > 0L,
+          DataNodeQueryMessages.EXCEPTION_RESERVED_BYTES_SHOULD_BE_GREATER_THAN_ZERO_DOT_64086BE5);
       this.reservedBytes = reservedBytes;
     }
 
@@ -580,7 +620,7 @@ public class SourceHandle implements ISourceHandle {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[StartPullTsBlocksFromRemote] {}-{} [{}, {}) ",
+              DataNodeQueryMessages.STARTPULLTSBLOCKSFROMREMOTE_ARG_ARG_ARG_ARG,
               remoteFragmentInstanceId,
               indexOfUpstreamSinkHandle,
               startSequenceId,
@@ -605,7 +645,7 @@ public class SourceHandle implements ISourceHandle {
               if (!closed) {
                 // failed to pull TsBlocks
                 LOGGER.warn(
-                    "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},",
+                    DataNodeQueryMessages.FAILED_TO_PULL_TSBLOCKS,
                     localFragmentInstanceId,
                     startSequenceId,
                     endSequenceId,
@@ -618,7 +658,7 @@ public class SourceHandle implements ISourceHandle {
             tsBlocks.addAll(resp.getTsBlocks());
 
             if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlockNum);
+              LOGGER.debug(DataNodeQueryMessages.END_PULL_TSBLOCKS_FROM_REMOTE, tsBlockNum);
             }
             DATA_EXCHANGE_COUNT_METRIC_SET.recordDataBlockNum(
                 GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
@@ -632,7 +672,7 @@ public class SourceHandle implements ISourceHandle {
                 sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
               }
               if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("[PutTsBlocksIntoBuffer]");
+                LOGGER.debug(DataNodeQueryMessages.PUT_TSBLOCKS_INTO_BUFFER);
               }
               if (!blocked.isDone()) {
                 blocked.set(null);
@@ -642,7 +682,7 @@ public class SourceHandle implements ISourceHandle {
           } catch (Throwable e) {
 
             LOGGER.warn(
-                "failed to get data block [{}, {}), attempt times: {}",
+                DataNodeQueryMessages.FAILED_TO_GET_DATA_BLOCK,
                 startSequenceId,
                 endSequenceId,
                 attempt,
@@ -704,7 +744,7 @@ public class SourceHandle implements ISourceHandle {
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[SendACKTsBlock] [{}, {}).", startSequenceId, endSequenceId);
+          LOGGER.debug(DataNodeQueryMessages.SEND_ACK_TSBLOCK, startSequenceId, endSequenceId);
         }
         int attempt = 0;
         TAcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
@@ -722,7 +762,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             LOGGER.warn(
-                "failed to send ack data block event [{}, {}), attempt times: {}",
+                DataNodeQueryMessages.FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT,
                 startSequenceId,
                 endSequenceId,
                 attempt,
@@ -758,7 +798,7 @@ public class SourceHandle implements ISourceHandle {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
+              DataNodeQueryMessages.SENDCLOSESINKCHANNELEVENT_TO_SHUFFLESINKHANDLE_ARG_INDEX_ARG,
               remoteFragmentInstanceId,
               indexOfUpstreamSinkHandle);
         }
@@ -773,7 +813,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             LOGGER.warn(
-                "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).",
+                DataNodeQueryMessages.SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED,
                 remoteFragmentInstanceId,
                 indexOfUpstreamSinkHandle);
             if (attempt == MAX_ATTEMPT_TIMES) {

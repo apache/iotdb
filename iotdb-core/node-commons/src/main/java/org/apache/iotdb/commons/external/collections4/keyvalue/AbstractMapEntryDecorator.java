@@ -16,6 +16,8 @@
  */
 package org.apache.iotdb.commons.external.collections4.keyvalue;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.apache.tsfile.external.commons.collections4.KeyValue;
 
 import java.util.Map;
@@ -41,7 +43,7 @@ public abstract class AbstractMapEntryDecorator<K, V> implements Map.Entry<K, V>
    */
   public AbstractMapEntryDecorator(final Map.Entry<K, V> entry) {
     if (entry == null) {
-      throw new NullPointerException("Map Entry must not be null.");
+      throw new NullPointerException(CommonMessages.MAP_ENTRY_MUST_NOT_BE_NULL);
     }
     this.entry = entry;
   }

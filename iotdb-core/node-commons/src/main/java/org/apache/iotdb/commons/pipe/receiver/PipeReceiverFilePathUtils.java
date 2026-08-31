@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.receiver;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -34,7 +36,7 @@ public final class PipeReceiverFilePathUtils {
         normalizedBaseDir.resolve(fileName).toAbsolutePath().normalize();
 
     if (!normalizedTargetPath.startsWith(normalizedBaseDir)) {
-      throw new IOException("Illegal fileName: " + fileName + " (Path traversal detected)");
+      throw new IOException(String.format(PipeMessages.ILLEGAL_FILENAME_PATH_TRAVERSAL, fileName));
     }
 
     return normalizedTargetPath;

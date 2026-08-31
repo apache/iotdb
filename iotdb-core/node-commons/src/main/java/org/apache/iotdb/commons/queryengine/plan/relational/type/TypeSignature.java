@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.type;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.Immutable;
 
@@ -50,11 +52,14 @@ public class TypeSignature {
   }
 
   public TypeSignature(String base, List<TypeSignatureParameter> parameters) {
-    checkArgument(base != null, "base is null");
+    checkArgument(base != null, QueryMessages.EXCEPTION_BASE_IS_NULL_AC445AD0);
     this.base = base;
-    checkArgument(!base.isEmpty(), "base is empty");
-    checkArgument(validateName(base), "Bad characters in base type: %s", base);
-    checkArgument(parameters != null, "parameters is null");
+    checkArgument(!base.isEmpty(), QueryMessages.EXCEPTION_BASE_IS_EMPTY_E86FBC3A);
+    checkArgument(
+        validateName(base),
+        QueryMessages.EXCEPTION_BAD_CHARACTERS_IN_BASE_TYPE_COLON_ARG_FA811786,
+        base);
+    checkArgument(parameters != null, QueryMessages.EXCEPTION_PARAMETERS_IS_NULL_418C7892);
     this.parameters = new ArrayList<>(parameters);
 
     this.calculated = parameters.stream().anyMatch(TypeSignatureParameter::isCalculated);
@@ -73,7 +78,7 @@ public class TypeSignature {
     for (TypeSignatureParameter parameter : parameters) {
       if (parameter.getKind() != ParameterKind.TYPE) {
         throw new IllegalStateException(
-            format("Expected all parameters to be TypeSignatures but [%s] was found", parameter));
+            format(QueryMessages.EXPECTED_ALL_TYPE_SIGNATURES, parameter));
       }
       result.add(parameter.getTypeSignature());
     }
@@ -200,7 +205,7 @@ public class TypeSignature {
   public static TypeSignature rowType(List<TypeSignatureParameter> fields) {
     checkArgument(
         fields.stream().allMatch(parameter -> parameter.getKind() == ParameterKind.NAMED_TYPE),
-        "Parameters for ROW type must be NAMED_TYPE parameters");
+        QueryMessages.EXCEPTION_PARAMETERS_FOR_ROW_TYPE_MUST_BE_NAMED_TYPE_PARAMETERS_6AADD078);
 
     return new TypeSignature(StandardTypes.ROW, fields);
   }

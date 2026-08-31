@@ -104,6 +104,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitGrantRoleToUser((AuthorTreePlan) plan, context);
       case RevokeRoleFromUser:
         return visitRevokeRoleFromUser((AuthorTreePlan) plan, context);
+      case AccountUnlock:
+        return visitAccountUnlock((AuthorTreePlan) plan, context);
       case RCreateUser:
         return visitRCreateUser((AuthorRelationalPlan) plan, context);
       case RCreateRole:
@@ -160,6 +162,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitRRevokeUserSysPrivilege((AuthorRelationalPlan) plan, context);
       case RRevokeRoleSysPri:
         return visitRRevokeRoleSysPrivilege((AuthorRelationalPlan) plan, context);
+      case RAccountUnlock:
+        return visitRAccountUnlock((AuthorRelationalPlan) plan, context);
       case SetTTL:
         return visitTTL((SetTTLPlan) plan, context);
       case PipeCreateTableOrView:
@@ -310,6 +314,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(revokeRoleFromUserPlan, context);
   }
 
+  public R visitAccountUnlock(final AuthorTreePlan accountUnlockPlan, final C context) {
+    return visitPlan(accountUnlockPlan, context);
+  }
+
   public R visitRCreateUser(final AuthorRelationalPlan rCreateUserPlan, final C context) {
     return visitPlan(rCreateUserPlan, context);
   }
@@ -424,6 +432,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R visitRRevokeRoleSysPrivilege(
       final AuthorRelationalPlan rRevokeRoleSysPrivilegePlan, final C context) {
     return visitPlan(rRevokeRoleSysPrivilegePlan, context);
+  }
+
+  public R visitRAccountUnlock(final AuthorRelationalPlan rAccountUnlockPlan, final C context) {
+    return visitPlan(rAccountUnlockPlan, context);
   }
 
   public R visitTTL(final SetTTLPlan setTTLPlan, final C context) {

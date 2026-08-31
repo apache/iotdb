@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionParameterNotValidException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConnection;
@@ -49,7 +50,7 @@ public final class SubscriptionSessionWrapper extends Session {
       throws IoTDBConnectionException {
     if (Objects.isNull(endpoint)) {
       throw new SubscriptionParameterNotValidException(
-          "Subscription session must be configured with an endpoint.");
+          SubscriptionMessages.EXCEPTION_SUBSCRIPTION_SESSION_MUST_CONFIGURED_ENDPOINT_2CAD53A9);
     }
     return new SubscriptionSessionConnection(
         session,

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -156,7 +157,8 @@ public abstract class SeriesScanSourceNode extends SeriesSourceNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("no child is allowed for SeriesScanSourceNode");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.NO_CHILD_IS_ALLOWED_FOR_SERIESSCANSOURCENODE);
   }
 
   @Override

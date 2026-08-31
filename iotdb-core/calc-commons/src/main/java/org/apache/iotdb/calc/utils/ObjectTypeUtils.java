@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.utils;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -46,12 +47,12 @@ public class ObjectTypeUtils {
         ServiceLoader.load(IObjectFileServiceProvider.class);
     for (IObjectFileServiceProvider provider : loader) {
       if (objectFileService != null) {
-        throw new IllegalStateException("Multiple IObjectFileServiceProvider found");
+        throw new IllegalStateException(CalcMessages.MULTIPLE_I_OBJECT_FILE_SERVICE_PROVIDER_FOUND);
       }
       objectFileService = provider.getObjectFileService();
     }
     if (objectFileService == null) {
-      throw new IllegalStateException("No IObjectFileServiceProvider found");
+      throw new IllegalStateException(CalcMessages.NO_I_OBJECT_FILE_SERVICE_PROVIDER_FOUND);
     }
     return objectFileService;
   }
@@ -112,27 +113,31 @@ public class ObjectTypeUtils {
       return ObjectTypeUtils.generateObjectBinary(pair.getLeft(), newObjectPath);
     } catch (NumberFormatException e) {
       throw new IoTDBRuntimeException(
-          "wrong object file path: " + pair.getRight(),
+          CalcMessages.EXCEPTION_WRONG_OBJECT_FILE_PATH_D317B1AB + pair.getRight(),
           TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
     }
   }
 
   public static int getActualReadSize(String filePath, long fileSize, long offset, long length) {
     if (offset < 0) {
-      throw new SemanticException(String.format("offset %d is less than 0.", offset));
+      throw new SemanticException(String.format(CalcMessages.OFFSET_LESS_THAN_ZERO, offset));
     }
     if (offset >= fileSize) {
       throw new SemanticException(
           String.format(
-              "offset %d is greater than or equal to object size %d, file path is %s",
-              offset, fileSize, filePath));
+              CalcMessages
+                  .EXCEPTION_OFFSET_ARG_GREATER_THAN_EQUAL_OBJECT_SIZE_ARG_FILE_PATH_31936A19,
+              offset,
+              fileSize,
+              filePath));
     }
     long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);
     if (actualReadSize > Integer.MAX_VALUE) {
       throw new SemanticException(
           String.format(
-              "Read object size %s is too large (size > 2G), file path is %s",
-              actualReadSize, filePath));
+              CalcMessages.EXCEPTION_READ_OBJECT_SIZE_ARG_TOO_LARGE_SIZE_2G_FILE_PATH_7D4A4D10,
+              actualReadSize,
+              filePath));
     }
     return (int) actualReadSize;
   }

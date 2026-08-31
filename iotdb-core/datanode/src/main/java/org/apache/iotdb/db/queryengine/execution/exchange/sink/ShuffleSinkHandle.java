@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -32,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -62,6 +65,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private volatile boolean closed = false;
 
+  // close() and abort() invoke channel callbacks, so they cannot be protected by this handle's
+  // lock. An abort caller that loses the claim waits for the owner to finish; otherwise it may
+  // release fragment memory while the owner is still releasing channel buffers.
+  private final AtomicReference<TerminationClaim> terminationClaim = new AtomicReference<>();
+
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
   private final Lock lock = new ReentrantLock();
@@ -75,6 +83,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class)
           + RamUsageEstimator.shallowSizeOfInstance(DownStreamChannelIndex.class);
 
+  private static final class TerminationClaim {
+    private final Thread owner = Thread.currentThread();
+    private final CompletableFuture<Void> completion = new CompletableFuture<>();
+  }
+
   public ShuffleSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
       List<ISinkChannel> downStreamChannelList,
@@ -82,12 +95,21 @@ public class ShuffleSinkHandle implements ISinkHandle {
       ShuffleStrategyEnum shuffleStrategyEnum,
       MPPDataExchangeManager.SinkListener sinkListener) {
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
     this.downStreamChannelList =
-        Validate.notNull(downStreamChannelList, "downStreamChannelList can not be null.");
+        Validate.notNull(
+            downStreamChannelList,
+            DataNodeQueryMessages.EXCEPTION_DOWNSTREAMCHANNELLIST_CAN_NOT_BE_NULL_DOT_417AD5A3);
     this.downStreamChannelIndex =
-        Validate.notNull(downStreamChannelIndex, "downStreamChannelIndex can not be null.");
-    this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
+        Validate.notNull(
+            downStreamChannelIndex,
+            DataNodeQueryMessages.EXCEPTION_DOWNSTREAMCHANNELINDEX_CAN_NOT_BE_NULL_DOT_A1D5A266);
+    this.sinkListener =
+        Validate.notNull(
+            sinkListener,
+            DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
     this.channelNum = downStreamChannelList.size();
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
@@ -134,11 +156,14 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public void setNoMoreTsBlocks() {
-    if (closed || aborted) {
+    if (closed || aborted || terminationClaim.get() != null) {
       return;
     }
     try {
       lock.lock();
+      if (closed || aborted || terminationClaim.get() != null) {
+        return;
+      }
       for (int i = 0; i < downStreamChannelList.size(); i++) {
         if (!hasSetNoMoreTsBlocks[i]) {
           downStreamChannelList.get(i).setNoMoreTsBlocks();
@@ -153,13 +178,16 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
-    if (closed || aborted) {
+    if (closed || aborted || terminationClaim.get() != null) {
       // if this ShuffleSinkHandle has been closed, Driver.close() will attempt to setNoMoreTsBlocks
       // for all the channels
       return;
     }
     try {
       lock.lock();
+      if (closed || aborted || terminationClaim.get() != null) {
+        return;
+      }
       if (!hasSetNoMoreTsBlocks[channelIndex]) {
         downStreamChannelList.get(channelIndex).setNoMoreTsBlocks();
         hasSetNoMoreTsBlocks[channelIndex] = true;
@@ -191,37 +219,42 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public boolean abort() {
-    if (aborted || closed) {
+    TerminationClaim claim = claimTermination(true);
+    if (claim == null) {
       return false;
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartAbortShuffleSinkHandle]");
-    }
-    boolean meetError = false;
-    Exception firstException = null;
-    boolean selfAborted = true;
-    for (ISink channel : downStreamChannelList) {
-      try {
-        selfAborted = channel.abort();
-      } catch (Exception e) {
-        if (!meetError) {
-          firstException = e;
-          meetError = true;
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.START_ABORT_SHUFFLE_SINK_HANDLE);
+      }
+      boolean meetError = false;
+      Exception firstException = null;
+      boolean selfAborted = true;
+      for (ISink channel : downStreamChannelList) {
+        try {
+          selfAborted = channel.abort();
+        } catch (Exception e) {
+          if (!meetError) {
+            firstException = e;
+            meetError = true;
+          }
         }
       }
-    }
-    if (meetError) {
-      LOGGER.warn("Error occurred when try to abort channel.", firstException);
-    }
-    if (selfAborted) {
-      sinkListener.onAborted(this);
-      aborted = true;
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndAbortShuffleSinkHandle]");
+      if (meetError) {
+        LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_ABORT_CHANNEL, firstException);
       }
-      return true;
-    } else {
-      return false;
+      if (selfAborted) {
+        sinkListener.onAborted(this);
+        aborted = true;
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } finally {
+      releaseTerminationClaim(claim);
     }
   }
 
@@ -231,37 +264,42 @@ public class ShuffleSinkHandle implements ISinkHandle {
   // Lock ShuffleSinkHandle and wait to lock LocalSinkChannel
   @Override
   public boolean close() {
-    if (closed || aborted) {
+    TerminationClaim claim = claimTermination(false);
+    if (claim == null) {
       return false;
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartCloseShuffleSinkHandle]");
-    }
-    boolean meetError = false;
-    Exception firstException = null;
-    boolean selfClosed = true;
-    for (ISink channel : downStreamChannelList) {
-      try {
-        selfClosed = channel.close();
-      } catch (Exception e) {
-        if (!meetError) {
-          firstException = e;
-          meetError = true;
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.START_CLOSE_SHUFFLE_SINK_HANDLE);
+      }
+      boolean meetError = false;
+      Exception firstException = null;
+      boolean selfClosed = true;
+      for (ISink channel : downStreamChannelList) {
+        try {
+          selfClosed = channel.close();
+        } catch (Exception e) {
+          if (!meetError) {
+            firstException = e;
+            meetError = true;
+          }
         }
       }
-    }
-    if (meetError) {
-      LOGGER.warn("Error occurred when try to close channel.", firstException);
-    }
-    if (selfClosed) {
-      sinkListener.onFinish(this);
-      closed = true;
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndCloseShuffleSinkHandle]");
+      if (meetError) {
+        LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_CLOSE_CHANNEL, firstException);
       }
-      return true;
-    } else {
-      return false;
+      if (selfClosed) {
+        sinkListener.onFinish(this);
+        closed = true;
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } finally {
+      releaseTerminationClaim(claim);
     }
   }
 
@@ -285,8 +323,34 @@ public class ShuffleSinkHandle implements ISinkHandle {
       for (ISinkChannel channel : downStreamChannelList) {
         channel.checkState();
       }
-      throw new IllegalStateException("ShuffleSinkHandle is aborted.");
+      throw new IllegalStateException(DataNodeQueryMessages.SHUFFLESINKHANDLE_IS_ABORTED);
     }
+  }
+
+  private TerminationClaim claimTermination(boolean waitForCurrentClaim) {
+    TerminationClaim claim = new TerminationClaim();
+    while (!aborted && !closed) {
+      TerminationClaim currentClaim = terminationClaim.get();
+      if (currentClaim == null) {
+        if (terminationClaim.compareAndSet(null, claim)) {
+          return claim;
+        }
+      } else {
+        // A channel callback can re-enter close() while holding the channel lock. Therefore close()
+        // must not wait for another termination operation. Abort callers are not invoked under a
+        // channel lock and need the completion barrier before fragment memory is deregistered.
+        if (!waitForCurrentClaim || currentClaim.owner == Thread.currentThread()) {
+          return null;
+        }
+        currentClaim.completion.join();
+      }
+    }
+    return null;
+  }
+
+  private void releaseTerminationClaim(TerminationClaim claim) {
+    terminationClaim.compareAndSet(claim, null);
+    claim.completion.complete(null);
   }
 
   private void switchChannelIfNecessary() {
@@ -327,7 +391,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
       // do nothing
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "PlainShuffleStrategy needs to do nothing, current channel index is {}",
+            DataNodeQueryMessages
+                .PLAINSHUFFLESTRATEGY_NEEDS_TO_DO_NOTHING_CURRENT_CHANNEL_INDEX_IS_ARG,
             downStreamChannelIndex.getCurrentIndex());
       }
     }
@@ -367,7 +432,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
       case SIMPLE_ROUND_ROBIN:
         return new SimpleRoundRobinStrategy();
       default:
-        throw new UnsupportedOperationException("Unsupported type of shuffle strategy");
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_TYPE_OF_SHUFFLE_STRATEGY);
     }
   }
 

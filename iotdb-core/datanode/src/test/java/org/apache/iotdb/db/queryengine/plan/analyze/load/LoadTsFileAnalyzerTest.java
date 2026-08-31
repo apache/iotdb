@@ -19,11 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -33,6 +42,7 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -45,6 +55,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
@@ -109,6 +120,256 @@ public class LoadTsFileAnalyzerTest {
     Assert.assertEquals(2, schemaCache.getVerifiedDeviceCount());
   }
 
+  @Test
+  public void testTableLoadEmptyPathIsRejected() {
+    try {
+      new LoadTsFile(null, "", Collections.emptyMap());
+      Assert.fail("Expected empty LOAD TSFILE path to be rejected.");
+    } catch (final RuntimeException e) {
+      Assert.assertTrue(e.getMessage().contains("The LOAD TSFILE path cannot be empty."));
+    }
+  }
+
+  @Test
+  public void testTableSchemaCacheShouldThrowMismatchWhenVerifyingDataType() throws Exception {
+    final LoadTsFileTableSchemaCache schemaCache = createTableSchemaCache(true);
+    try {
+      final InvocationTargetException exception =
+          Assert.assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  getVerifyTableDataTypeMethod()
+                      .invoke(
+                          schemaCache,
+                          createTableSchema(TSDataType.INT64),
+                          createTableSchema(TSDataType.DOUBLE)));
+
+      Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeTypeMismatchException);
+    } finally {
+      schemaCache.close();
+    }
+  }
+
+  @Test
+  public void testTableSchemaCacheShouldNotThrowMismatchWhenSkippingDataTypeVerification()
+      throws Exception {
+    final LoadTsFileTableSchemaCache schemaCache = createTableSchemaCache(false);
+    try {
+      getVerifyTableDataTypeMethod()
+          .invoke(
+              schemaCache,
+              createTableSchema(TSDataType.INT64),
+              createTableSchema(TSDataType.DOUBLE));
+    } finally {
+      schemaCache.close();
+    }
+  }
+
+  @Test
+  public void testTreeSchemaVerifierShouldThrowMismatchWhenVerifyingDataType() throws Exception {
+    final File tsFile = new File("load-tree-type-mismatch.tsfile");
+    if (tsFile.exists()) {
+      Assert.assertTrue(tsFile.delete());
+    }
+    Assert.assertTrue(tsFile.createNewFile());
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            false,
+            new MPPQueryContext(new QueryId("load_tree_test")))) {
+      final TreeSchemaAutoCreatorAndVerifier verifier =
+          new TreeSchemaAutoCreatorAndVerifier(analyzer);
+      try {
+        final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1");
+        final LoadTsFileTreeSchemaCache schemaCache = getTreeSchemaCache(verifier);
+        schemaCache.addTimeSeries(device, new MeasurementSchema("s1", TSDataType.BOOLEAN));
+        schemaCache.addIsAlignedCache(device, true, true);
+
+        final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+        schemaTree.appendSingleMeasurement(
+            new PartialPath("root.sg.d1.s1"),
+            new MeasurementSchema("s1", TSDataType.INT32),
+            null,
+            null,
+            null,
+            true);
+
+        final InvocationTargetException exception =
+            Assert.assertThrows(
+                InvocationTargetException.class,
+                () -> getVerifyTreeSchemaMethod().invoke(verifier, schemaTree));
+        Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeTypeMismatchException);
+      } finally {
+        verifier.close();
+      }
+    } finally {
+      if (tsFile.exists()) {
+        Assert.assertTrue(tsFile.delete());
+      }
+    }
+  }
+
+  @Test
+  public void testTreeSchemaVerifierShouldRejectDeviceWithEmptyPathNode() throws Exception {
+    final File tsFile = File.createTempFile("load-tree-illegal-device", ".tsfile");
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            false,
+            new MPPQueryContext(new QueryId("load_tree_illegal_device_test")))) {
+      final TreeSchemaAutoCreatorAndVerifier verifier =
+          new TreeSchemaAutoCreatorAndVerifier(analyzer);
+      try {
+        final IDeviceID device = new StringArrayDeviceID(new String[] {"root", ""});
+        getTreeSchemaCache(verifier)
+            .addTimeSeries(device, new MeasurementSchema("s1", TSDataType.INT32));
+
+        final InvocationTargetException exception =
+            Assert.assertThrows(
+                InvocationTargetException.class,
+                () -> getAutoCreateDatabaseMethod().invoke(verifier));
+        Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeException);
+      } finally {
+        verifier.close();
+      }
+    } finally {
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
+  public void testTreeSchemaVerifierShouldIgnoreLegacyDatabaseWithEmptyPathNode() throws Exception {
+    final File tsFile = File.createTempFile("load-tree-legacy-database", ".tsfile");
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            false,
+            new MPPQueryContext(new QueryId("load_tree_legacy_database_test")))) {
+      final TreeSchemaAutoCreatorAndVerifier verifier =
+          new TreeSchemaAutoCreatorAndVerifier(analyzer);
+      try {
+        final PartialPath database = new PartialPath("root.sg");
+        final PartialPath databaseWithSameStringPrefix = new PartialPath("root.sg1");
+        final Set<PartialPath> databasesNeededToBeSet =
+            new HashSet<>(Arrays.asList(database, databaseWithSameStringPrefix));
+
+        verifier.filterAlreadySetDatabases(databasesNeededToBeSet, Collections.singleton("root."));
+
+        Assert.assertEquals(
+            new HashSet<>(Arrays.asList(database, databaseWithSameStringPrefix)),
+            databasesNeededToBeSet);
+        Assert.assertTrue(getTreeSchemaCache(verifier).getAlreadySetDatabases().isEmpty());
+
+        verifier.filterAlreadySetDatabases(
+            databasesNeededToBeSet, Collections.singleton(database.getFullPath()));
+
+        Assert.assertEquals(
+            Collections.singleton(databaseWithSameStringPrefix), databasesNeededToBeSet);
+        Assert.assertEquals(
+            Collections.singleton(database), getTreeSchemaCache(verifier).getAlreadySetDatabases());
+      } finally {
+        verifier.close();
+      }
+    } finally {
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
+  public void testPipeGeneratedLoadMissingSchemaShouldBeTemporaryWhenAutoCreateDisabled()
+      throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    final File tsFile = File.createTempFile("missing-schema", ".tsfile");
+    tsFile.deleteOnExit();
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            true,
+            new MPPQueryContext(new QueryId("load_pipe_test")))) {
+      Assert.assertTrue(
+          analyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+              new LoadAnalyzeMissingSchemaException("missing device schema")));
+      Assert.assertTrue(
+          analyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+              new RuntimeException(
+                  "wrapped", new LoadAnalyzeMissingSchemaException("missing measurement schema"))));
+      Assert.assertFalse(
+          analyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+              new LoadAnalyzeException("Data type mismatch for measurement root.sg.d1.s1")));
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+    }
+  }
+
+  @Test
+  public void testPipeGeneratedLoadMissingSchemaShouldBeTemporaryWhenPerLoadAutoCreateDisabled()
+      throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
+    final File tsFile = File.createTempFile("missing-schema-per-load", ".tsfile");
+
+    try {
+      final LoadTsFileStatement waitingStatement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      waitingStatement.setAutoCreateSchema(false);
+      try (final LoadTsFileAnalyzer waitingAnalyzer =
+          new LoadTsFileAnalyzer(
+              waitingStatement, true, new MPPQueryContext(new QueryId("load_pipe_waiting_test")))) {
+        Assert.assertFalse(waitingAnalyzer.isAutoCreateSchemaRequested());
+        Assert.assertTrue(
+            waitingAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+                new LoadAnalyzeMissingSchemaException("missing schema")));
+      }
+
+      try (final LoadTsFileAnalyzer defaultAnalyzer =
+          new LoadTsFileAnalyzer(
+              LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+              true,
+              new MPPQueryContext(new QueryId("load_pipe_default_test")))) {
+        Assert.assertTrue(defaultAnalyzer.isAutoCreateSchemaRequested());
+        Assert.assertFalse(
+            defaultAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(
+                new LoadAnalyzeMissingSchemaException("missing schema")));
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
+  @Test
+  public void testGlobalAutoCreateDisabledKeepsPerLoadAutoCreatePermission() throws Exception {
+    final boolean originalAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    final File tsFile = File.createTempFile("global-auto-create-disabled", ".tsfile");
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            true,
+            new MPPQueryContext(new QueryId("load_global_auto_create_disabled_test")))) {
+      Assert.assertFalse(analyzer.isAutoCreateSchemaEnabled());
+      Assert.assertTrue(analyzer.isAutoCreateSchemaRequested());
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setAutoCreateSchemaEnabled(originalAutoCreateSchemaEnabled);
+      Assert.assertTrue(tsFile.delete());
+    }
+  }
+
   private void writeTableTsFileWithMixedDevices(final File tsFile) throws Exception {
     if (tsFile.exists()) {
       Assert.assertTrue(tsFile.delete());
@@ -163,6 +424,55 @@ public class LoadTsFileAnalyzerTest {
     tableSchemaCacheField.set(analyzer, schemaCache);
   }
 
+  private LoadTsFileTreeSchemaCache getTreeSchemaCache(
+      final TreeSchemaAutoCreatorAndVerifier verifier) throws Exception {
+    final Field schemaCacheField =
+        TreeSchemaAutoCreatorAndVerifier.class.getDeclaredField("schemaCache");
+    schemaCacheField.setAccessible(true);
+    return (LoadTsFileTreeSchemaCache) schemaCacheField.get(verifier);
+  }
+
+  private LoadTsFileTableSchemaCache createTableSchemaCache(final boolean shouldVerifyDataType)
+      throws LoadRuntimeOutOfMemoryException {
+    return new LoadTsFileTableSchemaCache(
+        null, new MPPQueryContext(new QueryId("load_test")), false, shouldVerifyDataType);
+  }
+
+  private Method getVerifyTableDataTypeMethod() throws NoSuchMethodException {
+    final Method method =
+        LoadTsFileTableSchemaCache.class.getDeclaredMethod(
+            "verifyTableDataTypeAndGenerateTagColumnMapper",
+            org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema.class,
+            org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema.class);
+    method.setAccessible(true);
+    return method;
+  }
+
+  private Method getVerifyTreeSchemaMethod() throws NoSuchMethodException {
+    final Method method =
+        TreeSchemaAutoCreatorAndVerifier.class.getDeclaredMethod("verifySchema", ISchemaTree.class);
+    method.setAccessible(true);
+    return method;
+  }
+
+  private Method getAutoCreateDatabaseMethod() throws NoSuchMethodException {
+    final Method method =
+        TreeSchemaAutoCreatorAndVerifier.class.getDeclaredMethod("autoCreateDatabase");
+    method.setAccessible(true);
+    return method;
+  }
+
+  private org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema
+      createTableSchema(final TSDataType fieldType) {
+    return new org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema(
+        "table1",
+        Arrays.asList(
+            new ColumnSchema(
+                "tag1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG),
+            new ColumnSchema(
+                "s1", TypeFactory.getType(fieldType), false, TsTableColumnCategory.FIELD)));
+  }
+
   private boolean containsDevice(final Set<IDeviceID> devices, final String... expectedSegments) {
     return devices.stream()
         .anyMatch(device -> Arrays.equals(device.getSegments(), expectedSegments));
@@ -173,7 +483,7 @@ public class LoadTsFileAnalyzerTest {
     private final Set<List<Object>> verifiedDevices = new HashSet<>();
 
     private TrackingLoadTsFileTableSchemaCache() throws LoadRuntimeOutOfMemoryException {
-      super(null, new MPPQueryContext(new QueryId("load_test")), false);
+      super(null, new MPPQueryContext(new QueryId("load_test")), false, true);
     }
 
     @Override

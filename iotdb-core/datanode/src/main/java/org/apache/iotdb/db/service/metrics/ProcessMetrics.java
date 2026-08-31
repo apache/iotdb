@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -55,7 +56,7 @@ public class ProcessMetrics implements IMetricSet {
   private static final String PROCESS = "process";
   private static final String LINUX_RSS_PREFIX = "VmRSS:";
   private long lastUpdateTime = 0L;
-  private volatile long processCpuLoad = 0L;
+  private volatile double processCpuLoad = 0.0D;
   private volatile long processCpuTime = 0L;
 
   public ProcessMetrics() {
@@ -88,7 +89,7 @@ public class ProcessMetrics implements IMetricSet {
         a -> {
           if (System.currentTimeMillis() - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
             lastUpdateTime = System.currentTimeMillis();
-            processCpuLoad = (long) (sunOsMxBean.getProcessCpuLoad() * 100);
+            processCpuLoad = sunOsMxBean.getProcessCpuLoad() * 100;
             processCpuTime = sunOsMxBean.getProcessCpuTime();
           }
           return processCpuLoad;
@@ -103,7 +104,7 @@ public class ProcessMetrics implements IMetricSet {
         bean -> {
           if (System.currentTimeMillis() - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
             lastUpdateTime = System.currentTimeMillis();
-            processCpuLoad = (long) (sunOsMxBean.getProcessCpuLoad() * 100);
+            processCpuLoad = sunOsMxBean.getProcessCpuLoad() * 100;
             processCpuTime = sunOsMxBean.getProcessCpuTime();
           }
           return processCpuTime;
@@ -161,7 +162,7 @@ public class ProcessMetrics implements IMetricSet {
         SystemMetric.PROCESS_MEM_RATIO.toString(),
         MetricLevel.IMPORTANT,
         this,
-        a -> Math.round(getProcessMemoryRatio()),
+        a -> getProcessMemoryRatio(),
         Tag.NAME.toString(),
         PROCESS);
   }
@@ -252,7 +253,7 @@ public class ProcessMetrics implements IMetricSet {
           return 0L;
       }
     } catch (Exception e) {
-      LOGGER.debug("Failed to get process resident memory for pid {}", CONFIG.getPid(), e);
+      LOGGER.debug(DataNodeMiscMessages.FAILED_GET_PROCESS_RESIDENT_MEMORY, CONFIG.getPid(), e);
       return 0L;
     }
   }

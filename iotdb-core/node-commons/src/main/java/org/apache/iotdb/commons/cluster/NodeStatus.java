@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.cluster;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 /** Node status for showing cluster */
 public enum NodeStatus {
   /** Node running properly */
@@ -50,7 +52,7 @@ public enum NodeStatus {
         return nodeStatus;
       }
     }
-    throw new RuntimeException(String.format("NodeStatus %s doesn't exist.", status));
+    throw new RuntimeException(String.format(CommonMessages.NODE_STATUS_NOT_EXIST, status));
   }
 
   public static boolean isNormalStatus(NodeStatus status) {
@@ -67,7 +69,8 @@ public enum NodeStatus {
       case Unknown:
         return false;
       default:
-        throw new UnsupportedOperationException(String.format("Unknown NodeStatus %s.", status));
+        throw new UnsupportedOperationException(
+            String.format(CommonMessages.UNKNOWN_NODE_STATUS, status));
     }
   }
 }

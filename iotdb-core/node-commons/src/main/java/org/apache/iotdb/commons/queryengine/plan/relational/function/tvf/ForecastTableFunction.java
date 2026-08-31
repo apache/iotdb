@@ -23,6 +23,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.ResultColumnAppender;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -123,8 +124,7 @@ public class ForecastTableFunction implements TableFunction {
         return publicBAOS.toByteArray();
       } catch (IOException e) {
         throw new IoTDBRuntimeException(
-            String.format(
-                "Error occurred while serializing ForecastTableFunctionHandle: %s", e.getMessage()),
+            String.format(QueryMessages.SERIALIZE_FORECAST_HANDLE_ERROR, e.getMessage()),
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     }
@@ -243,14 +243,15 @@ public class ForecastTableFunction implements TableFunction {
     // modelId should never be null or empty
     if (modelId == null || modelId.isEmpty()) {
       throw new SemanticException(
-          String.format("%s should never be null or empty", MODEL_ID_PARAMETER_NAME));
+          String.format(QueryMessages.PARAM_SHOULD_NOT_BE_NULL_OR_EMPTY, MODEL_ID_PARAMETER_NAME));
     }
 
     int outputLength =
         (int) ((ScalarArgument) arguments.get(OUTPUT_LENGTH_PARAMETER_NAME)).getValue();
     if (outputLength <= 0) {
       throw new SemanticException(
-          String.format("%s should be greater than 0", OUTPUT_LENGTH_PARAMETER_NAME));
+          String.format(
+              QueryMessages.PARAM_SHOULD_BE_GREATER_THAN_ZERO, OUTPUT_LENGTH_PARAMETER_NAME));
     }
 
     String timeColumn =
@@ -258,12 +259,14 @@ public class ForecastTableFunction implements TableFunction {
             .toLowerCase(Locale.ENGLISH);
     if (timeColumn.isEmpty()) {
       throw new SemanticException(
-          String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+          String.format(
+              QueryMessages.PARAM_SHOULD_NOT_BE_NULL_OR_EMPTY_DOT, TIMECOL_PARAMETER_NAME));
     }
 
     long outputInterval = (long) ((ScalarArgument) arguments.get(OUTPUT_INTERVAL)).getValue();
     if (outputInterval < 0) {
-      throw new SemanticException(String.format("%s should be greater than 0", OUTPUT_INTERVAL));
+      throw new SemanticException(
+          String.format(QueryMessages.PARAM_SHOULD_BE_GREATER_THAN_ZERO, OUTPUT_INTERVAL));
     }
 
     // predicated columns should never contain partition by columns and time column
@@ -303,8 +306,9 @@ public class ForecastTableFunction implements TableFunction {
     if (targetColumnTypes.size() > 1) {
       throw new SemanticException(
           String.format(
-              "%s should not contain more than one target column, found [%s] target columns.",
-              TARGETS_PARAMETER_NAME, targetColumnTypes.size()));
+              QueryMessages.TARGETS_TOO_MANY_COLUMNS,
+              TARGETS_PARAMETER_NAME,
+              targetColumnTypes.size()));
     }
 
     boolean keepInput =
@@ -397,7 +401,8 @@ public class ForecastTableFunction implements TableFunction {
         // time column, will never be null
         if (input.isNull(0)) {
           throw new IoTDBRuntimeException(
-              "Time column should never be null", TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+              QueryMessages.TIME_COLUMN_SHOULD_NOT_BE_NULL,
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode());
         }
         properColumnBuilders.get(0).writeLong(input.getLong(0));
 
@@ -432,8 +437,7 @@ public class ForecastTableFunction implements TableFunction {
       if (inputEndTime < inputStartTime) {
         throw new SemanticException(
             String.format(
-                "input end time should never less than start time, start time is %s, end time is %s",
-                inputStartTime, inputEndTime));
+                QueryMessages.INPUT_END_TIME_LESS_THAN_START_TIME, inputStartTime, inputEndTime));
       }
       long interval = outputInterval;
       if (outputInterval <= 0) {
@@ -447,8 +451,10 @@ public class ForecastTableFunction implements TableFunction {
       if (outputTime <= inputEndTime) {
         throw new SemanticException(
             String.format(
-                "The %s should be greater than the maximum timestamp of target time series. Expected greater than [%s] but found [%s].",
-                OUTPUT_START_TIME, inputEndTime, outputTime));
+                QueryMessages.OUTPUT_START_TIME_SHOULD_BE_GREATER,
+                OUTPUT_START_TIME,
+                inputEndTime,
+                outputTime));
       }
       for (int i = 0; i < outputLength; i++) {
         properColumnBuilders.get(0).writeLong(outputTime + interval * i);
@@ -459,8 +465,10 @@ public class ForecastTableFunction implements TableFunction {
       if (predicatedResult.getPositionCount() != outputLength) {
         throw new IoTDBRuntimeException(
             String.format(
-                "Model %s output length is %s, doesn't equal to specified %s",
-                modelId, predicatedResult.getPositionCount(), outputLength),
+                QueryMessages.MODEL_OUTPUT_LENGTH_MISMATCH,
+                modelId,
+                predicatedResult.getPositionCount(),
+                outputLength),
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
 
@@ -522,8 +530,7 @@ public class ForecastTableFunction implements TableFunction {
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         String message =
-            String.format(
-                "Error occurred while executing forecast:[%s]", resp.getStatus().getMessage());
+            String.format(QueryMessages.FORECAST_EXECUTION_ERROR, resp.getStatus().getMessage());
         throw new IoTDBRuntimeException(message, resp.getStatus().getCode());
       }
 
@@ -531,8 +538,10 @@ public class ForecastTableFunction implements TableFunction {
       if (res.getValueColumnCount() != inputData.getValueColumnCount()) {
         throw new IoTDBRuntimeException(
             String.format(
-                "Model %s output %s columns, doesn't equal to specified %s",
-                modelId, res.getValueColumnCount(), inputData.getValueColumnCount()),
+                QueryMessages.MODEL_OUTPUT_COLUMN_MISMATCH,
+                modelId,
+                res.getValueColumnCount(),
+                inputData.getValueColumnCount()),
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
       return res;

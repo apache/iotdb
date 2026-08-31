@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.service.metric;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -58,7 +59,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
 
   @Override
   protected void loadReporter() {
-    LOGGER.info("Load metric reporters, type: {}", METRIC_CONFIG.getMetricReporterList());
+    LOGGER.info(ServiceMessages.LOAD_METRIC_REPORTERS, METRIC_CONFIG.getMetricReporterList());
     compositeReporter.clearReporter();
     if (METRIC_CONFIG.getMetricReporterList() == null) {
       return;
@@ -82,7 +83,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
           break;
       }
       if (reporter == null) {
-        LOGGER.warn("Failed to load reporter which type is {}", reporterType);
+        LOGGER.warn(ServiceMessages.FAILED_TO_LOAD_REPORTER, reporterType);
         continue;
       }
       compositeReporter.addReporter(reporter);
@@ -96,50 +97,51 @@ public class MetricService extends AbstractMetricService implements MetricServic
   @Override
   public void start() throws StartupException {
     try {
-      LOGGER.info("MetricService start to init.");
+      LOGGER.info(ServiceMessages.METRIC_SERVICE_START_TO_INIT);
       JMXService.registerMBean(getInstance(), mbeanName);
       startService();
-      LOGGER.info("MetricService start successfully.");
+      LOGGER.info(ServiceMessages.METRIC_SERVICE_START_SUCCESSFULLY);
     } catch (Exception e) {
-      LOGGER.error("MetricService failed to start {} because: ", this.getID().getName(), e);
+      LOGGER.error(ServiceMessages.METRIC_SERVICE_FAILED_TO_START, this.getID().getName(), e);
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 
   /** Restart metric service. */
   public void restartService() {
-    LOGGER.info("MetricService try to restart.");
+    LOGGER.info(ServiceMessages.METRIC_SERVICE_TRY_TO_RESTART);
     stopCoreModule();
     internalReporter.clear();
     startCoreModule();
     synchronized (this) {
       for (IMetricSet metricSet : metricSets) {
-        LOGGER.info("MetricService rebind metricSet: {}", metricSet.getClass().getName());
+        LOGGER.info(
+            ServiceMessages.METRIC_SERVICE_REBIND_METRIC_SET, metricSet.getClass().getName());
         metricSet.unbindFrom(this);
         metricSet.bindTo(this);
       }
     }
-    LOGGER.info("MetricService restart successfully.");
+    LOGGER.info(ServiceMessages.METRIC_SERVICE_RESTART_SUCCESSFULLY);
   }
 
   @Override
   public void stop() {
-    LOGGER.info("MetricService try to stop.");
+    LOGGER.info(ServiceMessages.METRIC_SERVICE_TRY_TO_STOP);
     internalReporter.stop();
     internalReporter = new IoTDBInternalMemoryReporter();
     stopService();
     JMXService.deregisterMBean(mbeanName);
-    LOGGER.info("MetricService stop successfully.");
+    LOGGER.info(ServiceMessages.METRIC_SERVICE_STOP_SUCCESSFULLY);
   }
 
   @Override
   public void reloadInternalReporter(IoTDBInternalReporter internalReporter) {
-    LOGGER.info("MetricService reload internal reporter.");
+    LOGGER.info(ServiceMessages.METRIC_SERVICE_RELOAD_INTERNAL_REPORTER);
     internalReporter.addAutoGauge(this.internalReporter.getAllAutoGauge());
     this.internalReporter.stop();
     this.internalReporter = internalReporter;
     startInternalReporter();
-    LOGGER.info("MetricService reload internal reporter successfully.");
+    LOGGER.info(ServiceMessages.METRIC_SERVICE_RELOAD_INTERNAL_REPORTER_SUCCESSFULLY);
   }
 
   @Override
@@ -153,10 +155,10 @@ public class MetricService extends AbstractMetricService implements MetricServic
           stopAllReporter();
           loadReporter();
           startAllReporter();
-          LOGGER.info("MetricService restart reporters successfully.");
+          LOGGER.info(ServiceMessages.METRIC_SERVICE_RESTART_REPORTERS_SUCCESSFULLY);
           break;
         case NOTHING:
-          LOGGER.debug("There are nothing change in metric config.");
+          LOGGER.debug(ServiceMessages.NOTHING_CHANGED_IN_METRIC_CONFIG);
           break;
         default:
           break;
@@ -175,7 +177,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
 
   public void startInternalReporter() {
     if (!this.internalReporter.start()) {
-      LOGGER.warn("Internal Reporter failed to start!");
+      LOGGER.warn(ServiceMessages.INTERNAL_REPORTER_FAILED_TO_START);
       this.internalReporter = new IoTDBInternalMemoryReporter();
     }
   }

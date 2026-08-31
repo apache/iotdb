@@ -21,14 +21,18 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileLogCorruptedException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,7 +55,7 @@ public class SchemaFileLogReader {
   }
 
   public List<byte[]> collectUpdatedEntries() throws IOException, SchemaFileLogCorruptedException {
-    if (inputStream == null || inputStream.getChannel().size() == 0) {
+    if (inputStream == null || Files.size(logFile.toPath()) == 0) {
       return Collections.emptyList();
     }
 
@@ -64,7 +68,7 @@ public class SchemaFileLogReader {
 
       if (tempBytes[0] == SchemaFileConfig.SF_COMMIT_MARK) {
         throw new SchemaFileLogCorruptedException(
-            logFile.getAbsolutePath(), "COMMIT_MARK without PREPARE_MARK");
+            logFile.getAbsolutePath(), DataNodeSchemaMessages.COMMIT_MARK_WITHOUT_PREPARE);
       }
 
       // handle prepare mark
@@ -81,8 +85,7 @@ public class SchemaFileLogReader {
           colBuffers.clear();
         } else {
           throw new SchemaFileLogCorruptedException(
-              logFile.getAbsolutePath(),
-              "an extraneous byte rather than " + "COMMIT_MARK after PREPARE_MARK");
+              logFile.getAbsolutePath(), DataNodeSchemaMessages.EXTRANEOUS_BYTE_AFTER_PREPARE);
         }
 
         // no bytes after commit mark, safe to exit
@@ -91,9 +94,11 @@ public class SchemaFileLogReader {
         }
       }
 
-      // corrupted within one entry
-      if (inputStream.read(tempBytes, 1, tempBytes.length - 1) < tempBytes.length - 2) {
-        throw new SchemaFileLogCorruptedException(logFile.getAbsolutePath(), "incomplete entry.");
+      try {
+        new DataInputStream(inputStream).readFully(tempBytes, 1, tempBytes.length - 1);
+      } catch (EOFException e) {
+        throw new SchemaFileLogCorruptedException(
+            logFile.getAbsolutePath(), DataNodeSchemaMessages.SCHEMA_FILE_LOG_INCOMPLETE_ENTRY);
       }
 
       colBuffers.add(tempBytes);
@@ -101,7 +106,7 @@ public class SchemaFileLogReader {
     }
 
     throw new SchemaFileLogCorruptedException(
-        logFile.getAbsolutePath(), "not ended by COMMIT_MARK nor PREPARE_MARK.");
+        logFile.getAbsolutePath(), DataNodeSchemaMessages.NOT_ENDED_BY_MARK);
   }
 
   public void close() throws IOException {

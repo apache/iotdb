@@ -239,7 +239,7 @@ public class IoTConsensusV2SinkMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "connectorTsFileTransfer",
+        "connectorEnqueue",
         Tag.REGION.toString(),
         iotConsensusV2AsyncConnector.getConsensusGroupIdStr());
     metricService.remove(

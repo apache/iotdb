@@ -54,5 +54,7 @@ public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi 
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {}
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
+    return true;
+  }
 }

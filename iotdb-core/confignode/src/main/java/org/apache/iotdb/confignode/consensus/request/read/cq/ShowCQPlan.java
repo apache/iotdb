@@ -21,11 +21,24 @@ package org.apache.iotdb.confignode.consensus.request.read.cq;
 
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
+import java.util.Optional;
+
 import static org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType.SHOW_CQ;
 
 public class ShowCQPlan extends ConfigPhysicalReadPlan {
 
+  private final String cqId;
+
   public ShowCQPlan() {
+    this(null);
+  }
+
+  public ShowCQPlan(String cqId) {
     super(SHOW_CQ);
+    this.cqId = cqId;
+  }
+
+  public Optional<String> getCqId() {
+    return Optional.ofNullable(cqId);
   }
 }

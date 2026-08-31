@@ -90,6 +90,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
@@ -115,6 +116,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -142,6 +144,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.apache.tsfile.utils.PublicBAOS;
 
@@ -191,7 +194,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       final ConfigPhysicalPlanType configPhysicalPlanType =
           ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(planType);
       if (configPhysicalPlanType == null) {
-        throw new IOException("Unrecognized log configPhysicalPlanType: " + planType);
+        throw new IOException(
+            ConfigNodeMessages.UNRECOGNIZED_LOG_CONFIGPHYSICALPLANTYPE + planType);
       }
 
       final ConfigPhysicalPlan plan;
@@ -309,6 +313,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateUserV2:
         case CreateUserWithRawPassword:
         case RenameUser:
+        case AccountUnlock:
           plan = new AuthorTreePlan(configPhysicalPlanType);
           break;
         case RCreateUser:
@@ -341,6 +346,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RRevokeUserSysPri:
         case RRevokeRoleSysPri:
         case RRenameUser:
+        case RAccountUnlock:
           plan = new AuthorRelationalPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:
@@ -438,6 +444,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PreDeleteView:
           plan = new PreDeleteViewPlan();
+          break;
+        case RollbackPreDeleteTable:
+          plan = new RollbackPreDeleteTablePlan();
           break;
         case CommitDeleteTable:
           plan = new CommitDeleteTablePlan(configPhysicalPlanType);
@@ -550,6 +559,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case ConsumerGroupHandleMetaChange:
           plan = new ConsumerGroupHandleMetaChangePlan();
           break;
+        case CommitProgressHandleMetaChange:
+          plan = new CommitProgressHandleMetaChangePlan();
+          break;
         case PipeUnsetTemplate:
           plan = new PipeUnsetSchemaTemplatePlan();
           break;
@@ -617,7 +629,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new DropExternalServicePlan();
           break;
         default:
-          throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);
+          throw new IOException(
+              ConfigNodeMessages.UNKNOWN_PHYSICALPLAN_CONFIGPHYSICALPLANTYPE + planType);
       }
       plan.deserializeImpl(buffer);
       return plan;

@@ -96,7 +96,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       snapshotDir.mkdir();
       schemaRegion.createSnapshot(snapshotDir);
 
-      schemaRegion.loadSnapshot(snapshotDir);
+      Assert.assertTrue(schemaRegion.loadSnapshot(snapshotDir));
 
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
@@ -112,7 +112,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       simulateRestart();
 
       ISchemaRegion newSchemaRegion = getSchemaRegion("root.sg", 0);
-      newSchemaRegion.loadSnapshot(snapshotDir);
+      Assert.assertTrue(newSchemaRegion.loadSnapshot(snapshotDir));
       result =
           SchemaRegionTestUtil.showTimeseries(
               newSchemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
@@ -135,6 +135,44 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       Assert.assertEquals(
           new PartialPath("root.sg.d2.s1").getFullPath(), result.get(1).getFullPath());
 
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+  }
+
+  @Test
+  public void testLoadSnapshotWithTableDeviceBelowTopLevelTreeDevice() throws Exception {
+    if (!testParams.getTestModeName().equals("MemoryMode")) {
+      return;
+    }
+
+    final String schemaRegionConsensusProtocolClass =
+        config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+
+      // Build a mixed-model tree where the table-name node is also a tree-model device.
+      schemaRegion.createTimeSeries(
+          SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
+              new MeasurementPath("root.sg.t.s1"),
+              TSDataType.INT32,
+              TSEncoding.PLAIN,
+              CompressionType.UNCOMPRESSED,
+              null,
+              null,
+              null,
+              null),
+          -1);
+      SchemaRegionTestUtil.createTableDevice(
+          schemaRegion, "t", new String[] {"d1"}, Collections.emptyMap());
+
+      final File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+      Assert.assertTrue(snapshotDir.mkdir());
+      Assert.assertTrue(schemaRegion.createSnapshot(snapshotDir));
+
+      Assert.assertTrue(schemaRegion.loadSnapshot(snapshotDir));
+      Assert.assertEquals(1, schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber("t"));
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
@@ -171,7 +209,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       snapshotDir.mkdir();
       schemaRegion.createSnapshot(snapshotDir);
 
-      schemaRegion.loadSnapshot(snapshotDir);
+      Assert.assertTrue(schemaRegion.loadSnapshot(snapshotDir));
 
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
@@ -182,12 +220,32 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       simulateRestart();
 
       ISchemaRegion newSchemaRegion = getSchemaRegion("root.sg", 0);
-      newSchemaRegion.loadSnapshot(snapshotDir);
+      Assert.assertTrue(newSchemaRegion.loadSnapshot(snapshotDir));
       result =
           SchemaRegionTestUtil.showTimeseries(
               newSchemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
 
       Assert.assertEquals(0, result.size());
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+  }
+
+  @Test
+  public void testLoadSnapshotReportsFailureWhenSnapshotIsMissing() throws Exception {
+    String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+
+      // Loading from a directory that does not contain a snapshot must report failure rather than
+      // silently falling back to an empty region and reporting success. Callers (the AddPeer flow
+      // and the Ratis snapshot-install path) rely on this success/failure contract.
+      File missingSnapshotDir =
+          new File(config.getSchemaDir() + File.separator + "non-existent-snapshot");
+      Assert.assertFalse(missingSnapshotDir.exists());
+
+      Assert.assertFalse(schemaRegion.loadSnapshot(missingSnapshotDir));
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }

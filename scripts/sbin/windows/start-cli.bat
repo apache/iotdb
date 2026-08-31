@@ -60,7 +60,11 @@ if /I "%~1"=="-u" (
     goto parse_args
 )
 if /I "%~1"=="-pw" (
+    call :is_known_option "%~2"
     if "%~2"=="" (
+        set "passwd_param=-pw"
+        shift
+    ) else if "!IS_KNOWN_OPTION!"=="true" (
         set "passwd_param=-pw"
         shift
     ) else (
@@ -93,6 +97,23 @@ set "PARAMETERS=%PARAMETERS% %~1"
 shift
 goto parse_args
 
+:is_known_option
+set "IS_KNOWN_OPTION=false"
+if /I "%~1"=="-h" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-p" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-u" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-pw" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-e" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-help" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-sql_dialect" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-disableISO8601" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-c" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-timeout" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-usessl" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-ts" set "IS_KNOWN_OPTION=true"
+if /I "%~1"=="-tpw" set "IS_KNOWN_OPTION=true"
+exit /b 0
+
 :after_parse
 REM Combine all parameters
 set "PARAMETERS=%host_param% %port_param% %user_param% %passwd_param% %sql_dialect_param% %PARAMETERS%"
@@ -105,6 +126,7 @@ REM CLASSPATH setup
 set "CLASSPATH=%IOTDB_HOME%\lib\*"
 
 REM JAVA executable
+REM set JAVA_HOME=%JAVA_HOME%
 if defined JAVA_HOME (
     if exist "%JAVA_HOME%\bin\java.exe" (
         set "JAVA=%JAVA_HOME%\bin\java.exe"

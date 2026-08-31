@@ -24,9 +24,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,15 +42,23 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class IoTDBDatetimeFormatIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore: cleanup may fail if target does not exist
+    }
   }
 
   @Test
@@ -87,25 +95,28 @@ public class IoTDBDatetimeFormatIT {
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      try {
+        connection.setClientInfo("time_zone", "+08:00");
 
-      connection.setClientInfo("time_zone", "+08:00");
+        for (int i = 0; i < datetimeStrings.length; i++) {
+          String insertSql =
+              String.format(
+                  "INSERT INTO root.sg1.d1(time, s1) values (%s, %d)", datetimeStrings[i], i);
+          statement.execute(insertSql);
+        }
 
-      for (int i = 0; i < datetimeStrings.length; i++) {
-        String insertSql =
-            String.format(
-                "INSERT INTO root.sg1.d1(time, s1) values (%s, %d)", datetimeStrings[i], i);
-        statement.execute(insertSql);
+        ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1");
+        Assert.assertNotNull(resultSet);
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          Assert.assertEquals(timestamps[cnt], resultSet.getLong(1));
+          cnt++;
+        }
+        Assert.assertEquals(timestamps.length, cnt);
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.sg1");
       }
-
-      ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1");
-      Assert.assertNotNull(resultSet);
-
-      int cnt = 0;
-      while (resultSet.next()) {
-        Assert.assertEquals(timestamps[cnt], resultSet.getLong(1));
-        cnt++;
-      }
-      Assert.assertEquals(timestamps.length, cnt);
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -116,26 +127,33 @@ public class IoTDBDatetimeFormatIT {
   public void testBigDateTime() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg");
+      try {
+        statement.setFetchSize(5);
+        statement.execute("CREATE DATABASE root.sg");
 
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;");
+        statement.execute("CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;");
 
-      statement.execute("insert into root.sg.d1(time,s2) values (1618283005586000, 8.76);");
-      statement.execute("select * from root.sg.d1;");
-      statement.execute("select * from root.sg.d1 where time=53251-05-07T17:06:26.000+08:00");
+        statement.execute("insert into root.sg.d1(time,s2) values (1618283005586000, 8.76);");
+        statement.execute("select * from root.sg.d1;");
+        statement.execute("select * from root.sg.d1 where time=53251-05-07T17:06:26.000+08:00");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail();
+      }
+      try (Connection connection2 = EnvFactory.getEnv().getConnection();
+          Statement statement2 = connection2.createStatement()) {
+        statement2.execute("insert into root.sg.d1(time,s2) values (16182830055860000000, 8.76);");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains("please check whether the timestamp 16182830055860000000 is correct."));
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.sg");
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
-    }
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time,s2) values (16182830055860000000, 8.76);");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertTrue(
-          e.getMessage()
-              .contains("please check whether the timestamp 16182830055860000000 is correct."));
     }
   }
 }

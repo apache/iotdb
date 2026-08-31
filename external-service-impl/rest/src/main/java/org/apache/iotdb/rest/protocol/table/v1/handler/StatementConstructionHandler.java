@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.table.v1.model.InsertTabletRequest;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -94,7 +95,8 @@ public class StatementConstructionHandler {
               intValues[rowIndex] = (int) object;
             } else {
               throw new WriteProcessRejectException(
-                  "unsupported data type: " + object.getClass().toString());
+                  RestMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_0521CEDE
+                      + object.getClass().toString());
             }
           }
           columns[columnIndex] = intValues;
@@ -112,7 +114,8 @@ public class StatementConstructionHandler {
               longValues[rowIndex] = (long) object;
             } else {
               throw new WriteProcessRejectException(
-                  "unsupported data type: " + object.getClass().toString());
+                  RestMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_0521CEDE
+                      + object.getClass().toString());
             }
           }
           columns[columnIndex] = longValues;
@@ -162,7 +165,8 @@ public class StatementConstructionHandler {
           columns[columnIndex] = binaryValues;
           break;
         default:
-          throw new IllegalArgumentException("Invalid input: " + rawDataType.get(columnIndex));
+          throw new IllegalArgumentException(
+              RestMessages.INVALID_INPUT + rawDataType.get(columnIndex));
       }
     }
     insertStatement.setColumns(columns);

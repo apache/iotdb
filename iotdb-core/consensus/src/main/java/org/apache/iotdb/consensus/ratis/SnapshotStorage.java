@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IStateMachine;
+import org.apache.iotdb.consensus.i18n.RatisMessages;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.ratis.protocol.RaftGroupId;
@@ -124,7 +125,7 @@ public class SnapshotStorage implements StateMachineStorage {
         }
       }
     } catch (IOException exception) {
-      logger.warn("Cannot construct snapshot directory stream ", exception);
+      logger.warn(RatisMessages.CANNOT_CONSTRUCT_SNAPSHOT_DIR_STREAM, exception);
       return null;
     }
 
@@ -175,7 +176,7 @@ public class SnapshotStorage implements StateMachineStorage {
           fileInfo = new FileInfo(file.toPath().toRealPath(), null);
         }
       } catch (IOException e) {
-        logger.warn("{} cannot resolve real path of {} due to ", this, file, e);
+        logger.warn(RatisMessages.CANNOT_RESOLVE_REAL_PATH, this, file, e);
         return null;
       }
       fileInfos.add(fileInfo);

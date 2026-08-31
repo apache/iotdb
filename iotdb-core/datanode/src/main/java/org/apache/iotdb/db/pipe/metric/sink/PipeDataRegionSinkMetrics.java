@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.sink;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -34,7 +35,6 @@ import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,7 +46,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, PipeSinkSubtask> sinkMap = new HashMap<>();
+  private final Map<String, PipeSinkSubtask> sinkMap = new ConcurrentHashMap<>();
 
   private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
 
@@ -198,8 +198,8 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
 
   private void createTimer(final String taskID) {
     final PipeSinkSubtask sink = sinkMap.get(taskID);
-    compressionTimerMap.putIfAbsent(
-        sink.getAttributeSortedString(),
+    compressionTimerMap.put(
+        taskID,
         metricService.getOrCreateTimer(
             Metric.PIPE_COMPRESSION_TIME.toString(),
             MetricLevel.IMPORTANT,
@@ -268,7 +268,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
       deregister(taskID);
     }
     if (!sinkMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe data region sink metrics, sink map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_DATA_REGION);
     }
   }
 
@@ -393,7 +393,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
         sink.getAttributeSortedString(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(sink.getCreationTime()));
-    compressionTimerMap.remove(sink.getAttributeSortedString());
+    compressionTimerMap.remove(taskID);
   }
 
   private void removeHistogram(final String taskID) {
@@ -447,8 +447,8 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!sinkMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe data region sink metrics, PipeSinkSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_DATA_REGION_SINK,
+          getDisplayTaskID(taskID));
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -464,8 +464,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
       LOGGER.info(
-          "Failed to mark pipe data region sink tablet event, PipeSinkSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK, getDisplayTaskID(taskID));
       return;
     }
     rate.mark();
@@ -478,11 +477,15 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
       LOGGER.info(
-          "Failed to mark pipe data region sink tsfile event, PipeSinkSubtask({}) does not exist",
-          taskID);
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK_1, getDisplayTaskID(taskID));
       return;
     }
     rate.mark();
+  }
+
+  private String getDisplayTaskID(final String taskID) {
+    final PipeSinkSubtask sink = sinkMap.get(taskID);
+    return Objects.nonNull(sink) ? sink.getDisplayTaskID() : "unknown";
   }
 
   public void markPipeHeartbeatEvent(final String taskID) {
@@ -497,8 +500,8 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     rate.mark();
   }
 
-  public Timer getCompressionTimer(final String attributeSortedString) {
-    return Objects.isNull(metricService) ? null : compressionTimerMap.get(attributeSortedString);
+  public Timer getCompressionTimer(final String taskID) {
+    return Objects.isNull(metricService) ? null : compressionTimerMap.get(taskID);
   }
 
   //////////////////////////// singleton ////////////////////////////

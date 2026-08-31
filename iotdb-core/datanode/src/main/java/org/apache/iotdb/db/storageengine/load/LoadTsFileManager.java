@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -37,8 +40,8 @@ import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
@@ -53,8 +56,6 @@ import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -129,7 +130,20 @@ public class LoadTsFileManager {
   public LoadTsFileManager() {
     registerCleanupTaskExecutor();
     recover();
+  }
+
+  public void start() {
     activeLoadAgent.start();
+  }
+
+  public void stop() {
+    activeLoadAgent.stop();
+    synchronized (uuid2CleanupTask) {
+      uuid2CleanupTask.values().forEach(CleanupTask::cancel);
+      uuid2CleanupTask.clear();
+      cleanupTaskQueue.clear();
+    }
+    new HashSet<>(uuid2WriterManager.keySet()).forEach(this::forceCloseWriterManager);
   }
 
   private long getCleanupTaskDelayInMs() {
@@ -191,7 +205,8 @@ public class LoadTsFileManager {
         } else {
           final long waitTimeInMs = cleanupTask.scheduledTime - System.currentTimeMillis();
           LOGGER.info(
-              "Next load cleanup task {} is not ready to run, wait for at least {} ms ({}s).",
+              StorageEngineMessages
+                  .STORAGE_LOG_NEXT_LOAD_CLEANUP_TASK_IS_NOT_READY_TO_RUN_WAIT_FOR_AT_LEAST_CBE0023F,
               cleanupTask.uuid,
               waitTimeInMs,
               waitTimeInMs / 1000.0);
@@ -258,9 +273,10 @@ public class LoadTsFileManager {
 
       if (exception.get() != null || writerManager == null) {
         throw new IOException(
-            "Failed to create TsFileWriterManager for uuid "
-                + uuid
-                + " because of insufficient disk space.",
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_FAILED_TO_CREATE_TSFILEWRITERMANAGER_FOR_UUID_S_BECAUSE_A0D68950,
+                uuid),
             exception.get());
       }
 
@@ -275,7 +291,8 @@ public class LoadTsFileManager {
             writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
             break;
           default:
-            throw new IOException("Unsupported TsFileData type: " + tsFileData.getType());
+            throw new IOException(
+                StorageEngineMessages.UNSUPPORTED_TSFILE_DATA_TYPE + tsFileData.getType());
         }
       }
     } finally {
@@ -417,7 +434,7 @@ public class LoadTsFileManager {
       Files.deleteIfExists(
           new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
     } catch (final IOException e) {
-      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
+      LOGGER.warn(StorageEngineMessages.DELETE_AFTER_LOADING_ERROR, tsFile, e);
     }
   }
 
@@ -448,7 +465,7 @@ public class LoadTsFileManager {
         FileUtils.deleteFileOrDirectoryWithRetry(dir);
       }
       if (dir.mkdirs()) {
-        LOGGER.info("Load TsFile dir {} is created.", dir.getPath());
+        LOGGER.info(StorageEngineMessages.LOAD_TSFILE_DIR_CREATED, dir.getPath());
       }
     }
 
@@ -468,7 +485,7 @@ public class LoadTsFileManager {
             SystemFileFactory.INSTANCE.getFile(
                 taskDir, partitionInfo.toString() + TsFileConstant.TSFILE_SUFFIX);
         if (!newTsFile.createNewFile()) {
-          LOGGER.error("Can not create TsFile {} for writing.", newTsFile.getPath());
+          LOGGER.error(StorageEngineMessages.CANNOT_CREATE_TSFILE_FOR_WRITING, newTsFile.getPath());
           return;
         }
 
@@ -536,7 +553,8 @@ public class LoadTsFileManager {
         }
         if (writer.isWritingChunkGroup()) {
           LOGGER.warn(
-              "Writer {} for partition {} is already writing chunk group for device {}, but the last device is {}. ",
+              StorageEngineMessages
+                  .STORAGE_LOG_WRITER_FOR_PARTITION_IS_ALREADY_WRITING_CHUNK_GROUP_FOR_903B1D66,
               writer.getFile().getAbsolutePath(),
               partitionInfo,
               device,
@@ -563,7 +581,9 @@ public class LoadTsFileManager {
             File newModificationFile = ModificationFile.getExclusiveMods(writer.getFile());
             if (!newModificationFile.createNewFile()) {
               LOGGER.error(
-                  "Can not create ModificationFile {} for writing.", newModificationFile.getPath());
+                  StorageEngineMessages
+                      .STORAGE_LOG_CAN_NOT_CREATE_MODIFICATIONFILE_FOR_WRITING_17D14C11,
+                  newModificationFile.getPath());
               return;
             }
 
@@ -733,7 +753,10 @@ public class LoadTsFileManager {
                   });
             }
           } catch (IOException e) {
-            LOGGER.warn("Close TsFileIOWriter {} error.", entry.getValue().getFile().getPath(), e);
+            LOGGER.warn(
+                StorageEngineMessages.CLOSE_TSFILE_IO_WRITER_ERROR,
+                entry.getValue().getFile().getPath(),
+                e);
           }
         }
       }
@@ -752,7 +775,8 @@ public class LoadTsFileManager {
                   });
             }
           } catch (IOException e) {
-            LOGGER.warn("Close ModificationFile {} error.", entry.getValue().getFile(), e);
+            LOGGER.warn(
+                StorageEngineMessages.CLOSE_MODIFICATION_FILE_ERROR, entry.getValue().getFile(), e);
           }
         }
       }
@@ -763,7 +787,7 @@ public class LoadTsFileManager {
               return null;
             });
       } catch (DirectoryNotEmptyException e) {
-        LOGGER.info("Task dir {} is not empty, skip deleting.", taskDir.getPath());
+        LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, taskDir.getPath());
       } catch (IOException e) {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
       }
@@ -813,13 +837,13 @@ public class LoadTsFileManager {
     @Override
     public void run() {
       if (isCanceled) {
-        LOGGER.info("Load cleanup task {} is canceled.", uuid);
+        LOGGER.info(StorageEngineMessages.LOAD_CLEANUP_TASK_CANCELED, uuid);
       } else {
-        LOGGER.info("Load cleanup task {} starts.", uuid);
+        LOGGER.info(StorageEngineMessages.LOAD_CLEANUP_TASK_STARTS, uuid);
         try {
           forceCloseWriterManager(uuid);
         } catch (Exception e) {
-          LOGGER.warn("Load cleanup task {} error.", uuid, e);
+          LOGGER.warn(StorageEngineMessages.LOAD_CLEANUP_TASK_ERROR, uuid, e);
         }
       }
     }

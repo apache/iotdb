@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import java.util.List;
@@ -29,7 +30,8 @@ public enum LogicalOperator implements NaryOperator {
     public Object apply(List<Object> operands) {
       for (Object operand : operands) {
         if (!(operand instanceof Boolean)) {
-          throw new IllegalArgumentException("AND operator only accepts Boolean operands");
+          throw new IllegalArgumentException(
+              CalcMessages.AND_OPERATOR_ONLY_ACCEPTS_BOOLEAN_OPERANDS);
         }
         if (!((Boolean) operand)) {
           return false; // short-circuit
@@ -43,7 +45,7 @@ public enum LogicalOperator implements NaryOperator {
     public Object apply(List<Object> operands) {
       for (Object operand : operands) {
         if (!(operand instanceof Boolean)) {
-          throw new SemanticException("OR operator only accepts Boolean operands");
+          throw new SemanticException(CalcMessages.OR_OPERATOR_ONLY_ACCEPTS_BOOLEAN_OPERANDS);
         }
         if ((Boolean) operand) {
           return true; // short-circuit

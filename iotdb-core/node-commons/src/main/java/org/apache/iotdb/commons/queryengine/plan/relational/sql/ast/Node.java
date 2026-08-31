@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.Accountable;
 
 import javax.annotation.Nullable;
@@ -70,7 +72,8 @@ public abstract class Node implements Accountable {
    * getChildren()
    */
   public boolean shallowEquals(Node other) {
-    throw new UnsupportedOperationException("not yet implemented: " + getClass().getName());
+    throw new UnsupportedOperationException(
+        QueryMessages.NOT_YET_IMPLEMENTED + getClass().getName());
   }
 
   public static boolean sameClass(Node left, Node right) {

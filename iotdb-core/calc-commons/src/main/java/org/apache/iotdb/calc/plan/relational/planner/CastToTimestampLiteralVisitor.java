@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.plan.relational.planner;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CommonQueryAstVisitor;
@@ -44,7 +45,7 @@ public class CastToTimestampLiteralVisitor implements CommonQueryAstVisitor<Long
 
   @Override
   public Long visitLiteral(Literal node, Void context) {
-    throw new UnsupportedOperationException("Unhandled literal type: " + node);
+    throw new UnsupportedOperationException(CalcMessages.UNHANDLED_LITERAL_TYPE + node);
   }
 
   @Override

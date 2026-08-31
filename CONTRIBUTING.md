@@ -55,27 +55,23 @@ You can choose issue types: bug, improvement, new feature, etc.  New issues will
 
 ## Email discussion content (English)
 
-* Joining the mailing list for the first time can introduce youself briefly.  (Hi, I'm xxx ...)
+* Joining the mailing list for the first time can introduce yourself briefly.  (Hi, I'm xxx ...)
 
 * Before developing a new feature, you can send an e-mail to declare the task you want to do.（Hi，I'm working on issue IOTDB-XXX，My plan is ...）
 
 ## Contributing documents
 
-The content of all IoTDB official websites is in the docs of the project root directory:
+The content of all IoTDB official websites lives in a separate repository,
+[apache/iotdb-docs](https://github.com/apache/iotdb-docs), under its `src` directory:
 
-* docs/SystemDesign: System Design Document-English Version
-* docs/zh/SystemDesign: System Design Document-Chinese Version
-* docs/UserGuide: User Guide English Version
-* docs/zh/UserGuide: User Guide Chinese Version
-* docs/Community: community English Version
-* docs/zh/Community: community Chinese Version
-* docs/Development: Development Guide English Version
-* docs/zh/Development: Development Guide Chinese Version
+* src/UserGuide: User Guide English Version
+* src/zh/UserGuide: User Guide Chinese Version
+* src/Community: community English Version
+* src/zh/Community: community Chinese Version
+* src/Development: Development Guide English Version
 
-Correspondence between versions and branches on the official website:
-
-* In progress -> master
-* major_version.x -> rel/major_version （eg 0.9.x -> rel/0.9）
+Documentation versions are organised as directories rather than branches, for example
+`src/UserGuide/V1.3.x`, `src/UserGuide/latest` and `src/UserGuide/Master`.
 
 Precautions:
 
@@ -111,21 +107,18 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
 
 - Formatter: `clang-format` only
 - Version: pinned as `clang.format.version` in the root `pom.xml` (currently `17.0.6`, aligned with Apache TsFile); CI installs LLVM/clang-format so the default `clang-format` on the runner matches that version
-- Entrypoint: Maven Spotless; the `clangFormat` configuration is attached under the `spotless-cpp` profile in the C++ modules and activates only on **JDK 11+**, so run `spotless:check` / `spotless:apply` for C++ with JDK 11 or newer (CI does). JDK 8 builds elsewhere in the reactor do not load that Spotless fragment.
+- Entrypoint: Maven Spotless; the `clangFormat` configuration is attached under the `spotless-cpp` profile in the C++ modules and activates on the repository baseline, **JDK 17+**, so run `spotless:check` / `spotless:apply` for C++ with JDK 17 or newer (CI does).
 
 Check only:
 
 `./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:check`
 
-`./mvnw -P with-cpp -pl example/client-cpp-example spotless:check`
 
 Auto-fix:
 
 `./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:apply`
 
-`./mvnw -P with-cpp -pl example/client-cpp-example spotless:apply`
 
-On Windows PowerShell, a comma inside `-pl` can be parsed incorrectly; use the two commands above, or quote the full `-pl` value, for example `./mvnw -P with-cpp "-pl=iotdb-client/client-cpp,example/client-cpp-example" spotless:check`.
 
 Temporarily skip Spotless (not recommended except emergency CI triage):
 
@@ -184,4 +177,3 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
  * Put the file to thrift/target/tools/
 
  * Re-run maven command like `mvn compile`
-

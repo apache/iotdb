@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
@@ -90,7 +91,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                         ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
                     isGeneratedByPipe);
           } catch (final MetadataException e) {
-            LOGGER.warn("Failed to collect UnsetTemplatePlan", e);
+            LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_UNSETTEMPLATEPLAN, e);
             return;
           }
           break;
@@ -113,7 +114,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                         ((CommitCreateTablePlan) plan).getDatabase(), table.get()),
                     isGeneratedByPipe);
           } catch (final MetadataException e) {
-            LOGGER.warn("Failed to collect CommitCreateTablePlan", e);
+            LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_COMMITCREATETABLEPLAN, e);
             return;
           }
           break;
@@ -168,7 +169,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                     .getPermissionManager()
                     .getUserName(userId));
           } catch (AuthException e) {
-            LOGGER.warn("Failed to collect user name for user id {}", userId, e);
+            LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_USER_NAME_FOR_USER_ID, userId, e);
           }
         } else {
           curEvent.setAuthUserName(userName);
@@ -195,7 +196,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
       ((EnrichedEvent) result).increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
       return result;
     } catch (final IOException e) {
-      LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
+      LOGGER.error(ManagerMessages.FAILED_TO_LOAD_SNAPSHOT_FROM_BYTEBUFFER, byteBuffer);
     }
     return null;
   }

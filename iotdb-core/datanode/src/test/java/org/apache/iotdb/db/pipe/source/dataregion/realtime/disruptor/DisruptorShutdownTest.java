@@ -25,6 +25,7 @@ import org.junit.Test;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -111,6 +112,61 @@ public class DisruptorShutdownTest {
     disruptor.shutdown();
 
     Assert.assertFalse(processorThread.isAlive());
+  }
+
+  @Test
+  public void testUnexpectedInterruptDoesNotStopProcessor() throws Exception {
+    final AtomicReference<Thread> processorThreadReference = new AtomicReference<>();
+    final ThreadFactory threadFactory =
+        runnable -> {
+          final Thread thread = new Thread(runnable, "pipe-disruptor-unexpected-interrupt-test");
+          processorThreadReference.set(thread);
+          return thread;
+        };
+
+    final CountDownLatch handled = new CountDownLatch(1);
+    final Disruptor<TestEvent> disruptor = new Disruptor<>(TestEvent::new, 32, threadFactory);
+    final RingBuffer<TestEvent> ringBuffer =
+        disruptor.handleEventsWith((event, sequence, endOfBatch) -> handled.countDown()).start();
+
+    final Thread processorThread = processorThreadReference.get();
+    Assert.assertNotNull(processorThread);
+
+    TimeUnit.MILLISECONDS.sleep(50);
+    processorThread.interrupt();
+
+    ringBuffer.publishEvent((event, sequence, value) -> event.value = value, 1);
+    Assert.assertTrue(handled.await(5, TimeUnit.SECONDS));
+    Assert.assertTrue(processorThread.isAlive());
+
+    disruptor.shutdown();
+    Assert.assertFalse(processorThread.isAlive());
+  }
+
+  @Test
+  public void testPublishEventCanAbortWhenClosingWhileBufferIsFull() throws Exception {
+    final RingBuffer<TestEvent> ringBuffer = RingBuffer.createMultiProducer(TestEvent::new, 1);
+    final Sequence gatingSequence = new Sequence();
+    ringBuffer.addGatingSequences(gatingSequence);
+    ringBuffer.publishEvent((event, sequence, value) -> event.value = value, 1);
+
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final AtomicBoolean published = new AtomicBoolean(true);
+    final Thread publisherThread =
+        new Thread(
+            () ->
+                published.set(
+                    ringBuffer.publishEvent(
+                        (event, sequence, value) -> event.value = value, 2, isClosed::get)),
+            "pipe-disruptor-publish-abort-test");
+
+    publisherThread.start();
+    TimeUnit.MILLISECONDS.sleep(50);
+    isClosed.set(true);
+    publisherThread.join(TimeUnit.SECONDS.toMillis(5));
+
+    Assert.assertFalse(publisherThread.isAlive());
+    Assert.assertFalse(published.get());
   }
 
   private static class TestEvent {

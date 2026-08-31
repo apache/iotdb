@@ -49,11 +49,13 @@ import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -205,7 +207,8 @@ public class ConvertSchemaPredicateToFilterVisitor
             ? ComparisonFilter.Operator.GREATER_THAN_OR_EQUAL
             : ComparisonFilter.Operator.LESS_THAN_OR_EQUAL;
       default:
-        throw new UnsupportedOperationException("Unsupported operator " + operator);
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_OPERATOR_2 + operator);
     }
   }
 
@@ -232,8 +235,20 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  public SchemaFilter visitBetweenPredicate(final BetweenPredicate node, final Context context) {
-    return visitExpression(node, context);
+  public @Nullable SchemaFilter visitBetweenPredicate(
+      final BetweenPredicate node, final Context context) {
+    final SchemaFilter lowerBoundFilter =
+        new ComparisonExpression(
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, node.getMin(), node.getValue())
+            .accept(this, context);
+    final SchemaFilter upperBoundFilter =
+        new ComparisonExpression(
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, node.getValue(), node.getMax())
+            .accept(this, context);
+    if (Objects.isNull(lowerBoundFilter) || Objects.isNull(upperBoundFilter)) {
+      return null;
+    }
+    return new AndFilter(Arrays.asList(lowerBoundFilter, upperBoundFilter));
   }
 
   private SchemaFilter wrapTagOrAttributeFilter(

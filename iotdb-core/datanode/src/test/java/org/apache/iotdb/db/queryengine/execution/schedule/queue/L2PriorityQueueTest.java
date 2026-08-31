@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.queryengine.execution.schedule.queue;
 
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
+
 import org.junit.Assert;
 import org.junit.Test;
 

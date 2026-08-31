@@ -37,7 +37,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -51,6 +55,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     env.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setPipeMemoryManagementEnabled(false)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1)
@@ -255,5 +260,67 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
 
     TableModelUtils.assertCountData("test", "test", 0, env);
     TableModelUtils.assertCountData("test", "test1", 100, env);
+  }
+
+  @Test
+  public void testAuthenticatedRealtimePipesRemainWithoutDataRegion() throws Exception {
+    final Set<String> expectedPipeNames =
+        new HashSet<>(Arrays.asList("root_pipe", "source_pipe", "sink_pipe", "source_sink_pipe"));
+
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE USER user_source 'paSs1234@56789'");
+      statement.execute("CREATE USER user_sink 'paSs1234@56789'");
+      statement.execute("CREATE DATABASE test_pipe_authentication");
+
+      statement.execute(
+          "create pipe root_pipe "
+              + "with source ('forwarding-pipe-requests'='false', "
+              + "'database-name'='test_pipe_authentication', 'table-name'='table_0') "
+              + "with processor ('processor'='rename-database-processor', "
+              + "'new-db-name'='pipe_newDB1') "
+              + "with sink ('sink'='write-back-sink')");
+      statement.execute(
+          "create pipe source_pipe "
+              + "with source ('forwarding-pipe-requests'='false', "
+              + "'database-name'='test_pipe_authentication', 'table-name'='table_0', "
+              + "'user'='user_source', 'password'='paSs1234@56789') "
+              + "with processor ('processor'='rename-database-processor', "
+              + "'new-db-name'='pipe_newDB2') "
+              + "with sink ('sink'='write-back-sink')");
+      statement.execute(
+          "create pipe sink_pipe "
+              + "with source ('forwarding-pipe-requests'='false', "
+              + "'database-name'='test_pipe_authentication', 'table-name'='table_0') "
+              + "with processor ('processor'='rename-database-processor', "
+              + "'new-db-name'='pipe_newDB3') "
+              + "with sink ('sink'='write-back-sink', 'user'='user_sink', "
+              + "'password'='paSs1234@56789')");
+      statement.execute(
+          "create pipe source_sink_pipe "
+              + "with source ('forwarding-pipe-requests'='false', "
+              + "'database-name'='test_pipe_authentication', 'table-name'='table_0', "
+              + "'user'='user_source', 'password'='paSs1234@56789') "
+              + "with processor ('processor'='rename-database-processor', "
+              + "'new-db-name'='pipe_newDB4') "
+              + "with sink ('sink'='write-back-sink', 'user'='user_sink', "
+              + "'password'='paSs1234@56789')");
+
+      await()
+          .pollInSameThread()
+          .pollInterval(1, TimeUnit.SECONDS)
+          .during(15, TimeUnit.SECONDS)
+          .atMost(30, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                final Set<String> actualPipeNames = new HashSet<>();
+                try (final ResultSet resultSet = statement.executeQuery("SHOW PIPES")) {
+                  while (resultSet.next()) {
+                    actualPipeNames.add(resultSet.getString("ID"));
+                  }
+                }
+                Assert.assertEquals(expectedPipeNames, actualPipeNames);
+              });
+    }
   }
 }

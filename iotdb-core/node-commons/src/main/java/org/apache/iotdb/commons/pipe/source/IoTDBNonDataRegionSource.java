@@ -20,10 +20,11 @@
 package org.apache.iotdb.commons.pipe.source;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -41,6 +42,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -52,6 +55,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @TreeModel
 @TableModel
 public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBNonDataRegionSource.class);
 
   protected IoTDBTreePatternOperations treePattern;
   protected TablePattern tablePattern;
@@ -67,6 +72,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   // If the extractor is closed, it should not be started again. This is to avoid the case that
   // the extractor is closed and then be reused by processor.
   protected final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
+  private final AtomicBoolean hasWarnedUnexpectedHybridProgressIndex = new AtomicBoolean(false);
 
   protected PipeWritePlanEvent lastEvent = null;
 
@@ -84,7 +90,8 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         && (((IoTDBTreePatternOperations) pattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
-              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              PipeMessages
+                  .EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8,
               pattern.getPattern()));
     }
     treePattern = (IoTDBTreePatternOperations) pattern;
@@ -98,14 +105,15 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     }
 
     final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    warnIfUnexpectedHybridProgressIndex(progressIndex);
+    final MetaProgressIndex metaProgressIndex = extractMetaProgressIndex(progressIndex);
     final long nextIndex =
-        progressIndex instanceof MinimumProgressIndex
+        Objects.isNull(metaProgressIndex)
                 // If the index is invalid, the queue is seen as cleared before and thus
                 // needs snapshot re-transferring
-                || !getListeningQueue()
-                    .isGivenNextIndexValid(((MetaProgressIndex) progressIndex).getIndex() + 1)
+                || !getListeningQueue().isGivenNextIndexValid(metaProgressIndex.getIndex() + 1)
             ? getNextIndexAfterSnapshot()
-            : ((MetaProgressIndex) progressIndex).getIndex() + 1;
+            : metaProgressIndex.getIndex() + 1;
     iterator = getListeningQueue().newIterator(nextIndex);
     super.start();
   }
@@ -118,7 +126,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         triggerSnapshot();
         nextIndex = findSnapshot(false);
         if (nextIndex == Long.MIN_VALUE) {
-          throw new PipeException("Cannot get the newest snapshot after triggering one.");
+          throw new PipeException(PipeMessages.CANNOT_GET_NEWEST_SNAPSHOT);
         }
       }
     } else {
@@ -294,10 +302,31 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     if (Objects.isNull(pipeTaskMeta)) {
       return 0L;
     }
-    return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
-        ? getListeningQueue().getTailIndex()
-            - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()
-            - 1
+    final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    warnIfUnexpectedHybridProgressIndex(progressIndex);
+    final MetaProgressIndex metaProgressIndex = extractMetaProgressIndex(progressIndex);
+    return Objects.nonNull(metaProgressIndex)
+        ? getListeningQueue().getTailIndex() - metaProgressIndex.getIndex() - 1
         : getListeningQueue().getSize() + historicalEventsCount;
+  }
+
+  private static MetaProgressIndex extractMetaProgressIndex(final ProgressIndex progressIndex) {
+    return Objects.isNull(progressIndex)
+        ? null
+        : progressIndex.getProgressIndexByType(MetaProgressIndex.class).orElse(null);
+  }
+
+  private void warnIfUnexpectedHybridProgressIndex(final ProgressIndex progressIndex) {
+    if (Objects.nonNull(progressIndex)
+        && progressIndex.getProgressIndexByType(HybridProgressIndex.class).isPresent()
+        && hasWarnedUnexpectedHybridProgressIndex.compareAndSet(false, true)) {
+      LOGGER.warn(
+          PipeMessages
+              .LOG_PIPE_ARG_ARG_ENCOUNTERED_AN_UNEXPECTED_HYBRIDPROGRESSINDEX_IN_ARG_PROGRESS_INDEX_ARG_7C578B17,
+          pipeName,
+          creationTime,
+          getClass().getSimpleName(),
+          progressIndex);
+    }
   }
 }

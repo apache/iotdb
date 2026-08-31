@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -42,6 +43,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
@@ -497,7 +499,8 @@ public class ConfigMTree {
     IConfigMNode child;
 
     if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
-      throw new MetadataException("Template already exists on " + cur.getFullPath());
+      throw new MetadataException(
+          ConfigNodeMessages.TEMPLATE_ALREADY_EXISTS_ON + cur.getFullPath());
     }
 
     for (int i = 1; i < nodeNames.length; i++) {
@@ -507,7 +510,8 @@ public class ConfigMTree {
       }
       cur = child;
       if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
-        throw new MetadataException("Template already exists on " + cur.getFullPath());
+        throw new MetadataException(
+            ConfigNodeMessages.TEMPLATE_ALREADY_EXISTS_ON + cur.getFullPath());
       }
     }
 
@@ -526,7 +530,8 @@ public class ConfigMTree {
         continue;
       }
       if (child.getSchemaTemplateId() != NON_TEMPLATE) {
-        throw new MetadataException("Template already exists on " + child.getFullPath());
+        throw new MetadataException(
+            ConfigNodeMessages.TEMPLATE_ALREADY_EXISTS_ON + child.getFullPath());
       }
       checkTemplateOnSubtree(child);
     }
@@ -658,7 +663,7 @@ public class ConfigMTree {
     }
     if (cur.getSchemaTemplateId() != templateId) {
       throw new MetadataException(
-          String.format("Template %s is not set on path %s", templateId, path));
+          String.format(ConfigNodeMessages.TEMPLATE_IS_NOT_SET_ON_PATH, templateId, path));
     }
     return cur;
   }
@@ -748,6 +753,16 @@ public class ConfigMTree {
       throw new IllegalStateException();
     }
     tableNode.setStatus(TableNodeStatus.PRE_DELETE);
+  }
+
+  public void rollbackPreDeleteTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      return;
+    }
+    final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    tableNode.setStatus(TableNodeStatus.USING);
   }
 
   public void dropTable(final PartialPath database, final String tableName)
@@ -841,19 +856,25 @@ public class ConfigMTree {
   }
 
   public Map<String, TsTable> getSpecificTablesUnderSpecificDatabase(
-      final PartialPath databasePath, final Set<String> tables) throws MetadataException {
+      final PartialPath databasePath,
+      final Set<String> tables,
+      final Set<TableNodeStatus> statusSet)
+      throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
     final Map<String, TsTable> result = new HashMap<>();
-    tables.forEach(
-        table -> {
-          final IConfigMNode child = databaseNode.getChildren().get(table);
-          if (child instanceof ConfigTableNode
-              && ((ConfigTableNode) child).getStatus().equals(TableNodeStatus.USING)) {
-            result.put(table, ((ConfigTableNode) child).getTable());
-          } else {
-            result.put(table, null);
-          }
-        });
+    for (final String tableName : tables) {
+      final IConfigMNode child = databaseNode.getChildren().get(tableName);
+      if (child instanceof ConfigTableNode
+          && statusSet.contains(((ConfigTableNode) child).getStatus())) {
+        TsTable table =
+            ((ConfigTableNode) child).getStatus() == TableNodeStatus.PRE_DELETE
+                ? new PreDeleteTsTable(tableName)
+                : ((ConfigTableNode) child).getTable();
+        result.put(tableName, table);
+      } else {
+        result.put(tableName, null);
+      }
+    }
     return result;
   }
 
@@ -889,7 +910,12 @@ public class ConfigMTree {
                 }));
   }
 
-  public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
+  public Map<String, List<TsTable>> getAllSpecialStatusTables(TableNodeStatus tableNodeStatus)
+      throws MetadataException {
+    if (TableNodeStatus.PRE_CREATE != tableNodeStatus
+        && TableNodeStatus.PRE_DELETE != tableNodeStatus) {
+      throw new SemanticException("Invalid table status " + tableNodeStatus);
+    }
     final Map<String, List<TsTable>> result = new HashMap<>();
     final List<PartialPath> databaseList = getAllDatabasePaths(true);
     for (final PartialPath databasePath : databaseList) {
@@ -898,7 +924,7 @@ public class ConfigMTree {
       for (final IConfigMNode child : databaseNode.getChildren().values()) {
         if (child instanceof ConfigTableNode) {
           final ConfigTableNode tableNode = (ConfigTableNode) child;
-          if (!tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
+          if (!tableNode.getStatus().equals(tableNodeStatus)) {
             continue;
           }
           result.computeIfAbsent(database, k -> new ArrayList<>()).add(tableNode.getTable());
@@ -943,6 +969,11 @@ public class ConfigMTree {
               && databaseNode.getDatabaseSchema().isSetTTL()
               && databaseNode.getDatabaseSchema().getTTL() != Long.MAX_VALUE) {
             table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
+          } else if (k.equals(TsTable.NEED_LAST_CACHE_PROPERTY)
+              && databaseNode.getDatabaseSchema().isSetNeedLastCache()) {
+            table.addProp(
+                TsTable.NEED_LAST_CACHE_PROPERTY,
+                String.valueOf(databaseNode.getDatabaseSchema().isNeedLastCache()));
           } else {
             table.removeProp(k);
           }
@@ -972,7 +1003,7 @@ public class ConfigMTree {
     }
     if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG
         || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
-      throw new SemanticException("Dropping tag or time column is not supported.");
+      throw new SemanticException(ConfigNodeMessages.DROPPING_TAG_OR_TIME_COLUMN_IS_NOT_SUPPORTED);
     }
 
     node.addPreDeletedColumn(columnName);
@@ -1001,13 +1032,14 @@ public class ConfigMTree {
           PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
     }
     if (columnSchema.getColumnCategory() != TsTableColumnCategory.FIELD) {
-      throw new SemanticException("Can only alter datatype of FIELD columns");
+      throw new SemanticException(ConfigNodeMessages.CAN_ONLY_ALTER_DATATYPE_OF_FIELD_COLUMNS);
     }
     if (!MetadataUtils.canAlter(columnSchema.getDataType(), dataType)) {
       throw new SemanticException(
           String.format(
-              "New type %s is not compatible with the existing one %s",
-              dataType, columnSchema.getDataType()));
+              ConfigNodeMessages.NEW_TYPE_IS_NOT_COMPATIBLE_WITH_THE_EXISTING_ONE,
+              dataType,
+              columnSchema.getDataType()));
     }
 
     node.addPreAlteredColumn(columnName, dataType);
@@ -1166,7 +1198,8 @@ public class ConfigMTree {
     }
   }
 
-  public void deserialize(final InputStream inputStream) throws IOException {
+  public void deserialize(final InputStream inputStream, final ConfigSchemaStatistics statistics)
+      throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
 
     String name;
@@ -1174,11 +1207,16 @@ public class ConfigMTree {
     final Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
     IConfigMNode databaseMNode;
     IConfigMNode internalMNode;
-    IConfigMNode tableNode;
+    ConfigTableNode tableNode;
 
     if (type == DATABASE_MNODE_TYPE) {
       databaseMNode = deserializeDatabaseMNode(inputStream);
       name = databaseMNode.getName();
+      if (isTableModel) {
+        statistics.increaseTableDatabaseNum();
+      } else {
+        statistics.increaseTreeDatabaseNum();
+      }
       stack.push(new Pair<>(databaseMNode, true));
     } else if (type == TABLE_MNODE_TYPE) {
       tableNode = deserializeTableMNode(inputStream);
@@ -1207,20 +1245,33 @@ public class ConfigMTree {
           name = internalMNode.getName();
           break;
         case DATABASE_MNODE_TYPE:
-          databaseMNode = deserializeDatabaseMNode(inputStream).getAsMNode();
+          databaseMNode = deserializeDatabaseMNode(inputStream);
           while (!stack.isEmpty() && Boolean.FALSE.equals(stack.peek().right)) {
-            databaseMNode.addChild(stack.pop().left);
+            final IConfigMNode node = stack.pop().left;
+            databaseMNode.addChild(node);
+            if (node instanceof ConfigTableNode) {
+              if (TreeViewSchema.isTreeViewTable(((ConfigTableNode) node).getTable())) {
+                statistics.increaseTreeViewTableNum(databaseMNode.getName());
+              } else {
+                statistics.increaseBaseTableNum(databaseMNode.getName());
+              }
+            }
+          }
+          if (isTableModel) {
+            statistics.increaseTableDatabaseNum();
+          } else {
+            statistics.increaseTreeDatabaseNum();
           }
           stack.push(new Pair<>(databaseMNode, true));
           name = databaseMNode.getName();
           break;
         case TABLE_MNODE_TYPE:
-          tableNode = deserializeTableMNode(inputStream).getAsMNode();
+          tableNode = deserializeTableMNode(inputStream);
           stack.push(new Pair<>(tableNode, false));
           name = tableNode.getName();
           break;
         default:
-          logger.error("Unrecognized node type {} when recovering the mTree.", type);
+          logger.error(ConfigNodeMessages.UNRECOGNIZED_NODE_TYPE_WHEN_RECOVERING_THE_MTREE, type);
           return;
       }
     }

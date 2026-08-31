@@ -21,6 +21,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.slf4j.Logger;
 
@@ -28,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Objects;
+import java.util.function.LongConsumer;
 
 public class SchemaRegionUtils {
 
@@ -37,39 +40,63 @@ public class SchemaRegionUtils {
 
   public static void deleteSchemaRegionFolder(String schemaRegionDirPath, Logger logger)
       throws MetadataException {
+    deleteSchemaRegionFolder(schemaRegionDirPath, logger, null);
+  }
+
+  public static void deleteSchemaRegionFolder(
+      String schemaRegionDirPath, Logger logger, LongConsumer deleteRateLimiter)
+      throws MetadataException {
     File schemaRegionDir = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     File[] sgFiles = schemaRegionDir.listFiles();
     if (sgFiles == null) {
       throw new MetadataException(
-          String.format("Can't get files in schema region dir %s", schemaRegionDirPath));
+          String.format(
+              DataNodeSchemaMessages.CANNOT_GET_FILES_IN_SCHEMA_REGION_DIR, schemaRegionDirPath));
     }
     for (File file : sgFiles) {
       try {
+        if (deleteRateLimiter != null) {
+          deleteRateLimiter.accept(FileUtils.estimateFileOrDirectoryRemoveCost(file));
+        }
         Files.delete(file.toPath());
-        logger.info("Delete schema region file {}", file.getAbsolutePath());
+        logger.info(DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FILE, file.getAbsolutePath());
       } catch (IOException e) {
-        logger.warn("Delete schema region file {} failed.", file.getAbsolutePath());
+        logger.warn(
+            DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FILE_FAILED, file.getAbsolutePath());
         throw new MetadataException(
-            String.format("Failed to delete schema region file %s", file.getAbsolutePath()));
+            String.format(
+                DataNodeSchemaMessages.FAILED_TO_DELETE_SCHEMA_REGION_FILE,
+                file.getAbsolutePath()));
       }
     }
 
     try {
+      if (deleteRateLimiter != null) {
+        deleteRateLimiter.accept(FileUtils.estimateFileOrDirectoryRemoveCost(schemaRegionDir));
+      }
       Files.delete(schemaRegionDir.toPath());
-      logger.info("Delete schema region folder {}", schemaRegionDir.getAbsolutePath());
+      logger.info(
+          DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FOLDER, schemaRegionDir.getAbsolutePath());
     } catch (IOException e) {
-      logger.warn("Delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
+      logger.warn(
+          DataNodeSchemaMessages.DELETE_SCHEMA_REGION_FOLDER_FAILED,
+          schemaRegionDir.getAbsolutePath());
       throw new MetadataException(
           String.format(
-              "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
+              DataNodeSchemaMessages.FAILED_TO_DELETE_SCHEMA_REGION_FOLDER,
+              schemaRegionDir.getAbsolutePath()));
     }
     final File storageGroupDir = schemaRegionDir.getParentFile();
     if (Objects.requireNonNull(storageGroupDir.listFiles()).length == 0) {
       try {
         Files.delete(storageGroupDir.toPath());
-        logger.info("Delete database schema folder {}", storageGroupDir.getAbsolutePath());
+        logger.info(
+            DataNodeSchemaMessages.DELETE_DATABASE_SCHEMA_FOLDER,
+            storageGroupDir.getAbsolutePath());
       } catch (IOException e) {
-        logger.warn("Delete database schema folder {} failed", storageGroupDir.getAbsolutePath());
+        logger.warn(
+            DataNodeSchemaMessages.DELETE_DATABASE_SCHEMA_FOLDER_FAILED,
+            storageGroupDir.getAbsolutePath());
       }
     }
   }

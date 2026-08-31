@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.MatchState;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.PatternSegment;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.Point;
@@ -95,7 +96,7 @@ public class QetchAlgorithm {
             j++;
           } else {
             throw new IllegalArgumentException(
-                "Invalid pattern: " + pattern + ", missing repeat sign after '}'");
+                String.format(QueryMessages.INVALID_PATTERN_MISSING_REPEAT_SIGN, pattern));
           }
         } else if (Character.isDigit(c) || c == '.' || c == '-') {
           // scan the number, and push it to the list
@@ -252,10 +253,7 @@ public class QetchAlgorithm {
     }
     if (!hasDataSegment) {
       throw new IllegalArgumentException(
-          "Invalid pattern: '"
-              + pattern
-              + "'. Pattern must contain at least two numeric data points separated by commas,"
-              + " e.g., '1,2,3'");
+          String.format(QueryMessages.INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS, pattern));
     }
 
     // trans multi dataSegment to automaton

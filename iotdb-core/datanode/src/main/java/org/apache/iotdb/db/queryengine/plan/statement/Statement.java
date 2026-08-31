@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 
@@ -63,7 +64,7 @@ public abstract class Statement extends StatementNode {
 
   public org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement
       toRelationalStatement(final MPPQueryContext context) {
-    throw new UnsupportedOperationException("Method not implemented yet");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.METHOD_NOT_IMPLEMENTED_YET);
   }
 
   public String getPipeLoggingString() {

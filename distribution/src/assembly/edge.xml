@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<assembly>
+    <id>edge-bin</id>
+    <formats>
+        <format>dir</format>
+        <format>zip</format>
+    </formats>
+    <baseDirectory>apache-iotdb-${project.version}-edge-bin</baseDirectory>
+    <dependencySets>
+        <dependencySet>
+            <includes>
+                <include>*:iotdb-server:zip:*</include>
+                <include>*:iotdb-cli:zip:*</include>
+                <include>*:iotdb-confignode:zip:*</include>
+            </includes>
+            <outputDirectory>${file.separator}</outputDirectory>
+            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+            <unpack>true</unpack>
+            <unpackOptions>
+                <excludes>
+                    <exclude>tools/**</exclude>
+                    <exclude>conf/**</exclude>
+                    <exclude>sbin/**</exclude>
+                </excludes>
+            </unpackOptions>
+        </dependencySet>
+    </dependencySets>
+    <fileSets>
+        <!-- jmx credentials and the tool logback come from the datanode resources;
+             logback-datanode.xml is replaced by the merged logback-edge.xml below. -->
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/conf</directory>
+            <excludes>
+                <exclude>logback-datanode.xml</exclude>
+            </excludes>
+        </fileSet>
+        <!-- iotdb-system.properties is replaced by the edge-tuned one below. -->
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
+            <excludes>
+                <exclude>iotdb-system.properties</exclude>
+                <exclude>edge/**</exclude>
+            </excludes>
+        </fileSet>
+        <!-- edge-specific system configuration. -->
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf/edge</directory>
+        </fileSet>
+        <!-- merged logback configuration for the single Edge process. -->
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/src/assembly/resources/conf-edge</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/../scripts/conf</directory>
+            <includes>
+                <include>edge-env.sh</include>
+                <include>windows/edge-env.bat</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/../scripts/conf</directory>
+            <includes>
+                <include>iotdb-common.sh</include>
+                <include>windows/iotdb-common.bat</include>
+            </includes>
+            <filtered>true</filtered>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <!-- one pair of start/stop scripts for the merged process, plus the cli. -->
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${project.basedir}/../scripts/sbin</directory>
+            <includes>
+                <include>start-edge.sh</include>
+                <include>stop-edge.sh</include>
+                <include>start-cli.sh</include>
+                <include>windows/start-edge.bat</include>
+                <include>windows/check-edge.ps1</include>
+                <include>windows/stop-edge.bat</include>
+                <include>windows/start-cli.bat</include>
+                <include>windows/start-cli-table.bat</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <!-- Keep node-independent tools. Edge does not package the standalone node launchers or
+             environment files required by the excluded destructive, daemon, and health scripts. -->
+        <fileSet>
+            <outputDirectory>tools</outputDirectory>
+            <directory>${project.basedir}/../scripts/tools</directory>
+            <excludes>
+                <exclude>*ainode.*</exclude>
+                <exclude>**/*ainode.*</exclude>
+                <exclude>ops/daemon-*.sh</exclude>
+                <exclude>ops/destroy-*.sh</exclude>
+                <exclude>ops/health_check.sh</exclude>
+                <exclude>windows/ops/destroy-*.bat</exclude>
+                <exclude>windows/ops/health_check.bat</exclude>
+            </excludes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+    </fileSets>
+    <files>
+        <file>
+            <source>${project.basedir}/../iotdb-client/cli/src/assembly/resources/conf/logback-backup.xml</source>
+            <outputDirectory>conf</outputDirectory>
+            <fileMode>0755</fileMode>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/rest/target/rest-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
+    </files>
+    <componentDescriptors>
+        <componentDescriptor>common-files.xml</componentDescriptor>
+    </componentDescriptors>
+</assembly>

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 
 import org.slf4j.Logger;
@@ -147,13 +148,13 @@ public class ClusterTopology {
 
     if (!newReachable.equals(oldReachable)) {
       LOGGER.info(
-          "[Topology] latest view from config-node for myself({}): {}", myself, newReachable);
+          DataNodeQueryMessages.TOPOLOGY_LATEST_VIEW_FROM_CONFIG_NODE, myself, newReachable);
       for (int toId : dataNodes.keySet()) {
         boolean wasReachable = oldReachable.contains(toId);
         boolean nowReachable = newReachable.contains(toId);
         if (wasReachable != nowReachable) {
           LOGGER.info(
-              "[Topology] DataNode {} is now {} to myself({})",
+              DataNodeQueryMessages.TOPOLOGY_DATANODE_REACHABILITY_CHANGED,
               toId,
               nowReachable ? "reachable" : "unreachable",
               myself);

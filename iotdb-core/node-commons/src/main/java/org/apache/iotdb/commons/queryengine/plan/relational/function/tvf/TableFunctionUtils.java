@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.function.tvf;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.Collections;
@@ -29,7 +30,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class TableFunctionUtils {
-  private static final String INVALID_OPTIONS_FORMAT = "Invalid options: %s";
 
   public static Map<String, String> parseOptions(String options) {
     if (options.isEmpty()) {
@@ -37,14 +37,14 @@ public class TableFunctionUtils {
     }
     String[] optionArray = options.split(",");
     if (optionArray.length == 0) {
-      throw new SemanticException(String.format(INVALID_OPTIONS_FORMAT, options));
+      throw new SemanticException(String.format(QueryMessages.INVALID_OPTIONS, options));
     }
 
     Map<String, String> optionsMap = new HashMap<>(optionArray.length);
     for (String option : optionArray) {
       int index = option.indexOf('=');
       if (index == -1 || index == option.length() - 1) {
-        throw new SemanticException(String.format(INVALID_OPTIONS_FORMAT, option));
+        throw new SemanticException(String.format(QueryMessages.INVALID_OPTIONS, option));
       }
       String key = option.substring(0, index).trim();
       String value = option.substring(index + 1).trim();
@@ -66,9 +66,7 @@ public class TableFunctionUtils {
   public static void checkType(Type type, String columnName) {
     if (!ALLOWED_INPUT_TYPES.contains(type)) {
       throw new SemanticException(
-          String.format(
-              "The type of the column [%s] is [%s], only INT32, INT64, FLOAT, DOUBLE is allowed",
-              columnName, type));
+          String.format(QueryMessages.COLUMN_TYPE_NOT_ALLOWED, columnName, type));
     }
   }
 }

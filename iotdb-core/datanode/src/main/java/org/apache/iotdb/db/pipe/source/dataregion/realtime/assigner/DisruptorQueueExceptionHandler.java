@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.ExceptionHandler;
 
 import org.slf4j.Logger;
@@ -30,16 +31,16 @@ public class DisruptorQueueExceptionHandler implements ExceptionHandler<Object> 
 
   @Override
   public void handleEventException(final Throwable ex, final long sequence, final Object event) {
-    LOGGER.error("Exception processing: {} {}", sequence, event, ex);
+    LOGGER.error(DataNodePipeMessages.EXCEPTION_PROCESSING, sequence, event, ex);
   }
 
   @Override
   public void handleOnStartException(final Throwable ex) {
-    LOGGER.warn("Exception during onStart()", ex);
+    LOGGER.warn(DataNodePipeMessages.EXCEPTION_DURING_ONSTART, ex);
   }
 
   @Override
   public void handleOnShutdownException(final Throwable ex) {
-    LOGGER.warn("Exception during onShutdown()", ex);
+    LOGGER.warn(DataNodePipeMessages.EXCEPTION_DURING_ONSHUTDOWN, ex);
   }
 }

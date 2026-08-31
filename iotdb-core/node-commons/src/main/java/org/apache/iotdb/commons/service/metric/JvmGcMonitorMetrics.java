@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -109,7 +110,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     if (scheduledGcMonitorFuture != null) {
       scheduledGcMonitorFuture.cancel(false);
       scheduledGcMonitorFuture = null;
-      logger.info("JVM GC scheduled monitor is stopped successfully.");
+      logger.info(ServiceMessages.JVM_GC_MONITOR_STOPPED);
     }
   }
 

@@ -21,8 +21,9 @@ package org.apache.iotdb.db.pipe.sink.protocol.websocket;
 
 import org.apache.iotdb.commons.external.collections4.BidiMap;
 import org.apache.iotdb.commons.external.collections4.bidimap.DualTreeBidiMap;
-import org.apache.iotdb.commons.pipe.datastructure.Triple;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -59,9 +60,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventWaitingForAck>>
       eventsWaitingForAck = new ConcurrentHashMap<>();
 
-  // Pipe name, creation time, region id
-  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
-      ConcurrentHashMap.newKeySet();
+  private final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
 
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
@@ -117,33 +116,33 @@ public class WebSocketConnectorServer extends WebSocketServer {
           .forEach((eventId, eventWrapper) -> discardEvent(eventWrapper.event));
     }
 
-    droppedPipeTaskKeys.removeIf(key -> key.getFirst().equals(pipeName));
+    droppedPipeTaskKeys.removeIf(key -> key.getPipeName().equals(pipeName));
   }
 
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
-    droppedPipeTaskKeys.add(new Triple<>(pipeNameToDrop, creationTimeToDrop, regionId));
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    droppedPipeTaskKeys.add(committerKey);
 
     final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
-        eventsWaitingForTransfer.get(pipeNameToDrop);
+        eventsWaitingForTransfer.get(committerKey.getPipeName());
     if (eventTransferQueue != null) {
       eventTransferQueue.removeIf(
-          eventWrapper ->
-              discardIfMatches(eventWrapper.event, pipeNameToDrop, creationTimeToDrop, regionId));
+          eventWrapper -> discardIfMatches(eventWrapper.event, committerKey));
       synchronized (eventTransferQueue) {
         eventTransferQueue.notifyAll();
       }
     }
 
     final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
-        eventsWaitingForAck.get(pipeNameToDrop);
+        eventsWaitingForAck.get(committerKey.getPipeName());
     if (eventId2EventMap != null) {
       eventId2EventMap
           .entrySet()
-          .removeIf(
-              entry ->
-                  discardIfMatches(
-                      entry.getValue().event, pipeNameToDrop, creationTimeToDrop, regionId));
+          .removeIf(entry -> discardIfMatches(entry.getValue().event, committerKey));
     }
   }
 
@@ -156,7 +155,9 @@ public class WebSocketConnectorServer extends WebSocketServer {
   @Override
   public void onStart() {
     LOGGER.info(
-        "The websocket server {}:{} has been started!", getAddress().getHostName(), getPort());
+        DataNodePipeMessages.THE_WEBSOCKET_SERVER_HAS_BEEN_STARTED,
+        getAddress().getHostName(),
+        getPort());
   }
 
   public boolean isStarted() {
@@ -166,7 +167,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   @Override
   public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
     LOGGER.info(
-        "The websocket connection from client {}:{} has been opened!",
+        DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_CLIENT_HAS_BEEN_2,
         webSocket.getRemoteSocketAddress().getHostName(),
         webSocket.getRemoteSocketAddress().getPort());
   }
@@ -175,8 +176,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   public void onClose(WebSocket webSocket, int code, String reason, boolean remote) {
     if (webSocket.getRemoteSocketAddress() != null) {
       LOGGER.info(
-          "The websocket connection from client {}:{} has been closed! "
-              + "The code is {}. The reason is {}. Is it closed by remote? {}",
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_CLIENT_HAS_BEEN_1,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort(),
           code,
@@ -184,11 +184,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
           remote);
     } else {
       LOGGER.warn(
-          "The websocket connection from client has been closed!"
-              + "The code is {}. The reason is {}. Is it closed by remote? {}",
-          code,
-          reason,
-          remote);
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_CLIENT_HAS_BEEN, code, reason, remote);
     }
     router.remove(router.getKey(webSocket));
   }
@@ -197,7 +193,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   public void onMessage(WebSocket webSocket, String s) {
     if (s.startsWith("BIND")) {
       LOGGER.info(
-          "Received a bind message from {}:{}",
+          DataNodePipeMessages.RECEIVED_A_BIND_MESSAGE_FROM,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort());
 
@@ -205,7 +201,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     } else if (s.startsWith("ACK")) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Received a ack message from {}:{}",
+            DataNodePipeMessages.RECEIVED_A_ACK_MESSAGE_FROM,
             webSocket.getRemoteSocketAddress().getHostName(),
             webSocket.getRemoteSocketAddress().getPort());
       }
@@ -213,7 +209,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
       handleAck(webSocket, Long.parseLong(s.replace("ACK:", "")));
     } else if (s.startsWith("ERROR")) {
       LOGGER.warn(
-          "Received an error message {} from {}:{}",
+          DataNodePipeMessages.RECEIVED_AN_ERROR_MESSAGE_FROM,
           s,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort());
@@ -221,7 +217,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
       handleError(webSocket, Long.parseLong(s.replace("ERROR:", "")));
     } else {
       LOGGER.warn(
-          "Received an unknown message {} from {}:{}",
+          DataNodePipeMessages.RECEIVED_AN_UNKNOWN_MESSAGE_FROM,
           s,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort());
@@ -243,8 +239,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     final String pipeName = router.getKey(webSocket);
     if (pipeName == null) {
       LOGGER.warn(
-          "The websocket connection from {}:{} has been closed, "
-              + "but the ack message of commitId: {} is received.",
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_HAS_BEEN_CLOSED,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort(),
           eventId);
@@ -254,14 +249,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
     final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
         eventsWaitingForAck.get(pipeName);
     if (eventId2EventMap == null) {
-      LOGGER.warn(
-          "The pipe {} was dropped so the event ack {} will be ignored.", pipeName, eventId);
+      LOGGER.warn(DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT, pipeName, eventId);
       return;
     }
 
     final EventWaitingForAck eventWrapper = eventId2EventMap.remove(eventId);
     if (eventWrapper == null) {
-      LOGGER.warn("The event ack {} is not found.", eventId);
+      LOGGER.warn(DataNodePipeMessages.THE_EVENT_ACK_IS_NOT_FOUND, eventId);
       return;
     }
 
@@ -274,8 +268,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     final String pipeName = router.getKey(webSocket);
     if (pipeName == null) {
       LOGGER.warn(
-          "The websocket connection from {}:{} has been closed, "
-              + "but the error message of commitId: {} is received.",
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_HAS_BEEN_CLOSED_1,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort(),
           eventId);
@@ -287,19 +280,17 @@ public class WebSocketConnectorServer extends WebSocketServer {
     final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
         eventsWaitingForTransfer.get(pipeName);
     if (eventId2EventMap == null || eventTransferQueue == null) {
-      LOGGER.warn(
-          "The pipe {} was dropped so the event in error {} will be ignored.", pipeName, eventId);
+      LOGGER.warn(DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT_1, pipeName, eventId);
       return;
     }
 
     final EventWaitingForAck eventWrapper = eventId2EventMap.remove(eventId);
     if (eventWrapper == null) {
-      LOGGER.warn("The event in error {} is not found.", eventId);
+      LOGGER.warn(DataNodePipeMessages.THE_EVENT_IN_ERROR_IS_NOT_FOUND, eventId);
       return;
     }
 
-    LOGGER.warn(
-        "The tablet of commitId: {} can't be parsed by client, it will be retried later.", eventId);
+    LOGGER.warn(DataNodePipeMessages.THE_TABLET_OF_COMMITID_CAN_T_BE, eventId);
     synchronized (eventTransferQueue) {
       eventTransferQueue.put(
           new EventWaitingForTransfer(eventId, eventWrapper.connector, eventWrapper.event));
@@ -310,13 +301,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
   public void onError(WebSocket webSocket, Exception e) {
     if (webSocket.getRemoteSocketAddress() != null) {
       LOGGER.warn(
-          "Got an error \"{}\" from {}:{}.",
+          DataNodePipeMessages.GOT_AN_ERROR_FROM,
           e.getMessage(),
           webSocket.getLocalSocketAddress().getHostName(),
           webSocket.getLocalSocketAddress().getPort(),
           e);
     } else {
-      LOGGER.warn("Got an error \"{}\" from an unknown client.", e.getMessage(), e);
+      LOGGER.warn(DataNodePipeMessages.GOT_AN_ERROR_FROM_AN_UNKNOWN_CLIENT, e.getMessage(), e);
       // if the remote socket address is null, it means the connection is not established yet.
       // we should close the connection manually.
       router.remove(router.getKey(webSocket));
@@ -334,7 +325,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
         eventsWaitingForTransfer.get(pipeName);
 
     if (queue == null) {
-      LOGGER.warn("The pipe {} was dropped so the event {} will be dropped.", connector, event);
+      LOGGER.warn(DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT_2, connector, event);
       discardEvent(event);
       return;
     }
@@ -401,7 +392,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
             }
             transfer(pipeName, queueElement);
           } catch (InterruptedException e) {
-            LOGGER.warn("The transfer thread is interrupted.", e);
+            LOGGER.warn(DataNodePipeMessages.THE_TRANSFER_THREAD_IS_INTERRUPTED, e);
             Thread.currentThread().interrupt();
           }
         }
@@ -424,8 +415,8 @@ public class WebSocketConnectorServer extends WebSocketServer {
           tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
         } else {
           throw new NotImplementedException(
-              "IoTDBCDCConnector only support "
-                  + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
+              DataNodePipeMessages
+                  .IOTDBCDCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTAB);
         }
 
         if (tabletBuffer == null) {
@@ -452,8 +443,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
         final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
             eventsWaitingForAck.get(pipeName);
         if (eventId2EventMap == null) {
-          LOGGER.warn(
-              "The pipe {} was dropped so the event ack {} will be ignored.", pipeName, eventId);
+          LOGGER.warn(DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT, pipeName, eventId);
           discardEvent(event);
           return;
         }
@@ -464,13 +454,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
               eventsWaitingForTransfer.get(pipeName);
           if (queue == null || isDroppedPipe(event)) {
             LOGGER.warn(
-                "The pipe {} was dropped so the event {} will be dropped.", pipeName, eventId);
+                DataNodePipeMessages.THE_PIPE_WAS_DROPPED_SO_THE_EVENT_2, pipeName, eventId);
             discardEvent(event);
             return;
           }
 
-          LOGGER.warn(
-              "The event {} can't be transferred to client, it will be retried later.", eventId, e);
+          LOGGER.warn(DataNodePipeMessages.THE_EVENT_CAN_T_BE_TRANSFERRED_TO, eventId, e);
           queue.put(new EventWaitingForTransfer(eventId, connector, event));
         }
       }
@@ -484,7 +473,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
       try {
         Thread.sleep(10000);
       } catch (InterruptedException e) {
-        LOGGER.warn("The transfer thread is interrupted.", e);
+        LOGGER.warn(DataNodePipeMessages.THE_TRANSFER_THREAD_IS_INTERRUPTED, e);
         Thread.currentThread().interrupt();
       }
       return true;
@@ -515,19 +504,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
     }
   }
 
-  private boolean discardIfMatches(
-      final Event event,
-      final String pipeNameToDrop,
-      final long creationTimeToDrop,
-      final int regionId) {
+  private boolean discardIfMatches(final Event event, final CommitterKey committerKey) {
     if (!(event instanceof EnrichedEvent)) {
       return false;
     }
 
     final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
-    if (!pipeNameToDrop.equals(enrichedEvent.getPipeName())
-        || creationTimeToDrop != enrichedEvent.getCreationTime()
-        || regionId != enrichedEvent.getRegionId()) {
+    if (!isEventFromPipe(enrichedEvent, committerKey)) {
       return false;
     }
 
@@ -537,11 +520,16 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private boolean isDroppedPipe(final Event event) {
     return event instanceof EnrichedEvent
-        && droppedPipeTaskKeys.contains(
-            new Triple<>(
-                ((EnrichedEvent) event).getPipeName(),
-                ((EnrichedEvent) event).getCreationTime(),
-                ((EnrichedEvent) event).getRegionId()));
+        && droppedPipeTaskKeys.stream()
+            .anyMatch(key -> isEventFromPipe((EnrichedEvent) event, key));
+  }
+
+  private static boolean isEventFromPipe(
+      final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
   }
 
   private boolean isQueueAvailable(

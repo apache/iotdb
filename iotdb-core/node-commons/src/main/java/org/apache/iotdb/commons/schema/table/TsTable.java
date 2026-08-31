@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.schema.table;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -39,8 +41,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +65,10 @@ public class TsTable {
   public static final String TIME_COLUMN_NAME = "time";
   public static final String COMMENT_KEY = "__comment";
   public static final String TTL_PROPERTY = "ttl";
-  public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
+  public static final String NEED_LAST_CACHE_PROPERTY = "need_last_cache";
+  public static final Set<String> TABLE_ALLOWED_PROPERTIES =
+      Collections.unmodifiableSet(
+          new HashSet<>(Arrays.asList(TTL_PROPERTY, NEED_LAST_CACHE_PROPERTY)));
   private static final String OBJECT_STRING_ERROR =
       "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
   protected String tableName;
@@ -88,11 +95,29 @@ public class TsTable {
 
   // Cache, avoid string parsing
   private transient long ttlValue = Long.MIN_VALUE;
+  private transient Boolean needLastCache = null;
   private transient int tagNums = 0;
   private transient int fieldNum = 0;
 
   // Initiated during creation and never changed the reference
   private transient TsTableColumnSchema timeColumnSchema;
+
+  public enum TsTableMarker {
+
+    // do not use the -2 as the marker, reserve for writable view
+    NON_COMMIT_TABLE_MARKER(-1),
+    PRE_DELETE_TABLE_MARKER(-3);
+
+    private final int type;
+
+    TsTableMarker(int type) {
+      this.type = type;
+    }
+
+    public int getType() {
+      return type;
+    }
+  }
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
@@ -263,7 +288,8 @@ public class TsTable {
           final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
           if (columnSchema != null
               && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-            throw new SchemaExecutionException("Cannot remove an tag column: " + columnName);
+            throw new SchemaExecutionException(
+                SchemaMessages.CANNOT_REMOVE_TAG_COLUMN + columnName);
           } else if (columnSchema != null) {
             columnSchemaMap.remove(columnName);
             if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
@@ -328,6 +354,14 @@ public class TsTable {
         : Long.MAX_VALUE;
   }
 
+  public boolean getCachedNeedLastCache() {
+    if (needLastCache == null) {
+      needLastCache =
+          getPropValue(NEED_LAST_CACHE_PROPERTY).map(Boolean::parseBoolean).orElse(true);
+    }
+    return needLastCache;
+  }
+
   public Map<String, String> getProps() {
     readWriteLock.readLock().lock();
     try {
@@ -363,6 +397,7 @@ public class TsTable {
             props = new HashMap<>();
           }
           props.put(key, value);
+          invalidateCachedPropValue(key);
         });
   }
 
@@ -373,7 +408,16 @@ public class TsTable {
             return;
           }
           props.remove(key);
+          invalidateCachedPropValue(key);
         });
+  }
+
+  private void invalidateCachedPropValue(final String key) {
+    if (TTL_PROPERTY.equals(key)) {
+      ttlValue = Long.MIN_VALUE;
+    } else if (NEED_LAST_CACHE_PROPERTY.equals(key)) {
+      needLastCache = null;
+    }
   }
 
   public void serialize(final OutputStream stream) throws IOException {
@@ -388,8 +432,11 @@ public class TsTable {
   public static TsTable deserialize(final InputStream inputStream) throws IOException {
     final String name = ReadWriteIOUtils.readString(inputStream);
     final int columnNum = ReadWriteIOUtils.readInt(inputStream);
-    if (columnNum < 0) {
+    if (columnNum == TsTableMarker.NON_COMMIT_TABLE_MARKER.getType()) {
       return new NonCommittableTsTable(name);
+    }
+    if (columnNum == TsTableMarker.PRE_DELETE_TABLE_MARKER.getType()) {
+      return new PreDeleteTsTable(name);
     }
     final TsTable table = new TsTable(name);
     for (int i = 0; i < columnNum; i++) {
@@ -402,8 +449,11 @@ public class TsTable {
   public static TsTable deserialize(final ByteBuffer buffer) {
     final String name = ReadWriteIOUtils.readString(buffer);
     final int columnNum = ReadWriteIOUtils.readInt(buffer);
-    if (columnNum < 0) {
+    if (columnNum == TsTableMarker.NON_COMMIT_TABLE_MARKER.getType()) {
       return new NonCommittableTsTable(name);
+    }
+    if (columnNum == TsTableMarker.PRE_DELETE_TABLE_MARKER.getType()) {
+      return new PreDeleteTsTable(name);
     }
     final TsTable table = new TsTable(name);
     for (int i = 0; i < columnNum; i++) {
@@ -418,7 +468,7 @@ public class TsTable {
   }
 
   public void checkTableNameAndObjectNames4Object() throws MetadataException {
-    throw new MetadataException("The object type column is not supported.");
+    throw new MetadataException(CommonMessages.OBJECT_TYPE_COLUMN_NOT_SUPPORTED);
   }
 
   @Override

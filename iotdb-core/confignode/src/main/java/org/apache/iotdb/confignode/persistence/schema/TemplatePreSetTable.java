@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -108,7 +109,8 @@ public class TemplatePreSetTable {
       File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
       if (snapshotFile.exists() && snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to take snapshot of TemplatePreSetTable, because snapshot file [{}] is already exist.",
+            ConfigNodeMessages
+                .FAILED_TO_TAKE_SNAPSHOT_OF_TEMPLATEPRESETTABLE_BECAUSE_SNAPSHOT_FILE_IS,
             snapshotFile.getAbsolutePath());
         return false;
       }
@@ -128,11 +130,13 @@ public class TemplatePreSetTable {
         return tmpFile.renameTo(snapshotFile);
       } finally {
         for (int retry = 0; retry < 5; retry++) {
-          if (!tmpFile.exists() || tmpFile.delete()) {
+          if (!tmpFile.exists()
+              || org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpFile)) {
             break;
           } else {
             LOGGER.warn(
-                "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+                ConfigNodeMessages.CAN_T_DELETE_TEMPORARY_SNAPSHOT_FILE_RETRYING,
+                tmpFile.getAbsolutePath());
           }
         }
       }
@@ -146,12 +150,14 @@ public class TemplatePreSetTable {
     try {
       File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
       if (!snapshotFile.exists()) {
+        // Empty preset tables are represented by the absence of a snapshot file.
+        templatePreSetMap.clear();
         return;
       }
 
       if (!snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to load snapshot of TemplatePreSetTable,snapshot file [{}] is not a valid file.",
+            ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_OF_TEMPLATEPRESETTABLE_SNAPSHOT_FILE_IS_NOT,
             snapshotFile.getAbsolutePath());
         return;
       }

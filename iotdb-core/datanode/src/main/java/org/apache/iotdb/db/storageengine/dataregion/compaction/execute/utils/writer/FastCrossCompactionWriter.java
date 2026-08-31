@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
@@ -69,7 +70,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
   @Override
   public void write(TsBlock tsBlock, int subTaskId) throws IOException {
-    throw new RuntimeException("Does not support this method in FastCrossCompactionWriter");
+    throw new RuntimeException(StorageEngineMessages.METHOD_NOT_SUPPORTED_FAST_CROSS_WRITER);
   }
 
   @Override
@@ -303,7 +304,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     // targetFileWriters.size() - 1
     if (!isCurrentDeviceExistedInSourceSeqFiles[fileIndex]
         && fileIndex != targetFileWriters.size() - 1) {
-      throw new IllegalArgumentException("The device should exist in current seq file");
+      throw new IllegalArgumentException(StorageEngineMessages.DEVICE_SHOULD_EXIST_IN_SEQ_FILE);
     }
     return isUnsealedChunkLargeEnough
         && (chunkMetadata.getEndTime() <= currentDeviceEndTime[fileIndex]
@@ -319,7 +320,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     // targetFileWriters.size() - 1
     if (!isCurrentDeviceExistedInSourceSeqFiles[fileIndex]
         && fileIndex != targetFileWriters.size() - 1) {
-      throw new IllegalArgumentException("The device should exist in current seq file");
+      throw new IllegalArgumentException(StorageEngineMessages.DEVICE_SHOULD_EXIST_IN_SEQ_FILE);
     }
     return isUnsealedPageLargeEnough
         && (pageHeader.getEndTime() <= currentDeviceEndTime[fileIndex]

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
@@ -43,7 +44,7 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
           continue;
         }
         if (weightColumn.getInt(i) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+          throw new SemanticException(CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(i));
         }
         if (!valueColumn.isNull(i)) {
           tDigest.add(valueColumn.getInt(i), weightColumn.getInt(i));
@@ -58,7 +59,8 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
           continue;
         }
         if (weightColumn.getInt(position) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+          throw new SemanticException(
+              CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(position));
         }
         if (!valueColumn.isNull(position)) {
           tDigest.add(valueColumn.getInt(position), weightColumn.getInt(position));
@@ -80,7 +82,7 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
           continue;
         }
         if (weightColumn.getInt(i) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+          throw new SemanticException(CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(i));
         }
         if (!valueColumn.isNull(i)) {
           tDigest.add(toDoubleExact(valueColumn.getLong(i)), weightColumn.getInt(i));
@@ -95,7 +97,8 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
           continue;
         }
         if (weightColumn.getInt(position) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+          throw new SemanticException(
+              CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(position));
         }
         if (!valueColumn.isNull(position)) {
           tDigest.add(toDoubleExact(valueColumn.getLong(position)), weightColumn.getInt(position));
@@ -117,7 +120,7 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
           continue;
         }
         if (weightColumn.getInt(i) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+          throw new SemanticException(CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(i));
         }
         if (!valueColumn.isNull(i)) {
           tDigest.add(valueColumn.getFloat(i), weightColumn.getInt(i));
@@ -132,7 +135,8 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
           continue;
         }
         if (weightColumn.getInt(position) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+          throw new SemanticException(
+              CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(position));
         }
         if (!valueColumn.isNull(position)) {
           tDigest.add(valueColumn.getFloat(position), weightColumn.getInt(position));
@@ -154,7 +158,7 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
           continue;
         }
         if (weightColumn.getInt(i) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+          throw new SemanticException(CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(i));
         }
         if (!valueColumn.isNull(i)) {
           tDigest.add(valueColumn.getDouble(i), weightColumn.getInt(i));
@@ -169,7 +173,8 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
           continue;
         }
         if (weightColumn.getInt(position) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+          throw new SemanticException(
+              CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(position));
         }
         if (!valueColumn.isNull(position)) {
           tDigest.add(valueColumn.getDouble(position), weightColumn.getInt(position));

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -41,8 +42,9 @@ public class DropFunction extends Statement {
   private final String udfName;
 
   public DropFunction(NodeLocation location, String udfName) {
-    super(requireNonNull(location, "location is null"));
-    this.udfName = requireNonNull(udfName, "udfName is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.udfName =
+        requireNonNull(udfName, DataNodeQueryMessages.EXCEPTION_UDFNAME_IS_NULL_83E9039B);
   }
 
   public String getUdfName() {
