@@ -53,15 +53,10 @@ public class SyncStatus {
    * @throws InterruptedException
    */
   public synchronized void addNextBatch(Batch batch) throws InterruptedException {
-    while (true) {
-      while (pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()) {
-        wait();
-      }
-      if (iotConsensusMemoryManager.reserve(batch)) {
-        break;
-      }
-      // Memory may be freed by another SyncStatus, which cannot notify this monitor.
-      wait(Math.max(1, config.getReplication().getBasicRetryWaitTimeMs()));
+    while ((pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
+            || !iotConsensusMemoryManager.reserve(batch))
+        && !Thread.interrupted()) {
+      wait();
     }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
