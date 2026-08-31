@@ -28,6 +28,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
@@ -172,6 +173,7 @@ public class FileLoaderUtils {
       if (loadFromMem) {
         throw e;
       }
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new CorruptedTsFileException(
           resource.getTsFile(),
           CorruptedTsFileException.Stage.READ_TIMESERIES_METADATA,
@@ -276,6 +278,7 @@ public class FileLoaderUtils {
       if (loadFromMem) {
         throw e;
       }
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new CorruptedTsFileException(
           resource.getTsFile(),
           CorruptedTsFileException.Stage.READ_TIMESERIES_METADATA,
@@ -533,6 +536,7 @@ public class FileLoaderUtils {
       if (tsFile == null) {
         throw e;
       }
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new CorruptedTsFileException(
           tsFile,
           CorruptedTsFileException.Stage.READ_CHUNK_DATA_OR_LOAD_PAGE_READER,

@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
@@ -1879,6 +1880,7 @@ public class TsFileProcessor {
                 dataRegionName,
                 tsFileResource.getTsFile().getAbsolutePath(),
                 e);
+            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
             CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
             try {
               logger.error(
@@ -1894,6 +1896,7 @@ public class TsFileProcessor {
                   dataRegionName,
                   tsFileResource.getTsFile().getAbsolutePath(),
                   e1);
+              DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e1);
             }
             // Release resource
             try {
@@ -1941,6 +1944,7 @@ public class TsFileProcessor {
               .STORAGE_LOG_MEET_ERROR_WHEN_WRITING_INTO_MODIFICATIONFILE_FILE_OF_63B5E24A,
           tsFileResource.getTsFile().getAbsolutePath(),
           e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -1959,6 +1963,7 @@ public class TsFileProcessor {
       writer.getTsFileOutput().force();
     } catch (IOException e) {
       logger.error(StorageEngineMessages.FSYNC_MEMTABLE_TO_DISK_ERROR, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     }
 
     // Call flushed listener after memtable is released safely
@@ -1987,6 +1992,7 @@ public class TsFileProcessor {
           logger.debug(StorageEngineMessages.FLUSHING_MEMTABLES_CLEAR, dataRegionName);
         }
       } catch (Exception e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         logger.error(
             StorageEngineMessages.STORAGE_LOG_MARKING_OR_ENDING_FILE_MEET_ERROR_5653B904,
             dataRegionName,
@@ -2004,6 +2010,7 @@ public class TsFileProcessor {
               dataRegionName,
               tsFileResource.getTsFile().getAbsolutePath(),
               e1);
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e1);
         }
         // Retry or set read-only
         if (retryCnt < 3) {
@@ -2063,6 +2070,7 @@ public class TsFileProcessor {
           dataRegionName,
           tsFileResource.getTsFile().getName(),
           e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     }
   }
 
@@ -2142,6 +2150,7 @@ public class TsFileProcessor {
       // When closing resource file, its corresponding mod file is also closed.
       tsFileResource.closeWithoutSettingStatus();
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new TsFileProcessorException(e);
     }
   }
@@ -2608,6 +2617,7 @@ public class TsFileProcessor {
     try {
       writer.close();
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new TsFileProcessorException(e);
     }
     tsFileProcessorInfo.clear();

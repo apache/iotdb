@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObj
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -875,6 +876,7 @@ public class LoadTsFileManager {
                 entry.getValue().getFile().getPath(),
                 SystemFileFactory.INSTANCE.getFile(taskDir, entry.getKey().toString()).getPath(),
                 e);
+            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           }
         }
       }
@@ -895,6 +897,7 @@ public class LoadTsFileManager {
           } catch (IOException e) {
             LOGGER.warn(
                 StorageEngineMessages.CLOSE_MODIFICATION_FILE_ERROR, entry.getValue().getFile(), e);
+            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           }
         }
       }
@@ -908,6 +911,7 @@ public class LoadTsFileManager {
         LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, taskDir.getPath());
       } catch (IOException e) {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       }
       dataPartition2Writer = null;
       dataPartition2Resource = null;

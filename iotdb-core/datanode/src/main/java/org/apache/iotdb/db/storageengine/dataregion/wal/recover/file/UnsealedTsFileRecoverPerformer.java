@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -305,6 +306,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
               databaseName,
               tsFileResource.getTsFile().getName(),
               e);
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         }
 
         // if we put following codes in the 'if' clause above, this file can be continued writing
@@ -314,6 +316,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         tsFileResource.serialize();
         FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
       } catch (IOException | ExecutionException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         throw new WALRecoverException(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
