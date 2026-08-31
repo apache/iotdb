@@ -59,9 +59,10 @@ public final class LocalSegmentDeviceEntrySource extends SegmentDeviceEntrySourc
       releaseSegment(segmentId);
     } catch (NoSuchFileException e) {
       LOGGER.warn(
-          DataNodeQueryMessages
-              .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A,
-          e.getFile());
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A,
+              e.getFile()));
       throw new DeviceEntrySpillNotFoundException(e.getFile());
     }
     nextSegmentId++;

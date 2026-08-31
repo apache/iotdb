@@ -117,9 +117,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             .setPayload(payload);
       } catch (NoSuchFileException e) {
         LOGGER.warn(
-            DataNodeQueryMessages
-                .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A,
-            e.getFile());
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A,
+                e.getFile()));
         return new TFetchDeviceEntrySegmentResp(
             new TSStatus(TSStatusCode.QUERY_WAS_KILLED.getStatusCode()).setMessage(e.getMessage()));
       } catch (IOException | RuntimeException e) {
@@ -137,10 +138,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               DeviceEntrySpillManager.getInstance().finishSegmentDataSet(queryId, planNodeId);
             } catch (IOException | RuntimeException e) {
               LOGGER.warn(
-                  DataNodeQueryMessages
-                      .LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5,
-                  queryId,
-                  planNodeId,
+                  String.format(
+                      DataNodeQueryMessages
+                          .LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5,
+                      queryId,
+                      planNodeId),
                   e);
             }
           });

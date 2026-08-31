@@ -443,9 +443,10 @@ public class QueryExecution implements IQueryExecution {
       DeviceEntrySpillManager.getInstance().deregisterQuery(context.getQueryId().getId());
     } catch (Exception e) {
       LOGGER.warn(
-          DataNodeQueryMessages
-              .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-          context.getQueryId().getId(),
+          String.format(
+              DataNodeQueryMessages
+                  .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+              context.getQueryId().getId()),
           e);
     }
   }
