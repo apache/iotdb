@@ -56,7 +56,9 @@ is_same_edge_home() {
     [ -n "$home" ] && [ "$home" != "$command_line" ] || return 1
     # Only absolute values can be resolved from here. A relative one such as "."
     # is meaningful in the started process's working directory, not in ours, so
-    # resolving it here could match an unrelated installation.
+    # resolving it here could match an unrelated installation. The emptiness check
+    # above matters for the same reason: "cd" succeeds on an empty argument and
+    # yields our own working directory.
     case "$home" in
         /*) ;;
         *) return 1 ;;
