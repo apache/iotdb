@@ -69,6 +69,7 @@ public class DataNodeMetricsHelper {
     metricService.addMetricSet(CompactionMetrics.getInstance());
     metricService.addMetricSet(new ProcessMetrics());
     metricService.addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
+    metricService.addMetricSet(DataNodeExceptionMetrics.getInstance());
     metricService.addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
     metricService.addMetricSet(ClientManagerMetrics.getInstance());
     metricService.addMetricSet(RPCServiceThriftHandlerMetrics.getInstance());

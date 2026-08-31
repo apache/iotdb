@@ -37,6 +37,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStor
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -364,6 +365,7 @@ public class MemMTreeSnapshotUtil {
         }
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         return false;
       }
     }
