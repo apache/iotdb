@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.db.exception.query.DeviceEntrySpillNotFoundException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
-import java.util.Collections;
 import java.util.List;
 
 public final class LocalSegmentDeviceEntrySource extends SegmentDeviceEntrySource {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalSegmentDeviceEntrySource.class);
 
   private final DeviceEntrySpillManager spillManager;
   private boolean finished;
@@ -50,17 +56,14 @@ public final class LocalSegmentDeviceEntrySource extends SegmentDeviceEntrySourc
           deserialize(
               spillManager.readSegment(
                   handle.getQueryId(), handle.getPlanNodeId().getId(), segmentId));
+      releaseSegment(segmentId);
     } catch (NoSuchFileException e) {
-      // A failed query can remove the owner before an already scheduled driver enters nextBatch.
-      // Treat that cancellation race as EOF, but preserve errors for a still-registered owner.
-      if (spillManager.isOwnerRegistered(handle.getQueryId(), handle.getPlanNodeId().getId())) {
-        throw e;
-      }
-      nextSegmentId = handle.getSegmentCount();
-      finished = true;
-      return Collections.emptyList();
+      LOGGER.warn(
+          DataNodeQueryMessages
+              .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A,
+          e.getFile());
+      throw new DeviceEntrySpillNotFoundException(e.getFile());
     }
-    releaseSegment(segmentId);
     nextSegmentId++;
     return result;
   }

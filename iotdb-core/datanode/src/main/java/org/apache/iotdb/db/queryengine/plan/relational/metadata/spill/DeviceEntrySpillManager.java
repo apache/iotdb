@@ -20,25 +20,21 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import org.apache.tsfile.external.commons.io.FileUtils;
-
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.List;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public final class DeviceEntrySpillManager {
 
   private final ConcurrentHashMap<String, Set<Path>> queryDirectories = new ConcurrentHashMap<>();
-  private final ConcurrentHashMap<String, Object> queryLocks = new ConcurrentHashMap<>();
 
   private DeviceEntrySpillManager() {}
 
@@ -47,90 +43,48 @@ public final class DeviceEntrySpillManager {
   }
 
   public Path register(String queryId, PlanNodeId planNodeId) throws IOException {
-    synchronized (queryLock(queryId)) {
-      Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId.getId());
-      Files.createDirectories(ownerDirectory);
-      queryDirectories
-          .computeIfAbsent(queryId, ignored -> ConcurrentHashMap.newKeySet())
-          .add(ownerDirectory);
-      return ownerDirectory;
-    }
+    Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId.getId());
+    Files.createDirectories(ownerDirectory);
+    queryDirectories
+        .computeIfAbsent(queryId, ignored -> ConcurrentHashMap.newKeySet())
+        .add(ownerDirectory);
+    return ownerDirectory;
   }
 
   public void deregisterOwner(String queryId, Path ownerDirectory) throws IOException {
-    Object queryLock = queryLock(queryId);
-    synchronized (queryLock) {
-      FileUtils.deleteDirectory(ownerDirectory.toFile());
-      Set<Path> owners = queryDirectories.get(queryId);
-      if (owners != null) {
-        owners.remove(ownerDirectory);
-        if (owners.isEmpty()) {
-          queryDirectories.remove(queryId, owners);
-          try {
-            FileUtils.deleteDirectory(resolveQueryDirectory(queryId).toFile());
-          } finally {
-            queryLocks.remove(queryId, queryLock);
-          }
-        }
+    deleteDirectoryIfExists(ownerDirectory);
+    Set<Path> owners = queryDirectories.get(queryId);
+    if (owners != null) {
+      owners.remove(ownerDirectory);
+      if (owners.isEmpty()) {
+        queryDirectories.remove(queryId, owners);
+        deleteDirectoryIfExists(resolveQueryDirectory(queryId));
       }
     }
   }
 
   public void deregisterQuery(String queryId) throws IOException {
-    Object queryLock = queryLock(queryId);
-    synchronized (queryLock) {
-      FileUtils.deleteDirectory(resolveQueryDirectory(queryId).toFile());
-      queryDirectories.remove(queryId);
-      queryLocks.remove(queryId, queryLock);
-    }
+    queryDirectories.remove(queryId);
+    deleteDirectoryIfExists(resolveQueryDirectory(queryId));
   }
 
-  @TestOnly
-  public List<Path> listSegments(String queryId, String planNodeId) throws IOException {
-    synchronized (queryLock(queryId)) {
-      Path dataSetDirectory = resolveRegisteredDataSetDirectory(queryId, planNodeId);
-      try (java.util.stream.Stream<Path> stream = Files.list(dataSetDirectory)) {
-        return stream
-            .filter(path -> path.getFileName().toString().matches("segment-[0-9]{6,}\\.bin"))
-            .sorted(
-                Comparator.comparingInt((Path path) -> path.getFileName().toString().length())
-                    .thenComparing(path -> path.getFileName().toString()))
-            .collect(Collectors.toList());
-      }
-    }
+  public byte[] readSegment(String queryId, String planNodeId, int segmentId) throws IOException {
+    return Files.readAllBytes(resolveSegment(queryId, planNodeId, segmentId));
   }
 
-  public byte[] readSegment(String queryId, String dataSetId, int segmentId) throws IOException {
-    synchronized (queryLock(queryId)) {
-      return Files.readAllBytes(resolveSegment(queryId, dataSetId, segmentId));
+  public Path resolveSegment(String queryId, String planNodeId, int segmentId) throws IOException {
+    Path segment = getRegisteredSegmentPath(queryId, planNodeId, segmentId);
+    if (!Files.isRegularFile(segment)) {
+      throw new java.nio.file.NoSuchFileException(segment.toString());
     }
-  }
-
-  public Path resolveSegment(String queryId, String dataSetId, int segmentId) throws IOException {
-    synchronized (queryLock(queryId)) {
-      Path segment = getRegisteredSegmentPath(queryId, dataSetId, segmentId);
-      if (!Files.isRegularFile(segment)) {
-        throw new java.nio.file.NoSuchFileException(segment.toString());
-      }
-      return segment;
-    }
-  }
-
-  public Path resolveSegment(String queryId, PlanNodeId planNodeId, int segmentId)
-      throws IOException {
-    return resolveSegment(queryId, planNodeId.getId(), segmentId);
+    return segment;
   }
 
   public void deleteSegment(String queryId, String dataSetId, int segmentId) throws IOException {
-    synchronized (queryLock(queryId)) {
-      try {
-        Files.deleteIfExists(getRegisteredSegmentPath(queryId, dataSetId, segmentId));
-      } catch (NoSuchFileException e) {
-        if (isOwnerRegistered(queryId, dataSetId)) {
-          throw e;
-        }
-        // Query cleanup may have already removed the whole query directory.
-      }
+    try {
+      Files.deleteIfExists(getRegisteredSegmentPath(queryId, dataSetId, segmentId));
+    } catch (NoSuchFileException e) {
+      // Query cleanup may have already removed the whole query directory.
     }
   }
 
@@ -140,29 +94,13 @@ public final class DeviceEntrySpillManager {
   }
 
   public void finishSegmentDataSet(String queryId, String planNodeId) throws IOException {
-    synchronized (queryLock(queryId)) {
-      Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId);
-      deregisterOwner(queryId, ownerDirectory);
-    }
+    Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId);
+    deregisterOwner(queryId, ownerDirectory);
   }
 
-  boolean isOwnerRegistered(String queryId, String planNodeId) {
-    Set<Path> owners = queryDirectories.get(queryId);
-    if (owners == null) {
-      return false;
-    }
-    Path ownerDirectory = resolveOwnerDirectory(queryId, planNodeId).normalize();
-    return owners.stream().map(Path::normalize).anyMatch(ownerDirectory::equals);
-  }
-
-  private Path resolveRegisteredDataSetDirectory(String queryId, String dataSetId)
+  private Path resolveRegisteredDataSetDirectory(String queryId, String planNodeId)
       throws IOException {
-    Path relativeDataSetPath = Path.of(dataSetId);
-    if (relativeDataSetPath.isAbsolute()
-        || java.util.stream.StreamSupport.stream(relativeDataSetPath.spliterator(), false)
-            .anyMatch(path -> path.toString().equals("..") || path.toString().equals("."))) {
-      throw new IllegalArgumentException();
-    }
+    Path relativeDataSetPath = Path.of(planNodeId);
     Path queryDirectory = resolveQueryDirectory(queryId);
     Path dataSetDirectory = queryDirectory.resolve(relativeDataSetPath).resolve("fi").normalize();
     if (!dataSetDirectory.startsWith(queryDirectory)) {
@@ -180,24 +118,51 @@ public final class DeviceEntrySpillManager {
     return dataSetDirectory;
   }
 
-  private Path getRegisteredSegmentPath(String queryId, String dataSetId, int segmentId)
+  private Path getRegisteredSegmentPath(String queryId, String planNodeId, int segmentId)
       throws IOException {
     if (segmentId < 0) {
       throw new IllegalArgumentException();
     }
-    return resolveRegisteredDataSetDirectory(queryId, dataSetId)
+    return resolveRegisteredDataSetDirectory(queryId, planNodeId)
         .resolve(String.format("segment-%06d.bin", segmentId));
   }
 
   public synchronized void clearStaleData() throws IOException {
-    FileUtils.deleteDirectory(rootDirectory().toFile());
+    deleteDirectoryIfExists(rootDirectory());
     Files.createDirectories(rootDirectory());
     queryDirectories.clear();
-    queryLocks.clear();
   }
 
-  private Object queryLock(String queryId) {
-    return queryLocks.computeIfAbsent(queryId, ignored -> new Object());
+  private void deleteDirectoryIfExists(Path directory) throws IOException {
+    Files.walkFileTree(
+        directory,
+        new SimpleFileVisitor<>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attributes)
+              throws IOException {
+            Files.deleteIfExists(file);
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exception)
+              throws IOException {
+            if (!Files.exists(file)) {
+              return FileVisitResult.CONTINUE;
+            }
+            throw exception;
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, IOException exception)
+              throws IOException {
+            if (exception != null && Files.exists(dir)) {
+              throw exception;
+            }
+            Files.deleteIfExists(dir);
+            return FileVisitResult.CONTINUE;
+          }
+        });
   }
 
   private Path rootDirectory() {

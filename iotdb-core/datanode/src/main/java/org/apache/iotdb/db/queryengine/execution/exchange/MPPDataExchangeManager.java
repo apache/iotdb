@@ -65,6 +65,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -114,6 +115,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         return new TFetchDeviceEntrySegmentResp(
                 new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
             .setPayload(payload);
+      } catch (NoSuchFileException e) {
+        LOGGER.warn(
+            DataNodeQueryMessages
+                .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A,
+            e.getFile());
+        return new TFetchDeviceEntrySegmentResp(
+            new TSStatus(TSStatusCode.QUERY_WAS_KILLED.getStatusCode()).setMessage(e.getMessage()));
       } catch (IOException | RuntimeException e) {
         return new TFetchDeviceEntrySegmentResp(
             new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())

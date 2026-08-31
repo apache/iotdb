@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.query.DeviceEntrySpillNotFoundException;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchDeviceEntrySegmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchDeviceEntrySegmentResp;
@@ -69,6 +70,9 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
       } catch (ClientManagerException | TException e) {
         failure = new IOException(e);
         continue;
+      }
+      if (response.getStatus().getCode() == TSStatusCode.QUERY_WAS_KILLED.getStatusCode()) {
+        throw new DeviceEntrySpillNotFoundException(response.getStatus());
       }
       if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IOException(response.getStatus().getMessage());

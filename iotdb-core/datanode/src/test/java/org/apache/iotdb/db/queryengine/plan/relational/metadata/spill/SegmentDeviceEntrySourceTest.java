@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.DeviceEntrySpillNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
@@ -179,8 +180,7 @@ public class SegmentDeviceEntrySourceTest {
         new DeviceEntryDataSetHandle(
             queryId, planNodeId, new TEndPoint("127.0.0.1", 1), 1, 1, false);
     try (LocalSegmentDeviceEntrySource source = new LocalSegmentDeviceEntrySource(handle)) {
-      assertTrue(source.nextBatch().isEmpty());
-      assertFalse(source.hasNextBatch());
+      assertThrows(DeviceEntrySpillNotFoundException.class, source::nextBatch);
     }
 
     manager.deleteSegment(queryId, planNodeId, 0);
