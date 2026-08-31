@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -407,6 +408,36 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
                   source,
                   createClosedTsFileResource(
                       tempDir, "empty-device.tsfile", new SimpleProgressIndex(0, 1))));
+    } finally {
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
+  public void testMissingTsFileResourceDoesNotBlockHistoricalExtraction() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalMissingResource").toFile();
+
+    try {
+      final PipeHistoricalDataRegionTsFileSource source =
+          new PipeHistoricalDataRegionTsFileSource();
+      final TsFileResource resource = createTsFileResource(tempDir, "missing-resource.tsfile");
+      resource.setTimeIndex(new FileTimeIndex());
+
+      setPrivateField(source, "pipeName", "pipe");
+      setPrivateField(source, "dataRegionId", 1);
+      setPrivateField(source, "pipePattern", new PrefixPipePattern("root.**"));
+
+      final Method mayOverlapMethod =
+          PipeHistoricalDataRegionTsFileSource.class.getDeclaredMethod(
+              "mayTsFileResourceOverlappedWithPattern", TsFileResource.class);
+      mayOverlapMethod.setAccessible(true);
+      Assert.assertTrue((Boolean) mayOverlapMethod.invoke(source, resource));
+
+      final Method coveredMethod =
+          PipeHistoricalDataRegionTsFileSource.class.getDeclaredMethod(
+              "isTsFileResourceCoveredByPattern", TsFileResource.class);
+      coveredMethod.setAccessible(true);
+      Assert.assertFalse((Boolean) coveredMethod.invoke(source, resource));
     } finally {
       FileUtils.deleteFileOrDirectory(tempDir);
     }
