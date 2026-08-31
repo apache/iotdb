@@ -106,6 +106,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -3746,6 +3747,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               context.getSql(),
               context.getZoneId().getId(),
               context.getSession() == null ? null : context.getSession().getUserName());
+      tCreateCQReq.setDurationEncodingVersion((short) 1);
+      tCreateCQReq.setEveryDuration(
+          new TCQDuration(
+              createContinuousQueryStatement.getEveryDuration().monthDuration,
+              createContinuousQueryStatement.getEveryDuration().nonMonthDuration));
+      tCreateCQReq.setStartOffsetDuration(
+          new TCQDuration(
+              createContinuousQueryStatement.getStartTimeOffsetDuration().monthDuration,
+              createContinuousQueryStatement.getStartTimeOffsetDuration().nonMonthDuration));
+      tCreateCQReq.setEndOffsetDuration(
+          new TCQDuration(
+              createContinuousQueryStatement.getEndTimeOffsetDuration().monthDuration,
+              createContinuousQueryStatement.getEndTimeOffsetDuration().nonMonthDuration));
+      tCreateCQReq.setBoundaryExplicit(createContinuousQueryStatement.isBoundaryExplicit());
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus));

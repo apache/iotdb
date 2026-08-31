@@ -1075,6 +1075,11 @@ struct TGetAllSubscriptionInfoResp {
 // ====================================================
 // CQ
 // ====================================================
+struct TCQDuration {
+  1: required i64 monthPart
+  2: required i64 nonMonthDuration
+}
+
 struct TCreateCQReq {
   1: required string cqId,
   2: required i64 everyInterval
@@ -1086,6 +1091,12 @@ struct TCreateCQReq {
   8: required string sql
   9: required string zoneId
   10: required string username
+  // Versioned calendar-aware duration representation. Legacy fields above remain unchanged.
+  11: optional i16 durationEncodingVersion
+  12: optional TCQDuration everyDuration
+  13: optional TCQDuration startOffsetDuration
+  14: optional TCQDuration endOffsetDuration
+  15: optional bool boundaryExplicit
 }
 
 struct TDropCQReq {
@@ -2071,4 +2082,3 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }
-

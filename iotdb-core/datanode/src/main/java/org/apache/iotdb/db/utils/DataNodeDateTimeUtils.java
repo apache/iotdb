@@ -36,8 +36,56 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.ZoneId;
 import java.util.Calendar;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DataNodeDateTimeUtils {
+  private static final Pattern CQ_DURATION_COMPONENT =
+      Pattern.compile("(\\d+)(y|mo|w|d|h|ms|us|ns)", Pattern.CASE_INSENSITIVE);
+
+  /**
+   * Parses the CQ duration grammar while retaining calendar months. Full aliases are deliberate not
+   * accepted here; CQ uses the same mo/y abbreviations as Tree SQL.
+   */
+  public static TimeDuration constructTimeDurationForCQ(String duration) {
+    if (duration == null || duration.isEmpty()) {
+      throw new IllegalArgumentException("CQ duration cannot be empty");
+    }
+    Matcher matcher = CQ_DURATION_COMPONENT.matcher(duration);
+    long months = 0;
+    long fixed = 0;
+    int end = 0;
+    String precision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    while (matcher.find()) {
+      if (matcher.start() != end) {
+        throw new IllegalArgumentException("Invalid CQ duration: " + duration);
+      }
+      long value;
+      try {
+        value = Long.parseLong(matcher.group(1));
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException("CQ duration component overflows: " + duration, e);
+      }
+      String unit = matcher.group(2).toLowerCase(Locale.ROOT);
+      if (unit.equals("y")) {
+        months = Math.addExact(months, Math.multiplyExact(value, 12));
+      } else if (unit.equals("mo")) {
+        months = Math.addExact(months, value);
+      } else {
+        fixed = Math.addExact(fixed, convertDurationStrToLong(-1, value, unit, precision));
+      }
+      end = matcher.end();
+    }
+    if (end != duration.length()) {
+      throw new IllegalArgumentException("Invalid CQ duration: " + duration);
+    }
+    if (months > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException("CQ duration month component overflows: " + duration);
+    }
+    return new TimeDuration((int) months, fixed);
+  }
+
   public static Long parseDateTimeExpressionToLong(String dateExpression, ZoneId zoneId) {
     ASTVisitor astVisitor = new ASTVisitor();
     astVisitor.setZoneId(zoneId);
@@ -66,12 +114,12 @@ public class DataNodeDateTimeUtils {
     switch (durationUnit) {
       case y:
       case year:
-        res *= 365 * 86_400_000L;
+        res = Math.multiplyExact(res, 365 * 86_400_000L);
         break;
       case mo:
       case month:
         if (currentTime == -1) {
-          res *= 30 * 86_400_000L;
+          res = Math.multiplyExact(res, 30 * 86_400_000L);
         } else {
           Calendar calendar = Calendar.getInstance();
           calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
@@ -82,23 +130,23 @@ public class DataNodeDateTimeUtils {
         break;
       case w:
       case week:
-        res *= 7 * 86_400_000L;
+        res = Math.multiplyExact(res, 7 * 86_400_000L);
         break;
       case d:
       case day:
-        res *= 86_400_000L;
+        res = Math.multiplyExact(res, 86_400_000L);
         break;
       case h:
       case hour:
-        res *= 3_600_000L;
+        res = Math.multiplyExact(res, 3_600_000L);
         break;
       case m:
       case minute:
-        res *= 60_000L;
+        res = Math.multiplyExact(res, 60_000L);
         break;
       case s:
       case second:
-        res *= 1_000L;
+        res = Math.multiplyExact(res, 1_000L);
         break;
       default:
         break;
@@ -112,7 +160,7 @@ public class DataNodeDateTimeUtils {
           || unit.equals(DateTimeUtils.DurationUnit.microsecond.toString())) {
         return value;
       } else {
-        return res * 1000;
+        return Math.multiplyExact(res, 1000);
       }
     } else if ("ns".equals(timestampPrecision) || "nanosecond".equals(timestampPrecision)) {
       if (unit.equals(DateTimeUtils.DurationUnit.ns.toString())
@@ -120,9 +168,9 @@ public class DataNodeDateTimeUtils {
         return value;
       } else if (unit.equals(DateTimeUtils.DurationUnit.us.toString())
           || unit.equals(DateTimeUtils.DurationUnit.microsecond.toString())) {
-        return value * 1000;
+        return Math.multiplyExact(value, 1000);
       } else {
-        return res * 1000_000;
+        return Math.multiplyExact(res, 1000_000);
       }
     } else {
       if (unit.equals(DateTimeUtils.DurationUnit.ns.toString())
@@ -157,8 +205,7 @@ public class DataNodeDateTimeUtils {
     for (int i = 0; i < duration.length(); i++) {
       char ch = duration.charAt(i);
       if (Character.isDigit(ch)) {
-        temp *= 10;
-        temp += (ch - '0');
+        temp = Math.addExact(Math.multiplyExact(temp, 10), ch - '0');
       } else {
         String unit = String.valueOf(duration.charAt(i));
         // This is to identify units with two letters.
@@ -168,12 +215,17 @@ public class DataNodeDateTimeUtils {
         }
         unit = unit.toLowerCase();
         if (convertYearToMonth && unit.equals("y")) {
-          temp *= 12;
+          temp = Math.multiplyExact(temp, 12);
           unit = "mo";
         }
-        total +=
-            convertDurationStrToLong(
-                currentTime == -1 ? -1 : currentTime + total, temp, unit, timestampPrecision);
+        total =
+            Math.addExact(
+                total,
+                convertDurationStrToLong(
+                    currentTime == -1 ? -1 : Math.addExact(currentTime, total),
+                    temp,
+                    unit,
+                    timestampPrecision));
         temp = 0;
       }
     }

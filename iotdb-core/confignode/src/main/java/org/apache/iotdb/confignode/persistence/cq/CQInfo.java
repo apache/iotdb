@@ -28,6 +28,8 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
+import org.apache.iotdb.confignode.manager.cq.CQCalendarUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -58,6 +60,8 @@ public class CQInfo implements SnapshotProcessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(CQInfo.class);
 
   private static final String SNAPSHOT_FILENAME = "cq_info.snapshot";
+  // Negative marker cannot collide with the non-negative legacy CQ count.
+  private static final int SNAPSHOT_VERSION = -1842801;
 
   private static final String CQ_NOT_EXIST_FORMAT = "CQ %s doesn't exist.";
 
@@ -88,11 +92,24 @@ public class CQInfo implements SnapshotProcessor {
         res.code = TSStatusCode.CQ_ALREADY_EXIST.getStatusCode();
         res.message = String.format("CQ %s has already been created.", cqId);
       } else {
-        CQEntry cqEntry =
-            new CQEntry(
-                plan.getReq(),
-                plan.getMd5(),
-                plan.getFirstExecutionTime() - plan.getReq().everyInterval);
+        long lastExecutionTime = plan.getFirstExecutionTime() - plan.getReq().everyInterval;
+        if (plan.getReq().isSetEveryDuration()
+            && plan.getReq().getEveryDuration().getMonthPart() != 0) {
+          org.apache.tsfile.utils.TimeDuration duration =
+              new org.apache.tsfile.utils.TimeDuration(
+                  Math.toIntExact(plan.getReq().getEveryDuration().getMonthPart()),
+                  plan.getReq().getEveryDuration().getNonMonthDuration());
+          java.time.ZoneId zone = java.time.ZoneId.of(plan.getReq().zoneId);
+          long boundary =
+              plan.getReq().isSetBoundaryExplicit() && !plan.getReq().isBoundaryExplicit()
+                  ? CQCalendarUtils.localEpochBoundary(zone)
+                  : plan.getReq().boundaryTime;
+          long index =
+              CQCalendarUtils.firstOccurrenceIndex(
+                  boundary, duration, plan.getFirstExecutionTime(), zone);
+          lastExecutionTime = CQCalendarUtils.occurrence(boundary, duration, index - 1, zone);
+        }
+        CQEntry cqEntry = new CQEntry(plan.getReq(), plan.getMd5(), lastExecutionTime);
         cqMap.put(cqId, cqEntry);
         res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
       }
@@ -234,6 +251,7 @@ public class CQInfo implements SnapshotProcessor {
   }
 
   private void serialize(OutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(SNAPSHOT_VERSION, stream);
     ReadWriteIOUtils.write(cqMap.size(), stream);
     for (CQEntry entry : cqMap.values()) {
       entry.serialize(stream);
@@ -241,9 +259,11 @@ public class CQInfo implements SnapshotProcessor {
   }
 
   private void deserialize(InputStream stream) throws IOException {
-    int size = ReadWriteIOUtils.readInt(stream);
+    int markerOrSize = ReadWriteIOUtils.readInt(stream);
+    boolean structured = markerOrSize == SNAPSHOT_VERSION;
+    int size = structured ? ReadWriteIOUtils.readInt(stream) : markerOrSize;
     for (int i = 0; i < size; i++) {
-      CQEntry cqEntry = CQEntry.deserialize(stream);
+      CQEntry cqEntry = CQEntry.deserialize(stream, structured);
       cqMap.put(cqEntry.cqId, cqEntry);
     }
   }
@@ -304,6 +324,10 @@ public class CQInfo implements SnapshotProcessor {
     private final String zoneId;
 
     private final String username;
+    private final org.apache.tsfile.utils.TimeDuration everyDuration;
+    private final org.apache.tsfile.utils.TimeDuration startTimeOffsetDuration;
+    private final org.apache.tsfile.utils.TimeDuration endTimeOffsetDuration;
+    private final boolean boundaryExplicit;
 
     private CQState state;
     private long lastExecutionTime;
@@ -321,6 +345,17 @@ public class CQInfo implements SnapshotProcessor {
           md5,
           req.zoneId,
           req.username,
+          durationFromReq(
+              req, req.isSetEveryDuration() ? req.getEveryDuration() : null, req.everyInterval),
+          durationFromReq(
+              req,
+              req.isSetStartOffsetDuration() ? req.getStartOffsetDuration() : null,
+              req.startTimeOffset),
+          durationFromReq(
+              req,
+              req.isSetEndOffsetDuration() ? req.getEndOffsetDuration() : null,
+              req.endTimeOffset),
+          req.isSetBoundaryExplicit() && req.isBoundaryExplicit(),
           CQState.INACTIVE,
           lastExecutionTime);
     }
@@ -338,6 +373,10 @@ public class CQInfo implements SnapshotProcessor {
           other.md5,
           other.zoneId,
           other.username,
+          other.everyDuration,
+          other.startTimeOffsetDuration,
+          other.endTimeOffsetDuration,
+          other.boundaryExplicit,
           other.state,
           other.lastExecutionTime);
     }
@@ -355,6 +394,10 @@ public class CQInfo implements SnapshotProcessor {
         String md5,
         String zoneId,
         String username,
+        org.apache.tsfile.utils.TimeDuration everyDuration,
+        org.apache.tsfile.utils.TimeDuration startTimeOffsetDuration,
+        org.apache.tsfile.utils.TimeDuration endTimeOffsetDuration,
+        boolean boundaryExplicit,
         CQState state,
         long lastExecutionTime) {
       this.cqId = cqId;
@@ -368,6 +411,10 @@ public class CQInfo implements SnapshotProcessor {
       this.md5 = md5;
       this.zoneId = zoneId;
       this.username = username;
+      this.everyDuration = everyDuration;
+      this.startTimeOffsetDuration = startTimeOffsetDuration;
+      this.endTimeOffsetDuration = endTimeOffsetDuration;
+      this.boundaryExplicit = boundaryExplicit;
       this.state = state;
       this.lastExecutionTime = lastExecutionTime;
     }
@@ -384,11 +431,18 @@ public class CQInfo implements SnapshotProcessor {
       ReadWriteIOUtils.write(md5, stream);
       ReadWriteIOUtils.write(zoneId, stream);
       ReadWriteIOUtils.write(username, stream);
+      ReadWriteIOUtils.write(everyDuration.monthDuration, stream);
+      ReadWriteIOUtils.write(everyDuration.nonMonthDuration, stream);
+      ReadWriteIOUtils.write(startTimeOffsetDuration.monthDuration, stream);
+      ReadWriteIOUtils.write(startTimeOffsetDuration.nonMonthDuration, stream);
+      ReadWriteIOUtils.write(endTimeOffsetDuration.monthDuration, stream);
+      ReadWriteIOUtils.write(endTimeOffsetDuration.nonMonthDuration, stream);
+      ReadWriteIOUtils.write(boundaryExplicit, stream);
       ReadWriteIOUtils.write(state.getType(), stream);
       ReadWriteIOUtils.write(lastExecutionTime, stream);
     }
 
-    private static CQEntry deserialize(InputStream stream) throws IOException {
+    private static CQEntry deserialize(InputStream stream, boolean structured) throws IOException {
       String cqId = ReadWriteIOUtils.readString(stream);
       long everyInterval = ReadWriteIOUtils.readLong(stream);
       long boundaryTime = ReadWriteIOUtils.readLong(stream);
@@ -400,6 +454,22 @@ public class CQInfo implements SnapshotProcessor {
       String md5 = ReadWriteIOUtils.readString(stream);
       String zoneId = ReadWriteIOUtils.readString(stream);
       String username = ReadWriteIOUtils.readString(stream);
+      org.apache.tsfile.utils.TimeDuration everyDuration =
+          structured
+              ? new org.apache.tsfile.utils.TimeDuration(
+                  ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream))
+              : new org.apache.tsfile.utils.TimeDuration(0, everyInterval);
+      org.apache.tsfile.utils.TimeDuration startDuration =
+          structured
+              ? new org.apache.tsfile.utils.TimeDuration(
+                  ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream))
+              : new org.apache.tsfile.utils.TimeDuration(0, startTimeOffset);
+      org.apache.tsfile.utils.TimeDuration endDuration =
+          structured
+              ? new org.apache.tsfile.utils.TimeDuration(
+                  ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream))
+              : new org.apache.tsfile.utils.TimeDuration(0, endTimeOffset);
+      boolean boundaryExplicit = structured && ReadWriteIOUtils.readBool(stream);
       CQState state = CQState.deserialize(ReadWriteIOUtils.readByte(stream));
       long lastExecutionTime = ReadWriteIOUtils.readLong(stream);
       return new CQEntry(
@@ -414,6 +484,10 @@ public class CQInfo implements SnapshotProcessor {
           md5,
           zoneId,
           username,
+          everyDuration,
+          startDuration,
+          endDuration,
+          boundaryExplicit,
           state,
           lastExecutionTime);
     }
@@ -470,6 +544,33 @@ public class CQInfo implements SnapshotProcessor {
       return username;
     }
 
+    public org.apache.tsfile.utils.TimeDuration getEveryDuration() {
+      return everyDuration;
+    }
+
+    public org.apache.tsfile.utils.TimeDuration getStartTimeOffsetDuration() {
+      return startTimeOffsetDuration;
+    }
+
+    public org.apache.tsfile.utils.TimeDuration getEndTimeOffsetDuration() {
+      return endTimeOffsetDuration;
+    }
+
+    public boolean isBoundaryExplicit() {
+      return boundaryExplicit;
+    }
+
+    private static org.apache.tsfile.utils.TimeDuration durationFromReq(
+        TCreateCQReq req, TCQDuration d, long legacy) {
+      if (req.isSetDurationEncodingVersion()
+          && req.getDurationEncodingVersion() == 1
+          && d != null) {
+        return new org.apache.tsfile.utils.TimeDuration(
+            Math.toIntExact(d.getMonthPart()), d.getNonMonthDuration());
+      }
+      return new org.apache.tsfile.utils.TimeDuration(0, legacy);
+    }
+
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -491,6 +592,10 @@ public class CQInfo implements SnapshotProcessor {
           && Objects.equals(md5, cqEntry.md5)
           && Objects.equals(zoneId, cqEntry.zoneId)
           && Objects.equals(username, cqEntry.username)
+          && Objects.equals(everyDuration, cqEntry.everyDuration)
+          && Objects.equals(startTimeOffsetDuration, cqEntry.startTimeOffsetDuration)
+          && Objects.equals(endTimeOffsetDuration, cqEntry.endTimeOffsetDuration)
+          && boundaryExplicit == cqEntry.boundaryExplicit
           && state == cqEntry.state;
     }
 
@@ -508,6 +613,10 @@ public class CQInfo implements SnapshotProcessor {
           md5,
           zoneId,
           username,
+          everyDuration,
+          startTimeOffsetDuration,
+          endTimeOffsetDuration,
+          boundaryExplicit,
           state,
           lastExecutionTime);
     }

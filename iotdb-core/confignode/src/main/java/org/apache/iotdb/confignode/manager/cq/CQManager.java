@@ -67,6 +67,10 @@ public class CQManager {
   }
 
   public TSStatus createCQ(TCreateCQReq req) {
+    TSStatus validation = validateDurationEncoding(req);
+    if (validation != null) {
+      return validation;
+    }
     lock.readLock().lock();
     try {
       ScheduledExecutorService currentExecutor = executor;
@@ -74,6 +78,43 @@ public class CQManager {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  private TSStatus validateDurationEncoding(TCreateCQReq req) {
+    if (!req.isSetDurationEncodingVersion()) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage("CQ CREATE requires duration encoding version 1");
+    }
+    if (req.getDurationEncodingVersion() != 1
+        || !req.isSetEveryDuration()
+        || !req.isSetStartOffsetDuration()
+        || !req.isSetEndOffsetDuration()
+        || !req.isSetBoundaryExplicit()) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage("Invalid CQ duration encoding; version 1 requires all structured fields");
+    }
+    if (req.getEveryDuration().getMonthPart() < 0
+        || req.getStartOffsetDuration().getMonthPart() < 0
+        || req.getEndOffsetDuration().getMonthPart() < 0
+        || req.getEveryDuration().getNonMonthDuration() < 0
+        || req.getStartOffsetDuration().getNonMonthDuration() < 0
+        || req.getEndOffsetDuration().getNonMonthDuration() < 0) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage("CQ durations must be non-negative");
+    }
+    if ((req.getEveryDuration().getMonthPart() == 0
+            && req.everyInterval != req.getEveryDuration().getNonMonthDuration())
+        || (req.getStartOffsetDuration().getMonthPart() == 0
+            && req.startTimeOffset != req.getStartOffsetDuration().getNonMonthDuration())
+        || (req.getEndOffsetDuration().getMonthPart() == 0
+            && req.endTimeOffset != req.getEndOffsetDuration().getNonMonthDuration())
+        || (req.getEveryDuration().getMonthPart() != 0 && req.everyInterval != 0)
+        || (req.getStartOffsetDuration().getMonthPart() != 0 && req.startTimeOffset != 0)
+        || (req.getEndOffsetDuration().getMonthPart() != 0 && req.endTimeOffset != 0)) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage("CQ legacy duration fields conflict with structured duration fields");
+    }
+    return null;
   }
 
   public TSStatus dropCQ(TDropCQReq req) {

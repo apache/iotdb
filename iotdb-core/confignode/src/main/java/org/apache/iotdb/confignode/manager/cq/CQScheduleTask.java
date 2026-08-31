@@ -34,9 +34,11 @@ import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.utils.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -79,9 +81,15 @@ public class CQScheduleTask implements Runnable {
 
   private final ConfigManager configManager;
 
-  private final long retryWaitTimeInMS;
+  private long retryWaitTimeInMS;
 
   private long executionTime;
+  private TimeDuration everyDuration;
+  private TimeDuration startDuration;
+  private TimeDuration endDuration;
+  private long boundaryTime;
+  private boolean calendarAware;
+  private ZoneId scheduleZone;
 
   public CQScheduleTask(
       TCreateCQReq req,
@@ -102,6 +110,45 @@ public class CQScheduleTask implements Runnable {
         executor,
         configManager,
         firstExecutionTime);
+    this.everyDuration =
+        req.isSetEveryDuration()
+            ? new TimeDuration(
+                Math.toIntExact(req.getEveryDuration().getMonthPart()),
+                req.getEveryDuration().getNonMonthDuration())
+            : new TimeDuration(0, req.everyInterval);
+    this.startDuration =
+        req.isSetStartOffsetDuration()
+            ? new TimeDuration(
+                Math.toIntExact(req.getStartOffsetDuration().getMonthPart()),
+                req.getStartOffsetDuration().getNonMonthDuration())
+            : new TimeDuration(0, req.startTimeOffset);
+    this.endDuration =
+        req.isSetEndOffsetDuration()
+            ? new TimeDuration(
+                Math.toIntExact(req.getEndOffsetDuration().getMonthPart()),
+                req.getEndOffsetDuration().getNonMonthDuration())
+            : new TimeDuration(0, req.endTimeOffset);
+    this.calendarAware =
+        everyDuration.monthDuration != 0
+            || startDuration.monthDuration != 0
+            || endDuration.monthDuration != 0;
+    this.boundaryTime = req.boundaryTime;
+    this.scheduleZone = ZoneId.of(req.zoneId);
+    if (calendarAware) {
+      this.retryWaitTimeInMS =
+          Math.min(
+              DEFAULT_RETRY_WAIT_TIME_IN_MS, Math.max(1L, everyDuration.nonMonthDuration / FACTOR));
+    }
+    if (calendarAware && req.isSetBoundaryExplicit() && !req.isBoundaryExplicit()) {
+      this.boundaryTime = CQCalendarUtils.localEpochBoundary(scheduleZone);
+      this.executionTime =
+          CQCalendarUtils.occurrence(
+              boundaryTime,
+              everyDuration,
+              CQCalendarUtils.firstOccurrenceIndex(
+                  boundaryTime, everyDuration, System.currentTimeMillis() * FACTOR, scheduleZone),
+              scheduleZone);
+    }
   }
 
   public CQScheduleTask(
@@ -119,6 +166,29 @@ public class CQScheduleTask implements Runnable {
         executor,
         configManager,
         entry.getLastExecutionTime() + entry.getEveryInterval());
+    this.everyDuration = entry.getEveryDuration();
+    this.startDuration = entry.getStartTimeOffsetDuration();
+    this.endDuration = entry.getEndTimeOffsetDuration();
+    this.calendarAware =
+        everyDuration.monthDuration != 0
+            || startDuration.monthDuration != 0
+            || endDuration.monthDuration != 0;
+    this.boundaryTime = entry.getBoundaryTime();
+    this.scheduleZone = ZoneId.of(entry.getZoneId());
+    if (calendarAware) {
+      if (!entry.isBoundaryExplicit()) {
+        this.boundaryTime = CQCalendarUtils.localEpochBoundary(scheduleZone);
+      }
+      long index =
+          CQCalendarUtils.firstOccurrenceIndex(
+              boundaryTime, everyDuration, entry.getLastExecutionTime(), scheduleZone);
+      if (CQCalendarUtils.occurrence(boundaryTime, everyDuration, index, scheduleZone)
+          <= entry.getLastExecutionTime()) {
+        index = Math.addExact(index, 1);
+      }
+      this.executionTime =
+          CQCalendarUtils.occurrence(boundaryTime, everyDuration, index, scheduleZone);
+    }
   }
 
   @SuppressWarnings("squid:S107")
@@ -148,6 +218,11 @@ public class CQScheduleTask implements Runnable {
     this.configManager = configManager;
     this.retryWaitTimeInMS = Math.min(DEFAULT_RETRY_WAIT_TIME_IN_MS, everyInterval / FACTOR);
     this.executionTime = executionTime;
+    this.everyDuration = new TimeDuration(0, everyInterval);
+    this.startDuration = new TimeDuration(0, startTimeOffset);
+    this.endDuration = new TimeDuration(0, endTimeOffset);
+    this.boundaryTime = 0;
+    this.scheduleZone = ZoneId.of(zoneId);
   }
 
   public static long getFirstExecutionTime(long boundaryTime, long everyInterval) {
@@ -163,10 +238,46 @@ public class CQScheduleTask implements Runnable {
     }
   }
 
+  public static long getFirstExecutionTime(
+      long boundaryTime, TimeDuration everyDuration, long now, ZoneId zoneId) {
+    long index = CQCalendarUtils.firstOccurrenceIndex(boundaryTime, everyDuration, now, zoneId);
+    return CQCalendarUtils.occurrence(boundaryTime, everyDuration, index, zoneId);
+  }
+
   @Override
   public void run() {
+    long occurrenceIndex = 0;
     long startTime = executionTime - startTimeOffset;
     long endTime = executionTime - endTimeOffset;
+    if (calendarAware) {
+      occurrenceIndex =
+          CQCalendarUtils.firstOccurrenceIndex(
+              boundaryTime, everyDuration, executionTime, scheduleZone);
+      if (CQCalendarUtils.occurrence(boundaryTime, everyDuration, occurrenceIndex, scheduleZone)
+          != executionTime) {
+        occurrenceIndex = Math.max(0, occurrenceIndex - 1);
+      }
+      startTime =
+          CQCalendarUtils.applyVector(
+              boundaryTime,
+              Math.subtractExact(
+                  Math.multiplyExact((long) everyDuration.monthDuration, occurrenceIndex),
+                  startDuration.monthDuration),
+              Math.subtractExact(
+                  Math.multiplyExact(everyDuration.nonMonthDuration, occurrenceIndex),
+                  startDuration.nonMonthDuration),
+              scheduleZone);
+      endTime =
+          CQCalendarUtils.applyVector(
+              boundaryTime,
+              Math.subtractExact(
+                  Math.multiplyExact((long) everyDuration.monthDuration, occurrenceIndex),
+                  endDuration.monthDuration),
+              Math.subtractExact(
+                  Math.multiplyExact(everyDuration.nonMonthDuration, occurrenceIndex),
+                  endDuration.nonMonthDuration),
+              scheduleZone);
+    }
 
     Optional<TDataNodeLocation> targetDataNode =
         configManager.getNodeManager().getLowestLoadDataNode();
@@ -185,7 +296,19 @@ public class CQScheduleTask implements Runnable {
           endTime,
           System.currentTimeMillis() * FACTOR);
       TExecuteCQ executeCQReq =
-          new TExecuteCQ(queryBody, startTime, endTime, everyInterval, zoneId, cqId, username);
+          new TExecuteCQ(
+              queryBody,
+              startTime,
+              endTime,
+              toTimeoutMillis(
+                  calendarAware
+                      ? CQCalendarUtils.occurrence(
+                              boundaryTime, everyDuration, occurrenceIndex + 1, scheduleZone)
+                          - executionTime
+                      : everyInterval),
+              zoneId,
+              cqId,
+              username);
       try {
         AsyncDataNodeInternalServiceClient client =
             CnToDnInternalServiceAsyncRequestManager.getInstance()
@@ -197,6 +320,17 @@ public class CQScheduleTask implements Runnable {
           submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
         }
       }
+    }
+  }
+
+  private static long toTimeoutMillis(long deltaTicks) {
+    if (deltaTicks <= 0) {
+      return 1;
+    }
+    try {
+      return Math.addExact(deltaTicks, FACTOR - 1) / FACTOR;
+    } catch (ArithmeticException e) {
+      return Long.MAX_VALUE;
     }
   }
 
@@ -226,11 +360,26 @@ public class CQScheduleTask implements Runnable {
 
     private void updateExecutionTime() {
       if (timeoutPolicy == TimeoutPolicy.BLOCKED) {
-        executionTime = executionTime + everyInterval;
+        if (calendarAware) {
+          long index =
+              CQCalendarUtils.firstOccurrenceIndex(
+                  boundaryTime, everyDuration, executionTime, scheduleZone);
+          executionTime =
+              CQCalendarUtils.occurrence(boundaryTime, everyDuration, index + 1, scheduleZone);
+        } else {
+          executionTime = executionTime + everyInterval;
+        }
       } else if (timeoutPolicy == TimeoutPolicy.DISCARD) {
         long now = System.currentTimeMillis() * FACTOR;
-        executionTime =
-            executionTime + ((now - executionTime - 1) / everyInterval + 1) * everyInterval;
+        if (calendarAware) {
+          long index =
+              CQCalendarUtils.firstOccurrenceIndex(boundaryTime, everyDuration, now, scheduleZone);
+          executionTime =
+              CQCalendarUtils.occurrence(boundaryTime, everyDuration, index, scheduleZone);
+        } else {
+          executionTime =
+              executionTime + ((now - executionTime - 1) / everyInterval + 1) * everyInterval;
+        }
       } else {
         throw new IllegalArgumentException("Unknown TimeoutPolicy: " + timeoutPolicy);
       }
@@ -270,6 +419,12 @@ public class CQScheduleTask implements Runnable {
             LOGGER.info("Stop submitting CQ {} because {}", cqId, result.getMessage());
             return;
           }
+          // The persisted progress did not advance. Keep the same occurrence and retry; in
+          // particular, stale callbacks must never create a competing scheduling chain.
+          if (needSubmit()) {
+            submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
+          }
+          return;
         }
 
         if (needSubmit()) {
