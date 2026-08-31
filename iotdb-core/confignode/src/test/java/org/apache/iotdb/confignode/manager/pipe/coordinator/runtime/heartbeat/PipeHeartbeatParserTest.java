@@ -369,7 +369,7 @@ public class PipeHeartbeatParserTest {
     CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
 
     final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
-    final PipeMeta pipeMeta = createPipeMeta();
+    final PipeMeta pipeMeta = createHistoryOnlyPipeMeta(1);
     pipeTaskInfo.createPipe(
         new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
 
@@ -395,11 +395,66 @@ public class PipeHeartbeatParserTest {
   }
 
   @Test
+  public void testParseHeartbeatCompletesHistoryOnlyPipeWithoutRequiredDataRegion()
+      throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.realtime.enable", Boolean.FALSE.toString());
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    final PipeMeta pipeMeta = createPipeMeta(sourceAttributes);
+    pipeTaskInfo.createPipe(
+        new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(
+        1, createPipeHeartbeatWithCompletedRegions(pipeMeta, false, Collections.emptyList()));
+
+    Assert.assertNull(pipeTaskInfo.getPipeMetaByPipeName("test_pipe"));
+    verify(context.procedureManager, times(1)).pipeHandleMetaChange(true, true);
+  }
+
+  @Test
+  public void testParseHeartbeatKeepsHistoryOnlyPipeWithoutDataRegionReport() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.realtime.enable", Boolean.FALSE.toString());
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    final PipeMeta pipeMeta = createPipeMeta(sourceAttributes);
+    pipeTaskInfo.createPipe(
+        new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(1, createPipeHeartbeat(pipeMeta, false));
+
+    Assert.assertNotNull(pipeTaskInfo.getPipeMetaByPipeName("test_pipe"));
+    verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
+  }
+
+  @Test
+  public void testParseHeartbeatKeepsRealtimePipeWithoutRequiredDataRegion() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    final PipeMeta pipeMeta = createPipeMeta(Collections.emptyMap());
+    pipeTaskInfo.createPipe(
+        new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(
+        1, createPipeHeartbeatWithCompletedRegions(pipeMeta, false, Collections.emptyList()));
+
+    Assert.assertNotNull(pipeTaskInfo.getPipeMetaByPipeName("test_pipe"));
+    verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
+  }
+
+  @Test
   public void testParseHeartbeatDoesNotTrustDataNodeBooleanForCompletion() throws Exception {
     CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
 
     final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
-    final PipeMeta pipeMeta = createPipeMeta(1);
+    final PipeMeta pipeMeta = createHistoryOnlyPipeMeta(1);
     pipeTaskInfo.createPipe(
         new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
 
@@ -418,7 +473,7 @@ public class PipeHeartbeatParserTest {
     CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
 
     final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
-    final PipeMeta pipeMeta = createPipeMeta(1, 2);
+    final PipeMeta pipeMeta = createHistoryOnlyPipeMeta(1, 2);
     pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().get(2).setLeaderNodeId(2);
     pipeTaskInfo.createPipe(
         new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
@@ -442,7 +497,7 @@ public class PipeHeartbeatParserTest {
     CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
 
     final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
-    final PipeMeta pipeMeta = createPipeMeta(1, 2);
+    final PipeMeta pipeMeta = createHistoryOnlyPipeMeta(1, 2);
     pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().get(2).setLeaderNodeId(2);
     pipeTaskInfo.createPipe(
         new CreatePipePlanV2(pipeMeta.getStaticMeta(), pipeMeta.getRuntimeMeta()));
@@ -577,6 +632,17 @@ public class PipeHeartbeatParserTest {
   }
 
   private PipeMeta createPipeMeta(final int... regionIds) {
+    return createPipeMeta(Collections.emptyMap(), regionIds);
+  }
+
+  private PipeMeta createHistoryOnlyPipeMeta(final int... regionIds) {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.realtime.enable", Boolean.FALSE.toString());
+    return createPipeMeta(sourceAttributes, regionIds);
+  }
+
+  private PipeMeta createPipeMeta(
+      final Map<String, String> sourceAttributes, final int... regionIds) {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
     for (final int regionId : regionIds) {
       pipeRuntimeMeta
@@ -584,7 +650,7 @@ public class PipeHeartbeatParserTest {
           .put(regionId, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1));
     }
     return new PipeMeta(
-        new PipeStaticMeta("test_pipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+        new PipeStaticMeta("test_pipe", 1L, sourceAttributes, new HashMap<>(), new HashMap<>()),
         pipeRuntimeMeta);
   }
 
