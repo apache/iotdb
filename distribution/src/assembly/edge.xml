@@ -125,6 +125,17 @@
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
+        <!-- Edge replacements for the standalone node daemon and cleanup tools. -->
+        <fileSet>
+            <outputDirectory>tools</outputDirectory>
+            <directory>${project.basedir}/../scripts/tools</directory>
+            <includes>
+                <include>ops/daemon-edge.sh</include>
+                <include>ops/destroy-edge.sh</include>
+                <include>windows/ops/destroy-edge.bat</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
     </fileSets>
     <files>
         <file>
