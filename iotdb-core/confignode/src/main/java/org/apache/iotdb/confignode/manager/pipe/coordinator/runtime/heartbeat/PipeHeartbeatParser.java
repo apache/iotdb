@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
@@ -298,50 +297,6 @@ public class PipeHeartbeatParser {
                   ManagerMessages.DETECT_PIPERUNTIMECRITICALEXCEPTION_FROM_AGENT_STOP_PIPE,
                   exception,
                   pipeName);
-            }
-
-            if (exception instanceof PipeRuntimeSinkCriticalException) {
-              pipeTaskInfo
-                  .get()
-                  .getPipeMetaList()
-                  .forEach(
-                      pipeMeta -> {
-                        final PipeStaticMeta affectedStaticMeta = pipeMeta.getStaticMeta();
-                        if (!affectedStaticMeta
-                                .getSinkParameters()
-                                .equals(pipeMetaFromCoordinator.getStaticMeta().getSinkParameters())
-                            || affectedStaticMeta.equals(pipeMetaFromCoordinator.getStaticMeta())) {
-                          return;
-                        }
-
-                        final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-                        if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
-                          return;
-                        }
-                        if (!runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED)) {
-                          // Record the connector exception for each pipe affected
-                          Map<Integer, PipeRuntimeException> exceptionMap =
-                              runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
-                          if (!exceptionMap.containsKey(nodeId)
-                              || exceptionMap.get(nodeId).getTimeStamp()
-                                  < exception.getTimeStamp()) {
-                            exceptionMap.put(nodeId, exception);
-                          }
-                          runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                          runtimeMeta.setIsStoppedByRuntimeException(true);
-
-                          needWriteConsensusOnConfigNodes.set(true);
-                          needPushPipeMetaToDataNodes.set(false);
-
-                          PipeLogger.log(
-                              LOGGER::warn,
-                              exception,
-                              ManagerMessages
-                                  .DETECT_PIPERUNTIMESINKCRITICALEXCEPTION_FROM_AGENT_STOP_PIPE,
-                              exception,
-                              pipeName);
-                        }
-                      });
             }
           }
         }
