@@ -76,8 +76,9 @@ public final class EdgeNode {
             "EdgeNode-ConfigNode-Bootstrap");
     configNodeThread.start();
 
+    String internalAddress = ConfigNodeDescriptor.getInstance().getConf().getInternalAddress();
     int internalPort = ConfigNodeDescriptor.getInstance().getConf().getInternalPort();
-    waitPortOpen(internalPort, configNodeError);
+    waitPortOpen(internalAddress, internalPort, configNodeError);
     throwIfConfigNodeBootstrapFailed(configNodeError);
     Thread.sleep(LEADER_ELECTION_GRACE_MS);
     throwIfConfigNodeBootstrapFailed(configNodeError);
@@ -96,7 +97,8 @@ public final class EdgeNode {
     }
   }
 
-  private static void waitPortOpen(int port, AtomicReference<Throwable> configNodeError)
+  private static void waitPortOpen(
+      String address, int port, AtomicReference<Throwable> configNodeError)
       throws InterruptedException {
     long deadline = System.currentTimeMillis() + CONFIG_NODE_READY_TIMEOUT_MS;
     while (System.currentTimeMillis() < deadline) {
@@ -104,7 +106,7 @@ public final class EdgeNode {
         return;
       }
       try (Socket socket = new Socket()) {
-        socket.connect(new InetSocketAddress("127.0.0.1", port), 1000);
+        socket.connect(new InetSocketAddress(address, port), 1000);
         return;
       } catch (Exception e) {
         Thread.sleep(PORT_PROBE_INTERVAL_MS);

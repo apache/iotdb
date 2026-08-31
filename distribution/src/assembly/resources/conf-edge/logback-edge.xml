@@ -230,22 +230,14 @@
     <logger level="info" name="SAMPLED_QUERIES" additivity="false">
         <appender-ref ref="SAMPLED_QUERIES"/>
     </logger>
-    <logger level="info" name="QUERY_FREQUENCY">
-        <appender-ref ref="QUERY_FREQUENCY"/>
-    </logger>
+    <logger level="info" name="QUERY_FREQUENCY"/>
     <logger level="info" name="DETAILED_FAILURE_QUERY_TRACE"/>
     <logger level="info" name="COMPACTION">
         <appender-ref ref="COMPACTION"/>
     </logger>
-    <logger level="info" name="org.apache.iotdb.pipe.api">
-        <appender-ref ref="PIPE"/>
-    </logger>
-    <logger level="info" name="org.apache.iotdb.db.pipe">
-        <appender-ref ref="PIPE"/>
-    </logger>
-    <logger level="info" name="org.apache.iotdb.commons.pipe">
-        <appender-ref ref="PIPE"/>
-    </logger>
+    <logger level="info" name="org.apache.iotdb.pipe.api"/>
+    <logger level="info" name="org.apache.iotdb.db.pipe"/>
+    <logger level="info" name="org.apache.iotdb.commons.pipe"/>
     <logger level="info" name="EXPLAIN_ANALYZE" additivity="false">
         <appender-ref ref="EXPLAIN_ANALYZE"/>
     </logger>

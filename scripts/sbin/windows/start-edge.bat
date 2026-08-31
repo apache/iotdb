@@ -18,6 +18,8 @@
 @REM under the License.
 @REM
 
+setlocal
+
 @REM set cmd format
 powershell -NoProfile -Command "$v=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').CurrentMajorVersionNumber; if($v -gt 6) { cmd /c 'chcp 65001' }"
 
@@ -29,7 +31,7 @@ echo ````````````````````````
 
 @REM -----------------------------------------------------------------------------
 @REM SET JAVA
-set PATH="%JAVA_HOME%\bin\";%PATH%
+if DEFINED JAVA_HOME set "PATH=%JAVA_HOME%\bin;%PATH%"
 set "FULL_VERSION="
 set "MAJOR_VERSION="
 set "MINOR_VERSION="
@@ -50,29 +52,33 @@ set JAVA_VERSION=%MAJOR_VERSION%
 @REM IoTDB requires JDK 17 or later.
 IF "%JAVA_VERSION%" == "" (
 	echo Failed to determine Java version. IoTDB only supports jdk ^>= 17, please check your java installation.
-	goto finally
+	exit /b 1
 )
 IF %JAVA_VERSION% LSS 17 (
 	echo IoTDB only supports jdk ^>= 17, please check your java version.
-	goto finally
+	exit /b 1
 )
 
 @REM -----------------------------------------------------------------------------
 @REM SET DIRS
-pushd %~dp0..\..
-if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
+pushd "%~dp0..\.."
+if NOT DEFINED IOTDB_HOME set "IOTDB_HOME=%cd%"
 popd
-if NOT DEFINED IOTDB_CONF set IOTDB_CONF=%IOTDB_HOME%\conf
-set IOTDB_LOG_DIR=%IOTDB_HOME%\logs
-if NOT EXIST %IOTDB_LOG_DIR% mkdir %IOTDB_LOG_DIR%
+if NOT DEFINED IOTDB_CONF set "IOTDB_CONF=%IOTDB_HOME%\conf"
+set "IOTDB_LOG_DIR=%IOTDB_HOME%\logs"
+if NOT EXIST "%IOTDB_LOG_DIR%" mkdir "%IOTDB_LOG_DIR%"
+
+@REM Check both nodes' configured ports before starting the merged process.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0check-edge.ps1" -ConfigFile "%IOTDB_CONF%\iotdb-system.properties"
+if ERRORLEVEL 1 exit /b 1
 
 @REM -----------------------------------------------------------------------------
 @REM SET JVM OPTIONS
-if EXIST %IOTDB_CONF%\windows\edge-env.bat (
-	call %IOTDB_CONF%\windows\edge-env.bat
+if EXIST "%IOTDB_CONF%\windows\edge-env.bat" (
+	call "%IOTDB_CONF%\windows\edge-env.bat"
 ) else (
 	echo Can't find %IOTDB_CONF%\windows\edge-env.bat
-	goto finally
+	exit /b 1
 )
 
 set illegal_access_params=--add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED
@@ -98,8 +104,6 @@ set iotdb_parms=%iotdb_parms% -DOFF_HEAP_MEMORY=%OFF_HEAP_MEMORY%
 @REM -----------------------------------------------------------------------------
 @REM START
 java %illegal_access_params% %iotdb_parms% %IOTDB_JMX_OPTS% -cp "%CLASSPATH%" %MAIN_CLASS% -s
-
-goto finally
-
-:finally
+set "EDGE_EXIT_CODE=%ERRORLEVEL%"
 pause
+exit /b %EDGE_EXIT_CODE%

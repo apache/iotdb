@@ -30,8 +30,15 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -49,6 +56,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -71,6 +79,7 @@ public class IoTDBEdgeBasicIT {
 
   private static final long SCRIPT_TIMEOUT_SECONDS = 45;
   private static final long STARTUP_TIMEOUT_SECONDS = 120;
+  private static final Properties PACKAGED_SYSTEM_PROPERTIES = new Properties();
 
   private static Path edgeHome;
   private static int[] ports;
@@ -91,6 +100,10 @@ public class IoTDBEdgeBasicIT {
     final Path extractionDir = WORK_DIR.resolve("package");
     unzip(edgePackage, extractionDir);
     edgeHome = findEdgeHome(extractionDir);
+    try (InputStream input =
+        Files.newInputStream(edgeHome.resolve("conf/iotdb-system.properties"))) {
+      PACKAGED_SYSTEM_PROPERTIES.load(input);
+    }
 
     ports = EnvUtils.searchAvailablePorts();
     rpcPort = ports[2];
@@ -179,15 +192,41 @@ public class IoTDBEdgeBasicIT {
         SessionConfig.DEFAULT_PASSWORD);
   }
 
+  @Test
+  public void testPackagedConfiguration() throws Exception {
+    assertFalse(PACKAGED_SYSTEM_PROPERTIES.containsKey("model_inference_execution_thread_count"));
+    assertTrue(Files.isRegularFile(edgeHome.resolve("sbin/windows/check-edge.ps1")));
+
+    final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+    factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+    factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+    final Document document;
+    try (InputStream input = Files.newInputStream(edgeHome.resolve("conf/logback-edge.xml"))) {
+      document = factory.newDocumentBuilder().parse(input);
+    }
+    final Set<String> appenderNames = new HashSet<>();
+    final NodeList appenders = document.getElementsByTagName("appender");
+    for (int i = 0; i < appenders.getLength(); i++) {
+      appenderNames.add(((Element) appenders.item(i)).getAttribute("name"));
+    }
+    final NodeList references = document.getElementsByTagName("appender-ref");
+    for (int i = 0; i < references.getLength(); i++) {
+      final String name = ((Element) references.item(i)).getAttribute("ref");
+      assertTrue("Undefined Edge log appender: " + name, appenderNames.contains(name));
+    }
+  }
+
   private static String jdbcUrl() {
     return Config.IOTDB_URL_PREFIX + "127.0.0.1:" + rpcPort;
   }
 
   private static void configurePorts(final Path configFile) throws IOException {
+    final String configNodeAddress = System.getProperty("EdgeConfigNodeAddress", "127.0.0.1");
     final Map<String, String> replacements = new LinkedHashMap<>();
-    replacements.put("cn_seed_config_node", "127.0.0.1:" + ports[0]);
-    replacements.put("dn_seed_config_node", "127.0.0.1:" + ports[0]);
-    replacements.put("cn_internal_address", "127.0.0.1");
+    replacements.put("cn_seed_config_node", configNodeAddress + ":" + ports[0]);
+    replacements.put("dn_seed_config_node", configNodeAddress + ":" + ports[0]);
+    replacements.put("cn_internal_address", configNodeAddress);
     replacements.put("cn_internal_port", Integer.toString(ports[0]));
     replacements.put("cn_consensus_port", Integer.toString(ports[1]));
     replacements.put("dn_rpc_address", "127.0.0.1");

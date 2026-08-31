@@ -69,6 +69,7 @@ jobs:
           -P with-integration-tests,EdgeIT \
           -DskipUTs \
           -Dit.test=IoTDBEdgeBasicIT \
+          -DEdgeConfigNodeAddress=127.0.0.2 \
           -DfailIfNoTests=false \
           -Dfailsafe.failIfNoSpecifiedTests=false \
           -pl integration-test \
@@ -83,3 +84,11 @@ jobs:
             integration-test/target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 1
+
+  WindowsScripts:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test Edge Windows launchers
+        shell: powershell
+        run: .github/scripts/test-edge-windows.ps1

@@ -40,5 +40,9 @@ set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% -XX:+UnlockDiagnosticVMOptions
 set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% -XX:+UseCRC32Intrinsics
 set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8
 
+@REM Load the Maven-filtered locale before expanding its value in a separate command.
+if EXIST "%IOTDB_CONF%\windows\iotdb-common.bat" call "%IOTDB_CONF%\windows\iotdb-common.bat"
+if DEFINED TSFILE_LOCALE_JVM_OPT set "IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% %TSFILE_LOCALE_JVM_OPT%"
+
 echo IoTDB Edge on heap memory size = %ON_HEAP_MEMORY%B, off heap memory size = %OFF_HEAP_MEMORY%B
 echo If you want to change this configuration, please check conf\windows\edge-env.bat.

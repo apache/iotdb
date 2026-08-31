@@ -102,6 +102,7 @@
                 <include>stop-edge.sh</include>
                 <include>start-cli.sh</include>
                 <include>windows/start-edge.bat</include>
+                <include>windows/check-edge.ps1</include>
                 <include>windows/stop-edge.bat</include>
                 <include>windows/start-cli.bat</include>
                 <include>windows/start-cli-table.bat</include>
