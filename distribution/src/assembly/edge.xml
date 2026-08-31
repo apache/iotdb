@@ -20,12 +20,12 @@
 
 -->
 <assembly>
-    <id>all-bin</id>
+    <id>edge-bin</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>apache-iotdb-${project.version}-all-bin</baseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-edge-bin</baseDirectory>
     <dependencySets>
         <dependencySet>
             <includes>
@@ -46,32 +46,41 @@
         </dependencySet>
     </dependencySets>
     <fileSets>
+        <!-- jmx credentials and the tool logback come from the datanode resources;
+             logback-datanode.xml is replaced by the merged logback-edge.xml below. -->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/conf</directory>
+            <excludes>
+                <exclude>logback-datanode.xml</exclude>
+            </excludes>
         </fileSet>
-        <fileSet>
-            <outputDirectory>conf</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/confignode/src/assembly/resources/conf</directory>
-        </fileSet>
+        <!-- iotdb-system.properties is replaced by the edge-tuned one below. -->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
             <excludes>
+                <exclude>iotdb-system.properties</exclude>
                 <exclude>edge/**</exclude>
             </excludes>
+        </fileSet>
+        <!-- edge-specific system configuration. -->
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf/edge</directory>
+        </fileSet>
+        <!-- merged logback configuration for the single Edge process. -->
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/src/assembly/resources/conf-edge</directory>
         </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../scripts/conf</directory>
-            <excludes>
-                <exclude>ainode-env.*</exclude>
-                <exclude>**/ainode-env.*</exclude>
-                <exclude>edge-env.*</exclude>
-                <exclude>**/edge-env.*</exclude>
-                <exclude>iotdb-common.sh</exclude>
-                <exclude>**/iotdb-common.bat</exclude>
-            </excludes>
+            <includes>
+                <include>edge-env.sh</include>
+                <include>windows/edge-env.bat</include>
+            </includes>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
@@ -84,23 +93,35 @@
             <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
+        <!-- one pair of start/stop scripts for the merged process, plus the cli. -->
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${project.basedir}/../scripts/sbin</directory>
-            <excludes>
-                <exclude>*ainode.*</exclude>
-                <exclude>**/*ainode.*</exclude>
-                <exclude>*edge.*</exclude>
-                <exclude>**/*edge.*</exclude>
-            </excludes>
+            <includes>
+                <include>start-edge.sh</include>
+                <include>stop-edge.sh</include>
+                <include>start-cli.sh</include>
+                <include>windows/start-edge.bat</include>
+                <include>windows/check-edge.ps1</include>
+                <include>windows/stop-edge.bat</include>
+                <include>windows/start-cli.bat</include>
+                <include>windows/start-cli-table.bat</include>
+            </includes>
             <fileMode>0755</fileMode>
         </fileSet>
+        <!-- Keep node-independent tools. Edge does not package the standalone node launchers or
+             environment files required by the excluded destructive, daemon, and health scripts. -->
         <fileSet>
             <outputDirectory>tools</outputDirectory>
             <directory>${project.basedir}/../scripts/tools</directory>
             <excludes>
                 <exclude>*ainode.*</exclude>
                 <exclude>**/*ainode.*</exclude>
+                <exclude>ops/daemon-*.sh</exclude>
+                <exclude>ops/destroy-*.sh</exclude>
+                <exclude>ops/health_check.sh</exclude>
+                <exclude>windows/ops/destroy-*.bat</exclude>
+                <exclude>windows/ops/health_check.bat</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
