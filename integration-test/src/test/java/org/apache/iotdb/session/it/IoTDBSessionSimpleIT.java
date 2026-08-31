@@ -2164,6 +2164,7 @@ public class IoTDBSessionSimpleIT {
     tablet.addValue("s8", 0, new Binary(new byte[] {1}));
     tablet.addValue("s9", 0, "string_value");
     tablet.addValue("s10", 0, DateUtils.parseIntToLocalDate(20250403));
+    tablet.addValue("s11", 0, 1L);
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertTablet(tablet);
@@ -2193,8 +2194,8 @@ public class IoTDBSessionSimpleIT {
           assertEquals("string_value", iterator.getString("root.sg.d1.s9"));
           assertFalse(iterator.isNull("root.sg.d1.s10"));
           assertEquals(DateUtils.parseIntToLocalDate(20250403), iterator.getDate("root.sg.d1.s10"));
-          assertTrue(iterator.isNull("root.sg.d1.s11"));
-          assertNull(iterator.getTimestamp("root.sg.d1.s11"));
+          assertFalse(iterator.isNull("root.sg.d1.s11"));
+          assertEquals(new Timestamp(1), iterator.getTimestamp("root.sg.d1.s11"));
 
           assertEquals(new Timestamp(0), iterator.getTimestamp("Time"));
           assertFalse(iterator.isNull("Time"));
