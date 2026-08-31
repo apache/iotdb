@@ -250,13 +250,14 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
               minimumEvery));
     }
     if (!isPositive(everyDuration)) {
-      throw new SemanticException("CQ: The every interval should be greater than 0.");
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_CQ_EVERY_INTERVAL_MUST_BE_POSITIVE_26259019);
     }
     if (!isPositive(startTimeOffsetDuration)) {
-      throw new SemanticException("CQ: The start time offset should be greater than 0.");
+      throw new SemanticException(DataNodeQueryMessages.CQ_THE_START_TIME_OFFSET_SHOULD_BE_GREATER);
     }
     if (endTimeOffsetDuration.monthDuration < 0 || endTimeOffsetDuration.nonMonthDuration < 0) {
-      throw new SemanticException("CQ: The end time offset should be greater than or equal to 0.");
+      throw new SemanticException(DataNodeQueryMessages.CQ_THE_END_TIME_OFFSET_SHOULD_BE_GREATER);
     }
     if (!dominates(startTimeOffsetDuration, endTimeOffsetDuration, true)) {
       throw new SemanticException(

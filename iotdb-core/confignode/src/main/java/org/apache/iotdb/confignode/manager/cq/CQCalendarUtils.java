@@ -18,6 +18,7 @@
 package org.apache.iotdb.confignode.manager.cq;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import org.apache.tsfile.utils.TimeDuration;
 
@@ -58,7 +59,8 @@ public final class CQCalendarUtils {
   public static long firstOccurrenceIndex(
       long boundary, TimeDuration every, long now, ZoneId zone) {
     if (every.monthDuration <= 0 && every.nonMonthDuration <= 0) {
-      throw new IllegalArgumentException("CQ EVERY duration must be positive");
+      throw new IllegalArgumentException(
+          ManagerMessages.EXCEPTION_CQ_EVERY_DURATION_MUST_BE_POSITIVE_69C29D26);
     }
     if (now <= boundary) {
       return 0;
@@ -114,7 +116,8 @@ public final class CQCalendarUtils {
       return Math.addExact(
           Math.multiplyExact(instant.getEpochSecond(), 1_000L), instant.getNano() / 1_000_000L);
     } catch (ArithmeticException e) {
-      throw new IllegalArgumentException("CQ timestamp overflows configured precision", e);
+      throw new IllegalArgumentException(
+          ManagerMessages.EXCEPTION_CQ_TIMESTAMP_OVERFLOWS_CONFIGURED_PRECISION_F5FB230C, e);
     }
   }
 

@@ -90,8 +90,8 @@ public class CQManager {
 
   private TSStatus validateDurationEncoding(TCreateCQReq req) {
     if (!req.isSetDurationEncodingVersion()) {
-      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-          .setMessage("CQ CREATE requires duration encoding version 1");
+      // Requests from older DataNodes contain only the legacy fixed-duration fields.
+      return null;
     }
     if (req.getDurationEncodingVersion() != 1
         || !req.isSetEveryDuration()
@@ -99,7 +99,9 @@ public class CQManager {
         || !req.isSetEndOffsetDuration()
         || !req.isSetBoundaryExplicit()) {
       return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-          .setMessage("Invalid CQ duration encoding; version 1 requires all structured fields");
+          .setMessage(
+              ManagerMessages
+                  .MESSAGE_INVALID_CQ_DURATION_ENCODING_VERSION_1_REQUIRES_ALL_STRUCTURED_FIELDS_FEAD7F92);
     }
     if (req.getEveryDuration().getMonthPart() < 0
         || req.getStartOffsetDuration().getMonthPart() < 0
@@ -108,7 +110,7 @@ public class CQManager {
         || req.getStartOffsetDuration().getNonMonthDuration() < 0
         || req.getEndOffsetDuration().getNonMonthDuration() < 0) {
       return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-          .setMessage("CQ durations must be non-negative");
+          .setMessage(ManagerMessages.MESSAGE_CQ_DURATIONS_MUST_BE_NON_NEGATIVE_BE23CE04);
     }
     if ((req.getEveryDuration().getMonthPart() == 0
             && req.everyInterval != req.getEveryDuration().getNonMonthDuration())
@@ -120,7 +122,9 @@ public class CQManager {
         || (req.getStartOffsetDuration().getMonthPart() != 0 && req.startTimeOffset != 0)
         || (req.getEndOffsetDuration().getMonthPart() != 0 && req.endTimeOffset != 0)) {
       return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-          .setMessage("CQ legacy duration fields conflict with structured duration fields");
+          .setMessage(
+              ManagerMessages
+                  .MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67);
     }
     return null;
   }

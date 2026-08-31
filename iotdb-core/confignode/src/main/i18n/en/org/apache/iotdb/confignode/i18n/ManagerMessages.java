@@ -702,4 +702,17 @@ public final class ManagerMessages {
       MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
           "%s Please manually check later whether the procedure is executed successfully.";
 
+  public static final String EXCEPTION_CQ_EVERY_DURATION_MUST_BE_POSITIVE_69C29D26 =
+      "CQ EVERY duration must be positive";
+  public static final String EXCEPTION_CQ_TIMESTAMP_OVERFLOWS_CONFIGURED_PRECISION_F5FB230C =
+      "CQ timestamp overflows configured precision";
+  public static final String
+      MESSAGE_INVALID_CQ_DURATION_ENCODING_VERSION_1_REQUIRES_ALL_STRUCTURED_FIELDS_FEAD7F92 =
+          "Invalid CQ duration encoding; version 1 requires all structured fields";
+  public static final String MESSAGE_CQ_DURATIONS_MUST_BE_NON_NEGATIVE_BE23CE04 =
+      "CQ durations must be non-negative";
+  public static final String
+      MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67 =
+          "CQ legacy duration fields conflict with structured duration fields";
+
 }

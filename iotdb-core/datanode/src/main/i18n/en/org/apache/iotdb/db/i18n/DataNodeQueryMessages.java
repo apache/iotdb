@@ -1217,6 +1217,16 @@ public final class DataNodeQueryMessages {
       "CQ: The start time offset should be greater than 0.";
   public static final String CQ_THE_END_TIME_OFFSET_SHOULD_BE_GREATER =
       "CQ: The end time offset should be greater than or equal to 0.";
+  public static final String EXCEPTION_CQ_DURATION_CANNOT_BE_EMPTY_C7269AB2 =
+      "CQ duration cannot be empty";
+  public static final String EXCEPTION_INVALID_CQ_DURATION_ARG_F4917D5C =
+      "Invalid CQ duration: %s";
+  public static final String EXCEPTION_CQ_DURATION_COMPONENT_OVERFLOWS_ARG_ED5B0962 =
+      "CQ duration component overflows: %s";
+  public static final String EXCEPTION_CQ_DURATION_MONTH_COMPONENT_OVERFLOWS_ARG_EBF2A2B6 =
+      "CQ duration month component overflows: %s";
+  public static final String EXCEPTION_CQ_EVERY_INTERVAL_MUST_BE_POSITIVE_26259019 =
+      "CQ: The every interval should be greater than 0.";
   public static final String CQ_THE_QUERY_BODY_MISSES_AN_INTO_CLAUSE =
       "CQ: The query body misses an INTO clause.";
   public static final String CQ_SPECIFYING_TIME_FILTERS_IN_THE_QUERY_BODY =

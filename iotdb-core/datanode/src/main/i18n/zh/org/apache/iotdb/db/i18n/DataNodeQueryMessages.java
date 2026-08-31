@@ -1198,6 +1198,16 @@ public final class DataNodeQueryMessages {
       "连续查询：起始时间偏移量应大于 0。";
   public static final String CQ_THE_END_TIME_OFFSET_SHOULD_BE_GREATER =
       "连续查询：结束时间偏移量应大于或等于 0。";
+  public static final String EXCEPTION_CQ_DURATION_CANNOT_BE_EMPTY_C7269AB2 =
+      "CQ duration 不能为空";
+  public static final String EXCEPTION_INVALID_CQ_DURATION_ARG_F4917D5C =
+      "无效的 CQ duration：%s";
+  public static final String EXCEPTION_CQ_DURATION_COMPONENT_OVERFLOWS_ARG_ED5B0962 =
+      "CQ duration 组件溢出：%s";
+  public static final String EXCEPTION_CQ_DURATION_MONTH_COMPONENT_OVERFLOWS_ARG_EBF2A2B6 =
+      "CQ duration 月份组件溢出：%s";
+  public static final String EXCEPTION_CQ_EVERY_INTERVAL_MUST_BE_POSITIVE_26259019 =
+      "CQ：every interval 应大于 0。";
   public static final String CQ_THE_QUERY_BODY_MISSES_AN_INTO_CLAUSE =
       "连续查询：查询体缺少 INTO 子句。";
   public static final String CQ_SPECIFYING_TIME_FILTERS_IN_THE_QUERY_BODY =

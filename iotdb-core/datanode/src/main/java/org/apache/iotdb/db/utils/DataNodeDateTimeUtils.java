@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
@@ -42,7 +43,7 @@ import java.util.regex.Pattern;
 
 public class DataNodeDateTimeUtils {
   private static final Pattern CQ_DURATION_COMPONENT =
-      Pattern.compile("(\\d+)(y|mo|w|d|h|ms|us|ns)", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("(\\d+)(y|mo|w|d|h|m|s|ms|us|ns)", Pattern.CASE_INSENSITIVE);
 
   /**
    * Parses the CQ duration grammar while retaining calendar months. Full aliases are deliberate not
@@ -50,7 +51,8 @@ public class DataNodeDateTimeUtils {
    */
   public static TimeDuration constructTimeDurationForCQ(String duration) {
     if (duration == null || duration.isEmpty()) {
-      throw new IllegalArgumentException("CQ duration cannot be empty");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_CQ_DURATION_CANNOT_BE_EMPTY_C7269AB2);
     }
     Matcher matcher = CQ_DURATION_COMPONENT.matcher(duration);
     long months = 0;
@@ -59,13 +61,19 @@ public class DataNodeDateTimeUtils {
     String precision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
     while (matcher.find()) {
       if (matcher.start() != end) {
-        throw new IllegalArgumentException("Invalid CQ duration: " + duration);
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_INVALID_CQ_DURATION_ARG_F4917D5C, duration));
       }
       long value;
       try {
         value = Long.parseLong(matcher.group(1));
       } catch (NumberFormatException e) {
-        throw new IllegalArgumentException("CQ duration component overflows: " + duration, e);
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_CQ_DURATION_COMPONENT_OVERFLOWS_ARG_ED5B0962,
+                duration),
+            e);
       }
       String unit = matcher.group(2).toLowerCase(Locale.ROOT);
       if (unit.equals("y")) {
@@ -78,10 +86,15 @@ public class DataNodeDateTimeUtils {
       end = matcher.end();
     }
     if (end != duration.length()) {
-      throw new IllegalArgumentException("Invalid CQ duration: " + duration);
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_CQ_DURATION_ARG_F4917D5C, duration));
     }
     if (months > Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("CQ duration month component overflows: " + duration);
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_CQ_DURATION_MONTH_COMPONENT_OVERFLOWS_ARG_EBF2A2B6,
+              duration));
     }
     return new TimeDuration((int) months, fixed);
   }

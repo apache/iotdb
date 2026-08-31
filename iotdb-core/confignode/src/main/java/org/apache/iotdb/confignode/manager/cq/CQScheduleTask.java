@@ -96,6 +96,7 @@ public class CQScheduleTask implements Runnable {
   private TimeDuration endDuration;
   private long boundaryTime;
   private boolean calendarAware;
+  private boolean scheduleCalendarAware;
   private ZoneId scheduleZone;
 
   public CQScheduleTask(
@@ -139,14 +140,13 @@ public class CQScheduleTask implements Runnable {
         everyDuration.monthDuration != 0
             || startDuration.monthDuration != 0
             || endDuration.monthDuration != 0;
+    this.scheduleCalendarAware = everyDuration.monthDuration != 0;
     this.boundaryTime = req.boundaryTime;
     this.scheduleZone = ZoneId.of(req.zoneId);
     if (calendarAware) {
-      this.retryWaitTimeInMS =
-          Math.min(
-              DEFAULT_RETRY_WAIT_TIME_IN_MS, Math.max(1L, everyDuration.nonMonthDuration / FACTOR));
+      this.retryWaitTimeInMS = calculateRetryWaitTime(everyDuration);
     }
-    if (calendarAware && req.isSetBoundaryExplicit() && !req.isBoundaryExplicit()) {
+    if (scheduleCalendarAware && req.isSetBoundaryExplicit() && !req.isBoundaryExplicit()) {
       this.boundaryTime = CQCalendarUtils.localEpochBoundary(scheduleZone);
       this.executionTime =
           CQCalendarUtils.occurrence(
@@ -180,9 +180,11 @@ public class CQScheduleTask implements Runnable {
         everyDuration.monthDuration != 0
             || startDuration.monthDuration != 0
             || endDuration.monthDuration != 0;
+    this.scheduleCalendarAware = everyDuration.monthDuration != 0;
     this.boundaryTime = entry.getBoundaryTime();
     this.scheduleZone = ZoneId.of(entry.getZoneId());
-    if (calendarAware) {
+    if (scheduleCalendarAware) {
+      this.retryWaitTimeInMS = calculateRetryWaitTime(everyDuration);
       if (!entry.isBoundaryExplicit()) {
         this.boundaryTime = CQCalendarUtils.localEpochBoundary(scheduleZone);
       }
@@ -347,6 +349,14 @@ public class CQScheduleTask implements Runnable {
     } catch (ArithmeticException e) {
       return Long.MAX_VALUE;
     }
+  }
+
+  private static long calculateRetryWaitTime(TimeDuration duration) {
+    if (duration.nonMonthDuration <= 0) {
+      return DEFAULT_RETRY_WAIT_TIME_IN_MS;
+    }
+    return Math.min(
+        DEFAULT_RETRY_WAIT_TIME_IN_MS, Math.max(1L, duration.nonMonthDuration / FACTOR));
   }
 
   public void submitSelf() {

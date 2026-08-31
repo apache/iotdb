@@ -681,4 +681,17 @@ public final class ManagerMessages {
       MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
           "%s 请稍后手动检查该 Procedure 是否执行成功。";
 
+  public static final String EXCEPTION_CQ_EVERY_DURATION_MUST_BE_POSITIVE_69C29D26 =
+      "CQ EVERY duration 必须为正数";
+  public static final String EXCEPTION_CQ_TIMESTAMP_OVERFLOWS_CONFIGURED_PRECISION_F5FB230C =
+      "CQ timestamp 超出配置的精度范围";
+  public static final String
+      MESSAGE_INVALID_CQ_DURATION_ENCODING_VERSION_1_REQUIRES_ALL_STRUCTURED_FIELDS_FEAD7F92 =
+          "无效的 CQ duration encoding；版本 1 需要所有结构化字段";
+  public static final String MESSAGE_CQ_DURATIONS_MUST_BE_NON_NEGATIVE_BE23CE04 =
+      "CQ duration 必须为非负数";
+  public static final String
+      MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67 =
+          "CQ legacy duration fields 与结构化 duration 字段冲突";
+
 }
