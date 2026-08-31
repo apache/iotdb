@@ -311,6 +311,7 @@ public class IoTConsensusConfig {
     private final int maxLogEntriesNumPerBatch;
     private final int maxSizePerBatch;
     private final int maxPendingBatchesNum;
+    private final int shardMaxSize;
 
     private final int maxQueueLength;
     private final long maxWaitingTimeForWaitBatchInMs;
@@ -344,10 +345,12 @@ public class IoTConsensusConfig {
         long regionMigrationSpeedLimitBytesPerSecond,
         long subscriptionWalRetentionSizeInBytes,
         long subscriptionWalRetentionTimeMs,
-        long snapshotTransmissionProgressLogIntervalMs) {
+        long snapshotTransmissionProgressLogIntervalMs,
+        int shardMaxSize) {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
+      this.shardMaxSize = shardMaxSize;
       this.maxQueueLength = maxQueueLength;
       this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
@@ -374,6 +377,10 @@ public class IoTConsensusConfig {
 
     public int getMaxPendingBatchesNum() {
       return maxPendingBatchesNum;
+    }
+
+    public int getShardMaxSize() {
+      return shardMaxSize;
     }
 
     public int getMaxQueueLength() {
@@ -441,6 +448,7 @@ public class IoTConsensusConfig {
       private int maxLogEntriesNumPerBatch = 1024;
       private int maxSizePerBatch = 16 * 1024 * 1024;
       private int maxPendingBatchesNum = 5;
+      private int shardMaxSize = 4 * 1024 * 1024;
       private int maxQueueLength = 4096;
       private long maxWaitingTimeForWaitBatchInMs = 10 * 1000L;
 
@@ -475,6 +483,11 @@ public class IoTConsensusConfig {
 
       public Replication.Builder setMaxPendingBatchesNum(int maxPendingBatchesNum) {
         this.maxPendingBatchesNum = maxPendingBatchesNum;
+        return this;
+      }
+
+      public Replication.Builder setShardMaxSize(int shardMaxSize) {
+        this.shardMaxSize = shardMaxSize;
         return this;
       }
 
@@ -571,7 +584,8 @@ public class IoTConsensusConfig {
             regionMigrationSpeedLimitBytesPerSecond,
             subscriptionWalRetentionSizeInBytes,
             subscriptionWalRetentionTimeMs,
-            snapshotTransmissionProgressLogIntervalMs);
+            snapshotTransmissionProgressLogIntervalMs,
+            shardMaxSize);
       }
     }
   }

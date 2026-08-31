@@ -147,6 +147,11 @@ public class AlignedChunkData implements ChunkData {
   }
 
   @Override
+  public boolean isEntireChunk() {
+    return !needDecodeChunk;
+  }
+
+  @Override
   public void writeToFileWriter(final TsFileIOWriter writer) throws IOException, PageException {
     writeTsFileData(writer);
   }
