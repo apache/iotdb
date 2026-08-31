@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
@@ -178,7 +179,8 @@ public class TsFileTableSizeIndexFileWriter {
   public void close() {
     try {
       sync();
-    } catch (IOException ignored) {
+    } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     }
     try {
       if (valueBufferedOutputStream != null) {
