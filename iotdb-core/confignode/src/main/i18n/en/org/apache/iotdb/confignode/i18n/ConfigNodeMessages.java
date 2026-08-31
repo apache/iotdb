@@ -664,4 +664,13 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "Failed to create or alter topic, %s and %s are only supported for incremental topics";
+  public static final String LOG_STARTING_IOTDB_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_77F32605 =
+      "Starting IoTDB Edge: ConfigNode and DataNode in one process";
+  public static final String LOG_IOTDB_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_6729159E =
+      "IoTDB Edge: ConfigNode is ready, starting DataNode";
+  public static final String EXCEPTION_IOTDB_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_02EEE59A =
+      "IoTDB Edge: ConfigNode bootstrap failed";
+  public static final String
+      EXCEPTION_IOTDB_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_03697FF5 =
+          "IoTDB Edge: ConfigNode internal port %s is not ready within %s ms";
 }
