@@ -2448,8 +2448,16 @@ public class IoTDBDescriptor {
               / memoryConfig.getQueryThreadCount()
               / 4;
     }
-    conf.setTableQueryDeviceEntryBatchSizeInBytes(
-        Math.min(deviceEntryBatchSize, conf.getThriftMaxFrameSize()));
+    long effectiveBatchSize = Math.min(deviceEntryBatchSize, conf.getThriftMaxFrameSize());
+    if (deviceEntryBatchSize > conf.getThriftMaxFrameSize()) {
+      LOGGER.warn(
+          DataNodeMiscMessages
+              .LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA,
+          deviceEntryBatchSize,
+          conf.getThriftMaxFrameSize(),
+          effectiveBatchSize);
+    }
+    conf.setTableQueryDeviceEntryBatchSizeInBytes(effectiveBatchSize);
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {

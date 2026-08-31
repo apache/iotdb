@@ -1507,5 +1507,8 @@ public final class DataNodeMiscMessages {
       "扩容过程中缺少对齐列索引 %d 的值数组";
   public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E =
       "标记空值过程中缺少对齐列索引 %d 的值数组";
+  public static final String
+      LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA =
+          "table_query_device_entry_batch_size_in_bytes（{}）超过 dn_thrift_max_frame_size（{}），将使用 {} 作为生效值";
 
 }
