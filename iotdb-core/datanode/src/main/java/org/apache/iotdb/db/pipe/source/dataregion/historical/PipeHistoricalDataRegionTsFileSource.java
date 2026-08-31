@@ -512,7 +512,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
               .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-    } catch (final IOException e) {
+    } catch (final IOException | RuntimeException e) {
       LOGGER.warn(
           "Pipe {}@{}: failed to get devices from TsFile {}, extract it anyway",
           pipeName,
@@ -545,7 +545,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
               .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-    } catch (final IOException e) {
+    } catch (final IOException | RuntimeException e) {
       return false;
     }
 
