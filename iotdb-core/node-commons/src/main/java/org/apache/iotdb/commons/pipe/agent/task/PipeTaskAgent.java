@@ -54,7 +54,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -970,6 +969,21 @@ public abstract class PipeTaskAgent {
       final int currentNodeId,
       final PipeTaskMeta pipeTaskMeta,
       final PipeRuntimeException pipeRuntimeException) {
+    stopAllPipesWithCriticalException(
+        currentNodeId, null, Long.MIN_VALUE, pipeTaskMeta, pipeRuntimeException);
+  }
+
+  /**
+   * Stops the pipe that owns a critical exception and, for sink failures, its other region tasks.
+   * The pipe identity is passed separately because the task meta in an event may be a serialized
+   * copy rather than the object currently held by the task agent.
+   */
+  protected void stopAllPipesWithCriticalException(
+      final int currentNodeId,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeRuntimeException pipeRuntimeException) {
     // To avoid deadlock, we use a new thread to stop all pipes.
     CompletableFuture.runAsync(
         () -> {
@@ -978,8 +992,41 @@ public abstract class PipeTaskAgent {
             while (true) {
               if (tryWriteLockWithTimeOut(5)) {
                 try {
-                  pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
-                  stopAllPipesWithCriticalExceptionInternal(currentNodeId);
+                  final PipeMeta failedPipeMeta =
+                      findPipeMeta(pipeName, creationTime, pipeTaskMeta);
+                  final PipeTaskMeta localFailedPipeTaskMeta =
+                      findLocalPipeTaskMeta(failedPipeMeta, pipeTaskMeta, currentNodeId);
+
+                  // An explicit pipe identity is authoritative. If it is stale, do not fall back
+                  // to the supplied task meta because identical task metadata is valid in another
+                  // pipe.
+                  if (pipeName != null && failedPipeMeta == null) {
+                    return;
+                  }
+
+                  if (failedPipeMeta != null
+                      && failedPipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.RUNNING) {
+                    failedPipeMeta.getRuntimeMeta().setIsStoppedByRuntimeException(true);
+                  }
+
+                  if (failedPipeMeta == null) {
+                    // Keep the legacy behavior for callers that only provide a task meta. When
+                    // the object is detached and cannot be mapped to a unique local pipe, there
+                    // is no safe pipe to stop.
+                    if (pipeTaskMeta != null) {
+                      pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+                    }
+                  } else if (localFailedPipeTaskMeta != null) {
+                    localFailedPipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+                  }
+
+                  stopAllPipesWithCriticalExceptionInternal(
+                      currentNodeId, failedPipeMeta, pipeRuntimeException);
+                  if (failedPipeMeta != null) {
+                    // stopPipe intentionally returns without changing the runtime status if its
+                    // task map was concurrently removed. The identified pipe still has to stop.
+                    stopPipeWithRuntimeException(failedPipeMeta);
+                  }
                   LOGGER.info(PipeMessages.STOPPED_ALL_PIPES_WITH_CRITICAL_EXCEPTION);
                   return;
                 } finally {
@@ -999,69 +1046,40 @@ public abstract class PipeTaskAgent {
         });
   }
 
-  private void stopAllPipesWithCriticalExceptionInternal(final int currentNodeId) {
-    // 1. track exception in all pipe tasks that share the same connector that have critical
-    // exceptions.
-    final Map<PipeParameters, PipeRuntimeSinkCriticalException>
-        reusedConnectorParameters2ExceptionMap = new HashMap<>();
+  private void stopAllPipesWithCriticalExceptionInternal(
+      final int currentNodeId,
+      final PipeMeta failedPipeMeta,
+      final PipeRuntimeException pipeRuntimeException) {
+    // 1. A sink subtask is shared only by regions of one pipe. Locate that pipe through its
+    // explicit identity, then propagate the exception only inside that pipe.
+    if (pipeRuntimeException instanceof PipeRuntimeSinkCriticalException) {
+      if (failedPipeMeta != null) {
+        final PipeRuntimeMeta runtimeMeta = failedPipeMeta.getRuntimeMeta();
+        final PipeStaticMeta staticMeta = failedPipeMeta.getStaticMeta();
+        boolean hasLocalTask = false;
+        for (final PipeTaskMeta pipeTaskMeta :
+            runtimeMeta.getConsensusGroupId2TaskMetaMap().values()) {
+          if (pipeTaskMeta.getLeaderNodeId() == currentNodeId
+              && !pipeTaskMeta.containsExceptionMessage(pipeRuntimeException)) {
+            hasLocalTask = true;
+            pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+            PipeLogger.log(
+                LOGGER::warn,
+                PipeMessages.PIPE_STOPPED_CRITICAL_EXCEPTION,
+                staticMeta.getPipeName(),
+                staticMeta.getCreationTime(),
+                pipeRuntimeException.getTimeStamp(),
+                staticMeta.getSinkParameters());
+          }
+        }
 
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
-              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-
-              runtimeMeta
-                  .getConsensusGroupId2TaskMetaMap()
-                  .values()
-                  .forEach(
-                      pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderNodeId() != currentNodeId) {
-                          return;
-                        }
-
-                        for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
-                          if (e instanceof PipeRuntimeSinkCriticalException) {
-                            reusedConnectorParameters2ExceptionMap.putIfAbsent(
-                                staticMeta.getSinkParameters(),
-                                (PipeRuntimeSinkCriticalException) e);
-                          }
-                        }
-                      });
-            });
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
-              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-
-              runtimeMeta
-                  .getConsensusGroupId2TaskMetaMap()
-                  .values()
-                  .forEach(
-                      pipeTaskMeta -> {
-                        if (pipeTaskMeta.getLeaderNodeId() == currentNodeId
-                            && reusedConnectorParameters2ExceptionMap.containsKey(
-                                staticMeta.getSinkParameters())
-                            && !pipeTaskMeta.containsExceptionMessage(
-                                reusedConnectorParameters2ExceptionMap.get(
-                                    staticMeta.getSinkParameters()))) {
-                          final PipeRuntimeSinkCriticalException exception =
-                              reusedConnectorParameters2ExceptionMap.get(
-                                  staticMeta.getSinkParameters());
-                          pipeTaskMeta.trackExceptionMessage(exception);
-                          PipeLogger.log(
-                              LOGGER::warn,
-                              PipeMessages.PIPE_STOPPED_CRITICAL_EXCEPTION,
-                              staticMeta.getPipeName(),
-                              staticMeta.getCreationTime(),
-                              exception.getTimeStamp(),
-                              staticMeta.getSinkParameters());
-                        }
-                      });
-            });
+        if (!hasLocalTask) {
+          // The pipe may have no local region task when the sink callback races with task
+          // removal. The explicit pipe identity still lets us stop only this pipe.
+          stopPipeWithRuntimeException(failedPipeMeta);
+        }
+      }
+    }
 
     // 2. stop all pipes that have critical exceptions.
     pipeMetaKeeper
@@ -1092,6 +1110,104 @@ public abstract class PipeTaskAgent {
                         });
               }
             });
+  }
+
+  private void stopPipeWithRuntimeException(final PipeMeta pipeMeta) {
+    final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+    if (runtimeMeta.getStatus().get() != PipeStatus.RUNNING) {
+      return;
+    }
+
+    runtimeMeta.setIsStoppedByRuntimeException(true);
+    final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+    try {
+      stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
+    } finally {
+      // stopPipe intentionally does nothing when its task map has already been removed. Keep the
+      // runtime state consistent with the exception in that race.
+      if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
+        runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+      }
+    }
+  }
+
+  private PipeMeta findPipeMeta(
+      final String pipeName, final long creationTime, final PipeTaskMeta pipeTaskMeta) {
+    if (pipeName != null) {
+      // An explicitly supplied identity is authoritative. Never fall back to task-meta content
+      // matching with a different pipe, since identical task metadata is valid across pipes.
+      return pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+    }
+
+    for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+      if (pipeTaskMeta != null
+          && pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values().stream()
+              .anyMatch(taskMeta -> taskMeta == pipeTaskMeta)) {
+        return pipeMeta;
+      }
+    }
+
+    // A task meta may have been deserialized before it reaches this agent. Only use content
+    // matching when it identifies one pipe uniquely; identical progress/leader metadata is valid
+    // for multiple pipes and must not be used to cross their boundaries.
+    PipeMeta matchedPipeMeta = null;
+    if (pipeTaskMeta != null) {
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        if (pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values().stream()
+            .anyMatch(pipeTaskMeta::equals)) {
+          if (matchedPipeMeta != null) {
+            return null;
+          }
+          matchedPipeMeta = pipeMeta;
+        }
+      }
+    }
+    return matchedPipeMeta;
+  }
+
+  private PipeTaskMeta findLocalPipeTaskMeta(
+      final PipeMeta pipeMeta, final PipeTaskMeta pipeTaskMeta, final int currentNodeId) {
+    if (pipeMeta == null || pipeTaskMeta == null) {
+      return null;
+    }
+
+    final Collection<PipeTaskMeta> taskMetas =
+        pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().values();
+
+    // Object identity is the normal in-process path and is the most precise match.
+    for (final PipeTaskMeta localTaskMeta : taskMetas) {
+      if (localTaskMeta == pipeTaskMeta) {
+        return localTaskMeta;
+      }
+    }
+
+    // Prefer a unique local leader when matching a detached task meta. This avoids recording a
+    // processor failure on a task owned by another DataNode.
+    PipeTaskMeta matchedLocalLeaderTaskMeta = null;
+    for (final PipeTaskMeta localTaskMeta : taskMetas) {
+      if (localTaskMeta.getLeaderNodeId() == currentNodeId && localTaskMeta.equals(pipeTaskMeta)) {
+        if (matchedLocalLeaderTaskMeta != null) {
+          matchedLocalLeaderTaskMeta = null;
+          break;
+        }
+        matchedLocalLeaderTaskMeta = localTaskMeta;
+      }
+    }
+    if (matchedLocalLeaderTaskMeta != null) {
+      return matchedLocalLeaderTaskMeta;
+    }
+
+    // Fall back to a unique content match if the leader metadata is stale or unavailable.
+    PipeTaskMeta matchedTaskMeta = null;
+    for (final PipeTaskMeta localTaskMeta : taskMetas) {
+      if (localTaskMeta.equals(pipeTaskMeta)) {
+        if (matchedTaskMeta != null) {
+          return null;
+        }
+        matchedTaskMeta = localTaskMeta;
+      }
+    }
+    return matchedTaskMeta;
   }
 
   public void collectPipeMetaList(final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp)
