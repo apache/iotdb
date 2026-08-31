@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
