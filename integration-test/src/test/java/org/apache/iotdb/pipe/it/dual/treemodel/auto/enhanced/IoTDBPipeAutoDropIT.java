@@ -138,6 +138,87 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  public void testAutoDropFinitePipesWithoutDataRegion() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sinkAttributes.put("sink", "iotdb-thrift-sink");
+    sinkAttributes.put("sink.batch.enable", "false");
+    sinkAttributes.put("sink.ip", receiverDataNode.getIp());
+    sinkAttributes.put("sink.port", Integer.toString(receiverDataNode.getPort()));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> querySourceAttributes = new HashMap<>();
+      querySourceAttributes.put("source.mode", "query");
+      querySourceAttributes.put("user", SessionConfig.DEFAULT_USER);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq("query_pipe_without_data_region", sinkAttributes)
+                      .setExtractorAttributes(querySourceAttributes))
+              .getCode());
+
+      final Map<String, String> historySourceAttributes = new HashMap<>();
+      historySourceAttributes.put("source.realtime.enable", Boolean.FALSE.toString());
+      historySourceAttributes.put("user", SessionConfig.DEFAULT_USER);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq("history_pipe_without_data_region", sinkAttributes)
+                      .setExtractorAttributes(historySourceAttributes))
+              .getCode());
+
+      final Map<String, String> realtimeSourceAttributes = new HashMap<>();
+      realtimeSourceAttributes.put("source.history.enable", Boolean.FALSE.toString());
+      realtimeSourceAttributes.put("user", SessionConfig.DEFAULT_USER);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq("realtime_pipe_without_data_region", sinkAttributes)
+                      .setExtractorAttributes(realtimeSourceAttributes))
+              .getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.startPipe("query_pipe_without_data_region").getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.startPipe("history_pipe_without_data_region").getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.startPipe("realtime_pipe_without_data_region").getCode());
+
+      await()
+          .pollInSameThread()
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                final List<TShowPipeInfo> pipeInfoList =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER))
+                        .pipeInfoList;
+                Assert.assertFalse(
+                    pipeInfoList.stream()
+                        .anyMatch(info -> info.getId().equals("query_pipe_without_data_region")));
+                Assert.assertFalse(
+                    pipeInfoList.stream()
+                        .anyMatch(info -> info.getId().equals("history_pipe_without_data_region")));
+                Assert.assertTrue(
+                    pipeInfoList.stream()
+                        .anyMatch(
+                            info -> info.getId().equals("realtime_pipe_without_data_region")));
+              });
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.dropPipe("realtime_pipe_without_data_region").getCode());
+    }
+  }
+
+  @Test
   public void testAutoDropIgnoredUnmatchedDataRegions() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
