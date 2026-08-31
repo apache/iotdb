@@ -108,6 +108,110 @@ IoTDB提供了两种安装方法，您可以参考以下建议，选择最适合
 
 如需更具体的安装方式，请参阅官网[用户指南](https://www.timecho.com/docs/zh/UserGuide/latest/QuickStart/QuickStart_timecho.html)。
 
+* 使用Docker: dockerfile的路径是https://github.com/apache/iotdb/tree/master/docker/src/main
+
+在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](https://iotdb.apache.org/zh/UserGuide/latest/QuickStart/QuickStart.html)。
+
+## 从源码构建
+
+### 关于准备Thrift编译器
+
+如果您使用Windows，请跳过此段。
+
+我们使用Thrift作为RPC模块来提供客户端-服务器间的通信和协议支持，因此在编译阶段我们需要使用Thrift 0.13.0
+（或更高）编译器生成对应的Java代码。 Thrift只提供了Windows下的二进制编译器，Unix下需要通过源码自行编译。
+
+如果你有安装权限，可以通过`apt install`, `yum install`, `brew install`来安装thrift编译器，然后在下面的编译命令中
+都添加如下参数即可：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<你的thrift可执行文件路径>`。
+
+
+同时我们预先编译了一个Thrift编译器，并将其上传到了GitHub ，借助一个Maven插件，在编译时可以自动将其下载。
+该预编译的Thrift编译器在gcc8，Ubuntu, CentOS, MacOS下可以工作，但是在更低的gcc
+版本以及其他操作系统上尚未确认。
+如果您发现因为网络问题总是提示下载不到thrift文件，那么您需要手动下载，并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
+如果您放到其他地方，就需要在运行maven的命令中添加：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<你的thrift可执行文件路径>`。
+
+如果您对Maven足够熟悉，您也可以直接修改我们的根pom文件来避免每次编译都使用上述参数。
+Thrift官方网址为：https://thrift.apache.org/
+
+从 git 克隆源代码:
+
+```
+git clone https://github.com/apache/iotdb.git
+```
+
+默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换 tag:
+
+```
+git checkout vx.x.x
+```
+
+或者切换大版本所在分支，如 1.0 版本的分支为 rel/1.0
+
+```
+git checkout rel/x.x
+```
+
+### 源码编译 IoTDB
+
+在 iotdb 根目录下执行:
+
+```
+> mvn clean package -pl distribution -am -DskipTests
+```
+
+编译完成后, IoTDB 二进制包将生成在: "distribution/target".
+
+### 源码编译 IoTDB Edge
+
+上述发行版构建还会生成 `apache-iotdb-<version>-edge-bin.zip`。IoTDB Edge 在同一个 JVM 中运行 ConfigNode 和 DataNode，适用于资源受限的单机部署。它是新增制品，不会替换任何已有发行包。
+
+解压后，可在 `conf/iotdb-system.properties` 中调整配置，并使用以下脚本启停 Edge 进程：
+
+```bash
+sbin/start-edge.sh
+sbin/stop-edge.sh
+```
+
+Windows 环境请使用 `sbin\windows\start-edge.bat` 和 `sbin\windows\stop-edge.bat`。Edge 包会保留与合并进程兼容的工具脚本。
+
+### 只编译 cli
+
+在 iotdb/iotdb-client 目录下执行:
+
+```
+> mvn clean package -pl cli -am -DskipTests
+```
+
+编译完成后, IoTDB cli 将生成在 "cli/target".
+
+### 编译中文日志和错误信息版本
+
+IoTDB 支持编译时国际化（i18n），可将日志和错误信息切换为中文。默认编译使用英文，如需中文版本，请激活 `with-zh-locale` Maven profile：
+
+```
+> mvn clean package -pl distribution -am -DskipTests -P with-zh-locale
+```
+
+该机制通过在编译时将源码目录从 `src/main/i18n/en`（默认）替换为 `src/main/i18n/zh` 实现，各模块在对应目录下维护翻译后的 Java 消息常量类。
+
+### 编译其他模块
+
+通过添加 `-P with-cpp` 可以进行c++客户端API的编译。
+
+**注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`"，"`thrift-influxdb/target/generated-sources/thrift`" 和  "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
+
+**IDEA的操作方法：在上述maven命令编译好后，右键项目名称，选择"`Maven->Reload project`"，即可。**
+
+### 配置
+
+配置文件在"conf"文件夹下
+* 环境配置模块(`datanode-env.bat`, `datanode-env.sh`),
+* 系统配置模块(`iotdb-system.properties`)
+* 日志配置模块(`logback.xml`)。
+
+有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/latest/Reference/DataNode-Config-Manual.html)。
+
 ## 开始
 
 您可以通过以下步骤来测试安装，如果执行后没有返回错误，安装就完成了。

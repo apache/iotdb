@@ -73,6 +73,8 @@
             <excludes>
                 <exclude>ainode-env.*</exclude>
                 <exclude>**/ainode-env.*</exclude>
+                <exclude>edge-env.*</exclude>
+                <exclude>**/edge-env.*</exclude>
                 <exclude>iotdb-common.sh</exclude>
                 <exclude>**/iotdb-common.bat</exclude>
             </excludes>
@@ -127,6 +129,8 @@
                 <exclude>start-confignode.sh</exclude>
                 <exclude>windows/start-datanode.bat</exclude>
                 <exclude>windows/start-confignode.bat</exclude>
+                <exclude>*edge.*</exclude>
+                <exclude>**/*edge.*</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>

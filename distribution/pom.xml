@@ -542,6 +542,11 @@
                                 <descriptor>src/assembly/all.xml</descriptor>
                                 <descriptor>src/assembly/external-service-impl.xml</descriptor>
                                 <descriptor>src/assembly/library-pipe.xml</descriptor>
+                                <descriptor>src/assembly/datanode.xml</descriptor>
+                                <descriptor>src/assembly/confignode.xml</descriptor>
+                                <descriptor>src/assembly/cli.xml</descriptor>
+                                <descriptor>src/assembly/library-udf.xml</descriptor>
+                                <descriptor>src/assembly/edge.xml</descriptor>
                             </descriptors>
                             <finalName>${package.name}-${project.version}${locale.suffix}</finalName>
                         </configuration>
@@ -593,6 +598,7 @@
                                     <directory>${project.build.directory}</directory>
                                     <includes>
                                         <include>${package.name}-${project.version}${locale.suffix}-security-file.zip</include>
+                                        <include>${package.name}-${project.version}${locale.suffix}-edge-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>

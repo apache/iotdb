@@ -1,0 +1,94 @@
+name: Edge IT
+
+on:
+  push:
+    branches:
+      - master
+      - "rel/*"
+      - "rc/*"
+    paths-ignore:
+      - "docs/**"
+      - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
+  pull_request:
+    branches:
+      - master
+      - "rel/*"
+      - "rc/*"
+    paths-ignore:
+      - "docs/**"
+      - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
+jobs:
+  Ubuntu:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Build Edge distribution
+        shell: bash
+        run: |
+          mvn clean package \
+          -DskipTests \
+          -pl distribution \
+          -am
+      - name: Edge IT
+        shell: bash
+        run: |
+          mvn verify \
+          -P with-integration-tests,EdgeIT \
+          -DskipUTs \
+          -Dit.test=IoTDBEdgeBasicIT \
+          -DEdgeConfigNodeAddress=127.0.0.2 \
+          -DfailIfNoTests=false \
+          -Dfailsafe.failIfNoSpecifiedTests=false \
+          -pl integration-test \
+          -am
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: edge-log-Linux
+          path: |
+            integration-test/target/edge-it/**/*.log
+            integration-test/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 1
+
+  WindowsScripts:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test Edge Windows launchers
+        shell: powershell
+        run: .github/scripts/test-edge-windows.ps1

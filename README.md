@@ -134,6 +134,116 @@ IoTDB provides two installation methods, you can refer to the following suggesti
 
 For more specific installation methods, please visit our website's [User Guide](https://www.timecho.com/docs/zh/UserGuide/latest/QuickStart/QuickStart_timecho.html).
 
+### Prepare Thrift compiler
+
+Skip this chapter if you are using Windows. 
+
+As we use Thrift for our RPC module (communication and
+protocol definition), we involve Thrift during the compilation, so Thrift compiler 0.13.0 (or
+higher) is required to generate Thrift Java code. Thrift officially provides binary compiler for
+Windows, but unfortunately, they do not provide that for Unix OSs. 
+
+If you have permission to install new software, use `apt install` or `yum install` or `brew install`
+to install the Thrift compiler. (If you already have installed the thrift compiler, skip this step.)
+Then, you may add the following parameter
+when running Maven: `-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
+
+If not, then you have to compile the thrift compiler, and it requires you install a boost library first.
+Therefore, we compiled a Unix compiler ourselves and put it onto GitHub, and with the help of a
+maven plugin, it will be downloaded automatically during compilation. 
+This compiler works fine with gcc8 or later, Ubuntu MacOS, and CentOS, but previous versions 
+and other OSs are not guaranteed.
+
+If you can not download the thrift compiler automatically because of a network problem, you can download 
+it by yourself, and then either:
+rename your thrift file to `{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`;
+or, add Maven commands:
+`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
+
+### Compile IoTDB
+
+You can download the source code from:
+
+```
+git clone https://github.com/apache/iotdb.git
+```
+
+The default dev branch is the master branch, if you want to use a released version x.x.x:
+
+```
+git checkout vx.x.x
+```
+
+Or checkout to the branch of a big version, e.g., the branch of 1.0 is rel/1.0.
+
+```
+git checkout rel/x.x
+```
+
+### Build IoTDB from source
+
+Under the root path of iotdb:
+
+```
+> mvn clean package -pl distribution -am -DskipTests
+```
+
+After being built, the IoTDB distribution is located at the folder: "distribution/target".
+
+### Build IoTDB Edge
+
+The distribution build also produces `apache-iotdb-<version>-edge-bin.zip`. IoTDB Edge runs the ConfigNode and DataNode in one JVM for resource-constrained, single-node deployments. It is an additional artifact and does not replace any existing distribution package.
+
+After extracting the package, configure `conf/iotdb-system.properties`, then start or stop the Edge process with:
+
+```bash
+sbin/start-edge.sh
+sbin/stop-edge.sh
+```
+
+On Windows, use `sbin\windows\start-edge.bat` and `sbin\windows\stop-edge.bat`. The package retains tools that are compatible with the combined Edge process.
+
+### Only build cli
+
+Under the iotdb/iotdb-client path:
+
+```
+> mvn clean package -pl cli -am -DskipTests
+```
+
+After being built, the IoTDB cli is located at the folder "cli/target".
+
+### Build with Chinese Log & Error Messages
+
+IoTDB supports compile-time internationalization (i18n) for log and error messages. By default, messages are in English. To build with Chinese messages, activate the `with-zh-locale` Maven profile:
+
+```
+> mvn clean package -pl distribution -am -DskipTests -P with-zh-locale
+```
+
+This works by swapping the source directory `src/main/i18n/en` (default) with `src/main/i18n/zh`, where each module keeps locale-specific Java constant classes containing translated message strings.
+
+### Build Others
+
+Use `-P with-cpp` for compiling the cpp client. (For more details, read client-cpp's Readme file.)
+
+**NOTE: Directories "`thrift/target/generated-sources/thrift`", "`thrift-sync/target/generated-sources/thrift`",
+"`thrift-cluster/target/generated-sources/thrift`", "`thrift-influxdb/target/generated-sources/thrift`" 
+and "`antlr/target/generated-sources/antlr4`" need to be added to sources roots to avoid compilation errors in the IDE.**
+
+**In IDEA, you just need to right click on the root project name and choose "`Maven->Reload Project`" after 
+you run `mvn package` successfully.**
+
+### Configurations
+
+Configuration files are under the "conf" folder.
+
+  * environment config module (`datanode-env.bat`, `datanode-env.sh`),
+  * system config module (`iotdb-system.properties`)
+  * log config module (`logback.xml`).
+
+For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/latest/Reference/DataNode-Config-Manual.html).
+
 ## Start
 
 You can go through the following steps to test the installation. If there is no error returned after execution, the installation is completed.
