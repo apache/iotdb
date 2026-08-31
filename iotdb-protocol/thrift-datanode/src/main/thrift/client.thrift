@@ -579,6 +579,7 @@ struct TTableDeviceLeaderReq {
   2: required list<string> deviceId
   3: required list<bool> isSetTag
   4: required i64 time
+  5: optional list<string> tagColumnNames
 }
 
 struct TTableDeviceLeaderResp {

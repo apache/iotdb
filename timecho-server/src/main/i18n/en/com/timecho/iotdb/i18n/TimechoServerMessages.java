@@ -40,6 +40,10 @@ public final class TimechoServerMessages {
 
   // Session
   public static final String CANNOT_DISCONNECT_EXPIRED_SESSION = "Cannot disconnect expired session {}";
+  public static final String MESSAGE_FAILED_TO_FETCH_DEVICE_LEADER_ARG_E11B34D5 =
+      "Failed to fetch device leader: %s";
+  public static final String MESSAGE_INVALID_TABLE_DEVICE_LEADER_REQUEST_F3FD7229 =
+      "Invalid table device leader request.";
 
   // Shared storage compaction
   public static final String FAILED_TO_SELECT_SHARED_STORAGE_COMPACTION_TASK =

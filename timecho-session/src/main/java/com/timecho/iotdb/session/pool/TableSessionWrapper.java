@@ -42,4 +42,16 @@ public class TableSessionWrapper extends org.apache.iotdb.session.pool.TableSess
       throws IoTDBConnectionException, StatementExecutionException {
     return TableSession.getDeviceLeaderURL(dbName, deviceId, isSetTag, time, session);
   }
+
+  @Override
+  public String getDeviceLeaderURL(
+      String dbName,
+      List<String> deviceId,
+      List<Boolean> isSetTag,
+      List<String> tagColumnNames,
+      long time)
+      throws IoTDBConnectionException, StatementExecutionException {
+    return TableSession.getDeviceLeaderURL(
+        dbName, deviceId, isSetTag, tagColumnNames, time, session);
+  }
 }

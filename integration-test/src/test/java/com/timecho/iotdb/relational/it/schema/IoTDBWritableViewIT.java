@@ -29,11 +29,13 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.session.TableSessionBuilder;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -69,6 +71,85 @@ public class IoTDBWritableViewIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testDeviceLeaderURLForWritableView() throws Exception {
+    Assume.assumeTrue("Timecho".equals(System.getProperty("TestEnv")));
+    final String database = "writable_view_device_leader_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        createWritableViewWriteSchema(statement, database);
+        try (final com.timecho.iotdb.isession.ITableSession tableSession =
+            new TableSessionBuilder()
+                .nodeUrls(
+                    Collections.singletonList(
+                        EnvFactory.getEnv().getDataNodeWrapper(0).getIpAndPortString()))
+                .build()) {
+          final String leaderUrl =
+              tableSession.getDeviceLeaderURL(
+                  database,
+                  Arrays.asList("writable_view", "device-1", "site-1"),
+                  Arrays.asList(true, true, true),
+                  1L);
+          assertTrue(leaderUrl.contains(":"));
+          try (final com.timecho.iotdb.isession.ITableSession leaderSession =
+              new TableSessionBuilder().nodeUrls(Collections.singletonList(leaderUrl)).build()) {
+            leaderSession.executeNonQueryStatement("use " + database);
+            leaderSession.executeNonQueryStatement(
+                "insert into writable_view(time, dev, area, label, temp, humidity) values "
+                    + "(1, 'device-1', 'site-1', 'A', 10, 1.1)");
+            leaderSession.executeNonQueryStatement("flush");
+          }
+        }
+        assertWritableViewWriteRows(
+            statement, Collections.singleton("1970-01-01T00:00:00.001Z,device-1,site-1,A,10,1.1,"));
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
+  }
+
+  @Test
+  public void testDeviceLeaderURLForWritableViewWithTagColumnNames() throws Exception {
+    Assume.assumeTrue("Timecho".equals(System.getProperty("TestEnv")));
+    final String database = "writable_view_named_device_leader_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        createReorderedWritableViewWriteSchema(statement, database);
+        try (final com.timecho.iotdb.isession.ITableSession tableSession =
+            new TableSessionBuilder()
+                .nodeUrls(
+                    Collections.singletonList(
+                        EnvFactory.getEnv().getDataNodeWrapper(0).getIpAndPortString()))
+                .build()) {
+          final String leaderUrl =
+              tableSession.getDeviceLeaderURL(
+                  database,
+                  Arrays.asList("writable_view", "site-1", "device-1"),
+                  Arrays.asList(true, true, true),
+                  Arrays.asList("area", "dev"),
+                  1L);
+          assertTrue(leaderUrl.contains(":"));
+          try (final com.timecho.iotdb.isession.ITableSession leaderSession =
+              new TableSessionBuilder().nodeUrls(Collections.singletonList(leaderUrl)).build()) {
+            leaderSession.executeNonQueryStatement("use " + database);
+            leaderSession.executeNonQueryStatement(
+                "insert into writable_view(time, dev, area, label, temp, humidity) values "
+                    + "(1, 'device-1', 'site-1', 'A', 10, 1.1)");
+            leaderSession.executeNonQueryStatement("flush");
+          }
+        }
+        assertWritableViewWriteRows(
+            statement, Collections.singleton("1970-01-01T00:00:00.001Z,device-1,site-1,A,10,1.1,"));
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
   }
 
   @Test
@@ -1714,6 +1795,27 @@ public class IoTDBWritableViewIT {
         "create writable view writable_view as select "
             + "device_id as dev, "
             + "site as area, "
+            + "model as label, "
+            + "temperature as temp, "
+            + "humidity "
+            + "from source_table");
+  }
+
+  private static void createReorderedWritableViewWriteSchema(
+      final Statement statement, final String database) throws SQLException {
+    statement.execute("create database " + database);
+    statement.execute("use " + database);
+    statement.execute(
+        "create table source_table("
+            + "device_id string tag, "
+            + "site string tag, "
+            + "model string attribute, "
+            + "temperature int32 field, "
+            + "humidity double field)");
+    statement.execute(
+        "create writable view writable_view as select "
+            + "site as area, "
+            + "device_id as dev, "
             + "model as label, "
             + "temperature as temp, "
             + "humidity "

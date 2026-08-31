@@ -40,6 +40,10 @@ public final class TimechoServerMessages {
 
   // 会话
   public static final String CANNOT_DISCONNECT_EXPIRED_SESSION = "无法断开已过期的会话 {}";
+  public static final String MESSAGE_FAILED_TO_FETCH_DEVICE_LEADER_ARG_E11B34D5 =
+      "获取表设备 leader 失败：%s";
+  public static final String MESSAGE_INVALID_TABLE_DEVICE_LEADER_REQUEST_F3FD7229 =
+      "表设备 leader 请求无效。";
 
   // 共享存储 compaction
   public static final String FAILED_TO_SELECT_SHARED_STORAGE_COMPACTION_TASK =
