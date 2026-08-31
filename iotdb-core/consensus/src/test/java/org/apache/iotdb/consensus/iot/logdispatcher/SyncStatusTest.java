@@ -21,8 +21,6 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
-import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
@@ -45,7 +43,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SyncStatusTest {
 
@@ -269,31 +266,25 @@ public class SyncStatusTest {
     batch.buildIndex();
 
     IoTConsensusMemoryManager memoryManager = IoTConsensusMemoryManager.getInstance();
-    IMemoryBlock previousMemoryBlock = memoryManager.getMemoryBlock();
-    CountDownLatch firstAllocationFailed = new CountDownLatch(1);
-    AtomicBoolean rejectAllocation = new AtomicBoolean(true);
-    IMemoryBlock memoryBlock =
-        new AtomicLongMemoryBlock("SyncStatusTest", null, batch.getMemorySize()) {
-          @Override
-          public boolean allocate(long sizeInByte) {
-            if (rejectAllocation.compareAndSet(true, false)) {
-              firstAllocationFailed.countDown();
-              return false;
-            }
-            return super.allocate(sizeInByte);
-          }
-        };
+    long previousMaxMemory = memoryManager.getMaxMemorySizeInByte();
+    long previousMaxQueueMemory = memoryManager.getMaxMemorySizeForQueueInByte();
     ExecutorService executor = Executors.newSingleThreadExecutor();
-    memoryManager.setMemoryBlock(memoryBlock);
+    CountDownLatch taskStarted = new CountDownLatch(1);
+    memoryManager.init(0, 0);
     try {
       Future<?> future =
           executor.submit(
               () -> {
+                taskStarted.countDown();
                 status.addNextBatch(batch);
                 return null;
               });
 
-      Assert.assertTrue(firstAllocationFailed.await(5, TimeUnit.SECONDS));
+      Assert.assertTrue(taskStarted.await(5, TimeUnit.SECONDS));
+      // The zero limit makes the first reservation fail before the retry limit is raised.
+      Thread.sleep(100);
+      Assert.assertFalse(future.isDone());
+      memoryManager.init(batch.getMemorySize() + 1, batch.getMemorySize() + 1);
       future.get(5, TimeUnit.SECONDS);
 
       Assert.assertEquals(1, status.getPendingBatches().size());
@@ -303,7 +294,7 @@ public class SyncStatusTest {
       executor.shutdownNow();
       executor.awaitTermination(5, TimeUnit.SECONDS);
       status.free();
-      memoryManager.setMemoryBlock(previousMemoryBlock);
+      memoryManager.init(previousMaxMemory, previousMaxQueueMemory);
     }
   }
 }
