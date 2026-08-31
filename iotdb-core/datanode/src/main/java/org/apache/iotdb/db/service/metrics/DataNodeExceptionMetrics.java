@@ -34,7 +34,7 @@ public class DataNodeExceptionMetrics implements IMetricSet {
 
   private static final DataNodeExceptionMetrics INSTANCE = new DataNodeExceptionMetrics();
 
-  private Counter fileSystemExceptionCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter suspiciousDiskExceptionCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   private DataNodeExceptionMetrics() {
     // singleton
@@ -42,21 +42,25 @@ public class DataNodeExceptionMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    fileSystemExceptionCounter =
+    suspiciousDiskExceptionCounter =
         metricService.getOrCreateCounter(
-            Metric.FILE_SYSTEM_EXCEPTION_COUNT.toString(), MetricLevel.IMPORTANT);
+            Metric.SUSPICIOUS_DISK_EXCEPTION_COUNT.toString(), MetricLevel.IMPORTANT);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    fileSystemExceptionCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-    metricService.remove(MetricType.COUNTER, Metric.FILE_SYSTEM_EXCEPTION_COUNT.toString());
+    suspiciousDiskExceptionCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    metricService.remove(MetricType.COUNTER, Metric.SUSPICIOUS_DISK_EXCEPTION_COUNT.toString());
   }
 
-  public void recordFileSystemException(Throwable throwable) {
+  public void recordSuspiciousDiskException(Throwable throwable) {
+    // Uses exact type matching instead of instanceof because subclasses of
+    // FileSystemException (e.g. NoSuchFileException, NotDirectoryException,
+    // AccessDeniedException) usually indicate logical file-state errors rather
+    // than real disk failures, so they should not be counted here.
     for (Throwable current = throwable; current != null; current = current.getCause()) {
-      if (current instanceof FileSystemException) {
-        fileSystemExceptionCounter.inc();
+      if (current.getClass() == FileSystemException.class) {
+        suspiciousDiskExceptionCounter.inc();
         return;
       }
     }

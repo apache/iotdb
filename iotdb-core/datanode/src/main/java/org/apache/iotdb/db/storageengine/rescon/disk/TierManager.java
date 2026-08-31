@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
@@ -117,6 +118,7 @@ public class TierManager {
               tierDirs[i][j] = new File(tierDirs[i][j]).getCanonicalPath();
             } catch (IOException e) {
               logger.error(StorageEngineMessages.FAIL_TO_GET_CANONICAL_PATH, tierDirs[i][j], e);
+              DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
             }
             break;
           case OBJECT_STORAGE:
@@ -367,6 +369,7 @@ public class TierManager {
       filePath = file.getCanonicalFile().toPath();
     } catch (IOException e) {
       logger.error(StorageEngineMessages.FAIL_TO_GET_CANONICAL_PATH, file, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       filePath = file.toPath();
     }
 
@@ -418,6 +421,7 @@ public class TierManager {
             }
           } catch (IOException e) {
             logger.error(StorageEngineMessages.FAILED_TO_STATISTIC_SIZE, fileStore, e);
+            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           }
         }
       }

@@ -48,6 +48,7 @@ import org.apache.iotdb.commons.utils.RegionMigrationFileRemoveRateLimiter;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
@@ -749,6 +750,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
 
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new MetadataException(e);
     }
   }

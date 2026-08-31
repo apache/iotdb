@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsF
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -208,6 +209,7 @@ public class WALNodeRecoverTask implements Runnable {
       walRepairWriter.repair(metaData);
     } catch (IOException e) {
       logger.error(StorageEngineMessages.FAIL_TO_RECOVER_WAL_METADATA, walFile, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     }
   }
 

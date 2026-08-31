@@ -44,6 +44,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -305,6 +306,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
               databaseName,
               tsFileResource.getTsFile().getName(),
               e);
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         }
 
         // if we put following codes in the 'if' clause above, this file can be continued writing
@@ -314,6 +316,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         tsFileResource.serialize();
         FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
       } catch (IOException | ExecutionException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         throw new WALRecoverException(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

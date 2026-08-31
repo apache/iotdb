@@ -2157,7 +2157,7 @@ public class DataRegion implements IDataRegionForQuery {
               StorageEngineMessages
                   .STORAGE_LOG_MEET_IOEXCEPTION_WHEN_CREATING_TSFILEPROCESSOR_CHANGE_SYSTEM_4337F729,
               e);
-          DataNodeExceptionMetrics.getInstance().recordFileSystemException(e);
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           throw new WriteProcessException(
               String.format(

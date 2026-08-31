@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
@@ -483,6 +484,7 @@ public class SchemaFile implements ISchemaFile {
       return true;
     } catch (IOException e) {
       logger.error(DataNodeSchemaMessages.FAILED_TO_CREATE_SCHEMA_FILE_SNAPSHOT, e.getMessage(), e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       FileUtils.deleteFileIfExist(schemaFileSnapshot);
       return false;
     }

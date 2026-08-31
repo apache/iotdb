@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -364,6 +365,7 @@ public class MemMTreeSnapshotUtil {
         }
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         return false;
       }
     }
