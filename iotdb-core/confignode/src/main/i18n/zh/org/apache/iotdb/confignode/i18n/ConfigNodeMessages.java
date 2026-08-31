@@ -707,4 +707,13 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "创建或修改 topic 失败，%s 和 %s 仅支持 incremental 模式的 topic";
+  public static final String LOG_STARTING_IOTDB_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_77F32605 =
+      "正在启动 IoTDB Edge：ConfigNode 与 DataNode 运行于同一进程";
+  public static final String LOG_IOTDB_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_6729159E =
+      "IoTDB Edge：ConfigNode 已就绪，开始启动 DataNode";
+  public static final String EXCEPTION_IOTDB_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_02EEE59A =
+      "IoTDB Edge：ConfigNode 启动失败";
+  public static final String
+      EXCEPTION_IOTDB_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_03697FF5 =
+          "IoTDB Edge：ConfigNode 内部端口 %s 在 %s ms 内未就绪";
 }

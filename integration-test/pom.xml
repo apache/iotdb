@@ -30,6 +30,7 @@
     <name>IoTDB: Integration-Test</name>
     <properties>
         <integrationTest.excludedGroups/>
+        <integrationTest.edgePackage>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-edge-bin.zip</integrationTest.edgePackage>
         <integrationTest.forkCount>1</integrationTest.forkCount>
         <integrationTest.includedGroups/>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
@@ -333,6 +334,7 @@
                             <forkCount>${integrationTest.forkCount}</forkCount>
                             <reuseForks>false</reuseForks>
                             <systemPropertyVariables>
+                                <EdgePackage>${integrationTest.edgePackage}</EdgePackage>
                                 <TestEnv>${integrationTest.testEnv}</TestEnv>
                                 <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
                                 <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>
@@ -447,6 +449,20 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>EdgeIT</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.EdgeIT</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>Simple</integrationTest.testEnv>
+            </properties>
+        </profile>
         <profile>
             <id>SimpleIT</id>
             <activation>
