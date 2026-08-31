@@ -31,7 +31,7 @@ import java.util.List;
 public class SyncStatus {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncStatus.class);
-  private final IoTConsensusConfig config;
+  private IoTConsensusConfig config;
   private final IndexController controller;
   private final LinkedList<Batch> pendingBatches = new LinkedList<>();
   private final IoTConsensusMemoryManager iotConsensusMemoryManager =
@@ -40,6 +40,11 @@ public class SyncStatus {
   public SyncStatus(IndexController controller, IoTConsensusConfig config) {
     this.controller = controller;
     this.config = config;
+  }
+
+  public synchronized void reloadConfig(IoTConsensusConfig config) {
+    this.config = config;
+    notifyAll();
   }
 
   /**
