@@ -20,7 +20,17 @@
 
 # Stop IoTDB Edge (the merged ConfigNode + DataNode process).
 
-IOTDB_HOME="$(cd "$(dirname "$0")"/.. && pwd)"
+if [ -z "${IOTDB_HOME}" ]; then
+    IOTDB_HOME="$(cd "$(dirname "$0")"/.. && pwd)"
+fi
+
+# Resolve symlinks and relative segments so that the same installation reached
+# through a different path still compares equal.
+resolve_home() {
+    (cd "$1" 2>/dev/null && pwd -P) || printf '%s' "$1"
+}
+
+IOTDB_HOME_RESOLVED="$(resolve_home "${IOTDB_HOME}")"
 
 PID_FILE="${IOTDB_HOME}/edge.pid"
 
@@ -31,9 +41,14 @@ is_same_edge_home() {
             return 0
             ;;
         *)
-            return 1
             ;;
     esac
+    # Fall back to comparing resolved paths, so that a start-edge.sh invoked with
+    # IOTDB_HOME pointing at a symlink is still recognised here.
+    local home="${command_line#*-DIOTDB_HOME=}"
+    home="${home%% -D*}"
+    [ -n "$home" ] && [ "$home" != "$command_line" ] || return 1
+    [ "$(resolve_home "$home")" = "${IOTDB_HOME_RESOLVED}" ]
 }
 
 is_edge_process() {
