@@ -137,7 +137,7 @@ public class LoadTsFileStatement extends Statement {
     }
 
     final List<File> tsFiles = new ArrayList<>();
-    if (file.isFile()) {
+    if (file.isFile() && file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
       tsFiles.add(file);
     } else {
       if (file.listFiles() == null) {

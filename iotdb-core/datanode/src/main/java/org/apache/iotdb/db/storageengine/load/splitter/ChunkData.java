@@ -42,6 +42,8 @@ public interface ChunkData extends TsFileData {
 
   boolean isAligned();
 
+  boolean isEntireChunk();
+
   void writeEntireChunk(ByteBuffer chunkData, IChunkMetadata chunkMetadata) throws IOException;
 
   void writeEntirePage(PageHeader pageHeader, ByteBuffer pageData) throws IOException;

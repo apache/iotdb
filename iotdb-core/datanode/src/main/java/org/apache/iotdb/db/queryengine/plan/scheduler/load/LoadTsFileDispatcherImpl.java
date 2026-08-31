@@ -74,6 +74,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 
+/**
+ * LOAD dispatcher: legacy local dispatcher of the LOAD local-load path (no decode needed) and the
+ * per-file uuid holder used for executor naming and log correlation.
+ */
 public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
