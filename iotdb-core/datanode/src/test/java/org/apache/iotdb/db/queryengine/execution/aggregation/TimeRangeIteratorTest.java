@@ -55,13 +55,29 @@ public class TimeRangeIteratorTest {
 
     ITimeRangeIterator timeRangeIterator =
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            startTime, endTime, interval, slidingStep, true, true, false, ZoneId.systemDefault());
+            startTime,
+            endTime,
+            interval,
+            slidingStep,
+            true,
+            true,
+            false,
+            false,
+            ZoneId.systemDefault());
 
     checkRes(timeRangeIterator, res);
 
     ITimeRangeIterator descTimeRangeIterator =
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            startTime, endTime, interval, slidingStep, false, true, false, ZoneId.systemDefault());
+            startTime,
+            endTime,
+            interval,
+            slidingStep,
+            false,
+            true,
+            false,
+            false,
+            ZoneId.systemDefault());
 
     checkRes(descTimeRangeIterator, res);
   }
@@ -170,51 +186,147 @@ public class TimeRangeIteratorTest {
     TimeDuration interval = new TimeDuration(0, 4);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 1), true, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 1),
+            true,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_1);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 2), true, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 2),
+            true,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_2);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 3), true, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 3),
+            true,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_3);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 4), true, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 4),
+            true,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_4);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 5), true, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 5),
+            true,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_5);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 6), true, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 6),
+            true,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_6);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 1), false, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 1),
+            false,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_1);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 2), false, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 2),
+            false,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_2);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 3), false, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 3),
+            false,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_3);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 4), false, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 4),
+            false,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_4);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 5), false, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 5),
+            false,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_5);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            0, 32, interval, new TimeDuration(0, 6), false, true, true, ZoneId.systemDefault()),
+            0,
+            32,
+            interval,
+            new TimeDuration(0, 6),
+            false,
+            true,
+            false,
+            true,
+            ZoneId.systemDefault()),
         res4_6);
   }
 
@@ -284,6 +396,7 @@ public class TimeRangeIteratorTest {
               true,
               true,
               false,
+              false,
               ZoneId.systemDefault()),
           res1);
       checkRes(
@@ -294,6 +407,7 @@ public class TimeRangeIteratorTest {
               new TimeDuration(1, 0),
               true,
               true,
+              false,
               true,
               ZoneId.systemDefault()),
           res1);
@@ -306,6 +420,7 @@ public class TimeRangeIteratorTest {
               true,
               true,
               false,
+              false,
               ZoneId.systemDefault()),
           res2);
       checkRes(
@@ -316,6 +431,7 @@ public class TimeRangeIteratorTest {
               new TimeDuration(1, 0),
               true,
               true,
+              false,
               true,
               ZoneId.systemDefault()),
           res2);
@@ -327,6 +443,7 @@ public class TimeRangeIteratorTest {
               new TimeDuration(0, 10 * MS_TO_DAY),
               true,
               true,
+              false,
               false,
               ZoneId.systemDefault()),
           res3);
@@ -338,6 +455,7 @@ public class TimeRangeIteratorTest {
               new TimeDuration(0, 10 * MS_TO_DAY),
               true,
               true,
+              false,
               true,
               ZoneId.systemDefault()),
           res4);
@@ -379,6 +497,7 @@ public class TimeRangeIteratorTest {
             new TimeDuration(1, MS_TO_DAY),
             true,
             true,
+            false,
             true,
             ZoneId.systemDefault()),
         res);
@@ -430,6 +549,7 @@ public class TimeRangeIteratorTest {
             new TimeDuration(1, MS_TO_DAY),
             true,
             true,
+            false,
             true,
             ZoneId.systemDefault()),
         res);
