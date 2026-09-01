@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.ProcessMetrics;
 import org.apache.iotdb.commons.service.metric.SecureEraseMetrics;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;

@@ -136,6 +136,10 @@ public final class ServiceMessages {
   // ---- CpuUsageMetrics ----
   public static final String CPU_USAGE_UPDATE_TIME = "CPU 使用率更新耗时 {} 纳秒";
 
+  // ---- ProcessMetrics ----
+  public static final String FAILED_GET_PROCESS_RESIDENT_MEMORY =
+      "获取进程 {} 的常驻内存失败";
+
   private ServiceMessages() {}
 
   public static final String UNKNOWN_SERVICE_TYPE = "未知服务类型：";
