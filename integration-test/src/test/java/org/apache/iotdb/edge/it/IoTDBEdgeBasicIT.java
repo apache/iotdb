@@ -197,10 +197,10 @@ public class IoTDBEdgeBasicIT {
     assertFalse(PACKAGED_SYSTEM_PROPERTIES.containsKey("model_inference_execution_thread_count"));
     assertEdgeProperty("candidate_compaction_task_queue_size", "10");
     assertEdgeProperty("compaction_max_aligned_series_num_in_one_batch", "2");
-    assertEdgeProperty("target_compaction_file_size", "10485760");
+    assertEdgeProperty("target_compaction_file_size", "33554432");
     assertEdgeProperty("inner_compaction_total_file_size_threshold", "52428800");
     assertEdgeProperty("inner_compaction_total_file_num_threshold", "10");
-    assertEdgeProperty("inner_compaction_candidate_file_num", "5");
+    assertEdgeProperty("inner_compaction_candidate_file_num", "8");
     assertEdgeProperty("max_cross_compaction_candidate_file_num", "10");
     assertEdgeProperty("max_cross_compaction_candidate_file_size", "52428800");
     assertEdgeProperty("target_chunk_point_num", "10000");
