@@ -195,6 +195,18 @@ public class IoTDBEdgeBasicIT {
   @Test
   public void testPackagedConfiguration() throws Exception {
     assertFalse(PACKAGED_SYSTEM_PROPERTIES.containsKey("model_inference_execution_thread_count"));
+    assertEdgeProperty("candidate_compaction_task_queue_size", "10");
+    assertEdgeProperty("compaction_max_aligned_series_num_in_one_batch", "2");
+    assertEdgeProperty("target_compaction_file_size", "10485760");
+    assertEdgeProperty("inner_compaction_total_file_size_threshold", "52428800");
+    assertEdgeProperty("inner_compaction_total_file_num_threshold", "10");
+    assertEdgeProperty("inner_compaction_candidate_file_num", "5");
+    assertEdgeProperty("max_cross_compaction_candidate_file_num", "10");
+    assertEdgeProperty("max_cross_compaction_candidate_file_size", "52428800");
+    assertEdgeProperty("target_chunk_point_num", "10000");
+    assertEdgeProperty("target_chunk_size", "262144");
+    assertEdgeProperty("max_number_of_points_in_page", "1000");
+    assertEdgeProperty("page_size_in_byte", "16384");
     assertTrue(Files.isRegularFile(edgeHome.resolve("sbin/windows/check-edge.ps1")));
 
     final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -215,6 +227,13 @@ public class IoTDBEdgeBasicIT {
       final String name = ((Element) references.item(i)).getAttribute("ref");
       assertTrue("Undefined Edge log appender: " + name, appenderNames.contains(name));
     }
+  }
+
+  private static void assertEdgeProperty(final String name, final String expectedValue) {
+    assertEquals(
+        "Unexpected packaged Edge value for " + name,
+        expectedValue,
+        PACKAGED_SYSTEM_PROPERTIES.getProperty(name));
   }
 
   private static String jdbcUrl() {
