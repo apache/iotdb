@@ -475,6 +475,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         CONFIG.getDataNodeId(), pipeTaskMeta, pipeRuntimeException);
   }
 
+  public void stopAllPipesWithCriticalExceptionAndTrackException(
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeRuntimeException pipeRuntimeException) {
+    super.stopAllPipesWithCriticalException(
+        CONFIG.getDataNodeId(), pipeName, creationTime, pipeTaskMeta, pipeRuntimeException);
+  }
+
   ///////////////////////// Heartbeat /////////////////////////
 
   public void collectPipeMetaList(final TDataNodeHeartbeatResp resp) throws TException {
