@@ -39,6 +39,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTaskMeta {
@@ -59,6 +60,8 @@ public class PipeTaskMeta {
    */
   private final Set<PipeRuntimeException> exceptionMessages =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+  private final AtomicLong exceptionMessageVersion = new AtomicLong(0);
 
   public PipeTaskMeta(/* @NotNull */ final ProgressIndex progressIndex, final int leaderNodeId) {
     this.progressIndex.set(progressIndex);
@@ -119,6 +122,7 @@ public class PipeTaskMeta {
     // Here we still keep the map form to allow compatibility with legacy versions
     exceptionMessages.clear();
     exceptionMessages.add(exceptionMessage);
+    exceptionMessageVersion.incrementAndGet();
   }
 
   public synchronized boolean containsExceptionMessage(
@@ -131,11 +135,20 @@ public class PipeTaskMeta {
   }
 
   public synchronized void clearExceptionMessages() {
-    exceptionMessages.clear();
+    if (!exceptionMessages.isEmpty()) {
+      exceptionMessages.clear();
+      exceptionMessageVersion.incrementAndGet();
+    }
   }
 
   public synchronized void clearExceptionMessagesBefore(final long exceptionsClearTime) {
-    exceptionMessages.removeIf(exception -> exception.getTimeStamp() <= exceptionsClearTime);
+    if (exceptionMessages.removeIf(exception -> exception.getTimeStamp() <= exceptionsClearTime)) {
+      exceptionMessageVersion.incrementAndGet();
+    }
+  }
+
+  public long getExceptionMessageVersion() {
+    return exceptionMessageVersion.get();
   }
 
   public synchronized void serialize(final OutputStream outputStream) throws IOException {
