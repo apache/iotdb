@@ -52,6 +52,9 @@ public class MetricConfig {
   /** The export port for prometheus to get metrics. */
   private Integer prometheusReporterPort = 9091;
 
+  /** Whether Prometheus metrics are collected asynchronously into a cached snapshot. */
+  private boolean prometheusReporterAsyncUpdate = true;
+
   private String prometheusReporterUsername = "";
 
   private String prometheusReporterPassword = "";
@@ -138,6 +141,14 @@ public class MetricConfig {
 
   public void setPrometheusReporterPort(Integer prometheusReporterPort) {
     this.prometheusReporterPort = prometheusReporterPort;
+  }
+
+  public boolean isPrometheusReporterAsyncUpdate() {
+    return prometheusReporterAsyncUpdate;
+  }
+
+  public void setPrometheusReporterAsyncUpdate(boolean prometheusReporterAsyncUpdate) {
+    this.prometheusReporterAsyncUpdate = prometheusReporterAsyncUpdate;
   }
 
   public boolean prometheusNeedAuth() {
@@ -264,6 +275,7 @@ public class MetricConfig {
     metricLevel = newMetricConfig.getMetricLevel();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusReporterPort = newMetricConfig.getPrometheusReporterPort();
+    prometheusReporterAsyncUpdate = newMetricConfig.isPrometheusReporterAsyncUpdate();
     prometheusReporterUsername = newMetricConfig.getPrometheusReporterUsername();
     prometheusReporterPassword = newMetricConfig.getPrometheusReporterPassword();
     internalReporterType = newMetricConfig.getInternalReportType();
@@ -287,6 +299,7 @@ public class MetricConfig {
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusReporterPort.equals(anotherMetricConfig.getPrometheusReporterPort())
+        && prometheusReporterAsyncUpdate == anotherMetricConfig.isPrometheusReporterAsyncUpdate()
         && iotdbReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig())
         && internalReporterType.equals(anotherMetricConfig.getInternalReportType());
   }
@@ -298,6 +311,7 @@ public class MetricConfig {
         metricLevel,
         asyncCollectPeriodInSecond,
         prometheusReporterPort,
+        prometheusReporterAsyncUpdate,
         iotdbReporterConfig,
         internalReporterType);
   }

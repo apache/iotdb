@@ -39,6 +39,7 @@ public class MetricConfigTest {
     properties.setProperty("cn_metric_level", "ALL");
     properties.setProperty("cn_metric_async_collect_period", "10");
     properties.setProperty("cn_metric_prometheus_reporter_port", "9090");
+    properties.setProperty("prometheus_reporter_async_update", "false");
     properties.setProperty("cn_metric_iotdb_reporter_host", "0.0.0.0");
     properties.setProperty("cn_metric_iotdb_reporter_port", "6669");
     properties.setProperty("cn_metric_iotdb_reporter_username", "user");
@@ -55,6 +56,7 @@ public class MetricConfigTest {
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
+    assertEquals(false, metricConfig.isPrometheusReporterAsyncUpdate());
 
     IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();
     assertEquals("0.0.0.0", reporterConfig.getHost());
@@ -75,6 +77,7 @@ public class MetricConfigTest {
     properties.setProperty("dn_metric_level", "ALL");
     properties.setProperty("dn_metric_async_collect_period", "10");
     properties.setProperty("dn_metric_prometheus_reporter_port", "9090");
+    properties.setProperty("metric_prometheus_reporter_async_update", "true");
     properties.setProperty("dn_metric_iotdb_reporter_host", "0.0.0.0");
     properties.setProperty("dn_metric_iotdb_reporter_port", "6669");
     properties.setProperty("dn_metric_iotdb_reporter_username", "user");
@@ -92,6 +95,7 @@ public class MetricConfigTest {
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
+    assertEquals(true, metricConfig.isPrometheusReporterAsyncUpdate());
 
     IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();
     assertEquals("0.0.0.0", reporterConfig.getHost());

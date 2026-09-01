@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.service.metric;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.i18n.ServiceMessages;
@@ -74,7 +76,15 @@ public class MetricService extends AbstractMetricService implements MetricServic
           hasJmxReporter = true;
           break;
         case PROMETHEUS:
-          reporter = new PrometheusReporter(metricManager);
+          if (METRIC_CONFIG.isPrometheusReporterAsyncUpdate()) {
+            reporter =
+                new PrometheusReporter(
+                    metricManager,
+                    IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                        ThreadName.PROMETHEUS_REPORTER_SNAPSHOT_UPDATER.getName()));
+          } else {
+            reporter = new PrometheusReporter(metricManager);
+          }
           break;
         case IOTDB:
           reporter = new IoTDBSessionReporter(metricManager);

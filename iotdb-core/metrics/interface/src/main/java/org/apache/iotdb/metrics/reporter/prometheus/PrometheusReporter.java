@@ -66,25 +66,43 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class PrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PrometheusReporter.class);
   private static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
+  private static final long PROMETHEUS_DEFAULT_SCRAPE_INTERVAL_SECONDS = 15;
   private final AbstractMetricManager metricManager;
-  private DisposableServer httpServer;
+  private volatile ScheduledExecutorService snapshotUpdateExecutor;
+  private volatile DisposableServer httpServer;
+  private volatile String metricsSnapshot = "";
+  private volatile ScheduledFuture<?> snapshotUpdateFuture;
 
   private static final String REALM = "metrics";
   public static final String BASIC_AUTH_PREFIX = "Basic ";
   public static final char DIVIDER_BETWEEN_USERNAME_AND_DIVIDER = ':';
 
+  /**
+   * Creates a reporter with a self-managed scheduler for compatibility with standalone users.
+   * Server-side code should use the constructor accepting the IoTDB thread pool.
+   */
   public PrometheusReporter(AbstractMetricManager metricManager) {
+    this(metricManager, null);
+  }
+
+  public PrometheusReporter(
+      AbstractMetricManager metricManager, ScheduledExecutorService snapshotUpdateExecutor) {
     this.metricManager = metricManager;
+    this.snapshotUpdateExecutor = snapshotUpdateExecutor;
   }
 
   @Override
   @SuppressWarnings("java:S1181")
-  public boolean start() {
+  public synchronized boolean start() {
     if (httpServer != null) {
       LOGGER.warn(MetricsMessages.PROMETHEUS_REPORTER_ALREADY_START);
       return false;
@@ -104,8 +122,12 @@ public class PrometheusReporter implements Reporter {
                               // authenticate not pass
                               return Mono.empty();
                             }
+                            String metrics =
+                                METRIC_CONFIG.isPrometheusReporterAsyncUpdate()
+                                    ? metricsSnapshot
+                                    : scrape();
                             return res.header(HttpHeaderNames.CONTENT_TYPE, "text/plain")
-                                .sendString(Mono.just(scrape()));
+                                .sendString(Mono.just(metrics));
                           }));
       if (METRIC_CONFIG.isEnableSSL()) {
         SslContext sslContext;
@@ -122,9 +144,20 @@ public class PrometheusReporter implements Reporter {
         serverTransport = serverTransport.secure(spec -> spec.sslContext(sslContext));
       }
       httpServer = serverTransport.bindNow();
+      if (METRIC_CONFIG.isPrometheusReporterAsyncUpdate()) {
+        startSnapshotUpdater();
+      }
     } catch (Throwable e) {
       // catch Throwable rather than Exception here because the code above might cause a
       // NoClassDefFoundError
+      stopSnapshotUpdater();
+      if (httpServer != null) {
+        try {
+          httpServer.disposeNow(Duration.ofSeconds(10));
+        } catch (Exception ignored) {
+          // do nothing
+        }
+      }
       httpServer = null;
       LOGGER.warn(MetricsMessages.PROMETHEUS_REPORTER_START_FAILED, e);
       return false;
@@ -133,6 +166,45 @@ public class PrometheusReporter implements Reporter {
         MetricsMessages.LOG_PROMETHEUSREPORTER_STARTED_USE_PORT_ARG_A688FFC8,
         METRIC_CONFIG.getPrometheusReporterPort());
     return true;
+  }
+
+  @SuppressWarnings("unsafeThreadSchedule")
+  private void startSnapshotUpdater() {
+    // Keep metric collection off Reactor HTTP threads and avoid overlapping scrapes.
+    if (snapshotUpdateExecutor == null) {
+      snapshotUpdateExecutor =
+          Executors.newSingleThreadScheduledExecutor(
+              runnable -> {
+                Thread thread = new Thread(runnable, "prometheus-reporter-snapshot-updater");
+                thread.setDaemon(true);
+                return thread;
+              });
+    }
+    snapshotUpdateFuture =
+        snapshotUpdateExecutor.scheduleAtFixedRate(
+            this::updateSnapshot, 0, PROMETHEUS_DEFAULT_SCRAPE_INTERVAL_SECONDS, TimeUnit.SECONDS);
+  }
+
+  private void updateSnapshot() {
+    try {
+      metricsSnapshot = scrape();
+    } catch (Throwable t) {
+      LOGGER.error(
+          MetricsMessages
+              .LOG_PROMETHEUSREPORTER_FAILED_TO_UPDATE_METRICS_SNAPSHOT_ASYNCHRONOUSLY_F19FE4E3,
+          t);
+    }
+  }
+
+  private void stopSnapshotUpdater() {
+    if (snapshotUpdateFuture != null) {
+      snapshotUpdateFuture.cancel(false);
+      snapshotUpdateFuture = null;
+    }
+    if (snapshotUpdateExecutor != null) {
+      snapshotUpdateExecutor.shutdownNow();
+      snapshotUpdateExecutor = null;
+    }
   }
 
   private boolean authenticate(HttpServerRequest req, HttpServerResponse res) {
@@ -318,7 +390,8 @@ public class PrometheusReporter implements Reporter {
   }
 
   @Override
-  public boolean stop() {
+  public synchronized boolean stop() {
+    stopSnapshotUpdater();
     if (httpServer != null) {
       try {
         httpServer.disposeNow(Duration.ofSeconds(10));

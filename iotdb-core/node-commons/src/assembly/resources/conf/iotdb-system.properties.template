@@ -382,6 +382,12 @@ metric_prometheus_reporter_username=
 # Datatype: String
 metric_prometheus_reporter_password=
 
+# Whether Prometheus metrics are collected asynchronously and served from a cached snapshot.
+# The snapshot is refreshed every 15 seconds, matching Prometheus's default scrape interval.
+# effectiveMode: restart
+# Datatype: boolean
+prometheus_reporter_async_update=true
+
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
 # Options: [JMX, PROMETHEUS]
