@@ -47,6 +47,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -58,8 +59,8 @@ public class PipeSinkSubtaskManager {
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
 
-  private final Map<String, List<PipeSinkSubtaskLifeCycle>>
-      attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
+  private final Map<PipeSinkSubtaskKey, List<PipeSinkSubtaskLifeCycle>>
+      pipeSinkSubtaskKey2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
       final Supplier<? extends PipeSinkSubtaskExecutor> executorSupplier,
@@ -87,8 +88,11 @@ public class PipeSinkSubtaskManager {
               PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
     }
     environment.setAttributeSortedString(attributeSortedString);
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        new PipeSinkSubtaskKey(
+            environment.getPipeName(), environment.getCreationTime(), attributeSortedString);
 
-    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+    if (!pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(pipeSinkSubtaskKey)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
 
       final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList = new ArrayList<>(sinkNum);
@@ -107,7 +111,11 @@ public class PipeSinkSubtaskManager {
       for (int connectorIndex = 0; connectorIndex < sinkNum; connectorIndex++) {
         final String taskID =
             String.format(
-                "%s_%s_%s", attributeSortedString, environment.getCreationTime(), connectorIndex);
+                "%s_%s_%s_%s",
+                environment.getPipeName(),
+                attributeSortedString,
+                environment.getCreationTime(),
+                connectorIndex);
         environment.setSinkTaskId(taskID);
         final PipeConnector pipeConnector =
             isDataRegionSink
@@ -139,6 +147,7 @@ public class PipeSinkSubtaskManager {
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
         final PipeSinkSubtask pipeSinkSubtask =
             new PipeSinkSubtask(
+                environment.getPipeName(),
                 taskID,
                 environment.getCreationTime(),
                 attributeSortedString,
@@ -155,12 +164,11 @@ public class PipeSinkSubtaskManager {
           attributeSortedString,
           executor.getWorkingThreadName(),
           executor.getCallbackThreadName());
-      attributeSortedString2SubtaskLifeCycleMap.put(
-          attributeSortedString, pipeSinkSubtaskLifeCycleList);
+      pipeSinkSubtaskKey2SubtaskLifeCycleMap.put(pipeSinkSubtaskKey, pipeSinkSubtaskLifeCycleList);
     }
 
     for (final PipeSinkSubtaskLifeCycle lifeCycle :
-        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
       lifeCycle.register();
     }
 
@@ -172,12 +180,14 @@ public class PipeSinkSubtaskManager {
       final long creationTime,
       final int regionId,
       final String attributeSortedString) {
-    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        new PipeSinkSubtaskKey(pipeName, creationTime, attributeSortedString);
+    if (!pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(pipeSinkSubtaskKey)) {
+      throwNoSuchSubtaskException(pipeSinkSubtaskKey);
     }
 
     final List<PipeSinkSubtaskLifeCycle> lifeCycles =
-        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey);
 
     // Shall not be empty
     final PipeSinkSubtaskExecutor executor = lifeCycles.get(0).executor;
@@ -188,7 +198,7 @@ public class PipeSinkSubtaskManager {
     lifeCycles.removeIf(o -> o.deregister(committerKey));
 
     if (lifeCycles.isEmpty()) {
-      attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
+      pipeSinkSubtaskKey2SubtaskLifeCycleMap.remove(pipeSinkSubtaskKey);
       executor.shutdown();
       LOGGER.info(
           "The executor {} and {} has been successfully shutdown.",
@@ -199,46 +209,119 @@ public class PipeSinkSubtaskManager {
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
   }
 
-  public synchronized void start(final String attributeSortedString) {
-    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
+  public synchronized void start(
+      final String pipeName, final long creationTime, final String attributeSortedString) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        new PipeSinkSubtaskKey(pipeName, creationTime, attributeSortedString);
+    if (!pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(pipeSinkSubtaskKey)) {
+      throwNoSuchSubtaskException(pipeSinkSubtaskKey);
     }
 
     for (final PipeSinkSubtaskLifeCycle lifeCycle :
-        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
       lifeCycle.start();
     }
   }
 
-  public synchronized void stop(final String attributeSortedString) {
-    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
+  /**
+   * @deprecated Use {@link #start(String, long, String)} to identify the pipe explicitly.
+   */
+  @Deprecated
+  public synchronized void start(final String attributeSortedString) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        getUniquePipeSinkSubtaskKey(attributeSortedString);
+    if (pipeSinkSubtaskKey == null) {
+      throwNoSuchSubtaskException(
+          new PipeSinkSubtaskKey(null, Long.MIN_VALUE, attributeSortedString));
     }
 
     for (final PipeSinkSubtaskLifeCycle lifeCycle :
-        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
+      lifeCycle.start();
+    }
+  }
+
+  public synchronized void stop(
+      final String pipeName, final long creationTime, final String attributeSortedString) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        new PipeSinkSubtaskKey(pipeName, creationTime, attributeSortedString);
+    if (!pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(pipeSinkSubtaskKey)) {
+      throwNoSuchSubtaskException(pipeSinkSubtaskKey);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
       lifeCycle.stop();
     }
   }
 
+  /**
+   * @deprecated Use {@link #stop(String, long, String)} to identify the pipe explicitly.
+   */
+  @Deprecated
+  public synchronized void stop(final String attributeSortedString) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        getUniquePipeSinkSubtaskKey(attributeSortedString);
+    if (pipeSinkSubtaskKey == null) {
+      throwNoSuchSubtaskException(
+          new PipeSinkSubtaskKey(null, Long.MIN_VALUE, attributeSortedString));
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
+      lifeCycle.stop();
+    }
+  }
+
+  public synchronized UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue(
+      final String pipeName, final long creationTime, final String attributeSortedString) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        new PipeSinkSubtaskKey(pipeName, creationTime, attributeSortedString);
+    if (!pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(pipeSinkSubtaskKey)) {
+      throw new PipeException(
+          "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
+    }
+
+    return pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey).get(0).getPendingQueue();
+  }
+
+  /**
+   * @deprecated Use {@link #getPipeSinkPendingQueue(String, long, String)} to identify the pipe
+   *     explicitly.
+   */
+  @Deprecated
   public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue(
       final String attributeSortedString) {
-    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        getUniquePipeSinkSubtaskKey(attributeSortedString);
+    if (pipeSinkSubtaskKey == null) {
       throw new PipeException(
           "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
     }
 
     // All subtasks share the same pending queue
-    return attributeSortedString2SubtaskLifeCycleMap
-        .get(attributeSortedString)
-        .get(0)
-        .getPendingQueue();
+    return pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey).get(0).getPendingQueue();
   }
 
   public synchronized boolean hasRegisteredSubtasks(
+      final String pipeName,
+      final long creationTime,
+      final PipeParameters pipeSinkParameters,
+      final int regionId) {
+    return pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(
+        new PipeSinkSubtaskKey(
+            pipeName, creationTime, generateAttributeSortedString(pipeSinkParameters, regionId)));
+  }
+
+  /**
+   * @deprecated Use {@link #hasRegisteredSubtasks(String, long, PipeParameters, int)} to identify
+   *     the pipe explicitly.
+   */
+  @Deprecated
+  public synchronized boolean hasRegisteredSubtasks(
       final PipeParameters pipeSinkParameters, final int regionId) {
-    return attributeSortedString2SubtaskLifeCycleMap.containsKey(
-        generateAttributeSortedString(pipeSinkParameters, regionId));
+    return getUniquePipeSinkSubtaskKey(generateAttributeSortedString(pipeSinkParameters, regionId))
+        != null;
   }
 
   public static int calculateSinkSubtaskNum(
@@ -294,6 +377,60 @@ public class PipeSinkSubtaskManager {
         new TreeMap<>(pipeConnectorParameters.getAttribute());
     sortedStringSourceMap.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
     return sortedStringSourceMap.toString();
+  }
+
+  private void throwNoSuchSubtaskException(final PipeSinkSubtaskKey pipeSinkSubtaskKey) {
+    throw new PipeException(
+        FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + pipeSinkSubtaskKey.attributeSortedString);
+  }
+
+  private PipeSinkSubtaskKey getUniquePipeSinkSubtaskKey(final String attributeSortedString) {
+    PipeSinkSubtaskKey matchedKey = null;
+    for (final PipeSinkSubtaskKey key : pipeSinkSubtaskKey2SubtaskLifeCycleMap.keySet()) {
+      if (!Objects.equals(attributeSortedString, key.attributeSortedString)) {
+        continue;
+      }
+      if (matchedKey != null) {
+        throw new PipeException(
+            "Multiple pipes match the requested sink subtask. Use the pipe-specific "
+                + "PipeSinkSubtaskManager API.");
+      }
+      matchedKey = key;
+    }
+    return matchedKey;
+  }
+
+  private static final class PipeSinkSubtaskKey {
+
+    private final String pipeName;
+    private final long creationTime;
+    private final String attributeSortedString;
+
+    private PipeSinkSubtaskKey(
+        final String pipeName, final long creationTime, final String attributeSortedString) {
+      this.pipeName = pipeName;
+      this.creationTime = creationTime;
+      this.attributeSortedString = attributeSortedString;
+    }
+
+    @Override
+    public boolean equals(final Object object) {
+      if (this == object) {
+        return true;
+      }
+      if (!(object instanceof PipeSinkSubtaskKey)) {
+        return false;
+      }
+      final PipeSinkSubtaskKey that = (PipeSinkSubtaskKey) object;
+      return creationTime == that.creationTime
+          && Objects.equals(pipeName, that.pipeName)
+          && Objects.equals(attributeSortedString, that.attributeSortedString);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(pipeName, creationTime, attributeSortedString);
+    }
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////

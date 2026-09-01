@@ -29,6 +29,7 @@ public enum Tag {
   STAGE("stage"),
   OPERATION("operation"),
   INTERFACE("interface"),
+  PIPE("pipe"),
   CREATION_TIME("creation_time"),
   INDEX("index");
 

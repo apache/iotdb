@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
@@ -206,6 +207,47 @@ public class PipeHeartbeatParserTest {
     Assert.assertTrue(coordinatorTaskMeta.hasExceptionMessages());
     Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
     Assert.assertTrue(runtimeMeta.getIsStoppedByRuntimeException());
+    verify(context.procedureManager, times(1)).pipeHandleMetaChange(true, false);
+  }
+
+  @Test
+  public void testParseHeartbeatDoesNotPropagateSinkExceptionToOtherPipes() throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final String failedPipeName = "failedPipe";
+    final String unaffectedPipeName = "unaffectedPipe";
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    createPipe(pipeTaskInfo, failedPipeName, PipeStatus.RUNNING);
+    createPipe(pipeTaskInfo, unaffectedPipeName, PipeStatus.RUNNING);
+
+    final PipeMeta failedPipeMeta = pipeTaskInfo.getPipeMetaByPipeName(failedPipeName);
+    final PipeRuntimeMeta failedRuntimeMeta = failedPipeMeta.getRuntimeMeta();
+    final PipeRuntimeMeta unaffectedRuntimeMeta =
+        pipeTaskInfo.getPipeMetaByPipeName(unaffectedPipeName).getRuntimeMeta();
+
+    final PipeTaskMeta agentTaskMeta =
+        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, DATA_NODE_ID);
+    agentTaskMeta.trackExceptionMessage(new PipeRuntimeSinkCriticalException("sink failure", 300L));
+    final ConcurrentMap<Integer, PipeTaskMeta> agentPipeTasks = new ConcurrentHashMap<>();
+    agentPipeTasks.put(DATA_NODE_ID, agentTaskMeta);
+    final PipeHeartbeat heartbeat =
+        new PipeHeartbeat(
+            Collections.singletonList(
+                new PipeMeta(failedPipeMeta.getStaticMeta(), new PipeRuntimeMeta(agentPipeTasks))
+                    .serialize()),
+            Collections.singletonList(false),
+            Collections.singletonList(0L),
+            Collections.singletonList(0D),
+            null);
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(DATA_NODE_ID, heartbeat);
+
+    Assert.assertEquals(PipeStatus.STOPPED, failedRuntimeMeta.getStatus().get());
+    Assert.assertTrue(failedRuntimeMeta.getIsStoppedByRuntimeException());
+    Assert.assertEquals(PipeStatus.RUNNING, unaffectedRuntimeMeta.getStatus().get());
+    Assert.assertFalse(unaffectedRuntimeMeta.getIsStoppedByRuntimeException());
+    Assert.assertTrue(unaffectedRuntimeMeta.getNodeId2PipeRuntimeExceptionMap().isEmpty());
     verify(context.procedureManager, times(1)).pipeHandleMetaChange(true, false);
   }
 
