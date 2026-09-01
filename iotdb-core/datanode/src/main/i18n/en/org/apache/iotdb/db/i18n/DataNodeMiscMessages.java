@@ -446,8 +446,6 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   // service – metrics
   // ---------------------------------------------------------------------------
-  public static final String FAILED_GET_PROCESS_RESIDENT_MEMORY =
-      "Failed to get process resident memory for pid {}";
   public static final String DATANODE_PORT_CHECK_SUCCESSFUL = "DataNode port check successful.";
 
   // ---------------------------------------------------------------------------
