@@ -83,6 +83,7 @@
         <module>external-service-impl</module>
         <module>timecho-confignode</module>
         <module>timecho-server</module>
+        <module>timecho-edge</module>
         <module>timecho-isession</module>
         <module>timecho-session</module>
     </modules>

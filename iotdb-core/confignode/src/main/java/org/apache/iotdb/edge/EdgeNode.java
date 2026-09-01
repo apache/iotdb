@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.edge;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -58,17 +59,37 @@ public final class EdgeNode {
   /** Extra delay after the port opens, leaving time for the leader election to settle. */
   private static final long LEADER_ELECTION_GRACE_MS = 5_000L;
 
+  /** A node bootstrap step; its startup errors must propagate to the orchestrator. */
+  @FunctionalInterface
+  public interface NodeBootstrap {
+    void start() throws Exception;
+  }
+
   private EdgeNode() {}
 
   public static void main(String[] args) throws Exception {
-    LOGGER.info(ConfigNodeMessages.LOG_STARTING_IOTDB_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_77F32605);
+    start(() -> ConfigNode.main(new String[] {"-s"}), () -> DataNode.main(new String[] {"-s"}));
+  }
+
+  /**
+   * Orchestrates the single-process Edge startup: bootstraps the ConfigNode on a background thread,
+   * waits until its internal RPC port is ready, then starts the DataNode on the calling thread.
+   *
+   * <p>Kept edition-agnostic on purpose: the TimechoDB edition entry point reuses this method with
+   * its own ConfigNode/DataNode bootstraps.
+   */
+  public static void start(NodeBootstrap configNodeBootstrap, NodeBootstrap dataNodeBootstrap)
+      throws Exception {
+    LOGGER.info(
+        ConfigNodeMessages.LOG_STARTING_ARG_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_8B82B1DD,
+        IoTDBConstant.BRAND_NAME);
 
     final AtomicReference<Throwable> configNodeError = new AtomicReference<>();
     Thread configNodeThread =
         new Thread(
             () -> {
               try {
-                ConfigNode.main(new String[] {"-s"});
+                configNodeBootstrap.start();
               } catch (Throwable t) {
                 configNodeError.set(t);
               }
@@ -82,18 +103,23 @@ public final class EdgeNode {
     throwIfConfigNodeBootstrapFailed(configNodeError);
     Thread.sleep(LEADER_ELECTION_GRACE_MS);
     throwIfConfigNodeBootstrapFailed(configNodeError);
-    LOGGER.info(ConfigNodeMessages.LOG_IOTDB_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_6729159E);
+    LOGGER.info(
+        ConfigNodeMessages.LOG_ARG_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_C76AC453,
+        IoTDBConstant.BRAND_NAME);
 
-    // DataNode.main returns after a successful start; the services of both nodes keep the JVM
-    // alive with non-daemon threads afterwards.
-    DataNode.main(new String[] {"-s"});
+    // The DataNode bootstrap returns after a successful start; the services of both nodes keep the
+    // JVM alive with non-daemon threads afterwards.
+    dataNodeBootstrap.start();
   }
 
   private static void throwIfConfigNodeBootstrapFailed(AtomicReference<Throwable> configNodeError) {
     Throwable error = configNodeError.get();
     if (error != null) {
       throw new IllegalStateException(
-          ConfigNodeMessages.EXCEPTION_IOTDB_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_02EEE59A, error);
+          String.format(
+              ConfigNodeMessages.EXCEPTION_ARG_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_CAF5A783,
+              IoTDBConstant.BRAND_NAME),
+          error);
     }
   }
 
@@ -115,7 +141,8 @@ public final class EdgeNode {
     throw new IllegalStateException(
         String.format(
             ConfigNodeMessages
-                .EXCEPTION_IOTDB_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_03697FF5,
+                .EXCEPTION_ARG_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_3997DCD9,
+            IoTDBConstant.BRAND_NAME,
             port,
             CONFIG_NODE_READY_TIMEOUT_MS));
   }

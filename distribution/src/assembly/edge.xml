@@ -25,32 +25,38 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>apache-iotdb-${project.version}-edge-bin</baseDirectory>
-    <dependencySets>
-        <dependencySet>
-            <includes>
-                <include>*:iotdb-server:zip:*</include>
-                <include>*:iotdb-cli:zip:*</include>
-                <include>*:iotdb-confignode:zip:*</include>
-            </includes>
-            <outputDirectory>${file.separator}</outputDirectory>
-            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
-            <unpack>true</unpack>
-            <unpackOptions>
-                <excludes>
-                    <exclude>tools/**</exclude>
-                    <exclude>conf/**</exclude>
-                    <exclude>sbin/**</exclude>
-                </excludes>
-            </unpackOptions>
-        </dependencySet>
-    </dependencySets>
+    <baseDirectory>${package.name}-${project.version}-edge-bin</baseDirectory>
     <fileSets>
+        <!-- Same obfuscated fat-jar layout as all.xml: the default file-system provider must be
+             loadable before the JVM opens application JARs. -->
+        <fileSet>
+            <outputDirectory>lib/bootstrap</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/target/classes</directory>
+            <includes>
+                <include>com/timecho/iotdb/commons/file/**</include>
+            </includes>
+        </fileSet>
+        <!-- 包含合并的依赖JAR -->
+        <fileSet>
+            <outputDirectory>lib</outputDirectory>
+            <directory>${project.build.directory}</directory>
+            <includes>
+                <include>common-dependency.jar</include>
+            </includes>
+        </fileSet>
+        <!-- 混淆后的主JAR文件 -->
+        <fileSet>
+            <outputDirectory>lib</outputDirectory>
+            <directory>${project.build.directory}</directory>
+            <includes>
+                <include>${package.name}-server-${project.version}.jar</include>
+            </includes>
+        </fileSet>
         <!-- jmx credentials and the tool logback come from the datanode resources;
              logback-datanode.xml is replaced by the merged logback-edge.xml below. -->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/conf</directory>
+            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/datanode/src/assembly/resources/conf</directory>
             <excludes>
                 <exclude>logback-datanode.xml</exclude>
             </excludes>
@@ -58,34 +64,38 @@
         <!-- iotdb-system.properties is replaced by the edge-tuned one below. -->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
+            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf</directory>
             <excludes>
                 <exclude>iotdb-system.properties</exclude>
                 <exclude>edge/**</exclude>
+                <exclude>safe/**</exclude>
+                <exclude>**/ainode-env.*</exclude>
             </excludes>
         </fileSet>
         <!-- edge-specific system configuration. -->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf/edge</directory>
+            <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf/edge</directory>
         </fileSet>
         <!-- merged logback configuration for the single Edge process. -->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/src/assembly/resources/conf-edge</directory>
         </fileSet>
+        <!-- Edge env scripts (品牌名随 edition 变化，需要 Maven 过滤 @brand.name@) -->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${project.basedir}/../scripts/conf</directory>
+            <directory>${maven.multiModuleProjectDirectory}/scripts/conf</directory>
             <includes>
                 <include>edge-env.sh</include>
                 <include>windows/edge-env.bat</include>
             </includes>
+            <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${project.basedir}/../scripts/conf</directory>
+            <directory>${maven.multiModuleProjectDirectory}/scripts/conf</directory>
             <includes>
                 <include>iotdb-common.sh</include>
                 <include>windows/iotdb-common.bat</include>
@@ -93,17 +103,49 @@
             <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
-        <!-- one pair of start/stop scripts for the merged process, plus the cli. -->
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/timecho-server/src/assembly/resources/conf</directory>
+            <excludes>
+                <exclude>META-INF/**</exclude>
+            </excludes>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/timecho-server/src/main/resources</directory>
+            <excludes>
+                <exclude>META-INF/**</exclude>
+            </excludes>
+        </fileSet>
+        <!-- 激活目录 -->
+        <fileSet>
+            <outputDirectory>activation</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/activation</directory>
+            <fileMode>0755</fileMode>
+            <excludes>
+                <exclude>**/*</exclude>
+            </excludes>
+        </fileSet>
+        <!-- one pair of start/stop scripts for the merged process, plus the cli.
+             品牌名随 edition 变化的脚本需要 Maven 过滤 @brand.name@ -->
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../scripts/sbin</directory>
+            <directory>${maven.multiModuleProjectDirectory}/scripts/sbin</directory>
             <includes>
                 <include>start-edge.sh</include>
                 <include>stop-edge.sh</include>
-                <include>start-cli.sh</include>
                 <include>windows/start-edge.bat</include>
-                <include>windows/check-edge.ps1</include>
                 <include>windows/stop-edge.bat</include>
+            </includes>
+            <filtered>true</filtered>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/scripts/sbin</directory>
+            <includes>
+                <include>start-cli.sh</include>
+                <include>windows/check-edge.ps1</include>
                 <include>windows/start-cli.bat</include>
                 <include>windows/start-cli-table.bat</include>
             </includes>
@@ -113,7 +155,7 @@
              environment files required by the excluded destructive, daemon, and health scripts. -->
         <fileSet>
             <outputDirectory>tools</outputDirectory>
-            <directory>${project.basedir}/../scripts/tools</directory>
+            <directory>${maven.multiModuleProjectDirectory}/scripts/tools</directory>
             <excludes>
                 <exclude>*ainode.*</exclude>
                 <exclude>**/*ainode.*</exclude>
@@ -125,7 +167,8 @@
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
-        <!-- Edge replacements for the standalone node daemon and cleanup tools. -->
+        <!-- Edge replacements for the standalone node daemon and cleanup tools
+             (品牌名与 systemd 单元名随 edition 变化，需要 Maven 过滤 @brand.name@ / @package.name@)。 -->
         <fileSet>
             <outputDirectory>tools</outputDirectory>
             <directory>${project.basedir}/../scripts/tools</directory>
@@ -134,23 +177,19 @@
                 <include>ops/destroy-edge.sh</include>
                 <include>windows/ops/destroy-edge.bat</include>
             </includes>
+            <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
     <files>
         <file>
-            <source>${project.basedir}/../iotdb-client/cli/src/assembly/resources/conf/logback-backup.xml</source>
+            <source>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/conf/logback-backup.xml</source>
             <outputDirectory>conf</outputDirectory>
             <fileMode>0755</fileMode>
         </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
-            <outputDirectory>lib</outputDirectory>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/external-service-impl/rest/target/rest-${project.version}-jar-with-dependencies.jar</source>
-            <outputDirectory>lib</outputDirectory>
-        </file>
+        <!-- Deliberately NOT shipping the mqtt/rest external-service jars (the fat jar already
+             excludes their classes): the Edge distribution targets minimal resource-constrained
+             deployments and its packaged configuration never enables those services. -->
     </files>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>

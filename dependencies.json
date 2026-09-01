@@ -35,6 +35,7 @@
         "com.timecho.iotdb:service-rpc",
         "com.timecho.iotdb:session-parent",
         "com.timecho.iotdb:timecho-confignode",
+        "com.timecho.iotdb:timecho-edge",
         "com.timecho.iotdb:timecho-server",
         "com.timecho.iotdb:timechodb-thrift",
         "com.timecho.moquette:moquette-broker",

@@ -57,6 +57,7 @@
             <directory>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf</directory>
             <excludes>
                 <exclude>safe/**</exclude>
+                <exclude>edge/**</exclude>
                 <exclude>**/ainode-env.*</exclude>
             </excludes>
         </fileSet>

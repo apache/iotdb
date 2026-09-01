@@ -23,10 +23,10 @@ setlocal
 @REM set cmd format
 powershell -NoProfile -Command "$v=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').CurrentMajorVersionNumber; if($v -gt 6) { cmd /c 'chcp 65001' }"
 
-title IoTDB Edge
+title @brand.name@ Edge
 
 echo ````````````````````````
-echo Starting IoTDB Edge (ConfigNode + DataNode in one process)
+echo Starting @brand.name@ Edge (ConfigNode + DataNode in one process)
 echo ````````````````````````
 
 @REM -----------------------------------------------------------------------------
@@ -84,7 +84,9 @@ if EXIST "%IOTDB_CONF%\windows\edge-env.bat" (
 set illegal_access_params=--add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED
 
 set CLASSPATH=%IOTDB_HOME%\lib\*
-set MAIN_CLASS=org.apache.iotdb.edge.EdgeNode
+@REM The main class can be overridden (same convention as MAIN_CLASS in start-datanode.bat).
+if NOT DEFINED EDGE_MAIN_CLASS set "EDGE_MAIN_CLASS=com.timecho.iotdb.edge.EdgeNode"
+set "MAIN_CLASS=%EDGE_MAIN_CLASS%"
 
 @REM CONFIGNODE_HOME must also point to the installation directory, otherwise the
 @REM ConfigNode part resolves its data directories against the working directory.

@@ -687,13 +687,13 @@ public final class ConfigNodeMessages {
   // Edition gate: SET/SHOW/DELETE USER QUOTA is TimechoDB-only.
   public static final String EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0 =
       "User resource quota is not available in this edition.";
-  public static final String LOG_STARTING_IOTDB_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_77F32605 =
-      "Starting IoTDB Edge: ConfigNode and DataNode in one process";
-  public static final String LOG_IOTDB_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_6729159E =
-      "IoTDB Edge: ConfigNode is ready, starting DataNode";
-  public static final String EXCEPTION_IOTDB_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_02EEE59A =
-      "IoTDB Edge: ConfigNode bootstrap failed";
+  public static final String LOG_STARTING_ARG_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_8B82B1DD =
+      "Starting {} Edge: ConfigNode and DataNode in one process";
+  public static final String LOG_ARG_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_C76AC453 =
+      "{} Edge: ConfigNode is ready, starting DataNode";
+  public static final String EXCEPTION_ARG_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_CAF5A783 =
+      "%s Edge: ConfigNode bootstrap failed";
   public static final String
-      EXCEPTION_IOTDB_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_03697FF5 =
-          "IoTDB Edge: ConfigNode internal port %s is not ready within %s ms";
+      EXCEPTION_ARG_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_3997DCD9 =
+          "%s Edge: ConfigNode internal port %s is not ready within %s ms";
 }

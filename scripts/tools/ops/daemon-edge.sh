@@ -57,11 +57,11 @@ systemd_quote() {
     printf '"%s"' "$value"
 }
 
-FILE_NAME="$SYSTEMD_DIR/iotdb-edge.service"
+FILE_NAME="$SYSTEMD_DIR/@package.name@-edge.service"
 cat > "$FILE_NAME" <<EOF
 [Unit]
-Description=iotdb-edge
-Documentation=https://iotdb.apache.org/
+Description=@package.name@-edge
+Documentation=https://www.timecho.com/
 After=network.target
 StartLimitIntervalSec=600s
 StartLimitBurst=3
@@ -94,21 +94,21 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-echo "Daemon service of IoTDB Edge has been successfully registered."
+echo "Daemon service of @brand.name@ Edge has been successfully registered."
 echo
-echo "Do you want to execute 'systemctl start iotdb-edge'? y/n (default y)"
+echo "Do you want to execute 'systemctl start @package.name@-edge'? y/n (default y)"
 read -r START_SERVICE || START_SERVICE=""
 if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[Yy]$ ]]; then
     # Stop both an existing service and a manually started Edge before starting.
-    systemctl stop iotdb-edge
+    systemctl stop @package.name@-edge
     "$IOTDB_SBIN_HOME/stop-edge.sh"
-    systemctl start iotdb-edge
+    systemctl start @package.name@-edge
     echo "Executed successfully."
 fi
 echo
-echo "Do you want to execute 'systemctl enable iotdb-edge' to start at boot? y/n (default y)"
+echo "Do you want to execute 'systemctl enable @package.name@-edge' to start at boot? y/n (default y)"
 read -r ADD_STARTUP || ADD_STARTUP=""
 if [[ -z "$ADD_STARTUP" || "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
-    systemctl enable iotdb-edge
+    systemctl enable @package.name@-edge
     echo "Executed successfully."
 fi

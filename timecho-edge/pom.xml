@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>iotdb-parent</artifactId>
+        <groupId>org.apache.iotdb</groupId>
+        <version>2.0.11-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.timecho.iotdb</groupId>
+    <artifactId>timecho-edge</artifactId>
+    <name>TimechoDB: Edge</name>
+    <properties>
+        <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
+        <iotdb.test.skip>false</iotdb.test.skip>
+        <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
+    </properties>
+    <dependencies>
+        <!-- The Edge entry point starts the TimechoDB ConfigNode and DataNode bootstraps inside
+             ONE JVM; it needs both node implementations, and lives in its own module so that
+             timecho-confignode does not have to depend on timecho-server. The apache orchestration
+             (org.apache.iotdb.edge.EdgeNode) is referenced directly, hence the explicit
+             iotdb-confignode dependency. -->
+        <dependency>
+            <groupId>com.timecho.iotdb</groupId>
+            <artifactId>timecho-confignode</artifactId>
+            <version>2.0.11-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-confignode</artifactId>
+            <version>2.0.11-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.timecho.iotdb</groupId>
+            <artifactId>timecho-server</artifactId>
+            <version>2.0.11-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+</project>

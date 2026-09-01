@@ -23,7 +23,7 @@ if not "%~2"=="" goto usage
 if "%~1"=="-f" goto confirmed
 if not "%~1"=="" goto usage
 set "CLEAN_SERVICE="
-set /p "CLEAN_SERVICE=Do you want to clean all the data of IoTDB Edge? y/n (default n): "
+set /p "CLEAN_SERVICE=Do you want to clean all the data of @brand.name@ Edge? y/n (default n): "
 if /i "%CLEAN_SERVICE%"=="y" goto confirmed
 echo Exiting...
 exit /b 0
@@ -88,7 +88,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "foreach ($directory in ($targets | Select-Object -Unique)) {" ^
     "    if (Test-Path -LiteralPath $directory) { Remove-Item -LiteralPath $directory -Recurse -Force; }" ^
     "}" ^
-    "Write-Host 'IoTDB Edge clean done ...';"
+    "Write-Host '@brand.name@ Edge clean done ...';"
 exit /b %errorlevel%
 
 :usage

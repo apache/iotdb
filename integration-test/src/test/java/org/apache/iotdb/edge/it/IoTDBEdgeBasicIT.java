@@ -86,6 +86,9 @@ public class IoTDBEdgeBasicIT {
   private static int rpcPort;
   private static long edgePid = -1;
 
+  /** Main class the Edge launchers are pointed at; see {@link #installItEntryJar(Path)}. */
+  private static final String EDGE_MAIN_CLASS_FOR_IT = "org.apache.iotdb.edge.EdgeNodeForIT";
+
   @BeforeClass
   public static void setUp() throws Exception {
     deleteRecursively(WORK_DIR);
@@ -105,13 +108,88 @@ public class IoTDBEdgeBasicIT {
       PACKAGED_SYSTEM_PROPERTIES.load(input);
     }
 
+    installItEntryJar(edgeHome);
+
     ports = EnvUtils.searchAvailablePorts();
     rpcPort = ports[2];
     configurePorts(edgeHome.resolve("conf/iotdb-system.properties"));
 
     runScript(edgeHome.resolve("sbin/start-edge.sh"), START_SCRIPT_LOG);
-    edgePid = Long.parseLong(Files.readString(edgeHome.resolve("edge.pid")).trim());
+    edgePid = resolveHostPid(Long.parseLong(Files.readString(edgeHome.resolve("edge.pid")).trim()));
     waitUntilReady();
+    waitUntilClusterActivated();
+  }
+
+  /**
+   * The packaged zip is obfuscated and its product entry is license-gated (an unactivated cluster
+   * is read-only). Drop this module's jar into the zip's lib/ and boot the license-free {@code
+   * EdgeNodeForIT} entry instead — the same trick the template-node ITs use with
+   * ConfigNodeForOtherIT / HackTimechoServer. runScript points the launchers at it via the
+   * EDGE_MAIN_CLASS environment variable.
+   */
+  private static void installItEntryJar(final Path home) throws IOException {
+    final String jarProperty = System.getProperty("EdgeItJar");
+    assertTrue(
+        "The EdgeItJar system property must point to the integration-test jar",
+        jarProperty != null);
+    final Path itJar = Paths.get(jarProperty).toAbsolutePath().normalize();
+    assertTrue("integration-test jar does not exist: " + itJar, Files.isRegularFile(itJar));
+    Files.copy(itJar, home.resolve("lib").resolve(itJar.getFileName().toString()));
+  }
+
+  /**
+   * Git Bash/MSYS writes its own PID into edge.pid, which differs from the Windows PID of the
+   * launched JVM; /proc/<pid>/winpid maps between them. On Linux the recorded PID is already the
+   * host PID and the mapping file does not exist.
+   */
+  private static long resolveHostPid(final long pid) throws Exception {
+    final Process process =
+        new ProcessBuilder("bash", "-c", "cat /proc/" + pid + "/winpid 2>/dev/null").start();
+    process.getOutputStream().close();
+    String output;
+    try (InputStream input = process.getInputStream()) {
+      output = new String(input.readAllBytes(), StandardCharsets.UTF_8).trim();
+    }
+    process.waitFor(10, TimeUnit.SECONDS);
+    return output.isEmpty() ? pid : Long.parseLong(output);
+  }
+
+  /** The EdgeNodeForIT entry drops every activation limit, so both nodes must come up ACTIVATED. */
+  private static void waitUntilClusterActivated() throws Exception {
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(STARTUP_TIMEOUT_SECONDS);
+    String lastStatus = "<no rows>";
+    while (System.nanoTime() < deadline) {
+      try (Connection connection = openTreeConnection();
+          Statement statement = connection.createStatement();
+          ResultSet resultSet = statement.executeQuery("SHOW CLUSTER")) {
+        int nodeCount = 0;
+        boolean allActivated = true;
+        final StringBuilder status = new StringBuilder();
+        while (resultSet.next()) {
+          nodeCount++;
+          status
+              .append(resultSet.getString("NodeType"))
+              .append(":")
+              .append(resultSet.getString("Status"))
+              .append(":")
+              .append(resultSet.getString("ActivateStatus"))
+              .append(' ');
+          if (!"ACTIVATED".equals(resultSet.getString("ActivateStatus"))) {
+            allActivated = false;
+          }
+        }
+        lastStatus = status.toString().trim();
+        if (nodeCount >= 2 && allActivated) {
+          return;
+        }
+      } catch (SQLException e) {
+        // the cluster is still coming up
+      }
+      Thread.sleep(1000);
+    }
+    throw new AssertionError(
+        "The Edge cluster did not report both nodes as ACTIVATED. Last SHOW CLUSTER result: "
+            + lastStatus);
   }
 
   @AfterClass
@@ -290,7 +368,11 @@ public class IoTDBEdgeBasicIT {
     final ProcessBuilder processBuilder = new ProcessBuilder("bash", script.toString());
     processBuilder.directory(edgeHome.toFile());
     processBuilder.redirectErrorStream(true);
-    processBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(outputFile.toFile()));
+    // Redirect.to, not appendTo: an append-only handle (FILE_APPEND_DATA without FILE_WRITE_DATA)
+    // makes every write from an MSYS/Git bash child fail silently on Windows, so the script exits
+    // non-zero with an empty log. Each script run gets its own file, so truncation is fine.
+    processBuilder.redirectOutput(ProcessBuilder.Redirect.to(outputFile.toFile()));
+    processBuilder.environment().put("EDGE_MAIN_CLASS", EDGE_MAIN_CLASS_FOR_IT);
     processBuilder.environment().put("IOTDB_HOME", edgeHome.toString());
     processBuilder.environment().put("IOTDB_CONF", edgeHome.resolve("conf").toString());
     processBuilder.environment().put("IOTDB_DATA_HOME", edgeHome.toString());

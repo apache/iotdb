@@ -18,22 +18,36 @@
 # under the License.
 #
 
-# Stop IoTDB Edge (the merged ConfigNode + DataNode process).
+# Stop @brand.name@ Edge (the merged ConfigNode + DataNode process).
 
 IOTDB_HOME="$(cd "$(dirname "$0")"/.. && pwd)"
 
+# A JVM started by start-edge.sh under Git Bash/MSYS receives a Windows-style -DIOTDB_HOME
+# ("D:\iotdb" or "D:/iotdb") even though this script resolves a POSIX path. Accept every
+# equivalent form so the stop matching below keeps identifying our own installation. On Linux
+# cygpath is absent and only the resolved path is matched.
+EDGE_HOME_CANDIDATES=("${IOTDB_HOME}")
+if command -v cygpath >/dev/null 2>&1; then
+    EDGE_HOME_CANDIDATES+=("$(cygpath -w "${IOTDB_HOME}")" "$(cygpath -m "${IOTDB_HOME}")")
+fi
+
 PID_FILE="${IOTDB_HOME}/edge.pid"
+
+# The main class can be overridden (same convention as MAIN_CLASS in start-datanode.bat); keep it
+# in sync with start-edge.sh so an alternative entry (e.g. the license-free IT entry) is matched.
+EDGE_MAIN_CLASS="${EDGE_MAIN_CLASS:-com.timecho.iotdb.edge.EdgeNode}"
 
 is_same_edge_home() {
     local command_line="$1"
-    case "$command_line" in
-        *"-DIOTDB_HOME=${IOTDB_HOME} "*|*"-DIOTDB_HOME=${IOTDB_HOME}")
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
+    local home
+    for home in "${EDGE_HOME_CANDIDATES[@]}"; do
+        case "$command_line" in
+            *"-DIOTDB_HOME=${home} "*|*"-DIOTDB_HOME=${home}")
+                return 0
+                ;;
+        esac
+    done
+    return 1
 }
 
 is_edge_process() {
@@ -41,7 +55,7 @@ is_edge_process() {
     local command_line
     command_line=$(ps -ww -p "$pid" -o command= 2>/dev/null)
     [ -n "$command_line" ] || return 1
-    printf '%s\n' "$command_line" | grep -F -- "org.apache.iotdb.edge.EdgeNode" >/dev/null || return 1
+    printf '%s\n' "$command_line" | grep -F -- "${EDGE_MAIN_CLASS}" >/dev/null || return 1
     is_same_edge_home "$command_line"
 }
 
@@ -49,7 +63,7 @@ find_edge_processes() {
     local process_line
     local pid
     while IFS= read -r process_line; do
-        printf '%s\n' "$process_line" | grep -F -- "org.apache.iotdb.edge.EdgeNode" >/dev/null || continue
+        printf '%s\n' "$process_line" | grep -F -- "${EDGE_MAIN_CLASS}" >/dev/null || continue
         is_same_edge_home "$process_line" || continue
         pid=$(printf '%s\n' "$process_line" | awk '{print $1}')
         printf '%s\n' "$pid"
@@ -59,11 +73,11 @@ find_edge_processes() {
 stop_edge_process() {
     local pid="$1"
     if ! is_edge_process "$pid"; then
-        echo "Refusing to stop PID $pid because it is not IoTDB Edge from ${IOTDB_HOME}."
+        echo "Refusing to stop PID $pid because it is not @brand.name@ Edge from ${IOTDB_HOME}."
         return 1
     fi
     if ! kill "$pid" 2>/dev/null; then
-        echo "Failed to stop IoTDB Edge process $pid."
+        echo "Failed to stop @brand.name@ Edge process $pid."
         return 1
     fi
     for i in $(seq 1 30); do
@@ -72,12 +86,12 @@ stop_edge_process() {
     done
     if kill -0 "$pid" 2>/dev/null; then
         if ! is_edge_process "$pid"; then
-            echo "Refusing to force-stop PID $pid because it no longer belongs to this IoTDB Edge installation."
+            echo "Refusing to force-stop PID $pid because it no longer belongs to this @brand.name@ Edge installation."
             return 1
         fi
         kill -9 "$pid" 2>/dev/null
     fi
-    echo "IoTDB Edge process $pid stopped."
+    echo "@brand.name@ Edge process $pid stopped."
 }
 
 PID=""
@@ -90,7 +104,7 @@ if [ -f "$PID_FILE" ]; then
             ;;
     esac
     if [ -n "$PID" ] && ! is_edge_process "$PID"; then
-        echo "Ignoring stale PID file ${PID_FILE}; PID $PID does not belong to this IoTDB Edge installation."
+        echo "Ignoring stale PID file ${PID_FILE}; PID $PID does not belong to this @brand.name@ Edge installation."
         PID=""
     fi
     rm -f "$PID_FILE"
@@ -109,6 +123,6 @@ while IFS= read -r PID; do
 done < <(find_edge_processes)
 
 if [ "$FOUND" = false ]; then
-    echo "No IoTDB Edge process from ${IOTDB_HOME} is running."
+    echo "No @brand.name@ Edge process from ${IOTDB_HOME} is running."
 fi
 exit 0

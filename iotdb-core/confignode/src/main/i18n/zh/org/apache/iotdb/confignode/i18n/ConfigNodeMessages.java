@@ -730,13 +730,13 @@ public final class ConfigNodeMessages {
   // 版本门禁：SET/SHOW/DELETE USER QUOTA 仅 TimechoDB 可用。
   public static final String EXCEPTION_USER_RESOURCE_QUOTA_IS_NOT_AVAILABLE_IN_THIS_EDITION_907835C0 =
       "用户资源配额在本版本中不可用。";
-  public static final String LOG_STARTING_IOTDB_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_77F32605 =
-      "正在启动 IoTDB Edge：ConfigNode 与 DataNode 运行于同一进程";
-  public static final String LOG_IOTDB_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_6729159E =
-      "IoTDB Edge：ConfigNode 已就绪，开始启动 DataNode";
-  public static final String EXCEPTION_IOTDB_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_02EEE59A =
-      "IoTDB Edge：ConfigNode 启动失败";
+  public static final String LOG_STARTING_ARG_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_8B82B1DD =
+      "正在启动 {} Edge：ConfigNode 与 DataNode 运行于同一进程";
+  public static final String LOG_ARG_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_C76AC453 =
+      "{} Edge：ConfigNode 已就绪，开始启动 DataNode";
+  public static final String EXCEPTION_ARG_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_CAF5A783 =
+      "%s Edge：ConfigNode 启动失败";
   public static final String
-      EXCEPTION_IOTDB_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_03697FF5 =
-          "IoTDB Edge：ConfigNode 内部端口 %s 在 %s ms 内未就绪";
+      EXCEPTION_ARG_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_3997DCD9 =
+          "%s Edge：ConfigNode 内部端口 %s 在 %s ms 内未就绪";
 }

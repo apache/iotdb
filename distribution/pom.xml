@@ -325,6 +325,13 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- The Edge entry point module; timecho-confignode and timecho-server are already direct
+             dependencies above, so no exclusions are needed here. -->
+        <dependency>
+            <groupId>com.timecho.iotdb</groupId>
+            <artifactId>timecho-edge</artifactId>
+            <version>2.0.11-SNAPSHOT</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>mqtt</artifactId>
@@ -344,6 +351,26 @@
                 <groupId>com.github.wvengen</groupId>
                 <artifactId>proguard-maven-plugin</artifactId>
                 <version>2.7.0</version>
+                <!-- Override the proguard artifacts bundled with the plugin: the plugin resolves
+                     ProGuard from its own classpath, so a newer <proguardVersion> alone is not
+                     enough, and proguard-core must be pinned too (the plugin's own pom pins
+                     9.1.10, which would shadow the 9.2.0 pulled transitively). 7.8.2 /
+                     9.2.0 read class files up to v69, so the obfuscation also runs on JDK 25
+                     machines — the bundled 7.7.0 / 9.1.10 top out at v68 and fail on
+                     ${java.home}/jmods of JDK 25. (7.10.0 crashes in the with-integration-tests
+                     configuration with an internal ArrayIndexOutOfBoundsException.) -->
+                <dependencies>
+                    <dependency>
+                        <groupId>com.guardsquare</groupId>
+                        <artifactId>proguard-base</artifactId>
+                        <version>7.8.2</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.guardsquare</groupId>
+                        <artifactId>proguard-core</artifactId>
+                        <version>9.2.0</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <!-- Obfuscate IoTDB Server -->
                     <execution>
@@ -353,7 +380,7 @@
                             <goal>proguard</goal>
                         </goals>
                         <configuration>
-                            <proguardVersion>7.7.0</proguardVersion>
+                            <proguardVersion>7.8.2</proguardVersion>
                             <assembly>
                                 <inclusions>
                                     <inclusion>

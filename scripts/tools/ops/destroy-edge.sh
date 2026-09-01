@@ -25,7 +25,7 @@ if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != "-f" ]; }; then
     exit 1
 fi
 if [ "${1:-}" != "-f" ]; then
-    read -r -p "Do you want to clean all the data of IoTDB Edge? y/n (default n): " CLEAN_SERVICE || CLEAN_SERVICE=""
+    read -r -p "Do you want to clean all the data of @brand.name@ Edge? y/n (default n): " CLEAN_SERVICE || CLEAN_SERVICE=""
     if [[ "$CLEAN_SERVICE" != "y" && "$CLEAN_SERVICE" != "Y" ]]; then
         echo "Exiting..."
         exit 0
@@ -48,8 +48,8 @@ fi
 
 # Stop the matching service first so Restart=on-failure cannot race with cleanup.
 if command -v systemctl >/dev/null 2>&1 &&
-        [ "$(systemctl show --property=PIDFile --value iotdb-edge.service 2>/dev/null)" = "$IOTDB_HOME/edge.pid" ]; then
-    systemctl stop iotdb-edge
+        [ "$(systemctl show --property=PIDFile --value @package.name@-edge.service 2>/dev/null)" = "$IOTDB_HOME/edge.pid" ]; then
+    systemctl stop @package.name@-edge
 fi
 bash "$IOTDB_HOME/sbin/stop-edge.sh" -f
 
@@ -158,4 +158,4 @@ done
 for path in "${CLEAN_PATHS[@]}"; do
     rm -rf -- "$path"
 done
-echo "IoTDB Edge clean done ..."
+echo "@brand.name@ Edge clean done ..."

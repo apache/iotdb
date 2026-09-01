@@ -65,5 +65,5 @@ if [ -n "$TSFILE_LOCALE_JVM_OPT" ]; then
     IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS $TSFILE_LOCALE_JVM_OPT"
 fi
 
-echo "IoTDB Edge on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
+echo "@brand.name@ Edge on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
 echo "If you want to change this configuration, please check conf/edge-env.sh."

@@ -67,6 +67,10 @@
             <excludes>
                 <exclude>iotdb-common.sh</exclude>
                 <exclude>**/iotdb-common.bat</exclude>
+                <!-- edge-env carries @brand.name@ and the IT template never launches Edge;
+                     exclude it instead of filtering (same as all.xml). -->
+                <exclude>edge-env.*</exclude>
+                <exclude>**/edge-env.*</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
@@ -88,6 +92,10 @@
                 <exclude>start-confignode.sh</exclude>
                 <exclude>windows/start-datanode.bat</exclude>
                 <exclude>windows/start-confignode.bat</exclude>
+                <!-- edge scripts carry @brand.name@ and the IT template never launches Edge
+                     (the Edge IT runs the real distribution zip); exclude instead of filtering. -->
+                <exclude>*edge.*</exclude>
+                <exclude>**/*edge.*</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
@@ -111,6 +119,9 @@
                 <exclude>ops/daemon-datanode.sh</exclude>
                 <exclude>ops/daemon-confignode.sh</exclude>
                 <exclude>ops/daemon-ainode.sh</exclude>
+                <!-- edge ops tools carry @brand.name@/@package.name@ and are only shipped
+                     (filtered) by the Edge distribution assembly -->
+                <exclude>**/*edge.*</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>

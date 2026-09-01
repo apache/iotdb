@@ -30,7 +30,7 @@
     <name>IoTDB: Integration-Test</name>
     <properties>
         <integrationTest.excludedGroups/>
-        <integrationTest.edgePackage>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-edge-bin.zip</integrationTest.edgePackage>
+        <integrationTest.edgePackage>${maven.multiModuleProjectDirectory}/distribution/target/${package.name}-${project.version}${locale.suffix}-edge-bin.zip</integrationTest.edgePackage>
         <integrationTest.forkCount>1</integrationTest.forkCount>
         <integrationTest.includedGroups/>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
@@ -369,6 +369,10 @@
                             <reuseForks>false</reuseForks>
                             <systemPropertyVariables>
                                 <EdgePackage>${integrationTest.edgePackage}</EdgePackage>
+                                <!-- This module's own jar, dropped into the Edge zip's lib/ by
+                                     IoTDBEdgeBasicIT so the license-free EdgeNodeForIT entry can
+                                     boot from the packaged (obfuscated) classpath. -->
+                                <EdgeItJar>${project.build.directory}/${project.build.finalName}.jar</EdgeItJar>
                                 <TestEnv>${integrationTest.testEnv}</TestEnv>
                                 <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
                                 <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>

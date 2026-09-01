@@ -197,12 +197,36 @@ table-integration-test-1c3d:
   interruptible: true
   rules:
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
-    
+
   artifacts:
     when: on_failure
     name: 1c3d-log
     paths:
       - integration-test/target/cluster-logs
+    expire_in: 7 day
+
+# Edge IT 针对真实发行包运行（timechodb-*-edge-bin.zip，含 ProGuard 混淆后的 fat jar）。
+# integration-test 依赖 iotdb-distribution，所以 -am 会先打出发行包，EdgeIT profile 再通过
+# integrationTest.edgePackage 定位 zip 运行 IoTDBEdgeBasicIT。
+# IT 向解包后的 lib/ 放入 integration-test jar，并通过 EDGE_MAIN_CLASS 启动免激活的
+# EdgeNodeForIT 入口（复用 ConfigNodeForOtherIT/HackTimechoServer 的绕过方式），因此 CI 无需
+# 激活文件即可完整跑读写用例（依赖 with-integration-tests 的 proguard-it.conf 保留类名）。
+edge-it:
+  stage: test
+  tags:
+    - timechodb
+  script:
+    - 'mvn clean verify -P with-integration-tests -P EdgeIT -DskipUTs -Dit.test=IoTDBEdgeBasicIT -DEdgeConfigNodeAddress=127.0.0.2 -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -pl integration-test -am -s $MAVEN_SETTINGS_XML'
+  interruptible: true
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
+
+  artifacts:
+    when: on_failure
+    name: edge-it-log
+    paths:
+      - integration-test/target/edge-it
+      - integration-test/target/failsafe-reports
     expire_in: 7 day
 
 external-service-impl-it-1c1d:
@@ -604,7 +628,8 @@ cd-deploy:
       echo "=== 处理英文包 ==="
 
       # EN_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-bin.zip' ! -name 'timechodb-*-zh-bin.zip' -type f | head -n 1)
-      EN_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-bin.zip' ! -name 'timechodb-*-zh-bin.zip' ! -name '*-library-pipe-*' !  -name '*-external-service-impl-*' -type f | head -n 1)
+      # 注意排除 edge 包：timechodb-*-edge-bin.zip 也能匹配 timechodb-*-bin.zip
+      EN_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-bin.zip' ! -name 'timechodb-*-zh-bin.zip' ! -name '*-library-pipe-*' !  -name '*-external-service-impl-*' ! -name '*-edge-bin.zip' -type f | head -n 1)
       if [ -z "$EN_ZIP" ]; then
         echo "错误: 在 distribution/target 中未找到英文 timechodb-*-bin.zip 文件"
         ls -la distribution/target/ 2>/dev/null || echo "distribution/target 目录不存在"
@@ -672,6 +697,24 @@ cd-deploy:
       scp -o ConnectTimeout=30 "$METADATA_FILE" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
 
       echo "英文包部署完成: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_ZIP")"
+
+      # ===== 英文 Edge 包（ConfigNode + DataNode 单进程版）=====
+      EN_EDGE_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-edge-bin.zip' ! -name 'timechodb-*-zh-edge-bin.zip' -type f | head -n 1)
+      if [ -z "$EN_EDGE_ZIP" ]; then
+        echo "错误: 在 distribution/target 中未找到英文 timechodb-*-edge-bin.zip 文件"
+        ls -la distribution/target/ 2>/dev/null || echo "distribution/target 目录不存在"
+        exit 1
+      fi
+      echo "找到英文 Edge ZIP 文件: $EN_EDGE_ZIP"
+
+      RENAMED_EDGE_ZIP="distribution/target/timechodb-${TIMESTAMP}-${SHORT_SHA}-edge.zip"
+      echo "复制文件: $EN_EDGE_ZIP -> $RENAMED_EDGE_ZIP"
+      cp "$EN_EDGE_ZIP" "$RENAMED_EDGE_ZIP"
+
+      echo "传输英文 Edge ZIP 文件..."
+      scp -o ConnectTimeout=30 "$RENAMED_EDGE_ZIP" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
+
+      echo "英文 Edge 包部署完成: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_EDGE_ZIP")"
     # ===== 阶段 3：打中文包（with-zh-locale），输出文件名带 -zh 后缀 =====
     # 此处的 clean 会清空 distribution/target，但英文包已在阶段 2 上传完成，不受影响
     - mvn clean package -pl distribution -DskipTests -am -P with-zh-locale -s $MAVEN_SETTINGS_XML
@@ -700,8 +743,25 @@ cd-deploy:
       echo "传输中文ZIP文件..."
       scp -o ConnectTimeout=30 "$RENAMED_ZH_ZIP" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
 
+      # ===== 中文 Edge 包 =====
+      ZH_EDGE_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-zh-edge-bin.zip' -type f | head -n 1)
+      if [ -z "$ZH_EDGE_ZIP" ]; then
+        echo "错误: 在 distribution/target 中未找到中文 timechodb-*-zh-edge-bin.zip 文件"
+        ls -la distribution/target/ 2>/dev/null || echo "distribution/target 目录不存在"
+        exit 1
+      fi
+      echo "找到中文 Edge ZIP 文件: $ZH_EDGE_ZIP"
+
+      RENAMED_ZH_EDGE_ZIP="distribution/target/timechodb-${TIMESTAMP}-${SHORT_SHA}-edge-zh.zip"
+      echo "复制文件: $ZH_EDGE_ZIP -> $RENAMED_ZH_EDGE_ZIP"
+      cp "$ZH_EDGE_ZIP" "$RENAMED_ZH_EDGE_ZIP"
+
+      echo "传输中文 Edge ZIP 文件..."
+      scp -o ConnectTimeout=30 "$RENAMED_ZH_EDGE_ZIP" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
+
       echo "=== 部署完成 ==="
       echo "中文包部署完成: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_ZH_ZIP")"
+      echo "中文 Edge 包部署完成: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_ZH_EDGE_ZIP")"
 
   environment:
     name: atmos
