@@ -26,8 +26,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 public abstract class PipeSubtaskExecutorTest {
