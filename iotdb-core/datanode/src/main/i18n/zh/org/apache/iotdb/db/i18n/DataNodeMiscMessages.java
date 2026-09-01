@@ -445,8 +445,6 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   // service – metrics
   // ---------------------------------------------------------------------------
-  public static final String FAILED_GET_PROCESS_RESIDENT_MEMORY =
-      "获取进程 {} 的常驻内存失败";
   public static final String DATANODE_PORT_CHECK_SUCCESSFUL = "DataNode 端口检查通过。";
 
   // ---------------------------------------------------------------------------

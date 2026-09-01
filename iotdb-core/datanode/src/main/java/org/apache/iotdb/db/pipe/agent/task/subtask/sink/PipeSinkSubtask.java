@@ -68,6 +68,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
+  private final String pipeName;
   private final String attributeSortedString;
   private final String attributeDisplayString;
   private final int sinkIndex;
@@ -88,6 +89,26 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       final PipeConnector outputPipeConnector) {
     this(
+        null,
+        taskID,
+        creationTime,
+        attributeSortedString,
+        attributeSortedString,
+        sinkIndex,
+        inputPendingQueue,
+        outputPipeConnector);
+  }
+
+  public PipeSinkSubtask(
+      final String pipeName,
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
+      final int sinkIndex,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector) {
+    this(
+        pipeName,
         taskID,
         creationTime,
         attributeSortedString,
@@ -105,7 +126,28 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final int sinkIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       final PipeConnector outputPipeConnector) {
+    this(
+        null,
+        taskID,
+        creationTime,
+        attributeSortedString,
+        attributeDisplayString,
+        sinkIndex,
+        inputPendingQueue,
+        outputPipeConnector);
+  }
+
+  public PipeSinkSubtask(
+      final String pipeName,
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
+      final String attributeDisplayString,
+      final int sinkIndex,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
+    this.pipeName = pipeName;
     this.attributeSortedString = attributeSortedString;
     this.attributeDisplayString = attributeDisplayString;
     this.sinkIndex = sinkIndex;
@@ -466,6 +508,10 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public String getPipeName() {
+    return pipeName;
+  }
 
   public String getAttributeSortedString() {
     return attributeSortedString;

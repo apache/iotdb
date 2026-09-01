@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
@@ -556,9 +557,7 @@ public class DataNodeMemoryConfig {
     long maxMemoryAvailable = queryEngineMemoryManager.getTotalMemorySizeInBytes();
     String queryMemoryAllocateProportion =
         properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
-    boolean subscriptionEnabled =
-        Boolean.parseBoolean(
-            properties.getProperty("subscription_enabled", Boolean.TRUE.toString()));
+    boolean subscriptionEnabled = CommonConfig.SUBSCRIPTION_ENABLED;
     final int[] queryMemoryProportions;
     try {
       queryMemoryProportions =
