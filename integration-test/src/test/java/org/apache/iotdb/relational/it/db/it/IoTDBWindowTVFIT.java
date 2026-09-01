@@ -1347,4 +1347,236 @@ public class IoTDBWindowTVFIT {
         "701: The type of the column [s1] is not as expected.",
         DATABASE_NAME);
   }
+
+  @Test
+  public void testLowPassWithOnePartition() {
+    String[] expectedHeader = new String[] {"stock_id", "time", "lowpass(price)", "lowpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,2021-01-01T09:05:00.000Z,101.66666666666667,101.0,",
+          "AAPL,2021-01-01T09:07:00.000Z,101.66666666666669,101.00000000000001,",
+          "AAPL,2021-01-01T09:09:00.000Z,101.66666666666667,101.0,",
+          "TESL,2021-01-01T09:06:00.000Z,199.0,211.99999999999991,",
+          "TESL,2021-01-01T09:07:00.000Z,199.0,212.0,",
+          "TESL,2021-01-01T09:15:00.000Z,199.00000000000003,211.99999999999991,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM LOWPASS(DATA => bid PARTITION BY stock_id ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassWithNullValues() {
+    String[] expectedHeader = new String[] {"device_id", "time", "lowpass(s2)"};
+    String[] retArray =
+        new String[] {
+          "device_1,1970-01-01T00:00:00.001Z,23.5,",
+          "device_1,1970-01-01T00:00:00.003Z,null,",
+          "device_1,1970-01-01T00:00:00.006Z,null,",
+          "device_1,1970-01-01T00:00:00.009Z,null,",
+          "device_1,1970-01-01T00:00:00.020Z,23.5,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM LOWPASS(DATA => "
+            + "(SELECT time, device_id, s2 FROM table1 WHERE device_id = 'device_1') "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "lowpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,1970-01-01T00:00:00.001Z,9.999999999999998,",
+          "F1,device_1,1970-01-01T00:00:00.005Z,10.000000000000002,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,9.999999999999998,",
+          "F1,device_2,1970-01-01T00:00:00.002Z,22.5,",
+          "F1,device_2,1970-01-01T00:00:00.011Z,22.5,",
+          "F2,device_1,1970-01-01T00:00:00.003Z,30.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM LOWPASS(DATA => table5 "
+            + "PARTITION BY (factory_id, device_id) ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY factory_id, device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassRejectsUnsupportedCalculationColumnType() {
+    tableAssertTestFail(
+        "SELECT * FROM LOWPASS(DATA => (SELECT time, device_id, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5)",
+        "701: Only column with double, float, int32, int64 can be calculated by the function, s3 is the STRING.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighWithOnePartition() {
+    String[] expectedHeader = new String[] {"stock_id", "time", "highpass(price)", "highpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,2021-01-01T09:05:00.000Z,-1.666666666666661,1.7936858794783102E-15,",
+          "AAPL,2021-01-01T09:07:00.000Z,1.3333333333333224,-1.3450096248017031E-14,",
+          "AAPL,2021-01-01T09:09:00.000Z,0.33333333333333814,1.1656410368538743E-14,",
+          "TESL,2021-01-01T09:06:00.000Z,1.0000000000000255,-109.99999999999996,",
+          "TESL,2021-01-01T09:07:00.000Z,2.999999999999977,-10.000000000000027,",
+          "TESL,2021-01-01T09:15:00.000Z,-4.0000000000000036,120.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM HIGHPASS(DATA => bid PARTITION BY stock_id ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighPassWithNullValues() {
+    String[] expectedHeader = new String[] {"device_id", "time", "highpass(s2)"};
+    String[] retArray =
+        new String[] {
+          "device_1,1970-01-01T00:00:00.001Z,-11.5,",
+          "device_1,1970-01-01T00:00:00.003Z,null,",
+          "device_1,1970-01-01T00:00:00.006Z,null,",
+          "device_1,1970-01-01T00:00:00.009Z,null,",
+          "device_1,1970-01-01T00:00:00.020Z,11.5,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM HIGHPASS(DATA => "
+            + "(SELECT time, device_id, s2 FROM table1 WHERE device_id = 'device_1') "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighPassWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "highpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,1970-01-01T00:00:00.001Z,-7.401486830834377E-16,",
+          "F1,device_1,1970-01-01T00:00:00.005Z,4.999999999999998,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,-5.0,",
+          "F1,device_2,1970-01-01T00:00:00.002Z,-2.5,",
+          "F1,device_2,1970-01-01T00:00:00.011Z,2.5,",
+          "F2,device_1,1970-01-01T00:00:00.003Z,0.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM HIGHPASS(DATA => table5 "
+            + "PARTITION BY (factory_id, device_id) ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY factory_id, device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighPassRejectsUnsupportedCalculationColumnType() {
+    tableAssertTestFail(
+        "SELECT * FROM HIGHPASS(DATA => (SELECT time, device_id, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5)",
+        "701: Only column with double, float, int32, int64 can be calculated by the function, s3 is the STRING.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrP0() {
+    String[] expectedHeader = new String[] {"stock_id", "xcorr(price, s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,10100.0,",
+          "AAPL,10251.5,",
+          "AAPL,10268.333333333334,",
+          "AAPL,10352.5,",
+          "AAPL,10302.0,",
+          "TESL,66400.0,",
+          "TESL,53732.0,",
+          "TESL,41981.333333333336,",
+          "TESL,29997.0,",
+          "TESL,19890.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM XCORR(DATA => bid PARTITION BY stock_id ORDER BY time, "
+            + "TIMECOL => 'time') ORDER BY stock_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrWithNullValues() {
+    String[] expectedHeader = new String[] {"device_id", "xcorr(s1, s2)"};
+    String[] retArray =
+        new String[] {
+          "device_1,525.0,",
+          "device_1,175.0,",
+          "device_1,1050.0,",
+          "device_1,350.0,",
+          "device_1,790.0,",
+          "device_1,60.0,",
+          "device_1,360.0,",
+          "device_1,120.0,",
+          "device_1,480.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM XCORR(DATA => "
+            + "(SELECT time, device_id, s1, s2 FROM table1 WHERE device_id = 'device_1') "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "xcorr(s1, s2)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,50.0,",
+          "F1,device_1,112.5,",
+          "F1,device_1,116.66666666666667,",
+          "F1,device_1,112.5,",
+          "F1,device_1,50.0,",
+          "F1,device_2,500.0,",
+          "F1,device_2,512.5,",
+          "F1,device_2,500.0,",
+          "F2,device_1,900.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM XCORR(DATA => "
+            + "(SELECT time, factory_id, device_id, s1, s1 AS s2 FROM table5) "
+            + "PARTITION BY (factory_id, device_id) ORDER BY time, TIMECOL => 'time') "
+            + "ORDER BY factory_id, device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrRejectsUnsupportedCalculationColumnType() {
+    tableAssertTestFail(
+        "SELECT * FROM XCORR(DATA => (SELECT time, device_id, s1, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        "701: Only column with double, float, int32, int64 can be calculated by the function, s3 is the STRING.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrRejectsUnexpectedCalculationColumnCount() {
+    tableAssertTestFail(
+        "SELECT * FROM XCORR(DATA => table1 PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        "701: XCorr requires exactly two calculation columns, but found 3.",
+        DATABASE_NAME);
+  }
 }
