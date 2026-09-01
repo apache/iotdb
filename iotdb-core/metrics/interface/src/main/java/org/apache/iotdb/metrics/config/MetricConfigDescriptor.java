@@ -132,7 +132,7 @@ public class MetricConfigDescriptor {
     loadConfig.setPrometheusReporterAsyncUpdate(
         Boolean.parseBoolean(
             getPrometheusReporterAsyncUpdateProperty(
-                properties, isConfigNode, loadConfig.isPrometheusReporterAsyncUpdate())));
+                properties, prefix, loadConfig.isPrometheusReporterAsyncUpdate())));
 
     loadConfig.setPrometheusReporterUsername(
         getPropertyWithoutPrefix(
@@ -228,21 +228,17 @@ public class MetricConfigDescriptor {
   }
 
   private String getPrometheusReporterAsyncUpdateProperty(
-      Properties properties, boolean isConfigNode, boolean defaultValue) {
+      Properties properties, String prefix, boolean defaultValue) {
     String value = properties.getProperty("prometheus_reporter_async_update");
     if (value == null) {
       // Keep accepting the metric-prefixed forms for compatibility with node-specific configs.
       value = properties.getProperty("metric_prometheus_reporter_async_update");
     }
     if (value == null) {
-      value =
-          properties.getProperty(
-              (isConfigNode ? "cn_" : "dn_") + "prometheus_reporter_async_update");
+      value = properties.getProperty(prefix + "prometheus_reporter_async_update");
     }
     if (value == null) {
-      value =
-          properties.getProperty(
-              (isConfigNode ? "cn_" : "dn_") + "metric_prometheus_reporter_async_update");
+      value = properties.getProperty(prefix + "metric_prometheus_reporter_async_update");
     }
     return value == null ? String.valueOf(defaultValue) : value.trim();
   }

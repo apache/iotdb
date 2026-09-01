@@ -107,4 +107,16 @@ public class MetricConfigTest {
     assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
     assertEquals(InternalReporterType.IOTDB, metricConfig.getInternalReportType());
   }
+
+  @Test
+  public void testMetricConfigWithCustomNodePrefix() {
+    Properties properties = new Properties();
+    properties.setProperty("sn_metric_prometheus_reporter_async_update", "false");
+
+    MetricConfigDescriptor.getInstance().loadProps(properties, "sn_");
+
+    assertEquals(
+        false,
+        MetricConfigDescriptor.getInstance().getMetricConfig().isPrometheusReporterAsyncUpdate());
+  }
 }
