@@ -432,12 +432,16 @@ public class LogDispatcher {
       }
 
       final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(waitingTimeInMs);
-      final int maxLogEntriesNumPerBatch = config.getReplication().getMaxLogEntriesNumPerBatch();
+      final IoTConsensusConfig currentConfig = config;
+      int accumulatedEntries = bufferedEntries.size();
+      long accumulatedMemorySize =
+          bufferedEntries.stream().mapToLong(IndexedConsensusRequest::getMemorySize).sum();
 
-      // Keep collecting while the batch is below its entry limit. A plain sleep makes the
-      // dispatcher wait for the full accumulation interval even when the batch becomes full
-      // immediately, which unnecessarily throttles IoTConsensus under sustained write load.
-      while (bufferedEntries.size() < maxLogEntriesNumPerBatch) {
+      // Keep collecting while the batch is below both its entry and memory limits. A plain sleep,
+      // or checking only the entry limit, makes the dispatcher wait for the full accumulation
+      // interval after a batch has already reached its memory limit. This unnecessarily throttles
+      // IoTConsensus when each request contains a large tablet.
+      while (Batch.canAccumulate(currentConfig, accumulatedEntries, accumulatedMemorySize)) {
         final long remainingNanos = deadlineNanos - System.nanoTime();
         if (remainingNanos <= 0) {
           return;
@@ -449,6 +453,8 @@ public class LogDispatcher {
           return;
         }
         bufferedEntries.add(request);
+        accumulatedEntries++;
+        accumulatedMemorySize += request.getMemorySize();
       }
     }
 
