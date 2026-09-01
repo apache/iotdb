@@ -124,6 +124,9 @@ public final class DataNodePipeMessages {
       "减少 reference count for event {} in PipeRealtimePriorityBlockingQueue 失败";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "获取 PendingQueue 失败，没有该子任务:  ";
+  public static final String
+      EXCEPTION_MULTIPLE_PIPES_MATCH_THE_REQUESTED_SINK_SUBTASK_USE_THE_PIPE_SPECIFIC_PIPESINKSUBTASKMANAGER_API_C180D94C =
+          "多个 Pipe 匹配请求的 sink 子任务。请使用指定 Pipe 的 PipeSinkSubtaskManager API。";
   public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
       "从 CN 处获取 pipe 信息失败，状态是 %s。";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =

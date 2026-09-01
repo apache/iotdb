@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -41,6 +46,7 @@ import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -159,5 +165,42 @@ public class LoadTsFileSchedulerTest {
     getMemoryUsageMethod.setAccessible(true);
     Assert.assertEquals(0L, getMemoryUsageMethod.invoke(memoryBlock));
     Assert.assertEquals(0L, dataSizeField.getLong(dataManager));
+  }
+
+  @Test
+  public void testRegionReplicaSetComparison() {
+    final TDataNodeLocation dataNode1 = createDataNodeLocation(1, 10731);
+    final TDataNodeLocation dataNode3 = createDataNodeLocation(3, 10733);
+    final TDataNodeLocation dataNode5 = createDataNodeLocation(5, 10735);
+    final TConsensusGroupId regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
+    final TRegionReplicaSet original =
+        new TRegionReplicaSet(regionId, Arrays.asList(dataNode5, dataNode3, dataNode1));
+
+    Assert.assertTrue(
+        LoadTsFileScheduler.isSameRegionReplicaSet(
+            original,
+            new TRegionReplicaSet(regionId, Arrays.asList(dataNode3, dataNode5, dataNode1))));
+    Assert.assertFalse(
+        LoadTsFileScheduler.isSameRegionReplicaSet(
+            original,
+            new TRegionReplicaSet(
+                regionId, Arrays.asList(dataNode3, dataNode5, createDataNodeLocation(7, 10737)))));
+    Assert.assertFalse(
+        LoadTsFileScheduler.isSameRegionReplicaSet(
+            original,
+            new TRegionReplicaSet(
+                regionId, Arrays.asList(dataNode3, dataNode5, createDataNodeLocation(1, 11731)))));
+    Assert.assertFalse(
+        LoadTsFileScheduler.isSameRegionReplicaSet(
+            original,
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 2),
+                Arrays.asList(dataNode3, dataNode5, dataNode1))));
+  }
+
+  private static TDataNodeLocation createDataNodeLocation(int dataNodeId, int internalPort) {
+    return new TDataNodeLocation()
+        .setDataNodeId(dataNodeId)
+        .setInternalEndPoint(new TEndPoint("127.0.0.1", internalPort));
   }
 }

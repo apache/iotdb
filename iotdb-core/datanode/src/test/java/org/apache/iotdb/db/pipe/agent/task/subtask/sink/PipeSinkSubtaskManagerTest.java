@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,6 +37,89 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PipeSinkSubtaskManagerTest {
+
+  @Test
+  public void testSubtasksAreSharedOnlyWithinSamePipe() {
+    // Initialize the task agent used by PipeEventCommitManager before registering subtasks.
+    PipeDataNodeAgent.task();
+
+    final String firstPipeName = "firstPipe";
+    final String secondPipeName = "secondPipe";
+    final long creationTime = 1L;
+    final int firstRegionId = -1;
+    final int secondRegionId = -2;
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(
+        PipeSinkConstant.CONNECTOR_KEY, BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName());
+    attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY, "1");
+    final PipeParameters parameters = new PipeParameters(attributes);
+    final PipeSinkSubtaskManager manager = PipeSinkSubtaskManager.instance();
+
+    boolean firstRegionRegistered = false;
+    boolean secondRegionRegistered = false;
+    boolean secondPipeRegistered = false;
+    try {
+      final String firstPipeSubtaskId =
+          manager.register(
+              PipeSinkSubtaskExecutor::new,
+              parameters,
+              new PipeTaskSinkRuntimeEnvironment(firstPipeName, creationTime, firstRegionId));
+      firstRegionRegistered = true;
+      final String firstPipeSecondRegionSubtaskId =
+          manager.register(
+              PipeSinkSubtaskExecutor::new,
+              parameters,
+              new PipeTaskSinkRuntimeEnvironment(firstPipeName, creationTime, secondRegionId));
+      secondRegionRegistered = true;
+      final UnboundedBlockingPendingQueue<Event> firstPipeQueue =
+          manager.getPipeSinkPendingQueue(firstPipeName, creationTime, firstPipeSubtaskId);
+      Assert.assertSame(firstPipeQueue, manager.getPipeSinkPendingQueue(firstPipeSubtaskId));
+      Assert.assertTrue(manager.hasRegisteredSubtasks(parameters, firstRegionId));
+
+      final String secondPipeSubtaskId =
+          manager.register(
+              PipeSinkSubtaskExecutor::new,
+              parameters,
+              new PipeTaskSinkRuntimeEnvironment(secondPipeName, creationTime, firstRegionId));
+      secondPipeRegistered = true;
+
+      Assert.assertSame(
+          firstPipeQueue,
+          manager.getPipeSinkPendingQueue(
+              firstPipeName, creationTime, firstPipeSecondRegionSubtaskId));
+      Assert.assertNotSame(
+          firstPipeQueue,
+          manager.getPipeSinkPendingQueue(secondPipeName, creationTime, secondPipeSubtaskId));
+      Assert.assertThrows(
+          PipeException.class, () -> manager.getPipeSinkPendingQueue(firstPipeSubtaskId));
+      Assert.assertThrows(
+          PipeException.class, () -> manager.hasRegisteredSubtasks(parameters, firstRegionId));
+      Assert.assertThrows(PipeException.class, () -> manager.start(firstPipeSubtaskId));
+      Assert.assertThrows(PipeException.class, () -> manager.stop(firstPipeSubtaskId));
+    } finally {
+      if (secondRegionRegistered) {
+        manager.deregister(
+            firstPipeName,
+            creationTime,
+            secondRegionId,
+            PipeSinkSubtaskManager.generateAttributeSortedString(parameters, secondRegionId));
+      }
+      if (firstRegionRegistered) {
+        manager.deregister(
+            firstPipeName,
+            creationTime,
+            firstRegionId,
+            PipeSinkSubtaskManager.generateAttributeSortedString(parameters, firstRegionId));
+      }
+      if (secondPipeRegistered) {
+        manager.deregister(
+            secondPipeName,
+            creationTime,
+            firstRegionId,
+            PipeSinkSubtaskManager.generateAttributeSortedString(parameters, firstRegionId));
+      }
+    }
+  }
 
   @Test
   public void testGenerateAttributeSortedStringUsesSerializeByRegionAndIgnoresRestartFlag() {

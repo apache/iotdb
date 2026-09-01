@@ -196,15 +196,16 @@ public class SessionConnection {
       String keyStorePwd,
       String sslProtocol)
       throws IoTDBConnectionException, StatementExecutionException {
-    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
-    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
+    DeepCopyRpcTransportFactory transportFactory =
+        DeepCopyRpcTransportFactory.getInstance(
+            session.thriftDefaultBufferSize, session.thriftMaxFrameSize);
     try {
       if (transport != null && transport.isOpen()) {
         close();
       }
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 session.connectionTimeoutInMs,
@@ -215,7 +216,7 @@ public class SessionConnection {
                 sslProtocol);
       } else {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 // as there is a try-catch already, we do not need to use TSocket.wrap
                 endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
       }

@@ -71,12 +71,12 @@ public class PipeTaskSinkStage extends PipeTaskStage {
 
   @Override
   public void startSubtask() throws PipeException {
-    PipeSinkSubtaskManager.instance().start(sinkSubtaskId);
+    PipeSinkSubtaskManager.instance().start(pipeName, creationTime, sinkSubtaskId);
   }
 
   @Override
   public void stopSubtask() throws PipeException {
-    PipeSinkSubtaskManager.instance().stop(sinkSubtaskId);
+    PipeSinkSubtaskManager.instance().stop(pipeName, creationTime, sinkSubtaskId);
   }
 
   @Override
@@ -85,6 +85,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
   }
 
   public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue() {
-    return PipeSinkSubtaskManager.instance().getPipeSinkPendingQueue(sinkSubtaskId);
+    return PipeSinkSubtaskManager.instance()
+        .getPipeSinkPendingQueue(pipeName, creationTime, sinkSubtaskId);
   }
 }

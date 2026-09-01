@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.load.util;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -40,6 +44,8 @@ import java.util.Set;
 
 public class LoadUtilTest {
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private String[] originalListeningDirs;
   private File tempDir;
   private File sourceDir;
   private File targetDir;
@@ -51,11 +57,56 @@ public class LoadUtilTest {
     targetDir = new File(tempDir, "target");
     Assert.assertTrue(sourceDir.mkdirs());
     Assert.assertTrue(targetDir.mkdirs());
+    originalListeningDirs = config.getLoadActiveListeningDirs();
+    config.setLoadActiveListeningDirs(new String[] {targetDir.getAbsolutePath()});
+    LoadUtil.updateLoadDiskSelector();
   }
 
   @After
   public void tearDown() {
+    config.setLoadActiveListeningDirs(originalListeningDirs);
+    LoadUtil.updateLoadDiskSelector();
     deleteRecursively(tempDir);
+  }
+
+  @Test
+  public void testAsyncLoadValidatesCompleteBatchBeforeTransfer() throws Exception {
+    final File validTsFile = createCompletedTsFile("valid.tsfile");
+    final File invalidTsFile = new File(sourceDir, "invalid.tsfile");
+    Files.write(invalidTsFile.toPath(), "invalid".getBytes(StandardCharsets.UTF_8));
+
+    Assert.assertFalse(
+        LoadUtil.loadTsFileAsyncToActiveDir(Arrays.asList(validTsFile, invalidTsFile), null, true));
+    Assert.assertTrue(validTsFile.exists());
+    Assert.assertTrue(invalidTsFile.exists());
+    Assert.assertEquals(0, targetDir.listFiles().length);
+  }
+
+  @Test
+  public void testPipeAsyncLoadReportsInvalidTsFileAndKeepsSources() throws Exception {
+    final File invalidTsFile = new File(sourceDir, "invalid.tsfile");
+    final File resourceFile =
+        new File(invalidTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    Files.write(invalidTsFile.toPath(), "invalid".getBytes(StandardCharsets.UTF_8));
+    Files.write(resourceFile.toPath(), "resource".getBytes(StandardCharsets.UTF_8));
+
+    try {
+      LoadUtil.loadFilesToActiveDir(
+          null,
+          Arrays.asList(resourceFile.getAbsolutePath(), invalidTsFile.getAbsolutePath()),
+          true);
+      Assert.fail("Expected invalid TsFile error");
+    } catch (final IOException e) {
+      Assert.assertEquals(
+          String.format(
+              DataNodeQueryMessages.THE_FILE_S_IS_NOT_A_VALID_TSFILE_PLEASE_CHECK_THE_INPUT_FILE,
+              invalidTsFile.getAbsolutePath()),
+          e.getMessage());
+    }
+
+    Assert.assertTrue(invalidTsFile.exists());
+    Assert.assertTrue(resourceFile.exists());
+    Assert.assertEquals(0, targetDir.listFiles().length);
   }
 
   @Test
@@ -222,6 +273,14 @@ public class LoadUtilTest {
       Files.write(sourceFile.toPath(), sourceFile.getName().getBytes(StandardCharsets.UTF_8));
     }
     return sourceFiles;
+  }
+
+  private File createCompletedTsFile(final String fileName) throws Exception {
+    final File tsFile = new File(sourceDir, fileName);
+    try (final TsFileIOWriter writer = new TsFileIOWriter(tsFile)) {
+      writer.endFile();
+    }
+    return tsFile;
   }
 
   private static void deleteRecursively(final File file) {
