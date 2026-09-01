@@ -269,7 +269,6 @@ public class PipeHeartbeatParser {
                   exception,
                   pipeName);
             }
-
           }
         }
       }

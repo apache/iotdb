@@ -178,8 +178,7 @@ public class PipeDataNodeTaskAgentTest {
     final PipeMetaKeeper pipeMetaKeeper = getField(taskAgent, "pipeMetaKeeper");
     final int localNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
-    final PipeTaskMeta firstTaskMeta =
-        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final PipeTaskMeta firstTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
     final PipeTaskMeta secondTaskMeta =
         new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
     final ConcurrentMap<Integer, PipeTaskMeta> firstTaskMetaMap = new ConcurrentHashMap<>();
@@ -192,8 +191,7 @@ public class PipeDataNodeTaskAgentTest {
             new PipeRuntimeMeta(firstTaskMetaMap));
     final PipeMeta secondPipeMeta =
         new PipeMeta(
-            new PipeStaticMeta(
-                "secondPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeStaticMeta("secondPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
             new PipeRuntimeMeta(secondTaskMetaMap));
     firstPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
     secondPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
@@ -222,8 +220,7 @@ public class PipeDataNodeTaskAgentTest {
     final PipeTaskManager pipeTaskManager = getField(taskAgent, "pipeTaskManager");
     final int localNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
-    final PipeTaskMeta localTaskMeta =
-        new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final PipeTaskMeta localTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
     final ConcurrentMap<Integer, PipeTaskMeta> taskMetaMap = new ConcurrentHashMap<>();
     taskMetaMap.put(REGION_ID, localTaskMeta);
     final PipeMeta pipeMeta =
