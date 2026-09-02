@@ -105,11 +105,11 @@ public final class ConfigMessages {
   public static final String NODE_MAY_DOWN_TRY_NEXT =
           "The current node may have been down {},try next node";
   public static final String FAILED_CONNECT_CONFIG_NODE_NOT_LEADER =
-          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
-                  + "leader or not ready yet, will try again later";
+          "Failed to connect to ConfigNode {} from {} {}, because the current node is not leader "
+                  + "or not ready yet, will try again later";
   public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK =
           "Unexpected interruption when waiting to try to connect to ConfigNode, may because current node has been down. Will break current execution process to avoid meaningless wait.";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
+  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_NODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_2ACA2BD0 =
           "ConfigNode leader {} is warming up before serving {} {}, will wait and retry. Reason: {}";
 
   private ConfigMessages() {}

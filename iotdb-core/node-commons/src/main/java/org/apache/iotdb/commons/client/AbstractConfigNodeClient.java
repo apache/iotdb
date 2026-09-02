@@ -390,7 +390,7 @@ public abstract class AbstractConfigNodeClient
         if (!isFirstInitiated) {
           LOGGER.info(
               ConfigMessages
-                  .MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163,
+                  .MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_NODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_2ACA2BD0,
               configNode,
               getNodeTypeName(),
               getAddressAndPort(),

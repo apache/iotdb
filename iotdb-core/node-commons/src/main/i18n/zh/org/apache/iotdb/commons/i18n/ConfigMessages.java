@@ -103,8 +103,8 @@ public final class ConfigMessages {
           "连接 ConfigNode {} 失败：从 {} {} 发起，因为当前节点不是 leader 或尚未就绪，稍后将重试";
   public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK =
           "等待尝试连接 ConfigNode 时发生意外中断，可能因为当前节点已宕机。将中断当前执行流程以避免无意义的等待";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
-          "ConfigNode leader {} 正在预热，暂未对 DataNode {} 提供服务，将等待并重试。原因：{}";
+  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_NODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_2ACA2BD0 =
+          "ConfigNode leader {} 正在预热，暂未对 {} {} 提供服务，将等待并重试。原因：{}";
 
   private ConfigMessages() {}
   // ---------------------------------------------------------------------------
