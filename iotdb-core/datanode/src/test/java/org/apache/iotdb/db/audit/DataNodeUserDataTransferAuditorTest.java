@@ -34,6 +34,13 @@ import static org.mockito.Mockito.when;
 public class DataNodeUserDataTransferAuditorTest {
 
   @Test
+  public void testAuditDatabaseIsExcludedFromGroupTransferAudit() {
+    assertFalse(DataNodeUserDataTransferAuditor.containsUserData("__audit"));
+    assertFalse(DataNodeUserDataTransferAuditor.containsUserData("root.__audit"));
+    assertTrue(DataNodeUserDataTransferAuditor.containsUserData("root.sg"));
+  }
+
+  @Test
   public void testAuditDatabaseIsExcludedFromConsensusTransferAudit() {
     final InsertNode insertNode = mock(InsertNode.class);
 

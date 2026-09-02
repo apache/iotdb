@@ -87,8 +87,21 @@ public final class DataNodeUserDataTransferAuditor {
     return dataRegion != null && containsUserData(dataRegion.getDatabaseName(), request);
   }
 
+  public static boolean containsUserData(ConsensusGroupId consensusGroupId) {
+    if (!(consensusGroupId instanceof DataRegionId)) {
+      return false;
+    }
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion((DataRegionId) consensusGroupId);
+    return dataRegion != null && containsUserData(dataRegion.getDatabaseName());
+  }
+
+  static boolean containsUserData(String database) {
+    return !Audit.isAuditDatabase(database);
+  }
+
   static boolean containsUserData(String database, IConsensusRequest request) {
-    if (Audit.isAuditDatabase(database)) {
+    if (!containsUserData(database)) {
       return false;
     }
     try {

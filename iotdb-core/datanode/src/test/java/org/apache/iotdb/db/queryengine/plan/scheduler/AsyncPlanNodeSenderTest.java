@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 
@@ -30,24 +32,50 @@ import java.util.Collections;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class AsyncPlanNodeSenderTest {
 
   @Test
   public void testOnlyInsertPayloadIsClassifiedAsUserData() {
-    final PlanNode queryPlan = mock(PlanNode.class);
-    when(queryPlan.getChildren()).thenReturn(Collections.emptyList());
-    assertFalse(AsyncPlanNodeSender.containsInsertNode(queryPlan));
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final boolean auditLogEnabled = commonConfig.isEnableAuditLog();
+    try {
+      commonConfig.setEnableAuditLog(true);
 
-    final InsertNode insertNode = mock(InsertNode.class);
-    assertTrue(AsyncPlanNodeSender.containsInsertNode(insertNode));
-    assertTrue(AsyncPlanNodeSender.containsUserData(insertNode, "root"));
-    assertFalse(
-        AsyncPlanNodeSender.containsUserData(insertNode, User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME));
+      final PlanNode queryPlan = mock(PlanNode.class);
+      when(queryPlan.getChildren()).thenReturn(Collections.emptyList());
+      assertFalse(AsyncPlanNodeSender.containsInsertNode(queryPlan));
 
-    final PlanNode wrapper = mock(PlanNode.class);
-    when(wrapper.getChildren()).thenReturn(Collections.singletonList(insertNode));
-    assertTrue(AsyncPlanNodeSender.containsInsertNode(wrapper));
+      final InsertNode insertNode = mock(InsertNode.class);
+      assertTrue(AsyncPlanNodeSender.containsInsertNode(insertNode));
+      assertTrue(AsyncPlanNodeSender.containsUserData(insertNode, "root"));
+      assertFalse(
+          AsyncPlanNodeSender.containsUserData(
+              insertNode, User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME));
+
+      final PlanNode wrapper = mock(PlanNode.class);
+      when(wrapper.getChildren()).thenReturn(Collections.singletonList(insertNode));
+      assertTrue(AsyncPlanNodeSender.containsInsertNode(wrapper));
+    } finally {
+      commonConfig.setEnableAuditLog(auditLogEnabled);
+    }
+  }
+
+  @Test
+  public void testAuditDisabledSkipsPlanTraversal() {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final boolean auditLogEnabled = commonConfig.isEnableAuditLog();
+    final PlanNode planNode = mock(PlanNode.class);
+    try {
+      commonConfig.setEnableAuditLog(false);
+
+      assertFalse(AsyncPlanNodeSender.containsUserData(planNode, "root"));
+      verify(planNode, never()).getChildren();
+    } finally {
+      commonConfig.setEnableAuditLog(auditLogEnabled);
+    }
   }
 }

@@ -25,7 +25,23 @@ import org.apache.iotdb.commons.request.IConsensusRequest;
 @FunctionalInterface
 public interface UserDataTransferAuditClassifier {
 
-  UserDataTransferAuditClassifier NO_USER_DATA = (groupId, request) -> false;
+  UserDataTransferAuditClassifier NO_USER_DATA =
+      new UserDataTransferAuditClassifier() {
+        @Override
+        public boolean containsUserData(ConsensusGroupId groupId, IConsensusRequest request) {
+          return false;
+        }
+
+        @Override
+        public boolean containsUserData(ConsensusGroupId groupId) {
+          return false;
+        }
+      };
 
   boolean containsUserData(ConsensusGroupId groupId, IConsensusRequest request);
+
+  /** Classifies a whole consensus group when the transfer has no individual request to inspect. */
+  default boolean containsUserData(ConsensusGroupId groupId) {
+    return true;
+  }
 }

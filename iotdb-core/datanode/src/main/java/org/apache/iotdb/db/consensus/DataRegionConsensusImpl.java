@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -70,6 +71,18 @@ import java.util.concurrent.TimeUnit;
 public class DataRegionConsensusImpl {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionConsensusImpl.class);
+  private static final UserDataTransferAuditClassifier USER_DATA_TRANSFER_AUDIT_CLASSIFIER =
+      new UserDataTransferAuditClassifier() {
+        @Override
+        public boolean containsUserData(ConsensusGroupId groupId, IConsensusRequest request) {
+          return DataNodeUserDataTransferAuditor.containsUserData(groupId, request);
+        }
+
+        @Override
+        public boolean containsUserData(ConsensusGroupId groupId) {
+          return DataNodeUserDataTransferAuditor.containsUserData(groupId);
+        }
+      };
 
   private DataRegionConsensusImpl() {
     // do nothing
@@ -152,7 +165,7 @@ public class DataRegionConsensusImpl {
                   : UserDataTransferAuditHandler.NO_OP)
           .setUserDataTransferAuditClassifier(
               COMMON_CONF.isEnableAuditLog()
-                  ? DataNodeUserDataTransferAuditor::containsUserData
+                  ? USER_DATA_TRANSFER_AUDIT_CLASSIFIER
                   : UserDataTransferAuditClassifier.NO_USER_DATA)
           .setStorageDir(CONF.getDataRegionConsensusDir())
           .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))

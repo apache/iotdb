@@ -428,6 +428,9 @@ public class IoTConsensusServerImpl {
   public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
+    final boolean auditSnapshotTransfer =
+        shouldAuditSnapshotTransfer(
+            userDataTransferAuditHandler, userDataTransferAuditClassifier, thisNode.getGroupId());
     long snapshotSizeSum = 0;
     for (File file : snapshotPaths) {
       snapshotSizeSum += file.length();
@@ -475,12 +478,12 @@ public class IoTConsensusServerImpl {
               res = client.sendSnapshotFragment(req);
               recordSnapshotTransferAttempt(
                   targetPeer,
-                  req,
+                  auditSnapshotTransfer,
                   isSuccess(res.getStatus()),
                   isSuccess(res.getStatus()) ? null : String.valueOf(res.getStatus().getCode()),
                   null);
             } catch (Exception e) {
-              recordSnapshotTransferAttempt(targetPeer, req, false, null, e);
+              recordSnapshotTransferAttempt(targetPeer, auditSnapshotTransfer, false, null, e);
               throw e;
             }
             if (!isSuccess(res.getStatus())) {
@@ -521,14 +524,14 @@ public class IoTConsensusServerImpl {
 
   private void recordSnapshotTransferAttempt(
       Peer targetPeer,
-      TSendSnapshotFragmentReq request,
+      boolean auditSnapshotTransfer,
       boolean success,
       String errorCode,
       Throwable error) {
+    if (!auditSnapshotTransfer) {
+      return;
+    }
     try {
-      if (!userDataTransferAuditHandler.isEnabled()) {
-        return;
-      }
       userDataTransferAuditHandler.onAttempt(
           new UserDataTransferAuditEvent(
               thisNode.getEndpoint(),
@@ -539,6 +542,18 @@ public class IoTConsensusServerImpl {
               errorCode != null ? errorCode : error == null ? null : error.getClass().getName()));
     } catch (RuntimeException ignored) {
       // Audit recording must not affect snapshot transmission.
+    }
+  }
+
+  static boolean shouldAuditSnapshotTransfer(
+      UserDataTransferAuditHandler auditHandler,
+      UserDataTransferAuditClassifier auditClassifier,
+      ConsensusGroupId groupId) {
+    try {
+      return auditHandler.isEnabled() && auditClassifier.containsUserData(groupId);
+    } catch (RuntimeException ignored) {
+      // Audit classification must not affect snapshot transmission.
+      return false;
     }
   }
 

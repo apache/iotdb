@@ -256,7 +256,8 @@ public class AsyncPlanNodeSender {
   }
 
   static boolean containsUserData(PlanNode node, String username) {
-    return !User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME.equals(username)
+    return DataNodeUserDataTransferAuditor.isEnabled()
+        && !User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME.equals(username)
         && DataNodeUserDataTransferAuditor.containsInsertNode(node);
   }
 
