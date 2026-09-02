@@ -94,6 +94,7 @@ public class PipeTransferTsFileHandlerCleanupTest {
               new AtomicBoolean(false),
               file,
               null,
+              null,
               false,
               null);
       markSealSignalSent(handler);
