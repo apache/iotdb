@@ -22,12 +22,15 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.g
 import org.apache.iotdb.calc.execution.operator.source.relational.Percentile;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.PercentileBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -39,6 +42,8 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedPercentileAccumulator.class);
   private final TSDataType seriesDataType;
+  private final TypeServices.ColumnToDoubleConverter valueConverter;
+  private final TypeServices.NumericResultWriter resultWriter;
   // percentage is a query-level constant; it is read once from the first input/intermediate and
   // kept fixed afterwards, so it never gets reset to 0 by a later all-null batch.
   private double percentage;
@@ -51,6 +56,17 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
       TSDataType seriesDataType, MemoryReservationManager memoryReservationManager) {
     this.seriesDataType = seriesDataType;
     this.memoryReservationManager = memoryReservationManager;
+    Type type = Type.fromTsDataType(seriesDataType);
+    this.valueConverter =
+        TypeServices.PERCENTILE_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+            .call(type)
+            .create(
+                () ->
+                    new UnSupportedDataTypeException(
+                        String.format(
+                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION,
+                            seriesDataType)));
+    this.resultWriter = TypeServices.NUMERIC_RESULT_WRITER_SERVICE.call(type);
     updateMemoryReservation();
   }
 
@@ -68,31 +84,14 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     if (arguments.length != 2) {
       throw new SemanticException(
-          String.format("PERCENTILE requires 2 arguments, but got %d", arguments.length));
+          String.format(CalcMessages.PERCENTILE_REQUIRES_TWO_ARGUMENTS, arguments.length));
     }
     if (!percentageInitialized) {
       percentage = arguments[1].getDouble(0);
       percentageInitialized = true;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(groupIds, arguments, mask);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(groupIds, arguments, mask);
-        break;
-      case FLOAT:
-        addFloatInput(groupIds, arguments, mask);
-        break;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments, mask);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in PERCENTILE Aggregation: %s", seriesDataType));
-    }
+    addInput(groupIds, arguments[0], mask);
     updateMemoryReservation();
   }
 
@@ -136,23 +135,25 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-        columnBuilder.writeInt((int) result);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong((long) result);
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat((float) result);
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(result);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in PERCENTILE Aggregation: %s", seriesDataType));
+    resultWriter.write(columnBuilder, result);
+  }
+
+  private void addInput(int[] groupIds, Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          array.get(groupIds[i]).addValue(valueConverter.convert(valueColumn, i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      for (int i = 0; i < positionCount; i++) {
+        int position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          array.get(groupIds[position]).addValue(valueConverter.convert(valueColumn, position));
+        }
+      }
     }
   }
 

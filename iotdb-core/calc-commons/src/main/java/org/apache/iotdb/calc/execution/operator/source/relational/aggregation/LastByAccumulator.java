@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -32,6 +35,8 @@ import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.ByteBuffer;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.serializeTimeValueWithNull;
@@ -49,6 +54,8 @@ public class LastByAccumulator implements TableAccumulator {
 
   private long yLastTime = Long.MIN_VALUE;
 
+  private final Type xType;
+  private final TypeServices.PrimitiveColumnValueSetter xValueSetter;
   private final TsPrimitiveType xResult;
   private boolean xIsNull = true;
 
@@ -61,7 +68,9 @@ public class LastByAccumulator implements TableAccumulator {
     this.yDataType = yDataType;
     this.xIsTimeColumn = xIsTimeColumn;
     this.yIsTimeColumn = yIsTimeColumn;
-    this.xResult = Type.fromTsDataType(xDataType).getTsPrimitiveType();
+    this.xType = Type.fromTsDataType(xDataType);
+    this.xValueSetter = TypeServices.PRIMITIVE_COLUMN_VALUE_SETTER_SERVICE.call(xType);
+    this.xResult = xType.getTsPrimitiveType();
   }
 
   public boolean hasInitResult() {
@@ -95,34 +104,7 @@ public class LastByAccumulator implements TableAccumulator {
     checkArgument(arguments.length == 3, "Length of input Column[] for LAST_BY should be 3");
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        addBinaryInput(arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case BOOLEAN:
-        addBooleanInput(arguments[0], arguments[1], arguments[2], mask);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
-    }
+    addInput(arguments[0], arguments[1], arguments[2], mask);
   }
 
   @Override
@@ -146,79 +128,16 @@ public class LastByAccumulator implements TableAccumulator {
       boolean isXValueNull = BytesUtils.bytesToBool(bytes, offset);
       offset += 1;
 
-      switch (xDataType) {
-        case INT32:
-        case DATE:
-          // if the x value is null, could not serialize the x value
-          int xIntVal = isXValueNull ? 0 : BytesUtils.bytesToInt(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateIntLastValue(isXValueNull, xIntVal, curTime);
-          } else {
-            updateIntNullTimeValue(isXValueNull, xIntVal);
-          }
-          break;
-
-        case INT64:
-        case TIMESTAMP:
-          long longVal =
-              isXValueNull ? 0 : BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          if (!isOrderTimeNull) {
-            updateLongLastValue(isXValueNull, longVal, curTime);
-          } else {
-            updateLongNullTimeValue(isXValueNull, longVal);
-          }
-          break;
-
-        case FLOAT:
-          float floatVal = isXValueNull ? 0 : BytesUtils.bytesToFloat(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateFloatLastValue(isXValueNull, floatVal, curTime);
-          } else {
-            updateFloatNullTimeValue(isXValueNull, floatVal);
-          }
-          break;
-
-        case DOUBLE:
-          double doubleVal = isXValueNull ? 0 : BytesUtils.bytesToDouble(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateDoubleLastValue(isXValueNull, doubleVal, curTime);
-          } else {
-            updateDoubleNullTimeValue(isXValueNull, doubleVal);
-          }
-          break;
-
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          Binary binaryVal = null;
-          if (!isXValueNull) {
-            int length = BytesUtils.bytesToInt(bytes, offset);
-            offset += Integer.BYTES;
-            binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-          }
-          if (!isOrderTimeNull) {
-            updateBinaryLastValue(isXValueNull, binaryVal, curTime);
-          } else {
-            updateBinaryNullTimeValue(isXValueNull, binaryVal);
-          }
-          break;
-
-        case BOOLEAN:
-          boolean boolVal = false;
-          if (!isXValueNull) {
-            boolVal = BytesUtils.bytesToBool(bytes, offset);
-          }
-          if (!isOrderTimeNull) {
-            updateBooleanLastValue(isXValueNull, boolVal, curTime);
-          } else {
-            updateBooleanNullTimeValue(isXValueNull, boolVal);
-          }
-          break;
-
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
+      TsPrimitiveType value =
+          isXValueNull
+              ? null
+              : xType.deserialize(ByteBuffer.wrap(bytes, offset, bytes.length - offset));
+      if (!isOrderTimeNull) {
+        if (checkAndUpdateLastTime(isXValueNull, curTime) && !isXValueNull) {
+          xResult.copy(value);
+        }
+      } else if (checkAndUpdateNullTime(isXValueNull) && !isXValueNull) {
+        xResult.copy(value);
       }
     }
   }
@@ -249,34 +168,7 @@ public class LastByAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(xResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(xResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(xResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(xResult.getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        columnBuilder.writeBinary(xResult.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(xResult.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
-    }
+    xType.write(columnBuilder, xResult);
   }
 
   @Override
@@ -335,7 +227,8 @@ public class LastByAccumulator implements TableAccumulator {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
+                  String.format(
+                      CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, yDataType));
           }
         }
       }
@@ -357,6 +250,28 @@ public class LastByAccumulator implements TableAccumulator {
     xIsNull = true;
     this.yLastTime = Long.MIN_VALUE;
     this.xResult.reset();
+  }
+
+  private void addInput(Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int selectPositionCount = mask.getSelectedPositionCount();
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      boolean isXValueNull = xColumn.isNull(position);
+      if (!timeColumn.isNull(position)) {
+        if (checkAndUpdateLastTime(isXValueNull, timeColumn.getLong(position)) && !isXValueNull) {
+          xValueSetter.set(xResult, xColumn, position);
+        }
+      } else if (checkAndUpdateNullTime(isXValueNull) && !isXValueNull) {
+        xValueSetter.set(xResult, xColumn, position);
+      }
+    }
   }
 
   private boolean checkAndUpdateLastTime(boolean isXValueNull, long curTime) {

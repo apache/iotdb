@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.FloatBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
@@ -210,7 +211,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
     }
 
     switch (yDataType) {
@@ -239,7 +241,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
     }
 
     return INSTANCE_SIZE + valuesSize + inits.sizeOf() + xNulls.sizeOf();
@@ -275,7 +278,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
     }
     switch (yDataType) {
       case INT32:
@@ -303,7 +307,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -340,7 +345,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
     }
 
     switch (yDataType) {
@@ -369,7 +375,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", yDataType));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, yDataType));
     }
   }
 
@@ -401,7 +408,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", yDataType));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, yDataType));
     }
   }
 
@@ -656,7 +664,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -690,7 +699,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
           xBooleanValues.set(groupId, xColumn.getBoolean(xIndex));
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));
+              String.format(
+                  CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
       }
     }
   }
@@ -777,7 +787,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", yDataType));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, yDataType));
     }
   }
 
@@ -816,7 +827,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));
+              String.format(
+                  CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
       }
     }
   }

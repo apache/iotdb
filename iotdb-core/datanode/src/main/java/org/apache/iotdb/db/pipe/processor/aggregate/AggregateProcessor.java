@@ -463,54 +463,7 @@ public class AggregateProcessor implements PipeProcessor {
       synchronized (stateReference) {
         final TimeSeriesRuntimeState state = stateReference.get();
         try {
-          switch (row.getDataType(index)) {
-            case BOOLEAN:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getBoolean(index), outputMinReportIntervalMilliseconds);
-              break;
-            case INT32:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getInt(index), outputMinReportIntervalMilliseconds);
-              break;
-            case DATE:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getDate(index), outputMinReportIntervalMilliseconds);
-              break;
-            case INT64:
-            case TIMESTAMP:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getLong(index), outputMinReportIntervalMilliseconds);
-              break;
-            case FLOAT:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getFloat(index), outputMinReportIntervalMilliseconds);
-              break;
-            case DOUBLE:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getDouble(index), outputMinReportIntervalMilliseconds);
-              break;
-            case TEXT:
-            case STRING:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getString(index), outputMinReportIntervalMilliseconds);
-              break;
-            case BLOB:
-            case OBJECT:
-              result =
-                  state.updateWindows(
-                      timestamp, row.getBinary(index), outputMinReportIntervalMilliseconds);
-              break;
-            default:
-              throw new UnsupportedOperationException(
-                  String.format("The type %s is not supported", row.getDataType(index)));
-          }
+          result = state.updateWindows(timestamp, row, index, outputMinReportIntervalMilliseconds);
           if (Objects.nonNull(result)) {
             collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
             if (Objects.nonNull(result.getRight())) {

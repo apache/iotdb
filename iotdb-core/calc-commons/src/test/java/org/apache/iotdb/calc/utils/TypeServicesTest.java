@@ -26,14 +26,18 @@ import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -171,6 +175,30 @@ public class TypeServicesTest {
                 .apply(input, 0));
   }
 
+  @Test
+  public void testModeValueServiceUsesNativeValues() {
+    assertModeValueRoundTrip(
+        TSDataType.BOOLEAN, new BooleanColumn(1, Optional.empty(), new boolean[] {true}), true);
+    assertModeValueRoundTrip(
+        TSDataType.INT32, new IntColumn(1, Optional.empty(), new int[] {123}), 123);
+    assertModeValueRoundTrip(
+        TSDataType.DATE, new IntColumn(1, Optional.empty(), new int[] {456}, TSDataType.DATE), 456);
+    assertModeValueRoundTrip(
+        TSDataType.INT64, new LongColumn(1, Optional.empty(), new long[] {789L}), 789L);
+    assertModeValueRoundTrip(
+        TSDataType.TIMESTAMP, new LongColumn(1, Optional.empty(), new long[] {987L}), 987L);
+    assertModeValueRoundTrip(
+        TSDataType.FLOAT, new FloatColumn(1, Optional.empty(), new float[] {1.25F}), 1.25F);
+    assertModeValueRoundTrip(
+        TSDataType.DOUBLE, new DoubleColumn(1, Optional.empty(), new double[] {2.5}), 2.5);
+
+    Binary binary = new Binary(new byte[] {1, 2, 3});
+    Column binaryColumn = new BinaryColumn(1, Optional.empty(), new Binary[] {binary});
+    assertModeValueRoundTrip(TSDataType.TEXT, binaryColumn, binary);
+    assertModeValueRoundTrip(TSDataType.STRING, binaryColumn, binary);
+    assertModeValueRoundTrip(TSDataType.BLOB, binaryColumn, binary);
+  }
+
   // Covers every supported RANGE-frame type and guards native integer overflow and long precision.
   @Test
   public void testRangeFrameComparatorPreservesNativeArithmetic() {
@@ -224,6 +252,23 @@ public class TypeServicesTest {
                 new IllegalStateException(
                     "supported data type should not use the exception factory"))
         .convert(column, 0);
+  }
+
+  private static void assertModeValueRoundTrip(
+      final TSDataType dataType, final Column input, final Object expectedValue) {
+    Type type = Type.fromTsDataType(dataType);
+    TypeServices.ModeValueService valueService = TypeServices.MODE_VALUE_SERVICE.call(type);
+
+    Object value = valueService.getValue(input, 0);
+    assertEquals(expectedValue, value);
+    byte[] bytes = new byte[valueService.calcTypeSize(value)];
+    assertEquals(bytes.length, valueService.serialize(value, bytes, 0));
+    Object deserializedValue = valueService.deserialize(bytes, 0);
+    assertEquals(value, deserializedValue);
+
+    ColumnBuilder outputBuilder = type.createColumnBuilder(null, 1);
+    valueService.write(outputBuilder, deserializedValue);
+    assertTrue(input.arePositionsEqual(0, outputBuilder.build(), 0));
   }
 
   private static void assertRangeFrameComparator(

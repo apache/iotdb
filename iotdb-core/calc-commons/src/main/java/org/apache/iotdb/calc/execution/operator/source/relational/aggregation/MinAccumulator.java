@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -38,12 +41,16 @@ public class MinAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MinAccumulator.class);
   private final TSDataType seriesDataType;
+  private final Type type;
+  private final TypeServices.ColumnValueUpdater valueUpdater;
   private final TsPrimitiveType minResult;
   private boolean initResult;
 
   public MinAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.minResult = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
+    this.type = Type.fromTsDataType(seriesDataType);
+    this.minResult = type.getTsPrimitiveType();
+    this.valueUpdater = TypeServices.MIN_COLUMN_VALUE_UPDATER_SERVICE.call(type);
   }
 
   @Override
@@ -60,33 +67,7 @@ public class MinAccumulator implements TableAccumulator {
   public void addInput(Column[] arguments, AggregationMask mask) {
     checkArgument(arguments.length == 1, "argument of MIN should be one column");
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(arguments[0], mask);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(arguments[0], mask);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], mask);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-        addBinaryInput(arguments[0], mask);
-        return;
-      case BOOLEAN:
-        addBooleanInput(arguments[0], mask);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
-    }
+    addInput(arguments[0], mask);
   }
 
   @Override
@@ -96,32 +77,8 @@ public class MinAccumulator implements TableAccumulator {
         continue;
       }
 
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          updateIntMinValue(argument.getInt(i));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          updateLongMinValue(argument.getLong(i));
-          break;
-        case FLOAT:
-          updateFloatMinValue(argument.getFloat(i));
-          break;
-        case DOUBLE:
-          updateDoubleMinValue(argument.getDouble(i));
-          break;
-        case STRING:
-        case TEXT:
-        case BLOB:
-          updateBinaryMinValue(argument.getBinary(i));
-          break;
-        case BOOLEAN:
-          updateBooleanMinValue(argument.getBoolean(i));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
+      if (valueUpdater.update(minResult, argument, i, initResult)) {
+        initResult = true;
       }
     }
   }
@@ -133,33 +90,7 @@ public class MinAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(minResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(minResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(minResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(minResult.getDouble());
-        break;
-      case STRING:
-      case TEXT:
-      case BLOB:
-        columnBuilder.writeBinary(minResult.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(minResult.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
-    }
+    type.write(columnBuilder, minResult);
   }
 
   @Override
@@ -168,33 +99,7 @@ public class MinAccumulator implements TableAccumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(minResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(minResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(minResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(minResult.getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        columnBuilder.writeBinary(minResult.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(minResult.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
-    }
+    type.write(columnBuilder, minResult);
   }
 
   @Override
@@ -241,7 +146,7 @@ public class MinAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MIN Aggregation: %s", seriesDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MIN_AGGREGATION, seriesDataType));
     }
   }
 
@@ -249,6 +154,26 @@ public class MinAccumulator implements TableAccumulator {
   public void reset() {
     initResult = false;
     this.minResult.reset();
+  }
+
+  private void addInput(Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i) && valueUpdater.update(minResult, valueColumn, i, initResult)) {
+          initResult = true;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      for (int i = 0; i < positionCount; i++) {
+        int position = selectedPositions[i];
+        if (!valueColumn.isNull(position)
+            && valueUpdater.update(minResult, valueColumn, position, initResult)) {
+          initResult = true;
+        }
+      }
+    }
   }
 
   private void addIntInput(Column valueColumn, AggregationMask mask) {

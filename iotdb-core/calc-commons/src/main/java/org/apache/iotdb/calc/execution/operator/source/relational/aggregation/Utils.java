@@ -30,8 +30,6 @@ import static org.apache.tsfile.enums.TSDataType.STRING;
 import static org.apache.tsfile.enums.TSDataType.TEXT;
 
 public class Utils {
-  public static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type : %s";
-
   private Utils() {}
 
   public static void serializeValue(

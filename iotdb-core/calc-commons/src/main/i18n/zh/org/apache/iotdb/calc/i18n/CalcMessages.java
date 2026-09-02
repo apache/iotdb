@@ -34,6 +34,20 @@ public final class CalcMessages {
       "CountAllAccumulator 不支持统计信息。";
   public static final String COUNT_IF_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
       "CountIfAccumulator 不支持统计信息";
+  public static final String PERCENTILE_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "PercentileAccumulator 不支持统计信息";
+  public static final String PERCENTILE_REQUIRES_TWO_ARGUMENTS =
+      "PERCENTILE 需要 2 个参数，但收到 %d 个参数";
+  public static final String APPROX_PERCENTILE_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxPercentileAccumulator 不支持统计信息";
+  public static final String APPROX_COUNT_DISTINCT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxCountDistinctAccumulator 不支持统计信息";
+  public static final String APPROX_MOST_FREQUENT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxMostFrequentAccumulator 不支持统计信息";
+  public static final String NO_EXACT_DOUBLE_REPRESENTATION_FOR_LONG =
+      "long 无法精确表示为 double：%s";
+  public static final String APPROX_PERCENTILE_REQUIRES_TWO_OR_THREE_ARGUMENTS =
+      "APPROX_PERCENTILE 需要 2 或 3 个参数，但收到 %d 个参数";
   public static final String CURRENT_COLUMN_IS_NOT_OBJECT_COLUMN = "当前列不是对象列";
   public static final String CURRENT_TS_BLOCK_SIZE_IS = "当前 tsBlock 大小为：{}";
   public static final String DATA_TYPE_CANNOT_BE_ORDERED = "数据类型：%s 不能排序";
@@ -126,6 +140,34 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_COLUMN_TRANSFORMER = "不支持的 ColumnTransformer";
   public static final String UNSUPPORTED_COMPARISON_OPERATOR = "不支持的比较运算符：";
   public static final String UNSUPPORTED_DATA_TYPE = "不支持的数据类型：";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG =
+      "AVG 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_SUM_AGGREGATION =
+      "SUM 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION =
+      "Percentile 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_APPROX_PERCENTILE_AGGREGATION =
+      "APPROX_PERCENTILE 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_APPROX_COUNT_DISTINCT_AGGREGATION =
+      "APPROX_COUNT_DISTINCT 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_FIRST_AGGREGATION =
+      "FIRST 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_LAST_AGGREGATION =
+      "LAST 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_AGGREGATION =
+      "MAX 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MIN_AGGREGATION =
+      "MIN 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION =
+      "FIRST_BY 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION =
+      "LAST_BY 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_EXTREME_AGGREGATION =
+      "EXTREME 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION =
+      "MAX_BY/MIN_BY 聚合中不支持的数据类型：%s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MODE_AGGREGATION =
+      "不支持的数据类型：%s";
   public static final String UNSUPPORTED_DATA_TYPE_IN_CENTRAL_MOMENT_AGGREGATION =
       "CentralMoment 聚合中不支持的数据类型：%s";
   public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_VARIANCE =

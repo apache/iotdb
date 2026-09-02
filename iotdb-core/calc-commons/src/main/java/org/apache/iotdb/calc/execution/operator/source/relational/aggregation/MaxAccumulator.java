@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -38,12 +41,16 @@ public class MaxAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MaxAccumulator.class);
   private final TSDataType seriesDataType;
+  private final Type type;
+  private final TypeServices.ColumnValueUpdater valueUpdater;
   private final TsPrimitiveType maxResult;
   private boolean initResult;
 
   public MaxAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.maxResult = Type.fromTsDataType(seriesDataType).getTsPrimitiveType();
+    this.type = Type.fromTsDataType(seriesDataType);
+    this.maxResult = type.getTsPrimitiveType();
+    this.valueUpdater = TypeServices.MAX_COLUMN_VALUE_UPDATER_SERVICE.call(type);
   }
 
   @Override
@@ -60,33 +67,7 @@ public class MaxAccumulator implements TableAccumulator {
   public void addInput(Column[] arguments, AggregationMask mask) {
     checkArgument(arguments.length == 1, "argument of MAX should be one column");
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(arguments[0], mask);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(arguments[0], mask);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], mask);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-        addBinaryInput(arguments[0], mask);
-        return;
-      case BOOLEAN:
-        addBooleanInput(arguments[0], mask);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
-    }
+    addInput(arguments[0], mask);
   }
 
   @Override
@@ -96,32 +77,8 @@ public class MaxAccumulator implements TableAccumulator {
         continue;
       }
 
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          updateIntMaxValue(argument.getInt(i));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          updateLongMaxValue(argument.getLong(i));
-          break;
-        case FLOAT:
-          updateFloatMaxValue(argument.getFloat(i));
-          break;
-        case DOUBLE:
-          updateDoubleMaxValue(argument.getDouble(i));
-          break;
-        case STRING:
-        case TEXT:
-        case BLOB:
-          updateBinaryMaxValue(argument.getBinary(i));
-          break;
-        case BOOLEAN:
-          updateBooleanMaxValue(argument.getBoolean(i));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+      if (valueUpdater.update(maxResult, argument, i, initResult)) {
+        initResult = true;
       }
     }
   }
@@ -133,33 +90,7 @@ public class MaxAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(maxResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(maxResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(maxResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(maxResult.getDouble());
-        break;
-      case STRING:
-      case TEXT:
-      case BLOB:
-        columnBuilder.writeBinary(maxResult.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(maxResult.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
-    }
+    type.write(columnBuilder, maxResult);
   }
 
   @Override
@@ -168,33 +99,7 @@ public class MaxAccumulator implements TableAccumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(maxResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(maxResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(maxResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(maxResult.getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        columnBuilder.writeBinary(maxResult.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(maxResult.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
-    }
+    type.write(columnBuilder, maxResult);
   }
 
   @Override
@@ -241,7 +146,7 @@ public class MaxAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_AGGREGATION, seriesDataType));
     }
   }
 
@@ -249,6 +154,26 @@ public class MaxAccumulator implements TableAccumulator {
   public void reset() {
     initResult = false;
     this.maxResult.reset();
+  }
+
+  private void addInput(Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i) && valueUpdater.update(maxResult, valueColumn, i, initResult)) {
+          initResult = true;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      for (int i = 0; i < positionCount; i++) {
+        int position = selectedPositions[i];
+        if (!valueColumn.isNull(position)
+            && valueUpdater.update(maxResult, valueColumn, position, initResult)) {
+          initResult = true;
+        }
+      }
+    }
   }
 
   private void addIntInput(Column valueColumn, AggregationMask mask) {

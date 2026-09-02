@@ -527,7 +527,8 @@ public class AccumulatorFactory {
       case OBJECT:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", type));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_APPROX_COUNT_DISTINCT_AGGREGATION, type));
     }
   }
 
@@ -553,7 +554,8 @@ public class AccumulatorFactory {
       case OBJECT:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", type));
+            String.format(
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_APPROX_COUNT_DISTINCT_AGGREGATION, type));
     }
   }
 

@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.FloatBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -97,7 +98,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -130,7 +131,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
     }
 
     return INSTANCE_SIZE
@@ -173,7 +174,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -212,7 +213,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -247,7 +248,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -338,7 +339,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+              String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
       }
     }
   }
@@ -397,7 +398,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
           return bytes;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+              String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
       }
     }
     return bytes;
@@ -424,7 +425,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         return 1;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -461,7 +462,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
     }
   }
 

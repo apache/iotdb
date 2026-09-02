@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -26,6 +29,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -37,12 +41,23 @@ public class AvgAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AvgAccumulator.class);
   private final TSDataType argumentDataType;
+  private final TypeServices.ColumnToDoubleConverter valueConverter;
   private long countValue;
   private double sumValue;
   private boolean initResult = false;
 
   public AvgAccumulator(TSDataType argumentDataType) {
     this.argumentDataType = argumentDataType;
+    Type type = Type.fromTsDataType(argumentDataType);
+    this.valueConverter =
+        TypeServices.AGGREGATION_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+            .call(type)
+            .create(
+                () ->
+                    new UnSupportedDataTypeException(
+                        String.format(
+                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG,
+                            argumentDataType)));
   }
 
   @Override
@@ -58,59 +73,13 @@ public class AvgAccumulator implements TableAccumulator {
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
     checkArgument(arguments.length == 1, "argument of AVG should be one column");
-    switch (argumentDataType) {
-      case INT32:
-        addIntInput(arguments[0], mask);
-        return;
-      case INT64:
-        addLongInput(arguments[0], mask);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], mask);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", argumentDataType));
-    }
+    addInput(arguments[0], mask);
   }
 
   @Override
   public void removeInput(Column[] arguments) {
     checkArgument(arguments.length == 1, "argument of AVG should be one column");
-    switch (argumentDataType) {
-      case INT32:
-        removeIntInput(arguments[0]);
-        return;
-      case INT64:
-        removeLongInput(arguments[0]);
-        return;
-      case FLOAT:
-        removeFloatInput(arguments[0]);
-        return;
-      case DOUBLE:
-        removeDoubleInput(arguments[0]);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", argumentDataType));
-    }
+    removeInput(arguments[0]);
   }
 
   @Override
@@ -196,7 +165,7 @@ public class AvgAccumulator implements TableAccumulator {
     return bytes;
   }
 
-  private void addIntInput(Column column, AggregationMask mask) {
+  private void addInput(Column column, AggregationMask mask) {
     int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
@@ -204,7 +173,7 @@ public class AvgAccumulator implements TableAccumulator {
         if (!column.isNull(i)) {
           initResult = true;
           countValue++;
-          sumValue += column.getInt(i);
+          sumValue += valueConverter.convert(column, i);
         }
       }
     } else {
@@ -215,123 +184,18 @@ public class AvgAccumulator implements TableAccumulator {
         if (!column.isNull(position)) {
           initResult = true;
           countValue++;
-          sumValue += column.getInt(position);
+          sumValue += valueConverter.convert(column, position);
         }
       }
     }
   }
 
-  private void addLongInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult = true;
-          countValue++;
-          sumValue += column.getLong(i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult = true;
-          countValue++;
-          sumValue += column.getLong(position);
-        }
-      }
-    }
-  }
-
-  private void addFloatInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult = true;
-          countValue++;
-          sumValue += column.getFloat(i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult = true;
-          countValue++;
-          sumValue += column.getFloat(position);
-        }
-      }
-    }
-  }
-
-  private void addDoubleInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult = true;
-          countValue++;
-          sumValue += column.getDouble(i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult = true;
-          countValue++;
-          sumValue += column.getDouble(position);
-        }
-      }
-    }
-  }
-
-  private void removeIntInput(Column column) {
+  private void removeInput(Column column) {
     int count = column.getPositionCount();
     for (int i = 0; i < count; i++) {
       if (!column.isNull(i)) {
         countValue--;
-        sumValue -= column.getInt(i);
-      }
-    }
-  }
-
-  private void removeLongInput(Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        countValue--;
-        sumValue -= column.getLong(i);
-      }
-    }
-  }
-
-  private void removeFloatInput(Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        countValue--;
-        sumValue -= column.getFloat(i);
-      }
-    }
-  }
-
-  private void removeDoubleInput(Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        countValue--;
-        sumValue -= column.getDouble(i);
+        sumValue -= valueConverter.convert(column, i);
       }
     }
   }

@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.FloatBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -97,7 +98,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -130,7 +131,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, xDataType));
     }
 
     return INSTANCE_SIZE
@@ -173,7 +174,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -212,7 +213,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -247,7 +248,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -338,7 +339,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
+              String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, xDataType));
       }
     }
   }
@@ -396,7 +397,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
           return bytes;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
+              String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, xDataType));
       }
     }
     return bytes;
@@ -423,7 +424,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         return 1;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, xDataType));
     }
   }
 
@@ -460,7 +461,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
+            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, xDataType));
     }
   }
 

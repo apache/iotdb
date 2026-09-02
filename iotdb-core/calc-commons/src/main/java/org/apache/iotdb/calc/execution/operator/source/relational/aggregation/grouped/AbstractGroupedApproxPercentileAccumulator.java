@@ -22,10 +22,13 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.g
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.TDigest;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.TDigestBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -38,11 +41,14 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedApproxPercentileAccumulator.class);
   protected final TSDataType seriesDataType;
+  private final TypeServices.NumericResultWriter resultWriter;
   protected double percentage;
   protected final TDigestBigArray array = new TDigestBigArray();
 
   AbstractGroupedApproxPercentileAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
+    this.resultWriter =
+        TypeServices.NUMERIC_RESULT_WRITER_SERVICE.call(Type.fromTsDataType(seriesDataType));
   }
 
   @Override
@@ -64,7 +70,7 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
     } else {
       throw new IllegalArgumentException(
           String.format(
-              "APPROX_PERCENTILE requires 2 or 3 arguments, but got %d", arguments.length));
+              CalcMessages.APPROX_PERCENTILE_REQUIRES_TWO_OR_THREE_ARGUMENTS, arguments.length));
     }
 
     switch (seriesDataType) {
@@ -84,7 +90,8 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in APPROX_PERCENTILE Aggregation: %s", seriesDataType));
+                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_APPROX_PERCENTILE_AGGREGATION,
+                seriesDataType));
     }
   }
 
@@ -120,25 +127,7 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-        columnBuilder.writeInt((int) result);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong((long) result);
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat((float) result);
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(result);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                "Unsupported data type in APPROX_PERCENTILE Aggregation: %s", seriesDataType));
-    }
+    resultWriter.write(columnBuilder, result);
   }
 
   @Override

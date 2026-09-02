@@ -35,6 +35,20 @@ public final class CalcMessages {
       "CountAllAccumulator does not support statistics.";
   public static final String COUNT_IF_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
       "CountIfAccumulator does not support statistics";
+  public static final String PERCENTILE_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "PercentileAccumulator does not support statistics";
+  public static final String PERCENTILE_REQUIRES_TWO_ARGUMENTS =
+      "PERCENTILE requires 2 arguments, but got %d";
+  public static final String APPROX_PERCENTILE_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxPercentileAccumulator does not support statistics";
+  public static final String APPROX_COUNT_DISTINCT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxCountDistinctAccumulator does not support statistics";
+  public static final String APPROX_MOST_FREQUENT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
+      "ApproxMostFrequentAccumulator does not support statistics";
+  public static final String NO_EXACT_DOUBLE_REPRESENTATION_FOR_LONG =
+      "no exact double representation for long: %s";
+  public static final String APPROX_PERCENTILE_REQUIRES_TWO_OR_THREE_ARGUMENTS =
+      "APPROX_PERCENTILE requires 2 or 3 arguments, but got %d";
   public static final String CURRENT_COLUMN_IS_NOT_OBJECT_COLUMN =
       "current column is not object column";
   public static final String CURRENT_TS_BLOCK_SIZE_IS = "Current tsBlock size is : {}";
@@ -133,6 +147,34 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_COMPARISON_OPERATOR =
       "Unsupported comparison operator: ";
   public static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG =
+      "Unsupported data type in aggregation AVG : %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_SUM_AGGREGATION =
+      "Unsupported data type in SUM Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION =
+      "Unsupported data type in Percentile Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_APPROX_PERCENTILE_AGGREGATION =
+      "Unsupported data type in APPROX_PERCENTILE Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_APPROX_COUNT_DISTINCT_AGGREGATION =
+      "Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_FIRST_AGGREGATION =
+      "Unsupported data type in FIRST Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_LAST_AGGREGATION =
+      "Unsupported data type in LAST Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_AGGREGATION =
+      "Unsupported data type in MAX Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MIN_AGGREGATION =
+      "Unsupported data type in MIN Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION =
+      "Unsupported data type in FIRST_BY Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION =
+      "Unsupported data type in LAST_BY Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_EXTREME_AGGREGATION =
+      "Unsupported data type in EXTREME Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION =
+      "Unsupported data type in MAX_BY/MIN_BY Aggregation: %s";
+  public static final String UNSUPPORTED_DATA_TYPE_IN_MODE_AGGREGATION =
+      "Unsupported data type : %s";
   public static final String UNSUPPORTED_DATA_TYPE_IN_CENTRAL_MOMENT_AGGREGATION =
       "Unsupported data type in CentralMoment Aggregation: %s";
   public static final String UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_VARIANCE =

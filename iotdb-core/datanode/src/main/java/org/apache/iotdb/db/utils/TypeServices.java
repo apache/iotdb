@@ -55,7 +55,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.pipe.processor.aggregate.TimeSeriesRuntimeState;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric.AbstractSameTypeNumericOperator;
+import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.queryengine.execution.operator.window.EqualBinaryWindowManager;
 import org.apache.iotdb.db.queryengine.execution.operator.window.EqualBooleanWindowManager;
 import org.apache.iotdb.db.queryengine.execution.operator.window.EqualDoubleWindowManager;
@@ -3260,6 +3262,17 @@ public class TypeServices {
     }
 
     @FunctionalInterface
+    public interface AggregateRowValueUpdater {
+      Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> update(
+          TimeSeriesRuntimeState state,
+          long timestamp,
+          Row row,
+          int columnIndex,
+          long reportInterval)
+          throws IOException;
+    }
+
+    @FunctionalInterface
     public interface AggregateTabletColumnValueWriter {
       void write(Object column, int rowIndex, Object value);
     }
@@ -3330,6 +3343,43 @@ public class TypeServices {
               case TEXT, BLOB, STRING -> Row::getBinary;
               case OBJECT, ROW, UNKNOWN, VECTOR ->
                   (row, columnIndex) -> {
+                    throw new UnsupportedOperationException(
+                        String.format(
+                            DataNodePipeMessages.UNSUPPORTED_DATA_TYPE_FOR_COLUMN_FMT,
+                            row.getDataType(columnIndex),
+                            row.getColumnName(columnIndex)));
+                  };
+            };
+
+    public static final TypeService<AggregateRowValueUpdater> AGGREGATE_ROW_VALUE_UPDATER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (state, timestamp, row, columnIndex, reportInterval) ->
+                      state.updateWindows(timestamp, row.getBoolean(columnIndex), reportInterval);
+              case INT32 ->
+                  (state, timestamp, row, columnIndex, reportInterval) ->
+                      state.updateWindows(timestamp, row.getInt(columnIndex), reportInterval);
+              case DATE ->
+                  (state, timestamp, row, columnIndex, reportInterval) ->
+                      state.updateWindows(timestamp, row.getDate(columnIndex), reportInterval);
+              case INT64, TIMESTAMP ->
+                  (state, timestamp, row, columnIndex, reportInterval) ->
+                      state.updateWindows(timestamp, row.getLong(columnIndex), reportInterval);
+              case FLOAT ->
+                  (state, timestamp, row, columnIndex, reportInterval) ->
+                      state.updateWindows(timestamp, row.getFloat(columnIndex), reportInterval);
+              case DOUBLE ->
+                  (state, timestamp, row, columnIndex, reportInterval) ->
+                      state.updateWindows(timestamp, row.getDouble(columnIndex), reportInterval);
+              case TEXT, STRING ->
+                  (state, timestamp, row, columnIndex, reportInterval) ->
+                      state.updateWindows(timestamp, row.getString(columnIndex), reportInterval);
+              case BLOB, OBJECT ->
+                  (state, timestamp, row, columnIndex, reportInterval) ->
+                      state.updateWindows(timestamp, row.getBinary(columnIndex), reportInterval);
+              case ROW, UNKNOWN, VECTOR ->
+                  (state, timestamp, row, columnIndex, reportInterval) -> {
                     throw new UnsupportedOperationException(
                         String.format(
                             DataNodePipeMessages.UNSUPPORTED_DATA_TYPE_FOR_COLUMN_FMT,
@@ -3521,6 +3571,7 @@ public class TypeServices {
       // PIPE_DATA_TYPE_TRANSFORMER_SERVICE returns a value directly and intentionally rejects
       // internal TsFile types, so the generic service check cannot be applied to it.
       PIPE_ROW_OBJECT_GETTER_SERVICE.check();
+      AGGREGATE_ROW_VALUE_UPDATER_SERVICE.check();
       PIPE_TS_PRIMITIVE_TABLET_VALUE_WRITER_SERVICE.check();
       PIPE_BATCH_DATA_TABLET_VALUE_WRITER_SERVICE.check();
       PIPE_TABLET_VALUE_COLUMN_FILTER_SERVICE.check();
