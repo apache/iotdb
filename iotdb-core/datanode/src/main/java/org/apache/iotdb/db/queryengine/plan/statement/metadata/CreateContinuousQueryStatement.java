@@ -192,11 +192,28 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     StringBuilder sqlBuilder = new StringBuilder();
     sqlBuilder.append("CREATE CQ ").append(cqId).append('\n');
     sqlBuilder.append("RESAMPLE\n");
-    sqlBuilder.append('\t').append("EVERY ").append(everyInterval).append("ms\n");
+    sqlBuilder
+        .append('\t')
+        .append("EVERY ")
+        .append(
+            everyDuration.monthDuration == 0 ? everyInterval + "ms" : formatDuration(everyDuration))
+        .append('\n');
     sqlBuilder.append('\t').append("BOUNDARY ").append(boundaryTime).append("\n");
-    sqlBuilder.append('\t').append("RANGE ").append(startTimeOffset).append("ms");
-    if (endTimeOffset != 0) {
-      sqlBuilder.append(", ").append(endTimeOffset).append("ms\n");
+    sqlBuilder
+        .append('\t')
+        .append("RANGE ")
+        .append(
+            startTimeOffsetDuration.monthDuration == 0
+                ? startTimeOffset + "ms"
+                : formatDuration(startTimeOffsetDuration));
+    if (endTimeOffset != 0 || endTimeOffsetDuration.monthDuration != 0) {
+      sqlBuilder
+          .append(", ")
+          .append(
+              endTimeOffsetDuration.monthDuration == 0
+                  ? endTimeOffset + "ms"
+                  : formatDuration(endTimeOffsetDuration))
+          .append('\n');
     } else {
       sqlBuilder.append("\n");
     }
@@ -209,6 +226,24 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     sqlBuilder.append("END\n");
     sqlBuilder.append(";");
     return sqlBuilder.toString();
+  }
+
+  private static String formatDuration(TimeDuration duration) {
+    StringBuilder result = new StringBuilder();
+    int months = duration.monthDuration;
+    if (months >= 12) {
+      result.append(months / 12).append('y');
+      months %= 12;
+    }
+    if (months != 0) {
+      result.append(months).append("mo");
+    }
+    if (duration.nonMonthDuration != 0) {
+      result.append(duration.nonMonthDuration).append(TimestampPrecisionUtils.TIMESTAMP_PRECISION);
+    }
+    return result.length() == 0
+        ? "0" + TimestampPrecisionUtils.TIMESTAMP_PRECISION
+        : result.toString();
   }
 
   @Override

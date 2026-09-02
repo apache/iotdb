@@ -4164,13 +4164,30 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final boolean hasCalendarDuration =
+          createContinuousQueryStatement.getEveryDuration().monthDuration != 0
+              || createContinuousQueryStatement.getStartTimeOffsetDuration().monthDuration != 0
+              || createContinuousQueryStatement.getEndTimeOffsetDuration().monthDuration != 0;
+      if (hasCalendarDuration && !allClusterNodesSupportCQDurationEncoding(client.showCluster())) {
+        future.setException(
+            new SemanticException(
+                DataNodeQueryMessages
+                    .MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_AC724DE3));
+        return future;
+      }
+      final long legacyEvery =
+          hasCalendarDuration ? 0 : createContinuousQueryStatement.getEveryInterval();
+      final long legacyStart =
+          hasCalendarDuration ? 0 : createContinuousQueryStatement.getStartTimeOffset();
+      final long legacyEnd =
+          hasCalendarDuration ? 0 : createContinuousQueryStatement.getEndTimeOffset();
       final TCreateCQReq tCreateCQReq =
           new TCreateCQReq(
               createContinuousQueryStatement.getCqId(),
-              createContinuousQueryStatement.getEveryInterval(),
+              legacyEvery,
               createContinuousQueryStatement.getBoundaryTime(),
-              createContinuousQueryStatement.getStartTimeOffset(),
-              createContinuousQueryStatement.getEndTimeOffset(),
+              legacyStart,
+              legacyEnd,
               createContinuousQueryStatement.getTimeoutPolicy().getType(),
               queryBody,
               context.getSql(),
@@ -4200,6 +4217,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private boolean allClusterNodesSupportCQDurationEncoding(TShowClusterResp response) {
+    if (response == null || response.getNodeVersionInfo() == null) {
+      return false;
+    }
+    if (response.getNodeVersionInfo().isEmpty()) {
+      return false;
+    }
+    return response.getNodeVersionInfo().values().stream()
+        .allMatch(
+            info ->
+                info != null
+                    && info.isSetSupportedCQDurationEncodingVersions()
+                    && info.getSupportedCQDurationEncodingVersions().contains((short) 1));
   }
 
   @Override

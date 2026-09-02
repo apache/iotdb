@@ -19,9 +19,14 @@
 package org.apache.iotdb.confignode.cq;
 
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
+import org.apache.iotdb.confignode.manager.cq.CQCalendarUtils;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 
+import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Test;
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 import static org.junit.Assert.assertEquals;
 
@@ -58,5 +63,29 @@ public class CQScheduleTaskTest {
         null,
         null,
         1000);
+  }
+
+  @Test
+  public void testCalendarOccurrencesRecomputeFromOriginalBoundary() {
+    ZoneId zone = ZoneId.of("UTC");
+    long boundary = ZonedDateTime.of(2024, 1, 31, 0, 0, 0, 0, zone).toInstant().toEpochMilli();
+    TimeDuration month = new TimeDuration(1, 0);
+    assertEquals(
+        ZonedDateTime.of(2024, 2, 29, 0, 0, 0, 0, zone).toInstant().toEpochMilli(),
+        CQCalendarUtils.occurrence(boundary, month, 1, zone));
+    assertEquals(
+        ZonedDateTime.of(2024, 3, 31, 0, 0, 0, 0, zone).toInstant().toEpochMilli(),
+        CQCalendarUtils.occurrence(boundary, month, 2, zone));
+  }
+
+  @Test
+  public void testDiscardLowerBoundNeverMovesBeforeCurrentOccurrence() {
+    ZoneId zone = ZoneId.of("UTC");
+    long boundary = ZonedDateTime.of(2024, 1, 1, 0, 0, 0, 0, zone).toInstant().toEpochMilli();
+    TimeDuration month = new TimeDuration(1, 0);
+    long current = CQCalendarUtils.occurrence(boundary, month, 2, zone);
+    long lowerBound = CQCalendarUtils.firstOccurrenceIndex(boundary, month, current, zone);
+    assertEquals(2, lowerBound);
+    assertEquals(3, Math.max(2 + 1, lowerBound));
   }
 }

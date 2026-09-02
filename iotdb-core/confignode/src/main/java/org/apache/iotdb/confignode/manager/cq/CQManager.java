@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -90,7 +91,16 @@ public class CQManager {
 
   private TSStatus validateDurationEncoding(TCreateCQReq req) {
     if (!req.isSetDurationEncodingVersion()) {
-      // Requests from older DataNodes contain only the legacy fixed-duration fields.
+      // Preserve wire compatibility for legacy fixed-duration clients. A request that starts
+      // sending structured fields must include the version marker so it cannot be misread by an
+      // older ConfigNode.
+      if (req.isSetEveryDuration()
+          || req.isSetStartOffsetDuration()
+          || req.isSetEndOffsetDuration()
+          || req.isSetBoundaryExplicit()) {
+        return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+            .setMessage(ManagerMessages.MESSAGE_CQ_DURATION_ENCODING_MARKER_REQUIRED_9035980A);
+      }
       return null;
     }
     if (req.getDurationEncodingVersion() != 1
@@ -112,6 +122,16 @@ public class CQManager {
       return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
           .setMessage(ManagerMessages.MESSAGE_CQ_DURATIONS_MUST_BE_NON_NEGATIVE_BE23CE04);
     }
+    if (req.getEveryDuration().getMonthPart() > Integer.MAX_VALUE
+        || req.getStartOffsetDuration().getMonthPart() > Integer.MAX_VALUE
+        || req.getEndOffsetDuration().getMonthPart() > Integer.MAX_VALUE) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(ManagerMessages.MESSAGE_CQ_DURATIONS_MUST_BE_NON_NEGATIVE_BE23CE04);
+    }
+    boolean hasCalendarDuration =
+        req.getEveryDuration().getMonthPart() != 0
+            || req.getStartOffsetDuration().getMonthPart() != 0
+            || req.getEndOffsetDuration().getMonthPart() != 0;
     if ((req.getEveryDuration().getMonthPart() == 0
             && req.everyInterval != req.getEveryDuration().getNonMonthDuration())
         || (req.getStartOffsetDuration().getMonthPart() == 0
@@ -120,13 +140,55 @@ public class CQManager {
             && req.endTimeOffset != req.getEndOffsetDuration().getNonMonthDuration())
         || (req.getEveryDuration().getMonthPart() != 0 && req.everyInterval != 0)
         || (req.getStartOffsetDuration().getMonthPart() != 0 && req.startTimeOffset != 0)
-        || (req.getEndOffsetDuration().getMonthPart() != 0 && req.endTimeOffset != 0)) {
+        || (req.getEndOffsetDuration().getMonthPart() != 0 && req.endTimeOffset != 0)
+        || (hasCalendarDuration
+            && (req.everyInterval != 0 || req.startTimeOffset != 0 || req.endTimeOffset != 0))) {
       return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
           .setMessage(
               ManagerMessages
                   .MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67);
     }
+    if (hasCalendarDuration && !allClusterNodesSupportDurationEncodingV1()) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(
+              ManagerMessages.MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_49534072);
+    }
     return null;
+  }
+
+  private boolean allClusterNodesSupportDurationEncodingV1() {
+    java.util.Map<Integer, TNodeVersionInfo> versionInfo =
+        configManager.getNodeManager().getNodeVersionInfo();
+    if (versionInfo.isEmpty()) {
+      return false;
+    }
+    boolean hasRegisteredNode = false;
+    // Check every registered node explicitly. A missing heartbeat/version entry must not allow a
+    // calendar CQ to be created during a rolling upgrade.
+    for (org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation node :
+        configManager.getNodeManager().getRegisteredConfigNodes()) {
+      hasRegisteredNode = true;
+      if (!supportsDurationEncodingV1(versionInfo.get(node.getConfigNodeId()))) {
+        return false;
+      }
+    }
+    for (org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration node :
+        configManager.getNodeManager().getRegisteredDataNodes()) {
+      hasRegisteredNode = true;
+      if (!supportsDurationEncodingV1(versionInfo.get(node.getLocation().getDataNodeId()))) {
+        return false;
+      }
+    }
+    return hasRegisteredNode;
+  }
+
+  private boolean supportsDurationEncodingV1(TNodeVersionInfo info) {
+    if (info == null
+        || !info.isSetSupportedCQDurationEncodingVersions()
+        || !info.getSupportedCQDurationEncodingVersions().contains((short) 1)) {
+      return false;
+    }
+    return true;
   }
 
   public TSStatus dropCQ(TDropCQReq req) {

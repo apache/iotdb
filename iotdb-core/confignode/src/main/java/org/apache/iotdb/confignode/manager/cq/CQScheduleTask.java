@@ -99,6 +99,9 @@ public class CQScheduleTask implements Runnable {
   private boolean scheduleCalendarAware;
   private ZoneId scheduleZone;
 
+  /** First occurrence not yet durably acknowledged. -1 denotes a legacy CQ. */
+  private long occurrenceIndex = -1;
+
   public CQScheduleTask(
       TCreateCQReq req,
       long firstExecutionTime,
@@ -158,6 +161,11 @@ public class CQScheduleTask implements Runnable {
                   boundaryTime, everyDuration, System.currentTimeMillis() * FACTOR, scheduleZone),
               scheduleZone);
     }
+    if (req.isSetDurationEncodingVersion() && req.getDurationEncodingVersion() == 1) {
+      this.occurrenceIndex =
+          CQCalendarUtils.firstOccurrenceIndex(
+              boundaryTime, everyDuration, firstExecutionTime, scheduleZone);
+    }
   }
 
   public CQScheduleTask(
@@ -201,6 +209,13 @@ public class CQScheduleTask implements Runnable {
       }
       this.executionTime =
           CQCalendarUtils.occurrence(boundaryTime, everyDuration, index, scheduleZone);
+    }
+    if (entry.getNextOccurrenceIndex() >= 0) {
+      this.occurrenceIndex = entry.getNextOccurrenceIndex();
+      if (!entry.isBoundaryExplicit() && scheduleCalendarAware) {
+        this.boundaryTime = CQCalendarUtils.localEpochBoundary(scheduleZone);
+      }
+      this.executionTime = occurrenceAt(this.occurrenceIndex);
     }
   }
 
@@ -263,38 +278,41 @@ public class CQScheduleTask implements Runnable {
 
   @Override
   public void run() {
-    long occurrenceIndex = 0;
+    long currentOccurrenceIndex = occurrenceIndex;
     if (cancelled.get()) {
       return;
     }
     long startTime = executionTime - startTimeOffset;
     long endTime = executionTime - endTimeOffset;
     if (calendarAware) {
-      occurrenceIndex =
-          CQCalendarUtils.firstOccurrenceIndex(
-              boundaryTime, everyDuration, executionTime, scheduleZone);
-      if (CQCalendarUtils.occurrence(boundaryTime, everyDuration, occurrenceIndex, scheduleZone)
+      if (currentOccurrenceIndex < 0) {
+        currentOccurrenceIndex =
+            CQCalendarUtils.firstOccurrenceIndex(
+                boundaryTime, everyDuration, executionTime, scheduleZone);
+      }
+      if (CQCalendarUtils.occurrence(
+              boundaryTime, everyDuration, currentOccurrenceIndex, scheduleZone)
           != executionTime) {
-        occurrenceIndex = Math.max(0, occurrenceIndex - 1);
+        currentOccurrenceIndex = Math.max(0, currentOccurrenceIndex - 1);
       }
       startTime =
           CQCalendarUtils.applyVector(
               boundaryTime,
               Math.subtractExact(
-                  Math.multiplyExact((long) everyDuration.monthDuration, occurrenceIndex),
+                  Math.multiplyExact((long) everyDuration.monthDuration, currentOccurrenceIndex),
                   startDuration.monthDuration),
               Math.subtractExact(
-                  Math.multiplyExact(everyDuration.nonMonthDuration, occurrenceIndex),
+                  Math.multiplyExact(everyDuration.nonMonthDuration, currentOccurrenceIndex),
                   startDuration.nonMonthDuration),
               scheduleZone);
       endTime =
           CQCalendarUtils.applyVector(
               boundaryTime,
               Math.subtractExact(
-                  Math.multiplyExact((long) everyDuration.monthDuration, occurrenceIndex),
+                  Math.multiplyExact((long) everyDuration.monthDuration, currentOccurrenceIndex),
                   endDuration.monthDuration),
               Math.subtractExact(
-                  Math.multiplyExact(everyDuration.nonMonthDuration, occurrenceIndex),
+                  Math.multiplyExact(everyDuration.nonMonthDuration, currentOccurrenceIndex),
                   endDuration.nonMonthDuration),
               scheduleZone);
     }
@@ -326,7 +344,7 @@ public class CQScheduleTask implements Runnable {
               toTimeoutMillis(
                   calendarAware
                       ? CQCalendarUtils.occurrence(
-                              boundaryTime, everyDuration, occurrenceIndex + 1, scheduleZone)
+                              boundaryTime, everyDuration, currentOccurrenceIndex + 1, scheduleZone)
                           - executionTime
                       : everyInterval),
               zoneId,
@@ -336,7 +354,8 @@ public class CQScheduleTask implements Runnable {
         AsyncDataNodeInternalServiceClient client =
             CnToDnInternalServiceAsyncRequestManager.getInstance()
                 .getAsyncClient(targetDataNode.get());
-        client.executeCQ(executeCQReq, new AsyncExecuteCQCallback(startTime, endTime));
+        client.executeCQ(
+            executeCQReq, new AsyncExecuteCQCallback(startTime, endTime, currentOccurrenceIndex));
       } catch (Exception t) {
         LOGGER.warn(ManagerMessages.EXECUTE_CQ_FAILED, cqId, t);
         if (needSubmit()) {
@@ -363,6 +382,13 @@ public class CQScheduleTask implements Runnable {
     }
     return Math.min(
         DEFAULT_RETRY_WAIT_TIME_IN_MS, Math.max(1L, duration.nonMonthDuration / FACTOR));
+  }
+
+  private long occurrenceAt(long index) {
+    if (occurrenceIndex < 0) {
+      return executionTime + (index - occurrenceIndex) * everyInterval;
+    }
+    return CQCalendarUtils.occurrence(boundaryTime, everyDuration, index, scheduleZone);
   }
 
   public void submitSelf() {
@@ -403,52 +429,56 @@ public class CQScheduleTask implements Runnable {
 
     private final long startTime;
     private final long endTime;
+    private final long expectedIndex;
 
-    public AsyncExecuteCQCallback(long startTime, long endTime) {
+    public AsyncExecuteCQCallback(long startTime, long endTime, long expectedIndex) {
       this.startTime = startTime;
       this.endTime = endTime;
+      this.expectedIndex = expectedIndex;
     }
 
-    private void updateExecutionTime() {
+    private long nextOccurrenceIndex(long callbackTime) {
+      long next = Math.addExact(expectedIndex, 1);
       if (timeoutPolicy == TimeoutPolicy.BLOCKED) {
-        if (calendarAware) {
-          long index =
-              CQCalendarUtils.firstOccurrenceIndex(
-                  boundaryTime, everyDuration, executionTime, scheduleZone);
-          executionTime =
-              CQCalendarUtils.occurrence(boundaryTime, everyDuration, index + 1, scheduleZone);
-        } else {
-          executionTime = executionTime + everyInterval;
-        }
+        return next;
       } else if (timeoutPolicy == TimeoutPolicy.DISCARD) {
-        long now = System.currentTimeMillis() * FACTOR;
-        if (calendarAware) {
-          long index =
-              CQCalendarUtils.firstOccurrenceIndex(boundaryTime, everyDuration, now, scheduleZone);
-          executionTime =
-              CQCalendarUtils.occurrence(boundaryTime, everyDuration, index, scheduleZone);
-        } else {
-          executionTime =
-              executionTime + ((now - executionTime - 1) / everyInterval + 1) * everyInterval;
-        }
+        long lowerBound =
+            occurrenceIndex >= 0
+                ? CQCalendarUtils.firstOccurrenceIndex(
+                    boundaryTime, everyDuration, callbackTime, scheduleZone)
+                : fixedLowerBound(callbackTime);
+        return Math.max(next, lowerBound);
       } else {
         throw new IllegalArgumentException(ManagerMessages.UNKNOWN_TIMEOUTPOLICY + timeoutPolicy);
       }
     }
 
-    @Override
-    public void onComplete(TSStatus response) {
-      if (cancelled.get()) {
-        return;
+    private void advanceLegacyExecutionTime(long callbackTime) {
+      if (timeoutPolicy == TimeoutPolicy.BLOCKED) {
+        executionTime = Math.addExact(executionTime, everyInterval);
+      } else {
+        if (callbackTime <= executionTime) {
+          executionTime = Math.addExact(executionTime, everyInterval);
+          return;
+        }
+        executionTime =
+            Math.addExact(
+                executionTime,
+                Math.multiplyExact(
+                    ((callbackTime - executionTime - 1) / everyInterval + 1), everyInterval));
       }
-      if (response.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    }
 
-        LOGGER.info(
-            ManagerMessages.ENDEXECUTECQ_TIME_RANGE_IS_CURRENT_TIME_IS,
-            cqId,
-            startTime,
-            endTime,
-            System.currentTimeMillis() * FACTOR);
+    private long fixedLowerBound(long callbackTime) {
+      if (callbackTime <= executionTime) {
+        return expectedIndex;
+      }
+      return Math.addExact(
+          expectedIndex, Math.addExact((callbackTime - executionTime - 1) / everyInterval, 1));
+    }
+
+    private void persistProgress(long targetIndex, long callbackTime) {
+      if (occurrenceIndex < 0) {
         TSStatus result;
         try {
           result =
@@ -459,35 +489,69 @@ public class CQScheduleTask implements Runnable {
           result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           result.setMessage(e.getMessage());
         }
-
-        // while leadership changed, the update last exec time operation for CQTasks in new leader
-        // may still update failed because stale CQTask in old leader may update it in advance
-        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.warn(
-              ManagerMessages.FAILED_TO_UPDATE_THE_LAST_EXECUTION_TIME_OF_CQ_BECAUSE,
-              executionTime,
-              cqId,
-              result.getMessage());
-          // no such cq, we don't need to submit it again
-          if (result.getCode() == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
-            LOGGER.info(ManagerMessages.STOP_SUBMITTING_CQ_BECAUSE, cqId, result.getMessage());
-            return;
-          }
-          // The persisted progress did not advance. Keep the same occurrence and retry; in
-          // particular, stale callbacks must never create a competing scheduling chain.
+        if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           if (needSubmit()) {
-            submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
+            advanceLegacyExecutionTime(callbackTime);
+            submitSelf();
           }
-          return;
+        } else if (result.getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+            && needSubmit()) {
+          executor.schedule(
+              () -> persistProgress(targetIndex, callbackTime),
+              retryWaitTimeInMS,
+              TimeUnit.MILLISECONDS);
         }
-
+        return;
+      }
+      long targetLastExecution = occurrenceAt(targetIndex - 1);
+      TSStatus result;
+      try {
+        result =
+            configManager
+                .getConsensusManager()
+                .write(
+                    new UpdateCQLastExecTimePlan(
+                        cqId, targetLastExecution, cqToken, expectedIndex, targetIndex));
+      } catch (ConsensusException e) {
+        result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+        result.setMessage(e.getMessage());
+      }
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        occurrenceIndex = targetIndex;
+        executionTime = occurrenceAt(targetIndex);
         if (needSubmit()) {
-          updateExecutionTime();
           submitSelf();
-        } else {
-          LOGGER.info(
-              ManagerMessages.STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR, cqId);
         }
+      } else if (result.getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+          && needSubmit()) {
+        // Retry exactly the same CAS transition; never execute the query again.
+        executor.schedule(
+            () -> persistProgress(targetIndex, callbackTime),
+            retryWaitTimeInMS,
+            TimeUnit.MILLISECONDS);
+      }
+    }
+
+    @Override
+    public void onComplete(TSStatus response) {
+      if (cancelled.get()) {
+        return;
+      }
+      if (response.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+
+        long callbackTime = System.currentTimeMillis() * FACTOR;
+
+        LOGGER.info(
+            ManagerMessages.ENDEXECUTECQ_TIME_RANGE_IS_CURRENT_TIME_IS,
+            cqId,
+            startTime,
+            endTime,
+            callbackTime);
+        long targetIndex =
+            occurrenceIndex >= 0
+                ? nextOccurrenceIndex(callbackTime)
+                : Math.addExact(expectedIndex, 1);
+        persistProgress(targetIndex, callbackTime);
 
       } else {
         LOGGER.warn(ManagerMessages.EXECUTE_CQ_FAILED_TSSTATUS_IS, cqId, response);

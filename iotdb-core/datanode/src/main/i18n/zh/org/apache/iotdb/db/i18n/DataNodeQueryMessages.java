@@ -4586,4 +4586,6 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
       "无权执行 %s，因为只有超级用户可以修改其自身。";
 
+  public static final String MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_AC724DE3 =
+      "集群所有节点支持 duration encoding version 1 后才能创建 CQ 日历 duration";
 }

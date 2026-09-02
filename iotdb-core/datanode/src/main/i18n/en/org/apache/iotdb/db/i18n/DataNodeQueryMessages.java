@@ -3829,4 +3829,6 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_BECAUSE_ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF_C5902893 =
       "Has no permission to execute %s, because only the superuser can alter him/herself.";
 
+  public static final String MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_AC724DE3 =
+      "CQ calendar duration cannot be created until all cluster nodes support duration encoding version 1";
 }

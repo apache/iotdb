@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -158,5 +159,42 @@ public class CQInfoTest {
 
     Assert.assertEquals(1, showCQResp.getCqList().size());
     Assert.assertEquals("testCq4", showCQResp.getCqList().get(0).getCqId());
+  }
+
+  @Test
+  public void testOccurrenceIndexCasFencesOutOfOrderCallbacks() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "indexedCq",
+            1000,
+            0,
+            1000,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq indexedCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1000));
+    req.setStartOffsetDuration(new TCQDuration(0, 1000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "indexedToken", 1000)).getCode());
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan("indexedCq", 1000, "indexedToken", 1, 2))
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan("indexedCq", 2000, "indexedToken", 1, 2))
+            .getCode());
   }
 }

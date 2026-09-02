@@ -693,5 +693,21 @@ public final class ManagerMessages {
   public static final String
       MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67 =
           "CQ legacy duration fields 与结构化 duration 字段冲突";
+  public static final String MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_49534072 =
+      "CQ 日历 duration 要求集群所有节点支持 duration encoding version 1";
+  public static final String MESSAGE_CQ_DURATION_ENCODING_MARKER_REQUIRED_9035980A =
+      "新建 CQ 请求必须包含 duration encoding marker";
+  public static final String MESSAGE_CQ_DOES_NOT_HAVE_OCCURRENCE_INDEX_METADATA_929A7F0C =
+      "CQ 没有 occurrence-index 元数据";
+  public static final String MESSAGE_CQ_OCCURRENCE_CALLBACK_IS_STALE_36C5FBFC =
+      "CQ occurrence callback 已过期";
+  public static final String MESSAGE_CQ_OCCURRENCE_INDEX_IS_AHEAD_OF_THE_CALLBACK_8A18ECC9 =
+      "CQ occurrence index 超前于 callback";
+  public static final String EXCEPTION_INVALID_CQ_OCCURRENCE_INDEX_TRANSITION_AC6BFC4D =
+      "无效的 CQ occurrence index 转换";
+  public static final String EXCEPTION_UNSUPPORTED_CQ_SNAPSHOT_VERSION_ARG_0F1E0A01 =
+      "不支持的 CQ snapshot 版本：%d";
+  public static final String EXCEPTION_NEGATIVE_CQ_SNAPSHOT_ENTRY_COUNT_ARG_38750035 =
+      "CQ snapshot 条目数量不能为负数：%d";
 
 }
