@@ -142,7 +142,9 @@ public class CQScheduleTask implements Runnable {
             || endDuration.monthDuration != 0;
     this.scheduleCalendarAware = everyDuration.monthDuration != 0;
     this.boundaryTime = req.boundaryTime;
-    this.scheduleZone = ZoneId.of(req.zoneId);
+    // Fixed-duration CQs do not need calendar arithmetic. Keep the zone opaque in that case so
+    // legacy requests containing a non-canonical zone string remain compatible.
+    this.scheduleZone = calendarAware ? ZoneId.of(req.zoneId) : null;
     if (calendarAware) {
       this.retryWaitTimeInMS = calculateRetryWaitTime(everyDuration);
     }
@@ -182,7 +184,9 @@ public class CQScheduleTask implements Runnable {
             || endDuration.monthDuration != 0;
     this.scheduleCalendarAware = everyDuration.monthDuration != 0;
     this.boundaryTime = entry.getBoundaryTime();
-    this.scheduleZone = ZoneId.of(entry.getZoneId());
+    // Fixed-duration CQs do not need calendar arithmetic. Keep the zone opaque in that case so
+    // legacy persisted entries containing a non-canonical zone string remain compatible.
+    this.scheduleZone = calendarAware ? ZoneId.of(entry.getZoneId()) : null;
     if (scheduleCalendarAware) {
       this.retryWaitTimeInMS = calculateRetryWaitTime(everyDuration);
       if (!entry.isBoundaryExplicit()) {
@@ -233,7 +237,9 @@ public class CQScheduleTask implements Runnable {
     this.startDuration = new TimeDuration(0, startTimeOffset);
     this.endDuration = new TimeDuration(0, endTimeOffset);
     this.boundaryTime = 0;
-    this.scheduleZone = ZoneId.of(zoneId);
+    // This constructor is used by the legacy fixed-duration path. Calendar-aware constructors
+    // initialize the zone after determining whether calendar arithmetic is required.
+    this.scheduleZone = null;
   }
 
   public static long getFirstExecutionTime(long boundaryTime, long everyInterval) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.cq;
 
+import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 
 import org.junit.Test;
@@ -40,5 +41,22 @@ public class CQScheduleTaskTest {
     long boundaryTime = 110L;
     long everyInterval = 30L;
     assertEquals(110L, CQScheduleTask.getFirstExecutionTime(boundaryTime, everyInterval, now));
+  }
+
+  @Test
+  public void testFixedDurationCqDoesNotRequireCanonicalZoneId() {
+    new CQScheduleTask(
+        "testCq",
+        1000,
+        0,
+        1000,
+        TimeoutPolicy.BLOCKED,
+        "select s1 into root.backup.d1.s1 from root.sg.d1",
+        "token",
+        "Asia",
+        "root",
+        null,
+        null,
+        1000);
   }
 }
