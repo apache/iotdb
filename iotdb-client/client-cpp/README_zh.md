@@ -72,7 +72,7 @@ Thrift 或 Boost 的头文件/库。
 项目中的 `CMakeLists.txt` 可这样写：
 
 ```cmake
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 project(my_iotdb_app LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -243,7 +243,7 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 | `BOOST_INCLUDEDIR` | `boost.include.dir` |
 | `CMAKE_BUILD_TYPE` | `cmake.build.type`，例如 `-Dcmake.build.type=Debug` |
 
-SSL 默认开启（`WITH_SSL=ON`）。所捆绑的 Apache Thrift 0.23 同时支持 OpenSSL 1.x
+SSL 默认开启（`WITH_SSL=ON`）。所捆绑的 Apache Thrift 0.24 同时支持 OpenSSL 1.x
 与 3.x，因此直接使用系统的 OpenSSL（任意版本）。CMake 通过 `find_package(OpenSSL)`
 解析系统 OpenSSL，找不到时回退到从源码构建 OpenSSL 3.5.0；并会把所用的 OpenSSL
 动态库一并复制到产物 `lib/` 目录。Windows 可用 `choco install openssl` 安装。
