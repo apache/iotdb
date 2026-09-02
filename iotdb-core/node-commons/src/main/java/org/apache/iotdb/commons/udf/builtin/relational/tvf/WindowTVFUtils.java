@@ -42,6 +42,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.i18n.CommonMessages.EXCEPTION_COLUMN_LACK_OF_NAME;
+
 public class WindowTVFUtils {
 
   private static final Set<Type> ALLOWED_CALCULATION_TYPES =
@@ -124,7 +126,11 @@ public class WindowTVFUtils {
       }
 
       Type type = tableArgument.getFieldTypes().get(i);
-      String columnName = tableArgument.getFieldNames().get(i).get();
+      String columnName =
+          tableArgument
+              .getFieldNames()
+              .get(i)
+              .orElseThrow(() -> new SemanticException(EXCEPTION_COLUMN_LACK_OF_NAME));
       if (!ALLOWED_CALCULATION_TYPES.contains(type)) {
         throw new SemanticException(
             String.format(CommonMessages.EXCEPTION_NOT_ALLOWED_COLUMNS, columnName, type));

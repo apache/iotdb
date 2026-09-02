@@ -327,4 +327,5 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_XCORR_REQUIRES_EXACTLY_TWO_CALCULATION_COLUMNS_BUT_FOUND_ARG_2FF8EB0C =
           "XCorr requires exactly two calculation columns, but found %d.";
+  public static final String EXCEPTION_COLUMN_LACK_OF_NAME = "the column in table lack of the name";
 }

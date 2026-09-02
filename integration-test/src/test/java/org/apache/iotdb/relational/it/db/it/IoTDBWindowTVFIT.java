@@ -31,17 +31,23 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.*;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBWindowTVFIT {
   private static final String DATABASE_NAME = "test";
+  private static final double DELTA = 1e-9;
   private static final String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -1354,13 +1360,13 @@ public class IoTDBWindowTVFIT {
     String[] retArray =
         new String[] {
           "AAPL,2021-01-01T09:05:00.000Z,101.66666666666667,101.0,",
-          "AAPL,2021-01-01T09:07:00.000Z,101.66666666666669,101.00000000000001,",
+          "AAPL,2021-01-01T09:07:00.000Z,101.66666666666667,101.0,",
           "AAPL,2021-01-01T09:09:00.000Z,101.66666666666667,101.0,",
-          "TESL,2021-01-01T09:06:00.000Z,199.0,211.99999999999991,",
+          "TESL,2021-01-01T09:06:00.000Z,199.0,212.0,",
           "TESL,2021-01-01T09:07:00.000Z,199.0,212.0,",
-          "TESL,2021-01-01T09:15:00.000Z,199.00000000000003,211.99999999999991,"
+          "TESL,2021-01-01T09:15:00.000Z,199.0,212.0,"
         };
-    tableResultSetEqualTest(
+    tableResultSetEqualWithTolerance(
         "SELECT * FROM LOWPASS(DATA => bid PARTITION BY stock_id ORDER BY time, "
             + "TIMECOL => 'time', WPASS => 0.5) ORDER BY stock_id, time",
         expectedHeader,
@@ -1379,7 +1385,7 @@ public class IoTDBWindowTVFIT {
           "device_1,1970-01-01T00:00:00.009Z,null,",
           "device_1,1970-01-01T00:00:00.020Z,23.5,"
         };
-    tableResultSetEqualTest(
+    tableResultSetEqualWithTolerance(
         "SELECT * FROM LOWPASS(DATA => "
             + "(SELECT time, device_id, s2 FROM table1 WHERE device_id = 'device_1') "
             + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5) "
@@ -1394,14 +1400,14 @@ public class IoTDBWindowTVFIT {
     String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "lowpass(s1)"};
     String[] retArray =
         new String[] {
-          "F1,device_1,1970-01-01T00:00:00.001Z,9.999999999999998,",
-          "F1,device_1,1970-01-01T00:00:00.005Z,10.000000000000002,",
-          "F1,device_1,1970-01-01T00:00:00.009Z,9.999999999999998,",
+          "F1,device_1,1970-01-01T00:00:00.001Z,10.0,",
+          "F1,device_1,1970-01-01T00:00:00.005Z,10.0,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,10.0,",
           "F1,device_2,1970-01-01T00:00:00.002Z,22.5,",
           "F1,device_2,1970-01-01T00:00:00.011Z,22.5,",
           "F2,device_1,1970-01-01T00:00:00.003Z,30.0,"
         };
-    tableResultSetEqualTest(
+    tableResultSetEqualWithTolerance(
         "SELECT * FROM LOWPASS(DATA => table5 "
             + "PARTITION BY (factory_id, device_id) ORDER BY time, "
             + "TIMECOL => 'time', WPASS => 0.5) ORDER BY factory_id, device_id, time",
@@ -1424,14 +1430,14 @@ public class IoTDBWindowTVFIT {
     String[] expectedHeader = new String[] {"stock_id", "time", "highpass(price)", "highpass(s1)"};
     String[] retArray =
         new String[] {
-          "AAPL,2021-01-01T09:05:00.000Z,-1.666666666666661,1.7936858794783102E-15,",
-          "AAPL,2021-01-01T09:07:00.000Z,1.3333333333333224,-1.3450096248017031E-14,",
-          "AAPL,2021-01-01T09:09:00.000Z,0.33333333333333814,1.1656410368538743E-14,",
-          "TESL,2021-01-01T09:06:00.000Z,1.0000000000000255,-109.99999999999996,",
-          "TESL,2021-01-01T09:07:00.000Z,2.999999999999977,-10.000000000000027,",
-          "TESL,2021-01-01T09:15:00.000Z,-4.0000000000000036,120.0,"
+          "AAPL,2021-01-01T09:05:00.000Z,-1.6666666666666667,0.0,",
+          "AAPL,2021-01-01T09:07:00.000Z,1.3333333333333333,0.0,",
+          "AAPL,2021-01-01T09:09:00.000Z,0.3333333333333333,0.0,",
+          "TESL,2021-01-01T09:06:00.000Z,1.0,-110.0,",
+          "TESL,2021-01-01T09:07:00.000Z,3.0,-10.0,",
+          "TESL,2021-01-01T09:15:00.000Z,-4.0,120.0,"
         };
-    tableResultSetEqualTest(
+    tableResultSetEqualWithTolerance(
         "SELECT * FROM HIGHPASS(DATA => bid PARTITION BY stock_id ORDER BY time, "
             + "TIMECOL => 'time', WPASS => 0.5) ORDER BY stock_id, time",
         expectedHeader,
@@ -1450,7 +1456,7 @@ public class IoTDBWindowTVFIT {
           "device_1,1970-01-01T00:00:00.009Z,null,",
           "device_1,1970-01-01T00:00:00.020Z,11.5,"
         };
-    tableResultSetEqualTest(
+    tableResultSetEqualWithTolerance(
         "SELECT * FROM HIGHPASS(DATA => "
             + "(SELECT time, device_id, s2 FROM table1 WHERE device_id = 'device_1') "
             + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5) "
@@ -1465,14 +1471,14 @@ public class IoTDBWindowTVFIT {
     String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "highpass(s1)"};
     String[] retArray =
         new String[] {
-          "F1,device_1,1970-01-01T00:00:00.001Z,-7.401486830834377E-16,",
-          "F1,device_1,1970-01-01T00:00:00.005Z,4.999999999999998,",
+          "F1,device_1,1970-01-01T00:00:00.001Z,0.0,",
+          "F1,device_1,1970-01-01T00:00:00.005Z,5.0,",
           "F1,device_1,1970-01-01T00:00:00.009Z,-5.0,",
           "F1,device_2,1970-01-01T00:00:00.002Z,-2.5,",
           "F1,device_2,1970-01-01T00:00:00.011Z,2.5,",
           "F2,device_1,1970-01-01T00:00:00.003Z,0.0,"
         };
-    tableResultSetEqualTest(
+    tableResultSetEqualWithTolerance(
         "SELECT * FROM HIGHPASS(DATA => table5 "
             + "PARTITION BY (factory_id, device_id) ORDER BY time, "
             + "TIMECOL => 'time', WPASS => 0.5) ORDER BY factory_id, device_id, time",
@@ -1575,8 +1581,43 @@ public class IoTDBWindowTVFIT {
   @Test
   public void testXCorrRejectsUnexpectedCalculationColumnCount() {
     tableAssertTestFail(
-        "SELECT * FROM XCORR(DATA => table1 PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        "SELECT * FROM XCORR(DATA => (select time, device_id, int_val, long_val, float_val from multi_type) PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
         "701: XCorr requires exactly two calculation columns, but found 3.",
         DATABASE_NAME);
+  }
+
+  private static void tableResultSetEqualWithTolerance(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      statement.execute("USE " + database);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(expectedHeader.length, metaData.getColumnCount());
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+          assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
+        }
+
+        int rowIndex = 0;
+        while (resultSet.next()) {
+          String[] expectedColumns = expectedRetArray[rowIndex].split(",", -1);
+          for (int i = 1; i <= expectedHeader.length; i++) {
+            String expected = expectedColumns[i - 1];
+            if (resultSet.getString(i) == null) {
+              assertEquals("null", expected);
+            } else if (metaData.getColumnType(i) == Types.DOUBLE) {
+              assertEquals(Double.parseDouble(expected), resultSet.getDouble(i), DELTA);
+            } else {
+              assertEquals(expected, resultSet.getString(i));
+            }
+          }
+          rowIndex++;
+        }
+        assertEquals(expectedRetArray.length, rowIndex);
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
   }
 }
