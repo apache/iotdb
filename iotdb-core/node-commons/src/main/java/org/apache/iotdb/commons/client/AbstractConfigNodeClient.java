@@ -204,7 +204,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-public abstract class AbstractConfigNodeClient
+public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClient<C>>
     implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractConfigNodeClient.class);
@@ -231,14 +231,14 @@ public abstract class AbstractConfigNodeClient
 
   protected final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  protected final ClientManager<ConfigRegionId, ? super AbstractConfigNodeClient> clientManager;
+  protected final ClientManager<ConfigRegionId, C> clientManager;
 
   protected final ConfigRegionId configRegionId = AbstractConfigNodeInfo.CONFIG_REGION_ID;
 
   protected AbstractConfigNodeClient(
       List<TEndPoint> configNodes,
       ThriftClientProperty property,
-      ClientManager<ConfigRegionId, ? super AbstractConfigNodeClient> clientManager)
+      ClientManager<ConfigRegionId, C> clientManager)
       throws TException {
     this.configNodes = configNodes;
     this.property = property;
@@ -280,7 +280,7 @@ public abstract class AbstractConfigNodeClient
     client = new IConfigNodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
   }
 
-  protected void connectAndSync() throws TException {
+  protected final void connectAndSync() throws TException {
     try {
       tryToConnect(property.getConnectionTimeoutMs());
     } catch (TException e) {
@@ -290,7 +290,7 @@ public abstract class AbstractConfigNodeClient
     }
   }
 
-  protected void connectAndSync(int timeoutMs) throws TException {
+  protected final void connectAndSync(int timeoutMs) throws TException {
     try {
       tryToConnect(timeoutMs);
     } catch (TException e) {
@@ -350,7 +350,7 @@ public abstract class AbstractConfigNodeClient
 
   @Override
   public void close() {
-    clientManager.returnClient(configRegionId, this);
+    clientManager.returnClient(configRegionId, (C) this);
   }
 
   @Override
@@ -368,7 +368,7 @@ public abstract class AbstractConfigNodeClient
     return property.isPrintLogWhenEncounterException();
   }
 
-  protected boolean updateConfigNodeLeader(TSStatus status) {
+  protected final boolean updateConfigNodeLeader(TSStatus status) {
     try {
       if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         if (status.isSetRedirectNode()) {
@@ -419,8 +419,8 @@ public abstract class AbstractConfigNodeClient
    * @param <R> the type of rpc result
    * @throws TException if fails more than RETRY_NUM times, throw TException(MSG_RECONNECTION_FAIL)
    */
-  protected <R> R executeRemoteCallWithRetry(final Operation<R> call, final Predicate<R> check)
-      throws TException {
+  protected final <R> R executeRemoteCallWithRetry(
+      final Operation<R> call, final Predicate<R> check) throws TException {
     int detectedNodeNum = 0;
     for (int i = 0; i < RETRY_NUM; i++) {
       try {

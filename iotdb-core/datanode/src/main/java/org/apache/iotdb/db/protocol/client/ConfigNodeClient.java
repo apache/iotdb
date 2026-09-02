@@ -206,11 +206,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public class ConfigNodeClient extends AbstractConfigNodeClient {
+public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient> {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
+  private static final String NODE_TYPE_NAME = "DataNode";
+
   public static final String MSG_RECONNECTION_FAIL =
-      String.format(ConfigMessages.MSG_RECONNECTION_FAIL, "DataNode");
+      String.format(ConfigMessages.MSG_RECONNECTION_FAIL, NODE_TYPE_NAME);
 
   private static final long REGISTER_LEADER_WARMING_UP_RETRY_TIMEOUT_MS = 60_000L;
 
@@ -222,23 +224,23 @@ public class ConfigNodeClient extends AbstractConfigNodeClient {
   public ConfigNodeClient(
       List<TEndPoint> configNodes,
       ThriftClientProperty property,
-      ClientManager<ConfigRegionId, ? super AbstractConfigNodeClient> clientManager)
+      ClientManager<ConfigRegionId, ConfigNodeClient> clientManager)
       throws TException {
     super(configNodes, property, clientManager);
   }
 
   @Override
-  protected String getNodeTypeName() {
-    return "DataNode";
+  protected final String getNodeTypeName() {
+    return NODE_TYPE_NAME;
   }
 
   @Override
-  protected TEndPoint getAddressAndPort() {
+  protected final TEndPoint getAddressAndPort() {
     return config.getAddressAndPort();
   }
 
   @Override
-  protected AbstractConfigNodeInfo getConfigNodeInfo() {
+  protected final AbstractConfigNodeInfo getConfigNodeInfo() {
     return ConfigNodeInfo.getInstance();
   }
 

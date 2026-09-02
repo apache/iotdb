@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.AbstractConfigNodeInfo;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 
 public class ConfigNodeInfo extends AbstractConfigNodeInfo {
+  private static final String NODE_TYPE_NAME = "datanode";
 
   private ConfigNodeInfo() {
     super(DataNodeSystemPropertiesHandler.getInstance());
@@ -30,7 +31,7 @@ public class ConfigNodeInfo extends AbstractConfigNodeInfo {
 
   @Override
   protected String getNodeTypeName() {
-    return "datanode";
+    return NODE_TYPE_NAME;
   }
 
   private static class ConfigNodeInfoHolder {
