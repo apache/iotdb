@@ -79,7 +79,10 @@ public class PrometheusReporter implements Reporter {
   private final AbstractMetricManager metricManager;
   private volatile ScheduledExecutorService snapshotUpdateExecutor;
   private volatile DisposableServer httpServer;
-  private volatile String metricsSnapshot = "";
+
+  /** A null snapshot means that no complete scrape has been published yet. */
+  private volatile String metricsSnapshot;
+
   private volatile ScheduledFuture<?> snapshotUpdateFuture;
 
   private static final String REALM = "metrics";
@@ -107,6 +110,8 @@ public class PrometheusReporter implements Reporter {
       LOGGER.warn(MetricsMessages.PROMETHEUS_REPORTER_ALREADY_START);
       return false;
     }
+    // A reporter can be started again after its metric manager has been reset.
+    metricsSnapshot = null;
     try {
       HttpServer serverTransport =
           HttpServer.create()
@@ -124,7 +129,7 @@ public class PrometheusReporter implements Reporter {
                             }
                             String metrics =
                                 METRIC_CONFIG.isPrometheusReporterAsyncUpdate()
-                                    ? metricsSnapshot
+                                    ? getMetricsSnapshot()
                                     : scrape();
                             return res.header(HttpHeaderNames.CONTENT_TYPE, "text/plain")
                                 .sendString(Mono.just(metrics));
@@ -180,20 +185,41 @@ public class PrometheusReporter implements Reporter {
                 return thread;
               });
     }
+    // Delay the first background scrape until metric sets have been bound by the metric service.
     snapshotUpdateFuture =
         snapshotUpdateExecutor.scheduleAtFixedRate(
-            this::updateSnapshot, 0, PROMETHEUS_DEFAULT_SCRAPE_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            this::updateSnapshot,
+            PROMETHEUS_DEFAULT_SCRAPE_INTERVAL_SECONDS,
+            PROMETHEUS_DEFAULT_SCRAPE_INTERVAL_SECONDS,
+            TimeUnit.SECONDS);
   }
 
   private void updateSnapshot() {
     try {
-      metricsSnapshot = scrape();
+      String snapshot = scrape();
+      // Do not publish an empty scrape taken before metric sets are bound. The request path will
+      // synchronously scrape until the first complete snapshot is available. Empty snapshots are
+      // published after initialization so removed metrics are not kept in the cache indefinitely.
+      if (!snapshot.isEmpty() || metricsSnapshot != null) {
+        metricsSnapshot = snapshot;
+      }
     } catch (Throwable t) {
       LOGGER.error(
           MetricsMessages
               .LOG_PROMETHEUSREPORTER_FAILED_TO_UPDATE_METRICS_SNAPSHOT_ASYNCHRONOUSLY_F19FE4E3,
           t);
     }
+  }
+
+  private String getMetricsSnapshot() {
+    String snapshot = metricsSnapshot;
+    if (snapshot == null) {
+      snapshot = scrape();
+      if (!snapshot.isEmpty()) {
+        metricsSnapshot = snapshot;
+      }
+    }
+    return snapshot;
   }
 
   private void stopSnapshotUpdater() {
