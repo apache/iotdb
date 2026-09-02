@@ -70,6 +70,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 public class PrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PrometheusReporter.class);
@@ -77,6 +78,7 @@ public class PrometheusReporter implements Reporter {
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final long PROMETHEUS_DEFAULT_SCRAPE_INTERVAL_SECONDS = 15;
   private final AbstractMetricManager metricManager;
+  private final Supplier<ScheduledExecutorService> snapshotUpdateExecutorSupplier;
   private volatile ScheduledExecutorService snapshotUpdateExecutor;
   private volatile DisposableServer httpServer;
 
@@ -91,16 +93,30 @@ public class PrometheusReporter implements Reporter {
 
   /**
    * Creates a reporter with a self-managed scheduler for compatibility with standalone users.
-   * Server-side code should use the constructor accepting the IoTDB thread pool.
+   * Server-side code should use the constructor accepting a scheduler factory.
    */
   public PrometheusReporter(AbstractMetricManager metricManager) {
-    this(metricManager, null);
+    this(metricManager, PrometheusReporter::newStandaloneSnapshotUpdateExecutor);
   }
 
+  /**
+   * Creates a reporter with a scheduler factory. The factory is invoked on every start to obtain a
+   * fresh executor for the reporter lifecycle.
+   */
   public PrometheusReporter(
-      AbstractMetricManager metricManager, ScheduledExecutorService snapshotUpdateExecutor) {
+      AbstractMetricManager metricManager,
+      Supplier<ScheduledExecutorService> snapshotUpdateExecutorSupplier) {
     this.metricManager = metricManager;
-    this.snapshotUpdateExecutor = snapshotUpdateExecutor;
+    this.snapshotUpdateExecutorSupplier = Objects.requireNonNull(snapshotUpdateExecutorSupplier);
+  }
+
+  private static ScheduledExecutorService newStandaloneSnapshotUpdateExecutor() {
+    return Executors.newSingleThreadScheduledExecutor(
+        runnable -> {
+          Thread thread = new Thread(runnable, "prometheus-reporter-snapshot-updater");
+          thread.setDaemon(true);
+          return thread;
+        });
   }
 
   @Override
@@ -176,14 +192,10 @@ public class PrometheusReporter implements Reporter {
   @SuppressWarnings("unsafeThreadSchedule")
   private void startSnapshotUpdater() {
     // Keep metric collection off Reactor HTTP threads and avoid overlapping scrapes.
-    if (snapshotUpdateExecutor == null) {
-      snapshotUpdateExecutor =
-          Executors.newSingleThreadScheduledExecutor(
-              runnable -> {
-                Thread thread = new Thread(runnable, "prometheus-reporter-snapshot-updater");
-                thread.setDaemon(true);
-                return thread;
-              });
+    if (snapshotUpdateExecutor == null || snapshotUpdateExecutor.isShutdown()) {
+      // Create a fresh executor for every start so a stopped reporter can be started again with
+      // the same managed thread-pool factory.
+      snapshotUpdateExecutor = Objects.requireNonNull(snapshotUpdateExecutorSupplier.get());
     }
     // Delay the first background scrape until metric sets have been bound by the metric service.
     snapshotUpdateFuture =
@@ -227,9 +239,10 @@ public class PrometheusReporter implements Reporter {
       snapshotUpdateFuture.cancel(false);
       snapshotUpdateFuture = null;
     }
-    if (snapshotUpdateExecutor != null) {
-      snapshotUpdateExecutor.shutdownNow();
-      snapshotUpdateExecutor = null;
+    ScheduledExecutorService executor = snapshotUpdateExecutor;
+    snapshotUpdateExecutor = null;
+    if (executor != null) {
+      executor.shutdownNow();
     }
   }
 

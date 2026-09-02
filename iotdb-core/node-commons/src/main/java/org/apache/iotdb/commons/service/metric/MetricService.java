@@ -77,11 +77,14 @@ public class MetricService extends AbstractMetricService implements MetricServic
           break;
         case PROMETHEUS:
           if (METRIC_CONFIG.isPrometheusReporterAsyncUpdate()) {
+            // Defer pool creation until start so duplicate reporters rejected below do not
+            // register an unused pool.
             reporter =
                 new PrometheusReporter(
                     metricManager,
-                    IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-                        ThreadName.PROMETHEUS_REPORTER_SNAPSHOT_UPDATER.getName()));
+                    () ->
+                        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                            ThreadName.PROMETHEUS_REPORTER_SNAPSHOT_UPDATER.getName()));
           } else {
             reporter = new PrometheusReporter(metricManager);
           }
