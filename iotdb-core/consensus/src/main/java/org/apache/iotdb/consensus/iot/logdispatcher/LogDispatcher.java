@@ -651,6 +651,7 @@ public class LogDispatcher {
           currentIndex,
           maxIndex);
       boolean hasCorruptedData = false;
+      final boolean consensusGroupContainsUserData = impl.containsUserData();
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
@@ -675,7 +676,9 @@ public class LogDispatcher {
           hasCorruptedData = true;
         }
         targetIndex = data.getSearchIndex() + 1;
-        data.setContainsUserData(impl.containsUserData(data.getRequests()));
+        // The WAL reader derives this bit directly from the entry type. Apply the group-level
+        // exclusion here without deserializing the request solely for audit classification.
+        data.setContainsUserData(consensusGroupContainsUserData && data.containsUserData());
         data.buildSerializedRequests();
         // construct request from wal
         TLogEntry logEntry =

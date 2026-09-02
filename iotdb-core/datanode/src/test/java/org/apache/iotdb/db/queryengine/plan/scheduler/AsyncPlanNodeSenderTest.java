@@ -47,10 +47,10 @@ public class AsyncPlanNodeSenderTest {
 
       final PlanNode queryPlan = mock(PlanNode.class);
       when(queryPlan.getChildren()).thenReturn(Collections.emptyList());
-      assertFalse(AsyncPlanNodeSender.containsInsertNode(queryPlan));
+      assertFalse(AsyncPlanNodeSender.containsUserData(queryPlan));
 
       final InsertNode insertNode = mock(InsertNode.class);
-      assertTrue(AsyncPlanNodeSender.containsInsertNode(insertNode));
+      assertTrue(AsyncPlanNodeSender.containsUserData(insertNode));
       assertTrue(AsyncPlanNodeSender.containsUserData(insertNode, "root"));
       assertFalse(
           AsyncPlanNodeSender.containsUserData(
@@ -58,7 +58,7 @@ public class AsyncPlanNodeSenderTest {
 
       final PlanNode wrapper = mock(PlanNode.class);
       when(wrapper.getChildren()).thenReturn(Collections.singletonList(insertNode));
-      assertTrue(AsyncPlanNodeSender.containsInsertNode(wrapper));
+      assertTrue(AsyncPlanNodeSender.containsUserData(wrapper));
     } finally {
       commonConfig.setEnableAuditLog(auditLogEnabled);
     }

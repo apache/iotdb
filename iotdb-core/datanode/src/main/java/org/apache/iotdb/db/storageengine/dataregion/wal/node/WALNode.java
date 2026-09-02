@@ -766,6 +766,7 @@ public class WALNode implements IWALNode {
       AtomicLong currentEntryLocalSeq = new AtomicLong(-1);
       AtomicLong currentEntryPhysicalTime = new AtomicLong(0);
       AtomicLong currentEntryNodeId = new AtomicLong(-1);
+      AtomicBoolean currentEntryContainsUserData = new AtomicBoolean(false);
 
       long memorySize = 0;
 
@@ -779,10 +780,12 @@ public class WALNode implements IWALNode {
                   (localSeq >= 0)
                       ? new IndexedConsensusRequest(nextSearchIndex, localSeq, tmpNodes.get())
                       : new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get());
-              req.setPhysicalTime(currentEntryPhysicalTime.get())
+              req.setContainsUserData(currentEntryContainsUserData.get())
+                  .setPhysicalTime(currentEntryPhysicalTime.get())
                   .setNodeId((int) currentEntryNodeId.get());
               insertNodes.add(req);
               tmpNodes.set(new ArrayList<>());
+              currentEntryContainsUserData.set(false);
               nextSearchIndex++;
               if (notFirstFile.get()) {
                 hasCollectedSufficientData.set(true);
@@ -819,6 +822,8 @@ public class WALNode implements IWALNode {
                 currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
                 currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
+                currentEntryContainsUserData.set(
+                    currentEntryContainsUserData.get() || containsUserData(type));
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -854,6 +859,8 @@ public class WALNode implements IWALNode {
                 currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
                 currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
+                currentEntryContainsUserData.set(
+                    currentEntryContainsUserData.get() || containsUserData(type));
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -907,6 +914,13 @@ public class WALNode implements IWALNode {
         return true;
       }
       return false;
+    }
+
+    private boolean containsUserData(WALEntryType type) {
+      return type == WALEntryType.INSERT_ROW_NODE
+          || type == WALEntryType.INSERT_TABLET_NODE
+          || type == WALEntryType.INSERT_ROWS_NODE
+          || type == WALEntryType.OBJECT_FILE_NODE;
     }
 
     @Override

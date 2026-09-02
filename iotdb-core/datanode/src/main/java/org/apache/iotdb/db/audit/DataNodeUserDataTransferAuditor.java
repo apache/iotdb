@@ -27,15 +27,12 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.schema.table.Audit;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
 import javax.annotation.Nullable;
 
@@ -105,32 +102,22 @@ public final class DataNodeUserDataTransferAuditor {
       return false;
     }
     try {
-      final PlanNode planNode;
-      if (request instanceof PlanNode) {
-        planNode = (PlanNode) request;
-      } else if (request instanceof IoTConsensusRequest) {
-        planNode = WALEntry.deserializeForConsensus(request.serializeToByteBuffer().duplicate());
-      } else if (request instanceof ByteBufferConsensusRequest) {
-        planNode = PlanNodeType.deserialize(request.serializeToByteBuffer().duplicate());
-      } else {
-        return false;
-      }
-      return containsInsertNode(planNode);
+      return request instanceof PlanNode && containsUserData((PlanNode) request);
     } catch (RuntimeException ignored) {
       // Classification is advisory and must not affect consensus replication.
       return false;
     }
   }
 
-  public static boolean containsInsertNode(PlanNode node) {
-    if (node instanceof InsertNode) {
+  public static boolean containsUserData(PlanNode node) {
+    if (node instanceof InsertNode || node instanceof ObjectNode) {
       return true;
     }
     if (node.getChildren() == null) {
       return false;
     }
     for (PlanNode child : node.getChildren()) {
-      if (containsInsertNode(child)) {
+      if (containsUserData(child)) {
         return true;
       }
     }

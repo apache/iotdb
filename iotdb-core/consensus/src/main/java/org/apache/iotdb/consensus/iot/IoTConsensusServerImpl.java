@@ -1045,8 +1045,16 @@ public class IoTConsensusServerImpl {
     req.setRoutingEpoch(routingEpoch);
     req.setPhysicalTime(physicalTime);
     req.setNodeId(nodeId);
-    req.setContainsUserData(containsUserData(requests));
     return req;
+  }
+
+  public boolean containsUserData() {
+    try {
+      return userDataTransferAuditClassifier.containsUserData(thisNode.getGroupId());
+    } catch (RuntimeException ignored) {
+      // Classification is advisory and must not affect consensus replication.
+      return false;
+    }
   }
 
   public boolean containsUserData(List<IConsensusRequest> requests) {

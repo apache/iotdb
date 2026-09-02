@@ -258,10 +258,10 @@ public class AsyncPlanNodeSender {
   static boolean containsUserData(PlanNode node, String username) {
     return DataNodeUserDataTransferAuditor.isEnabled()
         && !User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME.equals(username)
-        && DataNodeUserDataTransferAuditor.containsInsertNode(node);
+        && DataNodeUserDataTransferAuditor.containsUserData(node);
   }
 
-  static boolean containsInsertNode(PlanNode node) {
-    return DataNodeUserDataTransferAuditor.containsInsertNode(node);
+  static boolean containsUserData(PlanNode node) {
+    return DataNodeUserDataTransferAuditor.containsUserData(node);
   }
 }

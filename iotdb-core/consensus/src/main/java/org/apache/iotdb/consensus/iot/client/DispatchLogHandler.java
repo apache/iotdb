@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 
 public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRes> {
 
-  private final Logger logger = LoggerFactory.getLogger(DispatchLogHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DispatchLogHandler.class);
 
   private final LogDispatcherThread thread;
   private final Batch batch;
@@ -67,14 +67,16 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
-    final TSStatus failedStatus =
+    // One batch RPC is one physical transfer attempt, so keep one representative error value in
+    // the minimum audit record instead of concatenating an unbounded number of response details.
+    final TSStatus firstFailedStatus =
         response.getStatuses().stream()
             .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
             .findFirst()
             .orElse(null);
     recordTransferAttempt(
-        failedStatus == null,
-        failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
+        firstFailedStatus == null,
+        firstFailedStatus == null ? null : String.valueOf(firstFailedStatus.getCode()),
         null);
     if (response.getStatuses().stream()
         .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode()))) {
@@ -86,14 +88,14 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
       String messages = String.join(", ", retryStatusMessages);
       if (++retryCount == 1) {
-        logger.warn(
+        LOGGER.warn(
             IoTConsensusMessages.CANNOT_SEND_TO_PEER,
             batch,
             thread.getPeer(),
             retryCount,
             messages);
       } else {
-        logger.debug(
+        LOGGER.debug(
             IoTConsensusMessages.CANNOT_SEND_TO_PEER,
             batch,
             thread.getPeer(),
@@ -102,13 +104,13 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
       }
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
-      if (logger.isDebugEnabled()) {
+      if (LOGGER.isDebugEnabled()) {
         boolean containsError =
             response.getStatuses().stream()
                 .anyMatch(
                     status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode());
         if (containsError) {
-          logger.debug(
+          LOGGER.debug(
               IoTConsensusMessages.SEND_COMPLETE_BUT_CONTAINS_ERROR,
               batch,
               thread.getPeer(),
@@ -131,14 +133,14 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     Throwable rootCause = ExceptionUtils.getRootCause(exception);
     final Throwable actualCause = rootCause == null ? exception : rootCause;
     if (retryCount == 1) {
-      logger.warn(
+      LOGGER.warn(
           IoTConsensusMessages.CANNOT_SEND_TO_PEER_ON_ERROR,
           batch,
           thread.getPeer(),
           retryCount,
           actualCause.toString());
     } else {
-      logger.debug(
+      LOGGER.debug(
           IoTConsensusMessages.CANNOT_SEND_TO_PEER_ON_ERROR,
           batch,
           thread.getPeer(),
@@ -148,7 +150,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     // skip TApplicationException caused by follower
     if (actualCause instanceof TApplicationException) {
       completeBatch(batch);
-      logger.warn(IoTConsensusMessages.SKIP_RETRY_TAPPLICATION_EXCEPTION, batch);
+      LOGGER.warn(IoTConsensusMessages.SKIP_RETRY_TAPPLICATION_EXCEPTION, batch);
       logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
       return;
     }
@@ -167,7 +169,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
         .schedule(
             () -> {
               if (thread.isStopped()) {
-                logger.debug(
+                LOGGER.debug(
                     IoTConsensusMessages.LOG_DISPATCHER_STOPPED_NO_RETRY,
                     thread.getPeer(),
                     batch,
@@ -199,8 +201,8 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
           success,
           errorCode,
           error);
-    } catch (RuntimeException ignored) {
-      // Audit recording must not affect consensus replication.
+    } catch (RuntimeException auditFailure) {
+      warnAuditFailure(auditFailure);
     }
   }
 
@@ -225,8 +227,15 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
               protectionMethod,
               success,
               errorCode != null ? errorCode : error == null ? null : error.getClass().getName()));
-    } catch (RuntimeException ignored) {
-      // Audit recording must not affect consensus replication.
+    } catch (RuntimeException auditFailure) {
+      warnAuditFailure(auditFailure);
     }
+  }
+
+  private static void warnAuditFailure(RuntimeException auditFailure) {
+    LOGGER.warn(
+        IoTConsensusMessages
+            .LOG_FAILED_TO_RECORD_A_USER_DATA_TRANSFER_AUDIT_EVENT_CONSENSUS_REPLICATION_WILL_CONTINUE_F215E222,
+        auditFailure);
   }
 }

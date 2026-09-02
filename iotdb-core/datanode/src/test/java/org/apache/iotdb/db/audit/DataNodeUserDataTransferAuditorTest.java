@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.audit;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 
 import org.junit.Test;
 
@@ -29,6 +31,8 @@ import java.util.Collections;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class DataNodeUserDataTransferAuditorTest {
@@ -55,5 +59,18 @@ public class DataNodeUserDataTransferAuditorTest {
     when(planNode.getChildren()).thenReturn(Collections.emptyList());
 
     assertFalse(DataNodeUserDataTransferAuditor.containsUserData("root.sg", planNode));
+  }
+
+  @Test
+  public void testClassificationDoesNotDeserializeConsensusRequest() {
+    final IConsensusRequest request = mock(IConsensusRequest.class);
+
+    assertFalse(DataNodeUserDataTransferAuditor.containsUserData("root.sg", request));
+    verify(request, never()).serializeToByteBuffer();
+  }
+
+  @Test
+  public void testObjectFileNodeContainsUserData() {
+    assertTrue(DataNodeUserDataTransferAuditor.containsUserData(mock(ObjectNode.class)));
   }
 }
