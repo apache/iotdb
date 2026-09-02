@@ -31,7 +31,7 @@ the [`NOTICE`](NOTICE) file in this directory; non-Apache license texts are unde
 
 | Component | Version | How | License |
 | --- | --- | --- | --- |
-| Apache Thrift | 0.23.0 | statically linked | Apache License 2.0 |
+| Apache Thrift | 0.24.0 | statically linked | Apache License 2.0 |
 | Boost | 1.60.0 on Linux/Windows, 1.84.0 on macOS by default | statically linked (header-only) | Boost Software License 1.0 |
 | OpenSSL | 3.x: system OpenSSL 3.x when present, else 3.5.0 built from source (`WITH_SSL=ON`, default) | bundled shared libs in `lib/` | Apache License 2.0 |
 
