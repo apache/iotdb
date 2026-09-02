@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -345,6 +346,7 @@ public class SnapshotTaker {
             if (exc instanceof NoSuchFileException || exc instanceof FileNotFoundException) {
               return FileVisitResult.CONTINUE;
             }
+            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(exc);
             throw exc;
           }
 
@@ -355,6 +357,7 @@ public class SnapshotTaker {
                 || exc instanceof FileNotFoundException) {
               return FileVisitResult.CONTINUE;
             }
+            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(exc);
             throw exc;
           }
         });

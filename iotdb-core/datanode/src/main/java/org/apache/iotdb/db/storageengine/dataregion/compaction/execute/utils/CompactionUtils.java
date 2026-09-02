@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -765,6 +766,7 @@ public class CompactionUtils {
       } catch (FileNotFoundException | NoSuchFileException ignored) {
         // may be deleted by other thread
       } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         context.recordError(e);
         objectDeletionLogger.warn(
             StorageEngineMessages.FAILED_TO_READ_FILE_ATTRIBUTES, currentFile, e);
@@ -784,6 +786,7 @@ public class CompactionUtils {
             return;
           }
         } catch (IOException e) {
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           context.recordError(e);
           objectDeletionLogger.error(
               StorageEngineMessages.FAILED_TO_REMOVE_OBJECT_FILE, currentFile.getPath(), e);
@@ -878,6 +881,7 @@ public class CompactionUtils {
     } catch (FileNotFoundException | NoSuchFileException ignored) {
       // may be deleted by other thread
     } catch (Exception e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       context.recordError(e);
       objectDeletionLogger.warn(
           StorageEngineMessages.FAILED_TO_DELETE_EXPIRED_OBJECT_FILE, file, e);

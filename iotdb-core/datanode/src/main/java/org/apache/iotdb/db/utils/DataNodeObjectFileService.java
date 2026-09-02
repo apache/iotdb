@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -103,6 +104,7 @@ public class DataNodeObjectFileService implements IObjectFileService {
         deleteObjectFile(tmpFile);
         deleteObjectFile(bakFile);
       } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         objectDeletionLogger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
       }
     }
@@ -116,6 +118,7 @@ public class DataNodeObjectFileService implements IObjectFileService {
     try (FileChannel fileChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
       IOUtils.readFully(fileChannel, buffer, offset);
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new IoTDBRuntimeException(e, TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
     }
     buffer.flip();
@@ -190,6 +193,7 @@ public class DataNodeObjectFileService implements IObjectFileService {
         Files.deleteIfExists(dir.toPath());
         deleteEmptyParentDir(dir);
       } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         objectDeletionLogger.error(
             "Failed to remove empty object dir {}", dir.getAbsolutePath(), e);
       }

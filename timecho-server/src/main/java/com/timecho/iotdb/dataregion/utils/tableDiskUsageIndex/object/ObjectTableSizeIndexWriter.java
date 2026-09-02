@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.AbstractTableSizeIndexWriter;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -109,6 +110,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
       try {
         previousFile = recoverByScanAllObjectFiles();
       } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         failedToRecover(e);
         return;
       }
@@ -117,6 +119,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
       this.writer =
           new ObjectFileTableSizeIndexFileWriter(database, regionId, previousFile, needSelfCheck);
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       failedToRecover(e);
     }
   }
@@ -280,6 +283,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
           targetFileWriter.getFile().toPath(),
           generateFile(currentFileVersion + 1, false).toPath());
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       logger.error(
           TimechoServerMessages.FAILED_TO_EXECUTE_COMPACTION_FOR_OBJECT_TABLE_SIZE_INDEX_FILE, e);
     } finally {
@@ -310,6 +314,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
         writer.write(pendingObjectFileCountDelta);
       }
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       logger.error(e.getMessage(), e);
     }
     pendingObjectFileCountDelta = 0;
@@ -322,6 +327,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
     try {
       writer.flush();
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       logger.warn(TimechoServerMessages.FAILED_TO_SYNC_OBJECT_TABLE_SIZE_INDEX_FILE, getFile(), e);
     }
   }
@@ -331,6 +337,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
     try {
       writer.sync();
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       logger.warn(TimechoServerMessages.FAILED_TO_SYNC_OBJECT_TABLE_SIZE_INDEX_FILE, getFile(), e);
     }
   }

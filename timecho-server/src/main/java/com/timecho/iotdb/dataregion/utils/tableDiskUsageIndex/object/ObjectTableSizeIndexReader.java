@@ -20,6 +20,7 @@
 package com.timecho.iotdb.dataregion.utils.tableDiskUsageIndex.object;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.object.IObjectTableSizeIndexReader;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile.TsFileTableSizeIndexReader;
@@ -74,15 +75,20 @@ public class ObjectTableSizeIndexReader implements IObjectTableSizeIndexReader {
     if (readableLength <= 0) {
       return true;
     }
-    ensureOpen();
-    do {
-      readOneEntry(dataRegionContext);
-      if (inputStream.position() >= readableLength) {
-        close();
-        return true;
-      }
-    } while (System.currentTimeMillis() - startTime < maxRunTime);
-    return false;
+    try {
+      ensureOpen();
+      do {
+        readOneEntry(dataRegionContext);
+        if (inputStream.position() >= readableLength) {
+          close();
+          return true;
+        }
+      } while (System.currentTimeMillis() - startTime < maxRunTime);
+      return false;
+    } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      throw e;
+    }
   }
 
   private void ensureOpen() throws IOException {

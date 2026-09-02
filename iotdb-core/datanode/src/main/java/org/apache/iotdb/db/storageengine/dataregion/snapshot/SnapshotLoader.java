@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
@@ -719,8 +720,15 @@ public class SnapshotLoader {
     List<Path> currentBatch = new ArrayList<>();
     long currentBatchBytes = 0;
     int objectFileCount = 0;
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(sourceDir)) {
-      for (Path objectFilePath : stream) {
+    final DirectoryStream<Path> stream;
+    try {
+      stream = Files.newDirectoryStream(sourceDir);
+    } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      throw e;
+    }
+    try (DirectoryStream<Path> objectFileStream = stream) {
+      for (Path objectFilePath : objectFileStream) {
         File objectFile = objectFilePath.toFile();
         if (!objectFile.isFile() || !ObjectTypeUtils.isObjectCandidate(objectFile.getName())) {
           continue;
@@ -812,6 +820,7 @@ public class SnapshotLoader {
         createLinkOrCopy(sourceFile, targetFile);
         createdFiles.add(targetFile);
       } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         LOGGER.warn(
             FAILED_PROCESS_FILE_LOG, sourceFile.getFileName(), objectDir, e.getMessage(), e);
         rollbackCreatedObjectFiles(createdFiles);

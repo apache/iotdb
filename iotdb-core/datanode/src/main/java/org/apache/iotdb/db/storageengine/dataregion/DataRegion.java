@@ -3324,10 +3324,12 @@ public class DataRegion implements IDataRegionForQuery {
                                       -1);
                             }
                           } catch (IOException e) {
+                            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
                             logger.error("Failed to delete Object File: {}", path, e);
                           }
                         });
               } catch (IOException e) {
+                DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
                 logger.error(StorageEngineMessages.FAILED_TO_CHECK_OBJECT_FILES, e.getMessage());
               }
               org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(objectTableDir, true);
@@ -3573,6 +3575,9 @@ public class DataRegion implements IDataRegionForQuery {
                 }
               }
             });
+      } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+        throw e;
       }
     }
   }
@@ -4407,6 +4412,9 @@ public class DataRegion implements IDataRegionForQuery {
       }
       getWALNode()
           .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
+    } catch (Exception e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      throw e;
     } finally {
       writeUnlock();
     }
@@ -4804,7 +4812,11 @@ public class DataRegion implements IDataRegionForQuery {
                           "Failed to install staged object file: " + stagedFilePath, e);
                     }
                   });
+        } catch (IOException e) {
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+          throw e;
         } catch (RuntimeException e) {
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           if (e.getCause() instanceof IOException) {
             throw (IOException) e.getCause();
           }

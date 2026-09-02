@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
@@ -454,17 +455,22 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
 
   private ByteBuffer readObjectContent(
       final String relativePath, final long offset, final int readSize) throws IOException {
-    if (!relativePath.equals(openedObjectRelativePath)) {
-      closeOpenedObjectFileChannel();
-      openedObjectFileChannel =
-          FileChannel.open(new File(searchRoot, relativePath).toPath(), StandardOpenOption.READ);
-      openedObjectRelativePath = relativePath;
-    }
+    try {
+      if (!relativePath.equals(openedObjectRelativePath)) {
+        closeOpenedObjectFileChannel();
+        openedObjectFileChannel =
+            FileChannel.open(new File(searchRoot, relativePath).toPath(), StandardOpenOption.READ);
+        openedObjectRelativePath = relativePath;
+      }
 
-    final ByteBuffer buffer = ByteBuffer.allocate(readSize);
-    IOUtils.readFully(openedObjectFileChannel, buffer, offset);
-    buffer.flip();
-    return buffer;
+      final ByteBuffer buffer = ByteBuffer.allocate(readSize);
+      IOUtils.readFully(openedObjectFileChannel, buffer, offset);
+      buffer.flip();
+      return buffer;
+    } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      throw e;
+    }
   }
 
   private void closeOpenedObjectFileChannel() {

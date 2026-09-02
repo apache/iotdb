@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.load.ObjectFileCorruptedException;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil.ModsInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -339,21 +340,26 @@ public class LoadObjectFileUtil {
     }
 
     if (!targetFile.exists()) {
-      final FileStore sourceStore = Files.getFileStore(sourceFile.toPath());
-      final FileStore targetStore = Files.getFileStore(targetDir.toPath());
-      final boolean isSameLogicalDisk = sourceStore.equals(targetStore);
-      if (isSameLogicalDisk) {
-        try {
-          FileUtils.createHardLink(sourceFile, targetFile);
-        } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to create hard link for object file, fallback to copy: {}",
-              sourceFile.getAbsolutePath(),
-              e);
+      try {
+        final FileStore sourceStore = Files.getFileStore(sourceFile.toPath());
+        final FileStore targetStore = Files.getFileStore(targetDir.toPath());
+        final boolean isSameLogicalDisk = sourceStore.equals(targetStore);
+        if (isSameLogicalDisk) {
+          try {
+            FileUtils.createHardLink(sourceFile, targetFile);
+          } catch (final Exception e) {
+            LOGGER.warn(
+                "Failed to create hard link for object file, fallback to copy: {}",
+                sourceFile.getAbsolutePath(),
+                e);
+            Files.copy(sourceFile.toPath(), targetFile.toPath());
+          }
+        } else {
           Files.copy(sourceFile.toPath(), targetFile.toPath());
         }
-      } else {
-        Files.copy(sourceFile.toPath(), targetFile.toPath());
+      } catch (IOException e) {
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+        throw e;
       }
     }
   }

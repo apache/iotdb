@@ -49,14 +49,19 @@ public class ObjectWriter implements AutoCloseable {
     try {
       FileUtils.forceMkdir(filePath.getParentFile());
     } catch (final IOException e) {
-      throw new FileNotFoundException(
-          DataNodeMiscMessages.ERROR_OCCURRED_DURING_CREATING_DIR + filePath);
+      FileNotFoundException exception =
+          new FileNotFoundException(
+              DataNodeMiscMessages.ERROR_OCCURRED_DURING_CREATING_DIR + filePath);
+      exception.initCause(e);
+      throw exception;
     }
     if (!Files.exists(filePath.toPath())) {
       try {
         Files.createFile(filePath.toPath());
       } catch (IOException e) {
-        throw new FileNotFoundException(e.getMessage());
+        FileNotFoundException exception = new FileNotFoundException(e.getMessage());
+        exception.initCause(e);
+        throw exception;
       }
     }
     file = filePath;
