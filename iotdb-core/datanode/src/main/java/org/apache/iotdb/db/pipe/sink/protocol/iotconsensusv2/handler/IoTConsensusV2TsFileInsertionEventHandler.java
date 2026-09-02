@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -90,7 +89,6 @@ public class IoTConsensusV2TsFileInsertionEventHandler
   private long startTransferPieceTime;
   private boolean currentAttemptContainsUserData;
   private boolean transferAuditRecorded;
-  private String transferAuditContext;
 
   public IoTConsensusV2TsFileInsertionEventHandler(
       final PipeTsFileInsertionEvent event,
@@ -198,7 +196,6 @@ public class IoTConsensusV2TsFileInsertionEventHandler
             : Arrays.copyOfRange(readBuffer, 0, readLength);
     currentAttemptContainsUserData = true;
     transferAuditRecorded = false;
-    transferAuditContext = currentFile.getName() + "/" + position;
     client.iotConsensusV2Transfer(
         transferMod
             ? IoTConsensusV2TsFilePieceWithModReq.toTIoTConsensusV2TransferReq(
@@ -288,11 +285,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
           transferStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
               || transferStatus.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
       connector.recordUserDataTransferAudit(
-          UserDataTransferType.IOT_CONSENSUS_V2_TSFILE,
-          transferAuditContext,
-          success,
-          success ? null : String.valueOf(transferStatus.getCode()),
-          null);
+          success, success ? null : String.valueOf(transferStatus.getCode()), null);
       transferAuditRecorded = true;
 
       // This case only happens when the connection is broken, and the connector is reconnected
@@ -329,12 +322,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
   @Override
   public void onError(final Exception exception) {
     if (currentAttemptContainsUserData && !transferAuditRecorded) {
-      connector.recordUserDataTransferAudit(
-          UserDataTransferType.IOT_CONSENSUS_V2_TSFILE,
-          transferAuditContext,
-          false,
-          null,
-          exception);
+      connector.recordUserDataTransferAudit(false, null, exception);
       transferAuditRecorded = true;
     }
     PipeLogger.log(

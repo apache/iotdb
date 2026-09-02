@@ -161,26 +161,19 @@ public abstract class AbstractAuditLogger {
               User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME,
               initiatorIdentifier,
               AuditEventType.USER_DATA_TRANSFER,
-              event.getTransferType().getOperation(),
-              event.getTransferType().getPrivilegeType(),
-              event.isSuccess(),
               null,
-              null),
+              event.isSuccess()),
           () ->
               String.format(
                   CommonMessages
-                      .LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_TYPE_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_PROTECTION_PROTOCOL_ARG_CONTEXT_ARG_ATTEMPT_ARG_ERROR_CODE_ARG_ERROR_TYPE_ARG_941238A8,
+                      .LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF,
                   event.getTimestamp(),
-                  event.getTransferType(),
                   initiatorIdentifier,
                   sourceIdentifier,
                   targetIdentifier,
                   event.getProtectionMethod(),
-                  event.getProtectionProtocol(),
-                  event.getContext(),
-                  event.getAttempt(),
-                  event.getErrorCode(),
-                  event.getErrorType()));
+                  event.isSuccess(),
+                  event.getError()));
     } catch (RuntimeException ignored) {
       // Audit recording must not affect the user-data transfer being audited.
     } finally {

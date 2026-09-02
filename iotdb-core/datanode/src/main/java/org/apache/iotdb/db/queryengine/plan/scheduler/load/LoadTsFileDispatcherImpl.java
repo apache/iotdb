@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -265,20 +264,9 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
 
   private void recordTransferAttempt(
       TEndPoint target, boolean success, String errorCode, Throwable error) {
-    if (!DataNodeUserDataTransferAuditor.isEnabled()) {
-      return;
-    }
     final TEndPoint localEndPoint = new TEndPoint(localhostIpAddr, localhostInternalPort);
     DataNodeUserDataTransferAuditor.record(
-        UserDataTransferType.LOAD_TSFILE_PIECE,
-        localEndPoint,
-        localEndPoint,
-        target,
-        uuid,
-        1,
-        success,
-        errorCode,
-        error);
+        localEndPoint, localEndPoint, target, success, errorCode, error);
   }
 
   public Future<FragInstanceDispatchResult> dispatchCommand(

@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.scheduler;
+package org.apache.iotdb.db.audit;
 
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 
@@ -32,22 +31,22 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class AsyncPlanNodeSenderTest {
+public class DataNodeUserDataTransferAuditorTest {
 
   @Test
-  public void testOnlyInsertPayloadIsClassifiedAsUserData() {
-    final PlanNode queryPlan = mock(PlanNode.class);
-    when(queryPlan.getChildren()).thenReturn(Collections.emptyList());
-    assertFalse(AsyncPlanNodeSender.containsInsertNode(queryPlan));
-
+  public void testAuditDatabaseIsExcludedFromConsensusTransferAudit() {
     final InsertNode insertNode = mock(InsertNode.class);
-    assertTrue(AsyncPlanNodeSender.containsInsertNode(insertNode));
-    assertTrue(AsyncPlanNodeSender.containsUserData(insertNode, "root"));
-    assertFalse(
-        AsyncPlanNodeSender.containsUserData(insertNode, User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME));
 
-    final PlanNode wrapper = mock(PlanNode.class);
-    when(wrapper.getChildren()).thenReturn(Collections.singletonList(insertNode));
-    assertTrue(AsyncPlanNodeSender.containsInsertNode(wrapper));
+    assertFalse(DataNodeUserDataTransferAuditor.containsUserData("__audit", insertNode));
+    assertFalse(DataNodeUserDataTransferAuditor.containsUserData("root.__audit", insertNode));
+    assertTrue(DataNodeUserDataTransferAuditor.containsUserData("root.sg", insertNode));
+  }
+
+  @Test
+  public void testNonInsertConsensusRequestIsExcluded() {
+    final PlanNode planNode = mock(PlanNode.class);
+    when(planNode.getChildren()).thenReturn(Collections.emptyList());
+
+    assertFalse(DataNodeUserDataTransferAuditor.containsUserData("root.sg", planNode));
   }
 }

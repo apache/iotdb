@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserDataTransferAuditEvent;
 import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.audit.UserDataTransferProtectionMethod;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -46,6 +45,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
@@ -163,6 +163,7 @@ public class IoTConsensusServerImpl {
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
   private final UserDataTransferAuditHandler userDataTransferAuditHandler;
+  private final UserDataTransferAuditClassifier userDataTransferAuditClassifier;
   private IndexedConsensusRequest lastConsensusRequest;
 
   // Subscription queues receive IndexedConsensusRequest in real-time from write(),
@@ -212,7 +213,8 @@ public class IoTConsensusServerImpl {
         clientManager,
         syncClientManager,
         config,
-        UserDataTransferAuditHandler.NO_OP);
+        UserDataTransferAuditHandler.NO_OP,
+        UserDataTransferAuditClassifier.NO_USER_DATA);
   }
 
   public IoTConsensusServerImpl(
@@ -226,7 +228,8 @@ public class IoTConsensusServerImpl {
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
       IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
       IoTConsensusConfig config,
-      UserDataTransferAuditHandler userDataTransferAuditHandler)
+      UserDataTransferAuditHandler userDataTransferAuditHandler,
+      UserDataTransferAuditClassifier userDataTransferAuditClassifier)
       throws DiskSpaceInsufficientException {
     this.active = true;
     this.storageDir = storageDir;
@@ -248,6 +251,7 @@ public class IoTConsensusServerImpl {
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.userDataTransferAuditHandler = userDataTransferAuditHandler;
+    this.userDataTransferAuditClassifier = userDataTransferAuditClassifier;
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.consensusReqReader =
         (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
@@ -521,23 +525,18 @@ public class IoTConsensusServerImpl {
       boolean success,
       String errorCode,
       Throwable error) {
-    if (!userDataTransferAuditHandler.isEnabled()) {
-      return;
-    }
     try {
+      if (!userDataTransferAuditHandler.isEnabled()) {
+        return;
+      }
       userDataTransferAuditHandler.onAttempt(
           new UserDataTransferAuditEvent(
-              UserDataTransferType.IOT_CONSENSUS_SNAPSHOT,
               thisNode.getEndpoint(),
               thisNode.getEndpoint(),
               targetPeer.getEndpoint(),
               UserDataTransferProtectionMethod.fromTlsEnabled(config.getRpc().isEnableSSL()),
-              null,
-              request.getSnapshotId() + "/" + request.getOffset(),
-              1,
               success,
-              errorCode,
-              error));
+              errorCode != null ? errorCode : error == null ? null : error.getClass().getName()));
     } catch (RuntimeException ignored) {
       // Audit recording must not affect snapshot transmission.
     }
@@ -1014,6 +1013,7 @@ public class IoTConsensusServerImpl {
       ((ComparableConsensusRequest) request).setProgressIndex(iotProgressIndex);
     }
     return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request))
+        .setContainsUserData(containsUserData(Collections.singletonList(request)))
         .setPhysicalTime(assignPhysicalTimeInMs())
         .setNodeId(thisNode.getNodeId());
   }
@@ -1030,7 +1030,21 @@ public class IoTConsensusServerImpl {
     req.setRoutingEpoch(routingEpoch);
     req.setPhysicalTime(physicalTime);
     req.setNodeId(nodeId);
+    req.setContainsUserData(containsUserData(requests));
     return req;
+  }
+
+  public boolean containsUserData(List<IConsensusRequest> requests) {
+    for (IConsensusRequest request : requests) {
+      try {
+        if (userDataTransferAuditClassifier.containsUserData(thisNode.getGroupId(), request)) {
+          return true;
+        }
+      } catch (RuntimeException ignored) {
+        // Classification is advisory and must not affect consensus replication.
+      }
+    }
+    return false;
   }
 
   public TSStatus syncIdleWriterSafeTimeBarrierToPeer(final Peer targetPeer) {

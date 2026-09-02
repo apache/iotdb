@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
@@ -50,8 +49,6 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
   private final TEndPoint localEndPoint;
   private final TEndPoint targetEndPoint;
   private final boolean containsUserData;
-  private final String auditContext;
-  private final int auditAttempt;
   private boolean transferAuditRecorded;
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -64,9 +61,7 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
       long sendTime,
       TEndPoint localEndPoint,
       TEndPoint targetEndPoint,
-      boolean containsUserData,
-      String auditContext,
-      int auditAttempt) {
+      boolean containsUserData) {
     this.instanceIds = instanceIds;
     this.pendingNumber = pendingNumber;
     this.instanceId2RespMap = instanceId2RespMap;
@@ -75,8 +70,6 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
     this.localEndPoint = localEndPoint;
     this.targetEndPoint = targetEndPoint;
     this.containsUserData = containsUserData;
-    this.auditContext = auditContext;
-    this.auditAttempt = auditAttempt;
   }
 
   @Override
@@ -157,19 +150,11 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
   }
 
   private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
-    if (!containsUserData || !DataNodeUserDataTransferAuditor.isEnabled()) {
+    if (!containsUserData) {
       return;
     }
     DataNodeUserDataTransferAuditor.record(
-        UserDataTransferType.INSERT_PLAN_NODE,
-        localEndPoint,
-        localEndPoint,
-        targetEndPoint,
-        auditContext,
-        auditAttempt,
-        success,
-        errorCode,
-        error);
+        localEndPoint, localEndPoint, targetEndPoint, success, errorCode, error);
     transferAuditRecorded = true;
   }
 }

@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -748,29 +747,13 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     return nodeUrls.get(0);
   }
 
-  public void recordUserDataTransferAudit(
-      UserDataTransferType transferType,
-      String context,
-      boolean success,
-      String errorCode,
-      Throwable error) {
-    if (!DataNodeUserDataTransferAuditor.isEnabled()) {
-      return;
-    }
+  public void recordUserDataTransferAudit(boolean success, String errorCode, Throwable error) {
     final TEndPoint localEndPoint =
         new TEndPoint(
             IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
             IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusPort());
     DataNodeUserDataTransferAuditor.record(
-        transferType,
-        localEndPoint,
-        localEndPoint,
-        getFollowerUrl(),
-        context,
-        1,
-        success,
-        errorCode,
-        error);
+        localEndPoint, localEndPoint, getFollowerUrl(), success, errorCode, error);
   }
 
   // synchronized to avoid close connector when transfer event

@@ -21,5 +21,7 @@ package org.apache.iotdb.commons.audit;
 
 public enum UserDataTransferErrorCode {
   EMPTY_RESPONSE,
+  UNEXPECTED_RESPONSE_SIZE,
+  RECEIVER_CLOSED,
   REMOTE_REJECTED
 }

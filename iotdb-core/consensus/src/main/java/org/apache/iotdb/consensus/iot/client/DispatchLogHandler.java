@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.consensus.iot.client;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserDataTransferAuditEvent;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.audit.UserDataTransferProtectionMethod;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
@@ -187,31 +188,43 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   }
 
   private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
-    if (!thread.getImpl().getUserDataTransferAuditHandler().isEnabled()) {
-      return;
-    }
     try {
-      thread
-          .getImpl()
-          .getUserDataTransferAuditHandler()
-          .onAttempt(
-              new UserDataTransferAuditEvent(
-                  UserDataTransferType.IOT_CONSENSUS_LOG,
-                  thread.getImpl().getThisNode().getEndpoint(),
-                  thread.getImpl().getThisNode().getEndpoint(),
-                  thread.getPeer().getEndpoint(),
-                  UserDataTransferProtectionMethod.fromTlsEnabled(
-                      thread.getConfig().getRpc().isEnableSSL()),
-                  null,
-                  thread.getImpl().getThisNode().getGroupId()
-                      + "/"
-                      + batch.getStartIndex()
-                      + "-"
-                      + batch.getEndIndex(),
-                  retryCount + 1,
-                  success,
-                  errorCode,
-                  error));
+      recordTransferAttempt(
+          thread.getImpl().getUserDataTransferAuditHandler(),
+          batch,
+          thread.getImpl().getThisNode().getEndpoint(),
+          thread.getPeer().getEndpoint(),
+          UserDataTransferProtectionMethod.fromTlsEnabled(
+              thread.getConfig().getRpc().isEnableSSL()),
+          success,
+          errorCode,
+          error);
+    } catch (RuntimeException ignored) {
+      // Audit recording must not affect consensus replication.
+    }
+  }
+
+  static void recordTransferAttempt(
+      UserDataTransferAuditHandler auditHandler,
+      Batch batch,
+      TEndPoint source,
+      TEndPoint target,
+      UserDataTransferProtectionMethod protectionMethod,
+      boolean success,
+      String errorCode,
+      Throwable error) {
+    try {
+      if (!batch.containsUserData() || !auditHandler.isEnabled()) {
+        return;
+      }
+      auditHandler.onAttempt(
+          new UserDataTransferAuditEvent(
+              source,
+              source,
+              target,
+              protectionMethod,
+              success,
+              errorCode != null ? errorCode : error == null ? null : error.getClass().getName()));
     } catch (RuntimeException ignored) {
       // Audit recording must not affect consensus replication.
     }

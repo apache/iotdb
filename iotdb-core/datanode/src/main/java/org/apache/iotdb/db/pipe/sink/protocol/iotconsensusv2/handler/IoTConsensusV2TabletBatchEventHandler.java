@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -92,10 +91,6 @@ public class IoTConsensusV2TabletBatchEventHandler
               .findFirst()
               .orElse(null);
       connector.recordUserDataTransferAudit(
-          UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
-          requestCommitIds.isEmpty()
-              ? null
-              : requestCommitIds.get(0) + "/" + requestCommitIds.size(),
           failedStatus == null,
           failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
           null);
@@ -135,14 +130,7 @@ public class IoTConsensusV2TabletBatchEventHandler
   @Override
   public void onError(final Exception exception) {
     if (!transferAuditRecorded) {
-      connector.recordUserDataTransferAudit(
-          UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
-          requestCommitIds.isEmpty()
-              ? null
-              : requestCommitIds.get(0) + "/" + requestCommitIds.size(),
-          false,
-          null,
-          exception);
+      connector.recordUserDataTransferAudit(false, null, exception);
       transferAuditRecorded = true;
     }
     final Object pipeNames =

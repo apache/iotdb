@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -468,8 +467,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
   }
 
-  private void dispatchRemoteHelper(
-      final FragmentInstance instance, final TEndPoint endPoint, final int attempt)
+  private void dispatchRemoteHelper(final FragmentInstance instance, final TEndPoint endPoint)
       throws FragmentInstanceDispatchException,
           TException,
           ClientManagerException,
@@ -477,7 +475,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           ConsensusGroupNotExistException {
     final boolean containsUserData =
         (instance.getType() == QueryType.WRITE || instance.getType() == QueryType.OTHER)
-            && AsyncPlanNodeSender.containsInsertNode(instance.getFragment().getPlanNodeTree());
+            && AsyncPlanNodeSender.containsUserData(
+                instance.getFragment().getPlanNodeTree(),
+                instance.getSessionInfo() == null ? null : instance.getSessionInfo().getUserName());
     boolean transferAttemptRecorded = false;
     try (final SyncDataNodeInternalServiceClient client =
         syncInternalServiceClientManager.borrowClient(endPoint)) {
@@ -531,19 +531,16 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                           instance.getRegionReplicaSet().getRegionId())));
           final TSendSinglePlanNodeResp sendPlanNodeResp =
               client.sendBatchPlanNode(sendPlanNodeReq).getResponses().get(0);
-          if (containsUserData && DataNodeUserDataTransferAuditor.isEnabled()) {
+          if (containsUserData) {
             final boolean success =
                 sendPlanNodeResp.isAccepted()
                     && (!sendPlanNodeResp.isSetStatus()
                         || sendPlanNodeResp.getStatus().getCode()
                             == TSStatusCode.SUCCESS_STATUS.getStatusCode());
             DataNodeUserDataTransferAuditor.record(
-                UserDataTransferType.INSERT_PLAN_NODE,
                 new TEndPoint(localhostIpAddr, localhostInternalPort),
                 new TEndPoint(localhostIpAddr, localhostInternalPort),
                 endPoint,
-                instance.getId().getFullId(),
-                attempt,
                 success,
                 success
                     ? null
@@ -588,12 +585,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     } catch (ClientManagerException e) {
       if (!transferAttemptRecorded) {
-        recordWriteTransferFailureIfNecessary(instance, endPoint, attempt, containsUserData, e);
+        recordWriteTransferFailureIfNecessary(endPoint, containsUserData, e);
       }
       throw e;
     } catch (TException e) {
       if (!transferAttemptRecorded) {
-        recordWriteTransferFailureIfNecessary(instance, endPoint, attempt, containsUserData, e);
+        recordWriteTransferFailureIfNecessary(endPoint, containsUserData, e);
       }
       Throwable rootCause = ExceptionUtils.getRootCause(e);
       if (rootCause instanceof TTransportException
@@ -607,25 +604,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private void recordWriteTransferFailureIfNecessary(
-      FragmentInstance instance,
-      TEndPoint endPoint,
-      int attempt,
-      boolean containsUserData,
-      Throwable error) {
-    if (!containsUserData || !DataNodeUserDataTransferAuditor.isEnabled()) {
+      TEndPoint endPoint, boolean containsUserData, Throwable error) {
+    if (!containsUserData) {
       return;
     }
     final TEndPoint localEndPoint = new TEndPoint(localhostIpAddr, localhostInternalPort);
     DataNodeUserDataTransferAuditor.record(
-        UserDataTransferType.INSERT_PLAN_NODE,
-        localEndPoint,
-        localEndPoint,
-        endPoint,
-        instance.getId().getFullId(),
-        attempt,
-        false,
-        null,
-        error);
+        localEndPoint, localEndPoint, endPoint, false, null, error);
   }
 
   private void dispatchRemoteFailed(TEndPoint endPoint, Exception e)
@@ -647,7 +632,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException {
 
     try {
-      dispatchRemoteHelper(instance, endPoint, 1);
+      dispatchRemoteHelper(instance, endPoint);
     } catch (ClientManagerException | TException | RatisReadUnavailableException e) {
       LOGGER.warn(
           DataNodeQueryMessages
@@ -670,7 +655,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
       // we just retry once to clear stale connection for a restart node.
       try {
-        dispatchRemoteHelper(instance, endPoint, 2);
+        dispatchRemoteHelper(instance, endPoint);
       } catch (ClientManagerException
           | TException
           | RatisReadUnavailableException

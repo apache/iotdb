@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -89,11 +88,7 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
         status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
     connector.recordUserDataTransferAudit(
-        UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
-        String.valueOf(((EnrichedEvent) event).getReplicateIndexForIoTV2()),
-        success,
-        success ? null : String.valueOf(status.getCode()),
-        null);
+        success, success ? null : String.valueOf(status.getCode()), null);
     transferAuditRecorded = true;
     try {
       // Only handle the failed statuses to avoid string format performance overhead
@@ -126,12 +121,7 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
   @Override
   public void onError(Exception exception) {
     if (!transferAuditRecorded) {
-      connector.recordUserDataTransferAudit(
-          UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
-          String.valueOf(((EnrichedEvent) event).getReplicateIndexForIoTV2()),
-          false,
-          null,
-          exception);
+      connector.recordUserDataTransferAudit(false, null, exception);
       transferAuditRecorded = true;
     }
     EnrichedEvent event = (EnrichedEvent) this.event;

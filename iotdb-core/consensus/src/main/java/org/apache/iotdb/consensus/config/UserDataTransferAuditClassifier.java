@@ -17,32 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.audit;
+package org.apache.iotdb.consensus.config;
+
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 
 @FunctionalInterface
-public interface UserDataTransferAuditHandler {
+public interface UserDataTransferAuditClassifier {
 
-  UserDataTransferAuditHandler NO_OP =
-      new UserDataTransferAuditHandler() {
-        @Override
-        public void onAttempt(UserDataTransferAuditEvent event) {
-          // Do nothing.
-        }
+  UserDataTransferAuditClassifier NO_USER_DATA = (groupId, request) -> false;
 
-        @Override
-        public boolean isEnabled() {
-          return false;
-        }
-      };
-
-  /**
-   * Records one transfer attempt. Implementations must return promptly and must not throw because
-   * callers invoke this method on data-transfer paths.
-   */
-  void onAttempt(UserDataTransferAuditEvent event);
-
-  /** Returns whether transfer audit is enabled. Implementations must not throw. */
-  default boolean isEnabled() {
-    return true;
-  }
+  boolean containsUserData(ConsensusGroupId groupId, IConsensusRequest request);
 }

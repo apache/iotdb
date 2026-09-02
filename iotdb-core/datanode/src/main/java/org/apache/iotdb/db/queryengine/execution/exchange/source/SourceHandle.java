@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.exchange.source;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -650,9 +649,13 @@ public class SourceHandle implements ISourceHandle {
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
             int tsBlockNum = resp.getTsBlocks().size();
-            if (tsBlockNum == 0) {
+            if (tsBlockNum != endSequenceId - startSequenceId) {
               recordTransferAttempt(
-                  attempt, false, UserDataTransferErrorCode.EMPTY_RESPONSE.name(), null);
+                  false,
+                  tsBlockNum == 0
+                      ? UserDataTransferErrorCode.EMPTY_RESPONSE.name()
+                      : UserDataTransferErrorCode.UNEXPECTED_RESPONSE_SIZE.name(),
+                  null);
               transferAttemptRecorded = true;
               if (!closed) {
                 // failed to pull TsBlocks
@@ -666,8 +669,6 @@ public class SourceHandle implements ISourceHandle {
               }
               return;
             }
-            recordTransferAttempt(attempt, true, null, null);
-            transferAttemptRecorded = true;
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
 
@@ -678,25 +679,35 @@ public class SourceHandle implements ISourceHandle {
                 GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
+            boolean receiverClosed = false;
             synchronized (SourceHandle.this) {
               if (aborted || closed) {
-                return;
+                receiverClosed = true;
+              } else {
+                for (int i = startSequenceId; i < endSequenceId; i++) {
+                  sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
+                }
+                if (LOGGER.isDebugEnabled()) {
+                  LOGGER.debug(DataNodeQueryMessages.PUT_TSBLOCKS_INTO_BUFFER);
+                }
+                if (!blocked.isDone()) {
+                  blocked.set(null);
+                }
               }
-              for (int i = startSequenceId; i < endSequenceId; i++) {
-                sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
-              }
-              if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(DataNodeQueryMessages.PUT_TSBLOCKS_INTO_BUFFER);
-              }
-              if (!blocked.isDone()) {
-                blocked.set(null);
-              }
+            }
+            recordTransferAttempt(
+                !receiverClosed,
+                receiverClosed ? UserDataTransferErrorCode.RECEIVER_CLOSED.name() : null,
+                null);
+            transferAttemptRecorded = true;
+            if (receiverClosed) {
+              return;
             }
             break;
           } catch (Throwable e) {
 
             if (!transferAttemptRecorded) {
-              recordTransferAttempt(attempt, false, null, e);
+              recordTransferAttempt(false, null, e);
             }
 
             LOGGER.warn(
@@ -728,27 +739,9 @@ public class SourceHandle implements ISourceHandle {
       }
     }
 
-    private void recordTransferAttempt(
-        int attempt, boolean success, String errorCode, Throwable error) {
-      if (!DataNodeUserDataTransferAuditor.isEnabled()) {
-        return;
-      }
+    private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
       DataNodeUserDataTransferAuditor.record(
-          UserDataTransferType.MPP_TS_BLOCK,
-          localEndpoint,
-          remoteEndpoint,
-          localEndpoint,
-          remoteFragmentInstanceId
-              + "/"
-              + indexOfUpstreamSinkHandle
-              + "/"
-              + startSequenceId
-              + "-"
-              + endSequenceId,
-          attempt,
-          success,
-          errorCode,
-          error);
+          localEndpoint, remoteEndpoint, localEndpoint, success, errorCode, error);
     }
 
     private void fail(Throwable t) {

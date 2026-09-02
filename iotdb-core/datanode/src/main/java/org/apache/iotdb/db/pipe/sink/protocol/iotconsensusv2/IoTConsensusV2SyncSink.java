@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -217,8 +216,6 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       final TSStatus failedStatus =
           statusList.stream().filter(status -> !isSuccessful(status)).findFirst().orElse(null);
       recordTransferAttempt(
-          UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
-          String.valueOf(consensusGroupId),
           failedStatus == null,
           failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
           null);
@@ -239,12 +236,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       tabletBatchBuilder.onSuccess();
     } catch (final Exception e) {
       if (!transferAttemptRecorded) {
-        recordTransferAttempt(
-            UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
-            String.valueOf(consensusGroupId),
-            false,
-            null,
-            e);
+        recordTransferAttempt(false, null, e);
       }
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
@@ -366,20 +358,13 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       resp = syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(req);
       final TSStatus status = resp.getStatus();
       recordTransferAttempt(
-          UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
-          String.valueOf(pipeInsertNodeTabletInsertionEvent.getReplicateIndexForIoTV2()),
           isSuccessful(status),
           isSuccessful(status) ? null : String.valueOf(status.getCode()),
           null);
       transferAttemptRecorded = true;
     } catch (final Exception e) {
       if (!transferAttemptRecorded) {
-        recordTransferAttempt(
-            UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
-            String.valueOf(pipeInsertNodeTabletInsertionEvent.getReplicateIndexForIoTV2()),
-            false,
-            null,
-            e);
+        recordTransferAttempt(false, null, e);
       }
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
@@ -528,20 +513,13 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                               thisDataNodeId)));
           final TSStatus transferStatus = resp.getStatus();
           recordTransferAttempt(
-              UserDataTransferType.IOT_CONSENSUS_V2_TSFILE,
-              file.getName() + "/" + transferPosition,
               isSuccessful(transferStatus),
               isSuccessful(transferStatus) ? null : String.valueOf(transferStatus.getCode()),
               null);
           transferAttemptRecorded = true;
         } catch (Exception e) {
           if (!transferAttemptRecorded) {
-            recordTransferAttempt(
-                UserDataTransferType.IOT_CONSENSUS_V2_TSFILE,
-                file.getName() + "/" + transferPosition,
-                false,
-                null,
-                e);
+            recordTransferAttempt(false, null, e);
           }
           throw new PipeRuntimeSinkRetryTimesConfigurableException(
               String.format(
@@ -596,29 +574,13 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
         || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
   }
 
-  private void recordTransferAttempt(
-      UserDataTransferType transferType,
-      String context,
-      boolean success,
-      String errorCode,
-      Throwable error) {
-    if (!DataNodeUserDataTransferAuditor.isEnabled()) {
-      return;
-    }
+  private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
     final TEndPoint localEndPoint =
         new TEndPoint(
             IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
             IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusPort());
     DataNodeUserDataTransferAuditor.record(
-        transferType,
-        localEndPoint,
-        localEndPoint,
-        getFollowerUrl(),
-        context,
-        1,
-        success,
-        errorCode,
-        error);
+        localEndPoint, localEndPoint, getFollowerUrl(), success, errorCode, error);
   }
 
   // synchronized to avoid close connector when transfer event

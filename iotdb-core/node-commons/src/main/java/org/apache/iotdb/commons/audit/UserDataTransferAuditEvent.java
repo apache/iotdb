@@ -30,50 +30,31 @@ import javax.annotation.Nullable;
 public final class UserDataTransferAuditEvent {
 
   private final long timestamp;
-  private final UserDataTransferType transferType;
   private final TEndPoint initiator;
   private final TEndPoint source;
   private final TEndPoint target;
   private final UserDataTransferProtectionMethod protectionMethod;
-  private final String protectionProtocol;
-  private final String context;
-  private final int attempt;
   private final boolean success;
-  private final String errorCode;
-  private final String errorType;
+  private final String error;
 
   public UserDataTransferAuditEvent(
-      UserDataTransferType transferType,
       TEndPoint initiator,
       TEndPoint source,
       TEndPoint target,
       UserDataTransferProtectionMethod protectionMethod,
-      @Nullable String protectionProtocol,
-      @Nullable String context,
-      int attempt,
       boolean success,
-      @Nullable String errorCode,
-      @Nullable Throwable error) {
+      @Nullable String error) {
     this.timestamp = System.currentTimeMillis();
-    this.transferType = transferType;
     this.initiator = initiator;
     this.source = source;
     this.target = target;
     this.protectionMethod = protectionMethod;
-    this.protectionProtocol = protectionProtocol;
-    this.context = context;
-    this.attempt = attempt;
     this.success = success;
-    this.errorCode = errorCode;
-    this.errorType = error == null ? null : error.getClass().getName();
+    this.error = error;
   }
 
   public long getTimestamp() {
     return timestamp;
-  }
-
-  public UserDataTransferType getTransferType() {
-    return transferType;
   }
 
   public TEndPoint getInitiator() {
@@ -92,31 +73,12 @@ public final class UserDataTransferAuditEvent {
     return protectionMethod;
   }
 
-  @Nullable
-  public String getProtectionProtocol() {
-    return protectionProtocol;
-  }
-
-  @Nullable
-  public String getContext() {
-    return context;
-  }
-
-  public int getAttempt() {
-    return attempt;
-  }
-
   public boolean isSuccess() {
     return success;
   }
 
   @Nullable
-  public String getErrorCode() {
-    return errorCode;
-  }
-
-  @Nullable
-  public String getErrorType() {
-    return errorType;
+  public String getError() {
+    return error;
   }
 }

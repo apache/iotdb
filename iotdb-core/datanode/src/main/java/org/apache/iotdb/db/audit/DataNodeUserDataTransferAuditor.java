@@ -22,9 +22,20 @@ package org.apache.iotdb.db.audit;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserDataTransferAuditEvent;
 import org.apache.iotdb.commons.audit.UserDataTransferProtectionMethod;
-import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.commons.schema.table.Audit;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
 import javax.annotation.Nullable;
 
@@ -39,32 +50,77 @@ public final class DataNodeUserDataTransferAuditor {
   }
 
   public static void record(
-      UserDataTransferType transferType,
       TEndPoint initiator,
       TEndPoint source,
       TEndPoint target,
-      @Nullable String context,
-      int attempt,
       boolean success,
       @Nullable String errorCode,
       @Nullable Throwable error) {
-    if (!isEnabled()) {
-      return;
+    try {
+      if (!isEnabled()) {
+        return;
+      }
+      DNAuditLogger.getInstance()
+          .recordUserDataTransferAuditLog(
+              new UserDataTransferAuditEvent(
+                  initiator,
+                  source,
+                  target,
+                  UserDataTransferProtectionMethod.fromTlsEnabled(
+                      COMMON_CONFIG.isEnableInternalSSL()),
+                  success,
+                  errorCode != null
+                      ? errorCode
+                      : error == null ? null : error.getClass().getName()));
+    } catch (RuntimeException ignored) {
+      // Audit recording must not affect user data transfer.
     }
-    DNAuditLogger.getInstance()
-        .recordUserDataTransferAuditLog(
-            new UserDataTransferAuditEvent(
-                transferType,
-                initiator,
-                source,
-                target,
-                UserDataTransferProtectionMethod.fromTlsEnabled(
-                    COMMON_CONFIG.isEnableInternalSSL()),
-                COMMON_CONFIG.isEnableInternalSSL() ? COMMON_CONFIG.getSslProtocol() : null,
-                context,
-                attempt,
-                success,
-                errorCode,
-                error));
+  }
+
+  public static boolean containsUserData(
+      ConsensusGroupId consensusGroupId, IConsensusRequest request) {
+    if (!(consensusGroupId instanceof DataRegionId)) {
+      return false;
+    }
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion((DataRegionId) consensusGroupId);
+    return dataRegion != null && containsUserData(dataRegion.getDatabaseName(), request);
+  }
+
+  static boolean containsUserData(String database, IConsensusRequest request) {
+    if (Audit.isAuditDatabase(database)) {
+      return false;
+    }
+    try {
+      final PlanNode planNode;
+      if (request instanceof PlanNode) {
+        planNode = (PlanNode) request;
+      } else if (request instanceof IoTConsensusRequest) {
+        planNode = WALEntry.deserializeForConsensus(request.serializeToByteBuffer().duplicate());
+      } else if (request instanceof ByteBufferConsensusRequest) {
+        planNode = PlanNodeType.deserialize(request.serializeToByteBuffer().duplicate());
+      } else {
+        return false;
+      }
+      return containsInsertNode(planNode);
+    } catch (RuntimeException ignored) {
+      // Classification is advisory and must not affect consensus replication.
+      return false;
+    }
+  }
+
+  public static boolean containsInsertNode(PlanNode node) {
+    if (node instanceof InsertNode) {
+      return true;
+    }
+    if (node.getChildren() == null) {
+      return false;
+    }
+    for (PlanNode child : node.getChildren()) {
+      if (containsInsertNode(child)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -27,29 +27,21 @@ import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 
 public class UserDataTransferAuditEventTest {
 
   @Test
-  public void testRecordsErrorTypeWithoutErrorMessage() {
+  public void testRecordsOnlyMinimumTransferFields() {
     final UserDataTransferAuditEvent event =
         new UserDataTransferAuditEvent(
-            UserDataTransferType.MPP_TS_BLOCK,
             new TEndPoint("127.0.0.1", 10740),
             new TEndPoint("127.0.0.2", 10740),
             new TEndPoint("127.0.0.1", 10740),
             UserDataTransferProtectionMethod.TLS,
-            "TLSv1.3",
-            "query/0-1",
-            2,
             false,
-            null,
-            new IOException("payload must not be retained"));
+            IOException.class.getName());
 
-    assertEquals(IOException.class.getName(), event.getErrorType());
-    assertNull(event.getErrorCode());
-    assertEquals(2, event.getAttempt());
+    assertEquals(IOException.class.getName(), event.getError());
     assertFalse(event.isSuccess());
   }
 }

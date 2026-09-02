@@ -41,6 +41,7 @@ public class ConsensusConfig {
   private final DirectoryStrategyType directoryStrategyType;
   private final TrustedChannelFailureHandler trustedChannelFailureHandler;
   private final UserDataTransferAuditHandler userDataTransferAuditHandler;
+  private final UserDataTransferAuditClassifier userDataTransferAuditClassifier;
 
   private ConsensusConfig(
       TEndPoint thisNode,
@@ -53,7 +54,8 @@ public class ConsensusConfig {
       IoTConsensusV2Config iotConsensusV2Config,
       DirectoryStrategyType directoryStrategyType,
       TrustedChannelFailureHandler trustedChannelFailureHandler,
-      UserDataTransferAuditHandler userDataTransferAuditHandler) {
+      UserDataTransferAuditHandler userDataTransferAuditHandler,
+      UserDataTransferAuditClassifier userDataTransferAuditClassifier) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
@@ -65,6 +67,7 @@ public class ConsensusConfig {
     this.directoryStrategyType = directoryStrategyType;
     this.trustedChannelFailureHandler = trustedChannelFailureHandler;
     this.userDataTransferAuditHandler = userDataTransferAuditHandler;
+    this.userDataTransferAuditClassifier = userDataTransferAuditClassifier;
   }
 
   public TEndPoint getThisNodeEndPoint() {
@@ -111,6 +114,10 @@ public class ConsensusConfig {
     return userDataTransferAuditHandler;
   }
 
+  public UserDataTransferAuditClassifier getUserDataTransferAuditClassifier() {
+    return userDataTransferAuditClassifier;
+  }
+
   public static ConsensusConfig.Builder newBuilder() {
     return new ConsensusConfig.Builder();
   }
@@ -131,6 +138,8 @@ public class ConsensusConfig {
         TrustedChannelFailureHandler.NO_OP;
     private UserDataTransferAuditHandler userDataTransferAuditHandler =
         UserDataTransferAuditHandler.NO_OP;
+    private UserDataTransferAuditClassifier userDataTransferAuditClassifier =
+        UserDataTransferAuditClassifier.NO_USER_DATA;
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -146,7 +155,8 @@ public class ConsensusConfig {
               .orElseGet(() -> IoTConsensusV2Config.newBuilder().build()),
           directoryStrategyType,
           trustedChannelFailureHandler,
-          userDataTransferAuditHandler);
+          userDataTransferAuditHandler,
+          userDataTransferAuditClassifier);
     }
 
     public Builder setThisNode(TEndPoint thisNode) {
@@ -207,6 +217,14 @@ public class ConsensusConfig {
       this.userDataTransferAuditHandler =
           Optional.ofNullable(userDataTransferAuditHandler)
               .orElse(UserDataTransferAuditHandler.NO_OP);
+      return this;
+    }
+
+    public Builder setUserDataTransferAuditClassifier(
+        UserDataTransferAuditClassifier userDataTransferAuditClassifier) {
+      this.userDataTransferAuditClassifier =
+          Optional.ofNullable(userDataTransferAuditClassifier)
+              .orElse(UserDataTransferAuditClassifier.NO_USER_DATA);
       return this;
     }
   }
