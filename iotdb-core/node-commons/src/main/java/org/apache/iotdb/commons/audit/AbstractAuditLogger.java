@@ -156,13 +156,7 @@ public abstract class AbstractAuditLogger {
     RECORDING_USER_DATA_TRANSFER.set(true);
     try {
       log(
-          new AuditLogFields(
-              INTERNAL_AUDIT_LOG_USER_ID,
-              User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME,
-              initiatorIdentifier,
-              AuditEventType.USER_DATA_TRANSFER,
-              null,
-              event.isSuccess()),
+          createUserDataTransferAuditLogFields(event, initiatorIdentifier),
           () ->
               String.format(
                   CommonMessages
@@ -179,5 +173,16 @@ public abstract class AbstractAuditLogger {
     } finally {
       RECORDING_USER_DATA_TRANSFER.remove();
     }
+  }
+
+  static AuditLogFields createUserDataTransferAuditLogFields(
+      UserDataTransferAuditEvent event, String initiatorIdentifier) {
+    return new AuditLogFields(
+        INTERNAL_AUDIT_LOG_USER_ID,
+        User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME,
+        initiatorIdentifier,
+        AuditEventType.USER_DATA_TRANSFER,
+        AuditLogOperation.CONTROL,
+        event.isSuccess());
   }
 }

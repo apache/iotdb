@@ -44,4 +44,14 @@ public class UserDataTransferAuditEventTest {
     assertEquals(IOException.class.getName(), event.getError());
     assertFalse(event.isSuccess());
   }
+
+  @Test
+  public void testProtectionMethodNamesMatchAuditSchema() {
+    assertEquals(
+        UserDataTransferProtectionMethod.TLS,
+        UserDataTransferProtectionMethod.fromTlsEnabled(true));
+    assertEquals(
+        UserDataTransferProtectionMethod.NONE,
+        UserDataTransferProtectionMethod.fromTlsEnabled(false));
+  }
 }

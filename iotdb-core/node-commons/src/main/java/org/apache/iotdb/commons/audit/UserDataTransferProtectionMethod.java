@@ -21,9 +21,9 @@ package org.apache.iotdb.commons.audit;
 
 public enum UserDataTransferProtectionMethod {
   TLS,
-  UNPROTECTED;
+  NONE;
 
   public static UserDataTransferProtectionMethod fromTlsEnabled(boolean tlsEnabled) {
-    return tlsEnabled ? TLS : UNPROTECTED;
+    return tlsEnabled ? TLS : NONE;
   }
 }

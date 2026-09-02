@@ -42,6 +42,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
@@ -667,7 +668,11 @@ public class SourceHandle implements ISourceHandle {
                     remoteFragmentInstanceId,
                     indexOfUpstreamSinkHandle);
               }
-              return;
+              if (tsBlockNum == 0) {
+                return;
+              }
+              throw new TException(
+                  DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
             }
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());

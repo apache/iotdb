@@ -88,7 +88,7 @@ public class DispatchLogHandlerTest {
         createBatch(false),
         SOURCE,
         TARGET,
-        UserDataTransferProtectionMethod.UNPROTECTED,
+        UserDataTransferProtectionMethod.NONE,
         true,
         null,
         null);
@@ -105,7 +105,7 @@ public class DispatchLogHandlerTest {
         createBatch(true),
         SOURCE,
         TARGET,
-        UserDataTransferProtectionMethod.UNPROTECTED,
+        UserDataTransferProtectionMethod.NONE,
         true,
         null,
         null);
@@ -125,7 +125,7 @@ public class DispatchLogHandlerTest {
         createBatch(true),
         SOURCE,
         TARGET,
-        UserDataTransferProtectionMethod.UNPROTECTED,
+        UserDataTransferProtectionMethod.NONE,
         true,
         null,
         null);
