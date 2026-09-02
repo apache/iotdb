@@ -46,6 +46,45 @@ public class FFT1DTest {
   }
 
   @Test
+  public void testDoubleComplexInversePowerOfTwoLength() {
+    double[] values = {1.0, 0.5, -2.0, 1.0, 0.0, -1.5, 3.0, 2.0};
+    double[] expected = values.clone();
+
+    DoubleFFT_1D fft = new DoubleFFT_1D(4);
+    fft.complexForward(values);
+    fft.complexInverse(values, true);
+
+    assertArrayEquals(expected, values, 1e-9);
+  }
+
+  @Test
+  public void testDoubleComplexInverseNonPowerOfTwoLength() {
+    double[] values = {1.0, 0.0, 2.0, -0.5, -1.0, 1.5, 0.0, 0.25, 3.0, -2.0};
+    double[] expected = values.clone();
+
+    DoubleFFT_1D fft = new DoubleFFT_1D(5);
+    fft.complexForward(values);
+    fft.complexInverse(values, true);
+
+    assertArrayEquals(expected, values, 1e-9);
+  }
+
+  @Test
+  public void testDoubleComplexInverseWithoutScaling() {
+    double[] values = {1.0, 0.5, -2.0, 1.0, 0.0, -1.5, 3.0, 2.0};
+    double[] expected = values.clone();
+    for (int i = 0; i < expected.length; i++) {
+      expected[i] *= 4;
+    }
+
+    DoubleFFT_1D fft = new DoubleFFT_1D(4);
+    fft.complexForward(values);
+    fft.complexInverse(values, false);
+
+    assertArrayEquals(expected, values, 1e-9);
+  }
+
+  @Test
   public void testFloatComplexForwardPowerOfTwoLength() {
     float[] values = {1.0f, 0.5f, -2.0f, 1.0f, 0.0f, -1.5f, 3.0f, 2.0f};
     float[] expected = directDft(values);

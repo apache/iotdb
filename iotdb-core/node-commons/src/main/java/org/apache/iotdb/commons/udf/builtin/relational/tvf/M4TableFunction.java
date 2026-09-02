@@ -53,7 +53,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
 
 public class M4TableFunction implements TableFunction {
@@ -72,19 +71,6 @@ public class M4TableFunction implements TableFunction {
   private static final String PARTICIPANT_TYPES_PROPERTY = "__M4_PARTICIPANT_TYPES";
   private static final long UNSPECIFIED_SLIDE = Long.MIN_VALUE;
   private static final long INVALID_INDEX = -1;
-  private static final Set<Type> SUPPORTED_PARTITION_TYPES =
-      new HashSet<>(
-          Arrays.asList(
-              Type.BOOLEAN,
-              Type.INT32,
-              Type.INT64,
-              Type.FLOAT,
-              Type.DOUBLE,
-              Type.TEXT,
-              Type.TIMESTAMP,
-              Type.DATE,
-              Type.BLOB,
-              Type.STRING));
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -113,31 +99,20 @@ public class M4TableFunction implements TableFunction {
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
-    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
-    if (tableArgument.getOrderBy().isEmpty()) {
-      throw new SemanticException(
-          CommonMessages
-              .EXCEPTION_TABLE_ARGUMENT_WITH_SET_SEMANTICS_REQUIRES_AN_ORDER_BY_CLAUSE_10C986D9);
-    }
-
-    String timeColumn =
-        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
     int timeColumnIndex =
-        findColumnIndex(tableArgument, timeColumn, Collections.singleton(Type.TIMESTAMP));
-    validateOrderBy(tableArgument, timeColumn);
-
-    List<Integer> partitionIndexes = getPartitionIndexes(tableArgument);
+        WindowTVFUtils.checkOrderByColumn(arguments, DATA_PARAMETER_NAME, TIMECOL_PARAMETER_NAME);
+    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
+    List<Integer> partitionIndexes = WindowTVFUtils.getPartitionIndexes(tableArgument);
     Set<Integer> excludedIndexes = new HashSet<>(partitionIndexes);
     excludedIndexes.add(timeColumnIndex);
-
-    boolean isTimeWindow =
-        arguments.containsKey(WINDOW_MODE_PARAMETER_NAME)
-            && (boolean) ((ScalarArgument) arguments.get(WINDOW_MODE_PARAMETER_NAME)).getValue();
 
     List<Integer> participantIndexes = new ArrayList<>();
     List<Type> partitionTypes = new ArrayList<>();
     List<Type> participantTypes = new ArrayList<>();
     DescribedSchema.Builder schemaBuilder = new DescribedSchema.Builder();
+    boolean isTimeWindow =
+        arguments.containsKey(WINDOW_MODE_PARAMETER_NAME)
+            && (boolean) ((ScalarArgument) arguments.get(WINDOW_MODE_PARAMETER_NAME)).getValue();
     if (isTimeWindow) {
       schemaBuilder
           .addField(OUTPUT_WINDOW_START_COLUMN, Type.TIMESTAMP)
@@ -189,8 +164,8 @@ public class M4TableFunction implements TableFunction {
             .addProperty(WINDOW_MODE_PARAMETER_NAME, isTimeWindow)
             .addProperty(SIZE_PARAMETER_NAME, size)
             .addProperty(SLIDE_PARAMETER_NAME, slide)
-            .addProperty(PARTITION_TYPES_PROPERTY, joinTypes(partitionTypes))
-            .addProperty(PARTICIPANT_TYPES_PROPERTY, joinTypes(participantTypes));
+            .addProperty(PARTITION_TYPES_PROPERTY, WindowTVFUtils.joinTypes(partitionTypes))
+            .addProperty(PARTICIPANT_TYPES_PROPERTY, WindowTVFUtils.joinTypes(participantTypes));
     if (isTimeWindow) {
       handleBuilder.addProperty(
           ORIGIN_PARAMETER_NAME,
@@ -224,8 +199,10 @@ public class M4TableFunction implements TableFunction {
     long size = (long) handle.getProperty(SIZE_PARAMETER_NAME);
     long slide = (long) handle.getProperty(SLIDE_PARAMETER_NAME);
     long origin = isTimeWindow ? (long) handle.getProperty(ORIGIN_PARAMETER_NAME) : 0L;
-    Type[] partitionTypes = parseTypes((String) handle.getProperty(PARTITION_TYPES_PROPERTY));
-    Type[] participantTypes = parseTypes((String) handle.getProperty(PARTICIPANT_TYPES_PROPERTY));
+    Type[] partitionTypes =
+        WindowTVFUtils.parseTypes((String) handle.getProperty(PARTITION_TYPES_PROPERTY));
+    Type[] participantTypes =
+        WindowTVFUtils.parseTypes((String) handle.getProperty(PARTICIPANT_TYPES_PROPERTY));
 
     return new TableFunctionProcessorProvider() {
       @Override
@@ -240,49 +217,9 @@ public class M4TableFunction implements TableFunction {
     };
   }
 
-  private static void validateOrderBy(TableArgument tableArgument, String timeColumn) {
-    if (tableArgument.getOrderBy().size() != 1
-        || !tableArgument.getOrderBy().get(0).equalsIgnoreCase(timeColumn)) {
-      throw new SemanticException(
-          CommonMessages
-              .EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9);
-    }
-  }
-
-  private static List<Integer> getPartitionIndexes(TableArgument tableArgument) {
-    List<Integer> indexes = new ArrayList<>();
-    for (String partitionColumn : tableArgument.getPartitionBy()) {
-      indexes.add(findColumnIndex(tableArgument, partitionColumn, SUPPORTED_PARTITION_TYPES));
-    }
-    return indexes;
-  }
-
   // BLOB can be used as a partition column because M4 only needs to read/write it there
   private static boolean isComparableType(Type type) {
     return type != Type.BLOB && type != Type.OBJECT;
-  }
-
-  private static String joinTypes(List<Type> types) {
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < types.size(); i++) {
-      if (i > 0) {
-        builder.append(',');
-      }
-      builder.append(types.get(i).name());
-    }
-    return builder.toString();
-  }
-
-  private static Type[] parseTypes(String value) {
-    if (value.isEmpty()) {
-      return new Type[0];
-    }
-    String[] values = value.split(",");
-    Type[] types = new Type[values.length];
-    for (int i = 0; i < values.length; i++) {
-      types[i] = Type.valueOf(values[i]);
-    }
-    return types;
   }
 
   private static M4Column[] createColumns(Type[] types, int firstInputIndex) {
