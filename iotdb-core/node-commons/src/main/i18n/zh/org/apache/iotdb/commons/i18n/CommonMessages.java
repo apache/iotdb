@@ -220,5 +220,12 @@ public final class CommonMessages {
   public static final String
       LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF =
           "用户数据传送尝试：时间=%d，发起者=%s，源端=%s，目标端=%s，保护方法=%s，结果=%s，错误=%s";
-
+  public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION = "wpass的取值范围应该位于(0, 1)";
+  public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "没有找到可以计算的列.";
+  public static final String EXCEPTION_NOT_ALLOWED_COLUMNS = "只允许列类型为double, float, int32, int64参与函数计算, 当前列 %s 类型是 %s.";
+  public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM = "分区行数超过了最大限制";
+  public static final String
+      EXCEPTION_XCORR_REQUIRES_EXACTLY_TWO_CALCULATION_COLUMNS_BUT_FOUND_ARG_2FF8EB0C =
+          "XCorr 要求必须正好有两列计算列，但实际找到 %d 列。";
+  public static final String EXCEPTION_COLUMN_LACK_OF_NAME = "表参数中列缺少名字";
 }
