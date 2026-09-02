@@ -43,7 +43,9 @@ import java.util.regex.Pattern;
 
 public class DataNodeDateTimeUtils {
   private static final Pattern CQ_DURATION_COMPONENT =
-      Pattern.compile("(\\d+)(y|mo|w|d|h|m|s|ms|us|ns)", Pattern.CASE_INSENSITIVE);
+      // Match multi-character units before their one-character prefixes (for example, ms before
+      // m), otherwise 1ms would be tokenized as 1m followed by an invalid trailing s.
+      Pattern.compile("(\\d+)(y|mo|w|d|h|ms|us|ns|m|s)", Pattern.CASE_INSENSITIVE);
 
   /**
    * Parses the CQ duration grammar while retaining calendar months. Full aliases are deliberate not
