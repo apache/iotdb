@@ -16,7 +16,7 @@
 # under the License.
 #
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.15)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
 CMAKE_POLICY(SET CMP0091 NEW)
 
 # Windows SDK zips are x86_64; Visual Studio generators (especially VS2017) default to Win32.

@@ -253,7 +253,7 @@ if(NOT FLEX_EXECUTABLE)
 endif()
 message(STATUS "[BuildTools] flex  = ${FLEX_EXECUTABLE}")
 
-# bison - Thrift 0.23's grammar build uses bison >= 3.7 features (e.g. the
+# bison - Thrift 0.24's grammar build uses bison >= 3.7 features (e.g. the
 # --file-prefix-map option), so reject an older system bison (manylinux_2_28
 # ships 3.0.4) and build ${BISON_VERSION} from source instead.
 set(_bison_min_version "3.7")
