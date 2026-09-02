@@ -30,6 +30,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -60,6 +61,19 @@ public class TableSessionWrapper implements ITableSession {
   public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
     try {
       session.insertRelationalTablet(tablet);
+    } catch (IoTDBConnectionException e) {
+      sessionPool.cleanSessionAndMayThrowConnectionException(session);
+      closed.set(true);
+      session = null;
+      throw e;
+    }
+  }
+
+  @Override
+  public void insert(List<Tablet> tablets)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      session.insertRelationalTablets(tablets);
     } catch (IoTDBConnectionException e) {
       sessionPool.cleanSessionAndMayThrowConnectionException(session);
       closed.set(true);

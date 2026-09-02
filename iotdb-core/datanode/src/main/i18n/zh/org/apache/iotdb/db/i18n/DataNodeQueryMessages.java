@@ -2029,6 +2029,9 @@ public final class DataNodeQueryMessages {
       "' 必须在整个集群中保持一致，且同一时间只能设置一个。";
   public static final String CANNOT_INSERT_INTO_MULTIPLE_DATABASES_WITHIN_ONE_STATEMENT_PLEASE_SPLIT_THEM_MANUALLY =
       "不能在一条语句中写入多个数据库，请手动拆分。";
+  public static final String
+      CANNOT_INSERT_INTO_MULTIPLE_TABLES_WITHIN_ONE_STATEMENT_PLEASE_SPLIT_THEM_MANUALLY_5967C460 =
+          "不能在一条语句中写入多个表，请手动拆分。";
   public static final String THE_MEASUREMENTLIST_S_SIZE_D_IS_NOT_CONSISTENT_WITH_THE_VALUELIST_S_SIZE_D =
       "measurementList 的大小 %d 与 valueList 的大小 %d 不一致";
   public static final String THE_MEASUREMENTLIST_S_SIZE_D_IS_NOT_CONSISTENT_WITH_THE_COLUMNLIST_S_SIZE_D =

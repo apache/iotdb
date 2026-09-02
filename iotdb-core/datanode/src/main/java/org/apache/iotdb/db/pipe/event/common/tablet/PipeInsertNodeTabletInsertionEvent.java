@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -550,6 +551,14 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
             eventParsers.add(
                 new TabletInsertionEventTablePatternParser(
                     pipeTaskMeta, this, insertRowNode, tablePattern));
+          }
+          break;
+        case RELATIONAL_INSERT_MULTI_TABLETS:
+          for (final InsertTabletNode insertTabletNode :
+              ((RelationalInsertMultiTabletsNode) node).getInsertTabletNodeList()) {
+            eventParsers.add(
+                new TabletInsertionEventTablePatternParser(
+                    pipeTaskMeta, this, insertTabletNode, tablePattern));
           }
           break;
         default:
