@@ -21,7 +21,17 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf.fft;
 
 import org.apache.iotdb.commons.i18n.QueryMessages;
 
-/** Computes an in-place 1D forward DFT for interleaved complex double data. */
+/**
+ * Computes in-place 1D FFTs for interleaved complex double data.
+ *
+ * <p>This is an independent implementation and is not a bit-for-bit port of JTransforms 3.1. For
+ * the same input and frequency-domain operations, its results are mathematically equivalent to the
+ * original JTransforms-based implementation, but floating-point operation order may differ.
+ * Therefore, exact bitwise equality is not guaranteed. There is no universal absolute error bound
+ * independent of input magnitude and transform length; callers should compare results with a
+ * combined absolute/relative tolerance (1e-9 is a practical baseline for ordinary finite-valued
+ * LowPass inputs, not a correctness guarantee for every possible input).
+ */
 public final class DoubleFFT_1D {
 
   private final int length;
@@ -46,6 +56,28 @@ public final class DoubleFFT_1D {
       transform(values, length, false);
     } else {
       bluesteinForward(values);
+    }
+  }
+
+  public void complexInverse(double[] values, boolean scale) {
+    if (values.length < 2 * length) {
+      throw new IllegalArgumentException(
+          QueryMessages.EXCEPTION_INPUT_ARRAY_LENGTH_MUST_BE_AT_LEAST_2_FFT_LENGTH_31DF6A25);
+    }
+
+    // IDFT(x) = conjugate(DFT(conjugate(x))).
+    for (int i = 1; i < 2 * length; i += 2) {
+      values[i] = -values[i];
+    }
+    complexForward(values);
+    for (int i = 1; i < 2 * length; i += 2) {
+      values[i] = -values[i];
+    }
+
+    if (scale) {
+      for (int i = 0; i < 2 * length; i++) {
+        values[i] /= length;
+      }
     }
   }
 
