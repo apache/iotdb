@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -52,6 +53,7 @@ public class IoTConsensusV2TabletBatchEventHandler
   private final TIoTConsensusV2BatchTransferReq req;
   private final IoTConsensusV2AsyncSink connector;
   private final IoTConsensusV2SinkMetrics iotConsensusV2SinkMetrics;
+  private boolean transferAuditRecorded;
 
   public IoTConsensusV2TabletBatchEventHandler(
       final IoTConsensusV2AsyncBatchReqBuilder batchBuilder,
@@ -84,6 +86,20 @@ public class IoTConsensusV2TabletBatchEventHandler
           response.getBatchResps().stream()
               .map(TIoTConsensusV2TransferResp::getStatus)
               .collect(Collectors.toList());
+      final TSStatus failedStatus =
+          status.stream()
+              .filter(tsStatus -> tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+              .findFirst()
+              .orElse(null);
+      connector.recordUserDataTransferAudit(
+          UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
+          requestCommitIds.isEmpty()
+              ? null
+              : requestCommitIds.get(0) + "/" + requestCommitIds.size(),
+          failedStatus == null,
+          failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
+          null);
+      transferAuditRecorded = true;
 
       if (status.stream()
           .anyMatch(
@@ -118,6 +134,17 @@ public class IoTConsensusV2TabletBatchEventHandler
 
   @Override
   public void onError(final Exception exception) {
+    if (!transferAuditRecorded) {
+      connector.recordUserDataTransferAudit(
+          UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
+          requestCommitIds.isEmpty()
+              ? null
+              : requestCommitIds.get(0) + "/" + requestCommitIds.size(),
+          false,
+          null,
+          exception);
+      transferAuditRecorded = true;
+    }
     final Object pipeNames =
         events.stream()
             .map(

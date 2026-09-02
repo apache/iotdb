@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -87,6 +88,9 @@ public class IoTConsensusV2TsFileInsertionEventHandler
   private final long createTime;
 
   private long startTransferPieceTime;
+  private boolean currentAttemptContainsUserData;
+  private boolean transferAuditRecorded;
+  private String transferAuditContext;
 
   public IoTConsensusV2TsFileInsertionEventHandler(
       final PipeTsFileInsertionEvent event,
@@ -161,6 +165,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         transfer(client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
+        currentAttemptContainsUserData = false;
         client.iotConsensusV2Transfer(
             transferMod
                 ? IoTConsensusV2TsFileSealWithModReq.toTIoTConsensusV2TransferReq(
@@ -191,6 +196,9 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         readLength == readFileBufferSize
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
+    currentAttemptContainsUserData = true;
+    transferAuditRecorded = false;
+    transferAuditContext = currentFile.getName() + "/" + position;
     client.iotConsensusV2Transfer(
         transferMod
             ? IoTConsensusV2TsFilePieceWithModReq.toTIoTConsensusV2TransferReq(
@@ -275,6 +283,17 @@ public class IoTConsensusV2TsFileInsertionEventHandler
     try {
       final IoTConsensusV2TransferFilePieceResp resp =
           IoTConsensusV2TransferFilePieceResp.fromTIoTConsensusV2TransferResp(response);
+      final TSStatus transferStatus = resp.getStatus();
+      final boolean success =
+          transferStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || transferStatus.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+      connector.recordUserDataTransferAudit(
+          UserDataTransferType.IOT_CONSENSUS_V2_TSFILE,
+          transferAuditContext,
+          success,
+          success ? null : String.valueOf(transferStatus.getCode()),
+          null);
+      transferAuditRecorded = true;
 
       // This case only happens when the connection is broken, and the connector is reconnected
       // to the receiver, then the receiver will redirect the file position to the last position
@@ -309,6 +328,15 @@ public class IoTConsensusV2TsFileInsertionEventHandler
 
   @Override
   public void onError(final Exception exception) {
+    if (currentAttemptContainsUserData && !transferAuditRecorded) {
+      connector.recordUserDataTransferAudit(
+          UserDataTransferType.IOT_CONSENSUS_V2_TSFILE,
+          transferAuditContext,
+          false,
+          null,
+          exception);
+      transferAuditRecorded = true;
+    }
     PipeLogger.log(
         ignored ->
             LOGGER.warn(

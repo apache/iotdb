@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -104,6 +105,7 @@ public class IoTConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
+  private final UserDataTransferAuditHandler userDataTransferAuditHandler;
   private volatile IoTConsensusConfig config;
 
   /**
@@ -131,6 +133,7 @@ public class IoTConsensus implements IConsensus {
     this.recvSnapshotDirs = config.getRecvSnapshotDirs();
     this.recvFolderStrategyType = config.getDirectoryStrategyType();
     this.config = config.getIotConsensusConfig();
+    this.userDataTransferAuditHandler = config.getUserDataTransferAuditHandler();
     this.registry = registry;
     this.service =
         new IoTConsensusRPCService(
@@ -207,7 +210,8 @@ public class IoTConsensus implements IConsensus {
                   backgroundTaskService,
                   clientManager,
                   syncClientManager,
-                  config);
+                  config,
+                  userDataTransferAuditHandler);
           stateMachineMap.put(consensusGroupId, consensus);
         }
       } catch (DiskSpaceInsufficientException e) {
@@ -322,7 +326,8 @@ public class IoTConsensus implements IConsensus {
                             backgroundTaskService,
                             clientManager,
                             syncClientManager,
-                            config);
+                            config,
+                            userDataTransferAuditHandler);
                   } catch (DiskSpaceInsufficientException e) {
                     throw new RuntimeException(e);
                   }

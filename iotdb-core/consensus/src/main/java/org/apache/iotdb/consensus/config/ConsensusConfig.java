@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.config;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.TrustedChannelFailureHandler;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 
 import java.util.List;
@@ -39,6 +40,7 @@ public class ConsensusConfig {
   private final IoTConsensusV2Config iotConsensusV2Config;
   private final DirectoryStrategyType directoryStrategyType;
   private final TrustedChannelFailureHandler trustedChannelFailureHandler;
+  private final UserDataTransferAuditHandler userDataTransferAuditHandler;
 
   private ConsensusConfig(
       TEndPoint thisNode,
@@ -50,7 +52,8 @@ public class ConsensusConfig {
       IoTConsensusConfig iotConsensusConfig,
       IoTConsensusV2Config iotConsensusV2Config,
       DirectoryStrategyType directoryStrategyType,
-      TrustedChannelFailureHandler trustedChannelFailureHandler) {
+      TrustedChannelFailureHandler trustedChannelFailureHandler,
+      UserDataTransferAuditHandler userDataTransferAuditHandler) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
@@ -61,6 +64,7 @@ public class ConsensusConfig {
     this.iotConsensusV2Config = iotConsensusV2Config;
     this.directoryStrategyType = directoryStrategyType;
     this.trustedChannelFailureHandler = trustedChannelFailureHandler;
+    this.userDataTransferAuditHandler = userDataTransferAuditHandler;
   }
 
   public TEndPoint getThisNodeEndPoint() {
@@ -103,6 +107,10 @@ public class ConsensusConfig {
     return trustedChannelFailureHandler;
   }
 
+  public UserDataTransferAuditHandler getUserDataTransferAuditHandler() {
+    return userDataTransferAuditHandler;
+  }
+
   public static ConsensusConfig.Builder newBuilder() {
     return new ConsensusConfig.Builder();
   }
@@ -121,6 +129,8 @@ public class ConsensusConfig {
         DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY;
     private TrustedChannelFailureHandler trustedChannelFailureHandler =
         TrustedChannelFailureHandler.NO_OP;
+    private UserDataTransferAuditHandler userDataTransferAuditHandler =
+        UserDataTransferAuditHandler.NO_OP;
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -135,7 +145,8 @@ public class ConsensusConfig {
           Optional.ofNullable(iotConsensusV2Config)
               .orElseGet(() -> IoTConsensusV2Config.newBuilder().build()),
           directoryStrategyType,
-          trustedChannelFailureHandler);
+          trustedChannelFailureHandler,
+          userDataTransferAuditHandler);
     }
 
     public Builder setThisNode(TEndPoint thisNode) {
@@ -188,6 +199,14 @@ public class ConsensusConfig {
       this.trustedChannelFailureHandler =
           Optional.ofNullable(trustedChannelFailureHandler)
               .orElse(TrustedChannelFailureHandler.NO_OP);
+      return this;
+    }
+
+    public Builder setUserDataTransferAuditHandler(
+        UserDataTransferAuditHandler userDataTransferAuditHandler) {
+      this.userDataTransferAuditHandler =
+          Optional.ofNullable(userDataTransferAuditHandler)
+              .orElse(UserDataTransferAuditHandler.NO_OP);
       return this;
     }
   }

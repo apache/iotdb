@@ -224,5 +224,10 @@ public final class CommonMessages {
   public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold must be in [0, 1), but was ";
   public static final String LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443 =
       "Trusted channel function failed: initiator=%s, target=%s";
+  public static final String
+      LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_TYPE_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_PROTECTION_PROTOCOL_ARG_CONTEXT_ARG_ATTEMPT_ARG_ERROR_CODE_ARG_ERROR_TYPE_ARG_941238A8 =
+          "User data transfer attempt: time=%d, type=%s, initiator=%s, source=%s, target=%s,"
+              + " protection_method=%s, protection_protocol=%s, context=%s, attempt=%d,"
+              + " error_code=%s, error_type=%s";
 
 }

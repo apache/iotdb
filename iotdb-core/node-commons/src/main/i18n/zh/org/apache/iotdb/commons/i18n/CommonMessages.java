@@ -217,5 +217,9 @@ public final class CommonMessages {
   public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold 必须在 [0, 1) 范围内，但实际为 ";
   public static final String LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443 =
       "可信信道功能失效：发起者=%s，目标端=%s";
+  public static final String
+      LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_TYPE_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_PROTECTION_PROTOCOL_ARG_CONTEXT_ARG_ATTEMPT_ARG_ERROR_CODE_ARG_ERROR_TYPE_ARG_941238A8 =
+          "用户数据传送尝试：时间=%d，类型=%s，发起者=%s，源端=%s，目标端=%s，保护方法=%s，保护协议=%s，"
+              + "上下文=%s，尝试次数=%d，错误码=%s，错误类型=%s";
 
 }

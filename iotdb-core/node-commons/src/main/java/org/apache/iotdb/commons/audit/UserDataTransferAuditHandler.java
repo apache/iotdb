@@ -19,40 +19,25 @@
 
 package org.apache.iotdb.commons.audit;
 
-public enum AuditEventType {
-  CHANGE_AUDIT_OPTION,
-  AUDIT_STORAGE_FULL,
-  GENERATE_KEY,
-  DESTROY_KEY,
-  EXECUTE_ENCRYPT,
-  OBJECT_AUTHENTICATION,
-  LBAC_AUTHENTICATION,
-  EXPORT_DATA_WITH_LABEL,
-  IMPORT_DATA_WITH_LABEL,
-  INTEGRITY_CHECK,
-  LOGIN_FAIL_MAX_TIMES,
-  MODIFY_PASSWD,
-  LOGIN,
-  LOGOUT,
-  LOGIN_FINAL,
-  MODIFY_SECURITY_OPTIONS,
-  MODIFY_DEFAULT_SECURITY_VALUES,
-  MODIFY_ROLE_MEMBERSHIP,
-  REVOKE_FAILED,
-  GRANT_ROLE_FAILED,
-  LOGIN_RESOURCE_RESTRICT,
-  LOGIN_FAILED_TRIES,
-  LOGIN_EXCEED_LIMIT,
-  SESSION_TIME_EXCEEDED,
-  LOGIN_REJECT_IP,
-  TRUSTED_CHANNEL_FUNCTION_FAILURE,
-  USER_DATA_TRANSFER,
-  SYSTEM_OPERATION,
+@FunctionalInterface
+public interface UserDataTransferAuditHandler {
 
-  DN_SHUTDOWN;
+  UserDataTransferAuditHandler NO_OP =
+      new UserDataTransferAuditHandler() {
+        @Override
+        public void onAttempt(UserDataTransferAuditEvent event) {
+          // Do nothing.
+        }
 
-  @Override
-  public String toString() {
-    return name();
+        @Override
+        public boolean isEnabled() {
+          return false;
+        }
+      };
+
+  void onAttempt(UserDataTransferAuditEvent event);
+
+  default boolean isEnabled() {
+    return true;
   }
 }

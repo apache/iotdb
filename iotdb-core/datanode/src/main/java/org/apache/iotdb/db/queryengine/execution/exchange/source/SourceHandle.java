@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.source;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
+import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -73,6 +76,7 @@ public class SourceHandle implements ISourceHandle {
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000;
 
   private final TEndPoint remoteEndpoint;
+  private final TEndPoint localEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final TFragmentInstanceId localFragmentInstanceId;
 
@@ -175,6 +179,10 @@ public class SourceHandle implements ISourceHandle {
         Validate.notNull(
             remoteEndpoint,
             DataNodeQueryMessages.EXCEPTION_REMOTEENDPOINT_CAN_NOT_BE_NULL_DOT_DE2B5885);
+    this.localEndpoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     this.remoteFragmentInstanceId =
         Validate.notNull(
             remoteFragmentInstanceId,
@@ -637,11 +645,15 @@ public class SourceHandle implements ISourceHandle {
           attempt += 1;
 
           long startTime = System.nanoTime();
+          boolean transferAttemptRecorded = false;
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
             int tsBlockNum = resp.getTsBlocks().size();
             if (tsBlockNum == 0) {
+              recordTransferAttempt(
+                  attempt, false, UserDataTransferErrorCode.EMPTY_RESPONSE.name(), null);
+              transferAttemptRecorded = true;
               if (!closed) {
                 // failed to pull TsBlocks
                 LOGGER.warn(
@@ -654,6 +666,8 @@ public class SourceHandle implements ISourceHandle {
               }
               return;
             }
+            recordTransferAttempt(attempt, true, null, null);
+            transferAttemptRecorded = true;
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
 
@@ -680,6 +694,10 @@ public class SourceHandle implements ISourceHandle {
             }
             break;
           } catch (Throwable e) {
+
+            if (!transferAttemptRecorded) {
+              recordTransferAttempt(attempt, false, null, e);
+            }
 
             LOGGER.warn(
                 DataNodeQueryMessages.FAILED_TO_GET_DATA_BLOCK,
@@ -708,6 +726,29 @@ public class SourceHandle implements ISourceHandle {
           }
         }
       }
+    }
+
+    private void recordTransferAttempt(
+        int attempt, boolean success, String errorCode, Throwable error) {
+      if (!DataNodeUserDataTransferAuditor.isEnabled()) {
+        return;
+      }
+      DataNodeUserDataTransferAuditor.record(
+          UserDataTransferType.MPP_TS_BLOCK,
+          localEndpoint,
+          remoteEndpoint,
+          localEndpoint,
+          remoteFragmentInstanceId
+              + "/"
+              + indexOfUpstreamSinkHandle
+              + "/"
+              + startSequenceId
+              + "-"
+              + endSequenceId,
+          attempt,
+          success,
+          errorCode,
+          error);
     }
 
     private void fail(Throwable t) {

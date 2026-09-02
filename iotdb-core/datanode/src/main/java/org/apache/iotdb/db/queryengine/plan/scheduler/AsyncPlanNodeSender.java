@@ -23,8 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
@@ -49,6 +52,7 @@ public class AsyncPlanNodeSender {
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
   private final List<FragmentInstance> instances;
+  private final TEndPoint localEndPoint;
 
   private final Map<TEndPoint, BatchRequestWithIndex> batchRequests;
   private final Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap;
@@ -57,6 +61,7 @@ public class AsyncPlanNodeSender {
 
   private final AtomicLong pendingNumber;
   private long startSendTime;
+  private int auditAttempt;
 
   public AsyncPlanNodeSender(
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
@@ -65,6 +70,10 @@ public class AsyncPlanNodeSender {
     this.startSendTime = System.nanoTime();
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.instances = instances;
+    this.localEndPoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getInternalPort());
     this.batchRequests = new HashMap<>();
     for (int i = 0; i < instances.size(); i++) {
       this.batchRequests
@@ -76,7 +85,8 @@ public class AsyncPlanNodeSender {
               new TSendSinglePlanNodeReq(
                   new TPlanNode(
                       instances.get(i).getFragment().getPlanNodeTree().serializeToByteBuffer()),
-                  instances.get(i).getRegionReplicaSet().getRegionId()));
+                  instances.get(i).getRegionReplicaSet().getRegionId()),
+              containsInsertNode(instances.get(i).getFragment().getPlanNodeTree()));
     }
     this.instanceId2RespMap = new ConcurrentHashMap<>(instances.size() + 1, 1);
     this.needRetryInstanceIndex = Collections.synchronizedList(new ArrayList<>());
@@ -84,6 +94,7 @@ public class AsyncPlanNodeSender {
   }
 
   public void sendAll() {
+    auditAttempt++;
     for (Map.Entry<TEndPoint, BatchRequestWithIndex> entry : batchRequests.entrySet()) {
       AsyncSendPlanNodeHandler handler =
           new AsyncSendPlanNodeHandler(
@@ -91,7 +102,12 @@ public class AsyncPlanNodeSender {
               pendingNumber,
               instanceId2RespMap,
               needRetryInstanceIndex,
-              startSendTime);
+              startSendTime,
+              localEndPoint,
+              entry.getKey(),
+              entry.getValue().containsUserData(),
+              buildAuditContext(entry.getValue()),
+              auditAttempt);
       try {
         AsyncDataNodeInternalServiceClient client =
             asyncInternalServiceClientManager.borrowClient(entry.getKey());
@@ -188,7 +204,9 @@ public class AsyncPlanNodeSender {
                           .getFragment()
                           .getPlanNodeTree()
                           .serializeToByteBuffer()),
-                  instances.get(fragmentInstanceIndex).getRegionReplicaSet().getRegionId()));
+                  instances.get(fragmentInstanceIndex).getRegionReplicaSet().getRegionId()),
+              containsInsertNode(
+                  instances.get(fragmentInstanceIndex).getFragment().getPlanNodeTree()));
     }
 
     // 2. reset the pendingNumber, needRetryInstanceIds and startSendTime
@@ -213,9 +231,13 @@ public class AsyncPlanNodeSender {
     private final List<Integer> indexes = new ArrayList<>();
     private final TSendBatchPlanNodeReq batchRequest = new TSendBatchPlanNodeReq();
 
-    void addSinglePlanNodeReq(int index, TSendSinglePlanNodeReq singleRequest) {
+    private boolean containsUserData;
+
+    void addSinglePlanNodeReq(
+        int index, TSendSinglePlanNodeReq singleRequest, boolean containsUserData) {
       indexes.add(index);
       batchRequest.addToRequests(singleRequest);
+      this.containsUserData |= containsUserData;
     }
 
     public List<Integer> getIndexes() {
@@ -225,5 +247,33 @@ public class AsyncPlanNodeSender {
     public TSendBatchPlanNodeReq getBatchRequest() {
       return batchRequest;
     }
+
+    public boolean containsUserData() {
+      return containsUserData;
+    }
+  }
+
+  private String buildAuditContext(BatchRequestWithIndex batchRequest) {
+    if (batchRequest.getIndexes().isEmpty()) {
+      return null;
+    }
+    return instances.get(batchRequest.getIndexes().get(0)).getId().getFullId()
+        + "/"
+        + batchRequest.getIndexes().size();
+  }
+
+  static boolean containsInsertNode(PlanNode node) {
+    if (node instanceof InsertNode) {
+      return true;
+    }
+    if (node.getChildren() == null) {
+      return false;
+    }
+    for (PlanNode child : node.getChildren()) {
+      if (containsInsertNode(child)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

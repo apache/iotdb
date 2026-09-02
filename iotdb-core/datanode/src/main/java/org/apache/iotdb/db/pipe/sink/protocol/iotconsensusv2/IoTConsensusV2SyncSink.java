@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -36,6 +37,8 @@ import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2BatchTran
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2BatchTransferResp;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferResp;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -199,6 +202,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
   }
 
   private void doTransfer() {
+    boolean transferAttemptRecorded = false;
     try (final SyncIoTConsensusV2ServiceClient syncIoTConsensusV2ServiceClient =
         syncRetryClientManager.borrowClient(getFollowerUrl())) {
       final TIoTConsensusV2BatchTransferResp resp;
@@ -210,6 +214,15 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
           resp.getBatchResps().stream()
               .map(TIoTConsensusV2TransferResp::getStatus)
               .collect(Collectors.toList());
+      final TSStatus failedStatus =
+          statusList.stream().filter(status -> !isSuccessful(status)).findFirst().orElse(null);
+      recordTransferAttempt(
+          UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
+          String.valueOf(consensusGroupId),
+          failedStatus == null,
+          failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
+          null);
+      transferAttemptRecorded = true;
 
       // TODO(support batch): handle retry logic
       // Only handle the failed statuses to avoid string format performance overhead
@@ -225,6 +238,14 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
 
       tabletBatchBuilder.onSuccess();
     } catch (final Exception e) {
+      if (!transferAttemptRecorded) {
+        recordTransferAttempt(
+            UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
+            String.valueOf(consensusGroupId),
+            false,
+            null,
+            e);
+      }
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
               IOT_CONSENSUS_V2_SYNC_CONNECTION_FAILED_FORMAT,
@@ -332,6 +353,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
     final TConsensusGroupId tConsensusGroupId =
         new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
+    boolean transferAttemptRecorded = false;
 
     try (final SyncIoTConsensusV2ServiceClient syncIoTConsensusV2ServiceClient =
         syncRetryClientManager.borrowClient(getFollowerUrl())) {
@@ -342,7 +364,23 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
           IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
               insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
       resp = syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(req);
+      final TSStatus status = resp.getStatus();
+      recordTransferAttempt(
+          UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
+          String.valueOf(pipeInsertNodeTabletInsertionEvent.getReplicateIndexForIoTV2()),
+          isSuccessful(status),
+          isSuccessful(status) ? null : String.valueOf(status.getCode()),
+          null);
+      transferAttemptRecorded = true;
     } catch (final Exception e) {
+      if (!transferAttemptRecorded) {
+        recordTransferAttempt(
+            UserDataTransferType.IOT_CONSENSUS_V2_TABLET,
+            String.valueOf(pipeInsertNodeTabletInsertionEvent.getReplicateIndexForIoTV2()),
+            false,
+            null,
+            e);
+      }
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(
               IOT_CONSENSUS_V2_SYNC_CONNECTION_FAILED_FORMAT,
@@ -467,6 +505,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                 ? readBuffer
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         final IoTConsensusV2TransferFilePieceResp resp;
+        final long transferPosition = position;
+        boolean transferAttemptRecorded = false;
         try {
           resp =
               IoTConsensusV2TransferFilePieceResp.fromTIoTConsensusV2TransferResp(
@@ -486,7 +526,23 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
                               tCommitId,
                               tConsensusGroupId,
                               thisDataNodeId)));
+          final TSStatus transferStatus = resp.getStatus();
+          recordTransferAttempt(
+              UserDataTransferType.IOT_CONSENSUS_V2_TSFILE,
+              file.getName() + "/" + transferPosition,
+              isSuccessful(transferStatus),
+              isSuccessful(transferStatus) ? null : String.valueOf(transferStatus.getCode()),
+              null);
+          transferAttemptRecorded = true;
         } catch (Exception e) {
+          if (!transferAttemptRecorded) {
+            recordTransferAttempt(
+                UserDataTransferType.IOT_CONSENSUS_V2_TSFILE,
+                file.getName() + "/" + transferPosition,
+                false,
+                null,
+                e);
+          }
           throw new PipeRuntimeSinkRetryTimesConfigurableException(
               String.format(
                   DataNodePipeMessages
@@ -533,6 +589,36 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     // In current iotConsensusV2 design, one connector corresponds to one follower, so the peers is
     // actually a singleton list
     return peers.get(0);
+  }
+
+  private static boolean isSuccessful(TSStatus status) {
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+  }
+
+  private void recordTransferAttempt(
+      UserDataTransferType transferType,
+      String context,
+      boolean success,
+      String errorCode,
+      Throwable error) {
+    if (!DataNodeUserDataTransferAuditor.isEnabled()) {
+      return;
+    }
+    final TEndPoint localEndPoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusPort());
+    DataNodeUserDataTransferAuditor.record(
+        transferType,
+        localEndPoint,
+        localEndPoint,
+        getFollowerUrl(),
+        context,
+        1,
+        success,
+        errorCode,
+        error);
   }
 
   // synchronized to avoid close connector when transfer event

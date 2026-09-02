@@ -21,6 +21,7 @@ package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -143,6 +144,10 @@ public class DataRegionConsensusImpl {
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
           .setTrustedChannelFailureHandler(
               DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary)
+          .setUserDataTransferAuditHandler(
+              COMMON_CONF.isEnableAuditLog()
+                  ? DNAuditLogger.getInstance()::recordUserDataTransferAuditLog
+                  : UserDataTransferAuditHandler.NO_OP)
           .setStorageDir(CONF.getDataRegionConsensusDir())
           .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))
           // IoTConsensus always balances received snapshot files by least occupied space,

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -37,6 +38,7 @@ import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferR
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSink;
 import org.apache.iotdb.consensus.pipe.metric.IoTConsensusV2SyncLagManager;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -740,10 +742,35 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     }
   }
 
-  private TEndPoint getFollowerUrl() {
+  public TEndPoint getFollowerUrl() {
     // In current iotConsensusV2 design, one connector corresponds to one follower, so the peers is
     // actually a singleton list
     return nodeUrls.get(0);
+  }
+
+  public void recordUserDataTransferAudit(
+      UserDataTransferType transferType,
+      String context,
+      boolean success,
+      String errorCode,
+      Throwable error) {
+    if (!DataNodeUserDataTransferAuditor.isEnabled()) {
+      return;
+    }
+    final TEndPoint localEndPoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusPort());
+    DataNodeUserDataTransferAuditor.record(
+        transferType,
+        localEndPoint,
+        localEndPoint,
+        getFollowerUrl(),
+        context,
+        1,
+        success,
+        errorCode,
+        error);
   }
 
   // synchronized to avoid close connector when transfer event

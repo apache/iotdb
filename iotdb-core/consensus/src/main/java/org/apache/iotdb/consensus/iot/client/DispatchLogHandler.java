@@ -20,6 +20,9 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditEvent;
+import org.apache.iotdb.commons.audit.UserDataTransferProtectionMethod;
+import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
@@ -63,6 +66,15 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
+    final TSStatus failedStatus =
+        response.getStatuses().stream()
+            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .findFirst()
+            .orElse(null);
+    recordTransferAttempt(
+        failedStatus == null,
+        failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
+        null);
     if (response.getStatuses().stream()
         .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode()))) {
       List<String> retryStatusMessages =
@@ -113,6 +125,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onError(Exception exception) {
+    recordTransferAttempt(false, null, exception);
     ++retryCount;
     Throwable rootCause = ExceptionUtils.getRootCause(exception);
     final Throwable actualCause = rootCause == null ? exception : rootCause;
@@ -171,5 +184,36 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     // update safely deleted search index after last flushed sync index may be updated by
     // removeBatch
     thread.updateSafelyDeletedSearchIndex();
+  }
+
+  private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
+    if (!thread.getImpl().getUserDataTransferAuditHandler().isEnabled()) {
+      return;
+    }
+    try {
+      thread
+          .getImpl()
+          .getUserDataTransferAuditHandler()
+          .onAttempt(
+              new UserDataTransferAuditEvent(
+                  UserDataTransferType.IOT_CONSENSUS_LOG,
+                  thread.getImpl().getThisNode().getEndpoint(),
+                  thread.getImpl().getThisNode().getEndpoint(),
+                  thread.getPeer().getEndpoint(),
+                  UserDataTransferProtectionMethod.fromTlsEnabled(
+                      thread.getConfig().getRpc().isEnableSSL()),
+                  null,
+                  thread.getImpl().getThisNode().getGroupId()
+                      + "/"
+                      + batch.getStartIndex()
+                      + "-"
+                      + batch.getEndIndex(),
+                  retryCount + 1,
+                  success,
+                  errorCode,
+                  error));
+    } catch (RuntimeException ignored) {
+      // Audit recording must not affect consensus replication.
+    }
   }
 }

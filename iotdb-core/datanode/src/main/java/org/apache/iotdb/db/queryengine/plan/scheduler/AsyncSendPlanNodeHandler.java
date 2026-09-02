@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
+import org.apache.iotdb.commons.audit.UserDataTransferType;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -43,6 +47,12 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
   private final Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap;
   private final List<Integer> needRetryInstanceIndex;
   private final long sendTime;
+  private final TEndPoint localEndPoint;
+  private final TEndPoint targetEndPoint;
+  private final boolean containsUserData;
+  private final String auditContext;
+  private final int auditAttempt;
+  private boolean transferAuditRecorded;
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
@@ -51,16 +61,27 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
       AtomicLong pendingNumber,
       Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap,
       List<Integer> needRetryInstanceIndex,
-      long sendTime) {
+      long sendTime,
+      TEndPoint localEndPoint,
+      TEndPoint targetEndPoint,
+      boolean containsUserData,
+      String auditContext,
+      int auditAttempt) {
     this.instanceIds = instanceIds;
     this.pendingNumber = pendingNumber;
     this.instanceId2RespMap = instanceId2RespMap;
     this.needRetryInstanceIndex = needRetryInstanceIndex;
     this.sendTime = sendTime;
+    this.localEndPoint = localEndPoint;
+    this.targetEndPoint = targetEndPoint;
+    this.containsUserData = containsUserData;
+    this.auditContext = auditContext;
+    this.auditAttempt = auditAttempt;
   }
 
   @Override
   public void onComplete(TSendBatchPlanNodeResp sendBatchPlanNodeResp) {
+    recordTransferAttempt(sendBatchPlanNodeResp);
     for (int i = 0; i < sendBatchPlanNodeResp.getResponses().size(); i++) {
       TSendSinglePlanNodeResp singlePlanNodeResp = sendBatchPlanNodeResp.getResponses().get(i);
       instanceId2RespMap.put(instanceIds.get(i), singlePlanNodeResp);
@@ -78,6 +99,9 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
 
   @Override
   public void onError(Exception e) {
+    if (!transferAuditRecorded) {
+      recordTransferAttempt(false, null, e);
+    }
     if (needRetry(e)) {
       needRetryInstanceIndex.addAll(instanceIds);
     }
@@ -105,5 +129,47 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
 
   private boolean needRetry(TSendSinglePlanNodeResp resp) {
     return !resp.accepted && resp.status != null && StatusUtils.needRetryHelper(resp.status);
+  }
+
+  private void recordTransferAttempt(TSendBatchPlanNodeResp response) {
+    if (!containsUserData) {
+      return;
+    }
+    if (response.getResponsesSize() != instanceIds.size()) {
+      recordTransferAttempt(false, UserDataTransferErrorCode.REMOTE_REJECTED.name(), null);
+      return;
+    }
+    for (TSendSinglePlanNodeResp singleResponse : response.getResponses()) {
+      if (!singleResponse.isAccepted()
+          || (singleResponse.isSetStatus()
+              && singleResponse.getStatus().getCode()
+                  != TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
+        recordTransferAttempt(
+            false,
+            singleResponse.isSetStatus()
+                ? String.valueOf(singleResponse.getStatus().getCode())
+                : UserDataTransferErrorCode.REMOTE_REJECTED.name(),
+            null);
+        return;
+      }
+    }
+    recordTransferAttempt(true, null, null);
+  }
+
+  private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
+    if (!containsUserData || !DataNodeUserDataTransferAuditor.isEnabled()) {
+      return;
+    }
+    DataNodeUserDataTransferAuditor.record(
+        UserDataTransferType.INSERT_PLAN_NODE,
+        localEndPoint,
+        localEndPoint,
+        targetEndPoint,
+        auditContext,
+        auditAttempt,
+        success,
+        errorCode,
+        error);
+    transferAuditRecorded = true;
   }
 }
