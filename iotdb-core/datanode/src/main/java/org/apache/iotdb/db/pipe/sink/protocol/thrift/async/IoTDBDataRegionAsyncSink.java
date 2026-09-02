@@ -804,10 +804,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       final String lastFailureMessage) {
     if (!hasText(lastFailureMessage)) {
       return String.format(
-          RETRY_QUEUE_FAILURE_MESSAGE,
-          remainingEvents,
-          tabletEventCount,
-          tsFileEventCount);
+          RETRY_QUEUE_FAILURE_MESSAGE, remainingEvents, tabletEventCount, tsFileEventCount);
     }
     return String.format(
         RETRY_QUEUE_FAILURE_WITH_CAUSE_MESSAGE,
