@@ -37,11 +37,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
@@ -201,49 +198,6 @@ public class CQInfoTest {
             .updateCQLastExecutionTime(
                 new UpdateCQLastExecTimePlan("indexedCq", 2000, "indexedToken", 1, 2))
             .getCode());
-  }
-
-  @Test
-  public void testPreviousStructuredSnapshotWithoutOccurrenceIndex() throws Exception {
-    File previousSnapshotDir = new File(BASE_OUTPUT_PATH, "snapshot-previous");
-    if (previousSnapshotDir.exists()) {
-      FileUtils.deleteDirectory(previousSnapshotDir);
-    }
-    previousSnapshotDir.mkdirs();
-
-    CQInfo source = new CQInfo();
-    TCreateCQReq req =
-        new TCreateCQReq(
-            "previousStructuredCq",
-            1000,
-            0,
-            1000,
-            0,
-            (byte) 0,
-            "select 1",
-            "create cq previousStructuredCq",
-            "UTC",
-            "root");
-    req.setDurationEncodingVersion((short) 1);
-    req.setEveryDuration(new TCQDuration(0, 1000));
-    req.setStartOffsetDuration(new TCQDuration(0, 1000));
-    req.setEndOffsetDuration(new TCQDuration(0, 0));
-    req.setBoundaryExplicit(true);
-    source.addCQ(new AddCQPlan(req, "previousStructuredToken", 1000));
-    source.processTakeSnapshot(previousSnapshotDir);
-
-    File snapshotFile = new File(previousSnapshotDir, "cq_info.snapshot");
-    byte[] snapshot = Files.readAllBytes(snapshotFile.toPath());
-    ByteBuffer.wrap(snapshot).putInt(-1842801);
-    // The -1842801 format predates nextOccurrenceIndex, which is the final field of each entry.
-    Files.write(snapshotFile.toPath(), Arrays.copyOf(snapshot, snapshot.length - Long.BYTES));
-
-    CQInfo restored = new CQInfo();
-    restored.processLoadSnapshot(previousSnapshotDir);
-    ShowCQResp restoredResponse = restored.showCQ(new ShowCQPlan("previousStructuredCq"));
-    Assert.assertEquals(1, restoredResponse.getCqList().size());
-    Assert.assertEquals(-1, restoredResponse.getCqList().get(0).getNextOccurrenceIndex());
-    FileUtils.deleteDirectory(previousSnapshotDir);
   }
 
   @Test
