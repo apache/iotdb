@@ -1064,8 +1064,7 @@ public class DataNodeTableOperatorGenerator
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(sourceOperator);
 
-    if (!(node instanceof ExternalTsFileScanNode)
-        && !(node instanceof ExternalTsFileAggregationScanNode)) {
+    if (sourceOperator.isBatchQueryDataSource()) {
       context.getDriverContext().setInputDriver(true);
       return;
     }
