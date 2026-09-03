@@ -723,6 +723,8 @@ public class WALNode implements IWALNode {
 
     private long currentRequestLocalSeq = -1L;
 
+    private boolean currentRequestContainsUserData = false;
+
     /** last broken wal file's version id */
     private long brokenFileId = -1;
 
@@ -784,6 +786,7 @@ public class WALNode implements IWALNode {
                           nextSearchIndex,
                           currentRequestLocalSeq >= 0 ? currentRequestLocalSeq : nextSearchIndex,
                           tmpNodes.get())
+                      .setContainsUserData(currentRequestContainsUserData)
                       .setPhysicalTime(currentRequestPhysicalTime)
                       .setNodeId(currentRequestNodeId));
               tmpNodes.set(new ArrayList<>());
@@ -840,6 +843,7 @@ public class WALNode implements IWALNode {
                     addConsensusRequest(type, buffer, currentWalEntryIndex, tmpNodes.get());
                 if (requestMemorySize != SKIPPED_OBJECT_NODE_MEMORY_SIZE) {
                   memorySize += requestMemorySize;
+                  currentRequestContainsUserData |= containsUserData(type);
                 } else {
                   hasSerializationFailure.set(true);
                 }
@@ -863,6 +867,7 @@ public class WALNode implements IWALNode {
                     addConsensusRequest(type, buffer, currentWalEntryIndex, tmpNodes.get());
                 if (requestMemorySize != SKIPPED_OBJECT_NODE_MEMORY_SIZE) {
                   memorySize += requestMemorySize;
+                  currentRequestContainsUserData |= containsUserData(type);
                 } else {
                   hasSerializationFailure.set(true);
                 }
@@ -947,6 +952,7 @@ public class WALNode implements IWALNode {
       currentRequestPhysicalTime = 0L;
       currentRequestNodeId = -1;
       currentRequestLocalSeq = -1L;
+      currentRequestContainsUserData = false;
     }
 
     private void addEmptyRequestAndBumpIndex(
@@ -963,6 +969,13 @@ public class WALNode implements IWALNode {
       if (notFirstFile.get()) {
         hasCollectedSufficientData.set(true);
       }
+    }
+
+    private boolean containsUserData(WALEntryType type) {
+      return type == WALEntryType.INSERT_ROW_NODE
+          || type == WALEntryType.INSERT_TABLET_NODE
+          || type == WALEntryType.INSERT_ROWS_NODE
+          || type == WALEntryType.OBJECT_FILE_NODE;
     }
 
     @Override

@@ -579,6 +579,7 @@ public class CommonConfig {
           AuditEventType.MODIFY_ROLE_MEMBERSHIP,
           AuditEventType.REVOKE_FAILED,
           AuditEventType.TRUSTED_CHANNEL_FUNCTION_FAILURE,
+          AuditEventType.USER_DATA_TRANSFER,
           AuditEventType.ENTITY_STATUS_CHANGED);
 
   /** The level of privilege required to record audit logs * */

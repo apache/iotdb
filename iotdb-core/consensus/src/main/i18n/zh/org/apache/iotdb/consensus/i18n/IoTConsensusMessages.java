@@ -331,5 +331,8 @@ public final class IoTConsensusMessages {
   public static final String LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2 = "预留 {} 字节给批次 {}-{}，当前总使用量 {}";
   public static final String LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD = "{}：无法向 {} 发送 idle writer safe-time barrier。状态={}";
   public static final String LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576 = "{}：写入操作失败。searchIndex: {}。Code: {}，订阅队列：{}，当前对象：{}";
+  public static final String
+      LOG_FAILED_TO_RECORD_A_USER_DATA_TRANSFER_AUDIT_EVENT_CONSENSUS_REPLICATION_WILL_CONTINUE_F215E222 =
+          "记录用户数据传送审计事件失败；Consensus 复制将继续。";
 
 }

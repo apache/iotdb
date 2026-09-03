@@ -320,6 +320,7 @@ public class ConsensusReqReaderTest {
     Assert.assertEquals(1L, request.getProgressLocalSeq());
     Assert.assertEquals(123456789L, request.getPhysicalTime());
     Assert.assertEquals(7, request.getNodeId());
+    Assert.assertTrue(request.containsUserData());
   }
 
   /**
@@ -356,6 +357,7 @@ public class ConsensusReqReaderTest {
     IndexedConsensusRequest emptyRequest = iterator.next();
     Assert.assertEquals(2, emptyRequest.getSearchIndex());
     Assert.assertTrue(emptyRequest.getRequests().isEmpty());
+    Assert.assertFalse(emptyRequest.containsUserData());
     PlanNode followerNoOp =
         (PlanNode) new IoTConsensusDataRegionStateMachine(null).deserializeRequest(emptyRequest);
     Assert.assertTrue(followerNoOp instanceof InsertRowsNode);
@@ -565,6 +567,7 @@ public class ConsensusReqReaderTest {
     PlanNode planNode;
     Assert.assertTrue(iterator.hasNext());
     request = iterator.next();
+    Assert.assertFalse(request.containsUserData());
     Assert.assertEquals(1, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
       planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
