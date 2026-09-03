@@ -317,13 +317,21 @@ public class CQInfo implements SnapshotProcessor {
   private void deserialize(InputStream stream) throws IOException {
     int markerOrSize = ReadWriteIOUtils.readInt(stream);
     final boolean structured;
+    final boolean hasOccurrenceIndex;
     final int size;
-    if (markerOrSize == SNAPSHOT_VERSION || markerOrSize == PREVIOUS_SNAPSHOT_VERSION) {
+    if (markerOrSize == SNAPSHOT_VERSION) {
       structured = true;
+      hasOccurrenceIndex = true;
+      size = ReadWriteIOUtils.readInt(stream);
+    } else if (markerOrSize == PREVIOUS_SNAPSHOT_VERSION) {
+      // The first structured snapshot format did not persist nextOccurrenceIndex yet.
+      structured = true;
+      hasOccurrenceIndex = false;
       size = ReadWriteIOUtils.readInt(stream);
     } else if (markerOrSize >= 0) {
       // Snapshots written before structured duration support started with the CQ count.
       structured = false;
+      hasOccurrenceIndex = false;
       size = markerOrSize;
     } else {
       throw new IOException(
@@ -337,7 +345,7 @@ public class CQInfo implements SnapshotProcessor {
               ManagerMessages.EXCEPTION_NEGATIVE_CQ_SNAPSHOT_ENTRY_COUNT_ARG_38750035, size));
     }
     for (int i = 0; i < size; i++) {
-      CQEntry cqEntry = CQEntry.deserialize(stream, structured);
+      CQEntry cqEntry = CQEntry.deserialize(stream, structured, hasOccurrenceIndex);
       cqMap.put(cqEntry.cqId, cqEntry);
     }
   }
@@ -527,7 +535,8 @@ public class CQInfo implements SnapshotProcessor {
       ReadWriteIOUtils.write(nextOccurrenceIndex, stream);
     }
 
-    private static CQEntry deserialize(InputStream stream, boolean structured) throws IOException {
+    private static CQEntry deserialize(
+        InputStream stream, boolean structured, boolean hasOccurrenceIndex) throws IOException {
       String cqId = ReadWriteIOUtils.readString(stream);
       long everyInterval = ReadWriteIOUtils.readLong(stream);
       long boundaryTime = ReadWriteIOUtils.readLong(stream);
@@ -557,7 +566,7 @@ public class CQInfo implements SnapshotProcessor {
       boolean boundaryExplicit = structured && ReadWriteIOUtils.readBool(stream);
       CQState state = CQState.deserialize(ReadWriteIOUtils.readByte(stream));
       long lastExecutionTime = ReadWriteIOUtils.readLong(stream);
-      long nextOccurrenceIndex = structured ? ReadWriteIOUtils.readLong(stream) : -1;
+      long nextOccurrenceIndex = hasOccurrenceIndex ? ReadWriteIOUtils.readLong(stream) : -1;
       return new CQEntry(
           cqId,
           everyInterval,
