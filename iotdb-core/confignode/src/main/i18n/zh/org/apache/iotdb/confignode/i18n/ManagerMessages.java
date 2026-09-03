@@ -705,8 +705,6 @@ public final class ManagerMessages {
       "CQ occurrence index 超前于 callback";
   public static final String EXCEPTION_INVALID_CQ_OCCURRENCE_INDEX_TRANSITION_AC6BFC4D =
       "无效的 CQ occurrence index 转换";
-  public static final String EXCEPTION_UNSUPPORTED_CQ_SNAPSHOT_VERSION_ARG_0F1E0A01 =
-      "不支持的 CQ snapshot 版本：%d";
   public static final String EXCEPTION_NEGATIVE_CQ_SNAPSHOT_ENTRY_COUNT_ARG_38750035 =
       "CQ snapshot 条目数量不能为负数：%d";
 

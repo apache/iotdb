@@ -202,6 +202,12 @@ public class CQInfoTest {
 
   @Test
   public void testCalendarOccurrenceProgressSurvivesSnapshotRecovery() throws Exception {
+    File calendarSnapshotDir = new File(BASE_OUTPUT_PATH, "snapshot-calendar");
+    if (calendarSnapshotDir.exists()) {
+      FileUtils.deleteDirectory(calendarSnapshotDir);
+    }
+    calendarSnapshotDir.mkdirs();
+
     ZoneId zone = ZoneId.of("UTC");
     long boundary = ZonedDateTime.of(2024, 1, 31, 0, 0, 0, 0, zone).toInstant().toEpochMilli();
     long firstOccurrence =
@@ -235,13 +241,14 @@ public class CQInfoTest {
                     "snapshotCalendarCq", firstOccurrence, "snapshotCalendarToken", 1, 2))
             .getCode());
 
-    cqInfo.processTakeSnapshot(snapshotDir);
+    cqInfo.processTakeSnapshot(calendarSnapshotDir);
     CQInfo restored = new CQInfo();
-    restored.processLoadSnapshot(snapshotDir);
+    restored.processLoadSnapshot(calendarSnapshotDir);
 
     ShowCQResp response = restored.showCQ(new ShowCQPlan("snapshotCalendarCq"));
     Assert.assertEquals(1, response.getCqList().size());
     Assert.assertEquals(2, response.getCqList().get(0).getNextOccurrenceIndex());
     Assert.assertEquals(firstOccurrence, response.getCqList().get(0).getLastExecutionTime());
+    FileUtils.deleteDirectory(calendarSnapshotDir);
   }
 }

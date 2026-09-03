@@ -726,8 +726,6 @@ public final class ManagerMessages {
       "CQ occurrence index is ahead of the callback";
   public static final String EXCEPTION_INVALID_CQ_OCCURRENCE_INDEX_TRANSITION_AC6BFC4D =
       "Invalid CQ occurrence index transition";
-  public static final String EXCEPTION_UNSUPPORTED_CQ_SNAPSHOT_VERSION_ARG_0F1E0A01 =
-      "Unsupported CQ snapshot version: %d";
   public static final String EXCEPTION_NEGATIVE_CQ_SNAPSHOT_ENTRY_COUNT_ARG_38750035 =
       "Negative CQ snapshot entry count: %d";
 

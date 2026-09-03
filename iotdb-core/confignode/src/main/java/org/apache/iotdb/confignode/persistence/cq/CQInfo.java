@@ -66,8 +66,8 @@ public class CQInfo implements SnapshotProcessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(CQInfo.class);
 
   private static final String SNAPSHOT_FILENAME = "cq_info.snapshot";
-  // Negative marker cannot collide with the non-negative legacy CQ count.
-  private static final int SNAPSHOT_VERSION = -1842802;
+  // Optional tail marker. The legacy CQ records stay byte-for-byte compatible with master.
+  private static final int SNAPSHOT_EXTENSION_MARKER = 0x43515631;
 
   private static final String CQ_NOT_EXIST_FORMAT = "CQ %s doesn't exist.";
 
@@ -305,38 +305,47 @@ public class CQInfo implements SnapshotProcessor {
   }
 
   private void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(SNAPSHOT_VERSION, stream);
     ReadWriteIOUtils.write(cqMap.size(), stream);
     for (CQEntry entry : cqMap.values()) {
-      entry.serialize(stream);
+      entry.serializeLegacy(stream);
+    }
+    ReadWriteIOUtils.write(SNAPSHOT_EXTENSION_MARKER, stream);
+    ReadWriteIOUtils.write(cqMap.size(), stream);
+    for (CQEntry entry : cqMap.values()) {
+      entry.serializeExtension(stream);
     }
   }
 
   private void deserialize(InputStream stream) throws IOException {
-    int markerOrSize = ReadWriteIOUtils.readInt(stream);
-    final boolean structured;
-    final int size;
-    if (markerOrSize == SNAPSHOT_VERSION) {
-      structured = true;
-      size = ReadWriteIOUtils.readInt(stream);
-    } else if (markerOrSize >= 0) {
-      // Snapshots written before structured duration support started with the CQ count.
-      structured = false;
-      size = markerOrSize;
-    } else {
-      throw new IOException(
-          String.format(
-              ManagerMessages.EXCEPTION_UNSUPPORTED_CQ_SNAPSHOT_VERSION_ARG_0F1E0A01,
-              markerOrSize));
-    }
+    int size = ReadWriteIOUtils.readInt(stream);
     if (size < 0) {
       throw new IOException(
           String.format(
               ManagerMessages.EXCEPTION_NEGATIVE_CQ_SNAPSHOT_ENTRY_COUNT_ARG_38750035, size));
     }
     for (int i = 0; i < size; i++) {
-      CQEntry cqEntry = CQEntry.deserialize(stream, structured);
+      CQEntry cqEntry = CQEntry.deserializeLegacy(stream);
       cqMap.put(cqEntry.cqId, cqEntry);
+    }
+    if (stream.available() < Integer.BYTES
+        || ReadWriteIOUtils.readInt(stream) != SNAPSHOT_EXTENSION_MARKER) {
+      return;
+    }
+    int extensionSize = ReadWriteIOUtils.readInt(stream);
+    if (extensionSize < 0) {
+      throw new IOException(
+          String.format(
+              ManagerMessages.EXCEPTION_NEGATIVE_CQ_SNAPSHOT_ENTRY_COUNT_ARG_38750035,
+              extensionSize));
+    }
+    for (int i = 0; i < extensionSize; i++) {
+      String cqId = ReadWriteIOUtils.readString(stream);
+      CQEntry cqEntry = cqMap.get(cqId);
+      if (cqEntry == null) {
+        CQEntry.skipExtension(stream);
+      } else {
+        cqEntry.deserializeExtension(stream);
+      }
     }
   }
 
@@ -396,10 +405,10 @@ public class CQInfo implements SnapshotProcessor {
     private final String zoneId;
 
     private final String username;
-    private final org.apache.tsfile.utils.TimeDuration everyDuration;
-    private final org.apache.tsfile.utils.TimeDuration startTimeOffsetDuration;
-    private final org.apache.tsfile.utils.TimeDuration endTimeOffsetDuration;
-    private final boolean boundaryExplicit;
+    private org.apache.tsfile.utils.TimeDuration everyDuration;
+    private org.apache.tsfile.utils.TimeDuration startTimeOffsetDuration;
+    private org.apache.tsfile.utils.TimeDuration endTimeOffsetDuration;
+    private boolean boundaryExplicit;
 
     private CQState state;
     private long lastExecutionTime;
@@ -501,7 +510,7 @@ public class CQInfo implements SnapshotProcessor {
       this.nextOccurrenceIndex = nextOccurrenceIndex;
     }
 
-    private void serialize(OutputStream stream) throws IOException {
+    private void serializeLegacy(OutputStream stream) throws IOException {
       ReadWriteIOUtils.write(cqId, stream);
       ReadWriteIOUtils.write(everyInterval, stream);
       ReadWriteIOUtils.write(boundaryTime, stream);
@@ -513,6 +522,12 @@ public class CQInfo implements SnapshotProcessor {
       ReadWriteIOUtils.write(cqToken, stream);
       ReadWriteIOUtils.write(zoneId, stream);
       ReadWriteIOUtils.write(username, stream);
+      ReadWriteIOUtils.write(state.getType(), stream);
+      ReadWriteIOUtils.write(lastExecutionTime, stream);
+    }
+
+    private void serializeExtension(OutputStream stream) throws IOException {
+      ReadWriteIOUtils.write(cqId, stream);
       ReadWriteIOUtils.write(everyDuration.monthDuration, stream);
       ReadWriteIOUtils.write(everyDuration.nonMonthDuration, stream);
       ReadWriteIOUtils.write(startTimeOffsetDuration.monthDuration, stream);
@@ -520,12 +535,10 @@ public class CQInfo implements SnapshotProcessor {
       ReadWriteIOUtils.write(endTimeOffsetDuration.monthDuration, stream);
       ReadWriteIOUtils.write(endTimeOffsetDuration.nonMonthDuration, stream);
       ReadWriteIOUtils.write(boundaryExplicit, stream);
-      ReadWriteIOUtils.write(state.getType(), stream);
-      ReadWriteIOUtils.write(lastExecutionTime, stream);
       ReadWriteIOUtils.write(nextOccurrenceIndex, stream);
     }
 
-    private static CQEntry deserialize(InputStream stream, boolean structured) throws IOException {
+    private static CQEntry deserializeLegacy(InputStream stream) throws IOException {
       String cqId = ReadWriteIOUtils.readString(stream);
       long everyInterval = ReadWriteIOUtils.readLong(stream);
       long boundaryTime = ReadWriteIOUtils.readLong(stream);
@@ -537,25 +550,8 @@ public class CQInfo implements SnapshotProcessor {
       String cqToken = ReadWriteIOUtils.readString(stream);
       String zoneId = ReadWriteIOUtils.readString(stream);
       String username = ReadWriteIOUtils.readString(stream);
-      org.apache.tsfile.utils.TimeDuration everyDuration =
-          structured
-              ? new org.apache.tsfile.utils.TimeDuration(
-                  ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream))
-              : new org.apache.tsfile.utils.TimeDuration(0, everyInterval);
-      org.apache.tsfile.utils.TimeDuration startDuration =
-          structured
-              ? new org.apache.tsfile.utils.TimeDuration(
-                  ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream))
-              : new org.apache.tsfile.utils.TimeDuration(0, startTimeOffset);
-      org.apache.tsfile.utils.TimeDuration endDuration =
-          structured
-              ? new org.apache.tsfile.utils.TimeDuration(
-                  ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream))
-              : new org.apache.tsfile.utils.TimeDuration(0, endTimeOffset);
-      boolean boundaryExplicit = structured && ReadWriteIOUtils.readBool(stream);
       CQState state = CQState.deserialize(ReadWriteIOUtils.readByte(stream));
       long lastExecutionTime = ReadWriteIOUtils.readLong(stream);
-      long nextOccurrenceIndex = structured ? ReadWriteIOUtils.readLong(stream) : -1;
       return new CQEntry(
           cqId,
           everyInterval,
@@ -568,13 +564,38 @@ public class CQInfo implements SnapshotProcessor {
           cqToken,
           zoneId,
           username,
-          everyDuration,
-          startDuration,
-          endDuration,
-          boundaryExplicit,
+          new org.apache.tsfile.utils.TimeDuration(0, everyInterval),
+          new org.apache.tsfile.utils.TimeDuration(0, startTimeOffset),
+          new org.apache.tsfile.utils.TimeDuration(0, endTimeOffset),
+          false,
           state,
           lastExecutionTime,
-          nextOccurrenceIndex);
+          -1);
+    }
+
+    private void deserializeExtension(InputStream stream) throws IOException {
+      everyDuration =
+          new org.apache.tsfile.utils.TimeDuration(
+              ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream));
+      startTimeOffsetDuration =
+          new org.apache.tsfile.utils.TimeDuration(
+              ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream));
+      endTimeOffsetDuration =
+          new org.apache.tsfile.utils.TimeDuration(
+              ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream));
+      boundaryExplicit = ReadWriteIOUtils.readBool(stream);
+      nextOccurrenceIndex = ReadWriteIOUtils.readLong(stream);
+    }
+
+    private static void skipExtension(InputStream stream) throws IOException {
+      ReadWriteIOUtils.readInt(stream);
+      ReadWriteIOUtils.readLong(stream);
+      ReadWriteIOUtils.readInt(stream);
+      ReadWriteIOUtils.readLong(stream);
+      ReadWriteIOUtils.readInt(stream);
+      ReadWriteIOUtils.readLong(stream);
+      ReadWriteIOUtils.readBool(stream);
+      ReadWriteIOUtils.readLong(stream);
     }
 
     public String getCqId() {
