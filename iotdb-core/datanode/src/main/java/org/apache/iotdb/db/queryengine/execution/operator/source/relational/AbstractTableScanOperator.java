@@ -335,7 +335,15 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     currentDeviceIndex = 0;
     if (batchQueryDataSource) {
       List<org.apache.iotdb.commons.path.IFullPath> paths = new ArrayList<>(deviceCount);
-      for (DeviceEntry deviceEntry : deviceEntries) {
+      for (int i = 0; i < deviceCount; i++) {
+        DeviceEntry deviceEntry = deviceEntries.get(i);
+        if (deviceEntry == null) {
+          throw new IllegalStateException(
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_DEVICE_ENTRIES_OF_INDEX_S_IN_TABLESCANOPERATOR_IS_EMPTY_FDEB574F,
+                  i));
+        }
         paths.add(
             constructAlignedPath(
                 deviceEntry, measurementColumnNames, measurementSchemas, allSensors));

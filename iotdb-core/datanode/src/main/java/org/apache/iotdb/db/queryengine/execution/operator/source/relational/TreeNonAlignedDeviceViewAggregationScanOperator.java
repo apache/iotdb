@@ -206,7 +206,14 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
     deviceCount = deviceEntries.size();
     currentDeviceIndex = 0;
     List<IFullPath> paths = new ArrayList<>();
-    for (DeviceEntry deviceEntry : deviceEntries) {
+    for (int i = 0; i < deviceCount; i++) {
+      DeviceEntry deviceEntry = deviceEntries.get(i);
+      if (deviceEntry == null) {
+        throw new IllegalStateException(
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_DEVICE_ENTRIES_OF_INDEX_S_IS_EMPTY_BCFB0644,
+                i));
+      }
       if (deviceEntry instanceof NonAlignedDeviceEntry) {
         for (org.apache.tsfile.write.schema.IMeasurementSchema measurementSchema :
             measurementSchemas) {
