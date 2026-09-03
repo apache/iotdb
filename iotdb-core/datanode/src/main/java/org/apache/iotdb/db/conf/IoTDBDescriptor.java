@@ -2780,8 +2780,7 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
-    final String[] previousCopyToAllowedExportDirs =
-        conf.getCopyToAllowedExportDirs().clone();
+    final String[] previousCopyToAllowedExportDirs = conf.getCopyToAllowedExportDirs().clone();
     conf.setCopyToAllowedExportDirs(
         Arrays.stream(
                 properties
