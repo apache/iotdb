@@ -25,11 +25,14 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
@@ -39,9 +42,12 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.utils.PathUtils.unQualifyDatabaseName;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 
 public class SchemaValidator {
 
@@ -71,11 +77,10 @@ public class SchemaValidator {
       final MPPQueryContext context,
       AccessControl accessControl) {
     try {
-      accessControl.checkCanInsertIntoTable(
-          context.getSession().getUserName(),
-          new QualifiedObjectName(
-              unQualifyDatabaseName(insertStatement.getDatabase()), insertStatement.getTableName()),
-          context);
+      for (final QualifiedObjectName targetTable : getTargetTables(insertStatement, context)) {
+        accessControl.checkCanInsertIntoTable(
+            context.getSession().getUserName(), targetTable, context);
+      }
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
       insertStatement.validateDeviceSchema(metadata, context);
@@ -83,6 +88,28 @@ public class SchemaValidator {
     } catch (final QueryProcessException e) {
       throw new SemanticException(e.getMessage());
     }
+  }
+
+  private static Set<QualifiedObjectName> getTargetTables(
+      final WrappedInsertStatement insertStatement, final MPPQueryContext context) {
+    final Set<QualifiedObjectName> targetTables = new LinkedHashSet<>();
+    if (insertStatement instanceof InsertRows) {
+      for (final InsertRowStatement rowStatement :
+          ((InsertRows) insertStatement).getInnerTreeStatement().getInsertRowStatementList()) {
+        final String database = AnalyzeUtils.getDatabaseName(rowStatement, context);
+        if (database == null) {
+          throw new SemanticException(DATABASE_NOT_SPECIFIED);
+        }
+        targetTables.add(
+            new QualifiedObjectName(unQualifyDatabaseName(database), rowStatement.getTableName()));
+      }
+    } else {
+      targetTables.add(
+          new QualifiedObjectName(
+              unQualifyDatabaseName(insertStatement.getDatabase()),
+              insertStatement.getTableName()));
+    }
+    return targetTables;
   }
 
   public static ISchemaTree validate(
