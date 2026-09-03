@@ -1062,6 +1062,7 @@ public class TableDistributedPlanGenerator
     }
 
     List<PlanNode> result = new ArrayList<>(scanNodes.values());
+    sortPropertyContext.ifPresent(property -> applySortProperty(node, result, property, false));
     context.mostUsedRegion =
         regionEntryCounts.entrySet().stream()
             .max(Comparator.comparingInt(Map.Entry::getValue))
