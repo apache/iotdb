@@ -26,7 +26,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.tsfile.external.commons.io.FileUtils;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -172,23 +174,23 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       Path finalDirectory = spillDirectory(ownerDirectory());
       List<Path> finalSegments;
       int finalEntryCount;
-      try (DeviceEntryDiskSpiller outputSpiller = createSpiller(finalDirectory)) {
-        if (finalRuns.size() == 1) {
-          finalEntryCount = copyRun(finalRuns.get(0), outputSpiller);
-        } else {
-          finalEntryCount = mergeRuns(finalRuns, outputSpiller);
+      if (!distinct && finalRuns.size() == 1) {
+        finalSegments = moveRun(finalRuns.get(0), finalDirectory);
+        finalEntryCount = entryCount();
+      } else {
+        try (DeviceEntryDiskSpiller outputSpiller = createSpiller(finalDirectory)) {
+          if (finalRuns.size() == 1) {
+            finalEntryCount = copyRun(finalRuns.get(0), outputSpiller);
+          } else {
+            finalEntryCount = mergeRuns(finalRuns, outputSpiller);
+          }
+          finalSegments = outputSpiller.finish();
         }
-        finalSegments = outputSpiller.finish();
       }
       setEntryCount(finalEntryCount);
       dataSet =
           new SpilledDeviceEntryDataSet(
-              queryId(),
-              ownerDirectory(),
-              finalSegments,
-              entryCount(),
-              isRawSegment() ? ioContextOnSpill() : null,
-              isRawSegment());
+              queryId(), ownerDirectory(), finalSegments, entryCount(), ioContextOnSpill());
       recordDeviceEntryCount();
       markFinished();
       deleteRunDirectoryBestEffort();
@@ -201,6 +203,21 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       }
       throw e;
     }
+  }
+
+  private List<Path> moveRun(List<Path> run, Path finalDirectory) throws IOException {
+    Files.createDirectories(finalDirectory);
+    List<Path> finalSegments = new ArrayList<>(run.size());
+    for (Path segment : run) {
+      Path target = finalDirectory.resolve(segment.getFileName());
+      try {
+        Files.move(segment, target, StandardCopyOption.ATOMIC_MOVE);
+      } catch (IOException e) {
+        Files.move(segment, target, StandardCopyOption.REPLACE_EXISTING);
+      }
+      finalSegments.add(target);
+    }
+    return finalSegments;
   }
 
   private void flushRun() throws IOException {

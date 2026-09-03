@@ -30,26 +30,18 @@ public final class SpilledDeviceEntryDataSet implements DeviceEntryDataSet {
   private final List<Path> segments;
   private final int entryCount;
   private final DeviceEntryIOContext ioContext;
-  private final boolean duringFetchSchema;
-
-  public SpilledDeviceEntryDataSet(
-      String queryId, Path ownerDirectory, List<Path> segments, int entryCount) {
-    this(queryId, ownerDirectory, segments, entryCount, null, false);
-  }
 
   public SpilledDeviceEntryDataSet(
       String queryId,
       Path ownerDirectory,
       List<Path> segments,
       int entryCount,
-      DeviceEntryIOContext ioContext,
-      boolean duringFetchSchema) {
+      DeviceEntryIOContext ioContext) {
     this.queryId = queryId;
     this.ownerDirectory = ownerDirectory;
     this.segments = segments;
     this.entryCount = entryCount;
     this.ioContext = ioContext;
-    this.duringFetchSchema = duringFetchSchema;
   }
 
   @Override
@@ -68,12 +60,12 @@ public final class SpilledDeviceEntryDataSet implements DeviceEntryDataSet {
 
   @Override
   public DeviceEntryReader openReader() {
-    return new DeviceEntryFileSpillerReader(segments, false, ioContext, duringFetchSchema);
+    return new DeviceEntryFileSpillerReader(segments, false, ioContext, false);
   }
 
   @Override
   public DeviceEntryReader openConsumingReader() {
-    return new DeviceEntryFileSpillerReader(segments, true, ioContext, duringFetchSchema);
+    return new DeviceEntryFileSpillerReader(segments, true, ioContext, false);
   }
 
   @Override
