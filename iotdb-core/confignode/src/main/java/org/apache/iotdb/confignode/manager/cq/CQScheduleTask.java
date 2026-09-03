@@ -438,19 +438,16 @@ public class CQScheduleTask implements Runnable {
     }
 
     private long nextOccurrenceIndex(long callbackTime) {
-      long next = Math.addExact(expectedIndex, 1);
-      if (timeoutPolicy == TimeoutPolicy.BLOCKED) {
-        return next;
-      } else if (timeoutPolicy == TimeoutPolicy.DISCARD) {
-        long lowerBound =
-            occurrenceIndex >= 0
-                ? CQCalendarUtils.firstOccurrenceIndex(
-                    boundaryTime, everyDuration, callbackTime, scheduleZone)
-                : fixedLowerBound(callbackTime);
-        return Math.max(next, lowerBound);
-      } else {
-        throw new IllegalArgumentException(ManagerMessages.UNKNOWN_TIMEOUTPOLICY + timeoutPolicy);
-      }
+      return calculateNextOccurrenceIndex(
+          timeoutPolicy,
+          expectedIndex,
+          callbackTime,
+          executionTime,
+          everyInterval,
+          occurrenceIndex,
+          boundaryTime,
+          everyDuration,
+          scheduleZone);
     }
 
     private void advanceLegacyExecutionTime(long callbackTime) {
@@ -467,14 +464,6 @@ public class CQScheduleTask implements Runnable {
                 Math.multiplyExact(
                     ((callbackTime - executionTime - 1) / everyInterval + 1), everyInterval));
       }
-    }
-
-    private long fixedLowerBound(long callbackTime) {
-      if (callbackTime <= executionTime) {
-        return expectedIndex;
-      }
-      return Math.addExact(
-          expectedIndex, Math.addExact((callbackTime - executionTime - 1) / everyInterval, 1));
     }
 
     private void persistProgress(long targetIndex, long callbackTime) {
@@ -571,5 +560,40 @@ public class CQScheduleTask implements Runnable {
         submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
       }
     }
+  }
+
+  /** Calculates the next occurrence selected after a successful callback. */
+  static long calculateNextOccurrenceIndex(
+      TimeoutPolicy timeoutPolicy,
+      long expectedIndex,
+      long callbackTime,
+      long executionTime,
+      long everyInterval,
+      long occurrenceIndex,
+      long boundaryTime,
+      TimeDuration everyDuration,
+      ZoneId scheduleZone) {
+    long next = Math.addExact(expectedIndex, 1);
+    if (timeoutPolicy == TimeoutPolicy.BLOCKED) {
+      return next;
+    }
+    if (timeoutPolicy == TimeoutPolicy.DISCARD) {
+      long lowerBound =
+          occurrenceIndex >= 0
+              ? CQCalendarUtils.firstOccurrenceIndex(
+                  boundaryTime, everyDuration, callbackTime, scheduleZone)
+              : calculateFixedLowerBound(expectedIndex, callbackTime, executionTime, everyInterval);
+      return Math.max(next, lowerBound);
+    }
+    throw new IllegalArgumentException(ManagerMessages.UNKNOWN_TIMEOUTPOLICY + timeoutPolicy);
+  }
+
+  private static long calculateFixedLowerBound(
+      long expectedIndex, long callbackTime, long executionTime, long everyInterval) {
+    if (callbackTime <= executionTime) {
+      return expectedIndex;
+    }
+    return Math.addExact(
+        expectedIndex, Math.addExact((callbackTime - executionTime - 1) / everyInterval, 1));
   }
 }

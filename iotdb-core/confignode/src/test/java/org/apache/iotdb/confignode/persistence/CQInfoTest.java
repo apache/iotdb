@@ -37,6 +37,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
@@ -196,5 +198,50 @@ public class CQInfoTest {
             .updateCQLastExecutionTime(
                 new UpdateCQLastExecTimePlan("indexedCq", 2000, "indexedToken", 1, 2))
             .getCode());
+  }
+
+  @Test
+  public void testCalendarOccurrenceProgressSurvivesSnapshotRecovery() throws Exception {
+    ZoneId zone = ZoneId.of("UTC");
+    long boundary = ZonedDateTime.of(2024, 1, 31, 0, 0, 0, 0, zone).toInstant().toEpochMilli();
+    long firstOccurrence =
+        ZonedDateTime.of(2024, 2, 29, 0, 0, 0, 0, zone).toInstant().toEpochMilli();
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "snapshotCalendarCq",
+            0,
+            boundary,
+            0,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq snapshotCalendarCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(1, 0));
+    req.setStartOffsetDuration(new TCQDuration(1, 0));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "snapshotCalendarToken", firstOccurrence)).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan(
+                    "snapshotCalendarCq", firstOccurrence, "snapshotCalendarToken", 1, 2))
+            .getCode());
+
+    cqInfo.processTakeSnapshot(snapshotDir);
+    CQInfo restored = new CQInfo();
+    restored.processLoadSnapshot(snapshotDir);
+
+    ShowCQResp response = restored.showCQ(new ShowCQPlan("snapshotCalendarCq"));
+    Assert.assertEquals(1, response.getCqList().size());
+    Assert.assertEquals(2, response.getCqList().get(0).getNextOccurrenceIndex());
+    Assert.assertEquals(firstOccurrence, response.getCqList().get(0).getLastExecutionTime());
   }
 }
