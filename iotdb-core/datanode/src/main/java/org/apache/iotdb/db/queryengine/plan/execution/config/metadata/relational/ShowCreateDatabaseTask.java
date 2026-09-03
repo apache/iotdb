@@ -84,12 +84,16 @@ public class ShowCreateDatabaseTask implements IConfigTask {
             databaseInfo.getTTL() == Long.MAX_VALUE
                 ? ShowCreateTableTask.getString(IoTDBConstant.TTL_INFINITE)
                 : databaseInfo.getTTL())
+        .append(",time_partition_origin=")
+        .append(databaseInfo.getTimePartitionOrigin())
         .append(",time_partition_interval=")
         .append(databaseInfo.getTimePartitionInterval())
         .append(",max_schema_region_group_num=")
         .append(databaseInfo.getMaxSchemaRegionNum())
         .append(",max_data_region_group_num=")
         .append(databaseInfo.getMaxDataRegionNum())
+        .append(",need_last_cache=")
+        .append(databaseInfo.isSetNeedLastCache() ? databaseInfo.isNeedLastCache() : true)
         .append(")")
         .toString();
   }

@@ -102,6 +102,9 @@ public class InformationSchema {
             ColumnHeaderConstant.DATA_REPLICATION_FACTOR_TABLE_MODEL, TSDataType.INT32));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.TIME_PARTITION_ORIGIN_TABLE_MODEL, TSDataType.INT64));
+    databaseTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.TIME_PARTITION_INTERVAL_TABLE_MODEL, TSDataType.INT64));
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(

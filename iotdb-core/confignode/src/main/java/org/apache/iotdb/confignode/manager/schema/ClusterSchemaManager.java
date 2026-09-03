@@ -64,7 +64,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
@@ -464,19 +463,6 @@ public class ClusterSchemaManager {
     // TODO: Inform DataNodes
     try {
       return getConsensusManager().write(setDataReplicationFactorPlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      result.setMessage(e.getMessage());
-      return result;
-    }
-  }
-
-  public TSStatus setTimePartitionInterval(
-      SetTimePartitionIntervalPlan setTimePartitionIntervalPlan) {
-    // TODO: Inform DataNodes
-    try {
-      return getConsensusManager().write(setTimePartitionIntervalPlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

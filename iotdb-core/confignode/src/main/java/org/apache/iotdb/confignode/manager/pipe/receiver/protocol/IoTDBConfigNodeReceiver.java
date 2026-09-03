@@ -833,6 +833,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
         schema.setDataReplicationFactor(
             ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+        schema.setTimePartitionOrigin(
+            CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin());
         schema.setTimePartitionInterval(
             CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
         schema.setMinSchemaRegionGroupNum(

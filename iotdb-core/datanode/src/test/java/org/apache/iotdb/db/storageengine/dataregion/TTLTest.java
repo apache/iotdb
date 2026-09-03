@@ -385,8 +385,8 @@ public class TTLTest {
           dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
     }
     long totalWaitingTime = 0;
-    while (dataRegion.getTsFileManager().getTsFileList(true).size()
-            + dataRegion.getTsFileManager().getTsFileList(false).size()
+    while (dataRegion.getTsFileManager().getTsFileList(true, "root.TTL_SG1").size()
+            + dataRegion.getTsFileManager().getTsFileList(false, "root.TTL_SG1").size()
         != 0) {
       sleep(200);
       totalWaitingTime += 200;
@@ -476,8 +476,8 @@ public class TTLTest {
           dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
     }
     long totalWaitingTime = 0;
-    while (dataRegion.getTsFileManager().getTsFileList(true).size()
-            + dataRegion.getTsFileManager().getTsFileList(false).size()
+    while (dataRegion.getTsFileManager().getTsFileList(true, "root.TTL_SG1").size()
+            + dataRegion.getTsFileManager().getTsFileList(false, "root.TTL_SG1").size()
         != 0) {
       sleep(200);
       totalWaitingTime += 200;

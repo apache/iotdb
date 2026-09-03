@@ -122,7 +122,7 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
     } catch (Exception e) {
       Assert.fail();
     }
-    TsFileResource result = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource result = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     result.buildDeviceTimeIndex();
     Assert.assertEquals(20, ((long) result.getStartTime(device).get()));
     Assert.assertEquals(50, ((long) result.getEndTime(device).get()));

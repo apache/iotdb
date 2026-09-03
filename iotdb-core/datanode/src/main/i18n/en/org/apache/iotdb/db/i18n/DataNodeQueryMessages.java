@@ -1862,8 +1862,12 @@ public final class DataNodeQueryMessages {
       "' is currently not allowed.";
   public static final String VALUE_MUST_BE_A_LONGLITERAL_BUT_NOW_IS =
       " value must be a LongLiteral, but now is ";
+  public static final String EXCEPTION_ARG_VALUE_MUST_BE_A_BOOLEANLITERAL_BUT_NOW_IS_ARG_VALUE_ARG_25C5FFF0 =
+      "%s value must be a BooleanLiteral, but now is %s, value: %s";
   public static final String VALUE =
       ", value: ";
+  public static final String LOG_FAILED_TO_GET_NEED_LAST_CACHE_INFO_FOR_DATABASE_ARG_WILL_PUT_CACHE_ANYWAY_EXCEPTION_ARG_D5D80E96 =
+      "Failed to get need_last_cache info for database {}, will put cache anyway, exception: {}";
   public static final String VALUE_MUST_BE_EQUAL_TO_OR_GREATER_THAN_0_BUT_NOW_IS =
       " value must be equal to or greater than 0, but now is: ";
   public static final String VALUE_MUST_BE_LOWER_THAN =

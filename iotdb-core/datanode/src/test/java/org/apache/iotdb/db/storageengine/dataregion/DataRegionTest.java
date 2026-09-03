@@ -128,6 +128,7 @@ public class DataRegionTest {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(DataRegionTest.class);
 
+  private String databaseName = "root.vehicle";
   private String storageGroup = "root.vehicle.d0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
@@ -1837,7 +1838,8 @@ public class DataRegionTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
-    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileResource tsFileResource =
+        dataRegion.getTsFileManager().getTsFileList(true, databaseName).get(0);
     TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
@@ -1867,7 +1869,8 @@ public class DataRegionTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
-    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileResource tsFileResource =
+        dataRegion.getTsFileManager().getTsFileList(true, databaseName).get(0);
     TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
@@ -1910,7 +1913,8 @@ public class DataRegionTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
-    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileResource tsFileResource =
+        dataRegion.getTsFileManager().getTsFileList(true, databaseName).get(0);
 
     MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
     DeleteDataNode deleteDataNode1 =
@@ -1963,7 +1967,7 @@ public class DataRegionTest {
 
     Assert.assertFalse(tsFileResource.anyModFileExists());
 
-    tsFileResource = dataRegion.getTsFileManager().getTsFileList(false).get(0);
+    tsFileResource = dataRegion.getTsFileManager().getTsFileList(false, databaseName).get(0);
     TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
@@ -2010,7 +2014,8 @@ public class DataRegionTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
-    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileResource tsFileResource =
+        dataRegion.getTsFileManager().getTsFileList(true, databaseName).get(0);
 
     MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
     DeleteDataNode deleteDataNode1 =
@@ -2047,7 +2052,8 @@ public class DataRegionTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
-    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileResource tsFileResource =
+        dataRegion.getTsFileManager().getTsFileList(true, databaseName).get(0);
 
     MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
     DeleteDataNode deleteDataNode =
@@ -2114,7 +2120,8 @@ public class DataRegionTest {
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
 
-    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileResource tsFileResource =
+        dataRegion.getTsFileManager().getTsFileList(true, databaseName).get(0);
     // delete data in work mem, no mods.
     MeasurementPath path = new MeasurementPath("root.vehicle.d0.**");
     DeleteDataNode deleteDataNode1 =
@@ -2151,7 +2158,8 @@ public class DataRegionTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
-    TsFileResource tsFileResourceSeq = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileResource tsFileResourceSeq =
+        dataRegion.getTsFileManager().getTsFileList(true, databaseName).get(0);
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     for (int j = 30; j < 100; j++) {
       TSRecord record = new TSRecord(deviceId, j);
@@ -2160,7 +2168,8 @@ public class DataRegionTest {
     }
 
     dataRegion.syncCloseWorkingTsFileProcessors(true);
-    TsFileResource tsFileResourceUnSeq = dataRegion.getTsFileManager().getTsFileList(false).get(0);
+    TsFileResource tsFileResourceUnSeq =
+        dataRegion.getTsFileManager().getTsFileList(false, databaseName).get(0);
 
     assertTrue(tsFileResourceSeq.getTsFile().exists());
     assertTrue(tsFileResourceUnSeq.getTsFile().exists());
@@ -2254,7 +2263,8 @@ public class DataRegionTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     }
-    TsFileResource tsFileResourceSeq = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileResource tsFileResourceSeq =
+        dataRegion.getTsFileManager().getTsFileList(true, databaseName).get(0);
     Future<?> future = dataRegion.asyncCloseOneTsFileProcessor(tsFileResourceSeq);
     Future<?> future2 = dataRegion.asyncCloseOneTsFileProcessor(tsFileResourceSeq);
     assertTrue(future == future2 || future2 instanceof CompletableFuture);

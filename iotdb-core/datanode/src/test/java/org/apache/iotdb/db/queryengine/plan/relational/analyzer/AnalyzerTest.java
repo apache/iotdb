@@ -52,6 +52,7 @@ import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -1297,8 +1298,14 @@ public class AnalyzerTest {
 
           final TSeriesPartitionSlot partitionSlot =
               seriesPartitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
-          for (final TTimePartitionSlot tTimePartitionSlot :
-              dataPartitionQueryParam.getTimePartitionSlotList()) {
+          final List<TTimePartitionSlot> timePartitionSlots =
+              dataPartitionQueryParam.hasTimeList()
+                  ? dataPartitionQueryParam.getTimeList().stream()
+                      .map(time -> TimePartitionUtils.getTimePartitionSlot(time, databaseName))
+                      .distinct()
+                      .collect(Collectors.toList())
+                  : dataPartitionQueryParam.getTimePartitionSlotList();
+          for (final TTimePartitionSlot tTimePartitionSlot : timePartitionSlots) {
             dataPartitionMap
                 .computeIfAbsent(databaseName, d -> new HashMap<>())
                 .computeIfAbsent(partitionSlot, slot -> new HashMap<>())

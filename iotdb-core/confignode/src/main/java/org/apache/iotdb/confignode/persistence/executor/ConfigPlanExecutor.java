@@ -443,6 +443,7 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.setDataReplicationFactor(
             (SetDataReplicationFactorPlan) physicalPlan);
       case SetTimePartitionInterval:
+        // This type is no longer writable and remains solely for replaying legacy consensus logs.
         return clusterSchemaInfo.setTimePartitionInterval(
             (SetTimePartitionIntervalPlan) physicalPlan);
       case CreateRegionGroups:

@@ -157,7 +157,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -686,12 +685,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.setDataReplicationFactor(req), status -> !updateConfigNodeLeader(status));
-  }
-
-  @Override
-  public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.setTimePartitionInterval(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

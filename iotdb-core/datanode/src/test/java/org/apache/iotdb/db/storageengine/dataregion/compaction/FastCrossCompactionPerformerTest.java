@@ -4764,8 +4764,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             1000,
             0);
     Assert.assertTrue(task.start());
-    TsFileResource target1 = tsFileManager.getTsFileList(true).get(0);
-    TsFileResource target2 = tsFileManager.getTsFileList(true).get(1);
+    TsFileResource target1 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
+    TsFileResource target2 = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1);
     Assert.assertEquals(1, target1.getDevices().size());
     Assert.assertEquals(1, target2.getDevices().size());
     Assert.assertEquals(

@@ -303,6 +303,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.rel
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_SCHEMA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_ORIGIN_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -369,6 +370,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
       if (property.isSetToDefault()) {
         switch (key) {
+          case TIME_PARTITION_ORIGIN_KEY:
           case TIME_PARTITION_INTERVAL_KEY:
           case MAX_SCHEMA_REGION_GROUP_NUM_KEY:
           case MAX_DATA_REGION_GROUP_NUM_KEY:
@@ -406,6 +408,9 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
             break;
           }
           schema.setTTL(parseLongFromLiteral(value, TTL_KEY));
+          break;
+        case TIME_PARTITION_ORIGIN_KEY:
+          schema.setTimePartitionOrigin(parseLongFromLiteral(value, TIME_PARTITION_ORIGIN_KEY));
           break;
         case TIME_PARTITION_INTERVAL_KEY:
           schema.setTimePartitionInterval(parseLongFromLiteral(value, TIME_PARTITION_INTERVAL_KEY));
@@ -1162,11 +1167,12 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   private boolean parseBooleanFromLiteral(final Object value, final String name) {
     if (!(value instanceof BooleanLiteral)) {
       throw new SemanticException(
-          name
-              + " value must be a BooleanLiteral, but now is "
-              + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
-              + ", value: "
-              + value);
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_ARG_VALUE_MUST_BE_A_BOOLEANLITERAL_BUT_NOW_IS_ARG_VALUE_ARG_25C5FFF0,
+              name,
+              Objects.nonNull(value) ? value.getClass().getSimpleName() : null,
+              value));
     }
     return ((BooleanLiteral) value).getValue();
   }

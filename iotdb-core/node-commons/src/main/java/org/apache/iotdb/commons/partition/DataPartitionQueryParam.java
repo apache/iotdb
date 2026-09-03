@@ -31,6 +31,7 @@ public class DataPartitionQueryParam {
   private String databaseName;
   private IDeviceID deviceID;
   private List<TTimePartitionSlot> timePartitionSlotList = new ArrayList<>();
+  private List<Long> timeList = new ArrayList<>();
 
   // it will be set to true in query when there exist filter like: time <= XXX
   // (-oo, timePartitionSlotList.get(0))
@@ -73,6 +74,18 @@ public class DataPartitionQueryParam {
 
   public void setTimePartitionSlotList(List<TTimePartitionSlot> timePartitionSlotList) {
     this.timePartitionSlotList = timePartitionSlotList;
+  }
+
+  public List<Long> getTimeList() {
+    return timeList;
+  }
+
+  public void setTimeList(List<Long> timeList) {
+    this.timeList = timeList;
+  }
+
+  public boolean hasTimeList() {
+    return timeList != null && !timeList.isEmpty();
   }
 
   public boolean isNeedLeftAll() {

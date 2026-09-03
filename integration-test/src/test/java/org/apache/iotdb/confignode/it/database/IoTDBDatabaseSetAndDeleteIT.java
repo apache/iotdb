@@ -30,7 +30,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -138,9 +137,6 @@ public class IoTDBDatabaseSetAndDeleteIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       status = client.setDataReplicationFactor(new TSetDataReplicationFactorReq(sg1, 1));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      status = client.setTimePartitionInterval(new TSetTimePartitionIntervalReq(sg1, 604800L));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
       // test setter results
       getResp =
           client.getMatchedDatabaseSchemas(
@@ -154,7 +150,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       Assert.assertEquals(sg1, databaseSchema.getName());
       Assert.assertEquals(1, databaseSchema.getSchemaReplicationFactor());
       Assert.assertEquals(1, databaseSchema.getDataReplicationFactor());
-      Assert.assertEquals(604800, databaseSchema.getTimePartitionInterval());
+      Assert.assertEquals(2048L, databaseSchema.getTimePartitionInterval());
     }
   }
 

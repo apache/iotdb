@@ -304,7 +304,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -609,7 +609,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -913,7 +913,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -1234,7 +1234,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -1670,7 +1670,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -2114,7 +2114,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -2571,7 +2571,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -3009,7 +3009,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -3448,7 +3448,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -3901,7 +3901,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -4413,7 +4413,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -4928,7 +4928,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -5443,7 +5443,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -6018,7 +6018,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -6530,7 +6530,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -6791,7 +6791,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -7122,7 +7122,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -7604,7 +7604,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -8043,7 +8043,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -8348,7 +8348,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -8515,7 +8515,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -8741,7 +8741,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);
@@ -9012,7 +9012,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0);

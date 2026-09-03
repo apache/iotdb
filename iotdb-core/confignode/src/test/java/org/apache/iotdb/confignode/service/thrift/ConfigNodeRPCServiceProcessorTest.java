@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.IConsensus;
@@ -207,5 +208,25 @@ public class ConfigNodeRPCServiceProcessorTest extends TestCase {
 
     Assert.assertEquals(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode(), status.getCode());
     Mockito.verify(configManager, Mockito.never()).getConsensusManager();
+  }
+
+  public void testAlterDatabaseRejectsTimePartitionProperties() {
+    CommonConfig commonConfig = Mockito.mock(CommonConfig.class);
+    ConfigNodeConfig configNodeConfig = Mockito.mock(ConfigNodeConfig.class);
+    ConfigNode configNode = Mockito.mock(ConfigNode.class);
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    ConfigNodeRPCServiceProcessor sut =
+        new ConfigNodeRPCServiceProcessor(
+            commonConfig, configNodeConfig, configNode, configManager);
+
+    TSStatus status =
+        sut.alterDatabase(
+            new TDatabaseSchema("root.sg")
+                .setIsTableModel(false)
+                .setTimePartitionOrigin(100L)
+                .setTimePartitionInterval(200L));
+
+    Assert.assertEquals(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode(), status.getCode());
+    Mockito.verify(configManager, Mockito.never()).alterDatabase(Mockito.any());
   }
 }

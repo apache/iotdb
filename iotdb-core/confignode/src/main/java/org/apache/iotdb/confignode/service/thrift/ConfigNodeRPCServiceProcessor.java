@@ -71,7 +71,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeRegisterResp;
@@ -201,7 +200,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -528,13 +526,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       throws TException {
     return configManager.setDataReplicationFactor(
         new SetDataReplicationFactorPlan(req.getDatabase(), req.getDataReplicationFactor()));
-  }
-
-  @Override
-  public TSStatus setTimePartitionInterval(final TSetTimePartitionIntervalReq req)
-      throws TException {
-    return configManager.setTimePartitionInterval(
-        new SetTimePartitionIntervalPlan(req.getDatabase(), req.getTimePartitionInterval()));
   }
 
   @Override

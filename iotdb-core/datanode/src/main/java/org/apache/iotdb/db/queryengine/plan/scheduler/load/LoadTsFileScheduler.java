@@ -183,6 +183,7 @@ public class LoadTsFileScheduler implements IScheduler {
         final String filePath = node.getTsFileResource().getTsFilePath();
 
         partitionFetcher.setDatabase(getPartitionQueryDatabase(node, isGeneratedByPipe));
+        partitionFetcher.ensureDatabaseTimePartitionConfig();
 
         boolean isLoadSingleTsFileSuccess = true;
         boolean shouldRemoveFileFromLoadingSet = false;
@@ -332,7 +333,7 @@ public class LoadTsFileScheduler implements IScheduler {
     try {
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
-          .splitTsFileByDataPartition();
+          .splitTsFileByDataPartition(node.getDatabase());
       if (!tsFileDataManager.sendAllTsFileData()) {
         return false;
       }
@@ -954,6 +955,12 @@ public class LoadTsFileScheduler implements IScheduler {
 
     public void setDatabase(String database) {
       this.database = database;
+    }
+
+    public void ensureDatabaseTimePartitionConfig() {
+      if (database != null) {
+        fetcher.ensureDatabaseTimePartitionConfig(Collections.singleton(database));
+      }
     }
 
     public List<TRegionReplicaSet> queryDataPartition(

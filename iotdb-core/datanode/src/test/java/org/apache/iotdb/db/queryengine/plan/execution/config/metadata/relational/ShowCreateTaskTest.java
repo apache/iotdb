@@ -47,14 +47,16 @@ public class ShowCreateTaskTest {
     final TDatabaseInfo databaseInfo = new TDatabaseInfo();
     databaseInfo.setName("test_db");
     databaseInfo.setTTL(Long.MAX_VALUE);
+    databaseInfo.setTimePartitionOrigin(100L);
     databaseInfo.setTimePartitionInterval(604800000L);
     databaseInfo.setMaxSchemaRegionNum(0);
     databaseInfo.setMaxDataRegionNum(1);
+    databaseInfo.setNeedLastCache(true);
 
     assertEquals(
         "CREATE DATABASE \"test_db\" WITH (ttl='"
             + IoTDBConstant.TTL_INFINITE
-            + "',time_partition_interval=604800000,max_schema_region_group_num=0,max_data_region_group_num=1)",
+            + "',time_partition_origin=100,time_partition_interval=604800000,max_schema_region_group_num=0,max_data_region_group_num=1,need_last_cache=true)",
         ShowCreateDatabaseTask.getShowCreateDatabaseSQL(databaseInfo));
   }
 
@@ -63,12 +65,14 @@ public class ShowCreateTaskTest {
     final TDatabaseInfo databaseInfo = new TDatabaseInfo();
     databaseInfo.setName("test\"db");
     databaseInfo.setTTL(123L);
+    databaseInfo.setTimePartitionOrigin(200L);
     databaseInfo.setTimePartitionInterval(1000L);
     databaseInfo.setMaxSchemaRegionNum(2);
     databaseInfo.setMaxDataRegionNum(3);
+    databaseInfo.setNeedLastCache(false);
 
     assertEquals(
-        "CREATE DATABASE \"test\"\"db\" WITH (ttl=123,time_partition_interval=1000,max_schema_region_group_num=2,max_data_region_group_num=3)",
+        "CREATE DATABASE \"test\"\"db\" WITH (ttl=123,time_partition_origin=200,time_partition_interval=1000,max_schema_region_group_num=2,max_data_region_group_num=3,need_last_cache=false)",
         ShowCreateDatabaseTask.getShowCreateDatabaseSQL(databaseInfo));
   }
 
