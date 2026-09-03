@@ -46,6 +46,15 @@ public final class DataNodeUserDataTransferAuditor {
     return COMMON_CONFIG.isEnableAuditLog();
   }
 
+  public static boolean isEnabledFor(ConsensusGroupId consensusGroupId) {
+    try {
+      return isEnabled() && containsUserData(consensusGroupId);
+    } catch (RuntimeException ignored) {
+      // Classification is advisory and must not affect user data transfer.
+      return false;
+    }
+  }
+
   public static void record(
       TEndPoint initiator,
       TEndPoint source,

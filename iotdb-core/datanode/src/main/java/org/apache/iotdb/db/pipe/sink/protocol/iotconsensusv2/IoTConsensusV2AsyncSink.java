@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
@@ -112,6 +113,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
   private final int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private final TEndPoint localEndPoint =
       new TEndPoint(IOTDB_CONFIG.getInternalAddress(), IOTDB_CONFIG.getDataRegionConsensusPort());
+  private DataRegionId dataRegionId;
   private IoTConsensusV2SinkMetrics iotConsensusV2SinkMetrics;
   private String consensusPipeName;
   private int consensusGroupId;
@@ -141,6 +143,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
 
     // Get consensusGroupId from parameters passed by IoTConsensusV2Impl
     consensusGroupId = parameters.getInt(CONNECTOR_CONSENSUS_GROUP_ID_KEY);
+    dataRegionId = new DataRegionId(consensusGroupId);
     // Get consensusPipeName from parameters passed by IoTConsensusV2Impl
     consensusPipeName = parameters.getString(CONNECTOR_CONSENSUS_PIPE_NAME);
 
@@ -750,7 +753,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
   }
 
   public boolean isUserDataTransferAuditEnabled() {
-    return DataNodeUserDataTransferAuditor.isEnabled();
+    return dataRegionId != null && DataNodeUserDataTransferAuditor.isEnabledFor(dataRegionId);
   }
 
   public void recordUserDataTransferAudit(boolean success, String errorCode, Throwable error) {

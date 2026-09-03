@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncIoTConsensusV2ServiceClient;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
@@ -90,6 +91,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
   private final int consensusGroupId;
   private final IoTConsensusV2SinkMetrics iotConsensusV2SinkMetrics;
   private final TEndPoint localEndPoint;
+  private final DataRegionId dataRegionId;
   private IoTConsensusV2SyncBatchReqBuilder tabletBatchBuilder;
 
   public IoTConsensusV2SyncSink(
@@ -102,6 +104,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     // retain the implementation of list to cope with possible future expansion
     this.peers = peers;
     this.consensusGroupId = consensusGroupId;
+    this.dataRegionId = new DataRegionId(consensusGroupId);
     this.thisDataNodeId = thisDataNodeId;
     this.localEndPoint =
         new TEndPoint(
@@ -218,7 +221,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
           resp.getBatchResps().stream()
               .map(TIoTConsensusV2TransferResp::getStatus)
               .collect(Collectors.toList());
-      if (DataNodeUserDataTransferAuditor.isEnabled()) {
+      if (isUserDataTransferAuditEnabled()) {
         final TSStatus failedStatus =
             statusList.stream().filter(status -> !isSuccessful(status)).findFirst().orElse(null);
         recordTransferAttempt(
@@ -582,11 +585,15 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
   }
 
   private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
-    if (!DataNodeUserDataTransferAuditor.isEnabled()) {
+    if (!isUserDataTransferAuditEnabled()) {
       return;
     }
     DataNodeUserDataTransferAuditor.record(
         localEndPoint, localEndPoint, getFollowerUrl(), success, errorCode, error);
+  }
+
+  private boolean isUserDataTransferAuditEnabled() {
+    return DataNodeUserDataTransferAuditor.isEnabledFor(dataRegionId);
   }
 
   // synchronized to avoid close connector when transfer event
