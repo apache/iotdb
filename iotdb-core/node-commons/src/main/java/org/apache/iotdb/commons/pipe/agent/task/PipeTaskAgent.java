@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -101,10 +102,14 @@ public abstract class PipeTaskAgent {
 
   protected final PipeMetaKeeper pipeMetaKeeper;
   protected final PipeTaskManager pipeTaskManager;
+  private final Map<String, AtomicLong> pipeNameWithCreationTime2FloatingMemoryUsageInByteMap;
+  private final Map<String, Set<Long>> pipeName2CreationTimeSetMap;
 
   protected PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
     pipeTaskManager = new PipeTaskManager();
+    pipeNameWithCreationTime2FloatingMemoryUsageInByteMap = new ConcurrentHashMap<>();
+    pipeName2CreationTimeSetMap = new ConcurrentHashMap<>();
 
     // Help PipeEndPointRateLimiter to check if the pipe is still alive
     PipeEndPointRateLimiter.setTaskAgent(this);
@@ -649,6 +654,7 @@ public abstract class PipeTaskAgent {
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(existedPipeMeta.getStaticMeta());
+    cleanupFloatingMemoryUsageCounterIfNecessary(pipeName, creationTime);
 
     return true;
   }
@@ -683,6 +689,8 @@ public abstract class PipeTaskAgent {
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(existedPipeMeta.getStaticMeta());
+    cleanupFloatingMemoryUsageCounterIfNecessary(
+        pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
 
     return true;
   }
@@ -1263,6 +1271,57 @@ public abstract class PipeTaskAgent {
 
   ///////////////////////// Maintain meta info /////////////////////////
 
+  private static String generatePipeNameWithCreationTime(
+      final String pipeName, final long creationTime) {
+    return pipeName + "_" + creationTime;
+  }
+
+  private AtomicLong getOrCreateFloatingMemoryUsageCounter(
+      final String pipeName, final long creationTime) {
+    pipeName2CreationTimeSetMap
+        .computeIfAbsent(pipeName, key -> ConcurrentHashMap.newKeySet())
+        .add(creationTime);
+    return pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.computeIfAbsent(
+        generatePipeNameWithCreationTime(pipeName, creationTime), key -> new AtomicLong(0));
+  }
+
+  private void tryCleanupFloatingMemoryUsageCounter(
+      final String pipeName, final long creationTime, final AtomicLong counter) {
+    if (counter.get() != 0) {
+      return;
+    }
+
+    final PipeMeta currentPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (Objects.nonNull(currentPipeMeta)
+        && currentPipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+      return;
+    }
+
+    final String pipeNameWithCreationTime =
+        generatePipeNameWithCreationTime(pipeName, creationTime);
+    pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.remove(pipeNameWithCreationTime, counter);
+
+    if (!pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.containsKey(
+        pipeNameWithCreationTime)) {
+      pipeName2CreationTimeSetMap.computeIfPresent(
+          pipeName,
+          (key, creationTimes) -> {
+            creationTimes.remove(creationTime);
+            return creationTimes.isEmpty() ? null : creationTimes;
+          });
+    }
+  }
+
+  private void cleanupFloatingMemoryUsageCounterIfNecessary(
+      final String pipeName, final long creationTime) {
+    final AtomicLong counter =
+        pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.get(
+            generatePipeNameWithCreationTime(pipeName, creationTime));
+    if (Objects.nonNull(counter)) {
+      tryCleanupFloatingMemoryUsageCounter(pipeName, creationTime, counter);
+    }
+  }
+
   public long getPipeCreationTime(final String pipeName) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     return pipeMeta == null ? 0 : pipeMeta.getStaticMeta().getCreationTime();
@@ -1275,7 +1334,7 @@ public abstract class PipeTaskAgent {
   public String getPipeNameWithCreationTime(final String pipeName, final long creationTime) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
     return pipeMeta == null
-        ? pipeName + "_" + creationTime
+        ? generatePipeNameWithCreationTime(pipeName, creationTime)
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getPipeNameWithCreationTime();
   }
 
@@ -1289,29 +1348,30 @@ public abstract class PipeTaskAgent {
   }
 
   public long getAllFloatingMemoryUsageInByte() {
-    final AtomicLong bytes = new AtomicLong(0);
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta ->
-                bytes.addAndGet(
-                    ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
-                        .getFloatingMemoryUsageInByte()));
-    return bytes.get();
+    return pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.values().stream()
+        .mapToLong(AtomicLong::get)
+        .sum();
   }
 
   public long getFloatingMemoryUsageInByte(final String pipeName) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    return pipeMeta == null
-        ? 0
-        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getFloatingMemoryUsageInByte();
+    final Set<Long> creationTimes = pipeName2CreationTimeSetMap.get(pipeName);
+    if (Objects.isNull(creationTimes)) {
+      return 0;
+    }
+
+    return creationTimes.stream()
+        .map(creationTime -> generatePipeNameWithCreationTime(pipeName, creationTime))
+        .map(pipeNameWithCreationTime2FloatingMemoryUsageInByteMap::get)
+        .filter(Objects::nonNull)
+        .mapToLong(AtomicLong::get)
+        .sum();
   }
 
   public long getFloatingMemoryUsageInByte(final String pipeName, final long creationTime) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
-    return pipeMeta == null
-        ? 0
-        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getFloatingMemoryUsageInByte();
+    final AtomicLong counter =
+        pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.get(
+            generatePipeNameWithCreationTime(pipeName, creationTime));
+    return Objects.isNull(counter) ? 0 : counter.get();
   }
 
   public void addFloatingMemoryUsageInByte(
@@ -1319,18 +1379,18 @@ public abstract class PipeTaskAgent {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
     // To avoid stale pipe before alter
     if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
-      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
-          .addFloatingMemoryUsageInByte(sizeInByte);
+      getOrCreateFloatingMemoryUsageCounter(pipeName, creationTime).addAndGet(sizeInByte);
     }
   }
 
   public void decreaseFloatingMemoryUsageInByte(
       final String pipeName, final long creationTime, final long sizeInByte) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
-    // To avoid stale pipe before alter
-    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
-      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
-          .decreaseFloatingMemoryUsageInByte(sizeInByte);
+    final AtomicLong counter =
+        pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.get(
+            generatePipeNameWithCreationTime(pipeName, creationTime));
+    if (Objects.nonNull(counter)) {
+      counter.addAndGet(-sizeInByte);
+      tryCleanupFloatingMemoryUsageCounter(pipeName, creationTime, counter);
     }
   }
 
