@@ -134,6 +134,8 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
@@ -174,6 +176,8 @@ import static org.apache.tsfile.utils.Preconditions.checkArgument;
 /** This class is used to generate distributed plan for table model. */
 public class TableDistributedPlanGenerator
     implements PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableDistributedPlanGenerator.class);
+
   private final MPPQueryContext queryContext;
   private final QueryId queryId;
   private final Analysis analysis;
@@ -1059,6 +1063,12 @@ public class TableDistributedPlanGenerator
         closeSpillWriters(Collections.singleton(crossRegionMaterializer));
       }
       throw new UncheckedIOException(e);
+    } catch (RuntimeException e) {
+      closeSpillWriters(materializers.values());
+      if (crossRegionMaterializer != null) {
+        closeSpillWriters(Collections.singleton(crossRegionMaterializer));
+      }
+      throw e;
     }
 
     List<PlanNode> result = new ArrayList<>(scanNodes.values());
@@ -1249,6 +1259,9 @@ public class TableDistributedPlanGenerator
     } catch (IOException e) {
       closeSpillWriters(materializers.values());
       throw new UncheckedIOException(e);
+    } catch (RuntimeException e) {
+      closeSpillWriters(materializers.values());
+      throw e;
     }
 
     if (scanNodes.isEmpty()) {
@@ -1319,8 +1332,12 @@ public class TableDistributedPlanGenerator
     for (AbstractDeviceEntryMaterializer writer : materializers) {
       try {
         writer.close();
-      } catch (Exception ignored) {
+      } catch (Exception e) {
         // The original planning exception is more useful than a cleanup failure.
+        LOGGER.warn(
+            DataNodeQueryMessages
+                .LOG_FAILED_TO_CLOSE_DEVICEENTRY_SPILL_WRITER_DURING_CLEANUP_ARG_EA7F7941,
+            e.getMessage());
       }
     }
   }
@@ -1571,6 +1588,9 @@ public class TableDistributedPlanGenerator
     } catch (IOException e) {
       closeSpillWriters(materializers.values());
       throw new UncheckedIOException(e);
+    } catch (RuntimeException e) {
+      closeSpillWriters(materializers.values());
+      throw e;
     }
 
     if (scanNodes.isEmpty()) {

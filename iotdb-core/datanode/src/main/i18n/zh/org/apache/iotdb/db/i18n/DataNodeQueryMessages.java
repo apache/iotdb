@@ -4581,6 +4581,12 @@ public final class DataNodeQueryMessages {
   public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC =
       "清理 query %s 的 DeviceEntry spill 目录失败";
   public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_SPILL_WRITER_DURING_CLEANUP_ARG_EA7F7941 =
+          "清理过程中关闭 DeviceEntry spill writer 失败：{}";
+  public static final String
+      LOG_FAILED_TO_CLOSE_DEVICEENTRY_DATA_SET_AFTER_INDEX_SCAN_FAILURE_ARG_57F04319 =
+          "index scan 失败后关闭 DeviceEntry data set 失败：{}";
+  public static final String
       EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D =
           "DeviceEntry spill segment 不可用：%s。查询可能因超时或主动 kill 而终止。";
   public static final String

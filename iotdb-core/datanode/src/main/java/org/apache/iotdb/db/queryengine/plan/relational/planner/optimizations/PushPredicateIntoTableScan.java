@@ -87,11 +87,12 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -171,6 +172,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
  * to be adapted.
  */
 public class PushPredicateIntoTableScan implements PlanOptimizer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PushPredicateIntoTableScan.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -828,12 +830,17 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
         tableScanNode.setDeviceEntryDataSet(deviceEntryDataSet);
         dataSetTransferred = true;
+      } catch (RuntimeException e) {
+        throw e;
       } finally {
         if (!dataSetTransferred) {
           try {
             deviceEntryDataSet.close();
           } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            LOGGER.warn(
+                DataNodeQueryMessages
+                    .LOG_FAILED_TO_CLOSE_DEVICEENTRY_DATA_SET_AFTER_INDEX_SCAN_FAILURE_ARG_57F04319,
+                e.getMessage());
           }
         }
       }
