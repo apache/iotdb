@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TPipeCompletedDataRegion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -139,6 +141,82 @@ public class PipeHeartbeatParserTest {
 
     context.parser.parseHeartbeat(4, emptyHeartbeat());
     verify(context.procedureManager, times(2)).pipeHandleMetaChange(true, false);
+  }
+
+  @Test
+  public void testParseHeartbeatSkipsConsensusWriteWhenCoordinatorProgressCoversAgent()
+      throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    final PipeMeta coordinatorPipeMeta = createPipeMeta();
+    final RecoverProgressIndex coordinatorProgressIndex = createRecoverProgressIndex(10, 10);
+    coordinatorPipeMeta
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .get(DATA_NODE_ID)
+        .updateProgressIndex(coordinatorProgressIndex);
+    pipeTaskInfo.createPipe(
+        new CreatePipePlanV2(
+            coordinatorPipeMeta.getStaticMeta(), coordinatorPipeMeta.getRuntimeMeta()));
+
+    final PipeMeta agentPipeMeta = createPipeMeta();
+    agentPipeMeta
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .get(DATA_NODE_ID)
+        .updateProgressIndex(createRecoverProgressIndex(10, 5));
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(DATA_NODE_ID, createPipeHeartbeat(agentPipeMeta, false));
+
+    assertEquals(
+        coordinatorProgressIndex,
+        pipeTaskInfo
+            .getPipeMetaByPipeName("test_pipe")
+            .getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .get(DATA_NODE_ID)
+            .getProgressIndex());
+    verify(context.procedureManager, never()).pipeHandleMetaChange(anyBoolean(), anyBoolean());
+  }
+
+  @Test
+  public void testParseHeartbeatWritesConsensusWhenAgentProgressAdvancesCoordinator()
+      throws Exception {
+    CommonDescriptor.getInstance().getConfig().setSeperatedPipeHeartbeatEnabled(false);
+
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    final PipeMeta coordinatorPipeMeta = createPipeMeta();
+    coordinatorPipeMeta
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .get(DATA_NODE_ID)
+        .updateProgressIndex(createRecoverProgressIndex(10, 10));
+    pipeTaskInfo.createPipe(
+        new CreatePipePlanV2(
+            coordinatorPipeMeta.getStaticMeta(), coordinatorPipeMeta.getRuntimeMeta()));
+
+    final PipeMeta agentPipeMeta = createPipeMeta();
+    final RecoverProgressIndex agentProgressIndex = createRecoverProgressIndex(10, 11);
+    agentPipeMeta
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .get(DATA_NODE_ID)
+        .updateProgressIndex(agentProgressIndex);
+
+    final ParserTestContext context = createParserTestContext(1, pipeTaskInfo);
+    context.parser.parseHeartbeat(DATA_NODE_ID, createPipeHeartbeat(agentPipeMeta, false));
+
+    assertEquals(
+        agentProgressIndex,
+        pipeTaskInfo
+            .getPipeMetaByPipeName("test_pipe")
+            .getRuntimeMeta()
+            .getConsensusGroupId2TaskMetaMap()
+            .get(DATA_NODE_ID)
+            .getProgressIndex());
+    verify(context.procedureManager, times(1)).pipeHandleMetaChange(true, false);
   }
 
   @Test
@@ -681,6 +759,14 @@ public class PipeHeartbeatParserTest {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.realtime.enable", Boolean.FALSE.toString());
     return createPipeMeta(sourceAttributes, regionIds);
+  }
+
+  private RecoverProgressIndex createRecoverProgressIndex(
+      final long firstDataNodeIndex, final long secondDataNodeIndex) {
+    final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex = new HashMap<>();
+    dataNodeId2LocalIndex.put(1, new SimpleProgressIndex(0, firstDataNodeIndex));
+    dataNodeId2LocalIndex.put(2, new SimpleProgressIndex(0, secondDataNodeIndex));
+    return new RecoverProgressIndex(dataNodeId2LocalIndex);
   }
 
   private PipeMeta createPipeMeta(
