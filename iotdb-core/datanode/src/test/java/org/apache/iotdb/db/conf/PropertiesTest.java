@@ -79,7 +79,7 @@ public class PropertiesTest {
     try {
       config.setThriftMaxFrameSize(4096);
       final TrimProperties properties = new TrimProperties();
-      properties.setProperty("table_query_device_entry_batch_size_in_bytes", "2048");
+      properties.setProperty("table_query_device_entry_batch_size_in_bytes", "4096");
       descriptor.loadHotModifiedProps(properties);
 
       Assert.assertEquals(3072, config.getTableQueryDeviceEntryBatchSizeInBytes());
