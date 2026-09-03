@@ -1383,6 +1383,10 @@ public final class DataNodeMiscMessages {
           + "is your token hint info: %s";
   public static final String MISC_EXCEPTION_FAIL_TO_RELOAD_CONFIG_FILE_S_BECAUSE_S_93CCAB8D =
       "Fail to reload config file %s because %s";
+  public static final String MISC_EXCEPTION_FAILED_TO_CANONICALIZE_COPY_TO_ALLOWED_EXPORT_DIR_70EB7BF1 =
+      "Failed to canonicalize COPY TO allowed export directory: %s";
+  public static final String MISC_EXCEPTION_COPY_TO_ALLOWED_EXPORT_DIR_OVERLAPS_ACTIVE_LOAD_DIR_DAACF086 =
+      "COPY TO allowed export directory overlaps active load directory: %s";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962 =
       "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion "
           + "should be an integer, which is %s";

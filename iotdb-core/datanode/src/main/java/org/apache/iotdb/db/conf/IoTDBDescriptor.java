@@ -509,6 +509,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
 
+    conf.setCopyToAllowedExportDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "copy_to_allowed_export_dirs",
+                        String.join(",", conf.getCopyToAllowedExportDirs()))
+                    .trim()
+                    .split(","))
+            .map(String::trim)
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+
     conf.setSessionTimeoutThreshold(
         Integer.parseInt(
             properties.getProperty(
@@ -2617,6 +2629,7 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningPipeDir(
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
+    conf.validateCopyToAllowedExportDirs();
 
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
@@ -2754,6 +2767,7 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningPipeDir(
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
+    conf.validateCopyToAllowedExportDirs();
 
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(

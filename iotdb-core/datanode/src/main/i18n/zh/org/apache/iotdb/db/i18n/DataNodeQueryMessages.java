@@ -179,6 +179,8 @@ public final class DataNodeQueryMessages {
       "目标文件已存在：";
   public static final String FAILED_TO_CREATE_FILE =
       "创建文件失败：";
+  public static final String COPY_TO_TARGET_PATH_NOT_ALLOWED =
+      "COPY TO 目标路径不在允许的导出目录内（可通过 copy_to_allowed_export_dirs 配置）：";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "目标时间列的数据类型不是 TIMESTAMP";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =

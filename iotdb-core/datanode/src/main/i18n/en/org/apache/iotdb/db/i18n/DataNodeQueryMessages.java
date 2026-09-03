@@ -190,6 +190,9 @@ public final class DataNodeQueryMessages {
       "Target file already exists: ";
   public static final String FAILED_TO_CREATE_FILE =
       "Failed to create file: ";
+  public static final String COPY_TO_TARGET_PATH_NOT_ALLOWED =
+      "COPY TO target path is outside the allowed export directories"
+          + " (configure copy_to_allowed_export_dirs to permit it): ";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "Data type of target time column is not TIMESTAMP";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =

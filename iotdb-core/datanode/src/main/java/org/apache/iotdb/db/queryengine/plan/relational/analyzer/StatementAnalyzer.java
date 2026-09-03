@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
@@ -124,6 +125,9 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
@@ -246,7 +250,9 @@ import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1314,6 +1320,22 @@ public class StatementAnalyzer {
     @Override
     public Scope visitCopyTo(CopyTo node, Optional<Scope> context) {
       accessControl.checkUserGlobalSysPrivilege(queryContext);
+      final String targetFilePath = node.getTargetFileName();
+      final File targetFile = new File(targetFilePath);
+      if (targetFile.getParent() != null) {
+        final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+        final String[] activeLoadDirectories = config.getLoadActiveListeningDirs();
+        final String[] forbiddenDirectories =
+            Arrays.copyOf(activeLoadDirectories, activeLoadDirectories.length + 1);
+        forbiddenDirectories[activeLoadDirectories.length] = config.getLoadActiveListeningPipeDir();
+        if (!FileUtils.isFilePathAllowed(
+            targetFilePath, config.getCopyToAllowedExportDirs(), forbiddenDirectories)) {
+          throw new IoTDBRuntimeException(
+              DataNodeQueryMessages.COPY_TO_TARGET_PATH_NOT_ALLOWED + targetFilePath,
+              TSStatusCode.COPY_TO_WRITE_ERROR.getStatusCode(),
+              true);
+        }
+      }
       Scope innerQueryScope = visitQuery((Query) node.getQueryStatement(), context);
       analysis.setScope(node, innerQueryScope);
       return innerQueryScope;
