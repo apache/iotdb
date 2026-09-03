@@ -1469,7 +1469,6 @@ public class DataNodeTableOperatorGenerator
     TsTable tsTable =
         DataNodeTableCache.getInstance()
             .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
-    ensureFieldColumnForTreeNonAlignedDeviceViewScan(node, tsTable);
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
         createTreeDeviceIdColumnValueExtractor(DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable));
 
