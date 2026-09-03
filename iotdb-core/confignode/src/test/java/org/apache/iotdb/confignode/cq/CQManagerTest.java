@@ -124,6 +124,34 @@ public class CQManagerTest {
     }
   }
 
+  @Test
+  public void markerlessCreateCQIsRejectedAtRpcIngress() {
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    CQManager cqManager = new CQManager(configManager);
+    try {
+      TCreateCQReq req =
+          new TCreateCQReq(
+              "legacyCq",
+              1_000,
+              0,
+              1_000,
+              0,
+              TimeoutPolicy.BLOCKED.getType(),
+              "select 1",
+              "create cq legacyCq",
+              "UTC",
+              "root");
+      TSStatus status = cqManager.createCQ(req);
+      assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), status.getCode());
+      assertEquals(
+          org.apache.iotdb.confignode.i18n.ManagerMessages
+              .MESSAGE_CQ_DURATION_ENCODING_MARKER_REQUIRED_9035980A,
+          status.getMessage());
+    } finally {
+      cqManager.stopCQScheduler();
+    }
+  }
+
   @SuppressWarnings("unchecked")
   private CQScheduleTask newScheduledTask(
       ConfigManager configManager, ScheduledFuture<?> scheduledFuture, String cqToken) {

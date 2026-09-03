@@ -336,12 +336,9 @@ public class CQScheduleTask implements Runnable {
               queryBody,
               startTime,
               endTime,
-              toTimeoutMillis(
-                  calendarAware
-                      ? CQCalendarUtils.occurrence(
-                              boundaryTime, everyDuration, currentOccurrenceIndex + 1, scheduleZone)
-                          - executionTime
-                      : everyInterval),
+              calendarAware
+                  ? calculateCalendarTimeoutMillis(currentOccurrenceIndex)
+                  : toTimeoutMillis(everyInterval),
               zoneId,
               cqId,
               username);
@@ -368,6 +365,18 @@ public class CQScheduleTask implements Runnable {
       return Math.addExact(deltaTicks, FACTOR - 1) / FACTOR;
     } catch (ArithmeticException e) {
       return Long.MAX_VALUE;
+    }
+  }
+
+  private long calculateCalendarTimeoutMillis(long currentOccurrenceIndex) {
+    try {
+      long nextOccurrence =
+          CQCalendarUtils.occurrence(
+              boundaryTime, everyDuration, Math.addExact(currentOccurrenceIndex, 1), scheduleZone);
+      return toTimeoutMillis(Math.subtractExact(nextOccurrence, executionTime));
+    } catch (ArithmeticException e) {
+      throw new IllegalArgumentException(
+          ManagerMessages.EXCEPTION_CQ_TIMESTAMP_OVERFLOWS_CONFIGURED_PRECISION_F5FB230C, e);
     }
   }
 

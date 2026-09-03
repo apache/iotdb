@@ -91,17 +91,11 @@ public class CQManager {
 
   private TSStatus validateDurationEncoding(TCreateCQReq req) {
     if (!req.isSetDurationEncodingVersion()) {
-      // Preserve wire compatibility for legacy fixed-duration clients. A request that starts
-      // sending structured fields must include the version marker so it cannot be misread by an
-      // older ConfigNode.
-      if (req.isSetEveryDuration()
-          || req.isSetStartOffsetDuration()
-          || req.isSetEndOffsetDuration()
-          || req.isSetBoundaryExplicit()) {
-        return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-            .setMessage(ManagerMessages.MESSAGE_CQ_DURATION_ENCODING_MARKER_REQUIRED_9035980A);
-      }
-      return null;
+      // New CQ creation must use the versioned representation. Legacy requests are still
+      // supported when loading old procedures/plans/snapshots, but accepting them here would let
+      // an old DataNode flatten a calendar duration and bypass the mixed-version capability gate.
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(ManagerMessages.MESSAGE_CQ_DURATION_ENCODING_MARKER_REQUIRED_9035980A);
     }
     if (req.getDurationEncodingVersion() != 1
         || !req.isSetEveryDuration()

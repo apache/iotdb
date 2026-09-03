@@ -157,6 +157,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
@@ -4230,18 +4231,32 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private boolean allClusterNodesSupportCQDurationEncoding(TShowClusterResp response) {
-    if (response == null || response.getNodeVersionInfo() == null) {
+    if (response == null
+        || response.getConfigNodeList() == null
+        || response.getDataNodeList() == null
+        || response.getNodeVersionInfo() == null) {
       return false;
     }
-    if (response.getNodeVersionInfo().isEmpty()) {
+    if (response.getConfigNodeList().isEmpty() && response.getDataNodeList().isEmpty()) {
       return false;
     }
-    return response.getNodeVersionInfo().values().stream()
-        .allMatch(
-            info ->
-                info != null
-                    && info.isSetSupportedCQDurationEncodingVersions()
-                    && info.getSupportedCQDurationEncodingVersions().contains((short) 1));
+    for (TConfigNodeLocation node : response.getConfigNodeList()) {
+      if (!supportsCQDurationEncoding(response.getNodeVersionInfo().get(node.getConfigNodeId()))) {
+        return false;
+      }
+    }
+    for (TDataNodeLocation node : response.getDataNodeList()) {
+      if (!supportsCQDurationEncoding(response.getNodeVersionInfo().get(node.getDataNodeId()))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean supportsCQDurationEncoding(TNodeVersionInfo info) {
+    return info != null
+        && info.isSetSupportedCQDurationEncodingVersions()
+        && info.getSupportedCQDurationEncodingVersions().contains((short) 1);
   }
 
   @Override
