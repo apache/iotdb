@@ -295,6 +295,7 @@ public class DeviceTableScanNode extends TableScanNode {
   }
 
   public void setDeviceEntryDataSet(final DeviceEntryDataSet deviceEntryDataSet) {
+    this.deviceEntryDataSetHandle = null;
     this.coordinatorDeviceEntryDataSet = deviceEntryDataSet;
     this.deviceEntries =
         deviceEntryDataSet.isSpilled()
@@ -304,6 +305,7 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setDeviceEntryDataSetHandle(DeviceEntryDataSetHandle deviceEntryDataSetHandle) {
     this.deviceEntryDataSetHandle = deviceEntryDataSetHandle;
+    this.coordinatorDeviceEntryDataSet = null;
     this.deviceEntries = Collections.emptyList();
   }
 
