@@ -89,14 +89,19 @@ if (-not $LAST_COMMUNITY_COMMIT_HASH) {
 Write-Host "Last community commit hash: ${LAST_COMMUNITY_COMMIT_HASH}"
 
 # Cherry-pick new commits one by one
-$ALL_HASHES = git log --pretty=format:"%h" $IoTDB_COMMIT_BRANCH
+# Wrap in @() so a single output line still becomes an array (string .Length would mean characters)
+$ALL_HASHES = @(git log --pretty=format:"%h" $IoTDB_COMMIT_BRANCH)
 $idx = [array]::IndexOf($ALL_HASHES, $LAST_COMMUNITY_COMMIT_HASH)
 $NUM_COMMITS = if ($idx -ge 0) { $idx } else { 0 }
 Write-Host "Found ${NUM_COMMITS} commit(s) to cherry-pick"
 Write-Host ""
 
-$COMMIT_HASHES = if ($idx -ge 0) { $ALL_HASHES[0..($idx - 1)] } else { @() }
-$COMMIT_HASHES = $COMMIT_HASHES[$($COMMIT_HASHES.Length - 1)..0]
+# @() must wrap the whole if-expression: a single-element array assigned from an
+# if block gets unwrapped to a scalar string, after which range indexing would
+# iterate over characters instead of commits. Use $idx -ge 1 so idx=0 (nothing
+# to pick) does not hit $ALL_HASHES[0..-1], which selects first and last element.
+$COMMIT_HASHES = @(if ($idx -ge 1) { $ALL_HASHES[0..($idx - 1)] } else { @() })
+[Array]::Reverse($COMMIT_HASHES)
 
 foreach ($COMMIT_HASH in $COMMIT_HASHES) {
     $ONELINE = git show --oneline --quiet $COMMIT_HASH
