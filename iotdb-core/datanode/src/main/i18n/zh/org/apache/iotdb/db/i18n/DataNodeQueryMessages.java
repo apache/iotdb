@@ -4580,8 +4580,9 @@ public final class DataNodeQueryMessages {
           "异步清理 DeviceEntry 数据集失败：queryId=%s，planNodeId=%s";
   public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC =
       "清理 query %s 的 DeviceEntry spill 目录失败";
-  public static final String EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A =
-      "查询清理期间 DeviceEntry spill segment 已被删除：%s";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D =
+          "DeviceEntry spill segment 不可用：%s。查询可能因超时或主动 kill 而终止。";
   public static final String
       EXCEPTION_DEVICEENTRY_SEGMENT_AND_ENTRY_COUNTS_MUST_BE_NON_NEGATIVE_7C6E569C =
           "DeviceEntry segment count 和 entry count 不能为负数";

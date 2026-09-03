@@ -119,10 +119,15 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         LOGGER.warn(
             String.format(
                 DataNodeQueryMessages
-                    .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A,
+                    .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
                 e.getFile()));
         return new TFetchDeviceEntrySegmentResp(
-            new TSStatus(TSStatusCode.QUERY_WAS_KILLED.getStatusCode()).setMessage(e.getMessage()));
+            new TSStatus(TSStatusCode.DEVICE_ENTRY_SPILL_NOT_FOUND.getStatusCode())
+                .setMessage(
+                    String.format(
+                        DataNodeQueryMessages
+                            .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
+                        e.getFile())));
       } catch (IOException | RuntimeException e) {
         return new TFetchDeviceEntrySegmentResp(
             new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())

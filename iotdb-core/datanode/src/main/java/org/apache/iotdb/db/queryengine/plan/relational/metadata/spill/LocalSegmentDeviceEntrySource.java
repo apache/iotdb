@@ -61,7 +61,7 @@ public final class LocalSegmentDeviceEntrySource extends SegmentDeviceEntrySourc
       LOGGER.warn(
           String.format(
               DataNodeQueryMessages
-                  .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A,
+                  .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
               e.getFile()));
       throw new DeviceEntrySpillNotFoundException(e.getFile());
     }

@@ -3823,8 +3823,9 @@ public final class DataNodeQueryMessages {
           "Failed to clean DeviceEntry data set asynchronously: queryId=%s, planNodeId=%s";
   public static final String LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC =
       "Failed to clean DeviceEntry spill directory for query %s";
-  public static final String EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A =
-      "DeviceEntry spill segment was removed during query cleanup: %s";
+  public static final String
+      EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D =
+          "DeviceEntry spill segment is unavailable: %s. The query may have timed out or been killed.";
   public static final String
       EXCEPTION_DEVICEENTRY_SEGMENT_AND_ENTRY_COUNTS_MUST_BE_NON_NEGATIVE_7C6E569C =
           "DeviceEntry segment count and entry count must be non-negative";

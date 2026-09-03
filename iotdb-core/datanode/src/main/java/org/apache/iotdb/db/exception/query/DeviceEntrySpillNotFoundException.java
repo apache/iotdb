@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import static org.apache.iotdb.rpc.TSStatusCode.QUERY_WAS_KILLED;
+import static org.apache.iotdb.rpc.TSStatusCode.DEVICE_ENTRY_SPILL_NOT_FOUND;
 
 /** Indicates that a spill segment was removed when its query was cleaned up. */
 public class DeviceEntrySpillNotFoundException extends IoTDBRuntimeException {
@@ -32,9 +32,9 @@ public class DeviceEntrySpillNotFoundException extends IoTDBRuntimeException {
     super(
         String.format(
             DataNodeQueryMessages
-                .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_REMOVED_DURING_QUERY_CLEANUP_ARG_0FCD182A,
+                .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
             path),
-        QUERY_WAS_KILLED.getStatusCode(),
+        DEVICE_ENTRY_SPILL_NOT_FOUND.getStatusCode(),
         true);
   }
 

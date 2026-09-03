@@ -71,7 +71,8 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
         failure = new IOException(e);
         continue;
       }
-      if (response.getStatus().getCode() == TSStatusCode.QUERY_WAS_KILLED.getStatusCode()) {
+      if (response.getStatus().getCode()
+          == TSStatusCode.DEVICE_ENTRY_SPILL_NOT_FOUND.getStatusCode()) {
         throw new DeviceEntrySpillNotFoundException(response.getStatus());
       }
       if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
