@@ -211,7 +211,13 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     }
   }
 
-  /** Top Level Description */
+  /**
+   * Dispatches ConfigPhysicalPlan instances to type-specific visitor methods.
+   *
+   * <p>When a new plan type is introduced, the top-level dispatch and the corresponding visitor
+   * method must be updated together. Default visitor methods should document whether they delegate
+   * to the top-level handler, return a default value, or reject the plan.
+   */
   public abstract R visitPlan(final ConfigPhysicalPlan plan, final C context);
 
   public R visitCreateDatabase(final DatabaseSchemaPlan createDatabasePlan, final C context) {

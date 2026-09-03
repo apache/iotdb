@@ -165,6 +165,11 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
     return this.type;
   }
 
+  /**
+   * Serializes this plan, including its type discriminator and implementation-specific payload.
+   *
+   * @return a buffer positioned at the beginning of the serialized plan
+   */
   @Override
   public ByteBuffer serializeToByteBuffer() {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -189,6 +194,13 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
   public static class Factory {
 
+    /**
+     * Deserializes a plan from the buffer using the encoded type discriminator.
+     *
+     * @param buffer the buffer containing one serialized plan
+     * @return the deserialized plan, or null when the type is unknown if that is the supported
+     *     compatibility behavior
+     */
     public static ConfigPhysicalPlan create(final ByteBuffer buffer) throws IOException {
       final short planType = buffer.getShort();
       final ConfigPhysicalPlanType configPhysicalPlanType =

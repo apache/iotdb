@@ -102,8 +102,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 
-// Since the ConfigMTree is all stored in memory, thus it is not restricted to manage MNode through
-// MTreeStore.
+// ConfigMTree is fully memory-resident. MTreeStore is retained only for traverser-related APIs.
 public class ConfigMTree {
 
   private static final String TABLE_ERROR_MSG =
@@ -136,7 +135,8 @@ public class ConfigMTree {
   // region database Management
 
   /**
-   * CREATE DATABASE. Make sure check seriesPath before setting database
+   * Create the database after validating the path;
+   * intermediate nodes are created when necessary.
    *
    * @param path path
    */
