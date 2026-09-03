@@ -177,9 +177,7 @@ public class IoTDBCopyToTsFileIT {
     try (ITableSession session =
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       session.executeNonQueryStatement(
-          "set configuration \"copy_to_allowed_export_dirs\"='"
-              + exportDirectoryPath
-              + "'");
+          "set configuration \"copy_to_allowed_export_dirs\"='" + exportDirectoryPath + "'");
       try {
         SessionDataSet sessionDataSet =
             session.executeQueryStatement(
@@ -189,8 +187,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(targetFile.getAbsolutePath(), iterator.getString(1));
         Assert.assertTrue(targetFile.exists());
       } finally {
-        session.executeNonQueryStatement(
-            "set configuration \"copy_to_allowed_export_dirs\"=''");
+        session.executeNonQueryStatement("set configuration \"copy_to_allowed_export_dirs\"=''");
       }
     } finally {
       Files.deleteIfExists(targetFile.toPath());
