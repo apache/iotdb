@@ -46,9 +46,18 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
     if (retainedTsBlock != null) {
       return true;
     }
+    if (!batchQueryDataSource) {
+      return prepareNextDeviceBatch()
+          && (timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange());
+    }
 
-    return prepareNextDeviceBatch()
-        && (timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange());
+    if (batchLeasePending) {
+      return true;
+    }
+    if (!currentBatchInitialized) {
+      return deviceEntries.size() > 0 || deviceEntrySource.hasNextBatch();
+    }
+    return timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange();
   }
 
   @Override

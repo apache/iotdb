@@ -121,7 +121,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
       return true;
     }
     if (currentDeviceRootOperator == null) {
-      return prepareNextDeviceBatch();
+      return batchLeasePending || deviceEntrySource.hasNextBatch();
     }
     if (currentDeviceRootOperator != null && currentDeviceRootOperator.hasNext()) {
       return true;
@@ -131,7 +131,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
       }
       if (currentDeviceIndex + 1 >= deviceEntries.size()) {
         releaseCurrentBatch();
-        return prepareNextDeviceBatch();
+        return batchLeasePending || deviceEntrySource.hasNextBatch();
       } else {
         nextDevice();
         return true;
@@ -273,7 +273,15 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    if (batchQueryDataSource && (currentDeviceRootOperator == null || batchLeasePending)) {
+      if (!prepareNextDeviceBatch()) {
+        return null;
+      }
+    }
     if (!hasNext()) {
+      return null;
+    }
+    if (batchQueryDataSource && currentDeviceRootOperator == null && !prepareNextDeviceBatch()) {
       return null;
     }
     if (!currentDeviceInit) {

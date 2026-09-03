@@ -173,13 +173,12 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     if (!batchQueryDataSource) {
       return !hasNextWithTimer();
     }
-    if (!finished && !currentBatchInitialized && !prepareNextDeviceBatch()) {
-      if (!batchLeasePending) {
-        finished = deviceEntries.isEmpty() && !deviceEntrySource.hasNextBatch();
-      }
-    }
     if (batchLeasePending) {
       return false;
+    }
+    if (!currentBatchInitialized) {
+      finished = deviceEntries.isEmpty() && !deviceEntrySource.hasNextBatch();
+      return finished;
     }
     if (!finished) {
       finished = !hasNextWithTimer();
