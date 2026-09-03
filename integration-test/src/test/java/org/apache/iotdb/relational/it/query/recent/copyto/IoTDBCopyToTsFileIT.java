@@ -166,6 +166,39 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
+  public void testCopyToUsesHotReloadedAllowedExportDirectory()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    File targetDirectory = Files.createTempDirectory("iotdb-copy-to-allowed").toFile();
+    File targetFile = new File(targetDirectory, "result.tsfile");
+    String targetPath = targetFile.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+    String exportDirectoryPath =
+        targetDirectory.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      session.executeNonQueryStatement(
+          "set configuration \"copy_to_allowed_export_dirs\"='"
+              + exportDirectoryPath
+              + "'");
+      try {
+        SessionDataSet sessionDataSet =
+            session.executeQueryStatement(
+                "copy table1 to '" + targetPath + "' (memory_threshold 1000000)");
+        SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+        Assert.assertTrue(iterator.next());
+        Assert.assertEquals(targetFile.getAbsolutePath(), iterator.getString(1));
+        Assert.assertTrue(targetFile.exists());
+      } finally {
+        session.executeNonQueryStatement(
+            "set configuration \"copy_to_allowed_export_dirs\"=''");
+      }
+    } finally {
+      Files.deleteIfExists(targetFile.toPath());
+      Files.deleteIfExists(targetDirectory.toPath());
+    }
+  }
+
+  @Test
   public void testCopySelectAllColumns()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =

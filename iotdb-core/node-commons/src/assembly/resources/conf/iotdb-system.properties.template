@@ -2417,9 +2417,10 @@ load_active_listening_check_interval_seconds=5
 # Empty (the default) rejects such paths; a target consisting of a bare file name is always
 # accepted and lands in the managed 'copyto' folder under the data directories. The configured
 # directories must not overlap load_active_listening_dirs or load_active_listening_pipe_dir.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: String
-# copy_to_allowed_export_dirs=
+# Privilege: SECURITY
+copy_to_allowed_export_dirs=
 
 # The operation performed to LastCache when a TsFile is successfully loaded.
 # UPDATE: use the data in the TsFile to update LastCache;
