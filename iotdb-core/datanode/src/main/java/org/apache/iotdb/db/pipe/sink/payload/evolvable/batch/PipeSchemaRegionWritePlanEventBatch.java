@@ -112,7 +112,10 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
-    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocate(maxBatchSizeInBytes);
+    allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocate(
+                PipeSchemaRegionWritePlanEventBatch.class.getSimpleName(), maxBatchSizeInBytes);
   }
 
   public synchronized boolean onEvent(final PipeSchemaRegionWritePlanEvent event) {

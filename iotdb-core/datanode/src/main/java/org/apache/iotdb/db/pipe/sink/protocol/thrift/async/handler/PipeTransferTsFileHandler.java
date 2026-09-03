@@ -199,7 +199,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     // Delay creation of resources to avoid OOM or too many open files
     if (readBuffer == null) {
       memoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTsFileWithRetry(
+                  PipeTransferTsFileHandler.class.getSimpleName(), readFileBufferSize);
       readBuffer = new byte[readFileBufferSize];
     }
 

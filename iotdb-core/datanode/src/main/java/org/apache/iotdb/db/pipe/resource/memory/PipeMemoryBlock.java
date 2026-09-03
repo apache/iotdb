@@ -41,6 +41,8 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   private final ReentrantLock lock = new ReentrantLock();
 
+  private final String name;
+
   private final AtomicLong memoryUsageInBytes = new AtomicLong(0);
 
   private final AtomicReference<LongUnaryOperator> shrinkMethod = new AtomicReference<>();
@@ -50,8 +52,13 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   private volatile boolean isReleased = false;
 
-  public PipeMemoryBlock(final long memoryUsageInBytes) {
+  public PipeMemoryBlock(final String name, final long memoryUsageInBytes) {
+    this.name = Objects.requireNonNull(name);
     this.memoryUsageInBytes.set(memoryUsageInBytes);
+  }
+
+  public String getName() {
+    return name;
   }
 
   public long getMemoryUsageInBytes() {
@@ -165,7 +172,10 @@ public class PipeMemoryBlock implements AutoCloseable {
   @Override
   public String toString() {
     return "PipeMemoryBlock{"
-        + "usedMemoryInBytes="
+        + "name='"
+        + name
+        + '\''
+        + ", usedMemoryInBytes="
         + memoryUsageInBytes.get()
         + ", isReleased="
         + isReleased

@@ -86,7 +86,8 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
     this.statement = statement;
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(PipeStatementInsertionEvent.class.getSimpleName(), 0);
   }
 
   @Override

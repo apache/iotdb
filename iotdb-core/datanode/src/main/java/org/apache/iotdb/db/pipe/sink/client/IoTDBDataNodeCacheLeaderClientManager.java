@@ -53,7 +53,10 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
 
       // properties required by pipe memory control framework
       final PipeMemoryBlock allocatedMemoryBlock =
-          PipeDataNodeResourceManager.memory().tryAllocate(initMemorySizeInBytes);
+          PipeDataNodeResourceManager.memory()
+              .tryAllocate(
+                  IoTDBDataNodeCacheLeaderClientManager.class.getSimpleName(),
+                  initMemorySizeInBytes);
 
       device2endpoint =
           Caffeine.newBuilder()

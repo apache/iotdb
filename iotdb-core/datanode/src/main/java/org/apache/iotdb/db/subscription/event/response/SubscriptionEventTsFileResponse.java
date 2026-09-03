@@ -208,7 +208,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       reader.seek(writingOffset);
 
       final PipeTsFileMemoryBlock memoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(bufferSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTsFileWithRetry(
+                  SubscriptionEventTsFileResponse.class.getSimpleName(), bufferSize);
       final byte[] readBuffer = new byte[(int) bufferSize];
       reader.readFully(readBuffer);
 

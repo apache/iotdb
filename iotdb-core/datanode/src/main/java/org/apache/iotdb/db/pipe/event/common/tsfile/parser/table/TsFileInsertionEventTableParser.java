@@ -119,11 +119,21 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
-      this.allocatedMemoryBlockForChunk = memoryManager.forceAllocateForTabletWithRetry(0);
-      this.allocatedMemoryBlockForBatchData = memoryManager.forceAllocateForTabletWithRetry(0);
-      this.allocatedMemoryBlockForChunkMeta = memoryManager.forceAllocateForTabletWithRetry(0);
-      this.allocatedMemoryBlockForTableSchemas = memoryManager.forceAllocateForTabletWithRetry(0);
+          memoryManager.forceAllocateForTabletWithRetry(
+              TsFileInsertionEventTableParser.class.getSimpleName() + "#modifications",
+              currentModifications.ramBytesUsed());
+      this.allocatedMemoryBlockForChunk =
+          memoryManager.forceAllocateForTabletWithRetry(
+              TsFileInsertionEventTableParser.class.getSimpleName() + "#chunk", 0);
+      this.allocatedMemoryBlockForBatchData =
+          memoryManager.forceAllocateForTabletWithRetry(
+              TsFileInsertionEventTableParser.class.getSimpleName() + "#batchData", 0);
+      this.allocatedMemoryBlockForChunkMeta =
+          memoryManager.forceAllocateForTabletWithRetry(
+              TsFileInsertionEventTableParser.class.getSimpleName() + "#chunkMetadata", 0);
+      this.allocatedMemoryBlockForTableSchemas =
+          memoryManager.forceAllocateForTabletWithRetry(
+              TsFileInsertionEventTableParser.class.getSimpleName() + "#tableSchemas", 0);
 
       this.startTime = startTime;
       this.endTime = endTime;

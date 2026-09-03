@@ -295,6 +295,8 @@ public class ColumnHeaderConstant {
       "estimated_remaining_seconds";
   public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
   public static final String RECENT_FAILURES_TABLE_MODEL = "recent_failures";
+  public static final String NAME_TABLE_MODEL = "name";
+  public static final String MEMORY_USAGE_IN_BYTES_TABLE_MODEL = "memory_usage_in_bytes";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";

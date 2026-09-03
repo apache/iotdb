@@ -542,7 +542,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final int readFileBufferSize = getReadFileBufferSize(file);
     try (final PipeTsFileMemoryBlock ignored =
             PipeDataNodeResourceManager.memory()
-                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+                .forceAllocateForTsFileWithRetry(
+                    IoTDBDataRegionAirGapSink.class.getSimpleName(), readFileBufferSize);
         final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;

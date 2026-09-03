@@ -114,7 +114,9 @@ public class SubscriptionPollResponseCache {
 
     // properties required by pipe memory control framework
     final PipeMemoryBlock allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().tryAllocate(initMemorySizeInBytes);
+        PipeDataNodeResourceManager.memory()
+            .tryAllocate(
+                SubscriptionPollResponseCache.class.getSimpleName(), initMemorySizeInBytes);
 
     this.cache =
         Caffeine.newBuilder()

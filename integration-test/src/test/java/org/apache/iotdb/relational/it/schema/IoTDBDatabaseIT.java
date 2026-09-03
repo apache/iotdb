@@ -535,6 +535,7 @@ public class IoTDBDatabaseIT {
               "functions,INF,",
               "keywords,INF,",
               "nodes,INF,",
+              "pipe_memory,INF,",
               "pipe_plugins,INF,",
               "pipes,INF,",
               "queries,INF,",
@@ -616,6 +617,11 @@ public class IoTDBDatabaseIT {
                   "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,",
                   "is_degraded,BOOLEAN,ATTRIBUTE,",
                   "recent_failures,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc pipe_memory"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList("name,STRING,TAG,", "memory_usage_in_bytes,INT64,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipe_plugins"),
           "ColumnName,DataType,Category,",
@@ -732,6 +738,9 @@ public class IoTDBDatabaseIT {
       Assert.assertThrows(
           SQLException.class, () -> statement.executeQuery("select * from pipe_plugins"));
       Assert.assertThrows(
+          SQLException.class, () -> statement.executeQuery("select * from pipe_memory"));
+      Assert.assertThrows(SQLException.class, () -> statement.executeQuery("SHOW PIPE MEMORY"));
+      Assert.assertThrows(
           SQLException.class, () -> statement.executeQuery("select * from table_disk_usage"));
 
       // Filter out not self-created pipes
@@ -764,6 +773,32 @@ public class IoTDBDatabaseIT {
         final Statement statement = connection.createStatement()) {
       // Test table query
       statement.execute("use information_schema");
+
+      try (final ResultSet resultSet = statement.executeQuery("SHOW PIPE MEMORY")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(2, metaData.getColumnCount());
+        assertEquals("name", metaData.getColumnName(1));
+        assertEquals("memory_usage_in_bytes", metaData.getColumnName(2));
+        boolean hasFloatingMemory = false;
+        while (resultSet.next()) {
+          if ("FloatingMemory".equals(resultSet.getString(1))) {
+            assertTrue(resultSet.getLong(2) >= 0);
+            hasFloatingMemory = true;
+          }
+        }
+        assertTrue(hasFloatingMemory);
+      }
+      try (final ResultSet resultSet =
+          statement.executeQuery("select * from information_schema.pipe_memory")) {
+        boolean hasFloatingMemory = false;
+        while (resultSet.next()) {
+          if ("FloatingMemory".equals(resultSet.getString(1))) {
+            assertTrue(resultSet.getLong(2) >= 0);
+            hasFloatingMemory = true;
+          }
+        }
+        assertTrue(hasFloatingMemory);
+      }
 
       statement.execute("create database test");
       statement.execute(
@@ -813,6 +848,7 @@ public class IoTDBDatabaseIT {
                   "information_schema,columns,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,queries,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,regions,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,pipe_memory,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,topics,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,pipes,INF,USING,null,SYSTEM VIEW,false,",
@@ -834,7 +870,7 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("23,"));
+          Collections.singleton("24,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),

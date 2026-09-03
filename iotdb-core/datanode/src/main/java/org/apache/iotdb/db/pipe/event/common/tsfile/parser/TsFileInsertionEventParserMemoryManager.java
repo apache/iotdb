@@ -25,9 +25,10 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 /** Allocates parser working memory from the pool owned by the caller. */
 public interface TsFileInsertionEventParserMemoryManager {
 
-  TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(long sizeInBytes);
+  TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
+      String name, long sizeInBytes);
 
-  TsFileInsertionEventParserMemoryBlock forceAllocate(long sizeInBytes);
+  TsFileInsertionEventParserMemoryBlock forceAllocate(String name, long sizeInBytes);
 
   static TsFileInsertionEventParserMemoryManager pipe() {
     return PipeHolder.INSTANCE;
@@ -38,14 +39,17 @@ public interface TsFileInsertionEventParserMemoryManager {
         new TsFileInsertionEventParserMemoryManager() {
           @Override
           public TsFileInsertionEventParserMemoryBlock forceAllocateForTabletWithRetry(
-              final long sizeInBytes) {
+              final String name, final long sizeInBytes) {
             return new PipeBlock(
-                PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(sizeInBytes));
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocateForTabletWithRetry(name, sizeInBytes));
           }
 
           @Override
-          public TsFileInsertionEventParserMemoryBlock forceAllocate(final long sizeInBytes) {
-            return new PipeBlock(PipeDataNodeResourceManager.memory().forceAllocate(sizeInBytes));
+          public TsFileInsertionEventParserMemoryBlock forceAllocate(
+              final String name, final long sizeInBytes) {
+            return new PipeBlock(
+                PipeDataNodeResourceManager.memory().forceAllocate(name, sizeInBytes));
           }
         };
   }

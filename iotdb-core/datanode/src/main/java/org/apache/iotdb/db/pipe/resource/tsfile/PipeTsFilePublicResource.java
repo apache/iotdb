@@ -117,6 +117,7 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(
+                PipeTsFilePublicResource.class.getSimpleName() + "#sequenceReader",
                 PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes(),
                 MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
@@ -145,7 +146,10 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
     // Allocate again for the cached objects.
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
-            .forceAllocateIfSufficient(memoryRequiredInBytes, MEMORY_SUFFICIENT_THRESHOLD);
+            .forceAllocateIfSufficient(
+                PipeTsFilePublicResource.class.getSimpleName() + "#metadata",
+                memoryRequiredInBytes,
+                MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.PIPETSFILERESOURCE_FAILED_TO_CACHE_OBJECTS_FOR_TSFILE,
@@ -177,6 +181,7 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(
+                PipeTsFilePublicResource.class.getSimpleName() + "#sequenceReader",
                 PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes(),
                 MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
@@ -214,7 +219,10 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
     // Allocate again for the cached objects.
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
-            .forceAllocateIfSufficient(memoryRequiredInBytes, MEMORY_SUFFICIENT_THRESHOLD);
+            .forceAllocateIfSufficient(
+                PipeTsFilePublicResource.class.getSimpleName() + "#metadata",
+                memoryRequiredInBytes,
+                MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.PIPETSFILERESOURCE_FAILED_TO_CACHE_OBJECTS_FOR_TSFILE,

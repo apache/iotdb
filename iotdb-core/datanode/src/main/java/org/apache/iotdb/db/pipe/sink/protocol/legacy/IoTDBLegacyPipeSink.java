@@ -527,7 +527,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     final int readFileBufferSize = getReadFileBufferSize(file);
     try (final PipeTsFileMemoryBlock ignored =
             PipeDataNodeResourceManager.memory()
-                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+                .forceAllocateForTsFileWithRetry(
+                    IoTDBLegacyPipeSink.class.getSimpleName(), readFileBufferSize);
         final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
       final byte[] buffer = new byte[readFileBufferSize];
       while (true) {

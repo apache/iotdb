@@ -452,7 +452,8 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     final int readFileBufferSize = getReadFileBufferSize(file);
     try (final PipeTsFileMemoryBlock ignored =
             PipeDataNodeResourceManager.memory()
-                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+                .forceAllocateForTsFileWithRetry(
+                    IoTConsensusV2SyncSink.class.getSimpleName(), readFileBufferSize);
         final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;

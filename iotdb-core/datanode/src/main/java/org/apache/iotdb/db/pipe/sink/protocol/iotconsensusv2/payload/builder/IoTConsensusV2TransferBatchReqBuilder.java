@@ -97,7 +97,9 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
 
-    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocate(0);
+    allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocate(IoTConsensusV2TransferBatchReqBuilder.class.getSimpleName(), 0);
   }
 
   /**
