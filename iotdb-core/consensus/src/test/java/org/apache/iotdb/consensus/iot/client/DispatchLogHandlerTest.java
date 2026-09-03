@@ -20,18 +20,21 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserDataTransferAuditEvent;
 import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.audit.UserDataTransferProtectionMethod;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
+import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -94,6 +97,36 @@ public class DispatchLogHandlerTest {
         null);
 
     assertTrue(events.isEmpty());
+  }
+
+  @Test
+  public void testSkipDoesNotInspectResponseStatuses() {
+    final AtomicInteger statusAccessCount = new AtomicInteger();
+    final TSyncLogEntriesRes response =
+        new TSyncLogEntriesRes() {
+          @Override
+          public List<TSStatus> getStatuses() {
+            statusAccessCount.incrementAndGet();
+            return super.getStatuses();
+          }
+        };
+
+    DispatchLogHandler.recordTransferAttempt(
+        event -> {},
+        createBatch(false),
+        SOURCE,
+        TARGET,
+        UserDataTransferProtectionMethod.NONE,
+        response);
+    DispatchLogHandler.recordTransferAttempt(
+        UserDataTransferAuditHandler.NO_OP,
+        createBatch(true),
+        SOURCE,
+        TARGET,
+        UserDataTransferProtectionMethod.NONE,
+        response);
+
+    assertEquals(0, statusAccessCount.get());
   }
 
   @Test

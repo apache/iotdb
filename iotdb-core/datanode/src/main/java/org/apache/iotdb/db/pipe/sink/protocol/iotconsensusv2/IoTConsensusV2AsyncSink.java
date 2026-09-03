@@ -110,6 +110,8 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
   private ScheduledExecutorService backgroundTaskService;
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  private final TEndPoint localEndPoint =
+      new TEndPoint(IOTDB_CONFIG.getInternalAddress(), IOTDB_CONFIG.getDataRegionConsensusPort());
   private IoTConsensusV2SinkMetrics iotConsensusV2SinkMetrics;
   private String consensusPipeName;
   private int consensusGroupId;
@@ -747,11 +749,14 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     return nodeUrls.get(0);
   }
 
+  public boolean isUserDataTransferAuditEnabled() {
+    return DataNodeUserDataTransferAuditor.isEnabled();
+  }
+
   public void recordUserDataTransferAudit(boolean success, String errorCode, Throwable error) {
-    final TEndPoint localEndPoint =
-        new TEndPoint(
-            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
-            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusPort());
+    if (!isUserDataTransferAuditEnabled()) {
+      return;
+    }
     DataNodeUserDataTransferAuditor.record(
         localEndPoint, localEndPoint, getFollowerUrl(), success, errorCode, error);
   }

@@ -89,6 +89,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
   private final int thisDataNodeId;
   private final int consensusGroupId;
   private final IoTConsensusV2SinkMetrics iotConsensusV2SinkMetrics;
+  private final TEndPoint localEndPoint;
   private IoTConsensusV2SyncBatchReqBuilder tabletBatchBuilder;
 
   public IoTConsensusV2SyncSink(
@@ -102,6 +103,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     this.peers = peers;
     this.consensusGroupId = consensusGroupId;
     this.thisDataNodeId = thisDataNodeId;
+    this.localEndPoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusPort());
     this.syncRetryClientManager =
         IoTV2GlobalComponentContainer.getInstance().getGlobalSyncClientManager();
     this.iotConsensusV2SinkMetrics = iotConsensusV2SinkMetrics;
@@ -213,13 +218,15 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
           resp.getBatchResps().stream()
               .map(TIoTConsensusV2TransferResp::getStatus)
               .collect(Collectors.toList());
-      final TSStatus failedStatus =
-          statusList.stream().filter(status -> !isSuccessful(status)).findFirst().orElse(null);
-      recordTransferAttempt(
-          failedStatus == null,
-          failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
-          null);
-      transferAttemptRecorded = true;
+      if (DataNodeUserDataTransferAuditor.isEnabled()) {
+        final TSStatus failedStatus =
+            statusList.stream().filter(status -> !isSuccessful(status)).findFirst().orElse(null);
+        recordTransferAttempt(
+            failedStatus == null,
+            failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
+            null);
+        transferAttemptRecorded = true;
+      }
 
       // TODO(support batch): handle retry logic
       // Only handle the failed statuses to avoid string format performance overhead
@@ -575,10 +582,9 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
   }
 
   private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
-    final TEndPoint localEndPoint =
-        new TEndPoint(
-            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
-            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusPort());
+    if (!DataNodeUserDataTransferAuditor.isEnabled()) {
+      return;
+    }
     DataNodeUserDataTransferAuditor.record(
         localEndPoint, localEndPoint, getFollowerUrl(), success, errorCode, error);
   }

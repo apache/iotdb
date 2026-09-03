@@ -1027,8 +1027,9 @@ public class IoTConsensusServerImpl {
           new IoTProgressIndex(thisNode.getNodeId(), searchIndex.get() + 1);
       ((ComparableConsensusRequest) request).setProgressIndex(iotProgressIndex);
     }
-    return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request))
-        .setContainsUserData(containsUserData(Collections.singletonList(request)))
+    final List<IConsensusRequest> requests = Collections.singletonList(request);
+    return new IndexedConsensusRequest(searchIndex.get() + 1, requests)
+        .setContainsUserData(containsUserData(request))
         .setPhysicalTime(assignPhysicalTimeInMs())
         .setNodeId(thisNode.getNodeId());
   }
@@ -1059,15 +1060,20 @@ public class IoTConsensusServerImpl {
 
   public boolean containsUserData(List<IConsensusRequest> requests) {
     for (IConsensusRequest request : requests) {
-      try {
-        if (userDataTransferAuditClassifier.containsUserData(thisNode.getGroupId(), request)) {
-          return true;
-        }
-      } catch (RuntimeException ignored) {
-        // Classification is advisory and must not affect consensus replication.
+      if (containsUserData(request)) {
+        return true;
       }
     }
     return false;
+  }
+
+  private boolean containsUserData(IConsensusRequest request) {
+    try {
+      return userDataTransferAuditClassifier.containsUserData(thisNode.getGroupId(), request);
+    } catch (RuntimeException ignored) {
+      // Classification is advisory and must not affect consensus replication.
+      return false;
+    }
   }
 
   public TSStatus syncIdleWriterSafeTimeBarrierToPeer(final Peer targetPeer) {

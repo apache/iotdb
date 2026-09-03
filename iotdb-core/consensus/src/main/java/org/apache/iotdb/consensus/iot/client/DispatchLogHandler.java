@@ -67,17 +67,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
-    // One batch RPC is one physical transfer attempt, so keep one representative error value in
-    // the minimum audit record instead of concatenating an unbounded number of response details.
-    final TSStatus firstFailedStatus =
-        response.getStatuses().stream()
-            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-            .findFirst()
-            .orElse(null);
-    recordTransferAttempt(
-        firstFailedStatus == null,
-        firstFailedStatus == null ? null : String.valueOf(firstFailedStatus.getCode()),
-        null);
+    recordTransferAttempt(response);
     if (response.getStatuses().stream()
         .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode()))) {
       List<String> retryStatusMessages =
@@ -191,8 +181,13 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
     try {
+      final UserDataTransferAuditHandler auditHandler =
+          thread.getImpl().getUserDataTransferAuditHandler();
+      if (!batch.containsUserData() || !auditHandler.isEnabled()) {
+        return;
+      }
       recordTransferAttempt(
-          thread.getImpl().getUserDataTransferAuditHandler(),
+          auditHandler,
           batch,
           thread.getImpl().getThisNode().getEndpoint(),
           thread.getPeer().getEndpoint(),
@@ -201,6 +196,58 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
           success,
           errorCode,
           error);
+    } catch (RuntimeException auditFailure) {
+      warnAuditFailure(auditFailure);
+    }
+  }
+
+  private void recordTransferAttempt(TSyncLogEntriesRes response) {
+    try {
+      final UserDataTransferAuditHandler auditHandler =
+          thread.getImpl().getUserDataTransferAuditHandler();
+      if (!batch.containsUserData() || !auditHandler.isEnabled()) {
+        return;
+      }
+      recordTransferAttempt(
+          auditHandler,
+          batch,
+          thread.getImpl().getThisNode().getEndpoint(),
+          thread.getPeer().getEndpoint(),
+          UserDataTransferProtectionMethod.fromTlsEnabled(
+              thread.getConfig().getRpc().isEnableSSL()),
+          response);
+    } catch (RuntimeException auditFailure) {
+      warnAuditFailure(auditFailure);
+    }
+  }
+
+  static void recordTransferAttempt(
+      UserDataTransferAuditHandler auditHandler,
+      Batch batch,
+      TEndPoint source,
+      TEndPoint target,
+      UserDataTransferProtectionMethod protectionMethod,
+      TSyncLogEntriesRes response) {
+    try {
+      if (!batch.containsUserData() || !auditHandler.isEnabled()) {
+        return;
+      }
+      // One batch RPC is one physical transfer attempt, so keep one representative error value in
+      // the minimum audit record instead of concatenating an unbounded number of response details.
+      final TSStatus firstFailedStatus =
+          response.getStatuses().stream()
+              .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+              .findFirst()
+              .orElse(null);
+      recordTransferAttempt(
+          auditHandler,
+          batch,
+          source,
+          target,
+          protectionMethod,
+          firstFailedStatus == null,
+          firstFailedStatus == null ? null : String.valueOf(firstFailedStatus.getCode()),
+          null);
     } catch (RuntimeException auditFailure) {
       warnAuditFailure(auditFailure);
     }
