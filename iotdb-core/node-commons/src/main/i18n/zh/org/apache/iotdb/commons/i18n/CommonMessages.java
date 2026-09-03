@@ -126,6 +126,16 @@ public final class CommonMessages {
       "在 {} 毫秒后仍无法停止自动释放器";
   public static final String UNABLE_TO_STOP_EVICTOR = "在 {} 毫秒后仍无法停止驱逐器";
 
+  // --- startcheck / system.properties ---
+  public static final String IOTDB_VERSION_TOO_OLD = "IoTDB 版本过旧";
+  public static final String REPAIR_SYSTEM_PROPERTIES = "修复 system.properties，缺少 {}";
+  public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
+      "%s 首次启动后不能修改";
+  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
+      "成功序列化 mutable system properties，耗时 {} ms。";
+  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
+      "请勿将 IoTDB 从 v0.9 或更低版本直接升级到 v1.0！请先升级到 v0.10";
+
   private CommonMessages() {}
 
   public static final String COLLECTION_MUST_NOT_BE_NULL = "集合不能为空。";

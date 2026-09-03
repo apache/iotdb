@@ -129,6 +129,16 @@ public final class CommonMessages {
       "unable to stop auto releaser after {} ms";
   public static final String UNABLE_TO_STOP_EVICTOR = "unable to stop evictor after {} ms";
 
+  // --- startcheck / system.properties ---
+  public static final String IOTDB_VERSION_TOO_OLD = "IoTDB version is too old";
+  public static final String REPAIR_SYSTEM_PROPERTIES = "repair system.properties, lack {}";
+  public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
+      "%s can't be modified after first startup";
+  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
+      "Serialize mutable system properties successfully, which takes {} ms.";
+  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
+      "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
+
   private CommonMessages() {}
 
   public static final String COLLECTION_MUST_NOT_BE_NULL = "Collection must not be null.";
