@@ -153,14 +153,9 @@ public class CQScheduleTask implements Runnable {
     }
     if (scheduleCalendarAware && req.isSetBoundaryExplicit() && !req.isBoundaryExplicit()) {
       this.boundaryTime = CQCalendarUtils.localEpochBoundary(scheduleZone);
-      this.executionTime =
-          CQCalendarUtils.occurrence(
-              boundaryTime,
-              everyDuration,
-              CQCalendarUtils.firstOccurrenceIndex(
-                  boundaryTime, everyDuration, System.currentTimeMillis() * FACTOR, scheduleZone),
-              scheduleZone);
     }
+    // The procedure has already selected the first occurrence. Recomputing it from wall clock
+    // time here introduces a race around a calendar boundary and can skip an occurrence.
     if (req.isSetDurationEncodingVersion() && req.getDurationEncodingVersion() == 1) {
       this.occurrenceIndex =
           CQCalendarUtils.firstOccurrenceIndex(

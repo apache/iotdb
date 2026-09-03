@@ -132,6 +132,9 @@ public class CQManager {
         req.getEveryDuration().getMonthPart() != 0
             || req.getStartOffsetDuration().getMonthPart() != 0
             || req.getEndOffsetDuration().getMonthPart() != 0;
+    // Each legacy field is validated independently. A component with a calendar month uses zero
+    // as its sentinel, while a fixed-only component must carry the exact fixed duration value.
+    // This permits mixed requests such as EVERY 1d RANGE 1mo without approximating the month.
     if ((req.getEveryDuration().getMonthPart() == 0
             && req.everyInterval != req.getEveryDuration().getNonMonthDuration())
         || (req.getStartOffsetDuration().getMonthPart() == 0
@@ -140,9 +143,7 @@ public class CQManager {
             && req.endTimeOffset != req.getEndOffsetDuration().getNonMonthDuration())
         || (req.getEveryDuration().getMonthPart() != 0 && req.everyInterval != 0)
         || (req.getStartOffsetDuration().getMonthPart() != 0 && req.startTimeOffset != 0)
-        || (req.getEndOffsetDuration().getMonthPart() != 0 && req.endTimeOffset != 0)
-        || (hasCalendarDuration
-            && (req.everyInterval != 0 || req.startTimeOffset != 0 || req.endTimeOffset != 0))) {
+        || (req.getEndOffsetDuration().getMonthPart() != 0 && req.endTimeOffset != 0)) {
       return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
           .setMessage(
               ManagerMessages

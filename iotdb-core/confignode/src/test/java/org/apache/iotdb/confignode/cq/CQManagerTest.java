@@ -24,6 +24,9 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -34,6 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class CQManagerTest {
@@ -77,6 +81,44 @@ public class CQManagerTest {
       assertTrue(cqManager.markCQLocallyScheduled("testCq", "currentToken", currentTask));
 
       Mockito.verify(previousFuture).cancel(false);
+    } finally {
+      cqManager.stopCQScheduler();
+    }
+  }
+
+  @Test
+  public void mixedCalendarAndFixedDurationsReachCapabilityValidation() {
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    NodeManager nodeManager = Mockito.mock(NodeManager.class);
+    Mockito.when(configManager.getNodeManager()).thenReturn(nodeManager);
+    Mockito.when(nodeManager.getNodeVersionInfo()).thenReturn(java.util.Collections.emptyMap());
+    CQManager cqManager = new CQManager(configManager);
+
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "mixedDurationCq",
+            86_400_000,
+            0,
+            0,
+            0,
+            TimeoutPolicy.BLOCKED.getType(),
+            "select 1",
+            "create cq mixedDurationCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 86_400_000));
+    req.setStartOffsetDuration(new TCQDuration(1, 0));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+
+    try {
+      TSStatus status = cqManager.createCQ(req);
+      assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), status.getCode());
+      assertEquals(
+          org.apache.iotdb.confignode.i18n.ManagerMessages
+              .MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_49534072,
+          status.getMessage());
     } finally {
       cqManager.stopCQScheduler();
     }

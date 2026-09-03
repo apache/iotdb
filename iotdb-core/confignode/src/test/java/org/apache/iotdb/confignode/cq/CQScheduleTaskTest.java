@@ -21,10 +21,13 @@ package org.apache.iotdb.confignode.cq;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.confignode.manager.cq.CQCalendarUtils;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 
 import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
@@ -63,6 +66,58 @@ public class CQScheduleTaskTest {
         null,
         null,
         1000);
+  }
+
+  @Test
+  public void testFixedDurationVersionedCqUsesLegacySchedulerPath() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "fixedVersionedCq",
+            1000,
+            0,
+            1000,
+            0,
+            TimeoutPolicy.BLOCKED.getType(),
+            "select 1",
+            "create cq fixedVersionedCq",
+            "Asia",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1000));
+    req.setStartOffsetDuration(new TCQDuration(0, 1000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+
+    // A versioned fixed-duration CQ must not enter the calendar path (which requires a ZoneId).
+    new CQScheduleTask(req, 1000, "token", null, null);
+  }
+
+  @Test
+  public void testCalendarConstructorKeepsProcedureSelectedFirstOccurrence() throws Exception {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "calendarCq",
+            0,
+            0,
+            0,
+            0,
+            TimeoutPolicy.BLOCKED.getType(),
+            "select 1",
+            "create cq calendarCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(1, 0));
+    req.setStartOffsetDuration(new TCQDuration(1, 0));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(false);
+    long firstOccurrence =
+        ZonedDateTime.of(2030, 2, 1, 0, 0, 0, 0, ZoneId.of("UTC")).toInstant().toEpochMilli();
+
+    CQScheduleTask task = new CQScheduleTask(req, firstOccurrence, "token", null, null);
+    Field executionTime = CQScheduleTask.class.getDeclaredField("executionTime");
+    executionTime.setAccessible(true);
+    assertEquals(firstOccurrence, executionTime.getLong(task));
   }
 
   @Test
