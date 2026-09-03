@@ -67,6 +67,24 @@ public class PipeStatementTsStatusVisitorTest {
   }
 
   @Test
+  public void testMultipleErrorPropagatesSelectedReceiverMessage() {
+    final TSStatus status =
+        IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.process(
+            new InsertRowsStatement(),
+            new TSStatus(TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+                .setSubStatus(
+                    Arrays.asList(
+                        StatusUtils.OK,
+                        new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode())
+                            .setMessage("receiver write queue is full"))));
+
+    Assert.assertEquals(
+        TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
+        status.getCode());
+    Assert.assertEquals("receiver write queue is full", status.getMessage());
+  }
+
+  @Test
   public void testLoadTemporaryUnavailableClassification() throws Exception {
     final File tsFile = File.createTempFile("temporary-unavailable", ".tsfile");
     tsFile.deleteOnExit();

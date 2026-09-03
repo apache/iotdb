@@ -21,9 +21,21 @@ package org.apache.iotdb.pipe.it.single;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
+import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV1Req;
+import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigNodeHandshakeV2Req;
+import org.apache.iotdb.confignode.manager.pipe.sink.payload.PipeTransferConfigPlanReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
@@ -34,6 +46,9 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
@@ -44,7 +59,9 @@ import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -65,10 +82,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
-public class IoTDBLegacyPipeReceiverSecurityIT {
+public class IoTDBPipeReceiverIT {
+
+  private static final String DATA_NODE_DEVICE = "root.pipe_receiver_session.d1";
 
   private static final String LEGACY_PIPE_USER = "pipeHack";
   private static final String LEGACY_PIPE_PASSWORD = "StrngPsWd@623451";
@@ -85,15 +107,175 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
   private static final String LEGACY_TSFILE_NAME =
       "0-" + LEGACY_TSFILE_DATABASE + "-0-0-0-0-0-0.tsfile";
 
+  private static final String NO_AUTO_CREATE_DATABASE = "root.legacy_no_auto_create";
+  private static final String NO_AUTO_CREATE_DEVICE = NO_AUTO_CREATE_DATABASE + ".d1";
+  private static final String NO_AUTO_CREATE_TSFILE_NAME =
+      "0-" + NO_AUTO_CREATE_DATABASE + "-0-0-0-0-0-0.tsfile";
+
   @BeforeClass
   public static void setUp() {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setDatanodeMemoryProportion("3:3:1:1:1:0");
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(false)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @AfterClass
   public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testDataNodeReceiverSessionHandling() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.pipe_receiver_session");
+      statement.execute(
+          "CREATE TIMESERIES " + DATA_NODE_DEVICE + ".s1 WITH DATATYPE=INT32,ENCODING=RLE");
+    }
+
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    try (final IoTDBSyncClient client = createClient(dataNode)) {
+      Assert.assertEquals(
+          TSStatusCode.NOT_LOGIN.getStatusCode(),
+          client.pipeTransfer(buildTabletReq(1, 1)).getStatus().getCode());
+      Assert.assertEquals(
+          TSStatusCode.NOT_LOGIN.getStatusCode(),
+          client.getBackupConfiguration().getStatus().getCode());
+      Assert.assertTrue(client.fetchAllConnectionsInfo().getConnectionInfoList().isEmpty());
+      Assert.assertEquals(
+          TSStatusCode.NOT_LOGIN.getStatusCode(),
+          client
+              .pipeSubscribe(new TPipeSubscribeReq().setVersion((byte) 1).setType((short) 0))
+              .getStatus()
+              .getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
+          client
+              .pipeTransfer(
+                  PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
+                      CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))
+              .getStatus()
+              .getCode());
+      Assert.assertEquals(
+          TSStatusCode.NOT_LOGIN.getStatusCode(),
+          client
+              .pipeTransfer(
+                  PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(
+                      buildHandshakeParams(null, null)))
+              .getStatus()
+              .getCode());
+
+      final TPipeTransferResp wrongPasswordResp =
+          client.pipeTransfer(
+              PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(
+                  buildHandshakeParams(SessionConfig.DEFAULT_USER, "wrong-password")));
+      Assert.assertNotEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), wrongPasswordResp.getStatus().getCode());
+      Assert.assertEquals(
+          TSStatusCode.NOT_LOGIN.getStatusCode(),
+          client.pipeTransfer(buildTabletReq(1, 1)).getStatus().getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .pipeTransfer(
+                  PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(
+                      buildHandshakeParams(
+                          SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD)))
+              .getStatus()
+              .getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.pipeTransfer(buildTabletReq(1, 1)).getStatus().getCode());
+    }
+
+    try (final IoTDBSyncClient client = createClient(dataNode)) {
+      final TSOpenSessionResp openSessionResp = client.openSession(createOpenSessionReq());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), openSessionResp.getStatus().getCode());
+      try {
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            client.getBackupConfiguration().getStatus().getCode());
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            client.pipeTransfer(buildTabletReq(2, 2)).getStatus().getCode());
+      } finally {
+        client.closeSession(new TSCloseSessionReq(openSessionResp.getSessionId()));
+      }
+    }
+
+    assertTimeseriesRowCount(DATA_NODE_DEVICE, "s1", 2);
+  }
+
+  @Test
+  public void testConfigNodeReceiverSessionHandling() throws Exception {
+    final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+    try (final IoTDBSyncClient client = createClient(dataNode)) {
+      Assert.assertEquals(
+          TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode(),
+          client.pipeTransfer(buildEmptyConfigPlanReq()).getStatus().getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
+          client
+              .pipeTransfer(
+                  PipeTransferConfigNodeHandshakeV1Req.toTPipeTransferReq(
+                      CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))
+              .getStatus()
+              .getCode());
+      Assert.assertEquals(
+          TSStatusCode.NOT_LOGIN.getStatusCode(),
+          client
+              .pipeTransfer(
+                  PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferReq(
+                      buildHandshakeParams(null, null)))
+              .getStatus()
+              .getCode());
+
+      final TPipeTransferResp wrongPasswordResp =
+          client.pipeTransfer(
+              PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferReq(
+                  buildHandshakeParams(SessionConfig.DEFAULT_USER, "wrong-password")));
+      Assert.assertNotEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), wrongPasswordResp.getStatus().getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode(),
+          client.pipeTransfer(buildEmptyConfigPlanReq()).getStatus().getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .pipeTransfer(
+                  PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferReq(
+                      buildHandshakeParams(
+                          SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD)))
+              .getStatus()
+              .getCode());
+      Assert.assertNotEquals(
+          TSStatusCode.NOT_LOGIN.getStatusCode(),
+          client.pipeTransfer(buildEmptyConfigPlanReq()).getStatus().getCode());
+      Assert.assertEquals(
+          TSStatusCode.NO_PERMISSION.getStatusCode(),
+          client
+              .pipeTransfer(
+                  PipeTransferConfigPlanReq.toTPipeTransferReq(
+                      new CreatePipePluginPlan(
+                          new PipePluginMeta(
+                              "receiver-security-test-plugin",
+                              "attacker.Plugin",
+                              false,
+                              "attacker.jar",
+                              "deadbeef"),
+                          new Binary(new byte[] {1}))))
+              .getStatus()
+              .getCode());
+    }
   }
 
   @Test
@@ -242,6 +424,78 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
     assertTimeseriesRowCount(LEGACY_TSFILE_DEVICE, "s1", 0);
   }
 
+  @Test
+  public void testLegacyHandshakeAndTsFileLoadRespectDisabledAutoCreate() throws Exception {
+    final File tempDir = Files.createTempDirectory("legacy-pipe-no-auto-create").toFile();
+    try {
+      final File tsFile = new File(tempDir, NO_AUTO_CREATE_TSFILE_NAME);
+      generateTsFile(tsFile, NO_AUTO_CREATE_DEVICE);
+
+      final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
+      try (final IoTDBSyncClient client = createClient(dataNode)) {
+        final TSOpenSessionResp openSessionResp = client.openSession(createOpenSessionReq());
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), openSessionResp.getStatus().getCode());
+
+        try {
+          final TSStatus handshakeStatus =
+              client.handshake(
+                  new TSyncIdentityInfo(
+                      "legacyNoAutoCreate",
+                      System.currentTimeMillis(),
+                      "UNKNOWN",
+                      NO_AUTO_CREATE_DATABASE));
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), handshakeStatus.getCode());
+          assertDatabaseDoesNotExist(NO_AUTO_CREATE_DATABASE);
+
+          final TSStatus loadStatus = sendLegacyTsFile(client, tsFile);
+          Assert.assertEquals(TSStatusCode.PIPESERVER_ERROR.getStatusCode(), loadStatus.getCode());
+          assertDatabaseDoesNotExist(NO_AUTO_CREATE_DATABASE);
+        } finally {
+          client.closeSession(new TSCloseSessionReq(openSessionResp.getSessionId()));
+        }
+      }
+    } finally {
+      FileUtils.deleteDirectory(tempDir);
+    }
+  }
+
+  private TPipeTransferReq buildEmptyConfigPlanReq() {
+    return new TPipeTransferReq()
+        .setVersion(IoTDBSinkRequestVersion.VERSION_1.getVersion())
+        .setType(PipeRequestType.TRANSFER_CONFIG_PLAN.getType())
+        .setBody(ByteBuffer.allocate(0));
+  }
+
+  private TPipeTransferReq buildTabletReq(final long timestamp, final int value) throws Exception {
+    final Tablet tablet =
+        new Tablet(
+            DATA_NODE_DEVICE,
+            Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)),
+            1);
+    tablet.addTimestamp(0, timestamp);
+    tablet.addValue("s1", 0, value);
+    return PipeTransferTabletRawReq.toTPipeTransferReq(tablet, false);
+  }
+
+  private Map<String, String> buildHandshakeParams(final String username, final String password) {
+    final Map<String, String> params = new HashMap<>();
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
+        "pipe-session-it-" + UUID.randomUUID());
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    if (username != null) {
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
+    }
+    if (password != null) {
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
+    }
+    return params;
+  }
+
   private void assertLegacyPipeRpcStatus(
       final IoTDBSyncClient client, final TSStatusCode expectedStatusCode) throws Exception {
     final int expectedCode = expectedStatusCode.getStatusCode();
@@ -317,6 +571,16 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
             statement.executeQuery("SELECT COUNT(" + measurement + ") FROM " + device)) {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(expectedCount, resultSet.getInt(1));
+    }
+  }
+
+  private void assertDatabaseDoesNotExist(final String database) throws SQLException {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+      while (resultSet.next()) {
+        Assert.assertNotEquals(database, resultSet.getString(1));
+      }
     }
   }
 

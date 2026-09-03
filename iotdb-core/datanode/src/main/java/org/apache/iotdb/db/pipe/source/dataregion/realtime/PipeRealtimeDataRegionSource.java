@@ -84,11 +84,13 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivileges;
 
 public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
@@ -123,6 +125,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   protected boolean isForwardingPipeRequests;
 
   private boolean shouldTransferModFile; // Whether to transfer mods
+  private String tsFileParser;
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
   private boolean sloppyPattern; // true to disable pattern filter after extraction
@@ -239,6 +242,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
+    tsFileParser =
+        parameters.getStringByKeys(EXTRACTOR_TSFILE_PARSER_KEY, SOURCE_TSFILE_PARSER_KEY);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -613,6 +618,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public final boolean isShouldTransferModFile() {
     return shouldTransferModFile;
+  }
+
+  public final String getTsFileParser() {
+    return tsFileParser;
   }
 
   private void maySkipProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {

@@ -104,6 +104,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
         builder.getColumnBuilder(6).writeInt(databaseInfo.getMaxSchemaRegionNum());
         builder.getColumnBuilder(7).writeInt(databaseInfo.getDataRegionNum());
         builder.getColumnBuilder(8).writeInt(databaseInfo.getMaxDataRegionNum());
+        builder.getColumnBuilder(9).writeBoolean(databaseInfo.isNeedLastCache());
       }
       builder.declarePosition();
     }

@@ -58,6 +58,7 @@ public class CommonConfig {
   public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
   public static final long DEFAULT_TIME_PARTITION_INTERVAL = 604_800_000L;
+  public static final boolean SUBSCRIPTION_ENABLED = false;
 
   // The authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
@@ -235,6 +236,9 @@ public class CommonConfig {
   private int pipeDataStructureTabletSizeInBytes = 16 * 1024 * 1024;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.3;
+
+  // Maximum proportion for floating memory retained by InsertNode queues. Unused floating memory
+  // can be borrowed by non-floating Pipe allocations.
   private volatile double pipeTotalFloatingMemoryProportion = 0.5;
 
   // Check if memory check is enabled for Pipe
@@ -382,8 +386,6 @@ public class CommonConfig {
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
   private boolean pipeAutoSplitFullEnabled = true;
-
-  private boolean subscriptionEnabled = true;
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
@@ -833,7 +835,11 @@ public class CommonConfig {
     return status;
   }
 
-  public void setNodeStatus(NodeStatus newStatus) {
+  public synchronized void setNodeStatus(NodeStatus newStatus) {
+    if (status == newStatus) {
+      return;
+    }
+
     logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
     this.status = newStatus;
     this.statusReason = null;
@@ -2538,11 +2544,7 @@ public class CommonConfig {
   }
 
   public boolean getSubscriptionEnabled() {
-    return subscriptionEnabled;
-  }
-
-  public void setSubscriptionEnabled(boolean subscriptionEnabled) {
-    this.subscriptionEnabled = subscriptionEnabled;
+    return SUBSCRIPTION_ENABLED;
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {

@@ -124,6 +124,9 @@ public final class DataNodePipeMessages {
       "减少 reference count for event {} in PipeRealtimePriorityBlockingQueue 失败";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "获取 PendingQueue 失败，没有该子任务:  ";
+  public static final String
+      EXCEPTION_MULTIPLE_PIPES_MATCH_THE_REQUESTED_SINK_SUBTASK_USE_THE_PIPE_SPECIFIC_PIPESINKSUBTASKMANAGER_API_C180D94C =
+          "多个 Pipe 匹配请求的 sink 子任务。请使用指定 Pipe 的 PipeSinkSubtaskManager API。";
   public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
       "从 CN 处获取 pipe 信息失败，状态是 %s。";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
@@ -1215,8 +1218,6 @@ public final class DataNodePipeMessages {
       "Pipe air gap receiver {} 已启动。Socket：{}";
   public static final String PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY =
       "Pipe air gap receiver {}：临时不可用重试超时，向 sender 返回 FAIL。";
-  public static final String PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED =
-      "Pipe air gap receiver {}：在 air gap receiver 处遇到 TSStatus {}，将忽略。";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe 数据传输错误，{}";
   public static final String PIPE_INSERTING_ROW_CASTING_TYPE_FROM =
       "Pipe：写入 row。将类型从 {} 转换为 {}。";
@@ -1256,8 +1257,6 @@ public final class DataNodePipeMessages {
       "开始加载 serialize number 为 {}、type 为 {} 的 pipeData，value={}";
   public static final String STORAGE_ENGINE_READONLY = "存储引擎只读";
   public static final String SYNC_START_AT_TO_IS_DONE = "Sync {} 从 {} 开始到 {} 已完成。";
-  public static final String TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP =
-      "在 air gap receiver 处遇到临时不可用异常，将在本地重试。";
   public static final String THE_IOTCONSENSUSV2_REQUEST_VERSION_IS_DIFFERENT_FROM =
       "iotConsensusV2 请求版本 {} 与 sender 请求版本 {} 不同，"
           + "receiver 将被重置为 sender 请求版本。";
@@ -1953,10 +1952,11 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_INITIALIZED_STARTSEARCHINDEX_69B53EE6 =
       "ConsensusPrefetchingQueue {}：prefetch 已初始化，startSearchIndex={}，progressSource={}，"
           + "recoveryWriterCount={}";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_D75375D0 =
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_WALGAPSKIPPEDENTRIES_9A4E6608 =
       "ConsensusPrefetchingQueue {}：周期统计，lag={}，pendingDelta={}，walDelta={}，pendingTotal={}，"
-          + "walTotal={}，pendingQueueSize={}，prefetchingQueueSize={}，inFlightEventsSize={}，"
-          + "realtimeWriterCount={}，walHasNext={}，isActive={}，subtaskScheduled={}";
+          + "walTotal={}，walGapSkippedEntries={}，pendingQueueSize={}，prefetchingQueueSize={}，"
+          + "inFlightEventsSize={}，realtimeWriterCount={}，walHasNext={}，isActive={}，"
+          + "subtaskScheduled={}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
       "ConsensusPrefetchingQueue {}：等待 {}ms，使 WAL 缺口 [{}, {}) 可见，currentNextExpected={}，"
           + "currentWalIndex={}，seekGeneration={}";
@@ -2032,6 +2032,12 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator：读取 WAL 出错";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
       "ProgressWALIterator：打开 WAL 文件 {} 失败，跳过该文件";
+  public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
+      "ProgressWALIterator：跳过了 {} 个无法读取的保留 WAL 文件，directory={}，firstFile={}，"
+          + "lastFile={}，firstError={}；这些文件中的历史订阅数据无法重放";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64 =
+      "ConsensusPrefetchingQueue {}：WAL 重放跳过了不可用的 searchIndex 区间 [{}, {})，"
+          + "skippedEntries={}，totalWalGapSkippedEntries={}；缺失的 WAL 数据可能已在订阅消费前被回收";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}：历史传输的终止事件已提交。creationTime：{}，shouldMark：{}。{}";
   public static final String PIPE_LOG_PIPE_HISTORICAL_SOURCE_HAS_SUPPLIED_ALL_EVENTS_EMITTING_8B58DE19 =
@@ -2410,6 +2416,13 @@ public final class DataNodePipeMessages {
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "传输文件 %s 出错，结果状态为 %s。";
 
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_5B4B2E7C =
+          "重试 retry queue 中的事件失败。剩余事件：%d（tablet 事件：%d，tsfile 事件：%d）。";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_LAST_FAILURE_ARG_EB8F9DCD =
+          "重试 retry queue 中的事件失败。剩余事件：%d（tablet 事件：%d，tsfile 事件：%d）。最近一次失败：%s。";
+
   public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
       "Legacy pipe receiver 需要已登录的 session。";
   public static final String EXCEPTION_FAILED_TO_SET_UP_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_ARG_IN_CONSUMER_GROUP_ARG_ARG_A7FA88F3 =
@@ -2420,4 +2433,12 @@ public final class DataNodePipeMessages {
       "共识订阅设置期间 topic %s 的配置不可用";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "无法释放 Pipe {}（创建时间 {}）在 DataRegion {} 中的 TsFile 解析器内存，因为不存在对应的预留。";
+  public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
+      "Pipe processor worker {} 已连续处理同一 event {} ms。Pipe：{}，DataRegion：{}，subtask：{}，event：{}，线程状态：{}。栈：{}";
+  public static final String LOG_OPC_UA_SERVER_OPERATION_LIMITS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_5D2BCC90 =
+      "OPC UA 服务器操作限制：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
+  public static final String LOG_INTERRUPTED_WHILE_READING_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_357D46A4 =
+      "读取 OPC UA 服务器操作限制时被中断，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
+  public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
+      "读取 OPC UA 服务器操作限制失败，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
 }

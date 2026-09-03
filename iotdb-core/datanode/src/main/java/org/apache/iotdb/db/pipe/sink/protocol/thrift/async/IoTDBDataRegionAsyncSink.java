@@ -25,13 +25,18 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
+import org.apache.iotdb.commons.pipe.resource.PipeStopStrategy;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeSinkWithSchedulingDelay;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -81,6 +86,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -129,6 +136,11 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   private final BlockingQueue<TsFileInsertionEvent> retryTsFileQueue = new LinkedBlockingQueue<>();
   private final PipeDataRegionEventCounter retryEventQueueEventCounter =
       new PipeDataRegionEventCounter();
+  // Guarded by this. Events need identity semantics because the same payload may compare equal.
+  private final Map<Event, PipeResourceFailureType> retryEvent2ResourceFailureType =
+      new IdentityHashMap<>();
+  // Keep only the latest text to avoid retaining the complete exception chain for every event.
+  private volatile String lastRetryFailureMessage;
 
   private IoTDBDataNodeAsyncClientManager clientManager;
   private IoTDBDataNodeAsyncClientManager transferTsFileClientManager;
@@ -284,7 +296,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
       int transferredFileCount = 0;
       try {
-        for (final Pair<String, File> sealedFile : dbTsFilePairs) {
+        for (int outputIndex = 0; outputIndex < dbTsFilePairs.size(); outputIndex++) {
+          final Pair<String, File> sealedFile = dbTsFilePairs.get(outputIndex);
           transfer(
               new PipeTransferTsFileHandler(
                   this,
@@ -295,7 +308,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                   sealedFile.right,
                   null,
                   false,
-                  sealedFile.left));
+                  sealedFile.left,
+                  outputIndex));
           transferredFileCount++;
         }
       } catch (final Exception e) {
@@ -670,6 +684,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
         final Event polledEvent;
         if (!retryEventQueue.isEmpty()) {
           peekedEvent = retryEventQueue.peek();
+          retryEvent2ResourceFailureType.remove(peekedEvent);
 
           if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
             retryTransfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
@@ -689,6 +704,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
             return;
           }
           peekedEvent = retryTsFileQueue.peek();
+          retryEvent2ResourceFailureType.remove(peekedEvent);
           retryTransfer((PipeTsFileInsertionEvent) peekedEvent);
           polledEvent = retryTsFileQueue.poll();
         }
@@ -719,17 +735,27 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
         if (remainingEvents <= retryEventQueue.size() + retryTsFileQueue.size()) {
           final String message =
-              "Failed to retry transferring events in the retry queue. Remaining events: "
-                  + (retryEventQueue.size() + retryTsFileQueue.size())
-                  + " (tablet events: "
-                  + retryEventQueueEventCounter.getTabletInsertionEventCount()
-                  + ", tsfile events: "
-                  + retryEventQueueEventCounter.getTsFileInsertionEventCount()
-                  + ").";
+              formatRetryQueueFailureMessage(
+                  retryEventQueue.size() + retryTsFileQueue.size(),
+                  retryEventQueueEventCounter.getTabletInsertionEventCount(),
+                  retryEventQueueEventCounter.getTsFileInsertionEventCount(),
+                  lastRetryFailureMessage);
+          final PipeResourceFailureType retryQueueResourceFailureType =
+              getRetryQueueResourceFailureType();
+          if (retryQueueResourceFailureType != null) {
+            throw new PipeRuntimeSinkResourceException(
+                message, retryQueueResourceFailureType, true);
+          }
           throw isConnectionException
               ? new PipeConnectionException(message)
               : new PipeException(message);
         }
+      }
+    }
+
+    synchronized (this) {
+      if (retryEventQueue.isEmpty() && retryTsFileQueue.isEmpty()) {
+        lastRetryFailureMessage = null;
       }
     }
   }
@@ -788,6 +814,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
    */
   @SuppressWarnings("java:S899")
   public void addFailureEventToRetryQueue(final Event event, final Exception e) {
+    addFailureEventToRetryQueue(event, e, null);
+  }
+
+  private synchronized void addFailureEventToRetryQueue(
+      final Event event, final Exception e, final Set<Pair<String, Long>> failureRecordedPipes) {
+    final PipeResourceFailureType resourceFailureType =
+        PipeStopStrategy.getResourceFailureType(e, null);
     isConnectionException =
         e instanceof PipeConnectionException || ThriftClient.isConnectionBroken(e);
     if (event instanceof EnrichedEvent) {
@@ -806,6 +839,31 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
       }
       return;
+    }
+
+    if (retryEventQueue.isEmpty() && retryTsFileQueue.isEmpty()) {
+      lastRetryFailureMessage = null;
+    }
+
+    if (e != null) {
+      lastRetryFailureMessage = getRetryFailureMessage(e);
+    }
+
+    if (resourceFailureType != null && event instanceof EnrichedEvent) {
+      final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+      final Pair<String, Long> pipeKey =
+          new Pair<>(enrichedEvent.getPipeName(), enrichedEvent.getCreationTime());
+      if (failureRecordedPipes == null || failureRecordedPipes.add(pipeKey)) {
+        PipeDataNodeAgent.task()
+            .recordPipeResourceFailure(
+                enrichedEvent.getPipeName(), enrichedEvent.getCreationTime(), resourceFailureType);
+      }
+    }
+
+    if (resourceFailureType == null) {
+      retryEvent2ResourceFailureType.remove(event);
+    } else {
+      retryEvent2ResourceFailureType.put(event, resourceFailureType);
     }
 
     if (event instanceof PipeTsFileInsertionEvent) {
@@ -834,7 +892,57 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
    */
   public void addFailureEventsToRetryQueue(
       final Iterable<EnrichedEvent> events, final Exception e) {
-    events.forEach(event -> addFailureEventToRetryQueue(event, e));
+    final Set<Pair<String, Long>> failureRecordedPipes = new HashSet<>();
+    events.forEach(event -> addFailureEventToRetryQueue(event, e, failureRecordedPipes));
+  }
+
+  static String formatRetryQueueFailureMessage(
+      final int remainingEvents,
+      final int tabletEventCount,
+      final int tsFileEventCount,
+      final String lastFailureMessage) {
+    if (!hasText(lastFailureMessage)) {
+      return String.format(
+          DataNodePipeMessages
+              .EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_5B4B2E7C,
+          remainingEvents,
+          tabletEventCount,
+          tsFileEventCount);
+    }
+    return String.format(
+        DataNodePipeMessages
+            .EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_LAST_FAILURE_ARG_EB8F9DCD,
+        remainingEvents,
+        tabletEventCount,
+        tsFileEventCount,
+        lastFailureMessage);
+  }
+
+  private static String getRetryFailureMessage(final Exception exception) {
+    final Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(exception);
+    if (hasText(rootCause.getMessage())) {
+      return rootCause.getMessage();
+    }
+    // Throwable#getMessage() is null for exceptions such as a bare NPE. Keep the type in the
+    // reported sink error instead of falling back to a generic transfer wrapper.
+    return rootCause.toString();
+  }
+
+  private static boolean hasText(final String message) {
+    return message != null && !message.trim().isEmpty();
+  }
+
+  synchronized String getLastRetryFailureMessage() {
+    return lastRetryFailureMessage;
+  }
+
+  private synchronized PipeResourceFailureType getRetryQueueResourceFailureType() {
+    for (final PipeResourceFailureType failureType : PipeResourceFailureType.values()) {
+      if (retryEvent2ResourceFailureType.containsValue(failureType)) {
+        return failureType;
+      }
+    }
+    return null;
   }
 
   public boolean isEnableSendTsFileLimit() {
@@ -986,6 +1094,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
               && isDroppedPipe((EnrichedEvent) event, committerKey)) {
             ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
             retryEventQueueEventCounter.decreaseEventCount(event);
+            retryEvent2ResourceFailureType.remove(event);
             return true;
           }
           return false;
@@ -997,10 +1106,15 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
               && isDroppedPipe((EnrichedEvent) event, committerKey)) {
             ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
             retryEventQueueEventCounter.decreaseEventCount(event);
+            retryEvent2ResourceFailureType.remove(event);
             return true;
           }
           return false;
         });
+
+    if (retryEventQueue.isEmpty() && retryTsFileQueue.isEmpty()) {
+      lastRetryFailureMessage = null;
+    }
   }
 
   @Override
@@ -1049,10 +1163,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       final Event event =
           retryTsFileQueue.isEmpty() ? retryEventQueue.poll() : retryTsFileQueue.poll();
       retryEventQueueEventCounter.decreaseEventCount(event);
+      retryEvent2ResourceFailureType.remove(event);
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
       }
     }
+    retryEvent2ResourceFailureType.clear();
+    lastRetryFailureMessage = null;
   }
 
   //////////////////////// APIs provided for metric framework ////////////////////////

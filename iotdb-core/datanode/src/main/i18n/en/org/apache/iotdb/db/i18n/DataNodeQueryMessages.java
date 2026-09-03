@@ -1398,6 +1398,8 @@ public final class DataNodeQueryMessages {
       "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},";
   public static final String FAILED_TO_GET_DATA_BLOCK =
       "failed to get data block [{}, {}), attempt times: {}";
+  public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
+      "Unexpected data block response size.";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "failed to send ack data block event [{}, {}), attempt times: {}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =
@@ -3681,6 +3683,8 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_UDFNAME_IS_NULL_83E9039B = "udfName is null";
   public static final String EXCEPTION_URISTRING_IS_NULL_E7458C6A = "uriString is null";
   public static final String EXCEPTION_FILEPATH_IS_NULL_84CE8A66 = "filePath is null";
+  public static final String EXCEPTION_LOAD_TSFILE_PATH_CANNOT_BE_EMPTY_2B106181 =
+      "The LOAD TSFILE path cannot be empty.";
   public static final String EXCEPTION_DETAILS_IS_NULL_8EDEEA03 = "details is null";
   public static final String EXCEPTION_COLUMNCATEGORY_IS_NULL_0075924B = "columnCategory is null";
   public static final String EXCEPTION_ARGUMENTNAME_IS_NULL_7F8F665F = "argumentName is null";

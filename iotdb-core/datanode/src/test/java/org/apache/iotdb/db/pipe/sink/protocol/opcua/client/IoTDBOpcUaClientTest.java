@@ -23,15 +23,23 @@ import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.sdk.client.api.UaClient;
-import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.AnonymousProvider;
 import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResponse;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResult;
@@ -43,15 +51,19 @@ import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+
+import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 
 public class IoTDBOpcUaClientTest {
 
   @Test
   public void testTransferWritesAllMeasurementsInOneRequest() throws Exception {
     final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
-    Mockito.when(miloClient.writeValues(Mockito.anyList(), Mockito.anyList()))
+    Mockito.when(miloClient.writeValuesAsync(Mockito.anyList(), Mockito.anyList()))
         .thenReturn(
             CompletableFuture.completedFuture(Arrays.asList(StatusCode.GOOD, StatusCode.GOOD)));
     final IoTDBOpcUaClient client = createClient(miloClient);
@@ -59,15 +71,63 @@ public class IoTDBOpcUaClientTest {
     client.transfer(createTablet(), createSink());
 
     Mockito.verify(miloClient)
-        .writeValues(
+        .writeValuesAsync(
             Mockito.argThat(nodeIds("root/db/d1/s1", "root/db/d1/s2")),
+            Mockito.argThat(listWithSize(2)));
+  }
+
+  @Test
+  public void testTransferSplitsWritesAtServerLimit() throws Exception {
+    final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
+    Mockito.when(miloClient.writeValuesAsync(Mockito.anyList(), Mockito.anyList()))
+        .thenAnswer(
+            invocation -> {
+              final int size = ((List<?>) invocation.getArguments()[0]).size();
+              return CompletableFuture.completedFuture(Collections.nCopies(size, StatusCode.GOOD));
+            });
+    final IoTDBOpcUaClient client = createClient(miloClient, 1, 250);
+
+    client.transfer(createTablet(), createSink());
+
+    final InOrder inOrder = Mockito.inOrder(miloClient);
+    inOrder
+        .verify(miloClient)
+        .writeValuesAsync(
+            Mockito.argThat(nodeIds("root/db/d1/s1")), Mockito.argThat(listWithSize(1)));
+    inOrder
+        .verify(miloClient)
+        .writeValuesAsync(
+            Mockito.argThat(nodeIds("root/db/d1/s2")), Mockito.argThat(listWithSize(1)));
+  }
+
+  @Test
+  public void testTransferLastValuesBatchesDevicesInOneRequest() throws Exception {
+    final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
+    Mockito.when(miloClient.writeValuesAsync(Mockito.anyList(), Mockito.anyList()))
+        .thenReturn(
+            CompletableFuture.completedFuture(Arrays.asList(StatusCode.GOOD, StatusCode.GOOD)));
+    final IoTDBOpcUaClient client = createClient(miloClient);
+    final Map<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> deviceLastValues =
+        new LinkedHashMap<>();
+    deviceLastValues.put(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"),
+        Collections.singletonList(lastValue("s1", 1L, 11L)));
+    deviceLastValues.put(
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"),
+        Collections.singletonList(lastValue("s1", 2L, 22L)));
+
+    client.transferLastValues(deviceLastValues, false, createSink());
+
+    Mockito.verify(miloClient)
+        .writeValuesAsync(
+            Mockito.argThat(nodeIds("root/db/d1/s1", "root/db/d2/s1")),
             Mockito.argThat(listWithSize(2)));
   }
 
   @Test
   public void testTransferCreatesAndRetriesOnlyMissingNodes() throws Exception {
     final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
-    Mockito.when(miloClient.writeValues(Mockito.anyList(), Mockito.anyList()))
+    Mockito.when(miloClient.writeValuesAsync(Mockito.anyList(), Mockito.anyList()))
         .thenReturn(
             CompletableFuture.completedFuture(
                 Arrays.asList(new StatusCode(StatusCodes.Bad_NodeIdUnknown), StatusCode.GOOD)))
@@ -77,7 +137,7 @@ public class IoTDBOpcUaClientTest {
     final AddNodesResult addNodesResult = Mockito.mock(AddNodesResult.class);
     Mockito.when(addNodesResult.getStatusCode()).thenReturn(StatusCode.GOOD);
     Mockito.when(addNodesResponse.getResults()).thenReturn(new AddNodesResult[] {addNodesResult});
-    Mockito.when(miloClient.addNodes(Mockito.anyList()))
+    Mockito.when(miloClient.addNodesAsync(Mockito.anyList()))
         .thenReturn(CompletableFuture.completedFuture(addNodesResponse));
 
     final IoTDBOpcUaClient client = Mockito.spy(createClient(miloClient));
@@ -95,17 +155,68 @@ public class IoTDBOpcUaClientTest {
     final InOrder inOrder = Mockito.inOrder(miloClient);
     inOrder
         .verify(miloClient)
-        .writeValues(Mockito.argThat(listWithSize(2)), Mockito.argThat(listWithSize(2)));
-    inOrder.verify(miloClient).addNodes(Mockito.argThat(listWithSize(1)));
+        .writeValuesAsync(Mockito.argThat(listWithSize(2)), Mockito.argThat(listWithSize(2)));
+    inOrder.verify(miloClient).addNodesAsync(Mockito.argThat(listWithSize(1)));
     inOrder
         .verify(miloClient)
-        .writeValues(Mockito.argThat(nodeIds("root/db/d1/s1")), Mockito.argThat(listWithSize(1)));
+        .writeValuesAsync(
+            Mockito.argThat(nodeIds("root/db/d1/s1")), Mockito.argThat(listWithSize(1)));
+  }
+
+  @Test
+  public void testTransferSplitsMissingNodeCreationAtServerLimit() throws Exception {
+    final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
+    Mockito.when(miloClient.writeValuesAsync(Mockito.anyList(), Mockito.anyList()))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                Arrays.asList(
+                    new StatusCode(StatusCodes.Bad_NodeIdUnknown),
+                    new StatusCode(StatusCodes.Bad_NodeIdUnknown))))
+        .thenReturn(
+            CompletableFuture.completedFuture(Arrays.asList(StatusCode.GOOD, StatusCode.GOOD)));
+
+    final AddNodesResponse addNodesResponse = Mockito.mock(AddNodesResponse.class);
+    final AddNodesResult addNodesResult = Mockito.mock(AddNodesResult.class);
+    Mockito.when(addNodesResult.getStatusCode()).thenReturn(StatusCode.GOOD);
+    Mockito.when(addNodesResponse.getResults()).thenReturn(new AddNodesResult[] {addNodesResult});
+    Mockito.when(miloClient.addNodesAsync(Mockito.anyList()))
+        .thenReturn(CompletableFuture.completedFuture(addNodesResponse));
+
+    final IoTDBOpcUaClient client = Mockito.spy(createClient(miloClient, 10_000, 1));
+    final AddNodesItem firstNode = Mockito.mock(AddNodesItem.class);
+    final AddNodesItem secondNode = Mockito.mock(AddNodesItem.class);
+    final ExpandedNodeId firstNodeId = new NodeId(2, "root/db/d1/s1").expanded();
+    final ExpandedNodeId secondNodeId = new NodeId(2, "root/db/d1/s2").expanded();
+    Mockito.when(firstNode.getRequestedNewNodeId()).thenReturn(firstNodeId);
+    Mockito.when(secondNode.getRequestedNewNodeId()).thenReturn(secondNodeId);
+    Mockito.doAnswer(
+            invocation ->
+                Collections.singletonList(
+                    "s1".equals(invocation.getArguments()[1]) ? firstNode : secondNode))
+        .when(client)
+        .getNodesToAdd(
+            Mockito.any(String[].class),
+            Mockito.anyString(),
+            Mockito.any(NodeId.class),
+            Mockito.any());
+
+    client.transfer(createTablet(), createSink());
+
+    Mockito.verify(miloClient, Mockito.times(2)).addNodesAsync(Mockito.argThat(listWithSize(1)));
+    final InOrder inOrder = Mockito.inOrder(miloClient);
+    inOrder
+        .verify(miloClient)
+        .writeValuesAsync(Mockito.argThat(listWithSize(2)), Mockito.argThat(listWithSize(2)));
+    inOrder.verify(miloClient, Mockito.times(2)).addNodesAsync(Mockito.argThat(listWithSize(1)));
+    inOrder
+        .verify(miloClient)
+        .writeValuesAsync(Mockito.argThat(listWithSize(2)), Mockito.argThat(listWithSize(2)));
   }
 
   @Test
   public void testTransferFailsOnNonRecoverableStatus() throws Exception {
     final OpcUaClient miloClient = Mockito.mock(OpcUaClient.class);
-    Mockito.when(miloClient.writeValues(Mockito.anyList(), Mockito.anyList()))
+    Mockito.when(miloClient.writeValuesAsync(Mockito.anyList(), Mockito.anyList()))
         .thenReturn(
             CompletableFuture.completedFuture(
                 Arrays.asList(new StatusCode(StatusCodes.Bad_NotWritable), StatusCode.GOOD)));
@@ -119,18 +230,33 @@ public class IoTDBOpcUaClientTest {
       Assert.assertTrue(e.getMessage().contains("Bad_NotWritable"));
     }
 
-    Mockito.verify(miloClient, Mockito.never()).addNodes(Mockito.anyList());
+    Mockito.verify(miloClient, Mockito.never()).addNodesAsync(Mockito.anyList());
   }
 
   private static IoTDBOpcUaClient createClient(final OpcUaClient miloClient) throws Exception {
+    return createClient(miloClient, 10_000, 250);
+  }
+
+  private static IoTDBOpcUaClient createClient(
+      final OpcUaClient miloClient, final int maxNodesPerWrite, final int maxNodesPerNodeManagement)
+      throws Exception {
     final IoTDBOpcUaClient client =
         new IoTDBOpcUaClient(
             "opc.tcp://127.0.0.1:12686", SecurityPolicy.None, new AnonymousProvider(), false);
     final ClientRunner runner = Mockito.mock(ClientRunner.class);
     Mockito.when(runner.getTimeoutSeconds()).thenReturn(1L);
     client.setRunner(runner);
-    final CompletableFuture<UaClient> connectFuture = CompletableFuture.completedFuture(miloClient);
-    Mockito.when(miloClient.connect()).thenReturn(connectFuture);
+    final CompletableFuture<OpcUaClient> connectFuture =
+        CompletableFuture.completedFuture(miloClient);
+    Mockito.when(miloClient.connectAsync()).thenReturn(connectFuture);
+    Mockito.when(
+            miloClient.readValuesAsync(
+                Mockito.anyDouble(), Mockito.eq(TimestampsToReturn.Neither), Mockito.anyList()))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                Arrays.asList(
+                    new DataValue(new Variant(uint(maxNodesPerWrite))),
+                    new DataValue(new Variant(uint(maxNodesPerNodeManagement))))));
     client.run(miloClient);
     return client;
   }
@@ -154,6 +280,13 @@ public class IoTDBOpcUaClientTest {
     tablet.addValue("s2", 0, 2.0D);
     tablet.setRowSize(1);
     return tablet;
+  }
+
+  private static Pair<IMeasurementSchema, TimeValuePair> lastValue(
+      final String measurement, final long timestamp, final long value) {
+    return new Pair<>(
+        new MeasurementSchema(measurement, TSDataType.INT64),
+        new TimeValuePair(timestamp, TsPrimitiveType.getByType(TSDataType.INT64, value)));
   }
 
   private static ArgumentMatcher<List<NodeId>> nodeIds(final String... identifiers) {

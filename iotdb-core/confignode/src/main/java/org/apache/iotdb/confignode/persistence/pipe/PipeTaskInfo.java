@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
@@ -536,6 +535,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
+  public boolean isPipeBeingDropped(final String pipeName, final boolean isTableModel) {
+    acquireReadLock();
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, isTableModel);
+      return pipeMeta != null
+          && PipeStatus.PRE_DELETE.equals(pipeMeta.getRuntimeMeta().getStatus().get());
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   private PipeStatus getPipeStatus(final String pipeName) {
     acquireReadLock();
     try {
@@ -906,9 +916,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap
                                   .get(consensusGroupId.getId())
                                   .setLeaderNodeId(newLeader);
-                              // New region leader may contain un-transferred events
-                              ((PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta())
-                                  .markDataNodeUncompleted(newLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }

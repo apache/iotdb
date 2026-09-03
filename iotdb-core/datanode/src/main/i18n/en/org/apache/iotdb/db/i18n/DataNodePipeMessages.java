@@ -134,6 +134,10 @@ public final class DataNodePipeMessages {
       "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "Failed to get PendingQueue. No such subtask: ";
+  public static final String
+      EXCEPTION_MULTIPLE_PIPES_MATCH_THE_REQUESTED_SINK_SUBTASK_USE_THE_PIPE_SPECIFIC_PIPESINKSUBTASKMANAGER_API_C180D94C =
+          "Multiple pipes match the requested sink subtask. Use the pipe-specific "
+              + "PipeSinkSubtaskManager API.";
   public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
       "Failed to get pipe info from config node, status is %s.";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
@@ -1295,8 +1299,6 @@ public final class DataNodePipeMessages {
       "Pipe air gap receiver {} started. Socket: {}";
   public static final String PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY =
       "Pipe air gap receiver {}: Temporary unavailable retry timed out, returning FAIL to sender.";
-  public static final String PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED =
-      "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.";
   public static final String PIPE_DATA_TRANSPORT_ERROR = "Pipe data transport error, {}";
   public static final String PIPE_INSERTING_ROW_CASTING_TYPE_FROM =
       "Pipe: Inserting row. Casting type from {} to {}.";
@@ -1337,8 +1339,6 @@ public final class DataNodePipeMessages {
       "Start load pipeData with serialize number {} and type {},value={}";
   public static final String STORAGE_ENGINE_READONLY = "storage engine readonly";
   public static final String SYNC_START_AT_TO_IS_DONE = "Sync {} start at {} to {} is done.";
-  public static final String TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP =
-      "Temporary unavailable exception encountered at air gap receiver, will retry locally.";
   public static final String THE_IOTCONSENSUSV2_REQUEST_VERSION_IS_DIFFERENT_FROM =
       "The iotConsensusV2 request version {} is different from the sender request version {}, "
           + "the receiver will be reset to the sender request version.";
@@ -2104,11 +2104,11 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_INITIALIZED_STARTSEARCHINDEX_69B53EE6 =
       "ConsensusPrefetchingQueue {}: prefetch initialized, startSearchIndex={}, progressSource={}, "
           + "recoveryWriterCount={}";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_D75375D0 =
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_WALGAPSKIPPEDENTRIES_9A4E6608 =
       "ConsensusPrefetchingQueue {}: periodic stats, lag={}, pendingDelta={}, walDelta={}, "
-          + "pendingTotal={}, walTotal={}, pendingQueueSize={}, prefetchingQueueSize={}, "
-          + "inFlightEventsSize={}, realtimeWriterCount={}, walHasNext={}, isActive={}, "
-          + "subtaskScheduled={}";
+          + "pendingTotal={}, walTotal={}, walGapSkippedEntries={}, pendingQueueSize={}, "
+          + "prefetchingQueueSize={}, inFlightEventsSize={}, realtimeWriterCount={}, "
+          + "walHasNext={}, isActive={}, subtaskScheduled={}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
       "ConsensusPrefetchingQueue {}: waiting {}ms for WAL gap [{}, {}) to become visible, "
           + "currentNextExpected={}, currentWalIndex={}, seekGeneration={}";
@@ -2188,6 +2188,14 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator: error reading WAL";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
       "ProgressWALIterator: failed to open WAL file {}, skipping";
+  public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
+      "ProgressWALIterator: skipped {} unreadable retained WAL files in directory {}, "
+          + "firstFile={}, lastFile={}, firstError={}; historical subscription data in these "
+          + "files cannot be replayed";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64 =
+      "ConsensusPrefetchingQueue {}: WAL replay skipped unavailable search indexes [{}, {}), "
+          + "skippedEntries={}, totalWalGapSkippedEntries={}; the missing WAL data may have been "
+          + "reclaimed before subscription consumption";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}: terminate event committed for historical transfer. creationTime: {}, "
           + "shouldMark: {}. {}";
@@ -2582,6 +2590,13 @@ public final class DataNodePipeMessages {
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "Transfer file %s error, result status %s.";
 
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_5B4B2E7C =
+          "Failed to retry transferring events in the retry queue. Remaining events: %d (tablet events: %d, tsfile events: %d).";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_LAST_FAILURE_ARG_EB8F9DCD =
+          "Failed to retry transferring events in the retry queue. Remaining events: %d (tablet events: %d, tsfile events: %d). Last failure: %s.";
+
   public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
       "Legacy pipe receiver requires a logged-in session.";
   public static final String EXCEPTION_FAILED_TO_SET_UP_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_ARG_IN_CONSUMER_GROUP_ARG_ARG_A7FA88F3 =
@@ -2592,4 +2607,12 @@ public final class DataNodePipeMessages {
       "Topic config for %s is unavailable during consensus subscription setup";
   public static final String LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0 =
       "Failed to release TsFile parser memory for Pipe {} (creation time {}) in DataRegion {} because no reservation exists.";
+  public static final String LOG_PIPE_PROCESSOR_WORKER_ARG_HAS_BEEN_PROCESSING_THE_SAME_EVENT_FOR_ARG_MS_PIPE_ARG_DATAREGION_ARG_SUBTASK_ARG_EVENT_ARG_THREAD_STATE_ARG_STACK_ARG_63B40775 =
+      "Pipe processor worker {} has been processing the same event for {} ms. Pipe: {}, DataRegion: {}, subtask: {}, event: {}, thread state: {}. Stack:{}";
+  public static final String LOG_OPC_UA_SERVER_OPERATION_LIMITS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_5D2BCC90 =
+      "OPC UA server operation limits: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
+  public static final String LOG_INTERRUPTED_WHILE_READING_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_357D46A4 =
+      "Interrupted while reading OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
+  public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
+      "Failed to read OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
 }

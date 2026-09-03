@@ -3017,6 +3017,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.databaseAttributeClause()) {
       final IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey =
           attribute.databaseAttributeKey();
+      if (attributeKey == null) {
+        if (attribute.NEED_LAST_CACHE() != null) {
+          databaseSchemaStatement.setNeedLastCache(
+              Boolean.parseBoolean(attribute.boolean_literal().getText()));
+        }
+        continue;
+      }
       if (attributeKey.TTL() != null) {
         final long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setTtl(ttl);
@@ -4547,6 +4554,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.topicName != null) {
       showSubscriptionsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
     }
+    showSubscriptionsStatement.setDetails(ctx.DETAILS() != null);
 
     return showSubscriptionsStatement;
   }

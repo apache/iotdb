@@ -318,6 +318,8 @@ struct TDataNodeHeartbeatResp {
   16: optional list<double> pipeRemainingTimeList
   17: optional map<i32, i64> dataRegionRawDataSize
   18: optional list<i32> pipeDegradedStatusList
+  19: optional list<map<string, i64>> pipeRecentFailureList
+  20: optional list<common.TPipeCompletedDataRegion> pipeCompletedDataRegionList
 }
 
 struct TPipeHeartbeatReq {
@@ -628,6 +630,7 @@ struct TPullCommitProgressReq {
 struct TPullCommitProgressResp {
   1: required common.TSStatus status
   2: optional map<string, binary> commitRegionProgress
+  3: optional map<string, binary> subscriptionProgress
 }
 
 struct TSyncSubscriptionProgressReq {

@@ -246,6 +246,7 @@ public:
   bool isMarked(size_t position) const;
   bool isAllUnmarked() const;
   bool isAllMarked() const;
+  bool isRangeAllMarked(size_t start, size_t length) const;
   const std::vector<char>& getByteArray() const;
   size_t getSize() const;
 

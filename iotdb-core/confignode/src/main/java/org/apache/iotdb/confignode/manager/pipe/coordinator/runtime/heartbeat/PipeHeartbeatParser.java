@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
@@ -35,10 +37,13 @@ import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -156,47 +161,59 @@ public class PipeHeartbeatParser {
       final PipeTemporaryMetaInCoordinator temporaryMeta =
           (PipeTemporaryMetaInCoordinator) pipeMetaFromCoordinator.getTemporaryMeta();
 
-      // Remove completed pipes
-      final Boolean isPipeCompletedFromAgent = pipeHeartbeat.isCompleted(staticMeta);
-      if (Boolean.TRUE.equals(isPipeCompletedFromAgent)) {
+      // Aggregate completed DataRegion ids reported by DataNodes. Only the DataNodes that own the
+      // target region can report it, so the coordinator can compare the union against all required
+      // DataRegion ids without trusting any DataNode's single per-pipe completion boolean.
+      if (pipeHeartbeat.hasCompletedDataRegionReport(staticMeta)) {
+        for (final Integer completedDataRegionId :
+            pipeHeartbeat.getCompletedDataRegionIds(staticMeta)) {
+          temporaryMeta.markDataRegionCompleted(completedDataRegionId);
+        }
+      }
 
-        temporaryMeta.markDataNodeCompleted(nodeId);
+      // Align with copyAndFilterOutNonWorkingDataRegionPipeTasks: CN's task table contains every
+      // user-visible DataRegion, but DataNodes only create / complete tasks for regions that match
+      // the source pattern. Waiting on unmatched regions would prevent snapshot pipes from
+      // dropping.
+      final Set<Integer> requiredDataRegionIds =
+          collectRequiredDataRegionIds(pipeMetaFromCoordinator);
+
+      // A history-only internal pipe is finite and may be removed when all required DataRegions
+      // complete, or when CN determines that no DataRegion matched at creation time. An explicit
+      // region-level report proves that a DataNode has received the pipe meta, preventing an empty
+      // task map from completing the pipe before its initial push. Realtime and external-source
+      // pipes must remain alive because they may receive work in the future.
+      final boolean isFiniteInternalPipe =
+          !staticMeta.isSourceExternal()
+              && PipeTaskAgent.isHistoryOnlyPipe(staticMeta.getSourceParameters());
+      final boolean hasReliableDataRegionReport =
+          pipeHeartbeat.hasCompletedDataRegionReport(staticMeta);
+      if (isFiniteInternalPipe
+          && hasReliableDataRegionReport
+          && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)) {
         PipeLogger.log(
             LOGGER::info,
-            ManagerMessages.DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE,
-            nodeId,
+            ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
             staticMeta.getPipeName(),
-            pipeHeartbeat.getRemainingEventCount(staticMeta),
-            pipeHeartbeat.getRemainingTime(staticMeta),
-            temporaryMeta.getCompletedDataNodeIds());
-
-        final Set<Integer> uncompletedDataNodeIds =
-            configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
-        uncompletedDataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
-        if (uncompletedDataNodeIds.isEmpty()) {
-          PipeLogger.log(
-              LOGGER::info,
-              ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
-              staticMeta.getPipeName(),
-              temporaryMeta.getGlobalRemainingEvents(),
-              temporaryMeta.getGlobalRemainingTime(),
-              staticMeta);
-          pipeTaskInfo.get().removePipeMeta(staticMeta);
-          PipeLogger.log(
-              LOGGER::info,
-              ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
-              staticMeta.getPipeName(),
-              staticMeta);
-          needWriteConsensusOnConfigNodes.set(true);
-          needPushPipeMetaToDataNodes.set(true);
-          continue;
-        }
+            temporaryMeta.getGlobalRemainingEvents(),
+            temporaryMeta.getGlobalRemainingTime(),
+            staticMeta);
+        pipeTaskInfo.get().removePipeMeta(staticMeta);
+        PipeLogger.log(
+            LOGGER::info,
+            ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
+            staticMeta.getPipeName(),
+            staticMeta);
+        needWriteConsensusOnConfigNodes.set(true);
+        needPushPipeMetaToDataNodes.set(true);
+        continue;
       }
 
       // Record statistics
       temporaryMeta.setRemainingEvent(nodeId, pipeHeartbeat.getRemainingEventCount(staticMeta));
       temporaryMeta.setRemainingTime(nodeId, pipeHeartbeat.getRemainingTime(staticMeta));
       temporaryMeta.setDegraded(nodeId, pipeHeartbeat.getDegraded(staticMeta));
+      temporaryMeta.setRecentFailures(nodeId, pipeHeartbeat.getRecentFailures(staticMeta));
 
       final Map<Integer, PipeTaskMeta> pipeTaskMetaMapFromCoordinator =
           pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
@@ -281,53 +298,70 @@ public class PipeHeartbeatParser {
                   exception,
                   pipeName);
             }
-
-            if (exception instanceof PipeRuntimeSinkCriticalException) {
-              pipeTaskInfo
-                  .get()
-                  .getPipeMetaList()
-                  .forEach(
-                      pipeMeta -> {
-                        final PipeStaticMeta affectedStaticMeta = pipeMeta.getStaticMeta();
-                        if (!affectedStaticMeta
-                                .getSinkParameters()
-                                .equals(pipeMetaFromCoordinator.getStaticMeta().getSinkParameters())
-                            || affectedStaticMeta.equals(pipeMetaFromCoordinator.getStaticMeta())) {
-                          return;
-                        }
-
-                        final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-                        if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
-                          return;
-                        }
-                        if (!runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED)) {
-                          // Record the connector exception for each pipe affected
-                          Map<Integer, PipeRuntimeException> exceptionMap =
-                              runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
-                          if (!exceptionMap.containsKey(nodeId)
-                              || exceptionMap.get(nodeId).getTimeStamp()
-                                  < exception.getTimeStamp()) {
-                            exceptionMap.put(nodeId, exception);
-                          }
-                          runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                          runtimeMeta.setIsStoppedByRuntimeException(true);
-
-                          needWriteConsensusOnConfigNodes.set(true);
-                          needPushPipeMetaToDataNodes.set(false);
-
-                          PipeLogger.log(
-                              LOGGER::warn,
-                              exception,
-                              ManagerMessages
-                                  .DETECT_PIPERUNTIMESINKCRITICALEXCEPTION_FROM_AGENT_STOP_PIPE,
-                              exception,
-                              pipeName);
-                        }
-                      });
-            }
           }
         }
       }
+    }
+  }
+
+  /**
+   * Collect DataRegion ids that this pipe must wait on before auto-drop. Schema / Config regions
+   * are skipped; DataRegions that the source pattern will not listen to are skipped as well, using
+   * the same {@link DataRegionListeningFilter} as task push-down.
+   *
+   * <p>If database / schema lookup fails, the region is kept (same conservative behavior as {@code
+   * copyAndFilterOutNonWorkingDataRegionPipeTasks}).
+   */
+  private Set<Integer> collectRequiredDataRegionIds(final PipeMeta pipeMetaFromCoordinator) {
+    final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
+    final Set<Integer> requiredDataRegionIds = new HashSet<>();
+    for (final Map.Entry<Integer, PipeTaskMeta> entry :
+        pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+      final TConsensusGroupId dataRegionId =
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, entry.getKey());
+      if (!configManager.getPartitionManager().isRegionGroupExists(dataRegionId)) {
+        continue;
+      }
+      if (shouldKeepDataRegionAsRequired(staticMeta, dataRegionId)) {
+        requiredDataRegionIds.add(entry.getKey());
+      }
+    }
+    return requiredDataRegionIds;
+  }
+
+  private boolean shouldKeepDataRegionAsRequired(
+      final PipeStaticMeta staticMeta, final TConsensusGroupId dataRegionId) {
+    if (staticMeta.isSourceExternal()) {
+      return true;
+    }
+
+    final String database;
+    try {
+      database = configManager.getPartitionManager().getRegionDatabase(dataRegionId);
+      if (database == null) {
+        return true;
+      }
+    } catch (final Exception ignored) {
+      return true;
+    }
+
+    final boolean isTableModel;
+    try {
+      final TDatabaseSchema schema =
+          configManager.getClusterSchemaManager().getDatabaseSchemaByName(database);
+      if (schema == null) {
+        return true;
+      }
+      isTableModel = schema.isIsTableModel();
+    } catch (final Exception ignored) {
+      return true;
+    }
+
+    try {
+      return DataRegionListeningFilter.shouldDatabaseBeListened(
+          staticMeta.getSourceParameters(), isTableModel, database, staticMeta.getPipeType());
+    } catch (final Exception ignored) {
+      return true;
     }
   }
 }

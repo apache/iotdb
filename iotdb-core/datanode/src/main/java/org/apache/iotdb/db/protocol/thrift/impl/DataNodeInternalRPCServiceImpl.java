@@ -228,6 +228,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
@@ -450,6 +451,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private final DataNodeContext dataNodeContext;
 
+  private final SystemMetrics systemMetrics;
+
   private final ExecutorService schemaExecutor =
       new WrappedThreadPoolExecutor(
           0,
@@ -465,7 +468,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private static final String SYSTEM = "system";
 
   public DataNodeInternalRPCServiceImpl(DataNodeContext dataNodeContext) {
+    this(dataNodeContext, SystemMetrics.getInstance());
+  }
+
+  DataNodeInternalRPCServiceImpl(DataNodeContext dataNodeContext, SystemMetrics systemMetrics) {
     super();
+    this.systemMetrics = systemMetrics;
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     this.dataNodeContext = dataNodeContext;
@@ -1404,6 +1412,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           }
 
           @Override
+          public boolean handlePipeMetaChanges(
+              final List<ByteBuffer> pipeMetas,
+              final List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
+            final List<TPushPipeMetaRespExceptionMessage> exceptionMessagesFromAgent =
+                PipeDataNodeAgent.task()
+                    .handlePipeMetaChanges(
+                        pipeMetas.stream()
+                            .map(PipeMeta::deserialize4TaskAgent)
+                            .collect(Collectors.toList()));
+            // PipeTaskAgent returns null only when its timed write-lock acquisition fails.
+            if (exceptionMessagesFromAgent == null) {
+              return false;
+            }
+            exceptionMessages.addAll(exceptionMessagesFromAgent);
+            return true;
+          }
+
+          @Override
           public TPushPipeMetaRespExceptionMessage handleSinglePipeMeta(final ByteBuffer pipeMeta) {
             return PipeDataNodeAgent.task()
                 .handleSinglePipeMetaChanges(PipeMeta.deserialize4TaskAgent(pipeMeta));
@@ -1609,12 +1635,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TPullCommitProgressResp(RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION))
+          .setCommitRegionProgress(Collections.emptyMap())
+          .setSubscriptionProgress(Collections.emptyMap());
+    }
+
     try {
       final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
       final Map<String, ByteBuffer> regionProgress =
           SubscriptionAgent.broker().collectAllRegionCommitProgress(dataNodeId);
+      final Map<String, ByteBuffer> subscriptionProgress =
+          SubscriptionAgent.broker().collectAllProgressSnapshots();
       return new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
-          .setCommitRegionProgress(regionProgress);
+          .setCommitRegionProgress(regionProgress)
+          .setSubscriptionProgress(subscriptionProgress);
     } catch (Exception e) {
       LOGGER.warn(
           DataNodeMiscMessages.MISC_LOG_ERROR_OCCURRED_WHEN_PULLING_COMMIT_PROGRESS_48C12E4B, e);
@@ -1625,6 +1660,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus syncSubscriptionProgress(TSyncSubscriptionProgressReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
+    }
+
     try {
       SubscriptionAgent.broker()
           .receiveSubscriptionProgress(
@@ -1646,6 +1685,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus pushSubscriptionRuntime(TPushSubscriptionRuntimeReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
+    }
+
     try {
       for (final TSubscriptionRuntimeStateEntry runtimeStateEntry : req.getRuntimeStates()) {
         ConsensusSubscriptionSetupHandler.applyRuntimeState(
@@ -2352,7 +2395,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .forEach((key, value) -> regionRawDataSize.put(Integer.parseInt(key), value.getLeft()));
       resp.setDataRegionRawDataSize(regionRawDataSize);
     }
-    AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(commonConfig.getNodeStatus().getStatus());
     // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may
@@ -2420,8 +2462,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus updateRegionCache(TRegionRouteReq req) {
-    boolean result = ClusterPartitionFetcher.getInstance().updateRegionCache(req);
-    if (result) {
+    final boolean result = ClusterPartitionFetcher.getInstance().updateRegionCache(req);
+    if (!result) {
+      return RpcUtils.getStatus(TSStatusCode.PARTITION_CACHE_UPDATE_ERROR);
+    }
+
+    if (SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       // Notify consensus subscription queues of any preferred-writer changes
       try {
         ConsensusSubscriptionSetupHandler.onRegionRouteChanged(
@@ -2432,10 +2478,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .MISC_LOG_FAILED_TO_PROCESS_CONSENSUS_SUBSCRIPTION_ROUTE_UPDATE_80D73E2B,
             e);
       }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } else {
-      return RpcUtils.getStatus(TSStatusCode.PARTITION_CACHE_UPDATE_ERROR);
     }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {
@@ -2520,23 +2564,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return result;
   }
 
-  private void sampleDiskLoad(TLoadSample loadSample) {
-    double availableDisk =
-        MetricService.getInstance()
-            .getAutoGauge(
-                SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                SYSTEM)
-            .getValue();
-    double totalDisk =
-        MetricService.getInstance()
-            .getAutoGauge(
-                SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                SYSTEM)
-            .getValue();
+  void sampleDiskLoad(TLoadSample loadSample) {
+    double availableDisk = systemMetrics.getSystemDiskAvailableSpace();
+    double totalDisk = systemMetrics.getSystemDiskTotalSpace();
 
     if (availableDisk != 0 && totalDisk != 0) {
       double freeDiskRatio = availableDisk / totalDisk;

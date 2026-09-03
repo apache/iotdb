@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.t
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -164,6 +165,7 @@ public class TsFileTableSizeIndexReader {
         }
       } catch (IOException e) {
         closeCurrentFile();
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         throw e;
       }
     } while (System.nanoTime() - startTime < maxRunTime);

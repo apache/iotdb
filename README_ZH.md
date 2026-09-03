@@ -160,6 +160,19 @@ git checkout rel/x.x
 
 编译完成后, IoTDB 二进制包将生成在: "distribution/target".
 
+### 源码编译 IoTDB Edge
+
+上述发行版构建还会生成 `apache-iotdb-<version>-edge-bin.zip`。IoTDB Edge 在同一个 JVM 中运行 ConfigNode 和 DataNode，适用于资源受限的单机部署。它是新增制品，不会替换任何已有发行包。
+
+解压后，可在 `conf/iotdb-system.properties` 中调整配置，并使用以下脚本启停 Edge 进程：
+
+```bash
+sbin/start-edge.sh
+sbin/stop-edge.sh
+```
+
+Windows 环境请使用 `sbin\windows\start-edge.bat` 和 `sbin\windows\stop-edge.bat`。Edge 包会保留与合并进程兼容的工具脚本。
+
 ### 只编译 cli
 
 在 iotdb/iotdb-client 目录下执行:

@@ -41,6 +41,34 @@ import java.util.Properties;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 public class PropertiesTest {
+  /**
+   * Verifies that WAL file-list caching defaults on, supports startup override, and is
+   * restart-only.
+   */
+  @Test
+  public void testWalFileListCacheConfiguration() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final boolean originalValue = descriptor.getConfig().isWalFileListCacheEnabled();
+    final TrimProperties properties = new TrimProperties();
+
+    try {
+      Assert.assertTrue(new IoTDBConfig().isWalFileListCacheEnabled());
+      Assert.assertTrue(
+          Boolean.parseBoolean(
+              ConfigurationFileUtils.getConfigurationDefaultValue("wal_file_list_cache_enabled")));
+
+      properties.setProperty("wal_file_list_cache_enabled", "false");
+      descriptor.loadProperties(properties);
+      Assert.assertFalse(descriptor.getConfig().isWalFileListCacheEnabled());
+
+      properties.setProperty("wal_file_list_cache_enabled", "true");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertFalse(descriptor.getConfig().isWalFileListCacheEnabled());
+    } finally {
+      descriptor.getConfig().setWalFileListCacheEnabled(originalValue);
+    }
+  }
+
   @Test
   public void testHotReloadNegativeWalThrottleThresholdUsesDefault() throws Exception {
     final String key = "wal_throttle_threshold_in_byte";
