@@ -224,7 +224,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       if (isUserDataTransferAuditEnabled()) {
         final TSStatus failedStatus =
             statusList.stream().filter(status -> !isSuccessful(status)).findFirst().orElse(null);
-        recordTransferAttempt(
+        recordTransferAttemptWithoutGroupCheck(
             failedStatus == null,
             failedStatus == null ? null : String.valueOf(failedStatus.getCode()),
             null);
@@ -588,6 +588,11 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     if (!isUserDataTransferAuditEnabled()) {
       return;
     }
+    recordTransferAttemptWithoutGroupCheck(success, errorCode, error);
+  }
+
+  private void recordTransferAttemptWithoutGroupCheck(
+      boolean success, String errorCode, Throwable error) {
     DataNodeUserDataTransferAuditor.record(
         localEndPoint, localEndPoint, getFollowerUrl(), success, errorCode, error);
   }

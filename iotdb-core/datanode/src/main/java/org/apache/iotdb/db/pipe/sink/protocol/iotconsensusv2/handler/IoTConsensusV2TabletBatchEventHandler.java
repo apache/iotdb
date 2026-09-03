@@ -85,22 +85,7 @@ public class IoTConsensusV2TabletBatchEventHandler
           response.getBatchResps().stream()
               .map(TIoTConsensusV2TransferResp::getStatus)
               .collect(Collectors.toList());
-      if (connector.isUserDataTransferAuditEnabled()) {
-        // The batch RPC is one physical transfer attempt. Keep one representative error value in
-        // the minimum audit record instead of concatenating an unbounded number of response
-        // details.
-        final TSStatus firstFailedStatus =
-            status.stream()
-                .filter(
-                    tsStatus -> tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                .findFirst()
-                .orElse(null);
-        connector.recordUserDataTransferAudit(
-            firstFailedStatus == null,
-            firstFailedStatus == null ? null : String.valueOf(firstFailedStatus.getCode()),
-            null);
-        transferAuditRecorded = true;
-      }
+      transferAuditRecorded = connector.recordUserDataTransferAudit(status);
 
       if (status.stream()
           .anyMatch(

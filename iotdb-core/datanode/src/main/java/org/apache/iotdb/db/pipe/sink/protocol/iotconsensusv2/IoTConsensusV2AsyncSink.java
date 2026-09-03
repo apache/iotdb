@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -65,6 +66,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +75,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -760,6 +763,29 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     if (!isUserDataTransferAuditEnabled()) {
       return;
     }
+    recordUserDataTransferAuditWithoutGroupCheck(success, errorCode, error);
+  }
+
+  public boolean recordUserDataTransferAudit(List<TSStatus> statuses) {
+    if (!isUserDataTransferAuditEnabled()) {
+      return false;
+    }
+    // The batch RPC is one physical transfer attempt. Keep one representative error value in the
+    // minimum audit record instead of concatenating an unbounded number of response details.
+    final TSStatus firstFailedStatus =
+        statuses.stream()
+            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .findFirst()
+            .orElse(null);
+    recordUserDataTransferAuditWithoutGroupCheck(
+        firstFailedStatus == null,
+        firstFailedStatus == null ? null : String.valueOf(firstFailedStatus.getCode()),
+        null);
+    return true;
+  }
+
+  private void recordUserDataTransferAuditWithoutGroupCheck(
+      boolean success, String errorCode, Throwable error) {
     DataNodeUserDataTransferAuditor.record(
         localEndPoint, localEndPoint, getFollowerUrl(), success, errorCode, error);
   }
