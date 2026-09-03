@@ -33,10 +33,12 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFetcher {
 
   private static final int MAX_ATTEMPTS = 3;
+  private static final long RETRY_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(20);
 
   private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager;
 
@@ -60,6 +62,7 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
   @Override
   public byte[] fetch(DeviceEntryDataSetHandle handle, int segmentId) throws IOException {
     IOException failure = null;
+    final long startTime = System.nanoTime();
     for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       TFetchDeviceEntrySegmentResp response;
       try {
@@ -69,6 +72,9 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
         }
       } catch (ClientManagerException | TException e) {
         failure = new IOException(e);
+        if (System.nanoTime() - startTime > RETRY_TIMEOUT_NANOS) {
+          throw failure;
+        }
         continue;
       }
       if (response.getStatus().getCode()
@@ -85,6 +91,7 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
 
   @Override
   public void finish(DeviceEntryDataSetHandle handle) {
+    final long startTime = System.nanoTime();
     for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {
         try (SyncDataNodeMPPDataExchangeServiceClient client =
@@ -98,6 +105,9 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
         return;
       } catch (ClientManagerException | TException e) {
         // Cleanup notification is best effort and must not fail the query.
+        if (System.nanoTime() - startTime > RETRY_TIMEOUT_NANOS) {
+          return;
+        }
       }
     }
   }
