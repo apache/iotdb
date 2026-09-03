@@ -156,7 +156,7 @@ public class PlanGraphJsonPrinter {
 
     if (node instanceof DeviceTableScanNode) {
       DeviceTableScanNode deviceNode = (DeviceTableScanNode) node;
-      properties.addProperty("DeviceNumber", String.valueOf(deviceNode.getDeviceEntries().size()));
+      properties.addProperty("DeviceNumber", deviceNode.getDeviceEntryCount());
       properties.addProperty("ScanOrder", String.valueOf(deviceNode.getScanOrder()));
       if (deviceNode.getTimePredicate().isPresent()) {
         properties.addProperty(
