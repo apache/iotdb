@@ -322,6 +322,10 @@ public final class CommonMessages {
       "Only column with double, float, int32, int64 can be calculated by the function, %s is the %s.";
   public static final String LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443 =
       "Trusted channel function failed: initiator=%s, target=%s";
+  public static final String
+      LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF =
+          "User data transfer attempt: time=%d, initiator=%s, source=%s, target=%s,"
+              + " protection_method=%s, result=%s, error=%s";
   public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM =
       "row index exceeds the maximum allowed number in one partition";
   public static final String

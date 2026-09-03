@@ -314,6 +314,7 @@ public class ConsensusReqReaderTest {
     Assert.assertEquals(1L, request.getSearchIndex());
     Assert.assertEquals(123456789L, request.getPhysicalTime());
     Assert.assertEquals(7, request.getNodeId());
+    Assert.assertTrue(request.containsUserData());
   }
 
   @Test
@@ -514,6 +515,7 @@ public class ConsensusReqReaderTest {
     PlanNode planNode;
     Assert.assertTrue(iterator.hasNext());
     request = iterator.next();
+    Assert.assertFalse(request.containsUserData());
     Assert.assertEquals(1, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
       planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
