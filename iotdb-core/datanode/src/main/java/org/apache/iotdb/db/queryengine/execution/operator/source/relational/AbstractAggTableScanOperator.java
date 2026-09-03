@@ -187,6 +187,11 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     return finished;
   }
 
+  @Override
+  public boolean isBatchQueryDataSource() {
+    return batchQueryDataSource;
+  }
+
   protected abstract void updateResultTsBlock();
 
   protected void buildResultTsBlock() {

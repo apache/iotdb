@@ -250,6 +250,11 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   @Override
+  public boolean isBatchQueryDataSource() {
+    return batchQueryDataSource;
+  }
+
+  @Override
   public long calculateMaxPeekMemory() {
     // allSensors have included time column and all field columns
     return Math.max(

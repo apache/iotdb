@@ -27,12 +27,12 @@ import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
-import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 
 import com.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Throwables.throwIfUnchecked;
@@ -113,34 +113,29 @@ public class DataDriver extends Driver {
       List<DataSourceOperator> sourceOperators =
           ((DataDriverContext) driverContext).getSourceOperators();
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
-        if (((DataDriverContext) driverContext)
-            .getQueryDataSourceType()
-            .filter(type -> type == QueryDataSourceType.BATCH_SERIES_SCAN)
-            .isPresent()) {
-          sourceOperators.forEach(
-              sourceOperator ->
-                  sourceOperator.initQueryDataSource(EMPTY_QUERY_DATA_SOURCE.clone()));
-          this.init = true;
-          return true;
+        List<DataSourceOperator> sharedSourceOperators = new ArrayList<>();
+        for (DataSourceOperator sourceOperator : sourceOperators) {
+          if (sourceOperator.isBatchQueryDataSource()) {
+            sourceOperator.initQueryDataSource(EMPTY_QUERY_DATA_SOURCE.clone());
+          } else {
+            sharedSourceOperators.add(sourceOperator);
+          }
         }
-        IQueryDataSource dataSource = initQueryDataSource();
-        if (dataSource == null) {
-          // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
-          // for some reasons, we may get null QueryDataSource here.
-          // And it's safe for us to throw this exception here in such case.
-          throw new IllegalStateException(
-              DataNodeQueryMessages.QUERYDATASOURCE_SHOULD_NEVER_BE_NULL);
-        } else if (dataSource == UNFINISHED_QUERY_DATA_SOURCE) {
-          // init query data source timeout. Maybe failed to acquire the read lock within the
-          // specified time
-          // do nothing, wait for next try
-        } else {
-          sourceOperators.forEach(
-              sourceOperator -> {
-                // Construct QueryDataSource for source operator
-                sourceOperator.initQueryDataSource(dataSource.clone());
-              });
+        if (sharedSourceOperators.isEmpty()) {
           this.init = true;
+        } else {
+          IQueryDataSource dataSource = initQueryDataSource();
+          if (dataSource == null) {
+            // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
+            // for some reasons, we may get null QueryDataSource here.
+            // And it's safe for us to throw this exception here in such case.
+            throw new IllegalStateException(
+                DataNodeQueryMessages.QUERYDATASOURCE_SHOULD_NEVER_BE_NULL);
+          } else if (dataSource != UNFINISHED_QUERY_DATA_SOURCE) {
+            sharedSourceOperators.forEach(
+                sourceOperator -> sourceOperator.initQueryDataSource(dataSource.clone()));
+            this.init = true;
+          }
         }
       } else {
         this.init = true;

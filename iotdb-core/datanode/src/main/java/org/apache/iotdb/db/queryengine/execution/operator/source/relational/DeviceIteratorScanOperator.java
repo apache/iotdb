@@ -140,6 +140,11 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
+  public boolean isBatchQueryDataSource() {
+    return batchQueryDataSource;
+  }
+
+  @Override
   public boolean isFinished() throws Exception {
     if (batchLeasePending) {
       return false;
