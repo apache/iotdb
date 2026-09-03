@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -31,6 +33,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class DeviceEntrySpillManager {
 
@@ -53,13 +56,19 @@ public final class DeviceEntrySpillManager {
 
   public void deregisterOwner(String queryId, Path ownerDirectory) throws IOException {
     deleteDirectoryIfExists(ownerDirectory);
-    Set<Path> owners = queryDirectories.get(queryId);
-    if (owners != null) {
-      owners.remove(ownerDirectory);
-      if (owners.isEmpty()) {
-        queryDirectories.remove(queryId, owners);
-        deleteDirectoryIfExists(resolveQueryDirectory(queryId));
-      }
+    AtomicBoolean removedLastOwner = new AtomicBoolean(false);
+    queryDirectories.computeIfPresent(
+        queryId,
+        (ignored, owners) -> {
+          owners.remove(ownerDirectory);
+          if (owners.isEmpty()) {
+            removedLastOwner.set(true);
+            return null;
+          }
+          return owners;
+        });
+    if (removedLastOwner.get()) {
+      deleteDirectoryIfExists(resolveQueryDirectory(queryId));
     }
   }
 
@@ -104,7 +113,11 @@ public final class DeviceEntrySpillManager {
     Path queryDirectory = resolveQueryDirectory(queryId);
     Path dataSetDirectory = queryDirectory.resolve(relativeDataSetPath).resolve("fi").normalize();
     if (!dataSetDirectory.startsWith(queryDirectory)) {
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_DEVICEENTRY_DATA_SET_PATH_ESCAPES_THE_QUERY_DIRECTORY_ARG_394A9840,
+              dataSetDirectory));
     }
     Set<Path> owners = queryDirectories.get(queryId);
     boolean registered =
@@ -121,13 +134,18 @@ public final class DeviceEntrySpillManager {
   private Path getRegisteredSegmentPath(String queryId, String planNodeId, int segmentId)
       throws IOException {
     if (segmentId < 0) {
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_DEVICEENTRY_SEGMENT_ID_MUST_BE_NON_NEGATIVE_ARG_F7653A57,
+              segmentId));
     }
     return resolveRegisteredDataSetDirectory(queryId, planNodeId)
         .resolve(String.format("segment-%06d.bin", segmentId));
   }
 
-  public synchronized void clearStaleData() throws IOException {
+  @TestOnly
+  public void clearStaleData() throws IOException {
     deleteDirectoryIfExists(rootDirectory());
     Files.createDirectories(rootDirectory());
     queryDirectories.clear();

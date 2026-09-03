@@ -548,10 +548,10 @@ public class TableDeviceSchemaFetcher {
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate
     if (check.test(deviceEntry)) {
-      queryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       if (materializer == null) {
         deviceEntryList.add(deviceEntry);
       } else {
+        queryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
         appendToMaterializer(materializer, deviceEntry, queryContext);
       }
       // If we partially hit cache in direct device query, we must fetch for all the predicates
@@ -590,10 +590,10 @@ public class TableDeviceSchemaFetcher {
         ((TreeDeviceNormalSchema) schema).isAligned()
             ? new AlignedDeviceEntry(deviceID, new Binary[0])
             : new NonAlignedDeviceEntry(deviceID, new Binary[0]);
-    queryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
     if (materializer == null) {
       deviceEntryMap.computeIfAbsent(database, k -> new ArrayList<>()).add(deviceEntry);
     } else {
+      queryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       appendToMaterializer(materializer, deviceEntry, queryContext);
     }
     if (deviceEntry instanceof NonAlignedDeviceEntry) {

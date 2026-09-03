@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import java.io.IOException;
@@ -35,7 +36,11 @@ public final class DeviceEntryMaterializationMemoryController {
 
   public DeviceEntryMaterializationMemoryController(long memoryLimitInBytes) {
     if (memoryLimitInBytes <= 0) {
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_DEVICEENTRY_MATERIALIZATION_MEMORY_LIMIT_MUST_BE_POSITIVE_ARG_2EB63404,
+              memoryLimitInBytes));
     }
     this.memoryLimitInBytes = memoryLimitInBytes;
   }
@@ -61,7 +66,9 @@ public final class DeviceEntryMaterializationMemoryController {
         }
       }
       if (largest == null) {
-        throw new IllegalStateException();
+        throw new IllegalStateException(
+            DataNodeQueryMessages
+                .EXCEPTION_NO_MATERIALIZER_IS_AVAILABLE_TO_ENFORCE_THE_DEVICEENTRY_MEMORY_LIMIT_FD0604AF);
       }
       largest.forceSpill();
       retainedBytesByMaterializer.put(largest, 0L);

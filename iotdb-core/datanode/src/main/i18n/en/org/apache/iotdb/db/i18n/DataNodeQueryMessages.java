@@ -3830,6 +3830,29 @@ public final class DataNodeQueryMessages {
           "DeviceEntry segment count and entry count must be non-negative";
   public static final String EXCEPTION_OPEN_CONSUMING_READER_IS_NOT_SUPPORTED_8B2A59A4 =
       "Open consuming reader is not supported";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZER_THRESHOLD_MUST_BE_POSITIVE_ARG_35CF53FD =
+          "DeviceEntry materializer threshold must be positive: %d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_MATERIALIZATION_MEMORY_LIMIT_MUST_BE_POSITIVE_ARG_2EB63404 =
+          "DeviceEntry materialization memory limit must be positive: %d";
+  public static final String
+      EXCEPTION_DEVICEENTRY_DATA_SET_PATH_ESCAPES_THE_QUERY_DIRECTORY_ARG_394A9840 =
+          "DeviceEntry data set path escapes the query directory: %s";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_ID_MUST_BE_NON_NEGATIVE_ARG_F7653A57 =
+      "DeviceEntry segment ID must be non-negative: %d";
+  public static final String EXCEPTION_DEVICEENTRY_SEGMENT_HAS_INCOMPLETE_RECORD_LENGTH_0A282C19 =
+      "DeviceEntry segment has incomplete record length";
+  public static final String
+      EXCEPTION_INVALID_DEVICEENTRY_RECORD_LENGTH_ARG_REMAINING_BYTES_ARG_F1C43B72 =
+          "Invalid DeviceEntry record length %d, remaining bytes %d";
+  public static final String EXCEPTION_DEVICEENTRY_MATERIALIZER_HAS_ALREADY_FINISHED_5538544E =
+      "DeviceEntry materializer has already finished";
+  public static final String
+      EXCEPTION_NO_MATERIALIZER_IS_AVAILABLE_TO_ENFORCE_THE_DEVICEENTRY_MEMORY_LIMIT_FD0604AF =
+          "No materializer is available to enforce the DeviceEntry memory limit";
+  public static final String EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199 =
+      "No more DeviceEntry records are available";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
 

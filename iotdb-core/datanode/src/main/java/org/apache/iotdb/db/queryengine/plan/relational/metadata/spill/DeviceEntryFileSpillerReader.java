@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import java.io.BufferedInputStream;
@@ -90,7 +91,8 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
   @Override
   public DeviceEntry next() throws IOException {
     if (!hasNext()) {
-      throw new NoSuchElementException();
+      throw new NoSuchElementException(
+          DataNodeQueryMessages.EXCEPTION_NO_MORE_DEVICEENTRY_RECORDS_ARE_AVAILABLE_8D51C199);
     }
     DeviceEntry result = next;
     next = null;
@@ -129,8 +131,13 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
             | (input.readUnsignedByte() << 16)
             | (input.readUnsignedByte() << 8)
             | input.readUnsignedByte();
-    if (length < 0) {
-      throw new IOException();
+    if (length < 0 || length > input.available()) {
+      throw new IOException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_INVALID_DEVICEENTRY_RECORD_LENGTH_ARG_REMAINING_BYTES_ARG_F1C43B72,
+              length,
+              input.available()));
     }
     return length;
   }

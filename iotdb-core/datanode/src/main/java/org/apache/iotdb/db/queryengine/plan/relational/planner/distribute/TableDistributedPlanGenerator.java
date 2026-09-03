@@ -2180,6 +2180,11 @@ public class TableDistributedPlanGenerator
       throw e;
     }
 
+    if (scanNodes.isEmpty()) {
+      node.setRegionReplicaSet(NOT_ASSIGNED);
+      return Collections.singletonList(node);
+    }
+
     List<PlanNode> result = new ArrayList<>();
     TRegionReplicaSet mostUsedRegion = null;
     int maxEntryCount = -1;
@@ -2568,6 +2573,11 @@ public class TableDistributedPlanGenerator
     } catch (RuntimeException e) {
       closeDeviceEntryDataSets(stagingDataSets.values());
       throw e;
+    }
+
+    if (scanNodes.isEmpty()) {
+      node.setRegionReplicaSet(NOT_ASSIGNED);
+      return Collections.singletonList(node);
     }
 
     List<PlanNode> result = new ArrayList<>();

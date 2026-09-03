@@ -56,7 +56,7 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
-    if (!prepareNextDeviceBatch()) {
+    if (!prepareNextDeviceBatch() || batchLeasePending) {
       return null;
     }
 
@@ -78,6 +78,7 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
 
     while (System.nanoTime() - start < maxRuntime
         && (timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange())
+        && !batchLeasePending
         && !resultTsBlockBuilder.isFull()) {
 
       // calculate aggregation result on current time window

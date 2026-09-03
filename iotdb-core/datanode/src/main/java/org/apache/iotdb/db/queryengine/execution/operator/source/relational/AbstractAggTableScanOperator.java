@@ -167,6 +167,9 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   @Override
   public boolean isFinished() throws Exception {
+    if (retainedTsBlock != null) {
+      return false;
+    }
     if (!batchQueryDataSource) {
       return !hasNextWithTimer();
     }
@@ -809,6 +812,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     deviceCount = 0;
     currentDeviceIndex = 0;
     queryDataSource = batchQueryDataSource ? null : queryDataSource;
+    seriesScanUtil = null;
     if (currentLease != null) {
       currentLease.close();
       currentLease = null;

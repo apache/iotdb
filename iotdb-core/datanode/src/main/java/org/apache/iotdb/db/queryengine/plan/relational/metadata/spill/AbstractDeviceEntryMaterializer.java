@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
@@ -50,7 +51,11 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   protected AbstractDeviceEntryMaterializer(
       String queryId, PlanNodeId planNodeId, long thresholdInBytes, boolean rawSegment) {
     if (thresholdInBytes <= 0) {
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_DEVICEENTRY_MATERIALIZER_THRESHOLD_MUST_BE_POSITIVE_ARG_35CF53FD,
+              thresholdInBytes));
     }
     this.queryId = queryId;
     this.planNodeId = planNodeId;
@@ -191,7 +196,8 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   protected final void checkNotFinished() {
     if (finished) {
-      throw new IllegalStateException();
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_DEVICEENTRY_MATERIALIZER_HAS_ALREADY_FINISHED_5538544E);
     }
   }
 

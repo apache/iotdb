@@ -1887,6 +1887,9 @@ public class DataNodeTableOperatorGenerator
       AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter,
       boolean isLastRowOptimize,
       LocalExecutionPlanContext context) {
+    // Last Query intentionally materializes every segment while building the operator tree. The
+    // resulting cached and uncached device lists are retained in memory, and the uncached devices
+    // are scanned through the shared query data source below.
     List<Integer> hitCachesIndexes = new ArrayList<>();
     List<Pair<OptionalLong, TsPrimitiveType[]>> lastRowCacheResults = null;
     List<TimeValuePair[]> lastValuesCacheResults = null;

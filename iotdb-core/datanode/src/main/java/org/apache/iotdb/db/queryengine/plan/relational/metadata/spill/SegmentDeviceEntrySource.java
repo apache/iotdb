@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
@@ -57,12 +58,19 @@ public abstract class SegmentDeviceEntrySource implements BatchDeviceEntrySource
       int consumedBytes = 0;
       while (consumedBytes < segmentLength) {
         if (segmentLength - consumedBytes < Integer.BYTES) {
-          throw new IOException();
+          throw new IOException(
+              DataNodeQueryMessages
+                  .EXCEPTION_DEVICEENTRY_SEGMENT_HAS_INCOMPLETE_RECORD_LENGTH_0A282C19);
         }
         int length = input.readInt();
         consumedBytes += Integer.BYTES;
         if (length < 0 || length > segmentLength - consumedBytes) {
-          throw new IOException();
+          throw new IOException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_INVALID_DEVICEENTRY_RECORD_LENGTH_ARG_REMAINING_BYTES_ARG_F1C43B72,
+                  length,
+                  segmentLength - consumedBytes));
         }
         byte[] bytes = new byte[length];
         input.readFully(bytes);
