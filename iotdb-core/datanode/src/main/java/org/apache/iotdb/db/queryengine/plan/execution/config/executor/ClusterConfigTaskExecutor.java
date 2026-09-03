@@ -85,6 +85,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransf
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
@@ -479,7 +480,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setDatabase(
       final DatabaseSchemaStatement databaseSchemaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    if (isSchemaWriteRejected(future)) {
+    if (isSchemaWriteRejected(
+        future,
+        Audit.isAuditTreeDatabase(databaseSchemaStatement.getDatabasePath())
+            || SchemaConstant.SYSTEM_DATABASE.equalsIgnoreCase(
+                databaseSchemaStatement.getDatabasePath().getFullPath()))) {
       return future;
     }
 
@@ -5175,7 +5180,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createDatabase(
       final TDatabaseSchema databaseSchema, final boolean ifExists) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    if (isSchemaWriteRejected(future)) {
+    if (isSchemaWriteRejected(
+        future, Audit.TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseSchema.getName()))) {
       return future;
     }
 
@@ -5289,7 +5295,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   private boolean isSchemaWriteRejected(final SettableFuture<ConfigTaskResult> future) {
-    final TSStatus status = getSchemaWriteRejectionStatus();
+    return isSchemaWriteRejected(future, false);
+  }
+
+  private boolean isSchemaWriteRejected(
+      final SettableFuture<ConfigTaskResult> future, final boolean allowInternalDatabaseCreation) {
+    final TSStatus status = getSchemaWriteRejectionStatus(allowInternalDatabaseCreation);
     if (status == null) {
       return false;
     }
@@ -5297,8 +5308,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return true;
   }
 
-  private TSStatus getSchemaWriteRejectionStatus() {
-    if (CommonDescriptor.getInstance().getConfig().isUnactivated()) {
+  private TSStatus getSchemaWriteRejectionStatus(final boolean allowInternalDatabaseCreation) {
+    if (CommonDescriptor.getInstance().getConfig().isUnactivated()
+        && !allowInternalDatabaseCreation) {
       return new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode())
           .setMessage(
               UtilMessages
@@ -5308,6 +5320,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return null;
     }
     return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
+  }
+
+  private TSStatus getSchemaWriteRejectionStatus() {
+    return getSchemaWriteRejectionStatus(false);
   }
 
   @Override

@@ -38,6 +38,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.LicenseException;
 import org.apache.iotdb.commons.i18n.UtilMessages;
+import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -54,6 +56,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckMaxClientNumResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
@@ -163,12 +166,23 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
   }
 
   private TSStatus checkSchemaWritePermission() {
+    return checkSchemaWritePermission(false);
+  }
+
+  private TSStatus checkSchemaWritePermission(final boolean allowInternalDatabaseCreation) {
     return checkSchemaWritePermission(
-        CommonDescriptor.getInstance().getConfig().isReadOnly(), regulateManager.isActivated());
+        CommonDescriptor.getInstance().getConfig().isReadOnly(),
+        regulateManager.isActivated(),
+        allowInternalDatabaseCreation);
   }
 
   static TSStatus checkSchemaWritePermission(boolean readOnly, boolean activated) {
-    if (!activated) {
+    return checkSchemaWritePermission(readOnly, activated, false);
+  }
+
+  static TSStatus checkSchemaWritePermission(
+      boolean readOnly, boolean activated, boolean allowInternalDatabaseCreation) {
+    if (!activated && !allowInternalDatabaseCreation) {
       return new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode())
           .setMessage(
               UtilMessages
@@ -182,7 +196,15 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
 
   @Override
   public TSStatus setDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
-    final TSStatus status = checkSchemaWritePermission();
+    final TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
+    final boolean isTableModel =
+        databaseSchema.isSetIsTableModel() && databaseSchema.isIsTableModel();
+    final TSStatus status =
+        checkSchemaWritePermission(
+            isTableModel
+                ? Audit.TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseSchema.getName())
+                : SchemaConstant.SYSTEM_DATABASE.equalsIgnoreCase(databaseSchema.getName())
+                    || Audit.TREE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseSchema.getName()));
     return status == null ? super.setDatabase(databaseSchemaPlan) : status;
   }
 

@@ -88,6 +88,18 @@ public class TimechoConfigManagerTest {
   }
 
   @Test
+  public void internalDatabaseCreationIsAllowedWhenConfigNodeIsNotActivated() {
+    Assert.assertNull(TimechoConfigManager.checkSchemaWritePermission(false, false, true));
+  }
+
+  @Test
+  public void internalDatabaseCreationIsStillRejectedWhenConfigNodeIsReadOnly() {
+    TSStatus status = TimechoConfigManager.checkSchemaWritePermission(true, true, true);
+
+    Assert.assertEquals(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), status.getCode());
+  }
+
+  @Test
   public void unactivatedStatusTakesPrecedenceOverReadOnlyStatus() {
     TSStatus status = TimechoConfigManager.checkSchemaWritePermission(true, false);
 
