@@ -57,7 +57,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public static final String BLOOM_FILTER = "bloom_filter";
   public static final String TIMESERIES_METADATA = "timeseries_metadata";
   public static final String CHUNK = "chunk";
-  private static final String DEVICE_ENTRY = "device_entry";
+  private static final String DEVICE_ENTRY_DISK_READ_WRITE = "device_entry_disk_read_write";
   private static final String FETCH_SCHEMA = "fetch_schema";
   private static final String DISTRIBUTION_PLAN = "distribution_plan";
 
@@ -90,7 +90,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             Metric.QUERY_DISK_READ.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
-            DEVICE_ENTRY,
+            DEVICE_ENTRY_DISK_READ_WRITE,
             Tag.STAGE.toString(),
             FETCH_SCHEMA);
     deviceEntryDistributionPlanDiskIOSize =
@@ -98,7 +98,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             Metric.QUERY_DISK_READ.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
-            DEVICE_ENTRY,
+            DEVICE_ENTRY_DISK_READ_WRITE,
             Tag.STAGE.toString(),
             DISTRIBUTION_PLAN);
     deviceEntryFetchSchemaDiskIOTime =
@@ -106,7 +106,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
-            DEVICE_ENTRY,
+            DEVICE_ENTRY_DISK_READ_WRITE,
             Tag.TYPE.toString(),
             FETCH_SCHEMA,
             Tag.FROM.toString(),
@@ -116,7 +116,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             Metric.SERIES_SCAN_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
-            DEVICE_ENTRY,
+            DEVICE_ENTRY_DISK_READ_WRITE,
             Tag.TYPE.toString(),
             DISTRIBUTION_PLAN,
             Tag.FROM.toString(),
@@ -132,14 +132,14 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         MetricType.COUNTER,
         Metric.QUERY_DISK_READ.toString(),
         Tag.TYPE.toString(),
-        DEVICE_ENTRY,
+        DEVICE_ENTRY_DISK_READ_WRITE,
         Tag.STAGE.toString(),
         FETCH_SCHEMA);
     metricService.remove(
         MetricType.COUNTER,
         Metric.QUERY_DISK_READ.toString(),
         Tag.TYPE.toString(),
-        DEVICE_ENTRY,
+        DEVICE_ENTRY_DISK_READ_WRITE,
         Tag.STAGE.toString(),
         DISTRIBUTION_PLAN);
     for (String type : Arrays.asList(FETCH_SCHEMA, DISTRIBUTION_PLAN)) {
@@ -147,7 +147,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
           MetricType.TIMER,
           Metric.SERIES_SCAN_COST.toString(),
           Tag.STAGE.toString(),
-          DEVICE_ENTRY,
+          DEVICE_ENTRY_DISK_READ_WRITE,
           Tag.TYPE.toString(),
           type,
           Tag.FROM.toString(),
