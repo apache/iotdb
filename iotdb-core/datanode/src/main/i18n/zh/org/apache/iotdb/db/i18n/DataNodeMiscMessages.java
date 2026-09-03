@@ -133,33 +133,6 @@ public final class DataNodeMiscMessages {
       "将从 {} 设置 ServerContextFactory";
 
   // ---------------------------------------------------------------------------
-  // protocol – ConfigNodeInfo
-  // ---------------------------------------------------------------------------
-  public static final String UPDATE_CONFIG_NODE_SUCCESSFULLY =
-      "成功更新 ConfigNode：{}，耗时 {} 毫秒。";
-  public static final String UPDATE_CONFIG_NODE_FAILED = "更新 ConfigNode 失败。";
-  public static final String SYSTEM_PROPERTIES_NOT_EXIST =
-      "系统属性文件不存在，无需存储 ConfigNode 列表";
-  public static final String LOAD_CONFIG_NODE_SUCCESSFULLY =
-      "成功加载 ConfigNode：{}，耗时 {} 毫秒。";
-  public static final String CANNOT_PARSE_CONFIG_NODE_LIST =
-      "无法解析 system.properties 中的 ConfigNode 列表";
-
-  // ---------------------------------------------------------------------------
-  // protocol – ConfigNodeClient
-  // ---------------------------------------------------------------------------
-  public static final String NODE_LEADER_MAY_DOWN_TRY_NEXT =
-      "当前节点 Leader {} 可能已宕机，尝试下一个节点";
-  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE =
-      "等待连接 ConfigNode 时发生意外中断";
-  public static final String NODE_MAY_DOWN_TRY_NEXT =
-      "当前节点 {} 可能已宕机，尝试下一个节点";
-  public static final String FAILED_CONNECT_CONFIG_NODE_NOT_LEADER =
-      "从 DataNode {} 连接 ConfigNode {} 失败，因为当前节点不是 Leader 或尚未就绪，稍后将重试";
-  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK =
-      "等待连接 ConfigNode 时发生意外中断，可能是当前节点已宕机，将中断当前执行流程以避免无意义等待。";
-
-  // ---------------------------------------------------------------------------
   // protocol – DataNodeInternalClient
   // ---------------------------------------------------------------------------
   public static final String USER_OPENS_INTERNAL_SESSION =
@@ -669,8 +642,6 @@ public final class DataNodeMiscMessages {
   public static final String STARTING_IOTDB = "正在启动 IoTDB {}";
   public static final String CANNOT_CREATE_SCHEMA_DIR = "无法创建 Schema 目录：{}";
   public static final String SCHEMA_DIR_CREATED = " {} 目录已创建。";
-  public static final String IOTDB_VERSION_TOO_OLD = "IoTDB 版本过旧";
-  public static final String REPAIR_SYSTEM_PROPERTIES = "修复 system.properties，缺少 {}";
   public static final String UNEXPECTED_CONSENSUS_GROUP_TYPE =
       "未预期的共识组类型";
   public static final String ENCRYPT_MAGIC_STRING_NOT_MATCHED =
@@ -1143,12 +1114,8 @@ public final class DataNodeMiscMessages {
       "共找到 {} 个待 settle 的 TsFile。";
   public static final String MISC_LOG_SYSTEM_PROPERTIES_FILE_HAS_BEEN_MOVED_SUCCESSFULLY_4445A448 =
       "system.properties 文件已成功移动：{} -> {}";
-  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
-      "成功序列化 mutable system properties，耗时 {} ms。";
   public static final String MISC_LOG_SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY_BE1C725F =
       "[SystemProperties] 为兼容性将 {} 从 {} 规范化为 {}。";
-  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
-      "请勿将 IoTDB 从 v0.9 或更低版本直接升级到 v1.0！请先升级到 v0.10";
   public static final String MISC_LOG_CANNOT_FIND_IOTDB_HOME_OR_IOTDB_CONF_ENVIRONMENT_VARIABLE_BE01B2FE =
       "加载配置文件 {} 时找不到 IOTDB_HOME 或 IOTDB_CONF 环境变量，使用默认配置";
   public static final String MISC_LOG_COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN_SOURCES_EE3ED103 =
@@ -1372,8 +1339,6 @@ public final class DataNodeMiscMessages {
       "非法的 defaultDatabaseLevel：%d，应 >= 1";
   public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
       "loadTsFileSpiltPartitionMaxSize 应大于或等于 0";
-  public static final String MISC_EXCEPTION_REMOVING_IS_ONLY_ALLOWED_IN_AN_ENVIRONMENT_WHERE_THE_DATANODE_5A3E1FEA =
-      "只有在 DataNode 已成功启动的环境中才允许移除。请检查它是否已在 ConfigNode 上移除，或是否误删了 system.properties 文件。";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId：%s 在会话 %s 中不存在";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =
@@ -1396,8 +1361,6 @@ public final class DataNodeMiscMessages {
       "%s 不允许，仅支持 %s";
   public static final String MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_1B06E0B7 =
       " %s 不允许，仅支持 %s";
-  public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
-      "%s 首次启动后不能修改";
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE =
       "DataNode 不支持调用此方法";
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE_USE_SUBMIT_LOAD_CONFIGURATION_TASK =
@@ -1473,9 +1436,6 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_RUNTIMESTATE_D4D018BA = "runtimeState";
   public static final String EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4 = "statementName 不能为空";
   public static final String EXCEPTION_SQL_IS_NULL_BEDB2B7A = "sql 不能为空";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_AAB5F962 = "ConfigNode leader {} 正在预热，暂未对 DataNode {} 提供服务，将等待并重试。";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
-      "ConfigNode leader {} 正在预热，暂未对 DataNode {} 提供服务，将等待并重试。原因：{}";
   public static final String EXCEPTION_TRUST_STORE_PATH_MUST_BE_SET_WHEN_THRIFT_SSL_CLIENT_AUTH_IS_TRUE_36016171 = "当 thrift_ssl_client_auth 为 true 时，必须设置 trust_store_path";
   public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms 必须大于 0，但当前值为 ";
   public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "未知的 read_consistency_level：%s，请设置为 \"strong\" 或 \"weak\"";
