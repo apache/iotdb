@@ -47,7 +47,7 @@ public class LocalMigrationTask extends MigrationTask {
     filesShouldDelete.addAll(Arrays.asList(destTsFile, destResourceFile, destModsFile));
     cleanup();
 
-    // copy TsFile and resource file
+    // copy TsFile and resource file (OBJECT .bin is migrated by ObjectMigrationTask)
     tsFileResource.readLock();
     try {
       destTsFile.getParentFile().mkdirs();

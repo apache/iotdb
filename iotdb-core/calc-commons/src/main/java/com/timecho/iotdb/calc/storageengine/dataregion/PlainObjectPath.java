@@ -20,6 +20,7 @@
 package com.timecho.iotdb.calc.storageengine.dataregion;
 
 import org.apache.iotdb.calc.utils.IObjectPath;
+import org.apache.iotdb.calc.utils.ObjectPathNaming;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -74,8 +75,7 @@ public class PlainObjectPath implements IObjectPath {
     }
     deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
     measurement = path.getName(path.getNameCount() - 2).toString();
-    String fileName = path.getFileName().toString();
-    timestamp = Long.parseLong(fileName.substring(0, fileName.indexOf('.')));
+    timestamp = ObjectPathNaming.parseTime(path.getFileName().toString());
   }
 
   public PlainObjectPath(Path path) {
@@ -91,8 +91,7 @@ public class PlainObjectPath implements IObjectPath {
     }
     deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
     measurement = path.getName(path.getNameCount() - 2).toString();
-    String fileName = path.getFileName().toString();
-    timestamp = Long.parseLong(fileName.substring(0, fileName.indexOf('.')));
+    timestamp = ObjectPathNaming.parseTime(path.getFileName().toString());
   }
 
   public PlainObjectPath(int regionId, long time, IDeviceID iDeviceID, String measurement) {

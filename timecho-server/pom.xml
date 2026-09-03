@@ -40,6 +40,11 @@
             <version>2.0.11-SNAPSHOT</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>calc-commons</artifactId>
+            <version>2.0.11-SNAPSHOT</version>
+        </dependency>
+        <dependency>
             <groupId>com.timecho.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
             <version>2.0.11-SNAPSHOT</version>
@@ -167,6 +172,7 @@
                         <ignoredDependency>org.apache.tsfile:common</ignoredDependency>
                         <ignoredDependency>org.apache.iotdb:udf-api</ignoredDependency>
                         <ignoredDependency>commons-io:commons-io</ignoredDependency>
+                        <ignoredDependency>commons-codec:commons-codec</ignoredDependency>
                     </ignoredDependencies>
                 </configuration>
             </plugin>

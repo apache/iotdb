@@ -188,7 +188,7 @@ public class IoTDBObjectInsertIT {
                           + convertPathString("file")
                           + File.separator
                           + "1.bin");
-              if (objectFile.exists() && objectFile.isFile()) {
+              if (objectBinExists(objectFile.getParentFile(), objectFile.getName())) {
                 success = true;
               }
             }
@@ -335,7 +335,7 @@ public class IoTDBObjectInsertIT {
                           + convertPathString("file")
                           + File.separator
                           + "1.bin");
-              if (objectFile1.exists() && objectFile1.isFile()) {
+              if (objectBinExists(objectFile1.getParentFile(), objectFile1.getName())) {
                 successCnt++;
               }
 
@@ -353,7 +353,7 @@ public class IoTDBObjectInsertIT {
                           + convertPathString("file")
                           + File.separator
                           + "2.bin");
-              if (objectFile1.exists() && objectFile1.isFile()) {
+              if (objectBinExists(objectFile2.getParentFile(), objectFile2.getName())) {
                 successCnt++;
               }
             }
@@ -494,7 +494,7 @@ public class IoTDBObjectInsertIT {
                           + convertPathString("file")
                           + File.separator
                           + "1.bin");
-              if (objectFile.exists() && objectFile.isFile()) {
+              if (objectBinExists(objectFile.getParentFile(), objectFile.getName())) {
                 success = true;
               }
             }
@@ -644,7 +644,7 @@ public class IoTDBObjectInsertIT {
                           + convertPathString("file")
                           + File.separator
                           + "1.bin");
-              if (objectFile.exists() && objectFile.isFile()) {
+              if (objectBinExists(objectFile.getParentFile(), objectFile.getName())) {
                 success = true;
               }
             }
@@ -753,5 +753,32 @@ public class IoTDBObjectInsertIT {
 
   protected String convertPathString(String path) {
     return BaseEncoding.base32().omitPadding().encode(path.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static boolean objectBinExists(File parent, String fileName) {
+    if (parent == null || !parent.isDirectory()) {
+      return false;
+    }
+    File exact = new File(parent, fileName);
+    if (exact.isFile()) {
+      return true;
+    }
+    if (!fileName.endsWith(".bin")) {
+      return false;
+    }
+    String stem = fileName.substring(0, fileName.length() - ".bin".length());
+    String prefix = stem + "_";
+    File[] children = parent.listFiles();
+    if (children == null) {
+      return false;
+    }
+    for (File child : children) {
+      String name = child.getName();
+      if (child.isFile()
+          && (name.equals(stem + ".bin") || (name.startsWith(prefix) && name.endsWith(".bin")))) {
+        return true;
+      }
+    }
+    return false;
   }
 }

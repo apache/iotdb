@@ -177,8 +177,11 @@ public class SharedStorageCompactionTask extends AbstractCompactionTask {
       // remove remote tmp files and old files
       deleteRemoteTmpFiles();
       unloadAndDeleteSourceFiles();
-      SharedStorageCompactionSelector.updateLastVersion(
-          dataRegionId, timePartition, taskResource.getMaxVersion());
+      if (SharedStorageCompactionUtils.deleteLocalRemoteObjects(
+          dataRegionId, timePartition, taskResource.getMaxVersion())) {
+        SharedStorageCompactionSelector.updateLastVersion(
+            dataRegionId, timePartition, taskResource.getMaxVersion());
+      }
     } catch (Exception e) {
       handleException(LOGGER, e);
       recover();

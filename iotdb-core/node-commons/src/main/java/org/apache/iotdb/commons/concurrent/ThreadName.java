@@ -214,6 +214,7 @@ public enum ThreadName {
 
   MIGRATION_SCHEDULER("Migration-Scheduler"),
   MIGRATION("Migration-Executor-Pool"),
+  OBJECT_GC("Object-GC"),
 
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
   TABLE_SIZE_INDEX_RECORD("TableSizeIndexRecord"),

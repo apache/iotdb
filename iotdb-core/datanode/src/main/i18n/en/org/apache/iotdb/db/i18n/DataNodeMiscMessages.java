@@ -605,6 +605,9 @@ public final class DataNodeMiscMessages {
       "Failed to remove empty object dir {}";
   public static final String REMOVE_OBJECT_FILE =
       "Remove object file {}, size is {}(byte)";
+  public static final String
+      LOG_OBJECT_STORAGE_UNAVAILABLE_WHILE_PROBING_LENGTH_OF_ARG_TREAT_AS_ZERO_FOR_METRICS_8131DA24 =
+          "OBJECT_STORAGE unavailable while probing length of {}, treat as zero for metrics";
 
   // ---------------------------------------------------------------------------
   // utils – OpenFileNumUtil

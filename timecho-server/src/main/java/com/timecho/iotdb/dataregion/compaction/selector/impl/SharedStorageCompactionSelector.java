@@ -146,7 +146,7 @@ public class SharedStorageCompactionSelector implements ICrossSpaceSelector {
     // mods file is smaller than 1MB because of the mods compaction, so it's safe to transfer it
     // directly
     File modsFile = fsFactory.getFile(resource.getTsFile() + ModificationFile.FILE_SUFFIX);
-    resp.modsFiles.add(modsFile.exists() ? readFileContent(resourceFile) : ByteBuffer.allocate(0));
+    resp.modsFiles.add(modsFile.exists() ? readFileContent(modsFile) : ByteBuffer.allocate(0));
   }
 
   private static ByteBuffer readFileContent(File file) throws IOException {

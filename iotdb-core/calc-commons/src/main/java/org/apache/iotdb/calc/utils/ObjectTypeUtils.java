@@ -48,7 +48,7 @@ public class ObjectTypeUtils {
   public static final String OBJECT_BACK_FILE_SUFFIX = ".back";
 
   private static final Logger logger = LoggerFactory.getLogger(ObjectTypeUtils.class);
-  private static final IObjectFileService OBJECT_FILE_SERVICE = loadObjectFileService();
+  private static volatile IObjectFileService objectFileService;
 
   private ObjectTypeUtils() {}
 
@@ -56,6 +56,19 @@ public class ObjectTypeUtils {
     return fileName.endsWith(OBJECT_FILE_SUFFIX)
         || fileName.endsWith(OBJECT_TEMP_FILE_SUFFIX)
         || fileName.endsWith(OBJECT_BACK_FILE_SUFFIX);
+  }
+
+  private static IObjectFileService objectFileService() {
+    IObjectFileService service = objectFileService;
+    if (service == null) {
+      synchronized (ObjectTypeUtils.class) {
+        service = objectFileService;
+        if (service == null) {
+          objectFileService = service = loadObjectFileService();
+        }
+      }
+    }
+    return service;
   }
 
   private static IObjectFileService loadObjectFileService() {
@@ -89,14 +102,14 @@ public class ObjectTypeUtils {
 
   public static ByteBuffer readObjectContent(
       String relativePath, long offset, int readSize, boolean mayNotInCurrentNode) {
-    return OBJECT_FILE_SERVICE.readObjectContent(
-        relativePath, offset, readSize, mayNotInCurrentNode);
+    return objectFileService()
+        .readObjectContent(relativePath, offset, readSize, mayNotInCurrentNode);
   }
 
   public static ByteBuffer readObjectContent(
       final File searchRoot, String relativePath, long offset, int readSize) {
-    return OBJECT_FILE_SERVICE.readObjectContentFromLocalFile(
-        new File(searchRoot, relativePath), offset, readSize);
+    return objectFileService()
+        .readObjectContentFromLocalFile(new File(searchRoot, relativePath), offset, readSize);
   }
 
   public static Binary generateObjectBinary(long objectSize, IObjectPath objectPath) {
@@ -208,11 +221,11 @@ public class ObjectTypeUtils {
   }
 
   public static Optional<File> getObjectPathFromBinary(Binary binary, boolean needTempFile) {
-    return OBJECT_FILE_SERVICE.getObjectPathFromBinary(binary, needTempFile);
+    return objectFileService().getObjectPathFromBinary(binary, needTempFile);
   }
 
   public static void deleteObjectPath(
       String database, int regionId, long timePartition, String table, File file) {
-    OBJECT_FILE_SERVICE.deleteObjectPath(database, regionId, timePartition, table, file);
+    objectFileService().deleteObjectPath(database, regionId, timePartition, table, file);
   }
 }

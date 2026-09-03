@@ -43,6 +43,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor.IMigrationManager;
 import org.apache.iotdb.db.conf.TieredStorageMigrationFileSelectionStrategy;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.objectgc.ObjectDirectoryScanner;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -53,12 +54,20 @@ import com.timecho.iotdb.metrics.MigrationMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -82,6 +91,11 @@ public class MigrationTaskManager implements IService, IMigrationManager {
 
   /** migrate rate limiter, KB/s */
   private volatile RateLimiter[] migrateRateLimiters;
+
+  /** Absolute paths of object files currently being migrated. */
+  private final Set<String> objectMigrationInFlight = ConcurrentHashMap.newKeySet();
+
+  private volatile long[] nextObjectTtlScanTimeMs = new long[0];
 
   private MigrationTaskManager() {}
 
@@ -302,7 +316,6 @@ public class MigrationTaskManager implements IService, IMigrationManager {
         return;
       }
       collectNonAuditTsFiles();
-      // only migrate closed TsFiles not in the last tier
       List<TsFileResource> migrateCandidates =
           tsfiles.stream()
               .filter(
@@ -315,33 +328,33 @@ public class MigrationTaskManager implements IService, IMigrationManager {
       if (fileSelectionStrategy
           == TieredStorageMigrationFileSelectionStrategy.LARGEST_TSFILE_FIRST) {
         scheduleLargestTsFileFirstMigration(migrateCandidates);
-        return;
-      }
-
-      Iterator<TsFileResource> candidateIterator =
-          fileSelectionStrategy.createMigrationCandidateIterator(migrateCandidates);
-      // submit migration tasks
-      while (candidateIterator.hasNext()) {
-        TsFileResource tsfile = candidateIterator.next();
-        int currentTier = tsfile.getTierLevel();
-        int nextTier = currentTier + 1;
-        // skip migration when next tier is full
-        if (spaceWarningTiers.contains(nextTier)) {
-          continue;
-        }
-        try {
-          if (isExpired(tsfile, currentTier)) {
-            if (!tryScheduleMigrationTask(MigrationCause.TTL, tsfile)) {
-              return;
-            }
-          } else if (needMigrationTiers.contains(currentTier)
-              && !tryScheduleMigrationTask(MigrationCause.DISK_SPACE, tsfile)) {
-            return;
+      } else {
+        Iterator<TsFileResource> candidateIterator =
+            fileSelectionStrategy.createMigrationCandidateIterator(migrateCandidates);
+        // submit migration tasks
+        while (candidateIterator.hasNext()) {
+          TsFileResource tsfile = candidateIterator.next();
+          int currentTier = tsfile.getTierLevel();
+          int nextTier = currentTier + 1;
+          // skip migration when next tier is full
+          if (spaceWarningTiers.contains(nextTier)) {
+            continue;
           }
-        } catch (Exception e) {
-          logMigrationCheckError(tsfile, e);
+          try {
+            if (isExpired(tsfile, currentTier)) {
+              if (!tryScheduleMigrationTask(MigrationCause.TTL, tsfile)) {
+                break;
+              }
+            } else if (needMigrationTiers.contains(currentTier)
+                && !tryScheduleMigrationTask(MigrationCause.DISK_SPACE, tsfile)) {
+              break;
+            }
+          } catch (Exception e) {
+            logMigrationCheckError(tsfile, e);
+          }
         }
       }
+      scheduleObjectMigration();
     }
 
     private void scheduleLargestTsFileFirstMigration(List<TsFileResource> migrateCandidates) {
@@ -453,6 +466,183 @@ public class MigrationTaskManager implements IService, IMigrationManager {
       }
       releaseDiskUsage(tierLevel, sourceTsFile.getTsFileSize());
     }
+
+    /**
+     * Independently migrate OBJECT {@code .bin} files by disk watermark / tier TTL. Reads remain
+     * correct via cross-tier lookup; successful migration deletes the source like TsFile migration.
+     */
+    private void scheduleObjectMigration() {
+      int tierNum = tierManager.getTiersNum();
+      ensureNextObjectTtlScanTimeMsSize(tierNum);
+      long nowMs = System.currentTimeMillis();
+      for (int currentTier = 0; currentTier < tierNum - 1; currentTier++) {
+        int nextTier = currentTier + 1;
+        if (spaceWarningTiers.contains(nextTier)) {
+          continue;
+        }
+        long currentTierTTLInMs = commonConfig.getTierTTLInMs()[currentTier];
+        boolean diskPressure = needMigrationTiers.contains(currentTier);
+        // No disk pressure and nothing can TTL-expire soon → skip expensive directory walk.
+        if (!diskPressure) {
+          if (currentTierTTLInMs == Long.MAX_VALUE) {
+            continue;
+          }
+          if (nowMs < nextObjectTtlScanTimeMs[currentTier]) {
+            continue;
+          }
+        }
+        long lowerBound = Long.MIN_VALUE;
+        if (currentTierTTLInMs != Long.MAX_VALUE) {
+          lowerBound =
+              DateTimeUtils.convertMilliTimeWithPrecision(
+                  nowMs - currentTierTTLInMs, commonConfig.getTimestampPrecision());
+        }
+        List<ObjectMigrationCandidate> ttlCandidates = new ArrayList<>();
+        List<ObjectMigrationCandidate> diskCandidates = new ArrayList<>();
+        long minLivingTimestamp = Long.MAX_VALUE;
+        for (String objectRoot : tierManager.getObjectFoldersForTier(currentTier)) {
+          minLivingTimestamp =
+              Math.min(
+                  minLivingTimestamp,
+                  collectObjectCandidates(
+                      objectRoot,
+                      ttlCandidates,
+                      diskCandidates,
+                      lowerBound,
+                      currentTierTTLInMs,
+                      diskPressure));
+        }
+        updateNextObjectTtlScanTime(currentTier, currentTierTTLInMs, minLivingTimestamp);
+        ttlCandidates.sort(Comparator.comparingLong(c -> c.timestamp));
+        diskCandidates.sort(Comparator.comparingLong(c -> c.timestamp));
+        List<ObjectMigrationCandidate> ordered =
+            new ArrayList<>(ttlCandidates.size() + diskCandidates.size());
+        ordered.addAll(ttlCandidates);
+        ordered.addAll(diskCandidates);
+        for (ObjectMigrationCandidate candidate : ordered) {
+          try {
+            boolean ttlExpired =
+                currentTierTTLInMs != Long.MAX_VALUE && candidate.timestamp < lowerBound;
+            MigrationCause cause = ttlExpired ? MigrationCause.TTL : MigrationCause.DISK_SPACE;
+            trySubmitObjectMigrationTask(currentTier, nextTier, cause, candidate);
+          } catch (Exception e) {
+            logger.error(
+                TimechoServerMessages.ERROR_WHEN_CHECK_AND_TRY_TO_MIGRATE_OBJECT_FILE,
+                candidate.srcFile,
+                e);
+          }
+        }
+      }
+    }
+
+    /**
+     * @return minimum timestamp among still-living (not TTL-expired) object files, or {@link
+     *     Long#MAX_VALUE} if none
+     */
+    private long collectObjectCandidates(
+        String objectRoot,
+        List<ObjectMigrationCandidate> ttlOut,
+        List<ObjectMigrationCandidate> diskOut,
+        long lowerBound,
+        long currentTierTTLInMs,
+        boolean diskPressure) {
+      File root = new File(objectRoot);
+      if (!root.isDirectory()) {
+        return Long.MAX_VALUE;
+      }
+      long[] minLivingTimestamp = new long[] {Long.MAX_VALUE};
+      try {
+        Files.walkFileTree(
+            root.toPath(),
+            new SimpleFileVisitor<Path>() {
+              @Override
+              public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                if (ObjectDirectoryScanner.OBJECT_GC_TOMBSTONE_DIR.equals(
+                    dir.getFileName().toString())) {
+                  return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+              }
+
+              @Override
+              public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                String name = file.getFileName().toString();
+                long timestamp = ObjectFileMigrationUtils.parseObjectTimestamp(name);
+                if (timestamp < 0) {
+                  return FileVisitResult.CONTINUE;
+                }
+                File src = file.toFile();
+                if (ObjectFileMigrationUtils.hasTempSibling(src)) {
+                  return FileVisitResult.CONTINUE;
+                }
+                try {
+                  String relative = ObjectFileMigrationUtils.toRelativeObjectPath(src, objectRoot);
+                  ObjectMigrationCandidate candidate =
+                      new ObjectMigrationCandidate(src, relative, timestamp);
+                  boolean ttlExpired =
+                      currentTierTTLInMs != Long.MAX_VALUE && timestamp < lowerBound;
+                  if (ttlExpired) {
+                    ttlOut.add(candidate);
+                  } else {
+                    minLivingTimestamp[0] = Math.min(minLivingTimestamp[0], timestamp);
+                    if (diskPressure) {
+                      diskOut.add(candidate);
+                    }
+                  }
+                } catch (IOException ignored) {
+                  // skip unreadable / mismatched paths
+                }
+                return FileVisitResult.CONTINUE;
+              }
+            });
+      } catch (IOException e) {
+        logger.warn(
+            TimechoServerMessages.ERROR_WHEN_CHECK_AND_TRY_TO_MIGRATE_OBJECT_FILE, objectRoot, e);
+      }
+      return minLivingTimestamp[0];
+    }
+
+    private void trySubmitObjectMigrationTask(
+        int srcTier, int destTier, MigrationCause cause, ObjectMigrationCandidate candidate) {
+      String key = candidate.srcFile.getAbsolutePath();
+      if (!objectMigrationInFlight.add(key)) {
+        return;
+      }
+      if (!candidate.srcFile.exists()) {
+        objectMigrationInFlight.remove(key);
+        return;
+      }
+      Semaphore taskSlots = context.migrationTaskSlots;
+      try {
+        taskSlots.acquire();
+      } catch (InterruptedException e) {
+        objectMigrationInFlight.remove(key);
+        Thread.currentThread().interrupt();
+        return;
+      }
+      try {
+        context.workers.execute(
+            () -> {
+              try {
+                new ObjectMigrationTask(
+                        cause,
+                        candidate.srcFile,
+                        candidate.relativePath,
+                        srcTier,
+                        destTier,
+                        objectMigrationInFlight)
+                    .run();
+              } finally {
+                taskSlots.release();
+              }
+            });
+      } catch (RuntimeException e) {
+        objectMigrationInFlight.remove(key);
+        taskSlots.release();
+        throw e;
+      }
+      releaseDiskUsage(srcTier, candidate.srcFile.length());
+    }
   }
 
   private boolean trySubmitTask(
@@ -483,6 +673,55 @@ public class MigrationTaskManager implements IService, IMigrationManager {
     SchedulingContext context = schedulingContext;
     if (context != null) {
       context.migrationTaskSlots.release();
+    }
+  }
+
+  private static final class ObjectMigrationCandidate {
+    private final File srcFile;
+    private final String relativePath;
+    private final long timestamp;
+
+    private ObjectMigrationCandidate(File srcFile, String relativePath, long timestamp) {
+      this.srcFile = srcFile;
+      this.relativePath = relativePath;
+      this.timestamp = timestamp;
+    }
+  }
+
+  private void ensureNextObjectTtlScanTimeMsSize(int tierNum) {
+    long[] current = nextObjectTtlScanTimeMs;
+    if (current.length >= tierNum) {
+      return;
+    }
+    long[] resized = new long[tierNum];
+    System.arraycopy(current, 0, resized, 0, current.length);
+    nextObjectTtlScanTimeMs = resized;
+  }
+
+  /**
+   * Remember when the earliest still-living object on {@code tier} can expire under TTL, so later
+   * ticks can skip {@code walkFileTree} until then (unless disk pressure forces a scan).
+   */
+  private void updateNextObjectTtlScanTime(
+      int tier, long tierTtlInMs, long minLivingTimestampInDbPrecision) {
+    if (tierTtlInMs == Long.MAX_VALUE || minLivingTimestampInDbPrecision == Long.MAX_VALUE) {
+      // No TTL, or no living object left — scan again on the next eligible tick.
+      nextObjectTtlScanTimeMs[tier] = 0L;
+      return;
+    }
+    nextObjectTtlScanTimeMs[tier] =
+        convertDbTimestampToMilli(minLivingTimestampInDbPrecision) + tierTtlInMs;
+  }
+
+  private static long convertDbTimestampToMilli(long timestamp) {
+    String precision = commonConfig.getTimestampPrecision();
+    switch (precision) {
+      case "ns":
+        return timestamp / 1_000_000L;
+      case "us":
+        return timestamp / 1_000L;
+      default:
+        return timestamp;
     }
   }
 

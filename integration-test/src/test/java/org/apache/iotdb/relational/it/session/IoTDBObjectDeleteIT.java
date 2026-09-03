@@ -139,39 +139,12 @@ public class IoTDBObjectDeleteIT {
       }
     }
 
-    // test object file path
-    boolean success = false;
-    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
-      String objectDirStr = dataNodeWrapper.getDataNodeObjectDir();
-      File objectDir = new File(objectDirStr);
-      if (objectDir.exists() && objectDir.isDirectory()) {
-        File[] regionDirs = objectDir.listFiles();
-        if (regionDirs != null) {
-          for (File regionDir : regionDirs) {
-            if (regionDir.isDirectory()) {
-              File objectFile =
-                  new File(
-                      regionDir,
-                      convertPathString("object_table")
-                          + File.separator
-                          + convertPathString("1")
-                          + File.separator
-                          + convertPathString("5")
-                          + File.separator
-                          + convertPathString("3")
-                          + File.separator
-                          + convertPathString("file")
-                          + File.separator
-                          + "1.bin");
-              if (objectFile.exists() && objectFile.isFile()) {
-                success = true;
-              }
-            }
-          }
-        }
-      }
-    }
-    Assert.assertFalse(success);
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                Assert.assertFalse(
+                    objectFileExists("object_table", "1", "5", "3", "file", "1.bin")));
   }
 
   @Test
@@ -229,39 +202,12 @@ public class IoTDBObjectDeleteIT {
       }
     }
 
-    // test object file path
-    boolean success = false;
-    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
-      String objectDirStr = dataNodeWrapper.getDataNodeObjectDir();
-      File objectDir = new File(objectDirStr);
-      if (objectDir.exists() && objectDir.isDirectory()) {
-        File[] regionDirs = objectDir.listFiles();
-        if (regionDirs != null) {
-          for (File regionDir : regionDirs) {
-            if (regionDir.isDirectory()) {
-              File objectFile =
-                  new File(
-                      regionDir,
-                      convertPathString("object_table")
-                          + File.separator
-                          + convertPathString("1")
-                          + File.separator
-                          + convertPathString("5")
-                          + File.separator
-                          + convertPathString("3")
-                          + File.separator
-                          + convertPathString("file")
-                          + File.separator
-                          + "1.bin");
-              if (objectFile.exists() && objectFile.isFile()) {
-                success = true;
-              }
-            }
-          }
-        }
-      }
-    }
-    Assert.assertFalse(success);
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                Assert.assertFalse(
+                    objectFileExists("object_table", "1", "5", "3", "file", "1.bin")));
   }
 
   @Test
@@ -277,8 +223,13 @@ public class IoTDBObjectDeleteIT {
       session.executeNonQueryStatement("drop table object_table");
     }
 
-    Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "1.bin"));
-    Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "2.bin"));
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "1.bin"));
+              Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "2.bin"));
+            });
   }
 
   @Test
@@ -398,8 +349,143 @@ public class IoTDBObjectDeleteIT {
     Assert.assertFalse(success);
   }
 
+  /**
+   * After FLUSH seals OBJECT {@code .bin} files, DELETE must: (1) hide the row immediately, (2)
+   * asynchronously unlink the sealed payload (including versioned {@code {time}_{version}.bin}),
+   * (3) leave surviving sealed objects readable and on disk, and (4) fully clean remaining bins
+   * when the last rows are deleted. Also asserts no leftover {@code .tmp}/{@code .back} siblings.
+   */
+  @Test
+  public void deleteSealedObjectAfterFlushTest()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    byte[] objectBytes = readTestObjectBytes();
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      insertTwoRowsWithObjects(session, objectBytes);
+      assertObjectRowsReadable(session, objectBytes);
+
+      Assert.assertTrue(
+          "sealed object for time=1 must exist after flush",
+          objectFileExists("object_table", "1", "5", "3", "file", "1.bin"));
+      Assert.assertTrue(
+          "sealed object for time=2 must exist after flush",
+          objectFileExists("object_table", "1", "5", "3", "file", "2.bin"));
+
+      session.executeNonQueryStatement("DELETE FROM object_table WHERE time = 1");
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select time, READ_OBJECT(file) as file_content from object_table order by time")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        Assert.assertTrue(iterator.next());
+        Assert.assertEquals(2L, iterator.getLong("time"));
+        Assert.assertArrayEquals(objectBytes, iterator.getBlob("file_content").getValues());
+        Assert.assertFalse(iterator.next());
+      }
+    }
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(200, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              Assert.assertFalse(
+                  "deleted sealed object for time=1 should be unlinked",
+                  objectFileExists("object_table", "1", "5", "3", "file", "1.bin"));
+              Assert.assertFalse(
+                  "deleted sealed object should leave no .tmp sibling",
+                  objectFileExists("object_table", "1", "5", "3", "file", "1.bin.tmp"));
+              Assert.assertFalse(
+                  "deleted sealed object should leave no .back sibling",
+                  objectFileExists("object_table", "1", "5", "3", "file", "1.bin.back"));
+              Assert.assertTrue(
+                  "surviving sealed object for time=2 must remain on disk",
+                  objectFileExists("object_table", "1", "5", "3", "file", "2.bin"));
+            });
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select time, READ_OBJECT(file) as file_content from object_table order by time")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        Assert.assertTrue(iterator.next());
+        Assert.assertEquals(2L, iterator.getLong("time"));
+        Assert.assertArrayEquals(objectBytes, iterator.getBlob("file_content").getValues());
+        Assert.assertFalse(iterator.next());
+      }
+
+      session.executeNonQueryStatement("DELETE FROM object_table WHERE time <= 2");
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select count(*) as cnt from object_table")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        Assert.assertTrue(iterator.next());
+        Assert.assertEquals(0L, iterator.getLong("cnt"));
+        Assert.assertFalse(iterator.next());
+      }
+    }
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(200, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "1.bin"));
+              Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "2.bin"));
+              Assert.assertFalse(
+                  objectFileExists("object_table", "1", "5", "3", "file", "2.bin.tmp"));
+              Assert.assertFalse(
+                  objectFileExists("object_table", "1", "5", "3", "file", "2.bin.back"));
+            });
+  }
+
   protected String convertPathString(String path) {
     return BaseEncoding.base32().omitPadding().encode(path.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static boolean objectBinExists(File parent, String fileName) {
+    if (parent == null || !parent.isDirectory()) {
+      return false;
+    }
+    File exact = new File(parent, fileName);
+    if (exact.isFile()) {
+      return true;
+    }
+    String stem = fileName;
+    boolean tmp = stem.endsWith(".tmp");
+    boolean back = stem.endsWith(".back");
+    if (tmp) {
+      stem = stem.substring(0, stem.length() - ".tmp".length());
+    } else if (back) {
+      stem = stem.substring(0, stem.length() - ".back".length());
+    }
+    if (stem.endsWith(".bin")) {
+      stem = stem.substring(0, stem.length() - ".bin".length());
+    }
+    File[] children = parent.listFiles();
+    if (children == null) {
+      return false;
+    }
+    String prefix = stem + "_";
+    for (File child : children) {
+      if (!child.isFile()) {
+        continue;
+      }
+      String name = child.getName();
+      if (tmp) {
+        if (name.equals(stem + ".bin.tmp")) {
+          return true;
+        }
+      } else if (back) {
+        if (name.equals(stem + ".bin.back")) {
+          return true;
+        }
+      } else if (name.equals(stem + ".bin") || (name.startsWith(prefix) && name.endsWith(".bin"))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private byte[] readTestObjectBytes() throws IOException {
@@ -493,7 +579,7 @@ public class IoTDBObjectDeleteIT {
         if (!regionDir.isDirectory()) {
           continue;
         }
-        File objectFile =
+        File parent =
             new File(
                 regionDir,
                 convertPathString(tableName)
@@ -504,10 +590,8 @@ public class IoTDBObjectDeleteIT {
                     + File.separator
                     + convertPathString(deviceId)
                     + File.separator
-                    + convertPathString(measurement)
-                    + File.separator
-                    + fileName);
-        if (objectFile.exists() && objectFile.isFile()) {
+                    + convertPathString(measurement));
+        if (objectBinExists(parent, fileName)) {
           return true;
         }
       }

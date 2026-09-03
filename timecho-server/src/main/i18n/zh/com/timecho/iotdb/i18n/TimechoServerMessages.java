@@ -60,6 +60,12 @@ public final class TimechoServerMessages {
       "从端点 {} 拉取远端副本失败";
   public static final String FAIL_TO_PERSIST_REMOTE_REPLICA_OF_ENDPOINT =
       "持久化端点 {} 的远端副本失败";
+  public static final String
+      LOG_FAIL_TO_DELETE_SHARED_OBJECT_FILES_FOR_DATA_REGION_ARG_TIME_PARTITION_ARG_6A59C405 =
+          "删除 DataRegion {} 时间分区 {} 的共享 OBJECT 文件失败";
+  public static final String
+      LOG_SKIP_DELETE_SHARED_OBJECT_FILES_FOR_DATA_REGION_ARG_TIME_PARTITION_UNMIGRATED_OBJECTS_REMAIN_94B6DD34 =
+          "DataRegion {} 时间分区 {} 仍有未迁移完成的 OBJECT，跳过共享 OBJECT 删除";
 
   // 对象表大小索引
   public static final String FAILED_TO_EXECUTE_COMPACTION_FOR_OBJECT_TABLE_SIZE_INDEX_FILE =
@@ -70,6 +76,17 @@ public final class TimechoServerMessages {
   // 迁移任务
   public static final String FAIL_TO_COPY_TSFILE_FROM_LOCAL_TO_LOCAL =
       "将 TsFile 从本地 {} 拷贝到本地 {} 失败";
+  public static final String FAIL_TO_MIGRATE_OBJECT_FILE = "将 object 文件从 {} 迁移到 {} 失败";
+  public static final String SUCCESSFULLY_MIGRATE_OBJECT_FILE =
+      "成功将 object 文件 {} 迁移到 {}，原因为 {}，耗时 {}ns";
+  public static final String SKIP_OBJECT_FILE_BECAUSE_TEMP_SIBLING_EXISTS =
+      "跳过 object 文件 {}，因为存在临时旁路文件";
+  public static final String ERROR_WHEN_CHECK_AND_TRY_TO_MIGRATE_OBJECT_FILE =
+      "检查并尝试迁移 object 文件 {} 时发生错误";
+  public static final String EXCEPTION_OBJECT_FILE_ARG_IS_NOT_UNDER_OBJECT_ROOT_ARG_1E9ADBF8 =
+      "object 文件 %s 不在 object 根目录 %s 下";
+  public static final String EXCEPTION_OBJECT_DESTINATION_MISSING_AFTER_COPY_ARG_57B61C6C =
+      "拷贝后 object 目标文件缺失: %s";
   public static final String FAIL_TO_SERIALIZE_REMOTE_STORAGE_INFO_INTO_FILE =
       "将远端存储信息序列化到文件 {} 失败";
   public static final String FAIL_TO_MIGRATE_RESOURCE_FROM_LOCAL_TO_REMOTE =

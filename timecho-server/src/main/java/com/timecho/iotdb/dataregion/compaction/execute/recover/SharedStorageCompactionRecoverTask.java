@@ -133,9 +133,13 @@ public class SharedStorageCompactionRecoverTask extends SettleCompactionTask {
     if (sourceFiles.isEmpty()) {
       return;
     }
+    long timePartition = sourceFiles.get(0).getTimePartition();
+    long maxVersion = 0L;
     for (TsFileResource resource : sourceFiles) {
+      maxVersion = Math.max(maxVersion, resource.getVersion());
       resource.remove();
     }
+    SharedStorageCompactionUtils.deleteLocalRemoteObjects(dataRegionId, timePartition, maxVersion);
   }
 
   private void deleteTargetFiles() {

@@ -604,6 +604,9 @@ public final class DataNodeMiscMessages {
       "删除空对象目录 {} 失败";
   public static final String REMOVE_OBJECT_FILE =
       "删除对象文件 {}，大小为 {}（字节）";
+  public static final String
+      LOG_OBJECT_STORAGE_UNAVAILABLE_WHILE_PROBING_LENGTH_OF_ARG_TREAT_AS_ZERO_FOR_METRICS_8131DA24 =
+          "探测 {} 长度时对象存储不可用，按 0 计入指标";
 
   // ---------------------------------------------------------------------------
   // utils – OpenFileNumUtil

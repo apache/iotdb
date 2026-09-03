@@ -49,7 +49,7 @@ public class RemoteMigrationTask extends MigrationTask {
     filesShouldDelete.addAll(Arrays.asList(destTsFile, destResourceFile, destModsFile));
     cleanup();
 
-    // migrate TsFile
+    // migrate TsFile (OBJECT .bin is migrated by ObjectMigrationTask)
     tsFileResource.readLock();
     try {
       migratedFileSize += srcFile.length();

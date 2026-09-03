@@ -1583,4 +1583,30 @@ public final class StorageEngineMessages {
   public static final String STORAGE_LOG_CLEARED_BINARY_ARRAY_REFERENCES_BEFORE_RETURNING_TO_PRIMITIVEARRAYMANAGER_LENGTH_ARG_225E8464 =
       "Cleared Binary array references before returning to PrimitiveArrayManager, length={}.";
 
+  public static final String LOG_START_OBJECT_GC_WORKER_FOR_DATA_REGION_ARG_ARG_A61D2B19 =
+      "Start object GC worker for data region {}-{}";
+  public static final String LOG_STOP_OBJECT_GC_WORKER_FOR_DATA_REGION_ARG_ARG_EFE4BDF6 =
+      "Stop object GC worker for data region {}-{}";
+  public static final String LOG_FAILED_TO_APPEND_OBJECT_GC_JOURNAL_FOR_DATA_REGION_ARG_ARG_EAC61325 =
+      "Failed to append object GC journal for data region {}-{}";
+  public static final String LOG_FAILED_TO_PROCESS_OBJECT_GC_RECORD_TYPE_ARG_FOR_DATA_REGION_ARG_ARG_8C49E9B9 =
+      "Failed to process object GC record type {} for data region {}-{}";
+  public static final String LOG_FAILED_TO_DELETE_OBJECT_FILE_ARG_DURING_OBJECT_GC_74AE0729 =
+      "Failed to delete object file {} during object GC";
+  public static final String LOG_FAILED_TO_START_OBJECT_GC_FOR_DATA_REGION_ARG_ARG_A0F04176 =
+      "Failed to start object GC for data region {}-{}";
+  public static final String LOG_OBJECT_GC_JOURNAL_RECOVERED_FROM_CHECKPOINT_SEQ_ARG_OFFSET_ARG_FOR_DATA_REGION_ARG_ARG_F4C0858F =
+      "Object GC journal recovered from checkpoint seq {} offset {} for data region {}-{}";
+  public static final String EXCEPTION_CANNOT_CREATE_OBJECT_GC_DIR_ARG_055D7364 =
+      "Cannot create object-gc dir: %s";
+  public static final String EXCEPTION_CANNOT_CREATE_OBJECT_GC_TOMBSTONE_DIR_ARG_8E11E07B =
+      "Cannot create object-gc tombstone dir: %s";
+  public static final String EXCEPTION_OBJECT_TABLE_DIR_PARENT_IS_MISSING_ARG_8F41142A =
+      "Object table dir parent is missing: %s";
+  public static final String EXCEPTION_FAILED_TO_RENAME_OBJECT_TABLE_DIR_ARG_TO_ARG_5DFF237E =
+      "Failed to rename object table dir %s to %s";
+  public static final String
+      LOG_FAILED_TO_RECOVER_OBJECT_SIDECAR_FOR_TSFILE_PROCESSOR_VERSION_ARG_IN_DATA_REGION_ARG_ARG_1D7286B9 =
+          "Failed to recover object sidecar for TsFile processor version {} in data region {}-{}";
+
 }

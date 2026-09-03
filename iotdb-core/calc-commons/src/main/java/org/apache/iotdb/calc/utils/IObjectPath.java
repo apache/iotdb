@@ -31,6 +31,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public interface IObjectPath {
 
@@ -77,5 +78,25 @@ public interface IObjectPath {
     return CONFIG.isRestrictObjectLimit()
         ? PlainObjectPath.getDESERIALIZER()
         : Base32ObjectPath.getDESERIALIZER();
+  }
+
+  static IObjectPath fromRelativePath(String relativePath) {
+    return CONFIG.isRestrictObjectLimit()
+        ? new PlainObjectPath(relativePath)
+        : new Base32ObjectPath(Paths.get(relativePath));
+  }
+
+  default IObjectPath withTsFileVersion(long tsFileVersion) {
+    return fromRelativePath(
+        ObjectPathNaming.withTsFileVersion(toString(), getTime(), tsFileVersion));
+  }
+
+  default boolean hasTsFileVersion() {
+    return ObjectPathNaming.parseVersion(getPath().getFileName().toString())
+        != ObjectPathNaming.LEGACY_VERSION;
+  }
+
+  default long getTsFileVersion() {
+    return ObjectPathNaming.parseVersion(getPath().getFileName().toString());
   }
 }

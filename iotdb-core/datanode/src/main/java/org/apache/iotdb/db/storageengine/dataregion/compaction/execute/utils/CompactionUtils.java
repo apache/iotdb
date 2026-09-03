@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
+import org.apache.iotdb.calc.utils.ObjectPathNaming;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
@@ -844,10 +845,8 @@ public class CompactionUtils {
       throw new StopTTLCheckException();
     }
     String fileName = file.getName();
-    long fileTimestampInMS;
-    try {
-      fileTimestampInMS = Long.parseLong(fileName.substring(0, fileName.length() - 4));
-    } catch (NumberFormatException ignored) {
+    long fileTimestampInMS = ObjectPathNaming.parseTime(fileName);
+    if (fileTimestampInMS < 0) {
       return;
     }
 

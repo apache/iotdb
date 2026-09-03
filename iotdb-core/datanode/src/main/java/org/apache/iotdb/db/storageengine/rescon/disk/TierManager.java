@@ -79,7 +79,14 @@ public class TierManager {
   /** unSeq file folder's rawFsPath path -> tier level */
   private volatile Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
 
-  private List<String> objectDirs;
+  /**
+   * Object folders across all tiers, ordered from hot (tier 0) to cold. Used for cross-tier lookup
+   * and full-directory scans (delete / snapshot / disk usage).
+   */
+  private volatile List<String> objectDirs = new ArrayList<>();
+
+  /** object folder's path -> tier level */
+  private volatile Map<String, Integer> objectDir2TierLevel = new HashMap<>();
 
   private List<String> copyToTargetDirs;
 
@@ -110,6 +117,8 @@ public class TierManager {
 
     config.updatePath();
     String[][] tierDirs = config.getTierDataDirs();
+    List<String> allObjectDirs = new ArrayList<>();
+    Map<String, Integer> allObjectDir2TierLevel = new HashMap<>();
     for (int i = 0; i < tierDirs.length; ++i) {
       for (int j = 0; j < tierDirs[i].length; ++j) {
         switch (FSUtils.getFSType(tierDirs[i][j])) {
@@ -204,7 +213,7 @@ public class TierManager {
                 () -> new FolderManager(copyToTargetDirs, directoryStrategyType));
       }
 
-      objectDirs =
+      List<String> tierObjectDirs =
           Arrays.stream(tierDirs[tierLevel])
               .filter(Objects::nonNull)
               .map(
@@ -215,12 +224,12 @@ public class TierManager {
               .collect(Collectors.toList());
 
       try {
-        objectTiers.add(new FolderManager(objectDirs, directoryStrategyType));
+        objectTiers.add(new FolderManager(tierObjectDirs, directoryStrategyType));
       } catch (DiskSpaceInsufficientException e) {
         logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
       }
       // try to remove empty objectDirs
-      for (String dir : objectDirs) {
+      for (String dir : tierObjectDirs) {
         File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
         if (dirFile.isDirectory() && Objects.requireNonNull(dirFile.list()).length == 0) {
           try {
@@ -228,9 +237,13 @@ public class TierManager {
           } catch (IOException ignore) {
           }
         }
+        allObjectDir2TierLevel.put(dir, tierLevel);
       }
+      allObjectDirs.addAll(tierObjectDirs);
     }
 
+    this.objectDirs = allObjectDirs;
+    this.objectDir2TierLevel = allObjectDir2TierLevel;
     tierDiskTotalSpace = getTierDiskSpace(DiskSpaceType.TOTAL);
   }
 
@@ -282,7 +295,12 @@ public class TierManager {
   }
 
   public String getNextFolderForObjectFile() throws DiskSpaceInsufficientException {
-    return objectTiers.get(0).getNextFolder();
+    return getNextFolderForObjectFile(0);
+  }
+
+  /** Allocate an object folder on the given tier (0 = hot). */
+  public String getNextFolderForObjectFile(int tierLevel) throws DiskSpaceInsufficientException {
+    return objectTiers.get(tierLevel).getNextFolder();
   }
 
   public FolderManager getFolderManager(int tierLevel, boolean sequence) {
@@ -318,7 +336,44 @@ public class TierManager {
   }
 
   public List<String> getAllObjectFileFolders() {
-    return objectDirs;
+    return new ArrayList<>(objectDirs);
+  }
+
+  /** Object folders belonging to the given tier (may be multiple disks). */
+  public List<String> getObjectFoldersForTier(int tierLevel) {
+    List<String> folders = new ArrayList<>();
+    for (Map.Entry<String, Integer> entry : objectDir2TierLevel.entrySet()) {
+      if (entry.getValue() == tierLevel) {
+        folders.add(entry.getKey());
+      }
+    }
+    return folders;
+  }
+
+  /**
+   * Resolve which tier an object file / object folder path belongs to. Falls back to 0 if unmatched
+   * (same default as {@link #getFileTierLevel(File)}).
+   */
+  public int getObjectFileTierLevel(File file) {
+    Path filePath;
+    try {
+      filePath = file.getCanonicalFile().toPath();
+    } catch (IOException e) {
+      logger.error(StorageEngineMessages.FAIL_TO_GET_CANONICAL_PATH, file, e);
+      filePath = file.toPath();
+    }
+    for (Map.Entry<String, Integer> entry : objectDir2TierLevel.entrySet()) {
+      Path objectDirPath;
+      try {
+        objectDirPath = new File(entry.getKey()).getCanonicalFile().toPath();
+      } catch (IOException e) {
+        objectDirPath = new File(entry.getKey()).toPath();
+      }
+      if (filePath.startsWith(objectDirPath)) {
+        return entry.getValue();
+      }
+    }
+    return 0;
   }
 
   public boolean isDataRegionObjectDirExists(String dataRegionId) {
@@ -335,6 +390,10 @@ public class TierManager {
     return getAbsoluteObjectFilePath(filePath, false);
   }
 
+  /**
+   * Resolve an object file by relative path. {@code objectDirs} is hot-to-cold, so a local copy is
+   * preferred; {@code OBJECT_STORAGE} is checked after a local miss.
+   */
   public Optional<File> getAbsoluteObjectFilePath(String filePath, boolean needTempFile) {
     for (String objectDir : objectDirs) {
       File objectFile = FSFactoryProducer.getFSFactory().getFile(objectDir, filePath);
@@ -342,8 +401,9 @@ public class TierManager {
         return Optional.of(objectFile);
       }
       if (needTempFile) {
-        if (new File(objectFile.getPath() + ".tmp").exists()
-            || new File(objectFile.getPath() + ".back").exists()) {
+        File tmpFile = FSFactoryProducer.getFSFactory().getFile(objectDir, filePath + ".tmp");
+        File backFile = FSFactoryProducer.getFSFactory().getFile(objectDir, filePath + ".back");
+        if (tmpFile.exists() || backFile.exists()) {
           return Optional.of(objectFile);
         }
       }
@@ -353,17 +413,6 @@ public class TierManager {
 
   public List<File> getAllMatchedObjectDirs(String regionIdStr, String... path) {
     List<File> matchedDirs = new ArrayList<>();
-    boolean hasObjectDir = false;
-    for (String objectDir : objectDirs) {
-      File objectDirPath = FSFactoryProducer.getFSFactory().getFile(objectDir);
-      if (objectDirPath.exists()) {
-        hasObjectDir = true;
-        break;
-      }
-    }
-    if (!hasObjectDir) {
-      return matchedDirs;
-    }
     StringBuilder objectPath = new StringBuilder();
     objectPath.append(regionIdStr);
     for (String str : path) {
@@ -379,7 +428,9 @@ public class TierManager {
     for (String objectDir : objectDirs) {
       File objectFilePath =
           FSFactoryProducer.getFSFactory().getFile(objectDir, objectPath.toString());
-      if (objectFilePath.exists()) {
+      // OBJECT_STORAGE has no directory objects: exists() is false for a prefix, but DROP/SCAN
+      // must still visit that prefix (deleteObjectsByPrefix / list by suffix).
+      if (FSUtils.getFSType(objectFilePath) != FSType.LOCAL || objectFilePath.exists()) {
         matchedDirs.add(objectFilePath);
       }
     }

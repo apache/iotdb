@@ -302,9 +302,6 @@ public class TableDeviceSchemaValidator {
     if (!CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()) {
       return;
     }
-    if (hasMultipleTiers()) {
-      throw new SemanticException("The tiered storage does not support object type yet.");
-    }
     for (final Object part : deviceId) {
       final String value = (String) part;
       if (Objects.nonNull(value) && TsTable.isInvalid4ObjectType(value)) {

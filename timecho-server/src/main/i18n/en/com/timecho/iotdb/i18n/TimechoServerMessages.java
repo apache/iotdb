@@ -60,6 +60,12 @@ public final class TimechoServerMessages {
       "Fail to pull remote replica from endpoint {}";
   public static final String FAIL_TO_PERSIST_REMOTE_REPLICA_OF_ENDPOINT =
       "Fail to persist remote replica of endpoint {}";
+  public static final String
+      LOG_FAIL_TO_DELETE_SHARED_OBJECT_FILES_FOR_DATA_REGION_ARG_TIME_PARTITION_ARG_6A59C405 =
+          "Fail to delete shared object files for data region {} time partition {}";
+  public static final String
+      LOG_SKIP_DELETE_SHARED_OBJECT_FILES_FOR_DATA_REGION_ARG_TIME_PARTITION_UNMIGRATED_OBJECTS_REMAIN_94B6DD34 =
+          "Skip deleting shared object files for data region {} time partition {} because unmigrated objects remain";
 
   // Object table size index
   public static final String FAILED_TO_EXECUTE_COMPACTION_FOR_OBJECT_TABLE_SIZE_INDEX_FILE =
@@ -70,6 +76,18 @@ public final class TimechoServerMessages {
   // Migration tasks
   public static final String FAIL_TO_COPY_TSFILE_FROM_LOCAL_TO_LOCAL =
       "Fail to copy TsFile from local {} to local {}";
+  public static final String FAIL_TO_MIGRATE_OBJECT_FILE =
+      "Fail to migrate object file from {} to {}";
+  public static final String SUCCESSFULLY_MIGRATE_OBJECT_FILE =
+      "Successfully migrate object file {} to {}, caused by {}, costs {}ns";
+  public static final String SKIP_OBJECT_FILE_BECAUSE_TEMP_SIBLING_EXISTS =
+      "Skip object file {} because temp sibling exists";
+  public static final String ERROR_WHEN_CHECK_AND_TRY_TO_MIGRATE_OBJECT_FILE =
+      "An error occurred when check and try to migrate object file {}";
+  public static final String EXCEPTION_OBJECT_FILE_ARG_IS_NOT_UNDER_OBJECT_ROOT_ARG_1E9ADBF8 =
+      "Object file %s is not under object root %s";
+  public static final String EXCEPTION_OBJECT_DESTINATION_MISSING_AFTER_COPY_ARG_57B61C6C =
+      "Object destination missing after copy: %s";
   public static final String FAIL_TO_SERIALIZE_REMOTE_STORAGE_INFO_INTO_FILE =
       "Fail to serialize remote storage info into file {}";
   public static final String FAIL_TO_MIGRATE_RESOURCE_FROM_LOCAL_TO_REMOTE =

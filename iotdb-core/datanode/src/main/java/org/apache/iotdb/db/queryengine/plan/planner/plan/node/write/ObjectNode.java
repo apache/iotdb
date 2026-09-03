@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.calc.utils.IObjectPath;
+import org.apache.iotdb.calc.utils.ObjectPathNaming;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -307,7 +308,9 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
           }
         }
         Optional<File> objectTmpFile =
-            TierManager.getInstance().getAbsoluteObjectFilePath(filePath + ".tmp");
+            TierManager.getInstance()
+                .getAbsoluteObjectFilePath(
+                    ObjectPathNaming.toTempRelativePath(filePath.toString(), filePath.getTime()));
         if (objectTmpFile.isPresent()) {
           try {
             readContentFromFile(objectTmpFile.get(), contents);

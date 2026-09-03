@@ -51,6 +51,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.utils.DataNodeObjectFileService;
 
 import com.google.common.util.concurrent.RateLimiter;
 import com.timecho.iotdb.os.HybridFileInputFactoryDecorator;
@@ -209,6 +210,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   private final AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
 
   private RemoteStorageBlock remoteStorageBlock;
+  private boolean remoteObjectRootRegistered;
 
   /** used to prevent circular replication in IoTConsensusV2 */
   private volatile boolean isGeneratedByIoTConsensusV2 = false;
@@ -1100,6 +1102,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public void forceMarkDeleted() {
+    unregisterRemoteObjectRootIfNeeded();
     atomicStatus.set(TsFileResourceStatus.DELETED);
   }
 
@@ -1574,13 +1577,23 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public void setRemoteStorageBlock(RemoteStorageBlock remoteStorageBlock) {
+    unregisterRemoteObjectRootIfNeeded();
     this.remoteStorageBlock = remoteStorageBlock;
     HybridFileInputFactoryDecorator.putRemotePathInfo(
         file, FSUtils.parse(remoteStorageBlock.getPath()));
+    remoteObjectRootRegistered =
+        DataNodeObjectFileService.registerRemoteObjectRoot(remoteStorageBlock);
   }
 
   public RemoteStorageBlock getRemoteStorageBlock() {
     return remoteStorageBlock;
+  }
+
+  private void unregisterRemoteObjectRootIfNeeded() {
+    if (remoteObjectRootRegistered) {
+      DataNodeObjectFileService.unregisterRemoteObjectRoot(remoteStorageBlock);
+      remoteObjectRootRegistered = false;
+    }
   }
 
   public boolean isEmpty() {

@@ -22,11 +22,13 @@ package org.apache.iotdb.db.storageengine.dataregion;
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.calc.utils.IObjectPath;
+import org.apache.iotdb.calc.utils.ObjectPathNaming;
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -135,6 +137,10 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.objectgc.ObjectDirectoryScanner;
+import org.apache.iotdb.db.storageengine.dataregion.objectgc.ObjectGcJournal;
+import org.apache.iotdb.db.storageengine.dataregion.objectgc.ObjectGcRecord;
+import org.apache.iotdb.db.storageengine.dataregion.objectgc.ObjectGcWorker;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
@@ -183,8 +189,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.io.BaseEncoding;
-import com.timecho.iotdb.calc.storageengine.dataregion.Base32ObjectPath;
-import com.timecho.iotdb.calc.storageengine.dataregion.PlainObjectPath;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.external.commons.lang3.tuple.Triple;
@@ -207,10 +211,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -235,7 +242,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -401,6 +407,11 @@ public class DataRegion implements IDataRegionForQuery {
   private final AtomicBoolean isFirstCheckObjectFileDirsAfterRestart = new AtomicBoolean(true);
   private final boolean isTableModel;
 
+  private ObjectGcJournal objectGcJournal;
+  private ObjectGcWorker objectGcWorker;
+  private ExecutorService objectGcExecutor;
+  private final AtomicLong objectGcTaskId = new AtomicLong();
+
   /** Delay analyzer for tracking data arrival delays and calculating safe watermarks */
   private final DelayAnalyzer delayAnalyzer;
 
@@ -494,6 +505,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     this.metrics = new DataRegionMetrics(this);
     MetricService.getInstance().addMetricSet(metrics);
+    startObjectGc();
   }
 
   @TestOnly
@@ -1086,6 +1098,7 @@ public class DataRegion implements IDataRegionForQuery {
           }
         }
         tsFileProcessorInfo.addTSPMemCost(chunkMetadataSize);
+        recoverObjectSidecar(tsFileProcessor);
       }
       tsFileManager.add(tsFileResource, recoverPerformer.isSequence());
     } catch (Throwable e) {
@@ -3281,69 +3294,31 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
 
-      List<File> objectTableDirs =
-          TierManager.getInstance().getAllMatchedObjectDirs(dataRegionIdString, tableName);
-      if (!objectTableDirs.isEmpty()) {
-        boolean droppingTable = false;
-        for (TableDeletionEntry entry : modEntries) {
-          if (entry.isDroppingTable()) {
-            AtomicLong totalSize = new AtomicLong(0);
-            AtomicInteger count = new AtomicInteger(0);
-            for (File objectTableDir : objectTableDirs) {
-              droppingTable = true;
-              try (Stream<Path> paths = Files.walk(objectTableDir.toPath())) {
-                paths
-                    .filter(Files::isRegularFile)
-                    .filter(
-                        path -> {
-                          String name = path.getFileName().toString();
-                          return name.endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX);
-                        })
-                    .forEach(
-                        path -> {
-                          try {
-                            long fileSize = Files.size(path);
-                            if (Files.deleteIfExists(path)) {
-                              String name = path.getFileName().toString();
-                              count.incrementAndGet();
-                              totalSize.addAndGet(fileSize);
-                              long timePartition =
-                                  TimePartitionUtils.getTimePartitionId(
-                                      Long.parseLong(
-                                          name.substring(
-                                              0,
-                                              name.length()
-                                                  - ObjectTypeUtils.OBJECT_FILE_SUFFIX.length())));
-                              TableDiskUsageIndex.getInstance()
-                                  .writeObjectDelta(
-                                      databaseName,
-                                      dataRegionId.getId(),
-                                      timePartition,
-                                      tableName,
-                                      -fileSize,
-                                      -1);
-                            }
-                          } catch (IOException e) {
-                            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-                            logger.error("Failed to delete Object File: {}", path, e);
-                          }
-                        });
-              } catch (IOException e) {
-                DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-                logger.error(StorageEngineMessages.FAILED_TO_CHECK_OBJECT_FILES, e.getMessage());
-              }
-              org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(objectTableDir, true);
-            }
-            FileMetrics.getInstance()
-                .decreaseObjectFileNum(databaseName, dataRegionIdString, count.get());
-            FileMetrics.getInstance()
-                .decreaseObjectFileSize(databaseName, dataRegionIdString, totalSize.get());
-          }
-        }
-        if (!droppingTable) {
-          deleteObjectFiles(objectTableDirs, modEntries);
+      List<File> dropTableDirs = new ArrayList<>();
+      for (TableDeletionEntry entry : modEntries) {
+        if (entry.isDroppingTable()) {
+          dropTableDirs.addAll(
+              TierManager.getInstance().getAllMatchedObjectDirs(dataRegionIdString, tableName));
+          break;
         }
       }
+      // Move live table object dirs off the recreateable path before releasing the write lock so
+      // async GC cannot delete a same-name table recreated after DROP.
+      List<File> dropTableTombstoneDirs = new ArrayList<>();
+      if (!dropTableDirs.isEmpty() && objectGcJournal != null) {
+        long tombstoneTaskId = objectGcTaskId.incrementAndGet();
+        for (File liveDir : dropTableDirs) {
+          File tombstone = ObjectDirectoryScanner.renameTableDirForDrop(liveDir, tombstoneTaskId);
+          if (tombstone != null) {
+            dropTableTombstoneDirs.add(tombstone);
+          }
+        }
+      }
+      // exclusiveUpper: versions >= this were not born yet at DELETE (async scan must skip them).
+      // protected: open seq+unseq working files in (..., exclusive) — still writable, do not
+      // unlink.
+      Map<Long, Long> exclusiveUpperByPartition = snapshotExclusiveObjectVersions();
+      Map<Long, Set<Long>> protectedVersionsByPartition = snapshotProtectedObjectVersions();
 
       List<List<TsFileResource>> sealedTsFileResourceLists = new ArrayList<>(modEntries.size());
       for (TableDeletionEntry modEntry : modEntries) {
@@ -3360,6 +3335,12 @@ public class DataRegion implements IDataRegionForQuery {
         logger.debug(
             StorageEngineMessages.DELETION_SEALED_FILES_FOR, modEntry, sealedTsFileResource);
         sealedTsFileResourceLists.add(sealedTsFileResource);
+        // tmp/back have no TsFile version; unlink them here while writeObject cannot race.
+        ObjectDirectoryScanner.unlinkMatchingTempAndBack(
+            dataRegionId.getId(),
+            modEntry,
+            objectDeletionLogger,
+            StorageEngineMessages.FAILED_TO_REMOVE_OBJECT_FILE);
       }
 
       // capture deleteDataNode and wait it to be persisted to DAL.
@@ -3377,6 +3358,11 @@ public class DataRegion implements IDataRegionForQuery {
       for (int i = 0; i < modEntries.size(); i++) {
         deleteDataInSealedFiles(sealedTsFileResourceLists.get(i), modEntries.get(i));
       }
+      enqueueObjectGcAfterSealedDelete(
+          dropTableTombstoneDirs,
+          modEntries,
+          exclusiveUpperByPartition,
+          protectedVersionsByPartition);
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -3533,52 +3519,205 @@ public class DataRegion implements IDataRegionForQuery {
     return walFlushListeners;
   }
 
-  private void deleteObjectFiles(List<File> matchedObjectDirs, List<TableDeletionEntry> modEntries)
-      throws IOException {
-    for (File matchedObjectDir : matchedObjectDirs) {
-      try (Stream<Path> paths =
-          Files.find(
-              matchedObjectDir.toPath(),
-              Integer.MAX_VALUE,
-              (path, attrs) ->
-                  attrs.isRegularFile()
-                      && (path.getFileName().toString().endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX)
-                          || path.getFileName()
-                              .toString()
-                              .endsWith(ObjectTypeUtils.OBJECT_TEMP_FILE_SUFFIX)))) {
-        paths.forEach(
-            path -> {
-              Path relativePath =
-                  matchedObjectDir.getParentFile().getParentFile().toPath().relativize(path);
-              IObjectPath objectPath =
-                  CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()
-                      ? new PlainObjectPath(relativePath)
-                      : new Base32ObjectPath(relativePath);
-              IDeviceID iDeviceID = objectPath.getDeviceID();
-              String measurementId = objectPath.getMeasurement();
-              long timestamp = objectPath.getTime();
-              logger.debug(
-                  StorageEngineMessages.STORAGE_LOG_TIMESTAMP_MEASUREMENTID_IDEVICEID_04A5AE37,
-                  timestamp,
-                  measurementId,
-                  iDeviceID);
-              for (TableDeletionEntry modEntry : modEntries) {
-                if (modEntry.affects(iDeviceID, timestamp, timestamp)
-                    && modEntry.affects(measurementId)) {
-                  ObjectTypeUtils.deleteObjectPath(
-                      databaseName,
-                      dataRegionId.getId(),
-                      TimePartitionUtils.getTimePartitionId(timestamp),
-                      modEntry.getTableName(),
-                      path.toFile());
-                  break;
+  private void unlinkSidecarObjectFiles(TsFileProcessor tsFileProcessor, ModEntry deletion) {
+    for (IObjectPath path : tsFileProcessor.removeAffectedObjectPaths(deletion)) {
+      unlinkObjectPath(path);
+    }
+  }
+
+  /**
+   * Rebuild the unsealed processor's object sidecar after WAL recover, so DELETE can still unlink
+   * the current TsFile version's {@code .bin} files.
+   */
+  private void recoverObjectSidecar(TsFileProcessor processor) {
+    if (processor == null) {
+      return;
+    }
+    long version = processor.getTsFileResource().getVersion();
+    for (String objectRoot : TierManager.getInstance().getAllObjectFileFolders()) {
+      File regionDir = fsFactory.getFile(objectRoot, dataRegionIdString);
+      if (!regionDir.isDirectory()) {
+        continue;
+      }
+      Path rootPath = fsFactory.getFile(objectRoot).toPath();
+      try {
+        Files.walkFileTree(
+            regionDir.toPath(),
+            new SimpleFileVisitor<Path>() {
+              @Override
+              public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                String name = file.getFileName().toString();
+                if (name.endsWith(ObjectTypeUtils.OBJECT_TEMP_FILE_SUFFIX)
+                    || name.endsWith(ObjectTypeUtils.OBJECT_BACK_FILE_SUFFIX)
+                    || !name.endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX)) {
+                  return FileVisitResult.CONTINUE;
                 }
+                if (ObjectPathNaming.parseVersion(name) != version) {
+                  return FileVisitResult.CONTINUE;
+                }
+                try {
+                  processor.registerObjectPath(
+                      IObjectPath.fromRelativePath(rootPath.relativize(file).toString()));
+                } catch (Exception ignored) {
+                  // skip names that cannot be parsed as object paths
+                }
+                return FileVisitResult.CONTINUE;
               }
             });
       } catch (IOException e) {
         DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-        throw e;
+        logger.warn(
+            StorageEngineMessages
+                .LOG_FAILED_TO_RECOVER_OBJECT_SIDECAR_FOR_TSFILE_PROCESSOR_VERSION_ARG_IN_DATA_REGION_ARG_ARG_1D7286B9,
+            version,
+            databaseName,
+            dataRegionIdString,
+            e);
       }
+    }
+  }
+
+  private void unlinkObjectPath(IObjectPath path) {
+    if (path == null || path.getTime() < 0) {
+      return;
+    }
+    long timePartition = TimePartitionUtils.getTimePartitionId(path.getTime());
+    String tableName = path.getDeviceID().getTableName();
+    String relative = path.toString();
+    String tmpRelative = ObjectPathNaming.toTempRelativePath(relative, path.getTime());
+    String backRelative = ObjectPathNaming.toBackRelativePath(relative, path.getTime());
+    for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
+      File bin = fsFactory.getFile(objectDir, relative);
+      File tmp = fsFactory.getFile(objectDir, tmpRelative);
+      File back = fsFactory.getFile(objectDir, backRelative);
+      try {
+        if (bin.exists()) {
+          ObjectTypeUtils.deleteObjectPath(
+              databaseName, dataRegionId.getId(), timePartition, tableName, bin);
+        }
+        fsFactory.deleteIfExists(tmp);
+        fsFactory.deleteIfExists(back);
+      } catch (IOException e) {
+        objectDeletionLogger.error(StorageEngineMessages.FAILED_TO_REMOVE_OBJECT_FILE, bin, e);
+      }
+    }
+  }
+
+  private Map<Long, Long> snapshotExclusiveObjectVersions() {
+    Map<Long, Long> exclusive = new HashMap<>();
+    for (Map.Entry<Long, Long> entry : partitionMaxFileVersions.entrySet()) {
+      exclusive.put(entry.getKey(), entry.getValue() + 1);
+    }
+    for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+      exclusive.merge(
+          entry.getKey(), entry.getValue().getTsFileResource().getVersion() + 1, Math::max);
+    }
+    for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+      exclusive.merge(
+          entry.getKey(), entry.getValue().getTsFileResource().getVersion() + 1, Math::max);
+    }
+    return exclusive;
+  }
+
+  private Map<Long, Set<Long>> snapshotProtectedObjectVersions() {
+    Map<Long, Set<Long>> protectedVersions = new HashMap<>();
+    for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
+      protectedVersions
+          .computeIfAbsent(entry.getKey(), key -> new HashSet<>())
+          .add(entry.getValue().getTsFileResource().getVersion());
+    }
+    for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
+      protectedVersions
+          .computeIfAbsent(entry.getKey(), key -> new HashSet<>())
+          .add(entry.getValue().getTsFileResource().getVersion());
+    }
+    return protectedVersions;
+  }
+
+  private void enqueueObjectGcAfterSealedDelete(
+      List<File> dropTableDirs,
+      List<TableDeletionEntry> modEntries,
+      Map<Long, Long> exclusiveUpperByPartition,
+      Map<Long, Set<Long>> protectedVersionsByPartition) {
+    if (objectGcJournal == null) {
+      return;
+    }
+    try {
+      if (!dropTableDirs.isEmpty()) {
+        List<String> dirs = new ArrayList<>(dropTableDirs.size());
+        for (File dir : dropTableDirs) {
+          dirs.add(dir.getPath());
+        }
+        objectGcJournal.append(ObjectGcRecord.dropTable(objectGcTaskId.incrementAndGet(), dirs));
+      } else {
+        for (TableDeletionEntry entry : modEntries) {
+          objectGcJournal.append(
+              ObjectGcRecord.scan(
+                  objectGcTaskId.incrementAndGet(),
+                  entry,
+                  exclusiveUpperByPartition,
+                  protectedVersionsByPartition));
+        }
+      }
+      if (objectGcWorker != null) {
+        objectGcWorker.signal();
+      }
+    } catch (IOException e) {
+      logger.warn(
+          StorageEngineMessages
+              .LOG_FAILED_TO_APPEND_OBJECT_GC_JOURNAL_FOR_DATA_REGION_ARG_ARG_EAC61325,
+          databaseName,
+          dataRegionIdString,
+          e);
+    }
+  }
+
+  private void startObjectGc() {
+    if (dataRegionSysDir == null) {
+      return;
+    }
+    try {
+      objectGcJournal = new ObjectGcJournal(dataRegionSysDir);
+      objectGcWorker = new ObjectGcWorker(databaseName, dataRegionIdString, objectGcJournal);
+      objectGcExecutor =
+          IoTDBThreadPoolFactory.newSingleThreadExecutor(
+              ThreadName.OBJECT_GC.getName() + "-" + databaseName + "-" + dataRegionIdString);
+      objectGcExecutor.execute(objectGcWorker);
+      logger.info(
+          StorageEngineMessages
+              .LOG_OBJECT_GC_JOURNAL_RECOVERED_FROM_CHECKPOINT_SEQ_ARG_OFFSET_ARG_FOR_DATA_REGION_ARG_ARG_F4C0858F,
+          objectGcJournal.getCheckpointSeq(),
+          objectGcJournal.getCheckpointOffset(),
+          databaseName,
+          dataRegionIdString);
+    } catch (IOException e) {
+      logger.warn(
+          StorageEngineMessages.LOG_FAILED_TO_START_OBJECT_GC_FOR_DATA_REGION_ARG_ARG_A0F04176,
+          databaseName,
+          dataRegionIdString,
+          e);
+    }
+  }
+
+  private void stopObjectGc() {
+    if (objectGcWorker != null) {
+      objectGcWorker.stop();
+    }
+    if (objectGcExecutor != null) {
+      objectGcExecutor.shutdownNow();
+      objectGcExecutor = null;
+    }
+    if (objectGcJournal != null) {
+      try {
+        objectGcJournal.close();
+      } catch (IOException e) {
+        logger.warn(
+            StorageEngineMessages.LOG_FAILED_TO_START_OBJECT_GC_FOR_DATA_REGION_ARG_ARG_A0F04176,
+            databaseName,
+            dataRegionIdString,
+            e);
+      }
+      objectGcJournal = null;
     }
   }
 
@@ -3677,7 +3816,8 @@ public class DataRegion implements IDataRegionForQuery {
             try {
               if (!tsFileProcessor.deleteDataInMemory(deletion)) {
                 sealedTsFiles.add(tsFileResource);
-              } // else do nothing
+              }
+              unlinkSidecarObjectFiles(tsFileProcessor, deletion);
             } finally {
               tsFileProcessor.writeUnlock();
             }
@@ -4329,7 +4469,8 @@ public class DataRegion implements IDataRegionForQuery {
     final boolean isGeneratedByPipe = objectNode.isGeneratedByPipe();
     try {
       String relativeTmpPathString =
-          objectNode.getFilePathString() + ObjectTypeUtils.OBJECT_TEMP_FILE_SUFFIX;
+          ObjectPathNaming.toTempRelativePath(
+              objectNode.getFilePathString(), objectNode.getFilePath().getTime());
       String objectFileDir = null;
       File objectTmpFile = null;
       for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
@@ -4352,14 +4493,26 @@ public class DataRegion implements IDataRegionForQuery {
             objectNode.getContent());
       }
       if (objectNode.isEOF()) {
+        long time = objectNode.getFilePath().getTime();
+        long timePartition = TimePartitionUtils.getTimePartitionId(time);
+        initFlushTimeMap(timePartition);
+        boolean isSequence =
+            config.isEnableSeparateData()
+                && time
+                    > lastFlushTimeMap.getFlushedTime(
+                        timePartition, objectNode.getFilePath().getDeviceID());
+        TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartition, isSequence);
+        if (!objectNode.getFilePath().hasTsFileVersion() && tsFileProcessor != null) {
+          objectNode.setFilePath(
+              objectNode
+                  .getFilePath()
+                  .withTsFileVersion(tsFileProcessor.getTsFileResource().getVersion()));
+        }
         File objectFile =
             FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePathString());
-        long timePartition =
-            TimePartitionUtils.getTimePartitionId(
-                Long.parseLong(objectFile.getName().split("\\.")[0]));
         if (objectFile.exists()) {
           String relativeBackPathString =
-              objectNode.getFilePathString() + ObjectTypeUtils.OBJECT_BACK_FILE_SUFFIX;
+              ObjectPathNaming.toBackRelativePath(objectNode.getFilePathString(), time);
           File objectBackFile =
               FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeBackPathString);
           Files.move(
@@ -4397,18 +4550,23 @@ public class DataRegion implements IDataRegionForQuery {
           // insertion failed, skip following metric update
           return;
         }
+        if (tsFileProcessor != null) {
+          tsFileProcessor.registerObjectPath(objectNode.getFilePath());
+        }
         long fileLength = objectFile.length();
         FileMetrics.getInstance().increaseObjectFileNum(databaseName, dataRegionIdString, 1);
         FileMetrics.getInstance()
             .increaseObjectFileSize(databaseName, dataRegionIdString, fileLength);
+        String tableName = objectNode.getFilePath().getDeviceID().getTableName();
         TableDiskUsageIndex.getInstance()
             .writeObjectDelta(
                 databaseName,
                 Integer.parseInt(dataRegionIdString),
                 timePartition,
-                objectNode.getFilePath().getDeviceID().getTableName(),
+                tableName,
                 fileLength,
                 1);
+        deleteOlderObjectVersions(objectNode.getFilePath(), timePartition, tableName);
       }
       getWALNode()
           .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
@@ -4448,6 +4606,70 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     return false;
+  }
+
+  /**
+   * After a new OBJECT {@code .bin} is installed, drop older versions of the same (device,
+   * measurement, time) on every tier, including legacy {@code {time}.bin}.
+   */
+  private void deleteOlderObjectVersions(
+      IObjectPath newPath, long timePartition, String tableName) {
+    long time = newPath.getTime();
+    long newVersion = newPath.getTsFileVersion();
+    Path parentRel = newPath.getPath().getParent();
+    if (parentRel == null) {
+      return;
+    }
+    for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
+      File parent = fsFactory.getFile(objectDir, parentRel.toString());
+      File[] children = listObjectSiblings(parent);
+      if (children == null) {
+        continue;
+      }
+      for (File stale : children) {
+        String name = ObjectPathNaming.baseFileName(stale.getPath());
+        if (!ObjectTypeUtils.isObjectCandidate(name)) {
+          continue;
+        }
+        if (ObjectPathNaming.parseTime(name) != time) {
+          continue;
+        }
+        long version = ObjectPathNaming.parseVersion(name);
+        boolean older =
+            version == ObjectPathNaming.LEGACY_VERSION
+                || (newVersion != ObjectPathNaming.LEGACY_VERSION && version < newVersion);
+        if (!older) {
+          continue;
+        }
+        try {
+          if (name.endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX) && stale.exists()) {
+            ObjectTypeUtils.deleteObjectPath(
+                databaseName, dataRegionId.getId(), timePartition, tableName, stale);
+          } else {
+            fsFactory.deleteIfExists(stale);
+          }
+        } catch (IOException e) {
+          objectDeletionLogger.error(StorageEngineMessages.FAILED_TO_REMOVE_OBJECT_FILE, stale, e);
+        }
+      }
+    }
+  }
+
+  /**
+   * List {@code .bin}/{@code .tmp}/{@code .back} siblings of an object column directory. Local dirs
+   * use {@code File.listFiles()}; OBJECT_STORAGE lists once with an empty suffix (matches all keys
+   * under the prefix) because {@code OSFile.listFiles} is unsupported and a non-empty suffix would
+   * re-list the same prefix three times.
+   */
+  private File[] listObjectSiblings(File parent) {
+    if (parent == null) {
+      return null;
+    }
+    if (FSUtils.getFSType(parent) == FSType.LOCAL) {
+      return parent.listFiles();
+    }
+    // Empty suffix → endsWith("") is always true; one ListObjects covers .bin/.tmp/.back.
+    return fsFactory.listFilesBySuffix(parent.getPath(), "");
   }
 
   /**
@@ -4741,11 +4963,7 @@ public class DataRegion implements IDataRegionForQuery {
                       final String fileName = subPathWithoutRegion.getFileName().toString();
                       final long timePartition =
                           TimePartitionUtils.getTimePartitionId(
-                              Long.parseLong(
-                                  fileName.substring(
-                                      0,
-                                      fileName.length()
-                                          - ObjectTypeUtils.OBJECT_FILE_SUFFIX.length())));
+                              ObjectPathNaming.parseTime(fileName));
 
                       final Path newRelativePath =
                           Paths.get(dataRegionId).resolve(subPathWithoutRegion);
@@ -5765,6 +5983,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("markDeleted");
     try {
       deleted = true;
+      stopObjectGc();
       releaseDirectBufferMemory();
       MetricService.getInstance().removeMetricSet(metrics);
       deletedCondition.signalAll();

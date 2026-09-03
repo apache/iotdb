@@ -20,6 +20,7 @@
 package com.timecho.iotdb.calc.storageengine.dataregion;
 
 import org.apache.iotdb.calc.utils.IObjectPath;
+import org.apache.iotdb.calc.utils.ObjectPathNaming;
 
 import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -79,8 +80,7 @@ public class Base32ObjectPath implements IObjectPath {
         new String(
             BaseEncoding.base32().omitPadding().decode(more[more.length - 2]),
             StandardCharsets.UTF_8);
-    timestamp =
-        Long.parseLong(more[more.length - 1].substring(0, more[more.length - 1].indexOf('.')));
+    timestamp = ObjectPathNaming.parseTime(more[more.length - 1]);
     path = Paths.get(first, more);
   }
 
@@ -104,8 +104,7 @@ public class Base32ObjectPath implements IObjectPath {
                 .omitPadding()
                 .decode(path.getName(path.getNameCount() - 2).toString()),
             StandardCharsets.UTF_8);
-    String fileName = path.getFileName().toString();
-    timestamp = Long.parseLong(fileName.substring(0, fileName.indexOf('.')));
+    timestamp = ObjectPathNaming.parseTime(path.getFileName().toString());
     this.path = path;
   }
 

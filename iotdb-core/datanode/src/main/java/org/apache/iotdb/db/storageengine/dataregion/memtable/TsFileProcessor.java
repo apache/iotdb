@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.calc.utils.IObjectPath;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -113,6 +114,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
@@ -216,6 +218,9 @@ public class TsFileProcessor {
 
   /** Flush file listener. */
   private final List<FlushListener> flushListeners = new ArrayList<>();
+
+  /** OBJECT {@code .bin} paths written into this unsealed processor (cleared on close). */
+  private final Set<IObjectPath> objectPaths = ConcurrentHashMap.newKeySet();
 
   private final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
       QueryExecutionMetricSet.getInstance();
@@ -2111,6 +2116,7 @@ public class TsFileProcessor {
     dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
 
     writer = null;
+    objectPaths.clear();
   }
 
   /** End empty file and remove it from file system */
@@ -2131,6 +2137,7 @@ public class TsFileProcessor {
         tsFileResource.getTsFile().getAbsoluteFile());
 
     writer = null;
+    objectPaths.clear();
   }
 
   public boolean isManagedByFlushManager() {
@@ -2702,6 +2709,26 @@ public class TsFileProcessor {
 
   public void writeUnlock() {
     flushQueryLock.writeLock().unlock();
+  }
+
+  public void registerObjectPath(IObjectPath path) {
+    if (path != null) {
+      objectPaths.add(path);
+    }
+  }
+
+  public List<IObjectPath> removeAffectedObjectPaths(ModEntry deletion) {
+    List<IObjectPath> removed = new ArrayList<>();
+    Iterator<IObjectPath> iterator = objectPaths.iterator();
+    while (iterator.hasNext()) {
+      IObjectPath path = iterator.next();
+      if (deletion.affects(path.getDeviceID(), path.getTime(), path.getTime())
+          && deletion.affects(path.getMeasurement())) {
+        removed.add(path);
+        iterator.remove();
+      }
+    }
+    return removed;
   }
 
   public boolean tryReadLock(long waitInMs) throws InterruptedException {

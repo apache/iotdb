@@ -1503,4 +1503,31 @@ public final class StorageEngineMessages {
       "配置项 '%s' 在本版本中不可用，无法设置。";
   public static final String STORAGE_LOG_CLEARED_BINARY_ARRAY_REFERENCES_BEFORE_RETURNING_TO_PRIMITIVEARRAYMANAGER_LENGTH_ARG_225E8464 =
       "已在归还 PrimitiveArrayManager 前清空 Binary 数组引用，长度为 {}。";
+
+  public static final String LOG_START_OBJECT_GC_WORKER_FOR_DATA_REGION_ARG_ARG_A61D2B19 =
+      "启动 data region {}-{} 的 object GC worker";
+  public static final String LOG_STOP_OBJECT_GC_WORKER_FOR_DATA_REGION_ARG_ARG_EFE4BDF6 =
+      "停止 data region {}-{} 的 object GC worker";
+  public static final String LOG_FAILED_TO_APPEND_OBJECT_GC_JOURNAL_FOR_DATA_REGION_ARG_ARG_EAC61325 =
+      "向 data region {}-{} 追加 object GC journal 失败";
+  public static final String LOG_FAILED_TO_PROCESS_OBJECT_GC_RECORD_TYPE_ARG_FOR_DATA_REGION_ARG_ARG_8C49E9B9 =
+      "处理 object GC 记录（类型 {}）失败，data region {}-{}";
+  public static final String LOG_FAILED_TO_DELETE_OBJECT_FILE_ARG_DURING_OBJECT_GC_74AE0729 =
+      "object GC 期间删除 object 文件 {} 失败";
+  public static final String LOG_FAILED_TO_START_OBJECT_GC_FOR_DATA_REGION_ARG_ARG_A0F04176 =
+      "启动 data region {}-{} 的 object GC 失败";
+  public static final String LOG_OBJECT_GC_JOURNAL_RECOVERED_FROM_CHECKPOINT_SEQ_ARG_OFFSET_ARG_FOR_DATA_REGION_ARG_ARG_F4C0858F =
+      "object GC journal 已从 checkpoint seq {} offset {} 恢复，data region {}-{}";
+  public static final String EXCEPTION_CANNOT_CREATE_OBJECT_GC_DIR_ARG_055D7364 =
+      "无法创建 object-gc 目录：%s";
+  public static final String EXCEPTION_CANNOT_CREATE_OBJECT_GC_TOMBSTONE_DIR_ARG_8E11E07B =
+      "无法创建 object-gc 墓碑目录：%s";
+  public static final String EXCEPTION_OBJECT_TABLE_DIR_PARENT_IS_MISSING_ARG_8F41142A =
+      "object 表目录缺少父目录：%s";
+  public static final String EXCEPTION_FAILED_TO_RENAME_OBJECT_TABLE_DIR_ARG_TO_ARG_5DFF237E =
+      "将 object 表目录 %s 重命名为 %s 失败";
+  public static final String
+      LOG_FAILED_TO_RECOVER_OBJECT_SIDECAR_FOR_TSFILE_PROCESSOR_VERSION_ARG_IN_DATA_REGION_ARG_ARG_1D7286B9 =
+          "恢复 TsFile processor version {} 的 object sidecar 失败，data region {}-{}";
+
 }
