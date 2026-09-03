@@ -258,7 +258,7 @@ public class IoTDBConfig {
 
   /**
    * Maximum DeviceEntry bytes kept in memory before a table-query spill, capped by the effective
-   * Thrift frame size.
+   * Thrift frame size minus 1 KiB reserved for the RPC response envelope.
    */
   private long tableQueryDeviceEntryBatchSizeInBytes;
 

@@ -2448,7 +2448,7 @@ include_null_value_in_write_throughput_metric=false
 
 # Maximum DeviceEntry bytes retained in memory before spilling for a table query.
 # <= 0 uses query execution memory / query_thread_count / 4.
-# The effective value is capped by dn_thrift_max_frame_size.
+# The effective value is capped by dn_thrift_max_frame_size minus 1024 bytes reserved for the RPC response envelope.
 # effectiveMode: hot_reload
 # Datatype: long
 table_query_device_entry_batch_size_in_bytes=0

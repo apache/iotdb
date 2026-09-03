@@ -120,6 +120,8 @@ public class IoTDBDescriptor {
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
+  private static final long DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES = 1024;
+
   private static final String[] DEFAULT_WAL_THRESHOLD_NAME = {
     "iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte"
   };
@@ -2448,14 +2450,17 @@ public class IoTDBDescriptor {
               / memoryConfig.getQueryThreadCount()
               / 4;
     }
-    long effectiveBatchSize = Math.min(deviceEntryBatchSize, conf.getThriftMaxFrameSize());
-    if (deviceEntryBatchSize > conf.getThriftMaxFrameSize()) {
+    long maxBatchSize =
+        Math.max(1, conf.getThriftMaxFrameSize() - DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES);
+    long effectiveBatchSize = Math.min(deviceEntryBatchSize, maxBatchSize);
+    if (deviceEntryBatchSize > maxBatchSize) {
       LOGGER.warn(
-          DataNodeMiscMessages
-              .LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA,
-          deviceEntryBatchSize,
-          conf.getThriftMaxFrameSize(),
-          effectiveBatchSize);
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA,
+              deviceEntryBatchSize,
+              conf.getThriftMaxFrameSize(),
+              effectiveBatchSize));
     }
     conf.setTableQueryDeviceEntryBatchSizeInBytes(effectiveBatchSize);
   }

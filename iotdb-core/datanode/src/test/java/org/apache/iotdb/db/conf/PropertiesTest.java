@@ -50,14 +50,14 @@ public class PropertiesTest {
 
     try {
       final TrimProperties properties = new TrimProperties();
-      properties.setProperty("dn_thrift_max_frame_size", "1024");
-      properties.setProperty("table_query_device_entry_batch_size_in_bytes", "2048");
+      properties.setProperty("dn_thrift_max_frame_size", "4096");
+      properties.setProperty("table_query_device_entry_batch_size_in_bytes", "8192");
       descriptor.loadProperties(properties);
 
-      Assert.assertEquals(1024, config.getThriftMaxFrameSize());
-      Assert.assertEquals(1024, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(4096, config.getThriftMaxFrameSize());
+      Assert.assertEquals(3072, config.getTableQueryDeviceEntryBatchSizeInBytes());
       Assert.assertEquals(
-          "1024",
+          "3072",
           ConfigurationFileUtils.getAppliedProperties()
               .get("table_query_device_entry_batch_size_in_bytes"));
     } finally {
@@ -77,14 +77,14 @@ public class PropertiesTest {
     final long originalBatchSize = config.getTableQueryDeviceEntryBatchSizeInBytes();
 
     try {
-      config.setThriftMaxFrameSize(1024);
+      config.setThriftMaxFrameSize(4096);
       final TrimProperties properties = new TrimProperties();
       properties.setProperty("table_query_device_entry_batch_size_in_bytes", "2048");
       descriptor.loadHotModifiedProps(properties);
 
-      Assert.assertEquals(1024, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(3072, config.getTableQueryDeviceEntryBatchSizeInBytes());
       Assert.assertEquals(
-          "1024",
+          "3072",
           ConfigurationFileUtils.getAppliedProperties()
               .get("table_query_device_entry_batch_size_in_bytes"));
 
