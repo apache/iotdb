@@ -286,12 +286,14 @@ public class TSBSMetadata implements Metadata {
   @Override
   public DeviceEntryDataSetResult indexScan(
       QualifiedObjectName tableName,
+      Optional<QualifiedObjectName> authorizationTableName,
       List<Expression> expressionList,
       List<String> attributeColumns,
       MPPQueryContext context,
       PlanNodeId planNodeId) {
     final Map<String, List<DeviceEntry>> deviceEntries =
-        indexScanEntries(tableName, expressionList, attributeColumns, context);
+        indexScanEntries(
+            tableName, authorizationTableName, expressionList, attributeColumns, context);
     final String database = deviceEntries.keySet().iterator().next();
     return new DeviceEntryDataSetResult(
         database, new InMemoryDeviceEntryDataSet(deviceEntries.get(database)), false);

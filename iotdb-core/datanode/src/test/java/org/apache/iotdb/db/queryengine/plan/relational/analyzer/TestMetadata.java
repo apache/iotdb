@@ -339,12 +339,14 @@ public class TestMetadata implements Metadata {
   @Override
   public DeviceEntryDataSetResult indexScan(
       final QualifiedObjectName tableName,
+      Optional<QualifiedObjectName> authorizationTableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
       final MPPQueryContext context,
       final PlanNodeId planNodeId) {
     final Map<String, List<DeviceEntry>> deviceEntries =
-        indexScanEntries(tableName, expressionList, attributeColumns, context);
+        indexScanEntries(
+            tableName, authorizationTableName, expressionList, attributeColumns, context);
     final String database = deviceEntries.keySet().iterator().next();
     final List<DeviceEntry> entries = deviceEntries.get(database);
     return new DeviceEntryDataSetResult(

@@ -267,6 +267,7 @@ public class TableDeviceSchemaFetcher {
   public DeviceEntryDataSetResult fetchDeviceSchemaForDataQueryAsDataSet(
       final String database,
       final String table,
+      final Optional<QualifiedObjectName> authorizationTableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
       final MPPQueryContext queryContext,
@@ -274,7 +275,10 @@ public class TableDeviceSchemaFetcher {
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     final DeviceEntryFetchContext fetchContext =
         new DeviceEntryFetchContext(queryContext, planNodeId);
+
     final ShowDevice statement = new ShowDevice(database, table);
+    authorizationTableName.ifPresent(statement::setAuthorizationTableName);
+
     final Map<String, List<DeviceEntry>> deviceEntryMap = new HashMap<>();
     if (!TreeViewSchema.isTreeViewTable(tableInstance)) {
       deviceEntryMap.put(database, new ArrayList<>());
