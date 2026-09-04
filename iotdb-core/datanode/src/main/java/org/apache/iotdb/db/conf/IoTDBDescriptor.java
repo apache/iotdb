@@ -2641,7 +2641,6 @@ public class IoTDBDescriptor {
             .map(String::trim)
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
-    conf.validateCopyToAllowedExportDirs();
 
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
@@ -2780,7 +2779,6 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
-    final String[] previousCopyToAllowedExportDirs = conf.getCopyToAllowedExportDirs().clone();
     conf.setCopyToAllowedExportDirs(
         Arrays.stream(
                 properties
@@ -2792,13 +2790,6 @@ public class IoTDBDescriptor {
             .map(String::trim)
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
-    try {
-      conf.validateCopyToAllowedExportDirs();
-    } catch (RuntimeException e) {
-      conf.setCopyToAllowedExportDirs(previousCopyToAllowedExportDirs);
-      throw e;
-    }
-
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(
             properties.getProperty(

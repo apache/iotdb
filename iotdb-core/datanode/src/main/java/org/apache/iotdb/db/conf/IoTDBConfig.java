@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -48,7 +47,6 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -4365,39 +4363,6 @@ public class IoTDBConfig {
             .filter(dir -> !dir.isEmpty())
             .map(IoTDBConfig::addDataHomeDir)
             .toArray(String[]::new);
-  }
-
-  public void validateCopyToAllowedExportDirs() {
-    try {
-      for (final String allowedExportDir : copyToAllowedExportDirs) {
-        final Path allowedExportPath = new File(allowedExportDir).getCanonicalFile().toPath();
-        for (final String activeLoadDir : getLoadActiveListeningDirs()) {
-          validateCopyToDirectoryOverlap(allowedExportPath, activeLoadDir);
-        }
-        validateCopyToDirectoryOverlap(allowedExportPath, getLoadActiveListeningPipeDir());
-      }
-    } catch (IOException e) {
-      throw new IoTDBRuntimeException(
-          DataNodeMiscMessages
-              .MISC_EXCEPTION_FAILED_TO_CANONICALIZE_COPY_TO_ALLOWED_EXPORT_DIR_70EB7BF1,
-          e,
-          TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
-    }
-  }
-
-  private void validateCopyToDirectoryOverlap(
-      final Path allowedExportPath, final String activeLoadDir) throws IOException {
-    final Path activeLoadPath = new File(activeLoadDir).getCanonicalFile().toPath();
-    if (allowedExportPath.startsWith(activeLoadPath)
-        || activeLoadPath.startsWith(allowedExportPath)) {
-      throw new IoTDBRuntimeException(
-          String.format(
-              DataNodeMiscMessages
-                  .MISC_EXCEPTION_COPY_TO_ALLOWED_EXPORT_DIR_OVERLAPS_ACTIVE_LOAD_DIR_DAACF086,
-              allowedExportPath),
-          TSStatusCode.CONFIGURATION_ERROR.getStatusCode(),
-          true);
-    }
   }
 
   public boolean getLoadActiveListeningEnable() {

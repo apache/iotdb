@@ -2416,7 +2416,8 @@ load_active_listening_check_interval_seconds=5
 # should be separated by a ','.
 # Empty (the default) rejects such paths; a target consisting of a bare file name is always
 # accepted and lands in the managed 'copyto' folder under the data directories. The configured
-# directories must not overlap load_active_listening_dirs or load_active_listening_pipe_dir.
+# directories are used as the COPY TO allowlist; directory layout and any overlap with other
+# configured directories are the administrator's responsibility.
 # effectiveMode: hot_reload
 # Datatype: String
 # Privilege: SECURITY

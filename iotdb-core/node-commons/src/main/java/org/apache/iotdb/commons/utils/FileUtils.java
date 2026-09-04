@@ -330,25 +330,16 @@ public class FileUtils {
   }
 
   /**
-   * Checks whether a target path is under one of the allowed directories and none of the forbidden
-   * directories after canonicalization.
+   * Checks whether a target path is under one of the allowed directories after canonicalization.
    *
    * <p>The method returns {@code false} if any path cannot be canonicalized.
    */
-  public static boolean isFilePathAllowed(
-      String targetFilePath, String[] allowedDirectories, String[] forbiddenDirectories) {
-    if (targetFilePath == null || allowedDirectories == null || forbiddenDirectories == null) {
+  public static boolean isFilePathAllowed(String targetFilePath, String[] allowedDirectories) {
+    if (targetFilePath == null || allowedDirectories == null) {
       return false;
     }
     try {
       final Path targetPath = new File(targetFilePath).getCanonicalFile().toPath();
-      for (String forbiddenDirectory : forbiddenDirectories) {
-        if (forbiddenDirectory != null
-            && !forbiddenDirectory.isEmpty()
-            && targetPath.startsWith(new File(forbiddenDirectory).getCanonicalFile().toPath())) {
-          return false;
-        }
-      }
       for (String allowedDirectory : allowedDirectories) {
         if (allowedDirectory != null
             && !allowedDirectory.isEmpty()

@@ -1355,10 +1355,6 @@ public final class DataNodeMiscMessages {
       "首次启动后不允许修改 TsFile 加密类型或密钥。token hint 信息：%s";
   public static final String MISC_EXCEPTION_FAIL_TO_RELOAD_CONFIG_FILE_S_BECAUSE_S_93CCAB8D =
       "无法重新加载配置文件 %s，原因：%s";
-  public static final String MISC_EXCEPTION_FAILED_TO_CANONICALIZE_COPY_TO_ALLOWED_EXPORT_DIR_70EB7BF1 =
-      "无法获取 COPY TO 允许导出目录的规范路径：%s";
-  public static final String MISC_EXCEPTION_COPY_TO_ALLOWED_EXPORT_DIR_OVERLAPS_ACTIVE_LOAD_DIR_DAACF086 =
-      "COPY TO 允许导出目录与 active load 目录重叠：%s";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962 =
       "配置项 udf_reader_transformer_collector_memory_proportion 的每个子项都应为整数，当前为 %s";
   public static final String

@@ -252,7 +252,6 @@ import org.apache.tsfile.utils.Pair;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1324,12 +1323,7 @@ public class StatementAnalyzer {
       final File targetFile = new File(targetFilePath);
       if (targetFile.getParent() != null) {
         final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        final String[] activeLoadDirectories = config.getLoadActiveListeningDirs();
-        final String[] forbiddenDirectories =
-            Arrays.copyOf(activeLoadDirectories, activeLoadDirectories.length + 1);
-        forbiddenDirectories[activeLoadDirectories.length] = config.getLoadActiveListeningPipeDir();
-        if (!FileUtils.isFilePathAllowed(
-            targetFilePath, config.getCopyToAllowedExportDirs(), forbiddenDirectories)) {
+        if (!FileUtils.isFilePathAllowed(targetFilePath, config.getCopyToAllowedExportDirs())) {
           throw new IoTDBRuntimeException(
               DataNodeQueryMessages.COPY_TO_TARGET_PATH_NOT_ALLOWED + targetFilePath,
               TSStatusCode.COPY_TO_WRITE_ERROR.getStatusCode(),
