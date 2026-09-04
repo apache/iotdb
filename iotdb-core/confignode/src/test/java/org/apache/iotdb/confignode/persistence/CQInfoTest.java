@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -36,6 +37,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
@@ -158,5 +161,148 @@ public class CQInfoTest {
 
     Assert.assertEquals(1, showCQResp.getCqList().size());
     Assert.assertEquals("testCq4", showCQResp.getCqList().get(0).getCqId());
+  }
+
+  @Test
+  public void testOccurrenceIndexCasFencesOutOfOrderCallbacks() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "indexedCq",
+            1000,
+            0,
+            1000,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq indexedCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1000));
+    req.setStartOffsetDuration(new TCQDuration(0, 1000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "indexedToken", 1000)).getCode());
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan("indexedCq", 1000, "indexedToken", 1, 2))
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan("indexedCq", 2000, "indexedToken", 1, 2))
+            .getCode());
+  }
+
+  @Test
+  public void testMixedCalendarDurationUsesStructuredFixedEveryForLastExecution() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "mixedFixedEveryCq",
+            0,
+            0,
+            0,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq mixedFixedEveryCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1_000));
+    req.setStartOffsetDuration(new TCQDuration(1, 1_000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "mixedFixedEveryToken", 10_000)).getCode());
+
+    CQInfo.CQEntry entry = cqInfo.showCQ(new ShowCQPlan("mixedFixedEveryCq")).getCqList().get(0);
+    Assert.assertEquals(9_000, entry.getLastExecutionTime());
+    Assert.assertEquals(10, entry.getNextOccurrenceIndex());
+  }
+
+  @Test
+  public void testFixedVersionedDurationKeepsLegacyZoneOpaque() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "fixedVersionedCq",
+            1_000,
+            0,
+            1_000,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq fixedVersionedCq",
+            "Asia",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1_000));
+    req.setStartOffsetDuration(new TCQDuration(0, 1_000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(false);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "fixedVersionedToken", 10_000)).getCode());
+  }
+
+  @Test
+  public void testCalendarOccurrenceProgressSurvivesSnapshotRecovery() throws Exception {
+    File calendarSnapshotDir = new File(BASE_OUTPUT_PATH, "snapshot-calendar");
+    if (calendarSnapshotDir.exists()) {
+      FileUtils.deleteDirectory(calendarSnapshotDir);
+    }
+    calendarSnapshotDir.mkdirs();
+
+    ZoneId zone = ZoneId.of("UTC");
+    long boundary = ZonedDateTime.of(2024, 1, 31, 0, 0, 0, 0, zone).toInstant().toEpochMilli();
+    long firstOccurrence =
+        ZonedDateTime.of(2024, 2, 29, 0, 0, 0, 0, zone).toInstant().toEpochMilli();
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "snapshotCalendarCq",
+            0,
+            boundary,
+            0,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq snapshotCalendarCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(1, 0));
+    req.setStartOffsetDuration(new TCQDuration(1, 0));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "snapshotCalendarToken", firstOccurrence)).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan(
+                    "snapshotCalendarCq", firstOccurrence, "snapshotCalendarToken", 1, 2))
+            .getCode());
+
+    cqInfo.processTakeSnapshot(calendarSnapshotDir);
+    CQInfo restored = new CQInfo();
+    restored.processLoadSnapshot(calendarSnapshotDir);
+
+    ShowCQResp response = restored.showCQ(new ShowCQPlan("snapshotCalendarCq"));
+    Assert.assertEquals(1, response.getCqList().size());
+    Assert.assertEquals(2, response.getCqList().get(0).getNextOccurrenceIndex());
+    Assert.assertEquals(firstOccurrence, response.getCqList().get(0).getLastExecutionTime());
+    FileUtils.deleteDirectory(calendarSnapshotDir);
   }
 }

@@ -702,4 +702,40 @@ public final class ManagerMessages {
       MESSAGE_ARG_PLEASE_MANUALLY_CHECK_LATER_WHETHER_THE_PROCEDURE_IS_EXECUTED_SUCCESSFULLY_A82B739D =
           "%s Please manually check later whether the procedure is executed successfully.";
 
+  public static final String EXCEPTION_CQ_EVERY_DURATION_MUST_BE_POSITIVE_69C29D26 =
+      "CQ EVERY duration must be positive";
+  public static final String MESSAGE_CQ_START_OFFSET_MUST_BE_POSITIVE_B837C4F5 =
+      "CQ start offset must be positive";
+  public static final String MESSAGE_CQ_END_OFFSET_MUST_BE_NON_NEGATIVE_64171164 =
+      "CQ end offset must be non-negative";
+  public static final String MESSAGE_CQ_START_OFFSET_MUST_BE_GREATER_THAN_END_OFFSET_5924C189 =
+      "CQ start offset must be greater than end offset";
+  public static final String
+      MESSAGE_CQ_START_OFFSET_MUST_BE_GREATER_THAN_OR_EQUAL_TO_EVERY_DURATION_89628D43 =
+          "CQ start offset must be greater than or equal to EVERY duration";
+  public static final String EXCEPTION_CQ_TIMESTAMP_OVERFLOWS_CONFIGURED_PRECISION_F5FB230C =
+      "CQ timestamp overflows configured precision";
+  public static final String
+      MESSAGE_INVALID_CQ_DURATION_ENCODING_VERSION_1_REQUIRES_ALL_STRUCTURED_FIELDS_FEAD7F92 =
+          "Invalid CQ duration encoding; version 1 requires all structured fields";
+  public static final String MESSAGE_CQ_DURATIONS_MUST_BE_NON_NEGATIVE_BE23CE04 =
+      "CQ durations must be non-negative";
+  public static final String
+      MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67 =
+          "CQ legacy duration fields conflict with structured duration fields";
+  public static final String MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_49534072 =
+      "CQ calendar duration requires all cluster nodes to support duration encoding version 1";
+  public static final String MESSAGE_CQ_DURATION_ENCODING_MARKER_REQUIRED_9035980A =
+      "CQ duration encoding marker is required for new requests";
+  public static final String MESSAGE_CQ_DOES_NOT_HAVE_OCCURRENCE_INDEX_METADATA_929A7F0C =
+      "CQ does not have occurrence-index metadata";
+  public static final String MESSAGE_CQ_OCCURRENCE_CALLBACK_IS_STALE_36C5FBFC =
+      "CQ occurrence callback is stale";
+  public static final String MESSAGE_CQ_OCCURRENCE_INDEX_IS_AHEAD_OF_THE_CALLBACK_8A18ECC9 =
+      "CQ occurrence index is ahead of the callback";
+  public static final String EXCEPTION_INVALID_CQ_OCCURRENCE_INDEX_TRANSITION_AC6BFC4D =
+      "Invalid CQ occurrence index transition";
+  public static final String EXCEPTION_NEGATIVE_CQ_SNAPSHOT_ENTRY_COUNT_ARG_38750035 =
+      "Negative CQ snapshot entry count: %d";
+
 }

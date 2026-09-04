@@ -112,6 +112,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -156,6 +157,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
@@ -4163,18 +4165,53 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final boolean hasCalendarDuration =
+          createContinuousQueryStatement.getEveryDuration().monthDuration != 0
+              || createContinuousQueryStatement.getStartTimeOffsetDuration().monthDuration != 0
+              || createContinuousQueryStatement.getEndTimeOffsetDuration().monthDuration != 0;
+      if (hasCalendarDuration && !allClusterNodesSupportCQDurationEncoding(client.showCluster())) {
+        future.setException(
+            new SemanticException(
+                DataNodeQueryMessages
+                    .MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_AC724DE3));
+        return future;
+      }
+      // The legacy fields are still required on the wire. If any structured component contains a
+      // calendar month, none of the legacy fields has a valid representation and all three use the
+      // zero sentinel. This prevents an old reader from interpreting a mixed request as a partially
+      // valid fixed-duration CQ.
+      final long legacyEvery =
+          hasCalendarDuration ? 0 : createContinuousQueryStatement.getEveryInterval();
+      final long legacyStart =
+          hasCalendarDuration ? 0 : createContinuousQueryStatement.getStartTimeOffset();
+      final long legacyEnd =
+          hasCalendarDuration ? 0 : createContinuousQueryStatement.getEndTimeOffset();
       final TCreateCQReq tCreateCQReq =
           new TCreateCQReq(
               createContinuousQueryStatement.getCqId(),
-              createContinuousQueryStatement.getEveryInterval(),
+              legacyEvery,
               createContinuousQueryStatement.getBoundaryTime(),
-              createContinuousQueryStatement.getStartTimeOffset(),
-              createContinuousQueryStatement.getEndTimeOffset(),
+              legacyStart,
+              legacyEnd,
               createContinuousQueryStatement.getTimeoutPolicy().getType(),
               queryBody,
               context.getSql(),
               context.getZoneId().getId(),
               context.getSession() == null ? null : context.getSession().getUserName());
+      tCreateCQReq.setDurationEncodingVersion((short) 1);
+      tCreateCQReq.setEveryDuration(
+          new TCQDuration(
+              createContinuousQueryStatement.getEveryDuration().monthDuration,
+              createContinuousQueryStatement.getEveryDuration().nonMonthDuration));
+      tCreateCQReq.setStartOffsetDuration(
+          new TCQDuration(
+              createContinuousQueryStatement.getStartTimeOffsetDuration().monthDuration,
+              createContinuousQueryStatement.getStartTimeOffsetDuration().nonMonthDuration));
+      tCreateCQReq.setEndOffsetDuration(
+          new TCQDuration(
+              createContinuousQueryStatement.getEndTimeOffsetDuration().monthDuration,
+              createContinuousQueryStatement.getEndTimeOffsetDuration().nonMonthDuration));
+      tCreateCQReq.setBoundaryExplicit(createContinuousQueryStatement.isBoundaryExplicit());
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         future.setException(new IoTDBException(executionStatus));
@@ -4185,6 +4222,35 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private boolean allClusterNodesSupportCQDurationEncoding(TShowClusterResp response) {
+    if (response == null
+        || response.getConfigNodeList() == null
+        || response.getDataNodeList() == null
+        || response.getNodeVersionInfo() == null) {
+      return false;
+    }
+    if (response.getConfigNodeList().isEmpty() && response.getDataNodeList().isEmpty()) {
+      return false;
+    }
+    for (TConfigNodeLocation node : response.getConfigNodeList()) {
+      if (!supportsCQDurationEncoding(response.getNodeVersionInfo().get(node.getConfigNodeId()))) {
+        return false;
+      }
+    }
+    for (TDataNodeLocation node : response.getDataNodeList()) {
+      if (!supportsCQDurationEncoding(response.getNodeVersionInfo().get(node.getDataNodeId()))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean supportsCQDurationEncoding(TNodeVersionInfo info) {
+    return info != null
+        && info.isSetSupportedCQDurationEncodingVersions()
+        && info.getSupportedCQDurationEncodingVersions().contains((short) 1);
   }
 
   @Override

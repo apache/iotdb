@@ -31,8 +31,10 @@ import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -75,6 +77,10 @@ public class CQManager {
   }
 
   public TSStatus createCQ(TCreateCQReq req) {
+    TSStatus validation = validateDurationEncoding(req);
+    if (validation != null) {
+      return validation;
+    }
     lock.readLock().lock();
     try {
       ScheduledExecutorService currentExecutor = executor;
@@ -82,6 +88,174 @@ public class CQManager {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  private TSStatus validateDurationEncoding(TCreateCQReq req) {
+    if (!req.isSetDurationEncodingVersion()) {
+      // New CQ creation must use the versioned representation. Legacy requests are still
+      // supported when loading old procedures/plans/snapshots, but accepting them here would let
+      // an old DataNode flatten a calendar duration and bypass the mixed-version capability gate.
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(ManagerMessages.MESSAGE_CQ_DURATION_ENCODING_MARKER_REQUIRED_9035980A);
+    }
+    if (req.getDurationEncodingVersion() != 1
+        || !req.isSetEveryDuration()
+        || !req.isSetStartOffsetDuration()
+        || !req.isSetEndOffsetDuration()
+        || !req.isSetBoundaryExplicit()) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(
+              ManagerMessages
+                  .MESSAGE_INVALID_CQ_DURATION_ENCODING_VERSION_1_REQUIRES_ALL_STRUCTURED_FIELDS_FEAD7F92);
+    }
+    if (req.getEveryDuration().getMonthPart() < 0
+        || req.getStartOffsetDuration().getMonthPart() < 0
+        || req.getEndOffsetDuration().getMonthPart() < 0
+        || req.getEveryDuration().getNonMonthDuration() < 0
+        || req.getStartOffsetDuration().getNonMonthDuration() < 0
+        || req.getEndOffsetDuration().getNonMonthDuration() < 0) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(ManagerMessages.MESSAGE_CQ_DURATIONS_MUST_BE_NON_NEGATIVE_BE23CE04);
+    }
+    if (req.getEveryDuration().getMonthPart() > Integer.MAX_VALUE
+        || req.getStartOffsetDuration().getMonthPart() > Integer.MAX_VALUE
+        || req.getEndOffsetDuration().getMonthPart() > Integer.MAX_VALUE) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(ManagerMessages.MESSAGE_CQ_DURATIONS_MUST_BE_NON_NEGATIVE_BE23CE04);
+    }
+    boolean hasCalendarDuration =
+        req.getEveryDuration().getMonthPart() != 0
+            || req.getStartOffsetDuration().getMonthPart() != 0
+            || req.getEndOffsetDuration().getMonthPart() != 0;
+    // If any structured component contains a calendar month, all legacy fields must carry the
+    // invalid zero sentinel. Otherwise they must exactly mirror the fixed structured values.
+    boolean legacyFieldsMatch =
+        hasCalendarDuration
+            ? req.everyInterval == 0 && req.startTimeOffset == 0 && req.endTimeOffset == 0
+            : req.everyInterval == req.getEveryDuration().getNonMonthDuration()
+                && req.startTimeOffset == req.getStartOffsetDuration().getNonMonthDuration()
+                && req.endTimeOffset == req.getEndOffsetDuration().getNonMonthDuration();
+    if (!legacyFieldsMatch) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(
+              ManagerMessages
+                  .MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67);
+    }
+    TSStatus semanticValidation = validateDurationSemantics(req);
+    if (semanticValidation != null) {
+      return semanticValidation;
+    }
+    if (hasCalendarDuration && !allClusterNodesSupportDurationEncodingV1()) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(
+              ManagerMessages.MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_49534072);
+    }
+    return null;
+  }
+
+  private TSStatus validateDurationSemantics(TCreateCQReq req) {
+    TCQDuration every = req.getEveryDuration();
+    TCQDuration start = req.getStartOffsetDuration();
+    TCQDuration end = req.getEndOffsetDuration();
+
+    if (!isPositive(every)) {
+      return semanticError(ManagerMessages.EXCEPTION_CQ_EVERY_DURATION_MUST_BE_POSITIVE_69C29D26);
+    }
+    if (!isPositive(start)) {
+      return semanticError(ManagerMessages.MESSAGE_CQ_START_OFFSET_MUST_BE_POSITIVE_B837C4F5);
+    }
+    if (end.getMonthPart() < 0 || end.getNonMonthDuration() < 0) {
+      return semanticError(ManagerMessages.MESSAGE_CQ_END_OFFSET_MUST_BE_NON_NEGATIVE_64171164);
+    }
+    if (!dominates(start, end, true)) {
+      return semanticError(
+          ManagerMessages.MESSAGE_CQ_START_OFFSET_MUST_BE_GREATER_THAN_END_OFFSET_5924C189);
+    }
+    if (!dominates(start, every, false)) {
+      return semanticError(
+          ManagerMessages
+              .MESSAGE_CQ_START_OFFSET_MUST_BE_GREATER_THAN_OR_EQUAL_TO_EVERY_DURATION_89628D43);
+    }
+    return null;
+  }
+
+  private static TSStatus semanticError(String message) {
+    return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode()).setMessage(message);
+  }
+
+  private static boolean isPositive(TCQDuration duration) {
+    return duration.getMonthPart() > 0 || duration.getNonMonthDuration() > 0;
+  }
+
+  private static boolean dominates(TCQDuration left, TCQDuration right, boolean strict) {
+    boolean result =
+        left.getMonthPart() >= right.getMonthPart()
+            && left.getNonMonthDuration() >= right.getNonMonthDuration();
+    return result
+        && (!strict
+            || left.getMonthPart() != right.getMonthPart()
+            || left.getNonMonthDuration() != right.getNonMonthDuration());
+  }
+
+  /** Returns true when any persisted CQ requires the structured calendar-duration reader. */
+  public boolean hasCalendarDurationCQ() {
+    try {
+      DataSet response = configManager.getConsensusManager().read(new ShowCQPlan());
+      if (!(response instanceof ShowCQResp)) {
+        // Do not allow a node with unknown metadata to join while the reader barrier is active.
+        return true;
+      }
+      if (((ShowCQResp) response).getCqList() == null) {
+        // A malformed response is just as unsafe as an unavailable response for this barrier.
+        return true;
+      }
+      return ((ShowCQResp) response)
+          .getCqList().stream().anyMatch(CQInfo.CQEntry::hasCalendarDuration);
+    } catch (ConsensusException e) {
+      // A failed metadata read must fail closed: an old reader must never be admitted blindly.
+      LOGGER.warn(ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_FETCHING_CQ_LIST, e);
+      return true;
+    }
+  }
+
+  private boolean allClusterNodesSupportDurationEncodingV1() {
+    java.util.Map<Integer, TNodeVersionInfo> versionInfo =
+        configManager.getNodeManager().getNodeVersionInfo();
+    if (versionInfo == null || versionInfo.isEmpty()) {
+      return false;
+    }
+    boolean hasRegisteredNode = false;
+    // Check every registered node explicitly. A missing heartbeat/version entry must not allow a
+    // calendar CQ to be created during a rolling upgrade.
+    List<org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation> configNodes =
+        configManager.getNodeManager().getRegisteredConfigNodes();
+    List<org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration> dataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes();
+    if (configNodes == null || dataNodes == null) {
+      return false;
+    }
+    for (org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation node : configNodes) {
+      hasRegisteredNode = true;
+      if (!supportsDurationEncodingV1(versionInfo.get(node.getConfigNodeId()))) {
+        return false;
+      }
+    }
+    for (org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration node : dataNodes) {
+      hasRegisteredNode = true;
+      if (!supportsDurationEncodingV1(versionInfo.get(node.getLocation().getDataNodeId()))) {
+        return false;
+      }
+    }
+    return hasRegisteredNode;
+  }
+
+  private boolean supportsDurationEncodingV1(TNodeVersionInfo info) {
+    if (info == null
+        || !info.isSetSupportedCQDurationEncodingVersions()
+        || !info.getSupportedCQDurationEncodingVersions().contains((short) 1)) {
+      return false;
+    }
+    return true;
   }
 
   public TSStatus dropCQ(TDropCQReq req) {

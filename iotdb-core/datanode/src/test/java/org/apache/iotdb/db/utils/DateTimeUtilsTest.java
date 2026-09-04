@@ -373,4 +373,15 @@ public class DateTimeUtilsTest {
     timeDuration = DataNodeDateTimeUtils.constructTimeDuration("10000000000ms");
     Assert.assertEquals(10000000000L, timeDuration.nonMonthDuration);
   }
+
+  @Test
+  public void testConstructTimeDurationForCQSupportsMinuteAndSecond() {
+    TimeDuration timeDuration = DataNodeDateTimeUtils.constructTimeDurationForCQ("5m30s");
+    Assert.assertEquals(0, timeDuration.monthDuration);
+    Assert.assertEquals(330_000L, timeDuration.nonMonthDuration);
+
+    timeDuration = DataNodeDateTimeUtils.constructTimeDurationForCQ("1ms");
+    Assert.assertEquals(0, timeDuration.monthDuration);
+    Assert.assertEquals(1L, timeDuration.nonMonthDuration);
+  }
 }

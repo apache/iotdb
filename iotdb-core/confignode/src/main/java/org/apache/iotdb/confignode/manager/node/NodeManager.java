@@ -473,6 +473,10 @@ public class NodeManager {
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
+    TSStatus capabilityStatus = validateConfigNodeDurationCapability(req.getVersionInfo());
+    if (capabilityStatus != null) {
+      return new TConfigNodeRegisterResp().setStatus(capabilityStatus).setConfigNodeId(-1);
+    }
     int nodeId = nodeInfo.generateNextNodeId();
     req.getConfigNodeLocation().setConfigNodeId(nodeId);
     configManager.getProcedureManager().addConfigNode(req);
@@ -482,6 +486,10 @@ public class NodeManager {
   }
 
   public TSStatus updateConfigNodeIfNecessary(int configNodeId, TNodeVersionInfo versionInfo) {
+    TSStatus capabilityStatus = validateConfigNodeDurationCapability(versionInfo);
+    if (capabilityStatus != null) {
+      return capabilityStatus;
+    }
     TNodeVersionInfo recordVersionInfo = nodeInfo.getVersionInfo(configNodeId);
     if (!recordVersionInfo.equals(versionInfo)) {
       // Update versionInfo when modified during restart
@@ -494,6 +502,22 @@ public class NodeManager {
       }
     }
     return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
+  }
+
+  private TSStatus validateConfigNodeDurationCapability(TNodeVersionInfo versionInfo) {
+    if (!supportsDurationEncodingV1(versionInfo)
+        && configManager.getCQManager().hasCalendarDurationCQ()) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(
+              ManagerMessages.MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_49534072);
+    }
+    return null;
+  }
+
+  private static boolean supportsDurationEncodingV1(TNodeVersionInfo versionInfo) {
+    return versionInfo != null
+        && versionInfo.isSetSupportedCQDurationEncodingVersions()
+        && versionInfo.getSupportedCQDurationEncodingVersions().contains((short) 1);
   }
 
   public List<TAINodeInfo> getRegisteredAINodeInfoList() {
