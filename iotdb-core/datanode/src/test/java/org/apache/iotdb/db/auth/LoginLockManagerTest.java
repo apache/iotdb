@@ -121,7 +121,7 @@ public class LoginLockManagerTest {
     LoginLockManager largeWindowManager =
         new LoginLockManager(failedLoginAttempts, failedLoginAttemptsPerUser, Integer.MAX_VALUE);
     for (int i = 0; i < failedLoginAttempts; i++) {
-      largeWindowManager.recordFailure(TEST_USER_ID, TEST_IP);
+      largeWindowManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     }
     assertTrue(
         "Large lock window should not overflow and discard recent failures",
