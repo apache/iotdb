@@ -2106,6 +2106,7 @@ public class TableDistributedPlanGenerator
     Map<TRegionReplicaSet, Integer> regionEntryCounts = new HashMap<>();
     DeviceEntryMaterializationMemoryController memoryController =
         new DeviceEntryMaterializationMemoryController(batchSize);
+    boolean mayUseLastCache = node.mayUseLastCache();
     boolean hasCrossRegionDevice = false;
     try (DeviceEntryReader reader = node.getCoordinatorDeviceEntryDataSet().openConsumingReader()) {
       while (reader.hasNext()) {
@@ -2120,7 +2121,8 @@ public class TableDistributedPlanGenerator
         if (regions.size() > 1) {
           hasCrossRegionDevice = true;
           context.deviceCrossRegion = true;
-          if (node.mayUseLastCache()) {
+          if (mayUseLastCache) {
+            queryContext.setNeedUpdateScanNumForLastQuery(true);
             regions.forEach(
                 region ->
                     crossRegionDevicesByRegion
@@ -2168,9 +2170,6 @@ public class TableDistributedPlanGenerator
     } catch (RuntimeException e) {
       closeDeviceEntryDataSets(stagingDataSets.values());
       throw e;
-    }
-    if (hasCrossRegionDevice && node.mayUseLastCache()) {
-      queryContext.setNeedUpdateScanNumForLastQuery(true);
     }
 
     Optional<SortPropertyContext> sortPropertyContext;
