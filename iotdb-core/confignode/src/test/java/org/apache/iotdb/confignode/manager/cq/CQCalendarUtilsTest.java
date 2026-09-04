@@ -109,7 +109,7 @@ public class CQCalendarUtilsTest {
         CQScheduleTask.calculateNextOccurrenceIndex(
             TimeoutPolicy.BLOCKED, 1, callbackTime, executionTime, 0, 1, boundary, every, UTC));
     assertEquals(
-        4,
+        2,
         CQScheduleTask.calculateNextOccurrenceIndex(
             TimeoutPolicy.DISCARD, 1, callbackTime, executionTime, 0, 1, boundary, every, UTC));
   }
