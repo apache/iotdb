@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.snapshot.SnapshotStreamFactory;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
@@ -403,6 +404,13 @@ public class ConfigNodeDescriptor {
 
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
+
+    conf.setConfigNodeSnapshotBufferSizeMax(
+        Long.parseLong(
+            properties.getProperty(
+                "config_node_snapshot_buffer_size_max",
+                String.valueOf(conf.getConfigNodeSnapshotBufferSizeMax()))));
+    SnapshotStreamFactory.setBufferSizeMax(conf.getConfigNodeSnapshotBufferSizeMax());
   }
 
   private void loadRatisConsensusConfig(TrimProperties properties) {
