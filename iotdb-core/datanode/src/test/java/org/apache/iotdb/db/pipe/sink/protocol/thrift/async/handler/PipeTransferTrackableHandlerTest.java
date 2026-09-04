@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkReques
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -47,6 +48,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class PipeTransferTrackableHandlerTest {
 
@@ -221,6 +224,113 @@ public class PipeTransferTrackableHandlerTest {
   }
 
   @Test
+  public void testTerminalCallbacksAreIdempotent() {
+    final IoTDBDataRegionAsyncSink sink = Mockito.mock(IoTDBDataRegionAsyncSink.class);
+    final TestPipeTransferTrackableHandler completeHandler =
+        new TestPipeTransferTrackableHandler(sink);
+
+    completeHandler.onComplete(successResp());
+    completeHandler.onComplete(successResp());
+
+    Assert.assertEquals(1, completeHandler.completeCount);
+    Mockito.verify(sink, Mockito.times(1)).eliminateHandler(completeHandler, false);
+
+    final TestPipeTransferTrackableHandler errorHandler =
+        new TestPipeTransferTrackableHandler(sink);
+    errorHandler.onError(new PipeException("first"));
+    errorHandler.onError(new PipeException("second"));
+
+    Assert.assertEquals(1, errorHandler.errorCount);
+    Mockito.verify(sink, Mockito.times(1)).eliminateHandler(errorHandler, false);
+  }
+
+  @Test
+  public void testWholeRequestCallbackIsHandledOnlyOnce() throws Exception {
+    commonConfig.setPipeSinkRequestSliceThresholdBytes(1024);
+    final IoTDBDataRegionAsyncSink sink = Mockito.mock(IoTDBDataRegionAsyncSink.class);
+    final AsyncPipeDataTransferServiceClient client =
+        Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    Mockito.doAnswer(
+            invocation -> {
+              final AsyncMethodCallback<TPipeTransferResp> callback = invocation.getArgument(1);
+              callback.onComplete(successResp());
+              callback.onComplete(successResp());
+              return null;
+            })
+        .when(client)
+        .pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
+
+    final TestPipeTransferTrackableHandler handler =
+        new TestPipeTransferTrackableHandler(sink, false);
+    handler.transfer(client, createReq(1));
+
+    Assert.assertEquals(1, handler.completeCount);
+    Mockito.verify(sink, Mockito.never()).eliminateHandler(handler, false);
+  }
+
+  @Test
+  public void testSinkCloseDoesNotDeadlockWithHandlerCallback() throws Exception {
+    final CloseAwareAsyncSink sink = new CloseAwareAsyncSink();
+    final CountDownLatch callbackEntered = new CountDownLatch(1);
+    final CountDownLatch allowCallbackToFinish = new CountDownLatch(1);
+    final PipeTransferTrackableHandler handler =
+        new PipeTransferTrackableHandler(sink) {
+          @Override
+          protected boolean onCompleteInternal(final TPipeTransferResp response) {
+            callbackEntered.countDown();
+            try {
+              allowCallbackToFinish.await();
+            } catch (final InterruptedException e) {
+              Thread.currentThread().interrupt();
+              return false;
+            }
+            return true;
+          }
+
+          @Override
+          protected void onErrorInternal(final Exception exception) {
+            // No-op.
+          }
+
+          @Override
+          protected void doTransfer(
+              final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req) {
+            // No-op.
+          }
+
+          @Override
+          public void clearEventsReferenceCount() {
+            // No-op.
+          }
+        };
+    sink.trackHandler(handler);
+
+    final Thread callbackThread =
+        new Thread(() -> handler.onComplete(successResp()), "pipe-handler-callback");
+    callbackThread.setDaemon(true);
+    final Thread closeThread = new Thread(sink::close, "pipe-sink-close");
+    closeThread.setDaemon(true);
+
+    callbackThread.start();
+    Assert.assertTrue(callbackEntered.await(5, TimeUnit.SECONDS));
+    closeThread.start();
+    Assert.assertTrue(sink.closeEliminationStarted.await(5, TimeUnit.SECONDS));
+
+    try {
+      allowCallbackToFinish.countDown();
+      callbackThread.join(TimeUnit.SECONDS.toMillis(5));
+      closeThread.join(TimeUnit.SECONDS.toMillis(5));
+      Assert.assertFalse(callbackThread.isAlive());
+      Assert.assertFalse(closeThread.isAlive());
+      Assert.assertTrue(sink.isClosed());
+    } finally {
+      allowCallbackToFinish.countDown();
+      callbackThread.interrupt();
+      closeThread.interrupt();
+    }
+  }
+
+  @Test
   public void testReceiverRetriesAreSerializedForAnyFailureStatus() {
     commonConfig.setPipeSinkSubtaskSleepIntervalInitMs(40);
     commonConfig.setPipeSinkSubtaskSleepIntervalMaxMs(40);
@@ -297,9 +407,16 @@ public class PipeTransferTrackableHandlerTest {
 
     private int completeCount;
     private int errorCount;
+    private final boolean completeOnResponse;
 
     private TestPipeTransferTrackableHandler(final IoTDBDataRegionAsyncSink sink) {
+      this(sink, true);
+    }
+
+    private TestPipeTransferTrackableHandler(
+        final IoTDBDataRegionAsyncSink sink, final boolean completeOnResponse) {
       super(sink);
+      this.completeOnResponse = completeOnResponse;
     }
 
     private void transfer(
@@ -311,7 +428,7 @@ public class PipeTransferTrackableHandlerTest {
     @Override
     protected boolean onCompleteInternal(final TPipeTransferResp response) {
       completeCount++;
-      return true;
+      return completeOnResponse;
     }
 
     @Override
@@ -329,6 +446,26 @@ public class PipeTransferTrackableHandlerTest {
     @Override
     public void clearEventsReferenceCount() {
       // Do nothing
+    }
+  }
+
+  private static class CloseAwareAsyncSink extends IoTDBDataRegionAsyncSink {
+    private final CountDownLatch closeEliminationStarted = new CountDownLatch(1);
+    private volatile Thread closeThread;
+
+    @Override
+    public void close() {
+      closeThread = Thread.currentThread();
+      super.close();
+    }
+
+    @Override
+    public void eliminateHandler(
+        final PipeTransferTrackableHandler handler, final boolean closeClient) {
+      if (Thread.currentThread() == closeThread) {
+        closeEliminationStarted.countDown();
+      }
+      super.eliminateHandler(handler, closeClient);
     }
   }
 }

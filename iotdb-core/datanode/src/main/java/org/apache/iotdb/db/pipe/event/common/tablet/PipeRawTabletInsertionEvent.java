@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -258,10 +259,17 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    PipeDataNodeResourceManager.memory()
-        .forceResize(
-            allocatedMemoryBlock,
-            PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
+    final long targetSize = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE;
+    if (!PipeDataNodeResourceManager.memory().tryResize(allocatedMemoryBlock, targetSize)) {
+      throw new PipeRuntimeOutOfMemoryCriticalException(
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC,
+              0,
+              PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes(),
+              PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
+              targetSize - allocatedMemoryBlock.getMemoryUsageInBytes()));
+    }
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeSinglePipeMetrics.getInstance()
           .increaseRawTabletEventCount(pipeName, creationTime);

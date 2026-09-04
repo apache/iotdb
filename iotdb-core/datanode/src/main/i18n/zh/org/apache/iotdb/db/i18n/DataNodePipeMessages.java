@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A =
+      "解析 transfer exception 失败。";
+
   // ===================== CONSENSUS =====================
 
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR = "正在关闭 {} 的删除资源管理器...";
@@ -2145,6 +2148,12 @@ public final class DataNodePipeMessages {
       "forceAllocate：重试 %d 次后仍无法分配内存，总内存大小 %d bytes，已用内存大小 %d bytes，请求内存大小 %d bytes";
   public static final String PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC =
       "forceResize：重试 %d 次后仍无法分配内存，总内存大小 %d bytes，已用内存大小 %d bytes，请求内存大小 %d bytes";
+  public static final String
+      EXCEPTION_UNSUPPORTED_BATCH_TYPE_ARG_WHEN_TRANSFERRING_TABLET_INSERTION_EVENT_66153E12 =
+          "传输 tablet insertion event 时不支持 batch 类型 %s。";
+  public static final String
+      EXCEPTION_FAILED_TO_TRANSFER_TSFILE_BATCH_BECAUSE_NO_TSFILE_WAS_GENERATED_FOR_ARG_CC60CCEB =
+          "无法传输 TsFile batch，因为没有为 %s 生成 TsFile。";
   public static final String PIPE_EXCEPTION_FAILED_TO_GET_HARDLINK_OR_COPIED_FILE_IN_PIPE_DIR_FOR_FILE_F009D86E =
       "获取 pipe 目录中文件 %s 的 hardlink 或复制文件失败；该文件不是 tsfile、mod 文件或 resource 文件";
   public static final String PIPE_EXCEPTION_PIPEPLANTOSTATEMENTVISITOR_DOES_NOT_SUPPORT_VISITING_GENERAL_452AAA60 =
