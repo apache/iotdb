@@ -21,6 +21,10 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
 import org.apache.tsfile.read.common.TimeRange;
 
+import java.math.BigInteger;
+
+import static com.google.common.math.LongMath.saturatedAdd;
+
 /**
  * This interface used for iteratively generating aggregated time windows in GROUP BY query.
  *
@@ -47,8 +51,43 @@ public interface ITimeRangeIterator {
 
   default TimeRange getFinalTimeRange(TimeRange timeRange, boolean leftCRightO) {
     return leftCRightO
-        ? new TimeRange(timeRange.getMin(), timeRange.getMax() - 1)
-        : new TimeRange(timeRange.getMin() + 1, timeRange.getMax());
+        ? new TimeRange(timeRange.getMin(), saturatedAdd(timeRange.getMax(), -1))
+        : new TimeRange(saturatedAdd(timeRange.getMin(), 1), timeRange.getMax());
+  }
+
+  static boolean canMoveForward(long current, long step, long upperBound) {
+    return step > 0 && current <= Long.MAX_VALUE - step && current + step < upperBound;
+  }
+
+  static boolean canMoveBackward(long current, long step, long lowerBound) {
+    return step > 0 && current >= Long.MIN_VALUE + step && current - step >= lowerBound;
+  }
+
+  static long ceilDivTimeRange(long startTime, long endTime, long divisor) {
+    BigInteger range =
+        BigInteger.valueOf(endTime)
+            .subtract(BigInteger.valueOf(startTime))
+            .add(BigInteger.valueOf(divisor).subtract(BigInteger.ONE));
+    return range
+        .divide(BigInteger.valueOf(divisor))
+        .min(BigInteger.valueOf(Long.MAX_VALUE))
+        .longValue();
+  }
+
+  static long rightmostTimeRangeStart(long startTime, long endTime, long slidingStep) {
+    BigInteger distanceMinusOne =
+        BigInteger.valueOf(endTime)
+            .subtract(BigInteger.valueOf(startTime))
+            .subtract(BigInteger.ONE);
+    long remainder = distanceMinusOne.mod(BigInteger.valueOf(slidingStep)).longValue();
+    return saturatedAdd(saturatedAdd(endTime, -1), -remainder);
+  }
+
+  static boolean isTimeRangeDistanceGreaterThan(long startTime, long endTime, long distance) {
+    return BigInteger.valueOf(endTime)
+            .subtract(BigInteger.valueOf(startTime))
+            .compareTo(BigInteger.valueOf(distance))
+        > 0;
   }
 
   /**

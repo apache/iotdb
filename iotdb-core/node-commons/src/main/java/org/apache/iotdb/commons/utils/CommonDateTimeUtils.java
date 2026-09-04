@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigInteger;
 import java.time.Duration;
 import java.util.function.BiConsumer;
 
@@ -78,6 +79,25 @@ public class CommonDateTimeUtils {
       default:
         return System.currentTimeMillis();
     }
+  }
+
+  public static double timeDifferenceAsDouble(long left, long right) {
+    try {
+      return Math.subtractExact(left, right);
+    } catch (ArithmeticException e) {
+      return BigInteger.valueOf(left).subtract(BigInteger.valueOf(right)).doubleValue();
+    }
+  }
+
+  /** Converts a potentially wider integer result to a long without wrapping at either bound. */
+  public static long saturateToLong(BigInteger value) {
+    if (value.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+      return Long.MAX_VALUE;
+    }
+    if (value.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
+      return Long.MIN_VALUE;
+    }
+    return value.longValue();
   }
 
   public static String convertMillisecondToDurationStr(long millisecond) {

@@ -32,6 +32,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,9 +44,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import static org.apache.iotdb.commons.i18n.CommonMessages.EXCEPTION_COLUMN_LACK_OF_NAME;
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.saturateToLong;
 
 public class WindowTVFUtils {
-
   private static final Set<Type> ALLOWED_CALCULATION_TYPES =
       Set.of(Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
 
@@ -90,6 +91,36 @@ public class WindowTVFUtils {
         String.format(
             CommonMessages.EXCEPTION_REQUIRED_COLUMN_ARG_NOT_FOUND_SOURCE_TABLE_ARGUMENT_993E1C08,
             expectedFieldName));
+  }
+
+  static long getWindowStart(long source, long origin, long interval) {
+    return getWindowStart(source, origin, interval, 0);
+  }
+
+  static long getWindowStart(long source, long origin, long interval, long distanceOffset) {
+    try {
+      return getWindowStartWithoutOverflow(source, origin, interval, distanceOffset);
+    } catch (ArithmeticException e) {
+      return saturateToLong(getWindowStartExact(source, origin, interval, distanceOffset));
+    }
+  }
+
+  static long getWindowStartWithoutOverflow(
+      long source, long origin, long interval, long distanceOffset) {
+    long distance = Math.addExact(Math.subtractExact(source, origin), distanceOffset);
+    long stepCount = distance / interval;
+    return Math.addExact(origin, Math.multiplyExact(stepCount, interval));
+  }
+
+  static BigInteger getWindowStartExact(
+      long source, long origin, long interval, long distanceOffset) {
+    BigInteger intervalValue = BigInteger.valueOf(interval);
+    BigInteger stepCount =
+        BigInteger.valueOf(source)
+            .subtract(BigInteger.valueOf(origin))
+            .add(BigInteger.valueOf(distanceOffset))
+            .divide(intervalValue);
+    return BigInteger.valueOf(origin).add(stepCount.multiply(intervalValue));
   }
 
   public static void validateOrderBy(TableArgument tableArgument, String timeColumn) {
