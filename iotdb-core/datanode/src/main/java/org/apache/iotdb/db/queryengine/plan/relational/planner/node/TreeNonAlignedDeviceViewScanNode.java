@@ -81,22 +81,23 @@ public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
 
   @Override
   public TreeNonAlignedDeviceViewScanNode clone() {
-    return new TreeNonAlignedDeviceViewScanNode(
-        getPlanNodeId(),
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice,
-        treeDBName,
-        measurementColumnNameMap);
+    return copyDeviceEntryDataSetTo(
+        new TreeNonAlignedDeviceViewScanNode(
+            getPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice,
+            treeDBName,
+            measurementColumnNameMap));
   }
 
   @Override

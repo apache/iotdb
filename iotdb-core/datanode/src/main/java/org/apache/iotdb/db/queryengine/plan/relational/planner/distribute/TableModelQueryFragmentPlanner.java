@@ -71,7 +71,7 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
 
   private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
 
-  TableModelQueryFragmentPlanner(
+  public TableModelQueryFragmentPlanner(
       SubPlan subPlan,
       Analysis analysis,
       MPPQueryContext queryContext,
@@ -129,9 +129,19 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
           deviceCountMapOfEachTable.computeIfAbsent(
               aggregationTableScanNode.getQualifiedObjectName(), name -> new HashMap<>());
 
-      aggregationTableScanNode
-          .getDeviceEntries()
-          .forEach(deviceEntry -> deviceMap.merge(deviceEntry, 1, Integer::sum));
+      // Spill planning records one count for each region while consuming the DeviceEntry stream.
+      // Merge those counts here across all regions hosted by this DataNode. For non-spill plans the
+      // map is null and the inline device entries are counted as before.
+      Map<DeviceEntry, Integer> existingDeviceMap = aggregationTableScanNode.getDeviceCountMap();
+      if (existingDeviceMap != null && existingDeviceMap != deviceMap) {
+        existingDeviceMap.forEach(
+            (deviceEntry, count) -> deviceMap.merge(deviceEntry, count, Integer::sum));
+      }
+      if (existingDeviceMap == null) {
+        aggregationTableScanNode
+            .getDeviceEntries()
+            .forEach(deviceEntry -> deviceMap.merge(deviceEntry, 1, Integer::sum));
+      }
       // Each AggTableScanNode with the same complete tableName in this DataNode holds this map
       aggregationTableScanNode.setDeviceCountMap(deviceMap);
       return;

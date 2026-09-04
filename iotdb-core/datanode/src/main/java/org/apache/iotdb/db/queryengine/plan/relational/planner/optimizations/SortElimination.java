@@ -141,7 +141,7 @@ public class SortElimination implements PlanOptimizer {
 
     @Override
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
-      context.addDeviceEntrySize(node.getDeviceEntries().size());
+      context.addDeviceEntrySize(node.getDeviceEntryCount());
       context.setTimeColumnName(node.getTimeColumn().map(Symbol::getName).orElse(null));
       return node;
     }

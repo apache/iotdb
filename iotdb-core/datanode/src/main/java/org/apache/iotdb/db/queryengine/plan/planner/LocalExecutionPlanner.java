@@ -289,7 +289,10 @@ public class LocalExecutionPlanner {
         .forEach(
             pipeline -> {
               DataDriverContext dataDriverContext = (DataDriverContext) pipeline.getDriverContext();
-              sourcePaths.addAll(dataDriverContext.getPaths());
+              if (dataDriverContext.getSourceOperators().stream()
+                  .anyMatch(sourceOperator -> !sourceOperator.isBatchQueryDataSource())) {
+                sourcePaths.addAll(dataDriverContext.getPaths());
+              }
               dataDriverContext.clearPaths();
             });
     return sourcePaths;
