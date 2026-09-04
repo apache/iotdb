@@ -84,6 +84,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -178,8 +179,8 @@ public class FragmentInstanceContext extends QueryContext {
   // it will not be released until it's fetched.
   private TFetchFragmentInstanceStatisticsResp fragmentInstanceStatistics = null;
 
-  private long initQueryDataSourceCost = 0;
-  private int initQueryDataSourceRetryCount = 0;
+  private final AtomicLong initQueryDataSourceCost = new AtomicLong(0);
+  private final AtomicInteger initQueryDataSourceRetryCount = new AtomicInteger(0);
   private final AtomicLong readyQueueTime = new AtomicLong(0);
   private final AtomicLong blockQueueTime = new AtomicLong(0);
   private final AtomicLong scanAggregationFromRawDataCost = new AtomicLong(0);
@@ -734,7 +735,7 @@ public class FragmentInstanceContext extends QueryContext {
           externalTsFileQueryResourceRetained = true;
         }
         this.sharedQueryDataSource = new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
-        closedUnseqFileNum.set(externalTsFileQueryResource.getSharedTsFileResources().size());
+        closedUnseqFileNum.addAndGet(externalTsFileQueryResource.getSharedTsFileResources().size());
       }
     } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
@@ -781,7 +782,7 @@ public class FragmentInstanceContext extends QueryContext {
           sharedQueryDataSource = dataSource;
           closedFilePaths = new HashSet<>();
           unClosedFilePaths = new HashSet<>();
-          addUsedFilesForQuery(dataSource, closedFilePaths, unClosedFilePaths, false);
+          addUsedFilesForQuery(dataSource, closedFilePaths, unClosedFilePaths);
           return true;
         });
   }
@@ -791,7 +792,10 @@ public class FragmentInstanceContext extends QueryContext {
     return initializeQueryDataSource(
         sourcePaths,
         () -> createBatchQueryDataSourceLease(EMPTY_QUERY_DATA_SOURCE),
-        () -> null,
+        () -> {
+          recordQueryDataSourceRetry();
+          return null;
+        },
         this::createBatchQueryDataSourceLease);
   }
 
@@ -867,7 +871,7 @@ public class FragmentInstanceContext extends QueryContext {
   private QueryDataSourceLease createBatchQueryDataSourceLease(QueryDataSource dataSource) {
     Set<TsFileResource> closedResources = new HashSet<>();
     Set<TsFileResource> unclosedResources = new HashSet<>();
-    addUsedFilesForQuery(dataSource, closedResources, unclosedResources, true);
+    addUsedFilesForQuery(dataSource, closedResources, unclosedResources);
     QueryDataSourceLease lease =
         new QueryDataSourceLease(dataSource, closedResources, unclosedResources, this);
     batchQueryDataSourceLeases.add(lease);
@@ -1001,15 +1005,19 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private IQueryDataSource getUnfinishedQueryDataSource() {
-    increaseInitQueryDataSourceRetryCount();
+    recordQueryDataSourceRetry();
+    return UNFINISHED_QUERY_DATA_SOURCE;
+  }
+
+  private void recordQueryDataSourceRetry() {
+    int retryCount = increaseInitQueryDataSourceRetryCount();
     // record warn log every 10 times retry
-    if (initQueryDataSourceRetryCount % 10 == 0) {
+    if (retryCount % 10 == 0) {
       LOGGER.warn(
           DataNodeQueryMessages.FAILED_TO_ACQUIRE_THE_READ_LOCK_OF_DATAREGION_ARG_FOR_ARG_TIMES,
           dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionIdString(),
-          initQueryDataSourceRetryCount);
+          retryCount);
     }
-    return UNFINISHED_QUERY_DATA_SOURCE;
   }
 
   /** Lock and check if tsFileResource is deleted */
@@ -1040,8 +1048,7 @@ public class FragmentInstanceContext extends QueryContext {
   private void addUsedFilesForQuery(
       QueryDataSource dataSource,
       Set<TsFileResource> closedResources,
-      Set<TsFileResource> unclosedResources,
-      boolean batch) {
+      Set<TsFileResource> unclosedResources) {
 
     // sequence data
     dataSource
@@ -1054,13 +1061,8 @@ public class FragmentInstanceContext extends QueryContext {
     // Record statistics of seqFiles
     int unclosedSeqFileCount = unclosedResources.size();
     int closedSeqFileCount = closedResources.size();
-    if (batch) {
-      unclosedSeqFileNum.addAndGet(unclosedResources.size());
-      closedSeqFileNum.addAndGet(closedResources.size());
-    } else {
-      unclosedSeqFileNum.set(unclosedResources.size());
-      closedSeqFileNum.set(closedResources.size());
-    }
+    unclosedSeqFileNum.addAndGet(unclosedSeqFileCount);
+    closedSeqFileNum.addAndGet(closedSeqFileCount);
 
     // unsequence data
     dataSource
@@ -1071,13 +1073,8 @@ public class FragmentInstanceContext extends QueryContext {
                     tsFileResource, tsFileResource.isClosed(), closedResources, unclosedResources));
 
     // Record statistics of files of unseqFiles
-    if (batch) {
-      unclosedUnseqFileNum.addAndGet(unclosedResources.size() - unclosedSeqFileCount);
-      closedUnseqFileNum.addAndGet(closedResources.size() - closedSeqFileCount);
-    } else {
-      unclosedUnseqFileNum.set(unclosedResources.size() - unclosedSeqFileNum.get());
-      closedUnseqFileNum.set(closedResources.size() - closedSeqFileNum.get());
-    }
+    unclosedUnseqFileNum.addAndGet(unclosedResources.size() - unclosedSeqFileCount);
+    closedUnseqFileNum.addAndGet(closedResources.size() - closedSeqFileCount);
   }
 
   private void addUsedFilesForRegionQuery(QueryDataSourceForRegionScan dataSource) {
@@ -1087,8 +1084,10 @@ public class FragmentInstanceContext extends QueryContext {
             fileScanHandle ->
                 processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
 
-    unclosedSeqFileNum.set(unClosedFilePaths.size());
-    closedSeqFileNum.set(closedFilePaths.size());
+    int unclosedSeqFileCount = unClosedFilePaths.size();
+    int closedSeqFileCount = closedFilePaths.size();
+    unclosedSeqFileNum.addAndGet(unclosedSeqFileCount);
+    closedSeqFileNum.addAndGet(closedSeqFileCount);
 
     dataSource
         .getUnseqFileScanHandles()
@@ -1096,8 +1095,8 @@ public class FragmentInstanceContext extends QueryContext {
             fileScanHandle ->
                 processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
 
-    unclosedUnseqFileNum.set(unClosedFilePaths.size() - unclosedSeqFileNum.get());
-    closedUnseqFileNum.set(closedFilePaths.size() - closedSeqFileNum.get());
+    unclosedUnseqFileNum.addAndGet(unClosedFilePaths.size() - unclosedSeqFileCount);
+    closedUnseqFileNum.addAndGet(closedFilePaths.size() - closedSeqFileCount);
   }
 
   /**
@@ -1405,19 +1404,19 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public void addInitQueryDataSourceCost(long initQueryDataSourceCost) {
-    this.initQueryDataSourceCost += initQueryDataSourceCost;
+    this.initQueryDataSourceCost.addAndGet(initQueryDataSourceCost);
   }
 
   public long getInitQueryDataSourceCost() {
-    return initQueryDataSourceCost;
+    return initQueryDataSourceCost.get();
   }
 
-  public void increaseInitQueryDataSourceRetryCount() {
-    this.initQueryDataSourceRetryCount++;
+  public int increaseInitQueryDataSourceRetryCount() {
+    return initQueryDataSourceRetryCount.incrementAndGet();
   }
 
   public int getInitQueryDataSourceRetryCount() {
-    return initQueryDataSourceRetryCount;
+    return initQueryDataSourceRetryCount.get();
   }
 
   public void addReadyQueuedTime(long time) {
