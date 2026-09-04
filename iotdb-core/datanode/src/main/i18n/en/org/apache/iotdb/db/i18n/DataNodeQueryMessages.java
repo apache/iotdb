@@ -3827,10 +3827,10 @@ public final class DataNodeQueryMessages {
       "Failed to clean DeviceEntry spill directory for query %s";
   public static final String
       LOG_FAILED_TO_CLOSE_DEVICEENTRY_SPILL_WRITER_DURING_CLEANUP_ARG_EA7F7941 =
-          "Failed to close DeviceEntry spill writer during cleanup: {}";
+          "Failed to close DeviceEntry spill writer during cleanup: %s";
   public static final String
       LOG_FAILED_TO_CLOSE_DEVICEENTRY_DATA_SET_AFTER_INDEX_SCAN_FAILURE_ARG_57F04319 =
-          "Failed to close DeviceEntry data set after index scan failure: {}";
+          "Failed to close DeviceEntry data set after index scan failure: %s";
   public static final String
       EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D =
           "DeviceEntry spill segment is unavailable: %s. The query may have timed out or been killed.";

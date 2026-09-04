@@ -1336,9 +1336,10 @@ public class TableDistributedPlanGenerator
       } catch (Exception e) {
         // The original planning exception is more useful than a cleanup failure.
         LOGGER.warn(
-            DataNodeQueryMessages
-                .LOG_FAILED_TO_CLOSE_DEVICEENTRY_SPILL_WRITER_DURING_CLEANUP_ARG_EA7F7941,
-            e.getMessage());
+            String.format(
+                DataNodeQueryMessages
+                    .LOG_FAILED_TO_CLOSE_DEVICEENTRY_SPILL_WRITER_DURING_CLEANUP_ARG_EA7F7941,
+                e.getMessage()));
       }
     }
   }

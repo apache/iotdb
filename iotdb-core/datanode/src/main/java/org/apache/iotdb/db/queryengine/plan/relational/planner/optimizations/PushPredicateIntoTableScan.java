@@ -838,9 +838,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             deviceEntryDataSet.close();
           } catch (IOException e) {
             LOGGER.warn(
-                DataNodeQueryMessages
-                    .LOG_FAILED_TO_CLOSE_DEVICEENTRY_DATA_SET_AFTER_INDEX_SCAN_FAILURE_ARG_57F04319,
-                e.getMessage());
+                String.format(
+                    DataNodeQueryMessages
+                        .LOG_FAILED_TO_CLOSE_DEVICEENTRY_DATA_SET_AFTER_INDEX_SCAN_FAILURE_ARG_57F04319,
+                    e.getMessage()));
           }
         }
       }

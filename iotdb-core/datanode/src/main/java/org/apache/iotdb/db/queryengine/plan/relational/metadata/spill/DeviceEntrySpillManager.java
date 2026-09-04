@@ -177,9 +177,10 @@ public final class DeviceEntrySpillManager {
             } catch (NoSuchFileException | AccessDeniedException e) {
               // Another concurrent cleanup may have deleted or be deleting this file.
               LOGGER.warn(
-                  DataNodeQueryMessages
-                      .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-                  file,
+                  String.format(
+                      DataNodeQueryMessages
+                          .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                      file),
                   e);
             }
             return FileVisitResult.CONTINUE;
@@ -194,9 +195,10 @@ public final class DeviceEntrySpillManager {
               if (exception instanceof NoSuchFileException
                   || exception instanceof AccessDeniedException) {
                 LOGGER.warn(
-                    DataNodeQueryMessages
-                        .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-                    file,
+                    String.format(
+                        DataNodeQueryMessages
+                            .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                        file),
                     exception);
               }
               return FileVisitResult.CONTINUE;
@@ -218,9 +220,10 @@ public final class DeviceEntrySpillManager {
             } catch (NoSuchFileException | AccessDeniedException e) {
               // Another concurrent cleanup may have deleted or be deleting this directory.
               LOGGER.warn(
-                  DataNodeQueryMessages
-                      .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-                  dir,
+                  String.format(
+                      DataNodeQueryMessages
+                          .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                      dir),
                   e);
             }
             return FileVisitResult.CONTINUE;
