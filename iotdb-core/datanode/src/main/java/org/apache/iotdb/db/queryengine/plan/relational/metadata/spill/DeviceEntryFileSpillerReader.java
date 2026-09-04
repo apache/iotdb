@@ -22,15 +22,22 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.NoSuchElementException;
 
 public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeviceEntryFileSpillerReader.class);
 
   private final List<Path> segments;
   private final boolean deleteSegmentAfterRead;
@@ -114,8 +121,13 @@ public final class DeviceEntryFileSpillerReader implements DeviceEntryReader {
     if (fullyConsumed && deleteSegmentAfterRead) {
       try {
         Files.deleteIfExists(currentSegment);
-      } catch (IOException ignored) {
-        // Query cleanup will retry deleting a segment that could not be deleted eagerly.
+      } catch (NoSuchFileException | AccessDeniedException e) {
+        LOGGER.warn(
+            String.format(
+                DataNodeQueryMessages
+                    .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                currentSegment),
+            e);
       }
     }
     currentSegment = null;

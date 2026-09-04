@@ -24,7 +24,11 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -36,6 +40,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class DeviceEntrySpillManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeviceEntrySpillManager.class);
 
   private final ConcurrentHashMap<String, Set<Path>> queryDirectories = new ConcurrentHashMap<>();
 
@@ -84,16 +90,24 @@ public final class DeviceEntrySpillManager {
   public Path resolveSegment(String queryId, String planNodeId, int segmentId) throws IOException {
     Path segment = getRegisteredSegmentPath(queryId, planNodeId, segmentId);
     if (!Files.isRegularFile(segment)) {
-      throw new java.nio.file.NoSuchFileException(segment.toString());
+      throw new NoSuchFileException(segment.toString());
     }
     return segment;
   }
 
   public void deleteSegment(String queryId, String dataSetId, int segmentId) throws IOException {
+    Path file = null;
     try {
-      Files.deleteIfExists(getRegisteredSegmentPath(queryId, dataSetId, segmentId));
-    } catch (NoSuchFileException e) {
+      file = getRegisteredSegmentPath(queryId, dataSetId, segmentId);
+      Files.deleteIfExists(file);
+    } catch (NoSuchFileException | AccessDeniedException e) {
       // Query cleanup may have already removed the whole query directory.
+      LOGGER.warn(
+          String.format(
+              DataNodeQueryMessages
+                  .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+              file),
+          e);
     }
   }
 
@@ -126,7 +140,7 @@ public final class DeviceEntrySpillManager {
                 .map(Path::normalize)
                 .anyMatch(owner -> dataSetDirectory.startsWith(owner) && Files.isDirectory(owner));
     if (!registered || !Files.isDirectory(dataSetDirectory)) {
-      throw new java.nio.file.NoSuchFileException(dataSetDirectory.toString());
+      throw new NoSuchFileException(dataSetDirectory.toString());
     }
     return dataSetDirectory;
   }
@@ -158,14 +172,33 @@ public final class DeviceEntrySpillManager {
           @Override
           public FileVisitResult visitFile(Path file, BasicFileAttributes attributes)
               throws IOException {
-            Files.deleteIfExists(file);
+            try {
+              Files.deleteIfExists(file);
+            } catch (NoSuchFileException | AccessDeniedException e) {
+              // Another concurrent cleanup may have deleted or be deleting this file.
+              LOGGER.warn(
+                  DataNodeQueryMessages
+                      .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                  file,
+                  e);
+            }
             return FileVisitResult.CONTINUE;
           }
 
           @Override
           public FileVisitResult visitFileFailed(Path file, IOException exception)
               throws IOException {
-            if (!Files.exists(file)) {
+            if (exception instanceof NoSuchFileException
+                || exception instanceof AccessDeniedException
+                || !Files.exists(file)) {
+              if (exception instanceof NoSuchFileException
+                  || exception instanceof AccessDeniedException) {
+                LOGGER.warn(
+                    DataNodeQueryMessages
+                        .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                    file,
+                    exception);
+              }
               return FileVisitResult.CONTINUE;
             }
             throw exception;
@@ -174,10 +207,22 @@ public final class DeviceEntrySpillManager {
           @Override
           public FileVisitResult postVisitDirectory(Path dir, IOException exception)
               throws IOException {
-            if (exception != null && Files.exists(dir)) {
+            if (exception != null
+                && !(exception instanceof NoSuchFileException)
+                && !(exception instanceof AccessDeniedException)
+                && Files.exists(dir)) {
               throw exception;
             }
-            Files.deleteIfExists(dir);
+            try {
+              Files.deleteIfExists(dir);
+            } catch (NoSuchFileException | AccessDeniedException e) {
+              // Another concurrent cleanup may have deleted or be deleting this directory.
+              LOGGER.warn(
+                  DataNodeQueryMessages
+                      .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                  dir,
+                  e);
+            }
             return FileVisitResult.CONTINUE;
           }
         });

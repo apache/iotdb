@@ -19,16 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class DeviceEntryDiskSpiller implements AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeviceEntryDiskSpiller.class);
 
   private final Path directory;
   private final long targetSegmentBytes;
@@ -126,7 +135,16 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
       output = null;
     }
     if (temporaryFile != null) {
-      Files.deleteIfExists(temporaryFile);
+      try {
+        Files.deleteIfExists(temporaryFile);
+      } catch (NoSuchFileException | AccessDeniedException e) {
+        LOGGER.warn(
+            String.format(
+                DataNodeQueryMessages
+                    .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+                temporaryFile),
+            e);
+      }
     }
   }
 }
