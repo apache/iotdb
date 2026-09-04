@@ -86,12 +86,17 @@ public final class DeviceEntryMaterializer extends AbstractDeviceEntryMaterializ
     checkNotFinished();
     DeviceEntryDataSet dataSet;
     if (spiller == null) {
-      dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
+      dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries(), seriesPartitionSlots());
     } else {
       ensureSpiller(true);
       dataSet =
           new SpilledDeviceEntryDataSet(
-              queryId(), ownerDirectory(), spiller.finish(), entryCount(), ioContextOnSpill());
+              queryId(),
+              ownerDirectory(),
+              spiller.finish(),
+              entryCount(),
+              ioContextOnSpill(),
+              seriesPartitionSlots());
     }
     recordDeviceEntryCount();
     markFinished();

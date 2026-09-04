@@ -764,6 +764,7 @@ public class TableDeviceSchemaFetcher {
       DeviceEntry deviceEntry,
       MPPQueryContext queryContext) {
     try {
+      materializer.addSeriesPartitionSlot(deviceEntry.getDeviceID());
       long releasedRamBytes = materializer.appendWithMemoryControl(deviceEntry);
       if (releasedRamBytes > 0) {
         queryContext.releaseMemoryReservedForFrontEnd(releasedRamBytes);

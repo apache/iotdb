@@ -19,17 +19,23 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 public interface DeviceEntryDataSet extends AutoCloseable {
 
   int getEntryCount();
 
   boolean isSpilled();
+
+  default Set<TSeriesPartitionSlot> getSeriesPartitionSlots() {
+    return Set.of();
+  }
 
   DeviceEntryReader openReader() throws IOException;
 

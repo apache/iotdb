@@ -145,7 +145,8 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
     checkNotFinished();
     checkTimeout();
     if (entryCount() == 0) {
-      DeviceEntryDataSet dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
+      DeviceEntryDataSet dataSet =
+          new InMemoryDeviceEntryDataSet(copyBufferedEntries(), seriesPartitionSlots());
       recordDeviceEntryCount();
       markFinished();
       return dataSet;
@@ -157,11 +158,11 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
         // Only need to deduplicate instead of sorting here
         List<DeviceEntry> distinctEntries = distinctBufferedEntries();
         setEntryCount(distinctEntries.size());
-        dataSet = new InMemoryDeviceEntryDataSet(distinctEntries);
+        dataSet = new InMemoryDeviceEntryDataSet(distinctEntries, seriesPartitionSlots());
       } else {
         sortBufferedEntries(comparator);
         checkTimeout();
-        dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries());
+        dataSet = new InMemoryDeviceEntryDataSet(copyBufferedEntries(), seriesPartitionSlots());
       }
       recordDeviceEntryCount();
       markFinished();
@@ -190,7 +191,12 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       setEntryCount(finalEntryCount);
       dataSet =
           new SpilledDeviceEntryDataSet(
-              queryId(), ownerDirectory(), finalSegments, entryCount(), ioContextOnSpill());
+              queryId(),
+              ownerDirectory(),
+              finalSegments,
+              entryCount(),
+              ioContextOnSpill(),
+              seriesPartitionSlots());
       recordDeviceEntryCount();
       markFinished();
       deleteRunDirectoryBestEffort();

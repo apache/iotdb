@@ -19,18 +19,27 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public final class InMemoryDeviceEntryDataSet implements DeviceEntryDataSet {
 
   private final List<DeviceEntry> entries;
+  private final Set<TSeriesPartitionSlot> seriesPartitionSlots;
 
   public InMemoryDeviceEntryDataSet(List<DeviceEntry> entries) {
+    this(entries, Set.of());
+  }
+
+  public InMemoryDeviceEntryDataSet(
+      List<DeviceEntry> entries, Set<TSeriesPartitionSlot> seriesPartitionSlots) {
     this.entries = Collections.unmodifiableList(entries);
+    this.seriesPartitionSlots = Set.copyOf(seriesPartitionSlots);
   }
 
   @Override
@@ -41,6 +50,11 @@ public final class InMemoryDeviceEntryDataSet implements DeviceEntryDataSet {
   @Override
   public boolean isSpilled() {
     return false;
+  }
+
+  @Override
+  public Set<TSeriesPartitionSlot> getSeriesPartitionSlots() {
+    return seriesPartitionSlots;
   }
 
   @Override

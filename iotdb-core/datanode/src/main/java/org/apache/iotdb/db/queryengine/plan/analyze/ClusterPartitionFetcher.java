@@ -581,6 +581,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private Set<TSeriesPartitionSlot> collectSeriesPartitionSlots(final DeviceEntryDataSet dataSet) {
+    if (!dataSet.getSeriesPartitionSlots().isEmpty()) {
+      return dataSet.getSeriesPartitionSlots();
+    }
     final Set<TSeriesPartitionSlot> seriesPartitionSlots = new HashSet<>();
     try (final DeviceEntryReader reader = dataSet.openReader()) {
       while (reader.hasNext()) {

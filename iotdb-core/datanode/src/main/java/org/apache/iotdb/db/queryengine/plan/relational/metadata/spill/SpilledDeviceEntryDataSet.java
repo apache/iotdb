@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 public final class SpilledDeviceEntryDataSet implements DeviceEntryDataSet {
 
@@ -30,6 +33,22 @@ public final class SpilledDeviceEntryDataSet implements DeviceEntryDataSet {
   private final List<Path> segments;
   private final int entryCount;
   private final DeviceEntryIOContext ioContext;
+  private final Set<TSeriesPartitionSlot> seriesPartitionSlots;
+
+  public SpilledDeviceEntryDataSet(
+      String queryId,
+      Path ownerDirectory,
+      List<Path> segments,
+      int entryCount,
+      DeviceEntryIOContext ioContext,
+      Set<TSeriesPartitionSlot> seriesPartitionSlots) {
+    this.queryId = queryId;
+    this.ownerDirectory = ownerDirectory;
+    this.segments = segments;
+    this.entryCount = entryCount;
+    this.ioContext = ioContext;
+    this.seriesPartitionSlots = Set.copyOf(seriesPartitionSlots);
+  }
 
   public SpilledDeviceEntryDataSet(
       String queryId,
@@ -37,11 +56,7 @@ public final class SpilledDeviceEntryDataSet implements DeviceEntryDataSet {
       List<Path> segments,
       int entryCount,
       DeviceEntryIOContext ioContext) {
-    this.queryId = queryId;
-    this.ownerDirectory = ownerDirectory;
-    this.segments = segments;
-    this.entryCount = entryCount;
-    this.ioContext = ioContext;
+    this(queryId, ownerDirectory, segments, entryCount, ioContext, Set.of());
   }
 
   @Override
@@ -52,6 +67,11 @@ public final class SpilledDeviceEntryDataSet implements DeviceEntryDataSet {
   @Override
   public boolean isSpilled() {
     return true;
+  }
+
+  @Override
+  public Set<TSeriesPartitionSlot> getSeriesPartitionSlots() {
+    return seriesPartitionSlots;
   }
 
   public List<Path> getSegments() {

@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.spill;
 
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -32,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
@@ -47,6 +52,11 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   private boolean ownerRegistered;
   private boolean finished;
   private MPPQueryContext queryContext;
+  private Set<TSeriesPartitionSlot> seriesPartitionSlots = Set.of();
+  private final SeriesPartitionExecutor partitionExecutor =
+      SeriesPartitionExecutor.getSeriesPartitionExecutor(
+          IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+          IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
 
   protected AbstractDeviceEntryMaterializer(
       String queryId, PlanNodeId planNodeId, long thresholdInBytes, boolean rawSegment) {
@@ -82,6 +92,17 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
   }
 
   public abstract DeviceEntryDataSet finish() throws IOException;
+
+  public final void addSeriesPartitionSlot(IDeviceID deviceID) {
+    if (seriesPartitionSlots.isEmpty()) {
+      seriesPartitionSlots = new HashSet<>();
+    }
+    seriesPartitionSlots.add(partitionExecutor.getSeriesPartitionSlot(deviceID));
+  }
+
+  protected final Set<TSeriesPartitionSlot> seriesPartitionSlots() {
+    return seriesPartitionSlots;
+  }
 
   protected final String queryId() {
     return queryId;
