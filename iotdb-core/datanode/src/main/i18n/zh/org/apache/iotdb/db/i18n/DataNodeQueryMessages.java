@@ -38,6 +38,19 @@ public final class DataNodeQueryMessages {
       "未知的数据类型：";
   public static final String COUNT_IF_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW =
       "目前不支持 COUNT_IF 与滑动窗口组合使用";
+  public static final String EXCEPTION_TIME_DURATION_IS_OUT_OF_RANGE_A56B1A29 =
+      "时间间隔超出范围。";
+  public static final String EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A =
+      "生成的时间列超出范围。";
+  public static final String
+      EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32 =
+          "时间谓词未选择任何时间范围：%s";
+  public static final String
+      EXCEPTION_RIGHT_CLOSED_GROUP_BY_TIME_WITH_LONG_MAX_VALUE_END_TIME_CANNOT_BE_REPRESENTED_AS_A_SINGLE_RIGHT_OPEN_TIME_FILTER_772F893F =
+          "右闭 GROUP BY TIME 的结束时间为 Long.MAX_VALUE，无法表示为单个右开时间过滤器。";
+  public static final String EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1 =
+      "日期表达式超出范围：%s";
+
   public static final String TIME_DURATION_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW =
       "目前不支持 TIME_DURATION 与滑动窗口组合使用";
   public static final String MODE_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW =

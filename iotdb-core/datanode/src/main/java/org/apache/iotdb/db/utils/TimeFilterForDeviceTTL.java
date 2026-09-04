@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -41,7 +40,7 @@ public class TimeFilterForDeviceTTL {
   public boolean satisfyStartEndTime(long startTime, long endTime, IDeviceID deviceID) {
     long ttl = getTTL(deviceID);
     if (ttl != Long.MAX_VALUE) {
-      long validStartTime = CommonDateTimeUtils.currentTime() - ttl;
+      long validStartTime = CommonUtils.getTTLLowerBound(ttl);
       if (validStartTime > endTime) {
         return false;
       }
@@ -53,7 +52,7 @@ public class TimeFilterForDeviceTTL {
   public boolean satisfy(long time, IDeviceID deviceID) {
     long ttl = getTTL(deviceID);
     if (ttl != Long.MAX_VALUE) {
-      long validStartTime = CommonDateTimeUtils.currentTime() - ttl;
+      long validStartTime = CommonUtils.getTTLLowerBound(ttl);
       if (validStartTime > time) {
         return false;
       }
