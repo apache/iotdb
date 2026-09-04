@@ -37,6 +37,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -45,7 +46,9 @@ import java.util.Map;
 import static com.google.common.math.LongMath.saturatedAdd;
 import static com.google.common.math.LongMath.saturatedSubtract;
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.getWindowStart;
+import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.getWindowStartExact;
+import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.getWindowStartWithoutOverflow;
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.saturateToLong;
 import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
 
 public class HOPTableFunction implements TableFunction {
@@ -161,18 +164,38 @@ public class HOPTableFunction implements TableFunction {
       // n*slide + size
       long timeValue = input.getLong(0);
       if (timeValue >= origin) {
-        long windowStart = getWindowStart(timeValue, origin, slide, slide - size);
-        while (windowStart <= timeValue && saturatedSubtract(timeValue, windowStart) < size) {
-          properColumnBuilders.get(0).writeLong(windowStart);
-          properColumnBuilders.get(1).writeLong(saturatedAdd(windowStart, size));
-          passThroughIndexBuilder.writeLong(curIndex);
-          if (windowStart > Long.MAX_VALUE - slide) {
-            break;
+        try {
+          long windowStart = getWindowStartWithoutOverflow(timeValue, origin, slide, slide - size);
+          while (windowStart <= timeValue && saturatedSubtract(timeValue, windowStart) < size) {
+            properColumnBuilders.get(0).writeLong(windowStart);
+            properColumnBuilders.get(1).writeLong(saturatedAdd(windowStart, size));
+            passThroughIndexBuilder.writeLong(curIndex);
+            if (windowStart > Long.MAX_VALUE - slide) {
+              break;
+            }
+            windowStart += slide;
           }
-          windowStart += slide;
+        } catch (ArithmeticException e) {
+          processWindowsWithBigInteger(timeValue, properColumnBuilders, passThroughIndexBuilder);
         }
       }
       curIndex++;
+    }
+
+    private void processWindowsWithBigInteger(
+        long timeValue,
+        List<ColumnBuilder> properColumnBuilders,
+        ColumnBuilder passThroughIndexBuilder) {
+      BigInteger time = BigInteger.valueOf(timeValue);
+      BigInteger sizeValue = BigInteger.valueOf(size);
+      BigInteger slideValue = BigInteger.valueOf(slide);
+      BigInteger windowStart = getWindowStartExact(timeValue, origin, slide, slide - size);
+      while (windowStart.compareTo(time) <= 0 && windowStart.add(sizeValue).compareTo(time) > 0) {
+        properColumnBuilders.get(0).writeLong(saturateToLong(windowStart));
+        properColumnBuilders.get(1).writeLong(saturateToLong(windowStart.add(sizeValue)));
+        passThroughIndexBuilder.writeLong(curIndex);
+        windowStart = windowStart.add(slideValue);
+      }
     }
   }
 }

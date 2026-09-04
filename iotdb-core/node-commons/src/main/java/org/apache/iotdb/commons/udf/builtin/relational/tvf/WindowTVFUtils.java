@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import static org.apache.iotdb.commons.i18n.CommonMessages.EXCEPTION_COLUMN_LACK_OF_NAME;
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.saturateToLong;
 
 public class WindowTVFUtils {
   private static final Set<Type> ALLOWED_CALCULATION_TYPES =
@@ -98,15 +99,20 @@ public class WindowTVFUtils {
 
   static long getWindowStart(long source, long origin, long interval, long distanceOffset) {
     try {
-      long distance = Math.addExact(Math.subtractExact(source, origin), distanceOffset);
-      long stepCount = distance / interval;
-      return Math.addExact(origin, Math.multiplyExact(stepCount, interval));
+      return getWindowStartWithoutOverflow(source, origin, interval, distanceOffset);
     } catch (ArithmeticException e) {
-      return getWindowStartWithBigInteger(source, origin, interval, distanceOffset);
+      return saturateToLong(getWindowStartExact(source, origin, interval, distanceOffset));
     }
   }
 
-  private static long getWindowStartWithBigInteger(
+  static long getWindowStartWithoutOverflow(
+      long source, long origin, long interval, long distanceOffset) {
+    long distance = Math.addExact(Math.subtractExact(source, origin), distanceOffset);
+    long stepCount = distance / interval;
+    return Math.addExact(origin, Math.multiplyExact(stepCount, interval));
+  }
+
+  static BigInteger getWindowStartExact(
       long source, long origin, long interval, long distanceOffset) {
     BigInteger intervalValue = BigInteger.valueOf(interval);
     BigInteger stepCount =
@@ -114,11 +120,7 @@ public class WindowTVFUtils {
             .subtract(BigInteger.valueOf(origin))
             .add(BigInteger.valueOf(distanceOffset))
             .divide(intervalValue);
-    return BigInteger.valueOf(origin)
-        .add(stepCount.multiply(intervalValue))
-        .max(BigInteger.valueOf(Long.MIN_VALUE))
-        .min(BigInteger.valueOf(Long.MAX_VALUE))
-        .longValue();
+    return BigInteger.valueOf(origin).add(stepCount.multiply(intervalValue));
   }
 
   public static void validateOrderBy(TableArgument tableArgument, String timeColumn) {

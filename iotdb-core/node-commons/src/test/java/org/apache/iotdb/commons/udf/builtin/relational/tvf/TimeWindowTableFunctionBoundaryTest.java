@@ -74,6 +74,21 @@ public class TimeWindowTableFunctionBoundaryTest {
   }
 
   @Test
+  public void testHopWindowPreservesStartsBeforeLongMin() throws UDFException {
+    Map<String, Argument> arguments = baseTimeWindowArguments();
+    arguments.put("SIZE", new ScalarArgument(Type.INT64, 2L));
+    arguments.put("SLIDE", new ScalarArgument(Type.INT64, 1L));
+    arguments.put("ORIGIN", new ScalarArgument(Type.TIMESTAMP, Long.MIN_VALUE));
+
+    WindowOutput output =
+        runProcessor(newProcessor(new HOPTableFunction(), arguments), 2, Long.MIN_VALUE);
+
+    assertEquals(Arrays.asList(Long.MIN_VALUE, Long.MIN_VALUE), output.windowStarts);
+    assertEquals(Arrays.asList(Long.MIN_VALUE + 1, Long.MIN_VALUE + 2), output.windowEnds);
+    assertEquals(Arrays.asList(0L, 0L), output.passThroughIndexes);
+  }
+
+  @Test
   public void testCumulateWindowEndSaturatesAtLongMax() throws UDFException {
     Map<String, Argument> arguments = baseTimeWindowArguments();
     arguments.put("SIZE", new ScalarArgument(Type.INT64, 4L));
