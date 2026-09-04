@@ -415,7 +415,8 @@ public class TsFileNameGenerator {
   }
 
   public static class TsFileName {
-    private static final String FILE_NAME_PATTERN = "(-?\\d+)-(-?\\d+)-(\\d+)-(\\d+)\\.tsfile$";
+    // Timestamps may be negative for pre-epoch data, while the version is always non-negative.
+    private static final String FILE_NAME_PATTERN = "(-?\\d+)-(\\d+)-(\\d+)-(\\d+)\\.tsfile$";
     private static final Pattern FILE_NAME_MATCHER = Pattern.compile(TsFileName.FILE_NAME_PATTERN);
 
     private long time;

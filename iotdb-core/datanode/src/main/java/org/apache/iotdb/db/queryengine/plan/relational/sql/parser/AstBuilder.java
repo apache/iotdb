@@ -3546,7 +3546,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 ? Math.addExact(time, duration)
                 : Math.subtractExact(time, duration);
       } catch (ArithmeticException e) {
-        throw new SemanticException("Date expression is out of range: " + ctx.getText());
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1,
+                ctx.getText()));
       }
     }
     return time;

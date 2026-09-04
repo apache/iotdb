@@ -35,12 +35,13 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.saturateToLong;
+
 public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
 
   private static final long NANOSECONDS_IN_MILLISECOND = 1_000_000;
   private static final long NANOSECONDS_IN_MICROSECOND = 1_000;
-  private static final BigInteger BIG_LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
-  private static final BigInteger BIG_LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
 
   private final int monthDuration;
   private final long nonMonthDuration;
@@ -153,7 +154,12 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
       return convertToTimestamp(binStart, zoneId);
     }
 
-    return saturateToLong(getNonMonthDateBinStart(source, origin, nonMonthDuration));
+    try {
+      return getNonMonthDateBinStart(source, origin, nonMonthDuration);
+    } catch (ArithmeticException e) {
+      return saturateToLong(
+          getNonMonthDateBinStartWithBigInteger(source, origin, nonMonthDuration));
+    }
   }
 
   public long[] dateBinStartEnd(long source) {
@@ -192,15 +198,22 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
 
       long startTime = convertToTimestamp(binStart, zoneId);
       long endTime = convertToTimestamp(binStart.plusMonths(monthDuration), zoneId);
-      return new long[] {startTime, closedEnd ? saturatingAdd(endTime, -1) : endTime};
+      return new long[] {startTime, closedEnd ? saturatedAdd(endTime, -1) : endTime};
     }
 
-    BigInteger startTime = getNonMonthDateBinStart(source, origin, nonMonthDuration);
-    BigInteger endTime = startTime.add(BigInteger.valueOf(nonMonthDuration));
-    if (closedEnd) {
-      endTime = endTime.subtract(BigInteger.ONE);
+    try {
+      long startTime = getNonMonthDateBinStart(source, origin, nonMonthDuration);
+      long endOffset = closedEnd ? nonMonthDuration - 1 : nonMonthDuration;
+      return new long[] {startTime, saturatedAdd(startTime, endOffset)};
+    } catch (ArithmeticException e) {
+      BigInteger startTime =
+          getNonMonthDateBinStartWithBigInteger(source, origin, nonMonthDuration);
+      BigInteger endTime = startTime.add(BigInteger.valueOf(nonMonthDuration));
+      if (closedEnd) {
+        endTime = endTime.subtract(BigInteger.ONE);
+      }
+      return new long[] {saturateToLong(startTime), saturateToLong(endTime)};
     }
-    return new long[] {saturateToLong(startTime), saturateToLong(endTime)};
   }
 
   public static long nextDateBin(int monthDuration, ZoneId zoneId, long currentTime) {
@@ -210,14 +223,16 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
   }
 
   public static long nextDateBin(long nonMonthDuration, long currentTime) {
-    return saturatingAdd(currentTime, nonMonthDuration);
+    return saturatedAdd(currentTime, nonMonthDuration);
   }
 
-  public static long saturatingAdd(long left, long right) {
-    return saturateToLong(BigInteger.valueOf(left).add(BigInteger.valueOf(right)));
+  private static long getNonMonthDateBinStart(long source, long origin, long nonMonthDuration) {
+    long diff = Math.subtractExact(source, origin);
+    long stepCount = Math.floorDiv(diff, nonMonthDuration);
+    return Math.addExact(origin, Math.multiplyExact(stepCount, nonMonthDuration));
   }
 
-  private static BigInteger getNonMonthDateBinStart(
+  private static BigInteger getNonMonthDateBinStartWithBigInteger(
       long source, long origin, long nonMonthDuration) {
     BigInteger diff = BigInteger.valueOf(source).subtract(BigInteger.valueOf(origin));
     BigInteger duration = BigInteger.valueOf(nonMonthDuration);
@@ -227,16 +242,6 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
       n = n.subtract(BigInteger.ONE);
     }
     return BigInteger.valueOf(origin).add(n.multiply(duration));
-  }
-
-  private static long saturateToLong(BigInteger value) {
-    if (value.compareTo(BIG_LONG_MAX) > 0) {
-      return Long.MAX_VALUE;
-    }
-    if (value.compareTo(BIG_LONG_MIN) < 0) {
-      return Long.MIN_VALUE;
-    }
-    return value.longValue();
   }
 
   @Override

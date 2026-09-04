@@ -56,6 +56,8 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.saturateToLong;
+
 /**
  * <b>Optimization phase:</b> Distributed plan planning.
  *
@@ -70,8 +72,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class LimitOffsetPushDown implements PlanOptimizer {
 
-  private static final BigInteger BIG_LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
-  private static final BigInteger BIG_LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
   private static final BigInteger BIG_INTEGER_MAX = BigInteger.valueOf(Integer.MAX_VALUE);
   private static final BigInteger BIG_INTEGER_MIN = BigInteger.valueOf(Integer.MIN_VALUE);
 
@@ -521,16 +521,6 @@ public class LimitOffsetPushDown implements PlanOptimizer {
             .subtract(BigInteger.ONE)
             .divide(size)
             .add(BigInteger.valueOf(startDeviceIndex)));
-  }
-
-  private static long saturateToLong(BigInteger value) {
-    if (value.compareTo(BIG_LONG_MAX) > 0) {
-      return Long.MAX_VALUE;
-    }
-    if (value.compareTo(BIG_LONG_MIN) < 0) {
-      return Long.MIN_VALUE;
-    }
-    return value.longValue();
   }
 
   private static int saturateToInt(BigInteger value) {

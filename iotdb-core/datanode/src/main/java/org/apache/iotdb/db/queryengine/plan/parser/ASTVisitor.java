@@ -3163,12 +3163,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return parseTimeRangeForDeleteTimeRange(
             predicate.getExpressionType(),
             ((CompareBinaryExpression) predicate).getLeftExpression(),
-            ((CompareBinaryExpression) predicate).getRightExpression());
+            ((CompareBinaryExpression) predicate).getRightExpression(),
+            predicate);
       } else {
         return parseTimeRangeForDeleteTimeRange(
             predicate.getExpressionType(),
             ((CompareBinaryExpression) predicate).getRightExpression(),
-            ((CompareBinaryExpression) predicate).getLeftExpression());
+            ((CompareBinaryExpression) predicate).getLeftExpression(),
+            predicate);
       }
     } else {
       throw new SemanticException(DELETE_RANGE_ERROR_MSG);
@@ -3176,7 +3178,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private TimeRange parseTimeRangeForDeleteTimeRange(
-      ExpressionType expressionType, Expression timeExpression, Expression valueExpression) {
+      ExpressionType expressionType,
+      Expression timeExpression,
+      Expression valueExpression,
+      Expression comparisonExpression) {
     if (!(timeExpression instanceof TimestampOperand)
         || !(valueExpression instanceof ConstantOperand)) {
       throw new SemanticException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
@@ -3190,14 +3195,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     switch (expressionType) {
       case LESS_THAN:
         if (time == Long.MIN_VALUE) {
-          throw new SemanticException(DELETE_RANGE_COMPARISON_ERROR_MSG);
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                  comparisonExpression));
         }
         return new TimeRange(Long.MIN_VALUE, time - 1);
       case LESS_EQUAL:
         return new TimeRange(Long.MIN_VALUE, time);
       case GREATER_THAN:
         if (time == Long.MAX_VALUE) {
-          throw new SemanticException(DELETE_RANGE_COMPARISON_ERROR_MSG);
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                  comparisonExpression));
         }
         return new TimeRange(time + 1, Long.MAX_VALUE);
       case GREATER_EQUAL:
@@ -3665,7 +3678,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                 ? Math.addExact(time, duration)
                 : Math.subtractExact(time, duration);
       } catch (ArithmeticException e) {
-        throw new SemanticException("Date expression is out of range: " + ctx.getText());
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1,
+                ctx.getText()));
       }
     }
     return time;
@@ -3684,7 +3700,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                 ? Math.addExact(time, duration)
                 : Math.subtractExact(time, duration);
       } catch (ArithmeticException e) {
-        throw new SemanticException("Date expression is out of range: " + ctx.getText());
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1,
+                ctx.getText()));
       }
     }
     return time;
@@ -4622,7 +4641,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         case GREATER_THAN:
           if (timestamp == Long.MAX_VALUE) {
             throw new SemanticException(
-                "The time predicate does not select any time range: " + timeRangeExpression);
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                    timeRangeExpression));
           }
           getRegionIdStatement.setStartTimeStamp(
               Math.max(getRegionIdStatement.getStartTimeStamp(), timestamp + 1));
@@ -4634,7 +4656,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         case LESS_THAN:
           if (timestamp == Long.MIN_VALUE) {
             throw new SemanticException(
-                "The time predicate does not select any time range: " + timeRangeExpression);
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                    timeRangeExpression));
           }
           getRegionIdStatement.setEndTimeStamp(
               Math.min(getRegionIdStatement.getEndTimeStamp(), timestamp - 1));

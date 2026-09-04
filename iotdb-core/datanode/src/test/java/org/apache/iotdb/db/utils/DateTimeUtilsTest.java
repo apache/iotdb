@@ -120,19 +120,19 @@ public class DateTimeUtilsTest {
   @Test
   public void convertDurationStrToLongOverflowTest() {
     Assert.assertThrows(
-        ArithmeticException.class,
+        SemanticException.class,
         () -> DataNodeDateTimeUtils.convertDurationStrToLongForTest(Long.MAX_VALUE, "s", "ms"));
     Assert.assertThrows(
-        ArithmeticException.class,
+        SemanticException.class,
         () -> DataNodeDateTimeUtils.convertDurationStrToLongForTest(Long.MAX_VALUE, "ms", "us"));
     Assert.assertThrows(
-        ArithmeticException.class,
+        SemanticException.class,
         () -> DataNodeDateTimeUtils.convertDurationStrToLong("9223372036854775808ms"));
     Assert.assertThrows(
-        ArithmeticException.class,
+        SemanticException.class,
         () -> DataNodeDateTimeUtils.convertDurationStrToLong(0, Long.MAX_VALUE, "mo", "ms"));
     Assert.assertThrows(
-        ArithmeticException.class,
+        SemanticException.class,
         () -> DataNodeDateTimeUtils.convertDurationStrToLong(Long.MAX_VALUE, "1ms1s", "ms", false));
   }
 
@@ -397,12 +397,12 @@ public class DateTimeUtilsTest {
   @Test
   public void testConstructTimeDurationOverflow() {
     Assert.assertThrows(
-        ArithmeticException.class, () -> DataNodeDateTimeUtils.constructTimeDuration("178956971y"));
+        SemanticException.class, () -> DataNodeDateTimeUtils.constructTimeDuration("178956971y"));
     Assert.assertThrows(
-        ArithmeticException.class,
+        SemanticException.class,
         () -> DataNodeDateTimeUtils.constructTimeDuration("9223372036854775808ms"));
     Assert.assertThrows(
-        ArithmeticException.class,
+        SemanticException.class,
         () -> DataNodeDateTimeUtils.constructTimeDuration("9223372036854775807ms1ms"));
   }
 

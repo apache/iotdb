@@ -40,8 +40,4 @@ public class DownSamplingTimeUtils {
     final long difference = left >= right ? left - right : right - left;
     return Long.compareUnsigned(difference, distance) >= 0;
   }
-
-  public static double timeDifferenceAsDouble(long left, long right) {
-    return (double) left - (double) right;
-  }
 }

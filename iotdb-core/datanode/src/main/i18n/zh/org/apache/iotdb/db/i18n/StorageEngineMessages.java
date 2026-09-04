@@ -47,6 +47,8 @@ public final class StorageEngineMessages {
   public static final String REBOOT_ALL_TIMED_SERVICE_SUCCESSFULLY = "所有定时服务重启成功";
   public static final String FAILED_TO_DELETE = "删除失败: {} -> {}";
   public static final String FAILED_TO_CHECK_OBJECT_FILES = "检查对象文件失败: {}";
+  public static final String EXCEPTION_CANNOT_REPAIR_ARG_BECAUSE_TARGET_FILE_ALREADY_EXISTS_AND_TIMESTAMP_IS_LONG_MAX_VALUE_F29F630A =
+      "无法修复 %s，因为目标文件已存在且文件时间戳为 Long.MAX_VALUE";
 
   // ======================== Buffer Cache ========================
 

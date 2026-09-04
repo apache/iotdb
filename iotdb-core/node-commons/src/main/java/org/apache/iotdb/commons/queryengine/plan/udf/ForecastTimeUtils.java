@@ -20,14 +20,13 @@
 package org.apache.iotdb.commons.queryengine.plan.udf;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import java.math.BigInteger;
 
 public final class ForecastTimeUtils {
 
   private static final BigInteger BIG_LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
-  private static final String FORECAST_OUTPUT_TIME_OUT_OF_RANGE =
-      "Forecast output time is out of range.";
 
   private ForecastTimeUtils() {
     // Utility class.
@@ -39,7 +38,9 @@ public final class ForecastTimeUtils {
       return outputInterval;
     }
     if (inputSize <= 1) {
-      return 0;
+      throw new SemanticException(
+          QueryMessages
+              .EXCEPTION_FORECAST_OUTPUT_INTERVAL_MUST_BE_POSITIVE_WHEN_INPUT_HAS_ONE_ROW_C9DBE14B);
     }
 
     BigInteger interval =
@@ -47,7 +48,8 @@ public final class ForecastTimeUtils {
             .subtract(BigInteger.valueOf(inputStartTime))
             .divide(BigInteger.valueOf(inputSize - 1L));
     if (interval.compareTo(BIG_LONG_MAX) > 0) {
-      throw new SemanticException(FORECAST_OUTPUT_TIME_OUT_OF_RANGE);
+      throw new SemanticException(
+          QueryMessages.EXCEPTION_FORECAST_OUTPUT_TIME_IS_OUT_OF_RANGE_0F114E4E);
     }
     return interval.longValue();
   }
@@ -60,7 +62,8 @@ public final class ForecastTimeUtils {
     try {
       return Math.addExact(inputEndTime, interval);
     } catch (ArithmeticException e) {
-      throw new SemanticException(FORECAST_OUTPUT_TIME_OUT_OF_RANGE);
+      throw new SemanticException(
+          QueryMessages.EXCEPTION_FORECAST_OUTPUT_TIME_IS_OUT_OF_RANGE_0F114E4E);
     }
   }
 
@@ -68,7 +71,8 @@ public final class ForecastTimeUtils {
     try {
       return Math.addExact(outputStartTime, Math.multiplyExact(interval, (long) index));
     } catch (ArithmeticException e) {
-      throw new SemanticException(FORECAST_OUTPUT_TIME_OUT_OF_RANGE);
+      throw new SemanticException(
+          QueryMessages.EXCEPTION_FORECAST_OUTPUT_TIME_IS_OUT_OF_RANGE_0F114E4E);
     }
   }
 }

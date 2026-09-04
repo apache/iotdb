@@ -25,6 +25,8 @@ import org.apache.iotdb.db.pipe.event.common.watermark.PipeWatermarkEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 public class DataRegionWatermarkInjector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionWatermarkInjector.class);
@@ -71,17 +73,7 @@ public class DataRegionWatermarkInjector {
   }
 
   static long calculateNextInjectionTime(long currentTime, long injectionIntervalInMs) {
-    return saturatingAdd(
+    return saturatedAdd(
         currentTime / injectionIntervalInMs * injectionIntervalInMs, injectionIntervalInMs);
-  }
-
-  private static long saturatingAdd(final long left, final long right) {
-    if (right > 0 && left > Long.MAX_VALUE - right) {
-      return Long.MAX_VALUE;
-    }
-    if (right < 0 && left < Long.MIN_VALUE - right) {
-      return Long.MIN_VALUE;
-    }
-    return left + right;
   }
 }

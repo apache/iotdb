@@ -23,6 +23,8 @@ import org.apache.tsfile.read.common.TimeRange;
 
 import java.math.BigInteger;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 /**
  * This interface used for iteratively generating aggregated time windows in GROUP BY query.
  *
@@ -49,18 +51,8 @@ public interface ITimeRangeIterator {
 
   default TimeRange getFinalTimeRange(TimeRange timeRange, boolean leftCRightO) {
     return leftCRightO
-        ? new TimeRange(timeRange.getMin(), saturatingAdd(timeRange.getMax(), -1))
-        : new TimeRange(saturatingAdd(timeRange.getMin(), 1), timeRange.getMax());
-  }
-
-  static long saturatingAdd(long left, long right) {
-    if (right > 0 && left > Long.MAX_VALUE - right) {
-      return Long.MAX_VALUE;
-    }
-    if (right < 0 && left < Long.MIN_VALUE - right) {
-      return Long.MIN_VALUE;
-    }
-    return left + right;
+        ? new TimeRange(timeRange.getMin(), saturatedAdd(timeRange.getMax(), -1))
+        : new TimeRange(saturatedAdd(timeRange.getMin(), 1), timeRange.getMax());
   }
 
   static boolean canMoveForward(long current, long step, long upperBound) {
@@ -76,7 +68,10 @@ public interface ITimeRangeIterator {
         BigInteger.valueOf(endTime)
             .subtract(BigInteger.valueOf(startTime))
             .add(BigInteger.valueOf(divisor).subtract(BigInteger.ONE));
-    return saturateToLong(range.divide(BigInteger.valueOf(divisor)));
+    return range
+        .divide(BigInteger.valueOf(divisor))
+        .min(BigInteger.valueOf(Long.MAX_VALUE))
+        .longValue();
   }
 
   static long rightmostTimeRangeStart(long startTime, long endTime, long slidingStep) {
@@ -85,7 +80,7 @@ public interface ITimeRangeIterator {
             .subtract(BigInteger.valueOf(startTime))
             .subtract(BigInteger.ONE);
     long remainder = distanceMinusOne.mod(BigInteger.valueOf(slidingStep)).longValue();
-    return saturatingAdd(saturatingAdd(endTime, -1), -remainder);
+    return saturatedAdd(saturatedAdd(endTime, -1), -remainder);
   }
 
   static boolean isTimeRangeDistanceGreaterThan(long startTime, long endTime, long distance) {
@@ -93,16 +88,6 @@ public interface ITimeRangeIterator {
             .subtract(BigInteger.valueOf(startTime))
             .compareTo(BigInteger.valueOf(distance))
         > 0;
-  }
-
-  static long saturateToLong(BigInteger value) {
-    if (value.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
-      return Long.MAX_VALUE;
-    }
-    if (value.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
-      return Long.MIN_VALUE;
-    }
-    return value.longValue();
   }
 
   /**

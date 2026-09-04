@@ -237,6 +237,23 @@ public class TimePartitionUtilsTest {
   }
 
   @Test
+  public void testLongMinPartitionWithUnitIntervalAndNonZeroOrigin() {
+    CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(1);
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(1);
+    TimePartitionUtils.setTimePartitionOrigin(1);
+    TimePartitionUtils.setTimePartitionInterval(1);
+
+    assertEquals(Long.MIN_VALUE, TimePartitionUtils.getTimePartitionId(Long.MIN_VALUE));
+    assertEquals(Long.MIN_VALUE, TimePartitionUtils.getTimePartitionSlot(Long.MIN_VALUE).startTime);
+    assertEquals(
+        Long.MIN_VALUE, TimePartitionUtils.getTimePartitionSlot(Long.MIN_VALUE + 1).startTime);
+    assertEquals(Long.MIN_VALUE + 2, TimePartitionUtils.getTimePartitionUpperBound(Long.MIN_VALUE));
+    assertEquals(Long.MIN_VALUE + 1, TimePartitionUtils.getTimePartitionEndTime(Long.MIN_VALUE));
+    assertEquals(
+        Long.MIN_VALUE + 2, TimePartitionUtils.getTimePartitionSlot(Long.MIN_VALUE + 2).startTime);
+  }
+
+  @Test
   public void testGetEstimateTimePartitionSizeWithOverflow() {
     long previousTimePartitionInterval = TimePartitionUtils.getTimePartitionInterval();
     try {

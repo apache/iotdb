@@ -23,6 +23,8 @@ import org.apache.tsfile.read.common.TimeRange;
 
 import java.math.BigInteger;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 /**
  * This class iteratively generates pre-aggregated time windows.
  *
@@ -73,7 +75,7 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   }
 
   private TimeRange getLeftmostTimeRange() {
-    long retEndTime = Math.min(ITimeRangeIterator.saturatingAdd(startTime, curInterval), endTime);
+    long retEndTime = Math.min(saturatedAdd(startTime, curInterval), endTime);
     updateIntervalAndStep();
     return new TimeRange(startTime, retEndTime);
   }
@@ -85,10 +87,10 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
     if (isIntervalCyclicChange
         && ITimeRangeIterator.isTimeRangeDistanceGreaterThan(
             retStartTime, endTime, interval % slidingStep)) {
-      retStartTime = ITimeRangeIterator.saturatingAdd(retStartTime, interval % slidingStep);
+      retStartTime = saturatedAdd(retStartTime, interval % slidingStep);
       updateIntervalAndStep();
     }
-    retEndTime = Math.min(ITimeRangeIterator.saturatingAdd(retStartTime, curInterval), endTime);
+    retEndTime = Math.min(saturatedAdd(retStartTime, curInterval), endTime);
     updateIntervalAndStep();
     return new TimeRange(retStartTime, retEndTime);
   }
@@ -125,7 +127,7 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
         return false;
       }
     }
-    retEndTime = Math.min(ITimeRangeIterator.saturatingAdd(retStartTime, curInterval), endTime);
+    retEndTime = Math.min(saturatedAdd(retStartTime, curInterval), endTime);
     updateIntervalAndStep();
     curTimeRange = new TimeRange(retStartTime, retEndTime);
     hasCachedTimeRange = true;
@@ -204,6 +206,6 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
                         < 0
                     ? BigInteger.ONE
                     : BigInteger.valueOf(2));
-    return ITimeRangeIterator.saturateToLong(result);
+    return result.min(BigInteger.valueOf(Long.MAX_VALUE)).longValue();
   }
 }

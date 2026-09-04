@@ -115,7 +115,7 @@ public class TsFileResourceTest {
     Assert.assertTrue(TsFileResource.checkAndCompareFileName(minTimeFile, maxTimeFile) < 0);
     Assert.assertTrue(TsFileResource.checkAndCompareFileName(maxTimeFile, minTimeFile) > 0);
 
-    String minVersionFile = TsFileNameGenerator.generateNewTsFileName(0, Long.MIN_VALUE, 0, 0);
+    String minVersionFile = TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE - 1, 0, 0);
     String maxVersionFile = TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE, 0, 0);
 
     Assert.assertTrue(TsFileResource.checkAndCompareFileName(minVersionFile, maxVersionFile) < 0);
@@ -126,7 +126,7 @@ public class TsFileResourceTest {
   public void testCompareFileCreationOrderByDescWithLongBoundaryVersion() {
     TsFileResource minVersionResource =
         new TsFileResource(
-            new File(TsFileNameGenerator.generateNewTsFileName(0, Long.MIN_VALUE, 0, 0)));
+            new File(TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE - 1, 0, 0)));
     TsFileResource maxVersionResource =
         new TsFileResource(
             new File(TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE, 0, 0)));

@@ -26,6 +26,8 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.ZoneId;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator {
 
   private static final int HEAP_MAX_SIZE = 100;
@@ -109,12 +111,12 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
     TimeRange firstTimeRange = aggrWindowIterator.nextTimeRange();
     if (leftCRightO) {
       timeBoundaryHeap.add(firstTimeRange.getMin());
-      timeBoundaryHeap.add(ITimeRangeIterator.saturatingAdd(firstTimeRange.getMax(), 1));
+      timeBoundaryHeap.add(saturatedAdd(firstTimeRange.getMax(), 1));
       curStartTimeForIterator = firstTimeRange.getMin();
     } else {
-      timeBoundaryHeap.add(ITimeRangeIterator.saturatingAdd(firstTimeRange.getMin(), -1));
+      timeBoundaryHeap.add(saturatedAdd(firstTimeRange.getMin(), -1));
       timeBoundaryHeap.add(firstTimeRange.getMax());
-      curStartTimeForIterator = ITimeRangeIterator.saturatingAdd(firstTimeRange.getMin(), -1);
+      curStartTimeForIterator = saturatedAdd(firstTimeRange.getMin(), -1);
     }
     tryToExpandHeap();
   }
@@ -125,12 +127,12 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
       timeRangeToExpand = aggrWindowIterator.nextTimeRange();
       if (leftCRightO) {
         timeBoundaryHeap.add(timeRangeToExpand.getMin());
-        timeBoundaryHeap.add(ITimeRangeIterator.saturatingAdd(timeRangeToExpand.getMax(), 1));
+        timeBoundaryHeap.add(saturatedAdd(timeRangeToExpand.getMax(), 1));
         curStartTimeForIterator = timeRangeToExpand.getMin();
       } else {
-        timeBoundaryHeap.add(ITimeRangeIterator.saturatingAdd(timeRangeToExpand.getMin(), -1));
+        timeBoundaryHeap.add(saturatedAdd(timeRangeToExpand.getMin(), -1));
         timeBoundaryHeap.add(timeRangeToExpand.getMax());
-        curStartTimeForIterator = ITimeRangeIterator.saturatingAdd(timeRangeToExpand.getMin(), -1);
+        curStartTimeForIterator = saturatedAdd(timeRangeToExpand.getMin(), -1);
       }
     }
   }

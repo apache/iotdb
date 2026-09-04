@@ -45,6 +45,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 public class SingleInputMultiReferenceLayer extends IntermediateLayer {
 
   private static final Logger LOGGER =
@@ -289,7 +291,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
         }
 
         long nextWindowTimeEnd =
-            Math.min(saturatingAdd(nextWindowTimeBegin, timeInterval), displayWindowEnd);
+            Math.min(saturatedAdd(nextWindowTimeBegin, timeInterval), displayWindowEnd);
         while (currentEndTime < nextWindowTimeEnd) {
           final YieldableState state = parentLayerReader.yield();
           if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -360,7 +362,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
-            saturatingAdd(nextWindowTimeBegin, timeInterval - 1));
+            saturatedAdd(nextWindowTimeBegin, timeInterval - 1));
 
         hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.size());
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
@@ -369,7 +371,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
       @Override
       public void readyForNext() {
         hasCached = false;
-        nextWindowTimeBegin = saturatingAdd(nextWindowTimeBegin, slidingStep);
+        nextWindowTimeBegin = saturatedAdd(nextWindowTimeBegin, slidingStep);
 
         safetyPile.moveForwardTo(nextIndexBegin + 1);
         tvList.setEvictionUpperBound(safetyLine.getSafetyLine());

@@ -41,6 +41,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.timeDifferenceAsDouble;
+
 public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample {
 
   private String type;
@@ -849,10 +851,6 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       return true;
     }
     return false;
-  }
-
-  private static double timeDifferenceAsDouble(long left, long right) {
-    return (double) left - (double) right;
   }
 
   private static double timeDistanceAsDouble(long left, long right) {

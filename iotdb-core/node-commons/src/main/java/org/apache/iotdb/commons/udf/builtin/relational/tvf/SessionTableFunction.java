@@ -38,12 +38,12 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.common.math.LongMath.saturatedAdd;
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
 public class SessionTableFunction implements TableFunction {
@@ -118,7 +118,7 @@ public class SessionTableFunction implements TableFunction {
     private long curIndex = 0;
     private long windowStart = Long.MIN_VALUE;
     private long currentWindowEnd = Long.MIN_VALUE;
-    private BigInteger windowEnd = BigInteger.valueOf(Long.MIN_VALUE);
+    private long windowEnd = Long.MIN_VALUE;
 
     public SessionDataProcessor(long gap) {
       this.gap = gap;
@@ -130,13 +130,13 @@ public class SessionTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
       long timeValue = input.getLong(0);
-      if (BigInteger.valueOf(timeValue).compareTo(windowEnd) > 0) {
+      if (timeValue > windowEnd) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder);
         currentStartIndex = curIndex;
         windowStart = timeValue;
       }
       currentWindowEnd = timeValue;
-      windowEnd = BigInteger.valueOf(timeValue).add(BigInteger.valueOf(gap));
+      windowEnd = saturatedAdd(timeValue, gap);
       curIndex++;
     }
 

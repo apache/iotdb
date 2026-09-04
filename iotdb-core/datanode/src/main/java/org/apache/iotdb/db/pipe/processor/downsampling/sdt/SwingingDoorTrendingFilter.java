@@ -24,9 +24,9 @@ import org.apache.iotdb.pipe.api.type.Binary;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.timeDifferenceAsDouble;
 import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceGreaterThanOrEqualTo;
 import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceLessThanOrEqualTo;
-import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.timeDifferenceAsDouble;
 
 public class SwingingDoorTrendingFilter<T> {
 

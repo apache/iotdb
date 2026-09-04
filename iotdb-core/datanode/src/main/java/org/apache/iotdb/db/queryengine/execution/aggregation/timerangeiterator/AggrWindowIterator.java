@@ -28,6 +28,8 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.ZoneId;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 /**
  * This class iteratively generates aggregated time windows.
  *
@@ -87,8 +89,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       retEndTime =
           Math.min(DateTimeUtils.calcPositiveIntervalByMonth(startTime, interval, zoneId), endTime);
     } else {
-      retEndTime =
-          Math.min(ITimeRangeIterator.saturatingAdd(startTime, interval.nonMonthDuration), endTime);
+      retEndTime = Math.min(saturatedAdd(startTime, interval.nonMonthDuration), endTime);
     }
     return new TimeRange(startTime, retEndTime);
   }
@@ -133,9 +134,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
                   startTime, interval.merge(slidingStep.multiple(intervalNum - 1)), zoneId),
               endTime);
     } else {
-      retEndTime =
-          Math.min(
-              ITimeRangeIterator.saturatingAdd(retStartTime, interval.nonMonthDuration), endTime);
+      retEndTime = Math.min(saturatedAdd(retStartTime, interval.nonMonthDuration), endTime);
     }
     return new TimeRange(retStartTime, retEndTime);
   }
@@ -194,7 +193,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
           DateTimeUtils.calcPositiveIntervalByMonth(
               startTime, slidingStep.multiple(timeRangeCount).merge(interval), zoneId);
     } else {
-      retEndTime = ITimeRangeIterator.saturatingAdd(retStartTime, interval.nonMonthDuration);
+      retEndTime = saturatedAdd(retStartTime, interval.nonMonthDuration);
     }
     retEndTime = Math.min(retEndTime, endTime);
     curTimeRange = new TimeRange(retStartTime, retEndTime);

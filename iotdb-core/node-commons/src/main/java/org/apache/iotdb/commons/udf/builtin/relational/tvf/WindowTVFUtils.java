@@ -46,9 +46,6 @@ import java.util.function.Consumer;
 import static org.apache.iotdb.commons.i18n.CommonMessages.EXCEPTION_COLUMN_LACK_OF_NAME;
 
 public class WindowTVFUtils {
-  private static final BigInteger BIG_LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
-  private static final BigInteger BIG_LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
-
   private static final Set<Type> ALLOWED_CALCULATION_TYPES =
       Set.of(Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
 
@@ -95,29 +92,33 @@ public class WindowTVFUtils {
             expectedFieldName));
   }
 
-  static BigInteger getWindowStart(long source, long origin, long interval) {
-    return getWindowStart(source, origin, interval, BigInteger.ZERO);
+  static long getWindowStart(long source, long origin, long interval) {
+    return getWindowStart(source, origin, interval, 0);
   }
 
-  static BigInteger getWindowStart(
-      long source, long origin, long interval, BigInteger distanceOffset) {
+  static long getWindowStart(long source, long origin, long interval, long distanceOffset) {
+    try {
+      long distance = Math.addExact(Math.subtractExact(source, origin), distanceOffset);
+      long stepCount = distance / interval;
+      return Math.addExact(origin, Math.multiplyExact(stepCount, interval));
+    } catch (ArithmeticException e) {
+      return getWindowStartWithBigInteger(source, origin, interval, distanceOffset);
+    }
+  }
+
+  private static long getWindowStartWithBigInteger(
+      long source, long origin, long interval, long distanceOffset) {
     BigInteger intervalValue = BigInteger.valueOf(interval);
     BigInteger stepCount =
         BigInteger.valueOf(source)
             .subtract(BigInteger.valueOf(origin))
-            .add(distanceOffset)
+            .add(BigInteger.valueOf(distanceOffset))
             .divide(intervalValue);
-    return BigInteger.valueOf(origin).add(stepCount.multiply(intervalValue));
-  }
-
-  static long saturateToLong(BigInteger value) {
-    if (value.compareTo(BIG_LONG_MAX) > 0) {
-      return Long.MAX_VALUE;
-    }
-    if (value.compareTo(BIG_LONG_MIN) < 0) {
-      return Long.MIN_VALUE;
-    }
-    return value.longValue();
+    return BigInteger.valueOf(origin)
+        .add(stepCount.multiply(intervalValue))
+        .max(BigInteger.valueOf(Long.MIN_VALUE))
+        .min(BigInteger.valueOf(Long.MAX_VALUE))
+        .longValue();
   }
 
   public static void validateOrderBy(TableArgument tableArgument, String timeColumn) {

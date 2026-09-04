@@ -22,6 +22,7 @@ package org.apache.iotdb.db.exception.query;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
+import static com.google.common.math.LongMath.saturatedAdd;
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_TIMEOUT;
 
 /** This class is used to throw run time exception when query is time out. */
@@ -34,20 +35,9 @@ public class QueryTimeoutRuntimeException extends IoTDBRuntimeException {
         String.format(
             QUERY_TIMEOUT_EXCEPTION_MESSAGE,
             startTime,
-            saturatingAdd(startTime, timeout),
+            saturatedAdd(startTime, timeout),
             currentTime),
         QUERY_TIMEOUT.getStatusCode(),
         true);
-  }
-
-  private static long saturatingAdd(long left, long right) {
-    long result = left + right;
-    if (right > 0 && result < left) {
-      return Long.MAX_VALUE;
-    }
-    if (right < 0 && result > left) {
-      return Long.MIN_VALUE;
-    }
-    return result;
   }
 }

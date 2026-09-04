@@ -209,6 +209,11 @@ public final class QueryMessages {
       "The forecast result length %d does not match the expected output length %d";
   public static final String FORECAST_RESULT_SINGLE_COLUMN =
       "The forecast result should have only one value column, but got %d";
+  public static final String EXCEPTION_FORECAST_OUTPUT_TIME_IS_OUT_OF_RANGE_0F114E4E =
+      "Forecast output time is out of range.";
+  public static final String
+      EXCEPTION_FORECAST_OUTPUT_INTERVAL_MUST_BE_POSITIVE_WHEN_INPUT_HAS_ONE_ROW_C9DBE14B =
+          "Forecast output interval must be positive when input has one row.";
 
   // ======================== TableSchema ========================
 

@@ -47,6 +47,8 @@ public final class StorageEngineMessages {
   public static final String REBOOT_ALL_TIMED_SERVICE_SUCCESSFULLY = "Reboot all timed service successfully";
   public static final String FAILED_TO_DELETE = "Failed to delete: {} -> {}";
   public static final String FAILED_TO_CHECK_OBJECT_FILES = "Failed to check Object Files: {}";
+  public static final String EXCEPTION_CANNOT_REPAIR_ARG_BECAUSE_TARGET_FILE_ALREADY_EXISTS_AND_TIMESTAMP_IS_LONG_MAX_VALUE_F29F630A =
+      "Cannot repair %s because the target file already exists and the file timestamp is Long.MAX_VALUE";
 
   // ======================== Buffer Cache ========================
 

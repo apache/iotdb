@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.math.LongMath.saturatedAdd;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_BOUNDARY_TIME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_BOUNDARY_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE;
@@ -104,7 +105,7 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
           WindowState.EMIT_AND_PURGE_WITHOUT_COMPUTE,
           new WindowOutput()
               .setTimestamp(window.getTimestamp())
-              .setProgressTime(saturatingAdd(window.getTimestamp(), slidingInterval)));
+              .setProgressTime(saturatedAdd(window.getTimestamp(), slidingInterval)));
     }
     return new Pair<>(WindowState.COMPUTE, null);
   }
@@ -113,7 +114,7 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
   public WindowOutput forceOutput(final TimeSeriesWindow window) {
     return new WindowOutput()
         .setTimestamp(window.getTimestamp())
-        .setProgressTime(saturatingAdd(window.getTimestamp(), slidingInterval));
+        .setProgressTime(saturatedAdd(window.getTimestamp(), slidingInterval));
   }
 
   private static boolean isTimestampAtOrAfterWindowEnd(
@@ -131,15 +132,5 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
                 .divide(intervalValue)
                 .multiply(intervalValue))
         .longValueExact();
-  }
-
-  private static long saturatingAdd(final long left, final long right) {
-    if (right > 0 && left > Long.MAX_VALUE - right) {
-      return Long.MAX_VALUE;
-    }
-    if (right < 0 && left < Long.MIN_VALUE - right) {
-      return Long.MIN_VALUE;
-    }
-    return left + right;
   }
 }

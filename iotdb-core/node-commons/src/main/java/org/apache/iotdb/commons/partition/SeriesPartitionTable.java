@@ -50,6 +50,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 public class SeriesPartitionTable {
   private final ConcurrentSkipListMap<TTimePartitionSlot, List<TConsensusGroupId>>
       seriesPartitionMap;
@@ -284,17 +286,9 @@ public class SeriesPartitionTable {
       long timePartitionInterval,
       long TTL,
       TTimePartitionSlot currentTimeSlot) {
-    long partitionEndTime = saturatingAdd(timePartitionSlot.getStartTime(), timePartitionInterval);
-    long expireTime = saturatingAdd(partitionEndTime, TTL);
+    long partitionEndTime = saturatedAdd(timePartitionSlot.getStartTime(), timePartitionInterval);
+    long expireTime = saturatedAdd(partitionEndTime, TTL);
     return expireTime <= currentTimeSlot.getStartTime();
-  }
-
-  private static long saturatingAdd(long left, long right) {
-    long result = left + right;
-    if (((left ^ result) & (right ^ result)) < 0) {
-      return left < 0 ? Long.MIN_VALUE : Long.MAX_VALUE;
-    }
-    return result;
   }
 
   public void merge(SeriesPartitionTable sourceMap) {

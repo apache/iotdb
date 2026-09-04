@@ -29,6 +29,18 @@ public final class DataNodeQueryMessages {
       "This node isn't instance of SchemaEntityNode.";
   public static final String THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE =
       "This node isn't instance of SchemaMeasurementNode.";
+  public static final String EXCEPTION_TIME_DURATION_IS_OUT_OF_RANGE_A56B1A29 =
+      "Time duration is out of range.";
+  public static final String EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A =
+      "Generated time column is out of range.";
+  public static final String
+      EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32 =
+          "The time predicate does not select any time range: %s";
+  public static final String
+      EXCEPTION_RIGHT_CLOSED_GROUP_BY_TIME_WITH_LONG_MAX_VALUE_END_TIME_CANNOT_BE_REPRESENTED_AS_A_SINGLE_RIGHT_OPEN_TIME_FILTER_772F893F =
+          "Right-closed GROUP BY TIME with Long.MAX_VALUE end time cannot be represented as a single right-open time filter.";
+  public static final String EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1 =
+      "Date expression is out of range: %s";
 
   // --- Execution / Aggregation ---
 

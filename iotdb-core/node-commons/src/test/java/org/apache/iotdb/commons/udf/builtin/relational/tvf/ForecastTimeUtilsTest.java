@@ -58,4 +58,13 @@ public class ForecastTimeUtilsTest {
         SemanticException.class,
         () -> ForecastTimeUtils.calculateForecastInterval(Long.MIN_VALUE, Long.MAX_VALUE, 2, 0));
   }
+
+  @Test
+  public void testForecastIntervalRequiresPositiveIntervalForSingleRow() {
+    Assert.assertThrows(
+        SemanticException.class, () -> ForecastTimeUtils.calculateForecastInterval(10, 10, 1, 0));
+    Assert.assertThrows(
+        SemanticException.class, () -> ForecastTimeUtils.calculateForecastInterval(10, 10, 1, -1));
+    Assert.assertEquals(5, ForecastTimeUtils.calculateForecastInterval(10, 10, 1, 5));
+  }
 }

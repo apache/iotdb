@@ -316,7 +316,8 @@ public class InferenceOperator implements ProcessOperator {
       }
       return interval.longValue();
     } catch (ArithmeticException e) {
-      throw new ModelInferenceProcessException("Generated time column is out of range.");
+      throw new ModelInferenceProcessException(
+          DataNodeQueryMessages.EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A);
     }
   }
 
@@ -324,7 +325,8 @@ public class InferenceOperator implements ProcessOperator {
     try {
       return Math.addExact(maxTimestamp, Math.multiplyExact(interval, currentRowIndex));
     } catch (ArithmeticException e) {
-      throw new ModelInferenceProcessException("Generated time column is out of range.");
+      throw new ModelInferenceProcessException(
+          DataNodeQueryMessages.EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A);
     }
   }
 }
