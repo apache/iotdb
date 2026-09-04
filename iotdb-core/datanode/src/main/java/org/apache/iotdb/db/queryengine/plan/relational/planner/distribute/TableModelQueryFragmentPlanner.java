@@ -125,6 +125,12 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
       Map<QualifiedObjectName, Map<DeviceEntry, Integer>> deviceCountMapOfEachTable) {
     if (planNode instanceof AggregationTableScanNode) {
       AggregationTableScanNode aggregationTableScanNode = (AggregationTableScanNode) planNode;
+      // Spill planning already installs the cross-region device count map while constructing each
+      // region scan node. Its device entries are intentionally kept out of the plan node, so do
+      // not replace that map with an empty map here.
+      if (aggregationTableScanNode.getDeviceCountMap() != null) {
+        return;
+      }
       Map<DeviceEntry, Integer> deviceMap =
           deviceCountMapOfEachTable.computeIfAbsent(
               aggregationTableScanNode.getQualifiedObjectName(), name -> new HashMap<>());
