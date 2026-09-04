@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
@@ -244,6 +245,9 @@ public class ConfigNodeConfig {
 
   private long configNodeRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
   private long schemaRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
+
+  /** Max size (in bytes) of the in-memory buffer used when taking/loading ConfigNode snapshots. */
+  private long configNodeSnapshotBufferSizeMax = 4 * 1024 * 1024L;
 
   /**
    * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
@@ -971,6 +975,22 @@ public class ConfigNodeConfig {
       long schemaRegionRatisConsensusLogAppenderBufferSize) {
     this.schemaRegionRatisConsensusLogAppenderBufferSize =
         schemaRegionRatisConsensusLogAppenderBufferSize;
+  }
+
+  public long getConfigNodeSnapshotBufferSizeMax() {
+    return configNodeSnapshotBufferSizeMax;
+  }
+
+  public void setConfigNodeSnapshotBufferSizeMax(long configNodeSnapshotBufferSizeMax) {
+    if (configNodeSnapshotBufferSizeMax > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          String.format(
+              CommonMessages
+                  .EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E,
+              Integer.MAX_VALUE,
+              configNodeSnapshotBufferSizeMax));
+    }
+    this.configNodeSnapshotBufferSizeMax = configNodeSnapshotBufferSizeMax;
   }
 
   public long getSchemaRegionRatisSnapshotTriggerThreshold() {

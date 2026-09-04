@@ -238,4 +238,7 @@ public final class CommonMessages {
       EXCEPTION_XCORR_REQUIRES_EXACTLY_TWO_CALCULATION_COLUMNS_BUT_FOUND_ARG_2FF8EB0C =
           "XCorr 要求必须正好有两列计算列，但实际找到 %d 列。";
   public static final String EXCEPTION_COLUMN_LACK_OF_NAME = "表参数中列缺少名字";
+  public static final String
+      EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
+          "快照缓冲区大小不得超过 %d 字节，但实际为 %d。";
 }

@@ -342,4 +342,7 @@ public final class CommonMessages {
       EXCEPTION_XCORR_REQUIRES_EXACTLY_TWO_CALCULATION_COLUMNS_BUT_FOUND_ARG_2FF8EB0C =
           "XCorr requires exactly two calculation columns, but found %d.";
   public static final String EXCEPTION_COLUMN_LACK_OF_NAME = "the column in table lack of the name";
+  public static final String
+      EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
+          "Snapshot buffer size must not exceed %d bytes, but was %d.";
 }
