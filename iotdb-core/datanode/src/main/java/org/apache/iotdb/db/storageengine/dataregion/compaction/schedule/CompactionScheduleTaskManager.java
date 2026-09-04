@@ -49,6 +49,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Schedules compaction-selection and TTL-check tasks for all local DataRegions.
+ *
+ * <p>Schedule tasks are protected by the manager lock. Configuration changes are applied only
+ * after active tasks have stopped, and repair tasks temporarily prevent incompatible schedule
+ * changes.
+ */
 public class CompactionScheduleTaskManager implements IService {
 
   private int compactionSelectorNum =

@@ -56,18 +56,23 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
-/** This class is used to manage and allocate wal nodes. */
+/**
+ * Allocates, tracks, flushes, and removes write-ahead-log nodes used by DataRegion write paths.
+ *
+ * <p>The allocation and deletion behavior depends on the configured consensus protocol and WAL
+ * mode. Disabled WAL mode must remain a no-op for lifecycle and allocation operations.
+ */
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  // manage all wal nodes and decide how to allocate them
+  /** Allocates WAL nodes and applies the strategy selected for the configured consensus protocol. */
   private final NodeAllocationStrategy walNodesManager;
-  // single thread to delete old .wal files
+  /** Single-thread scheduler that deletes expired WAL files. */
   private ScheduledExecutorService walDeleteThread;
-  // total disk usage of wal files
+  /** Aggregate disk usage of all WAL nodes. */
   private final AtomicLong totalDiskUsage = new AtomicLong();
-  // total number of wal files
+  /** Aggregate number of WAL files across all WAL nodes. */
   private final AtomicLong totalFileNum = new AtomicLong();
 
   private WALManager() {
@@ -101,7 +106,7 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
-  /** WAL node will be registered only when using iot series consensus protocol. */
+  /** Registers a WAL node only for IoTConsensus and IoTConsensusV2. */
   public void registerWALNode(
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     if (config.getWalMode() == WALMode.DISABLE
@@ -117,7 +122,7 @@ public class WALManager implements IService {
     WritingMetrics.getInstance().createWALNodeInfoMetrics(applicantUniqueId);
   }
 
-  /** WAL node will be deleted only when using iot series consensus protocol. */
+  /** Deletes a WAL node only for IoTConsensus and IoTConsensusV2. */
   public void deleteWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE
         || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)

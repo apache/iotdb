@@ -53,7 +53,12 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
+/**
+ * Owns the worker pools and candidate queue used to execute DataRegion compaction tasks.
+ *
+ * <p>The manager tracks task futures by database and DataRegion, applies compaction rate limits,
+ * and coordinates graceful or immediate shutdown of compaction workers.
+ */
 @SuppressWarnings("squid:S6548")
 public class CompactionTaskManager implements IService {
   private static final Logger logger =

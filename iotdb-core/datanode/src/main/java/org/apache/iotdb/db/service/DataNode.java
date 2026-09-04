@@ -156,6 +156,14 @@ import static org.apache.iotdb.commons.queryengine.utils.DateTimeUtils.initTimes
 import static org.apache.iotdb.commons.utils.StatusUtils.retrieveExitStatusCode;
 import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
 
+/**
+ * The process-level service for a DataNode.
+ *
+ * <p>DataNode registers with the ConfigNode cluster, restores local schema and data regions,
+ * starts consensus and query services, and exposes client and internal RPC endpoints. Startup
+ * order is significant because query, write, and region-management services must not serve
+ * requests before local recovery and runtime configuration have completed.
+ */
 public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -252,13 +260,20 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
+  /**
+   * Starts the DataNode by preparing local state, synchronizing cluster configuration, registering
+   * or restarting the node, recovering regions, and starting the remaining services in dependency
+   * order.
+   *
+   * <p>The first-start and restart paths intentionally perform different registration and security
+   * checks.
+   */
   @Override
   protected void start() {
     logger.info(DataNodeMiscMessages.STARTING_DATANODE);
     boolean isFirstStart;
     try {
-      IoTDBDescriptor.getInstance().getMemoryConfig().activateAutoResizingBufferMemoryControl();
-      // Check if this DataNode is start for the first time and do other pre-checks
+      // Check whether this is the first DataNode startup and run the remaining startup checks.
       isFirstStart = prepareDataNode();
 
       if (isFirstStart) {
@@ -1368,6 +1383,13 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     DataNodeSystemPropertiesHandler.getInstance().delete();
   }
 
+  /**
+   * Stops DataNode services and releases resources in an order that preserves WAL, TsFile,
+   * consensus, query, and RPC shutdown dependencies.
+   *
+   * <p>The method must remain safe during partial startup because startup failures invoke it as
+   * cleanup.
+   */
   public void stop() {
     stopTriggerRelatedServices();
     registerManager.deregisterAll();

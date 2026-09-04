@@ -127,10 +127,17 @@ import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.GET_QUERY_RES
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.FLUSHING_MEMTABLE;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.WORKING_MEMTABLE;
 
+/**
+ * Manages one writable TsFile, its working and flushing MemTables, WAL entries, flush lifecycle,
+ * and resource metadata.
+ *
+ * <p>The flush/query lock coordinates reads, asynchronous flush, synchronous close, deletion, and
+ * resource publication. A processor is closed only after its pending MemTables have been flushed.
+ */
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileProcessor {
 
-  /** Logger fot this class. */
+  /** Logger for this class. */
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
 
   private static final int NUM_MEM_TO_ESTIMATE = 3;
@@ -167,12 +174,12 @@ public class TsFileProcessor {
    */
   private volatile boolean managedByFlushManager;
 
-  /** A lock to mutual exclude read and read */
+  /** Read/write lock coordinating query access with flush, close, and deletion operations. */
   private final ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
 
   /**
-   * It is set by the StorageGroupProcessor and checked by flush threads. (If shouldClose == true
-   * and its flushingMemTables are all flushed, then the flush thread will close this file.)
+   * Set by DataRegion when this processor must close after all MemTables currently being flushed
+   * have completed.
    */
   private volatile boolean shouldClose;
 

@@ -56,6 +56,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
+/**
+ * Performs an orderly DataNode shutdown.
+ *
+ * <p>The hook first prevents new writes and drains write-related resources, then closes or
+ * snapshots storage according to the configured consensus protocol, persists Pipe progress,
+ * stops DataNode services, reports shutdown to the ConfigNode leader, and finally releases the
+ * directory lock.
+ */
 public class DataNodeShutdownHook extends Thread {
 
   private static final Logger logger = LoggerFactory.getLogger(DataNodeShutdownHook.class);
@@ -134,9 +142,8 @@ public class DataNodeShutdownHook extends Thread {
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
     // consensus algorithms, which will replace the underlying storage engine based on its
-    // own
-    // latest snapshot, while other consensus algorithms will not. This judgement ensures that
-    // compaction work is not discarded even if there are frequent restarts
+    // own latest snapshot, while other consensus algorithms will not. This judgement ensures 
+    // that compaction work is not discarded even if there are frequent restarts
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getDataRegionConsensusProtocolClass()
@@ -189,9 +196,8 @@ public class DataNodeShutdownHook extends Thread {
     // set encryption key to 16-byte zero.
     TSFileDescriptor.getInstance().getConfig().setEncryptKey(new byte[16]);
 
-    // Actually stop all services started by the DataNode.
-    // If we don't call this, services like the RestService are not stopped and I can't re-start
-    // it.
+    // Stop every service started by DataNode. Otherwise services such as RestService may retain
+    // resources and prevent a subsequent restart in the same JVM.
     DataNode.getInstance().stop();
 
     // Set and report shutdown to cluster ConfigNode-leader

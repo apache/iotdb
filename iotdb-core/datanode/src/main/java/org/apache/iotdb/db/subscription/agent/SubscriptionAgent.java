@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+/**
+ * Entry point for DataNode subscription receiver, runtime, consumer, broker, and topic agents.
+ *
+ * <p>The singleton exposes the agents that own subscription protocol handling and runtime state;
+ * lifecycle and ownership rules are implemented by those agents.
+ */
 public class SubscriptionAgent {
 
   private final SubscriptionReceiverAgent receiverAgent;

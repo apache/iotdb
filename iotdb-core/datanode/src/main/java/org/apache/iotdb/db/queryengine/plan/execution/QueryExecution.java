@@ -79,10 +79,11 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 /**
- * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
- * frame. It takes three main responsibilities: 1. Prepare a query. Transform a query from statement
- * to DistributedQueryPlan with fragment instances. 2. Dispatch all the fragment instances to
- * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
+ * Represents the lifecycle and execution state of one MPP query or write operation.
+ *
+ * <p>It analyzes the statement, builds logical and distributed plans, dispatches fragment
+ * instances, exposes results through the local or remote exchange layer, monitors state changes,
+ * retries eligible failures, and releases resources exactly once.
  */
 public class QueryExecution implements IQueryExecution {
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryExecution.class);
@@ -101,11 +102,10 @@ public class QueryExecution implements IQueryExecution {
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
 
-  // The result of QueryExecution will be written to the MPPDataExchangeManager in current Node.
-  // We use this SourceHandle to fetch the TsBlock from it.
+  /** Result blocks are published to the local exchange manager and read through this source handle. */
   private ISourceHandle resultHandle;
 
-  // used for cleaning resultHandle up exactly once
+  /** Guards exactly-once cleanup of the result source handle. */
   private final AtomicBoolean resultHandleCleanUp;
 
   private final AtomicBoolean stopped;
@@ -199,7 +199,8 @@ public class QueryExecution implements IQueryExecution {
       return;
     }
 
-    // check timeout for query first
+    // Apply the timeout only to query operations. Write operations use the write-path retry and
+    // backpressure rules instead of a query execution deadline.
     checkTimeOutForQuery();
     doLogicalPlan();
 
