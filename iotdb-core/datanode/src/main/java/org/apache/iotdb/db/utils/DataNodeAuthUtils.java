@@ -69,6 +69,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class DataNodeAuthUtils {
+  private static final long VISIT_HISTORY_QUERY_TIMEOUT_IN_MS = 500L;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
@@ -621,12 +622,11 @@ public class DataNodeAuthUtils {
       tsVisitHistoryResp.setFailedAttempts(
           computeFailedLoginAttempts(userId, tsVisitHistoryResp.getLastSuccessloginTime()));
       basicOpenSessionResp.setTsVisitHistoryResp(tsVisitHistoryResp);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
+      basicOpenSessionResp.setTsVisitHistoryResp(null);
       LOGGER.warn("Cannot generate query for visit history interval.", e);
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-          .setMessage("Meet errors when getting visit history.");
     }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   private static Optional<TsBlock> findLastNonEmptyTsBlock(List<TsBlock> tsBlocks) {
@@ -639,7 +639,8 @@ public class DataNodeAuthUtils {
     return Optional.ofNullable(last);
   }
 
-  private static void fillLastSuccessLoginInfo(long userId, TSVisitHistoryResp resp) {
+  private static void fillLastSuccessLoginInfo(long userId, TSVisitHistoryResp resp)
+      throws IoTDBException {
     String sql =
         String.format(
             "SELECT ip FROM "
@@ -661,8 +662,8 @@ public class DataNodeAuthUtils {
         lastTsBlock.map(b -> b.getTimeByIndex(b.getPositionCount() - 1)).orElse(0L));
   }
 
-  private static void fillLastFailedLoginInfo(
-      long userId, long afterTime, TSVisitHistoryResp resp) {
+  private static void fillLastFailedLoginInfo(long userId, long afterTime, TSVisitHistoryResp resp)
+      throws IoTDBException {
     String sql =
         String.format(
             "SELECT ip FROM "
@@ -685,7 +686,8 @@ public class DataNodeAuthUtils {
         lastTsBlock.map(b -> b.getTimeByIndex(b.getPositionCount() - 1)).orElse(0L));
   }
 
-  private static int computeFailedLoginAttempts(long userId, long afterSuccessTime) {
+  private static int computeFailedLoginAttempts(long userId, long afterSuccessTime)
+      throws IoTDBException {
     String sql =
         String.format(
             "SELECT count(ip) from "
@@ -703,7 +705,7 @@ public class DataNodeAuthUtils {
     return count;
   }
 
-  private static List<TsBlock> getTsBlockBySql(String sql) {
+  private static List<TsBlock> getTsBlockBySql(String sql) throws IoTDBException {
     long queryId = -1;
     List<TsBlock> tsBlocks = new ArrayList<>();
     try {
@@ -726,11 +728,12 @@ public class DataNodeAuthUtils {
                   sessionInfo,
                   sql,
                   ClusterPartitionFetcher.getInstance(),
-                  ClusterSchemaFetcher.getInstance());
+                  ClusterSchemaFetcher.getInstance(),
+                  VISIT_HISTORY_QUERY_TIMEOUT_IN_MS,
+                  false,
+                  statement.isDebug());
       if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new IoTDBException(
-            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-                .setMessage("Meet errors when getting visit history."));
+        throw new IoTDBException(result.status);
       }
       IQueryExecution queryExecution = Coordinator.getInstance().getQueryExecution(queryId);
       while (true) {
@@ -743,9 +746,6 @@ public class DataNodeAuthUtils {
           tsBlocks.add(tsBlock);
         }
       }
-      return tsBlocks;
-    } catch (IoTDBException e) {
-      LOGGER.warn("Cannot generate query for visit history interval", e);
       return tsBlocks;
     } finally {
       if (queryId != -1) {
