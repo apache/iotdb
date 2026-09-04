@@ -163,6 +163,8 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
+    TimePartitionUtils.setTimePartitionOrigin(
+        CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin());
     TimePartitionUtils.setTimePartitionInterval(
         CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
   }
