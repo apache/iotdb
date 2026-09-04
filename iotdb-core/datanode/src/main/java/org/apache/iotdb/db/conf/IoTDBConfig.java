@@ -219,6 +219,9 @@ public class IoTDBConfig {
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
 
+  /** Whether WAL nodes cache their sorted WAL file lists. */
+  private boolean walFileListCacheEnabled = true;
+
   /**
    * Enables or disables the automatic clearing of the WAL cache when a memory compaction is
    * triggered. When enabled, the WAL cache will be cleared to release memory during the compaction
@@ -2232,6 +2235,14 @@ public class IoTDBConfig {
 
   void setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
     this.deleteWalFilesPeriodInMs = deleteWalFilesPeriodInMs;
+  }
+
+  public boolean isWalFileListCacheEnabled() {
+    return walFileListCacheEnabled;
+  }
+
+  public void setWalFileListCacheEnabled(boolean walFileListCacheEnabled) {
+    this.walFileListCacheEnabled = walFileListCacheEnabled;
   }
 
   public boolean getWALCacheShrinkClearEnabled() {

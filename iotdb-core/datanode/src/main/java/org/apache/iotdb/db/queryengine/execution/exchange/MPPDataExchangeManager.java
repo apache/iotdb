@@ -521,17 +521,21 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     private final AtomicInteger cnt;
 
+    private final AtomicBoolean hasChannelFailedOrAborted;
+
     private final AtomicBoolean hasDecremented = new AtomicBoolean(false);
 
     public ISinkChannelListenerImpl(
         TFragmentInstanceId localFragmentInstanceId,
         FragmentInstanceContext context,
         IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
-        AtomicInteger cnt) {
+        AtomicInteger cnt,
+        AtomicBoolean hasChannelFailedOrAborted) {
       this.shuffleSinkHandleId = localFragmentInstanceId;
       this.context = context;
       this.onFailureCallback = onFailureCallback;
       this.cnt = cnt;
+      this.hasChannelFailedOrAborted = hasChannelFailedOrAborted;
     }
 
     @Override
@@ -554,6 +558,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(DataNodeQueryMessages.SKH_LISTENER_ON_ABORT);
       }
+      hasChannelFailedOrAborted.set(true);
       decrementCnt();
       return context.getFailureCause();
     }
@@ -561,21 +566,25 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFailure(ISink sink, Throwable t) {
       LOGGER.warn(DataNodeQueryMessages.ISINKCHANNEL_FAILED_DUE_TO, t);
-      decrementCnt();
-      if (onFailureCallback != null) {
-        onFailureCallback.call(t);
+      hasChannelFailedOrAborted.set(true);
+      try {
+        if (onFailureCallback != null) {
+          onFailureCallback.call(t);
+        }
+      } finally {
+        decrementCnt();
       }
     }
 
     private void decrementCnt() {
       if (hasDecremented.compareAndSet(false, true) && (cnt.decrementAndGet() == 0)) {
-        closeShuffleSinkHandle();
+        releaseShuffleSinkHandle();
       }
     }
 
-    private void closeShuffleSinkHandle() {
+    private void releaseShuffleSinkHandle() {
       ISinkHandle sinkHandle = shuffleSinkHandles.remove(shuffleSinkHandleId);
-      if (sinkHandle != null) {
+      if (sinkHandle != null && !hasChannelFailedOrAborted.get()) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(DataNodeQueryMessages.CLOSE_SHUFFLE_SINK_HANDLE, shuffleSinkHandleId);
         }
@@ -714,7 +723,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      AtomicBoolean hasChannelFailedOrAborted) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -750,7 +760,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         localFragmentInstanceId,
         queue,
         new ISinkChannelListenerImpl(
-            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt));
+            localFragmentInstanceId,
+            instanceContext,
+            instanceContext::failed,
+            cnt,
+            hasChannelFailedOrAborted));
   }
 
   /**
@@ -786,7 +800,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      AtomicBoolean hasChannelFailedOrAborted) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -806,7 +821,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         executorService,
         tsBlockSerdeFactory.get(),
         new ISinkChannelListenerImpl(
-            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt),
+            localFragmentInstanceId,
+            instanceContext,
+            instanceContext::failed,
+            cnt,
+            hasChannelFailedOrAborted),
         instanceContext.isHighestPriority(),
         mppDataExchangeServiceClientManager);
   }
@@ -830,6 +849,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     int channelNum = downStreamChannelLocationList.size();
     AtomicInteger cnt = new AtomicInteger(channelNum);
+    AtomicBoolean hasChannelFailedOrAborted = new AtomicBoolean(false);
     List<ISinkChannel> downStreamChannelList =
         downStreamChannelLocationList.stream()
             .map(
@@ -839,7 +859,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                         localPlanNodeId,
                         downStreamChannelLocation,
                         instanceContext,
-                        cnt))
+                        cnt,
+                        hasChannelFailedOrAborted))
             .collect(Collectors.toList());
 
     ShuffleSinkHandle shuffleSinkHandle =
@@ -858,7 +879,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       String localPlanNodeId,
       DownStreamChannelLocation downStreamChannelLocation,
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      AtomicBoolean hasChannelFailedOrAborted) {
     if (isSameNode(downStreamChannelLocation.getRemoteEndpoint())) {
       return createLocalSinkChannel(
           localFragmentInstanceId,
@@ -866,7 +888,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
           instanceContext,
-          cnt);
+          cnt,
+          hasChannelFailedOrAborted);
     } else {
       return createSinkChannel(
           localFragmentInstanceId,
@@ -875,7 +898,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
           instanceContext,
-          cnt);
+          cnt,
+          hasChannelFailedOrAborted);
     }
   }
 

@@ -340,6 +340,9 @@ public final class ConfigNodeMessages {
       "schema_region_consensus_protocol_class";
   public static final String SEND_RPC_TO_DATA_NODE_FOR_CHANGING_REGIONS_LEADER_ON =
       "向 data node: {} 发送 RPC 以切换其上的 region leader";
+  public static final String
+      LOG_SETNEEDLASTCACHE_THE_NEED_LAST_CACHE_FLAG_OF_DATABASE_ARG_IS_ADJUSTED_TO_ARG_C7CFFABC =
+          "[SetNeedLastCache] Database：{} 的 need last cache 标志已调整为：{}";
   public static final String SETTTL_THE_TTL_OF_DATABASE_IS_ADJUSTED_TO =
       "[SetTTL] Database: {} 的 TTL 已调整为：{}";
   public static final String SNAPSHOT_DIRECTORY_CAN_NOT_BE_CREATED = "无法创建快照目录 [{}]。";
@@ -715,4 +718,16 @@ public final class ConfigNodeMessages {
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "创建或修改 topic 失败，%s 和 %s 仅支持 incremental 模式的 topic";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_SUBSCRIBING_ONLY_TO_THE_AUDIT_DATABASE_OR_PATHS_UNDER_IT_IS_NOT_ALLOWED_3E96A6BA =
+          "创建或修改 topic 失败，不允许仅订阅 __audit 数据库或其下的路径";
+  public static final String LOG_STARTING_IOTDB_EDGE_CONFIGNODE_AND_DATANODE_IN_ONE_77F32605 =
+      "正在启动 IoTDB Edge：ConfigNode 与 DataNode 运行于同一进程";
+  public static final String LOG_IOTDB_EDGE_CONFIGNODE_IS_READY_STARTING_DATANODE_6729159E =
+      "IoTDB Edge：ConfigNode 已就绪，开始启动 DataNode";
+  public static final String EXCEPTION_IOTDB_EDGE_CONFIGNODE_BOOTSTRAP_FAILED_02EEE59A =
+      "IoTDB Edge：ConfigNode 启动失败";
+  public static final String
+      EXCEPTION_IOTDB_EDGE_CONFIGNODE_INTERNAL_PORT_ARG_IS_NOT_READY_WITHIN_03697FF5 =
+          "IoTDB Edge：ConfigNode 内部端口 %s 在 %s ms 内未就绪";
 }

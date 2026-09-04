@@ -111,6 +111,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
@@ -121,6 +122,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.source.IoTDBSource.getSkipIfNoPrivileges;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -163,6 +165,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private boolean shouldExtractInsertion;
   private boolean shouldExtractDeletion;
   private boolean shouldTransferModFile; // Whether to transfer mods
+  private String tsFileParser;
   protected String userId;
   protected String userName;
   protected String cliHostname;
@@ -366,6 +369,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
+    tsFileParser =
+        parameters.getStringByKeys(EXTRACTOR_TSFILE_PARSER_KEY, SOURCE_TSFILE_PARSER_KEY);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -1007,7 +1012,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-    } catch (final IOException e) {
+    } catch (final IOException | RuntimeException e) {
       LOGGER.warn(
           DataNodePipeMessages.PIPE_FAILED_TO_GET_DEVICES_FROM_TSFILE_1,
           pipeName,
@@ -1285,6 +1290,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               skipIfNoPrivileges,
               historicalDataExtractionStartTime,
               historicalDataExtractionEndTime);
+      event.setTsFileParser(tsFileParser);
 
       if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
         event.skipReportOnCommitAndGeneratedEvents();

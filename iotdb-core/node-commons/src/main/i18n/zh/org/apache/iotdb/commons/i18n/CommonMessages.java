@@ -126,6 +126,16 @@ public final class CommonMessages {
       "在 {} 毫秒后仍无法停止自动释放器";
   public static final String UNABLE_TO_STOP_EVICTOR = "在 {} 毫秒后仍无法停止驱逐器";
 
+  // --- startcheck / system.properties ---
+  public static final String IOTDB_VERSION_TOO_OLD = "IoTDB 版本过旧";
+  public static final String REPAIR_SYSTEM_PROPERTIES = "修复 system.properties，缺少 {}";
+  public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
+      "%s 首次启动后不能修改";
+  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
+      "成功序列化 mutable system properties，耗时 {} ms。";
+  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
+      "请勿将 IoTDB 从 v0.9 或更低版本直接升级到 v1.0！请先升级到 v0.10";
+
   private CommonMessages() {}
 
   public static final String COLLECTION_MUST_NOT_BE_NULL = "集合不能为空。";
@@ -215,5 +225,17 @@ public final class CommonMessages {
   public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9 = "DATA 参数的 ORDER BY 子句必须仅包含 TIMECOL 参数指定的时间列。";
   public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 = "不支持的 M4 值类型：";
   public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold 必须在 [0, 1) 范围内，但实际为 ";
-
+  public static final String LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443 =
+      "可信信道功能失效：发起者=%s，目标端=%s";
+  public static final String
+      LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF =
+          "用户数据传送尝试：时间=%d，发起者=%s，源端=%s，目标端=%s，保护方法=%s，结果=%s，错误=%s";
+  public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION = "wpass的取值范围应该位于(0, 1)";
+  public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "没有找到可以计算的列.";
+  public static final String EXCEPTION_NOT_ALLOWED_COLUMNS = "只允许列类型为double, float, int32, int64参与函数计算, 当前列 %s 类型是 %s.";
+  public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM = "分区行数超过了最大限制";
+  public static final String
+      EXCEPTION_XCORR_REQUIRES_EXACTLY_TWO_CALCULATION_COLUMNS_BUT_FOUND_ARG_2FF8EB0C =
+          "XCorr 要求必须正好有两列计算列，但实际找到 %d 列。";
+  public static final String EXCEPTION_COLUMN_LACK_OF_NAME = "表参数中列缺少名字";
 }

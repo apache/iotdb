@@ -68,6 +68,7 @@ import org.apache.iotdb.commons.schema.tree.AlterTimeSeriesOperationType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
+import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -256,6 +257,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscriptionProgressInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -264,6 +266,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
@@ -2676,9 +2679,111 @@ public class ConfigManager implements IManager {
   @Override
   public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
     TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? subscriptionManager.getSubscriptionCoordinator().showSubscription(req)
-        : new TShowSubscriptionResp().setStatus(status);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TShowSubscriptionResp().setStatus(status);
+    }
+    final TShowSubscriptionResp response =
+        subscriptionManager.getSubscriptionCoordinator().showSubscription(req);
+    if (!req.isSetDetails()
+        || !req.isDetails()
+        || response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return response;
+    }
+
+    final Set<String> visibleSubscriptions = new HashSet<>();
+    final Set<String> subscriptionsWithProgress = new HashSet<>();
+    if (response.isSetSubscriptionInfoList()) {
+      response
+          .getSubscriptionInfoList()
+          .forEach(
+              info ->
+                  visibleSubscriptions.add(
+                      info.getTopicName() + "\u0000" + info.getConsumerGroupId()));
+    }
+    final List<TSubscriptionProgressInfo> progressInfoList = new ArrayList<>();
+    final Map<Integer, TPullCommitProgressResp> dataNodeResponses =
+        getProcedureManager().getEnv().pullCommitProgressFromDataNodesBestEffort();
+    for (final Map.Entry<Integer, TPullCommitProgressResp> dataNodeEntry :
+        dataNodeResponses.entrySet()) {
+      final TPullCommitProgressResp dataNodeResponse = dataNodeEntry.getValue();
+      if (!dataNodeResponse.isSetSubscriptionProgress()) {
+        continue;
+      }
+      for (final ByteBuffer serializedSnapshot :
+          dataNodeResponse.getSubscriptionProgress().values()) {
+        final SubscriptionProgressSnapshot snapshot;
+        try {
+          snapshot = SubscriptionProgressSnapshot.deserialize(serializedSnapshot);
+        } catch (final RuntimeException ignored) {
+          // A rolling upgrade may return a snapshot encoded by a different software version.
+          continue;
+        }
+        if (!visibleSubscriptions.contains(
+            snapshot.getTopicName() + "\u0000" + snapshot.getConsumerGroupId())) {
+          continue;
+        }
+        subscriptionsWithProgress.add(
+            snapshot.getTopicName() + "\u0000" + snapshot.getConsumerGroupId());
+        progressInfoList.add(
+            new TSubscriptionProgressInfo(
+                snapshot.getTopicName(),
+                snapshot.getConsumerGroupId(),
+                snapshot.getRegionId(),
+                dataNodeEntry.getKey(),
+                snapshot.isActive(),
+                snapshot.isInitialized(),
+                snapshot.getStatus(),
+                snapshot.getRemainingEventCount(),
+                snapshot.getRawWalGap(),
+                snapshot.getApproximateLag(),
+                snapshot.getInFlightEventCount(),
+                snapshot.getPrefetchedEventCount(),
+                snapshot.getPendingEventCount(),
+                snapshot.getCurrentWalSearchIndex(),
+                snapshot.getNextReadSearchIndex(),
+                snapshot.getLastProgressTimeMs(),
+                snapshot.getLastPollTimeMs(),
+                snapshot.getLastConsumerId(),
+                snapshot.getSeekGeneration()));
+      }
+    }
+    if (response.isSetSubscriptionInfoList()) {
+      response
+          .getSubscriptionInfoList()
+          .forEach(
+              info -> {
+                final String key = info.getTopicName() + "\u0000" + info.getConsumerGroupId();
+                if (!subscriptionsWithProgress.contains(key)) {
+                  progressInfoList.add(
+                      new TSubscriptionProgressInfo(
+                          info.getTopicName(),
+                          info.getConsumerGroupId(),
+                          "",
+                          -1,
+                          false,
+                          false,
+                          SubscriptionProgressSnapshot.STATUS_NO_QUEUE,
+                          0L,
+                          0L,
+                          0L,
+                          0L,
+                          0L,
+                          0L,
+                          0L,
+                          0L,
+                          0L,
+                          0L,
+                          "",
+                          0L));
+                }
+              });
+    }
+    progressInfoList.sort(
+        Comparator.comparing(TSubscriptionProgressInfo::getTopicName)
+            .thenComparing(TSubscriptionProgressInfo::getConsumerGroupId)
+            .thenComparingInt(TSubscriptionProgressInfo::getDataNodeId)
+            .thenComparing(TSubscriptionProgressInfo::getRegionId));
+    return response.setSubscriptionProgressList(progressInfoList);
   }
 
   @Override
@@ -3339,7 +3444,8 @@ public class ConfigManager implements IManager {
             resp.getPipeRemainingEventCountList(),
             resp.getPipeRemainingTimeList(),
             resp.getPipeDegradedStatusList(),
-            resp.getPipeRecentFailureList());
+            resp.getPipeRecentFailureList(),
+            resp.getPipeCompletedDataRegionList());
     return StatusUtils.OK;
   }
 

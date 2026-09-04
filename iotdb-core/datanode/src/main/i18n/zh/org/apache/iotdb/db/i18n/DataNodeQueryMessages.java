@@ -1379,6 +1379,8 @@ public final class DataNodeQueryMessages {
       "{} 从 SinkHandle {} 的通道索引 {} 拉取 TsBlocks [{}] 到 [{}] 失败，";
   public static final String FAILED_TO_GET_DATA_BLOCK =
       "获取数据块 [{}, {}) 失败，尝试次数：{}";
+  public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
+      "数据块响应数量异常。";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "发送数据块确认事件 [{}, {}) 失败，尝试次数：{}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =

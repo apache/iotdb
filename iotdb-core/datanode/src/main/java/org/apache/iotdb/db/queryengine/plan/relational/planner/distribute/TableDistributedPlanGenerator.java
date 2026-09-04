@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
@@ -2873,20 +2874,32 @@ public class TableDistributedPlanGenerator
     if (node.getChildren().isEmpty()) {
       return Collections.singletonList(node);
     }
-    boolean canSplitPushDown = node.isRowSemantic() || (node.getChild() instanceof GroupNode);
+    boolean canSplitPushDown = canSplitTableFunctionProcessor(node);
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      CollectNode collectNode =
-          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-      childrenNodes.forEach(collectNode::addChild);
-      node.setChild(collectNode);
+      OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);
     }
+  }
+
+  private boolean canSplitTableFunctionProcessor(TableFunctionProcessorNode node) {
+    if (node.isRowSemantic()) {
+      return true;
+    }
+    if (!isPartitionedGroup(node.getChild())) {
+      return false;
+    }
+    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(node.getName());
+  }
+
+  private boolean isPartitionedGroup(PlanNode node) {
+    return node instanceof GroupNode && ((GroupNode) node).getPartitionKeyCount() > 0;
   }
 
   private void buildRegionNodeMap(

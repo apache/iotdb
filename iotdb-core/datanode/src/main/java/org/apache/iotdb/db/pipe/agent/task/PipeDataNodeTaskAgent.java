@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
+import org.apache.iotdb.common.rpc.thrift.TPipeCompletedDataRegion;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
@@ -38,6 +39,7 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInAgent;
@@ -102,6 +104,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -159,7 +162,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final boolean needConstructDataRegionTask =
           StorageEngine.getInstance().getAllDataRegionIds().contains(dataRegionId)
               && DataRegionListeningFilter.shouldDataRegionBeListened(
-                  sourceParameters, dataRegionId);
+                  sourceParameters, dataRegionId, pipeStaticMeta.getPipeType());
       final boolean needConstructSchemaRegionTask =
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
@@ -199,6 +202,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return Collections.emptyList();
     }
 
+    carryOverLocalProgressIndexForAlter(pipeMetaListFromCoordinator);
+
     final List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
         super.handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
 
@@ -215,6 +220,88 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     return exceptionMessages;
+  }
+
+  /**
+   * Carry the committed progress of an old local task into an altered task when it is safe to do
+   * so. The old task is dropped before the new task is created, therefore this must run before
+   * {@link PipeTaskAgent#handlePipeMetaChangesInternal(List)} starts applying the metadata list.
+   *
+   * <p>We deliberately only carry progress when the old and new task stay on this DataNode and
+   * their realtime-only modes are unchanged. Mode changes have explicit progress semantics in the
+   * ConfigNode metadata (for example, realtime-only to historical resets to {@code
+   * MinimumProgressIndex}), and leader changes must use the coordinator checkpoint because the old
+   * task is not local to the new leader.
+   */
+  private void carryOverLocalProgressIndexForAlter(
+      final List<PipeMeta> pipeMetaListFromCoordinator) {
+    for (final PipeMeta droppedPipeMeta : pipeMetaListFromCoordinator) {
+      if (droppedPipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.DROPPED) {
+        continue;
+      }
+
+      final PipeStaticMeta oldStaticMeta = droppedPipeMeta.getStaticMeta();
+      final PipeMeta localOldPipeMeta = pipeMetaKeeper.getPipeMeta(oldStaticMeta);
+      if (localOldPipeMeta == null) {
+        continue;
+      }
+
+      for (final PipeMeta updatedPipeMeta : pipeMetaListFromCoordinator) {
+        if (updatedPipeMeta == droppedPipeMeta
+            || updatedPipeMeta.getRuntimeMeta().getStatus().get() == PipeStatus.DROPPED
+            || !oldStaticMeta.getPipeName().equals(updatedPipeMeta.getStaticMeta().getPipeName())
+            || oldStaticMeta.visibleUnderTableModel()
+                != updatedPipeMeta.getStaticMeta().visibleUnderTableModel()) {
+          continue;
+        }
+
+        carryOverLocalProgressIndexForAlter(
+            oldStaticMeta,
+            localOldPipeMeta,
+            updatedPipeMeta,
+            CONFIG.getDataNodeId(),
+            (staticMeta, consensusGroupId) ->
+                pipeTaskManager.getPipeTask(staticMeta, consensusGroupId) != null);
+      }
+    }
+  }
+
+  static void carryOverLocalProgressIndexForAlter(
+      final PipeStaticMeta oldStaticMeta,
+      final PipeMeta localOldPipeMeta,
+      final PipeMeta updatedPipeMeta,
+      final int localNodeId,
+      final BiPredicate<PipeStaticMeta, Integer> localTaskExists) {
+    final PipeStaticMeta updatedStaticMeta = updatedPipeMeta.getStaticMeta();
+
+    // A mode change has an explicit cutover/reset meaning in ConfigNode. In particular, a
+    // realtime-only -> historical alter must retain MinimumProgressIndex to scan old files.
+    if (PipeTaskAgent.isRealtimeOnlyPipe(oldStaticMeta.getSourceParameters())
+        != PipeTaskAgent.isRealtimeOnlyPipe(updatedStaticMeta.getSourceParameters())) {
+      return;
+    }
+
+    final Map<Integer, PipeTaskMeta> localTaskMetaMap =
+        localOldPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+    final Map<Integer, PipeTaskMeta> updatedTaskMetaMap =
+        updatedPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+
+    for (final Map.Entry<Integer, PipeTaskMeta> entry : updatedTaskMetaMap.entrySet()) {
+      final int consensusGroupId = entry.getKey();
+      final PipeTaskMeta updatedTaskMeta = entry.getValue();
+      final PipeTaskMeta localTaskMeta = localTaskMetaMap.get(consensusGroupId);
+
+      // Only the old task's actual leader owns an authoritative local checkpoint. Requiring the
+      // new task to stay on the same node also avoids losing the checkpoint during leader change.
+      if (localTaskMeta == null
+          || localTaskMeta.getLeaderNodeId() != localNodeId
+          || updatedTaskMeta.getLeaderNodeId() != localNodeId
+          || !localTaskExists.test(oldStaticMeta, consensusGroupId)) {
+        continue;
+      }
+
+      updatedTaskMeta.updateProgressIndex(localTaskMeta.getProgressIndex());
+    }
   }
 
   private Set<Integer> clearSchemaRegionListeningQueueIfNecessary(
@@ -388,6 +475,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         CONFIG.getDataNodeId(), pipeTaskMeta, pipeRuntimeException);
   }
 
+  public void stopAllPipesWithCriticalExceptionAndTrackException(
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeRuntimeException pipeRuntimeException) {
+    super.stopAllPipesWithCriticalException(
+        CONFIG.getDataNodeId(), pipeName, creationTime, pipeTaskMeta, pipeRuntimeException);
+  }
+
   ///////////////////////// Heartbeat /////////////////////////
 
   public void collectPipeMetaList(final TDataNodeHeartbeatResp resp) throws TException {
@@ -415,7 +511,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
                 pipeMetaKeeper.getPipeMetaCount());
 
-    collectPipeMetaReport(logger, true).setTo(resp);
+    collectPipeMetaReport(logger).setTo(resp);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
@@ -437,17 +533,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     LOGGER.debug(
         DataNodePipeMessages.RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_NODE, req.heartbeatId);
 
-    collectPipeMetaReport(logger, false).setTo(resp);
+    collectPipeMetaReport(logger).setTo(resp);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
-  private PipeMetaReport collectPipeMetaReport(
-      final Optional<Logger> logger, final boolean includeQueryMode) throws TException {
-    final Set<Integer> dataRegionIds =
-        StorageEngine.getInstance().getAllDataRegionIds().stream()
-            .map(DataRegionId::getId)
-            .collect(Collectors.toSet());
-
+  private PipeMetaReport collectPipeMetaReport(final Optional<Logger> logger) throws TException {
     final PipeMetaReport report = new PipeMetaReport();
     try {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
@@ -456,17 +546,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
 
         final Map<Integer, PipeTask> pipeTaskMap = pipeTaskManager.getPipeTasks(staticMeta);
-        final boolean isAllDataRegionCompleted =
-            pipeTaskMap == null
-                || pipeTaskMap.entrySet().stream()
-                    .filter(entry -> dataRegionIds.contains(entry.getKey()))
-                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
-        final boolean isCompleted =
-            isAllDataRegionCompleted && includeDataAndNeedDrop(pipeMeta, includeQueryMode);
+        final Set<Integer> expectedDataRegionIds = getExpectedDataRegionIds(pipeMeta);
+        final List<Integer> completedDataRegionIds = new ArrayList<>();
+        if (pipeTaskMap != null) {
+          for (final Integer regionId : expectedDataRegionIds) {
+            final PipeTask pipeTask = pipeTaskMap.get(regionId);
+            if (pipeTask instanceof PipeDataNodeTask
+                && ((PipeDataNodeTask) pipeTask).isCompleted()) {
+              completedDataRegionIds.add(regionId);
+            }
+          }
+        }
+        report.pipeCompletedDataRegionList.add(
+            new TPipeCompletedDataRegion(
+                staticMeta.getPipeName(), staticMeta.getCreationTime(), completedDataRegionIds));
         final Pair<Long, Double> remainingEventAndTime =
             PipeDataNodeSinglePipeMetrics.getInstance()
                 .getRemainingEventAndTime(staticMeta.getPipeName(), staticMeta.getCreationTime());
-        report.pipeCompletedList.add(isCompleted);
         report.pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
         report.pipeRemainingTimeList.add(remainingEventAndTime.getRight());
         report.pipeDegradedStatusList.add(
@@ -475,16 +571,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                     .getGlobalTsFileEpochDegraded()));
         report.pipeRecentFailureList.add(
             ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getRecentFailures());
-
-        logger.ifPresent(
-            l ->
-                PipeLogger.log(
-                    l::info,
-                    DataNodePipeMessages
-                        .LOG_REPORTING_PIPE_META_ARG_ISCOMPLETED_ARG_REMAININGEVENTCOUNT_ARG_8F996DF3,
-                    pipeMeta.coreReportMessage(),
-                    isCompleted,
-                    remainingEventAndTime.getLeft()));
       }
       logger.ifPresent(
           l ->
@@ -492,56 +578,68 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   l::info,
                   DataNodePipeMessages.LOG_REPORTED_ARG_PIPE_METAS_12068FC6,
                   report.pipeMetaBinaryList.size()));
-    } catch (final IOException | IllegalPathException e) {
+    } catch (final IOException e) {
       throw new TException(e);
     }
     return report;
   }
 
-  private boolean includeDataAndNeedDrop(final PipeMeta pipeMeta, final boolean includeQueryMode)
-      throws IllegalPathException {
-    final PipeParameters sourceParameters = pipeMeta.getStaticMeta().getSourceParameters();
-    if (!DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(sourceParameters)
-        .getLeft()) {
-      return false;
+  // Returns the DataRegion ids that this DataNode is expected to transfer for the given pipe.
+  // A region is included only when it is owned by this DataNode, is led by this DataNode according
+  // to the pipe's runtime metadata, and is selected by the pipe's source parameters. This expected
+  // set is used instead of the already-created PipeTask map so that a failed task initialization is
+  // not silently treated as a completed region.
+  private Set<Integer> getExpectedDataRegionIds(final PipeMeta pipeMeta) {
+    final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+    final PipeParameters sourceParameters = staticMeta.getSourceParameters();
+    final Set<Integer> localDataRegionIds =
+        StorageEngine.getInstance().getAllDataRegionIds().stream()
+            .map(DataRegionId::getId)
+            .collect(Collectors.toSet());
+    final Set<Integer> expectedDataRegionIds = new HashSet<>();
+    for (final Map.Entry<Integer, PipeTaskMeta> entry :
+        pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().entrySet()) {
+      final int regionId = entry.getKey();
+      if (entry.getValue().getLeaderNodeId() != CONFIG.getDataNodeId()
+          || !localDataRegionIds.contains(regionId)) {
+        continue;
+      }
+      try {
+        if (DataRegionListeningFilter.shouldDataRegionBeListened(
+            sourceParameters, new DataRegionId(regionId), staticMeta.getPipeType())) {
+          expectedDataRegionIds.add(regionId);
+        }
+      } catch (final IllegalPathException e) {
+        throw new PipeException(e.toString());
+      }
     }
-    if (!includeQueryMode) {
-      return isSnapshotMode(sourceParameters);
-    }
-
-    final String sourceModeValue =
-        sourceParameters.getStringOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_KEY, PipeSourceConstant.SOURCE_MODE_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
-    return sourceModeValue.equalsIgnoreCase(PipeSourceConstant.EXTRACTOR_MODE_QUERY_VALUE)
-        || sourceModeValue.equalsIgnoreCase(PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE);
+    return expectedDataRegionIds;
   }
 
   private static class PipeMetaReport {
     private final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    private final List<Boolean> pipeCompletedList = new ArrayList<>();
     private final List<Long> pipeRemainingEventCountList = new ArrayList<>();
     private final List<Double> pipeRemainingTimeList = new ArrayList<>();
     private final List<Integer> pipeDegradedStatusList = new ArrayList<>();
     private final List<Map<String, Long>> pipeRecentFailureList = new ArrayList<>();
+    private final List<TPipeCompletedDataRegion> pipeCompletedDataRegionList = new ArrayList<>();
 
     private void setTo(final TDataNodeHeartbeatResp resp) {
       resp.setPipeMetaList(pipeMetaBinaryList);
-      resp.setPipeCompletedList(pipeCompletedList);
       resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
       resp.setPipeRemainingTimeList(pipeRemainingTimeList);
       resp.setPipeDegradedStatusList(pipeDegradedStatusList);
       resp.setPipeRecentFailureList(pipeRecentFailureList);
+      resp.setPipeCompletedDataRegionList(pipeCompletedDataRegionList);
     }
 
     private void setTo(final TPipeHeartbeatResp resp) {
       resp.setPipeMetaList(pipeMetaBinaryList);
-      resp.setPipeCompletedList(pipeCompletedList);
       resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
       resp.setPipeRemainingTimeList(pipeRemainingTimeList);
       resp.setPipeDegradedStatusList(pipeDegradedStatusList);
       resp.setPipeRecentFailureList(pipeRecentFailureList);
+      resp.setPipeCompletedDataRegionList(pipeCompletedDataRegionList);
     }
   }
 
@@ -775,12 +873,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         throw new PipeException(DataNodePipeMessages.PIPE_META_NOT_FOUND + pipeName);
       }
 
-      return pipeMetaKeeper
-          .getPipeMeta(pipeName)
-          .getRuntimeMeta()
-          .getConsensusGroupId2TaskMetaMap()
-          .get(consensusGroupId)
-          .getProgressIndex();
+      final PipeTaskMeta pipeTaskMeta =
+          pipeMetaKeeper
+              .getPipeMeta(pipeName)
+              .getRuntimeMeta()
+              .getConsensusGroupId2TaskMetaMap()
+              .get(consensusGroupId);
+      if (pipeTaskMeta == null) {
+        throw new PipeException(
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_FAILED_TO_GET_PIPE_TASK_PROGRESS_INDEX_WITH_PIPE_NAME_S_CFE9DE7C,
+                pipeName,
+                consensusGroupId));
+      }
+      return pipeTaskMeta.getProgressIndex();
     } finally {
       releaseReadLock();
     }
@@ -865,7 +972,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         final boolean needConstructDataRegionTask =
             dataRegionIds.contains(dataRegionId)
                 && DataRegionListeningFilter.shouldDataRegionBeListened(
-                    sourceParameters, dataRegionId);
+                    sourceParameters, dataRegionId, pipeStaticMeta.getPipeType());
         final boolean needConstructSchemaRegionTask =
             schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
                 && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(

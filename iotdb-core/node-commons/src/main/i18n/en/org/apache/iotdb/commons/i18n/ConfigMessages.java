@@ -73,6 +73,45 @@ public final class ConfigMessages {
           + " There may have been an unexpected interruption in the last"
           + " configuration file update. Ignore temporary file {}";
 
+  // ---------------------------------------------------------------------------
+  // protocol – ConfigNodeInfo
+  // ---------------------------------------------------------------------------
+  public static final String UPDATE_CONFIG_NODE_SUCCESSFULLY =
+          "Update ConfigNode Successfully: {}, which takes {} ms.";
+  public static final String UPDATE_CONFIG_NODE_FAILED = "Update ConfigNode failed.";
+  public static final String SYSTEM_PROPERTIES_NOT_EXIST =
+          "System properties file not exist, not necessary to store ConfigNode list";
+  public static final String LOAD_CONFIG_NODE_SUCCESSFULLY =
+          "Load ConfigNode successfully: {}, which takes {} ms.";
+  public static final String CANNOT_PARSE_CONFIG_NODE_LIST =
+          "Cannot parse config node list in system.properties";
+  public static final String MISC_EXCEPTION_REMOVING_IS_ONLY_ALLOWED_IN_AN_ENVIRONMENT_WHEN_NODE_STARTED_2ACA2BD0 =
+          "Removing is only allowed in an environment where the %s has been successfully "
+                  + "started. Please check whether it is removed on the confignode, or if you have "
+                  + "deleted the system.properties file by mistake.";
+
+  // ---------------------------------------------------------------------------
+  // protocol – ConfigNodeClient
+  // ---------------------------------------------------------------------------
+  public static final String MSG_RECONNECTION_FAIL =
+          "Fail to connect to any config node. Please check status of ConfigNodes or logs of "
+                  + "connected %s";
+  public static final String MSG_RECONNECTION_NODE_FAIL =
+          "Failed to connect to ConfigNode %s from %s %s when executing %s, Exception:";
+  public static final String NODE_LEADER_MAY_DOWN_TRY_NEXT =
+          "The current node leader may have been down {}, try next node";
+  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE =
+          "Unexpected interruption when waiting to try to connect to ConfigNode";
+  public static final String NODE_MAY_DOWN_TRY_NEXT =
+          "The current node may have been down {},try next node";
+  public static final String FAILED_CONNECT_CONFIG_NODE_NOT_LEADER =
+          "Failed to connect to ConfigNode {} from {} {}, because the current node is not leader "
+                  + "or not ready yet, will try again later";
+  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK =
+          "Unexpected interruption when waiting to try to connect to ConfigNode, may because current node has been down. Will break current execution process to avoid meaningless wait.";
+  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_NODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_2ACA2BD0 =
+          "ConfigNode leader {} is warming up before serving {} {}, will wait and retry. Reason: {}";
+
   private ConfigMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages

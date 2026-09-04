@@ -1398,6 +1398,8 @@ public final class DataNodeQueryMessages {
       "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},";
   public static final String FAILED_TO_GET_DATA_BLOCK =
       "failed to get data block [{}, {}), attempt times: {}";
+  public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
+      "Unexpected data block response size.";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "failed to send ack data block event [{}, {}), attempt times: {}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =
