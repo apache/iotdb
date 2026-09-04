@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Throwables.throwIfUnchecked;
-import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 
@@ -143,9 +142,6 @@ public class DataDriver extends Driver {
     } finally {
       if (this.init) {
         ((DataDriverContext) driverContext).clearSourceOperators();
-        QUERY_EXECUTION_METRICS.recordExecutionCost(
-            QUERY_RESOURCE_INIT,
-            driverContext.getFragmentInstanceContext().getInitQueryDataSourceCost());
       }
     }
     return this.init;

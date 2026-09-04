@@ -95,6 +95,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_OPERATOR_FROM_RAW_DATA;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
@@ -1241,7 +1242,7 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   public synchronized void releaseResource() {
-    new ArrayList<>(batchQueryDataSourceLeases).forEach(QueryDataSourceLease::close);
+    batchQueryDataSourceLeases.forEach(QueryDataSourceLease::close);
     // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
     if (closedFilePaths != null) {
       for (TsFileResource tsFile : closedFilePaths) {
@@ -1364,6 +1365,9 @@ public class FragmentInstanceContext extends QueryContext {
 
     SeriesScanCostMetricSet.getInstance()
         .updatePageReaderMemoryUsage(getQueryStatistics().getPageReaderMaxUsedMemorySize().get());
+
+    QueryExecutionMetricSet.getInstance()
+        .recordExecutionCost(QUERY_RESOURCE_INIT, getInitQueryDataSourceCost());
   }
 
   private void releaseDataNodeQueryContext() {
