@@ -276,7 +276,7 @@ public class TableDeviceSchemaFetcher {
     final DeviceEntryFetchContext fetchContext =
         new DeviceEntryFetchContext(queryContext, planNodeId);
 
-    final ShowDevice statement = new ShowDevice(database, table);
+    final ShowDevice statement = new ShowDevice(database, table, true);
     authorizationTableName.ifPresent(statement::setAuthorizationTableName);
 
     final Map<String, List<DeviceEntry>> deviceEntryMap = new HashMap<>();
