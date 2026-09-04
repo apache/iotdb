@@ -215,6 +215,7 @@ public class Util {
                 node.getGroupIdSymbol(),
                 aggregationTreeDeviceViewScanNode.getTreeDBName(),
                 aggregationTreeDeviceViewScanNode.getMeasurementColumnNameMap());
+    node.copyDeviceEntryDataSetTo(rightResult);
 
     return new Pair<>(
         new AggregationNode(

@@ -160,4 +160,9 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setEnablePathStyleAccess(boolean enablePathStyleAccess) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
+    return this;
+  }
 }

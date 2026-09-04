@@ -21,11 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionFactory;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.AdditionResolver;
@@ -63,6 +65,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBui
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetResult;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.ITableCache;
@@ -1890,20 +1894,22 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public Map<String, List<DeviceEntry>> indexScan(
+  public DeviceEntryDataSetResult indexScan(
       final QualifiedObjectName tableName,
       final Optional<QualifiedObjectName> authorizationTableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
-      final MPPQueryContext context) {
+      final MPPQueryContext context,
+      final PlanNodeId planNodeId) {
     return TableDeviceSchemaFetcher.getInstance()
-        .fetchDeviceSchemaForDataQuery(
+        .fetchDeviceSchemaForDataQueryAsDataSet(
             tableName.getDatabaseName(),
             tableName.getObjectName(),
             authorizationTableName,
             expressionList,
             attributeColumns,
-            context);
+            context,
+            planNodeId);
   }
 
   @Override
@@ -1981,9 +1987,28 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
+  public DataPartition getDataPartition(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots) {
+    return partitionFetcher.getDataPartition(database, dataSet, timePartitionSlots);
+  }
+
+  @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots,
+      final boolean needLeftAll,
+      final boolean needRightAll) {
+    return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
+        database, dataSet, timePartitionSlots, needLeftAll, needRightAll);
   }
 }

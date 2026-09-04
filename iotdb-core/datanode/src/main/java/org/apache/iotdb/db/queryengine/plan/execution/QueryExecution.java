@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySpillManager;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -421,6 +422,7 @@ public class QueryExecution implements IQueryExecution {
 
   /** Release the resources that current QueryExecution hold with a specified exception */
   private void releaseResource(Throwable t) {
+    context.recordDeviceEntryDiskIOMetricsOnRelease();
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
     // There are only two scenarios where the ResultHandle should be closed:
@@ -437,6 +439,16 @@ public class QueryExecution implements IQueryExecution {
       cleanUpResultHandle();
     }
     context.releaseExternalTsFileQueryResources();
+    try {
+      DeviceEntrySpillManager.getInstance().deregisterQuery(context.getQueryId().getId());
+    } catch (Exception e) {
+      LOGGER.warn(
+          String.format(
+              DataNodeQueryMessages
+                  .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
+              context.getQueryId().getId()),
+          e);
+    }
   }
 
   /**

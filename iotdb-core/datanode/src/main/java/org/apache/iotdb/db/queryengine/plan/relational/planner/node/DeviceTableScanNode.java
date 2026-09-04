@@ -30,6 +30,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetHandle;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -42,6 +44,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +52,12 @@ import java.util.Optional;
 
 public class DeviceTableScanNode extends TableScanNode {
 
-  protected List<DeviceEntry> deviceEntries;
+  protected List<DeviceEntry> deviceEntries = Collections.emptyList();
+
+  @Nullable protected DeviceEntryDataSetHandle deviceEntryDataSetHandle;
+
+  // Only used on the FE before distributed planning and is not serialized to the BE.
+  protected transient DeviceEntryDataSet coordinatorDeviceEntryDataSet;
 
   // Indicates the respective index order of tag and attribute columns in DeviceEntry.
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
@@ -202,6 +210,8 @@ public class DeviceTableScanNode extends TableScanNode {
             containsNonAlignedDevice,
             originalWritableViewName);
     cloned.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+    cloned.deviceEntryDataSetHandle = deviceEntryDataSetHandle;
+    cloned.coordinatorDeviceEntryDataSet = coordinatorDeviceEntryDataSet;
     return cloned;
   }
 
@@ -209,9 +219,14 @@ public class DeviceTableScanNode extends TableScanNode {
       DeviceTableScanNode node, ByteBuffer byteBuffer, boolean serializeOutputSymbols) {
     TableScanNode.serializeMemberVariables(node, byteBuffer, serializeOutputSymbols);
 
-    ReadWriteIOUtils.write(node.deviceEntries.size(), byteBuffer);
-    for (DeviceEntry entry : node.deviceEntries) {
-      entry.serialize(byteBuffer);
+    ReadWriteIOUtils.write(node.deviceEntryDataSetHandle != null, byteBuffer);
+    if (node.deviceEntryDataSetHandle != null) {
+      node.deviceEntryDataSetHandle.serialize(byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(node.deviceEntries.size(), byteBuffer);
+      for (DeviceEntry entry : node.deviceEntries) {
+        entry.serialize(byteBuffer);
+      }
     }
 
     ReadWriteIOUtils.write(node.tagAndAttributeIndexMap.size(), byteBuffer);
@@ -246,9 +261,14 @@ public class DeviceTableScanNode extends TableScanNode {
       throws IOException {
     TableScanNode.serializeMemberVariables(node, stream, serializeOutputSymbols);
 
-    ReadWriteIOUtils.write(node.deviceEntries.size(), stream);
-    for (DeviceEntry entry : node.deviceEntries) {
-      entry.serialize(stream);
+    ReadWriteIOUtils.write(node.deviceEntryDataSetHandle != null, stream);
+    if (node.deviceEntryDataSetHandle != null) {
+      node.deviceEntryDataSetHandle.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write(node.deviceEntries.size(), stream);
+      for (DeviceEntry entry : node.deviceEntries) {
+        entry.serialize(stream);
+      }
     }
 
     ReadWriteIOUtils.write(node.tagAndAttributeIndexMap.size(), stream);
@@ -282,12 +302,18 @@ public class DeviceTableScanNode extends TableScanNode {
       ByteBuffer byteBuffer, DeviceTableScanNode node, boolean deserializeOutputSymbols) {
     TableScanNode.deserializeMemberVariables(byteBuffer, node, deserializeOutputSymbols);
 
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<DeviceEntry> deviceEntries = new ArrayList<>(size);
-    while (size-- > 0) {
-      deviceEntries.add(AlignedDeviceEntry.deserialize(byteBuffer));
+    int size;
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      node.deviceEntryDataSetHandle = DeviceEntryDataSetHandle.deserialize(byteBuffer);
+      node.deviceEntries = new ArrayList<>();
+    } else {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      List<DeviceEntry> deviceEntries = new ArrayList<>(size);
+      while (size-- > 0) {
+        deviceEntries.add(AlignedDeviceEntry.deserialize(byteBuffer));
+      }
+      node.deviceEntries = deviceEntries;
     }
-    node.deviceEntries = deviceEntries;
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
     Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>(size);
@@ -342,6 +368,50 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
     this.deviceEntries = deviceEntries;
+    this.deviceEntryDataSetHandle = null;
+  }
+
+  public void setDeviceEntryDataSet(final DeviceEntryDataSet deviceEntryDataSet) {
+    this.deviceEntryDataSetHandle = null;
+    this.coordinatorDeviceEntryDataSet = deviceEntryDataSet;
+    this.deviceEntries =
+        deviceEntryDataSet.isSpilled()
+            ? Collections.emptyList()
+            : deviceEntryDataSet.getInlineEntries();
+  }
+
+  public void setDeviceEntryDataSetHandle(DeviceEntryDataSetHandle deviceEntryDataSetHandle) {
+    this.deviceEntryDataSetHandle = deviceEntryDataSetHandle;
+    this.coordinatorDeviceEntryDataSet = null;
+    this.deviceEntries = Collections.emptyList();
+  }
+
+  public Optional<DeviceEntryDataSetHandle> getDeviceEntryDataSetHandle() {
+    return Optional.ofNullable(deviceEntryDataSetHandle);
+  }
+
+  public <T extends DeviceTableScanNode> T copyDeviceEntryDataSetTo(final T target) {
+    target.deviceEntryDataSetHandle = deviceEntryDataSetHandle;
+    target.coordinatorDeviceEntryDataSet = coordinatorDeviceEntryDataSet;
+    return target;
+  }
+
+  public int getDeviceEntryCount() {
+    if (deviceEntryDataSetHandle != null) {
+      return deviceEntryDataSetHandle.getEntryCount();
+    }
+    if (coordinatorDeviceEntryDataSet != null) {
+      return coordinatorDeviceEntryDataSet.getEntryCount();
+    }
+    return deviceEntries.size();
+  }
+
+  public void setCoordinatorDeviceEntryDataSet(DeviceEntryDataSet dataSet) {
+    setDeviceEntryDataSet(dataSet);
+  }
+
+  public DeviceEntryDataSet getCoordinatorDeviceEntryDataSet() {
+    return coordinatorDeviceEntryDataSet;
   }
 
   public Map<Symbol, Integer> getTagAndAttributeIndexMap() {

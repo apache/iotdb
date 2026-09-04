@@ -221,7 +221,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         // optimizer cannot safely use the single-device shortcut here.
         return false;
       }
-      return tableScanNode.getDeviceEntries().size() < 2;
+      return tableScanNode.getDeviceEntryCount() < 2;
     }
 
     private List<Symbol> getTagColumnsInTableStore(

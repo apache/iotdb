@@ -138,28 +138,29 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
 
   @Override
   public AggregationTreeDeviceViewScanNode clone() {
-    return new AggregationTreeDeviceViewScanNode(
-        id,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice,
-        projection,
-        aggregations,
-        groupingSets,
-        preGroupedSymbols,
-        step,
-        groupIdSymbol,
-        treeDBName,
-        measurementColumnNameMap);
+    return copyDeviceEntryDataSetTo(
+        new AggregationTreeDeviceViewScanNode(
+            id,
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice,
+            projection,
+            aggregations,
+            groupingSets,
+            preGroupedSymbols,
+            step,
+            groupIdSymbol,
+            treeDBName,
+            measurementColumnNameMap));
   }
 
   protected PlanNodeType getPlanNodeType() {

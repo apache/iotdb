@@ -200,7 +200,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 newAssignments.put(newSymbol, handle);
               });
 
-      return new PlanAndMappings(
+      TreeDeviceViewScanNode rewrittenNode =
           new TreeDeviceViewScanNode(
               node.getPlanNodeId(),
               node.getQualifiedObjectName(),
@@ -216,8 +216,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.isPushLimitToEachDevice(),
               node.containsNonAlignedDevice(),
               node.getTreeDBName(),
-              node.getMeasurementColumnNameMap()),
-          mapping);
+              node.getMeasurementColumnNameMap());
+      return new PlanAndMappings(node.copyDeviceEntryDataSetTo(rewrittenNode), mapping);
     }
 
     @Override
@@ -235,7 +235,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 newAssignments.put(newSymbol, handle);
               });
 
-      return new PlanAndMappings(
+      DeviceTableScanNode rewrittenNode =
           new DeviceTableScanNode(
               node.getPlanNodeId(),
               node.getQualifiedObjectName(),
@@ -250,8 +250,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownOffset(),
               node.isPushLimitToEachDevice(),
               node.containsNonAlignedDevice(),
-              node.getOriginalWritableViewName()),
-          mapping);
+              node.getOriginalWritableViewName());
+      return new PlanAndMappings(node.copyDeviceEntryDataSetTo(rewrittenNode), mapping);
     }
 
     @Override

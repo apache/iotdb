@@ -43,11 +43,14 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySpillManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchDeviceEntrySegmentReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchDeviceEntrySegmentResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
@@ -62,6 +65,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +99,60 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         DataExchangeCostMetricSet.getInstance();
     private final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRICS =
         DataExchangeCountMetricSet.getInstance();
+
+    @Override
+    public TFetchDeviceEntrySegmentResp fetchDeviceEntrySegment(
+        TFetchDeviceEntrySegmentReq request) {
+      try {
+        DeviceEntrySpillManager spillManager = DeviceEntrySpillManager.getInstance();
+        byte[] payload =
+            spillManager.readSegment(
+                request.getQueryId(), request.getPlanNodeId(), request.getSegmentId());
+        if (request.getSegmentId() > 0) {
+          spillManager.deleteSegment(
+              request.getQueryId(), request.getPlanNodeId(), request.getSegmentId() - 1);
+        }
+        return new TFetchDeviceEntrySegmentResp(
+                new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+            .setPayload(payload);
+      } catch (NoSuchFileException e) {
+        LOGGER.warn(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
+                e.getFile()));
+        return new TFetchDeviceEntrySegmentResp(
+            new TSStatus(TSStatusCode.DEVICE_ENTRY_SPILL_NOT_FOUND.getStatusCode())
+                .setMessage(
+                    String.format(
+                        DataNodeQueryMessages
+                            .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
+                        e.getFile())));
+      } catch (IOException | RuntimeException e) {
+        return new TFetchDeviceEntrySegmentResp(
+            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                .setMessage(e.getMessage()));
+      }
+    }
+
+    @Override
+    public TSStatus finishDeviceEntrySegment(String queryId, String planNodeId) {
+      executorService.submit(
+          () -> {
+            try {
+              DeviceEntrySpillManager.getInstance().finishSegmentDataSet(queryId, planNodeId);
+            } catch (IOException | RuntimeException e) {
+              LOGGER.warn(
+                  String.format(
+                      DataNodeQueryMessages
+                          .LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5,
+                      queryId,
+                      planNodeId),
+                  e);
+            }
+          });
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
 
     @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
@@ -630,6 +688,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       mppDataExchangeService = new MPPDataExchangeServiceImpl();
     }
     return mppDataExchangeService;
+  }
+
+  public IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+      getMppDataExchangeServiceClientManager() {
+    return mppDataExchangeServiceClientManager;
   }
 
   public void deRegisterFragmentInstanceFromMemoryPool(

@@ -79,4 +79,6 @@ public interface DataNodeConfig {
   DataNodeConfig setObjectStorageAccessSecret(String objectStorageAccessSecret);
 
   DataNodeConfig setEnablePathStyleAccess(boolean enablePathStyleAccess);
+
+  DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes);
 }
