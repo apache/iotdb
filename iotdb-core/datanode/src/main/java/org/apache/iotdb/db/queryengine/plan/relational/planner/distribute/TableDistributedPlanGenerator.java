@@ -2099,11 +2099,10 @@ public class TableDistributedPlanGenerator
     long batchSize =
         IoTDBDescriptor.getInstance().getConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
-    Map<DeviceEntry, Integer> crossRegionDeviceCounts =
-        node.mayUseLastCache() ? new HashMap<>() : Collections.emptyMap();
     Map<TRegionReplicaSet, PlanNodeId> regionPlanNodeIds = new HashMap<>();
     Map<TRegionReplicaSet, AbstractDeviceEntryMaterializer> stagingMaterializers = new HashMap<>();
     Map<TRegionReplicaSet, DeviceEntryDataSet> stagingDataSets = new HashMap<>();
+    Map<TRegionReplicaSet, Map<DeviceEntry, Integer>> crossRegionDevicesByRegion = new HashMap<>();
     Map<TRegionReplicaSet, Integer> regionEntryCounts = new HashMap<>();
     DeviceEntryMaterializationMemoryController memoryController =
         new DeviceEntryMaterializationMemoryController(batchSize);
@@ -2122,7 +2121,11 @@ public class TableDistributedPlanGenerator
           hasCrossRegionDevice = true;
           context.deviceCrossRegion = true;
           if (node.mayUseLastCache()) {
-            crossRegionDeviceCounts.put(deviceEntry, regions.size());
+            regions.forEach(
+                region ->
+                    crossRegionDevicesByRegion
+                        .computeIfAbsent(region, ignored -> new HashMap<>())
+                        .put(deviceEntry, 1));
           }
         }
         for (TRegionReplicaSet region : regions) {
@@ -2190,8 +2193,9 @@ public class TableDistributedPlanGenerator
         DeviceEntryDataSet dataSet =
             finishRegionStagingDataSet(entry.getValue(), regionPlanNodeId, batchSize, comparator);
         installDataSet(scanNode, dataSet, comparator != null);
-        if (!crossRegionDeviceCounts.isEmpty()) {
-          scanNode.setDeviceCountMap(crossRegionDeviceCounts);
+        if (!crossRegionDevicesByRegion.isEmpty()) {
+          scanNode.setDeviceCountMap(
+              crossRegionDevicesByRegion.getOrDefault(region, Collections.emptyMap()));
         }
         scanNodes.put(region, scanNode);
       }

@@ -30,13 +30,19 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.La
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.FakedMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableModelQueryFragmentPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,7 +51,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class AggregationTableScanTest {
 
@@ -175,5 +184,32 @@ public class AggregationTableScanTest {
             accumulator.getClass().getSimpleName());
 
     assertTrue(msg, expectedClass.isInstance(accumulator));
+  }
+
+  @Test
+  public void testSpilledCrossRegionDeviceCountsAreMergedPerDataNode() throws Exception {
+    DeviceEntry deviceEntry = mock(DeviceEntry.class);
+    QualifiedObjectName tableName = new QualifiedObjectName("db", "table");
+    AggregationTableScanNode firstRegion = mock(AggregationTableScanNode.class);
+    AggregationTableScanNode secondRegion = mock(AggregationTableScanNode.class);
+    when(firstRegion.getQualifiedObjectName()).thenReturn(tableName);
+    when(secondRegion.getQualifiedObjectName()).thenReturn(tableName);
+    when(firstRegion.getDeviceCountMap()).thenReturn(Collections.singletonMap(deviceEntry, 1));
+    when(secondRegion.getDeviceCountMap()).thenReturn(Collections.singletonMap(deviceEntry, 1));
+    when(firstRegion.getDeviceEntries()).thenReturn(Collections.emptyList());
+    when(secondRegion.getDeviceEntries()).thenReturn(Collections.emptyList());
+
+    TableModelQueryFragmentPlanner planner =
+        new TableModelQueryFragmentPlanner(null, null, null, null);
+    Method updateScanNum =
+        TableModelQueryFragmentPlanner.class.getDeclaredMethod(
+            "updateScanNum", PlanNode.class, Map.class);
+    updateScanNum.setAccessible(true);
+    Map<QualifiedObjectName, Map<DeviceEntry, Integer>> counts = new HashMap<>();
+
+    updateScanNum.invoke(planner, firstRegion, counts);
+    updateScanNum.invoke(planner, secondRegion, counts);
+
+    assertEquals(Integer.valueOf(2), counts.get(tableName).get(deviceEntry));
   }
 }
