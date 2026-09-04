@@ -115,7 +115,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
       this.firstExecutionTime = CQCalendarUtils.occurrence(boundary, everyDuration, index, zone);
     } else {
       this.firstExecutionTime =
-          CQScheduleTask.getFirstExecutionTime(req.boundaryTime, req.everyInterval);
+          CQScheduleTask.getFirstExecutionTime(req.boundaryTime, everyDuration.nonMonthDuration);
     }
   }
 

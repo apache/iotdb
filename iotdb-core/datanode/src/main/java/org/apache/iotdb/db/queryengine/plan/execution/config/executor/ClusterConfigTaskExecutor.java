@@ -4176,22 +4176,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     .MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_AC724DE3));
         return future;
       }
-      // The legacy fields are still required on the wire.  They are authoritative only for the
-      // corresponding fixed-only component; a component that contains calendar months uses zero
-      // as its sentinel.  Do this independently for EVERY and each RANGE endpoint so mixed
-      // durations such as EVERY 1d RANGE 1mo remain representable.
+      // The legacy fields are still required on the wire. If any structured component contains a
+      // calendar month, none of the legacy fields has a valid representation and all three use the
+      // zero sentinel. This prevents an old reader from interpreting a mixed request as a partially
+      // valid fixed-duration CQ.
       final long legacyEvery =
-          createContinuousQueryStatement.getEveryDuration().monthDuration == 0
-              ? createContinuousQueryStatement.getEveryInterval()
-              : 0;
+          hasCalendarDuration ? 0 : createContinuousQueryStatement.getEveryInterval();
       final long legacyStart =
-          createContinuousQueryStatement.getStartTimeOffsetDuration().monthDuration == 0
-              ? createContinuousQueryStatement.getStartTimeOffset()
-              : 0;
+          hasCalendarDuration ? 0 : createContinuousQueryStatement.getStartTimeOffset();
       final long legacyEnd =
-          createContinuousQueryStatement.getEndTimeOffsetDuration().monthDuration == 0
-              ? createContinuousQueryStatement.getEndTimeOffset()
-              : 0;
+          hasCalendarDuration ? 0 : createContinuousQueryStatement.getEndTimeOffset();
       final TCreateCQReq tCreateCQReq =
           new TCreateCQReq(
               createContinuousQueryStatement.getCqId(),

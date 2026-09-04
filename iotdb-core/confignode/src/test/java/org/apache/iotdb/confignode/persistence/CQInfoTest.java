@@ -201,6 +201,60 @@ public class CQInfoTest {
   }
 
   @Test
+  public void testMixedCalendarDurationUsesStructuredFixedEveryForLastExecution() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "mixedFixedEveryCq",
+            0,
+            0,
+            0,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq mixedFixedEveryCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1_000));
+    req.setStartOffsetDuration(new TCQDuration(1, 1_000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "mixedFixedEveryToken", 10_000)).getCode());
+
+    CQInfo.CQEntry entry = cqInfo.showCQ(new ShowCQPlan("mixedFixedEveryCq")).getCqList().get(0);
+    Assert.assertEquals(9_000, entry.getLastExecutionTime());
+    Assert.assertEquals(10, entry.getNextOccurrenceIndex());
+  }
+
+  @Test
+  public void testFixedVersionedDurationKeepsLegacyZoneOpaque() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "fixedVersionedCq",
+            1_000,
+            0,
+            1_000,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq fixedVersionedCq",
+            "Asia",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1_000));
+    req.setStartOffsetDuration(new TCQDuration(0, 1_000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(false);
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "fixedVersionedToken", 10_000)).getCode());
+  }
+
+  @Test
   public void testCalendarOccurrenceProgressSurvivesSnapshotRecovery() throws Exception {
     File calendarSnapshotDir = new File(BASE_OUTPUT_PATH, "snapshot-calendar");
     if (calendarSnapshotDir.exists()) {

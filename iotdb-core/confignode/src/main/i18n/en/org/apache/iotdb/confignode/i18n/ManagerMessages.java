@@ -704,6 +704,15 @@ public final class ManagerMessages {
 
   public static final String EXCEPTION_CQ_EVERY_DURATION_MUST_BE_POSITIVE_69C29D26 =
       "CQ EVERY duration must be positive";
+  public static final String MESSAGE_CQ_START_OFFSET_MUST_BE_POSITIVE_B837C4F5 =
+      "CQ start offset must be positive";
+  public static final String MESSAGE_CQ_END_OFFSET_MUST_BE_NON_NEGATIVE_64171164 =
+      "CQ end offset must be non-negative";
+  public static final String MESSAGE_CQ_START_OFFSET_MUST_BE_GREATER_THAN_END_OFFSET_5924C189 =
+      "CQ start offset must be greater than end offset";
+  public static final String
+      MESSAGE_CQ_START_OFFSET_MUST_BE_GREATER_THAN_OR_EQUAL_TO_EVERY_DURATION_89628D43 =
+          "CQ start offset must be greater than or equal to EVERY duration";
   public static final String EXCEPTION_CQ_TIMESTAMP_OVERFLOWS_CONFIGURED_PRECISION_F5FB230C =
       "CQ timestamp overflows configured precision";
   public static final String

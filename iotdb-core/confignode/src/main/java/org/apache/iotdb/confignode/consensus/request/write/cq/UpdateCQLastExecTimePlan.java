@@ -116,6 +116,10 @@ public class UpdateCQLastExecTimePlan extends ConfigPhysicalPlan {
       if (hasOccurrenceIndex) {
         expectedIndex = ReadWriteIOUtils.readLong(buffer);
         targetIndex = ReadWriteIOUtils.readLong(buffer);
+        if (expectedIndex < 0 || targetIndex <= expectedIndex) {
+          throw new IOException(
+              ManagerMessages.EXCEPTION_INVALID_CQ_OCCURRENCE_INDEX_TRANSITION_AC6BFC4D);
+        }
       }
     }
   }

@@ -683,6 +683,15 @@ public final class ManagerMessages {
 
   public static final String EXCEPTION_CQ_EVERY_DURATION_MUST_BE_POSITIVE_69C29D26 =
       "CQ EVERY duration 必须为正数";
+  public static final String MESSAGE_CQ_START_OFFSET_MUST_BE_POSITIVE_B837C4F5 =
+      "CQ start offset 必须为正数";
+  public static final String MESSAGE_CQ_END_OFFSET_MUST_BE_NON_NEGATIVE_64171164 =
+      "CQ end offset 必须为非负数";
+  public static final String MESSAGE_CQ_START_OFFSET_MUST_BE_GREATER_THAN_END_OFFSET_5924C189 =
+      "CQ start offset 必须大于 end offset";
+  public static final String
+      MESSAGE_CQ_START_OFFSET_MUST_BE_GREATER_THAN_OR_EQUAL_TO_EVERY_DURATION_89628D43 =
+          "CQ start offset 必须大于或等于 EVERY duration";
   public static final String EXCEPTION_CQ_TIMESTAMP_OVERFLOWS_CONFIGURED_PRECISION_F5FB230C =
       "CQ timestamp 超出配置的精度范围";
   public static final String

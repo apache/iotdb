@@ -97,7 +97,7 @@ public class CQManagerTest {
     TCreateCQReq req =
         new TCreateCQReq(
             "mixedDurationCq",
-            86_400_000,
+            0,
             0,
             0,
             0,
@@ -108,7 +108,7 @@ public class CQManagerTest {
             "root");
     req.setDurationEncodingVersion((short) 1);
     req.setEveryDuration(new TCQDuration(0, 86_400_000));
-    req.setStartOffsetDuration(new TCQDuration(1, 0));
+    req.setStartOffsetDuration(new TCQDuration(1, 86_400_000));
     req.setEndOffsetDuration(new TCQDuration(0, 0));
     req.setBoundaryExplicit(true);
 
@@ -146,6 +146,40 @@ public class CQManagerTest {
       assertEquals(
           org.apache.iotdb.confignode.i18n.ManagerMessages
               .MESSAGE_CQ_DURATION_ENCODING_MARKER_REQUIRED_9035980A,
+          status.getMessage());
+    } finally {
+      cqManager.stopCQScheduler();
+    }
+  }
+
+  @Test
+  public void invalidStructuredDurationIsRejectedAtRpcIngress() {
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    CQManager cqManager = new CQManager(configManager);
+    try {
+      TCreateCQReq req =
+          new TCreateCQReq(
+              "invalidDurationCq",
+              0,
+              0,
+              0,
+              0,
+              TimeoutPolicy.BLOCKED.getType(),
+              "select 1",
+              "create cq invalidDurationCq",
+              "UTC",
+              "root");
+      req.setDurationEncodingVersion((short) 1);
+      req.setEveryDuration(new TCQDuration(0, 0));
+      req.setStartOffsetDuration(new TCQDuration(0, 0));
+      req.setEndOffsetDuration(new TCQDuration(0, 0));
+      req.setBoundaryExplicit(true);
+
+      TSStatus status = cqManager.createCQ(req);
+      assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), status.getCode());
+      assertEquals(
+          org.apache.iotdb.confignode.i18n.ManagerMessages
+              .EXCEPTION_CQ_EVERY_DURATION_MUST_BE_POSITIVE_69C29D26,
           status.getMessage());
     } finally {
       cqManager.stopCQScheduler();

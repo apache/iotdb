@@ -98,40 +98,51 @@ public class CQInfo implements SnapshotProcessor {
         res.code = TSStatusCode.CQ_ALREADY_EXIST.getStatusCode();
         res.message = String.format("CQ %s has already been created.", cqId);
       } else {
-        long lastExecutionTime = plan.getFirstExecutionTime() - plan.getReq().everyInterval;
-        if (plan.getReq().isSetEveryDuration()
-            && plan.getReq().getEveryDuration().getMonthPart() != 0) {
-          org.apache.tsfile.utils.TimeDuration duration =
-              new org.apache.tsfile.utils.TimeDuration(
-                  Math.toIntExact(plan.getReq().getEveryDuration().getMonthPart()),
-                  plan.getReq().getEveryDuration().getNonMonthDuration());
+        TCreateCQReq req = plan.getReq();
+        TimeDuration everyDuration =
+            req.isSetDurationEncodingVersion()
+                    && req.getDurationEncodingVersion() == 1
+                    && req.isSetEveryDuration()
+                ? new TimeDuration(
+                    Math.toIntExact(req.getEveryDuration().getMonthPart()),
+                    req.getEveryDuration().getNonMonthDuration())
+                : new TimeDuration(0, req.everyInterval);
+        long lastExecutionTime;
+        if (everyDuration.monthDuration != 0) {
           java.time.ZoneId zone = java.time.ZoneId.of(plan.getReq().zoneId);
           long boundary =
-              plan.getReq().isSetBoundaryExplicit() && !plan.getReq().isBoundaryExplicit()
+              req.isSetBoundaryExplicit() && !req.isBoundaryExplicit()
                   ? CQCalendarUtils.localEpochBoundary(zone)
-                  : plan.getReq().boundaryTime;
+                  : req.boundaryTime;
           long index =
               CQCalendarUtils.firstOccurrenceIndex(
-                  boundary, duration, plan.getFirstExecutionTime(), zone);
-          lastExecutionTime = CQCalendarUtils.occurrence(boundary, duration, index - 1, zone);
+                  boundary, everyDuration, plan.getFirstExecutionTime(), zone);
+          lastExecutionTime = CQCalendarUtils.occurrence(boundary, everyDuration, index - 1, zone);
+        } else {
+          // Version 1 may carry zero legacy fields when another component is calendar-aware. Use
+          // the structured fixed duration to keep the persisted previous occurrence accurate.
+          lastExecutionTime = plan.getFirstExecutionTime() - everyDuration.nonMonthDuration;
         }
         long nextOccurrenceIndex = -1;
-        if (plan.getReq().isSetDurationEncodingVersion()
-            && plan.getReq().getDurationEncodingVersion() == 1) {
+        if (req.isSetDurationEncodingVersion() && req.getDurationEncodingVersion() == 1) {
           TimeDuration duration =
               new TimeDuration(
-                  Math.toIntExact(plan.getReq().getEveryDuration().getMonthPart()),
-                  plan.getReq().getEveryDuration().getNonMonthDuration());
+                  Math.toIntExact(req.getEveryDuration().getMonthPart()),
+                  req.getEveryDuration().getNonMonthDuration());
+          boolean calendarAware =
+              req.getEveryDuration().getMonthPart() != 0
+                  || req.getStartOffsetDuration().getMonthPart() != 0
+                  || req.getEndOffsetDuration().getMonthPart() != 0;
+          java.time.ZoneId zone = calendarAware ? java.time.ZoneId.of(req.zoneId) : null;
           long boundary =
-              plan.getReq().isSetBoundaryExplicit() && !plan.getReq().isBoundaryExplicit()
-                  ? CQCalendarUtils.localEpochBoundary(java.time.ZoneId.of(plan.getReq().zoneId))
-                  : plan.getReq().boundaryTime;
+              duration.monthDuration != 0
+                      && req.isSetBoundaryExplicit()
+                      && !req.isBoundaryExplicit()
+                  ? CQCalendarUtils.localEpochBoundary(zone)
+                  : req.boundaryTime;
           nextOccurrenceIndex =
               CQCalendarUtils.firstOccurrenceIndex(
-                  boundary,
-                  duration,
-                  plan.getFirstExecutionTime(),
-                  java.time.ZoneId.of(plan.getReq().zoneId));
+                  boundary, duration, plan.getFirstExecutionTime(), zone);
         }
         CQEntry cqEntry =
             new CQEntry(plan.getReq(), plan.getCqToken(), lastExecutionTime, nextOccurrenceIndex);
@@ -668,6 +679,12 @@ public class CQInfo implements SnapshotProcessor {
 
     public boolean isBoundaryExplicit() {
       return boundaryExplicit;
+    }
+
+    public boolean hasCalendarDuration() {
+      return everyDuration.monthDuration != 0
+          || startTimeOffsetDuration.monthDuration != 0
+          || endTimeOffsetDuration.monthDuration != 0;
     }
 
     private static org.apache.tsfile.utils.TimeDuration durationFromReq(
