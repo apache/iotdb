@@ -142,8 +142,7 @@ public final class DeviceEntryDiskSpiller implements AutoCloseable {
             String.format(
                 DataNodeQueryMessages
                     .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-                temporaryFile),
-            e);
+                temporaryFile));
       }
     }
   }

@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.NoSuchFileException;
 import java.util.List;
 
@@ -57,7 +58,7 @@ public final class LocalSegmentDeviceEntrySource extends SegmentDeviceEntrySourc
               spillManager.readSegment(
                   handle.getQueryId(), handle.getPlanNodeId().getId(), segmentId));
       releaseSegment(segmentId);
-    } catch (NoSuchFileException e) {
+    } catch (NoSuchFileException | AccessDeniedException e) {
       LOGGER.warn(
           String.format(
               DataNodeQueryMessages
