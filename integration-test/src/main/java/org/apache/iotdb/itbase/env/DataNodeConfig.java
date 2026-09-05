@@ -33,6 +33,8 @@ public interface DataNodeConfig {
 
   DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
 
+  DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize);
+
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
 

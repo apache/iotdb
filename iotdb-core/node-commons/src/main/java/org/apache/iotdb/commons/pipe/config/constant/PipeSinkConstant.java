@@ -41,6 +41,9 @@ public class PipeSinkConstant {
   public static final String CONNECTOR_KEY = "connector";
   public static final String SINK_KEY = "sink";
 
+  public static final String OPC_UA_CONNECTOR_NAME = "opc-ua-connector";
+  public static final String OPC_UA_SINK_NAME = "opc-ua-sink";
+
   public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
   public static final String SINK_IOTDB_IP_KEY = "sink.ip";
   public static final String CONNECTOR_IOTDB_HOST_KEY = "connector.host";
@@ -71,8 +74,8 @@ public class PipeSinkConstant {
   public static final Set<String> SINGLE_THREAD_DEFAULT_SINK =
       new HashSet<>(
           Arrays.asList(
-              BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(),
-              BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(),
+              OPC_UA_SINK_NAME,
+              OPC_UA_CONNECTOR_NAME,
               BuiltinPipePlugin.OPC_DA_SINK.getPipePluginName(),
               BuiltinPipePlugin.OPC_DA_CONNECTOR.getPipePluginName()));
 

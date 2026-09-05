@@ -23,14 +23,14 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.ClientRunner;
-import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.IoTDBOpcUaClient;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
+import org.apache.iotdb.pipe.plugin.sink.opcua.client.ClientRunner;
+import org.apache.iotdb.pipe.plugin.sink.opcua.client.IoTDBOpcUaClient;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -61,16 +61,24 @@ import java.util.Objects;
 import java.util.UUID;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.timestampToUtc;
+import static org.apache.iotdb.pipe.plugin.sink.opcua.server.OpcUaNameSpace.timestampToUtc;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
 public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
 
+  private static final int PIPE_PLUGIN_JAR_TRANSFER_LIMIT_IN_BYTES = 32 * 1024 * 1024;
+
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     MultiEnvFactory.createEnv(1);
     env = MultiEnvFactory.getEnv(0);
+    env.getConfig()
+        .getConfigNodeConfig()
+        .setRatisLogAppenderBufferSizeMax(PIPE_PLUGIN_JAR_TRANSFER_LIMIT_IN_BYTES);
+    env.getConfig()
+        .getDataNodeConfig()
+        .setThriftMaxFrameSize(PIPE_PLUGIN_JAR_TRANSFER_LIMIT_IN_BYTES);
     env.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
@@ -81,6 +89,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     env.initClusterEnvironment(1, 1);
+    registerOpcUaSinkPlugin();
   }
 
   @Test

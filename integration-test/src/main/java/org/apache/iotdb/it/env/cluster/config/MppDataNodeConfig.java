@@ -81,6 +81,12 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    properties.setProperty("dn_thrift_max_frame_size", String.valueOf(thriftMaxFrameSize));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     properties.setProperty(

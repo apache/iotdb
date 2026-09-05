@@ -44,6 +44,7 @@
         <module>iotdb-client</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>
+        <module>library-pipe</module>
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
@@ -109,7 +110,6 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>1.1.6</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!--mockito.version>4.11.0</mockito.version-->
@@ -371,26 +371,6 @@
                 <artifactId>units</artifactId>
                 <version>${airlift-units.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-stack-core</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-sdk-core</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-transport</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-sdk-client</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
             <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -402,11 +382,6 @@
                         <artifactId>javax.inject</artifactId>
                     </exclusion>
                 </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-sdk-server</artifactId>
-                <version>${milo.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.reflections</groupId>
