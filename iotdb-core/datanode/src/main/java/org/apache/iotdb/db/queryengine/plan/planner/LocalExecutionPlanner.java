@@ -221,23 +221,35 @@ public class LocalExecutionPlanner {
     }
     FragmentInstanceStateMachine stateMachine = instanceContext.getStateMachine();
     if (reservedBytes > 0) {
-      stateMachine.addStateChangeListener(
-          newState -> {
-            if (newState.isDone()) {
-              try (SetThreadName fragmentInstanceName =
-                  new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
-                OPERATORS_MEMORY_BLOCK.release(reservedBytes);
-                if (LOGGER.isDebugEnabled()) {
-                  LOGGER.debug(
-                      DataNodeQueryMessages.RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG,
-                      reservedBytes,
-                      OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
-                }
-              }
-            }
-          });
+      registerOperatorsMemoryRelease(reservedBytes, stateMachine);
     }
     return reservedBytes;
+  }
+
+  private void registerOperatorsMemoryRelease(
+      long reservedBytes, FragmentInstanceStateMachine stateMachine) {
+    // Regular state listeners share a bounded executor and can be delayed by driver cleanup.
+    // Return this admission reservation in the transition thread so consecutive fast failures
+    // cannot exhaust the operators memory pool.
+    stateMachine.addFinalStateChangeListener(
+        ignored -> {
+          try (SetThreadName fragmentInstanceName =
+              new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
+            OPERATORS_MEMORY_BLOCK.release(reservedBytes);
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  DataNodeQueryMessages.RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG,
+                  reservedBytes,
+                  OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
+            }
+          }
+        });
+  }
+
+  @TestOnly
+  void registerOperatorsMemoryReleaseForTest(
+      long reservedBytes, FragmentInstanceStateMachine stateMachine) {
+    registerOperatorsMemoryRelease(reservedBytes, stateMachine);
   }
 
   /**
