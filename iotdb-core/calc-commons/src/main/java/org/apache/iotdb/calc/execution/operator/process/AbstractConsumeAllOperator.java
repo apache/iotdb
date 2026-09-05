@@ -171,6 +171,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
   protected void handleFinishedChild(int currentChildIndex) throws Exception {
     children.get(currentChildIndex).close();
     children.set(currentChildIndex, null);
+    inputTsBlocks[currentChildIndex] = null;
   }
 
   // endregion
