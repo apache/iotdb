@@ -138,7 +138,9 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     this.sourceEvent = sourceEvent;
     this.memoryManager = memoryManager;
 
-    this.allocatedMemoryBlockForTablet = memoryManager.forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlockForTablet =
+        memoryManager.forceAllocateForTabletWithRetry(
+            TsFileInsertionEventParser.class.getSimpleName() + "#tablet", 0);
 
     LOGGER.debug(
         DataNodePipeMessages.TSFILE_HAS_INITIALIZED_PIPENAME_CREATION_TIME_PATTERN,

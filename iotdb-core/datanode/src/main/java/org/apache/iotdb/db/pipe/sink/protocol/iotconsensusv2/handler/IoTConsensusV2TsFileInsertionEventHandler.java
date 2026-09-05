@@ -142,7 +142,10 @@ public class IoTConsensusV2TsFileInsertionEventHandler
 
     if (readBuffer == null) {
       memoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTsFileWithRetry(
+                  IoTConsensusV2TsFileInsertionEventHandler.class.getSimpleName(),
+                  readFileBufferSize);
       readBuffer = new byte[readFileBufferSize];
     }
 

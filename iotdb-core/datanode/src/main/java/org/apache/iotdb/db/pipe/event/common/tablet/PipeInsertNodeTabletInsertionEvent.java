@@ -498,7 +498,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       allocatedMemoryBlock.compareAndSet(
           null,
           PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(tabletMemoryUsageInBytes));
+              .forceAllocateForTabletWithRetry(
+                  PipeInsertNodeTabletInsertionEvent.class.getSimpleName(),
+                  tabletMemoryUsageInBytes));
     }
     return tablets;
   }

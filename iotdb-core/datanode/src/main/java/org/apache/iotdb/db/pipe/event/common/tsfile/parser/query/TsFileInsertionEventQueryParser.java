@@ -221,7 +221,9 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+          memoryManager.forceAllocateForTabletWithRetry(
+              TsFileInsertionEventQueryParser.class.getSimpleName() + "#modifications",
+              currentModifications.ramBytesUsed());
 
       final PipeTsFileResourceManager tsFileResourceManager = PipeDataNodeResourceManager.tsfile();
       final Map<IDeviceID, List<String>> deviceMeasurementsMap;
@@ -282,7 +284,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         memoryRequiredInBytes +=
             PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
-      allocatedMemoryBlock = memoryManager.forceAllocate(memoryRequiredInBytes);
+      allocatedMemoryBlock =
+          memoryManager.forceAllocate(
+              TsFileInsertionEventQueryParser.class.getSimpleName() + "#metadata",
+              memoryRequiredInBytes);
 
       final Iterator<Map.Entry<IDeviceID, List<String>>> iterator =
           deviceMeasurementsMap.entrySet().iterator();

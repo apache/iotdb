@@ -102,7 +102,9 @@ public class PipeDataNodeRuntimeAgent implements IService {
     if (pipeLogReducerMemoryBlock == null) {
       pipeLogReducerMemoryBlock =
           PipeDataNodeResourceManager.memory()
-              .tryAllocate(PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
+              .tryAllocate(
+                  PipeDataNodeRuntimeAgent.class.getSimpleName() + "#logger",
+                  PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
     }
 
     LoggerPeriodicalLogReducer.setMemoryResizeFunction(

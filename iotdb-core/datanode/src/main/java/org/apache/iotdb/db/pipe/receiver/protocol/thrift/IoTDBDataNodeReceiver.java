@@ -1109,7 +1109,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private PipeMemoryBlock tryAllocateReceiverMemory(final long requestedMemorySizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     return PipeDataNodeResourceManager.memory()
-        .forceAllocate(Math.max(requestedMemorySizeInBytes, 0));
+        .forceAllocate(
+            IoTDBDataNodeReceiver.class.getSimpleName() + "#request",
+            Math.max(requestedMemorySizeInBytes, 0));
   }
 
   @Override
@@ -1189,6 +1191,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             allocatedMemoryBlock =
                 PipeDataNodeResourceManager.memory()
                     .forceAllocate(
+                        IoTDBDataNodeReceiver.class.getSimpleName() + "#statement",
                         (long) (estimatedMemory * pipeReceiverActualToEstimatedMemoryRatio));
             break;
           } catch (final PipeRuntimeOutOfMemoryCriticalException e) {

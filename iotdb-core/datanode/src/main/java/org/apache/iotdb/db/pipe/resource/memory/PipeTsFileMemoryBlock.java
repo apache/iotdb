@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 public class PipeTsFileMemoryBlock extends PipeFixedMemoryBlock {
 
-  public PipeTsFileMemoryBlock(long memoryUsageInBytes) {
-    super(memoryUsageInBytes);
+  public PipeTsFileMemoryBlock(final String name, final long memoryUsageInBytes) {
+    super(name, memoryUsageInBytes);
   }
 }

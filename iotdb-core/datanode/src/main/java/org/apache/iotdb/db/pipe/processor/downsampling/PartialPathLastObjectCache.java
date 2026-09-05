@@ -39,7 +39,9 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
   private final Cache<String, T> partialPath2ObjectCache;
 
   protected PartialPathLastObjectCache(final long memoryLimitInBytes) {
-    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().tryAllocate(memoryLimitInBytes);
+    allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .tryAllocate(PartialPathLastObjectCache.class.getSimpleName(), memoryLimitInBytes);
 
     // Currently disable the metric here because it's not a constant cache and the number may
     // fluctuate. In the future all the "processorCache"s may be recorded in single metric entry

@@ -65,7 +65,9 @@ public class DisruptorQueue {
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .tryAllocate(
-                ringBufferSize * ringBufferEntrySizeInBytes, currentSize -> currentSize / 2);
+                DisruptorQueue.class.getSimpleName(),
+                ringBufferSize * ringBufferEntrySizeInBytes,
+                currentSize -> currentSize / 2);
 
     disruptor =
         new Disruptor<>(

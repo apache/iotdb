@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeMemoryManagerResizeTest {
@@ -87,7 +88,7 @@ public class PipeMemoryManagerResizeTest {
                 null,
                 TOTAL_MEMORY_SIZE_IN_BYTES,
                 MemoryBlockType.DYNAMIC));
-    final PipeTabletMemoryBlock tablet = manager.forceAllocateForTabletWithRetry(0);
+    final PipeTabletMemoryBlock tablet = manager.forceAllocateForTabletWithRetry("tablet", 0);
 
     try {
       Assert.assertThrows(
@@ -111,9 +112,10 @@ public class PipeMemoryManagerResizeTest {
                 TOTAL_MEMORY_SIZE_IN_BYTES,
                 MemoryBlockType.DYNAMIC));
     final PipeTabletMemoryBlock retainedTablet =
-        manager.forceAllocateForTabletWithRetry(TABLET_MEMORY_SIZE_IN_BYTES);
-    final PipeTabletMemoryBlock pendingTablet = manager.forceAllocateForTabletWithRetry(0);
-    final PipeMemoryBlock sinkBatch = manager.forceAllocate(0);
+        manager.forceAllocateForTabletWithRetry("retainedTablet", TABLET_MEMORY_SIZE_IN_BYTES);
+    final PipeTabletMemoryBlock pendingTablet =
+        manager.forceAllocateForTabletWithRetry("pendingTablet", 0);
+    final PipeMemoryBlock sinkBatch = manager.forceAllocate("sinkBatch", 0);
 
     try {
       Assert.assertThrows(
@@ -155,7 +157,8 @@ public class PipeMemoryManagerResizeTest {
     Assert.assertEquals(
         TOTAL_MEMORY_SIZE_IN_BYTES / 2, manager.getTotalFloatingMemorySizeInBytes());
 
-    final PipeTsFileMemoryBlock nonFloatingMemory = manager.forceAllocateForTsFileWithRetry(1200);
+    final PipeTsFileMemoryBlock nonFloatingMemory =
+        manager.forceAllocateForTsFileWithRetry("tsFile", 1200);
     try {
       // Non-floating memory can borrow the unused half that was previously reserved for InsertNode
       // queues. Its usage also reduces the current floating-memory limit symmetrically.
@@ -167,9 +170,57 @@ public class PipeMemoryManagerResizeTest {
       Assert.assertEquals(300, manager.getFreeMemorySizeInBytes());
 
       Assert.assertThrows(
-          PipeRuntimeOutOfMemoryCriticalException.class, () -> manager.forceAllocate(301));
+          PipeRuntimeOutOfMemoryCriticalException.class,
+          () -> manager.forceAllocate("normal", 301));
     } finally {
       manager.release(nonFloatingMemory);
     }
+  }
+
+  @Test
+  public void testMemoryBlockInfoIncludesNamesAndSeparatesFloatingMemory() {
+    final AtomicLong floatingMemoryUsageInBytes = new AtomicLong(0);
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC),
+            floatingMemoryUsageInBytes::get);
+    final PipeMemoryBlock normalMemory = manager.forceAllocate("normal", 100);
+    final PipeMemoryBlock zeroSizedMemory = manager.forceAllocate("zero", 0);
+
+    try {
+      floatingMemoryUsageInBytes.set(250);
+      final List<PipeMemoryManager.PipeMemoryBlockInfo> memoryBlockInfoList =
+          manager.getPipeMemoryBlockInfoList();
+
+      Assert.assertEquals(3, memoryBlockInfoList.size());
+      Assert.assertEquals("FloatingMemory", memoryBlockInfoList.get(0).getName());
+      Assert.assertEquals(250, memoryBlockInfoList.get(0).getMemoryUsageInBytes());
+      Assert.assertEquals("normal", memoryBlockInfoList.get(1).getName());
+      Assert.assertEquals(100, memoryBlockInfoList.get(1).getMemoryUsageInBytes());
+      Assert.assertEquals("zero", memoryBlockInfoList.get(2).getName());
+      Assert.assertEquals(0, memoryBlockInfoList.get(2).getMemoryUsageInBytes());
+      Assert.assertEquals(100, manager.getUsedMemorySizeInBytes());
+
+      manager.forceResize(normalMemory, 0);
+      final List<PipeMemoryManager.PipeMemoryBlockInfo> memoryBlockInfoListAfterResize =
+          manager.getPipeMemoryBlockInfoList();
+      Assert.assertEquals(3, memoryBlockInfoListAfterResize.size());
+      Assert.assertEquals("normal", memoryBlockInfoListAfterResize.get(1).getName());
+      Assert.assertEquals(0, memoryBlockInfoListAfterResize.get(1).getMemoryUsageInBytes());
+      Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+    } finally {
+      manager.release(normalMemory);
+      manager.release(zeroSizedMemory);
+    }
+
+    final List<PipeMemoryManager.PipeMemoryBlockInfo> memoryBlockInfoListAfterRelease =
+        manager.getPipeMemoryBlockInfoList();
+    Assert.assertEquals(1, memoryBlockInfoListAfterRelease.size());
+    Assert.assertEquals("FloatingMemory", memoryBlockInfoListAfterRelease.get(0).getName());
+    Assert.assertEquals(250, memoryBlockInfoListAfterRelease.get(0).getMemoryUsageInBytes());
   }
 }

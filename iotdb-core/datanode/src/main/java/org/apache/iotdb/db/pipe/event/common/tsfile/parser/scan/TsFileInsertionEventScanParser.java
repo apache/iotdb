@@ -181,8 +181,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
-    this.allocatedMemoryBlockForBatchData = memoryManager.forceAllocateForTabletWithRetry(0);
-    this.allocatedMemoryBlockForChunk = memoryManager.forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlockForBatchData =
+        memoryManager.forceAllocateForTabletWithRetry(
+            TsFileInsertionEventScanParser.class.getSimpleName() + "#batchData", 0);
+    this.allocatedMemoryBlockForChunk =
+        memoryManager.forceAllocateForTabletWithRetry(
+            TsFileInsertionEventScanParser.class.getSimpleName() + "#chunk", 0);
 
     try {
       currentModifications =
@@ -190,7 +194,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
+          memoryManager.forceAllocateForTabletWithRetry(
+              TsFileInsertionEventScanParser.class.getSimpleName() + "#modifications",
+              currentModifications.ramBytesUsed());
 
       tsFileSequenceReader = createTsFileSequenceReader(tsFile, !currentModifications.isEmpty());
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -257,7 +263,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     allocatedMemoryBlockForTsFileInput =
-        memoryManager.forceAllocateForTabletWithRetry(TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
+        memoryManager.forceAllocateForTabletWithRetry(
+            TsFileInsertionEventScanParser.class.getSimpleName() + "#tsFileInput",
+            TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
     return new TsFileSequenceReader(
         new BufferedTsFileInput(tsFile.toPath(), TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES),
         false,

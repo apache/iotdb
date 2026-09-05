@@ -278,7 +278,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     final List<Tablet> tablets = ((TabletsPayload) response.getPayload()).getTablets();
     if (Objects.nonNull(tablets) && !tablets.isEmpty()) {
       final PipeTabletMemoryBlock memoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(currentBufferSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  SubscriptionEventTabletResponse.class.getSimpleName(), currentBufferSize);
       response.setMemoryBlock(memoryBlock);
     }
 
