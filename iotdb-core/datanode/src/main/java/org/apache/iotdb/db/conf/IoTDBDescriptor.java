@@ -1002,6 +1002,16 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "coordinator_read_executor_size",
                 Integer.toString(conf.getCoordinatorReadExecutorSize()))));
+    conf.setCoordinatorScheduledExecutorSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "coordinator_scheduled_executor_size",
+                Integer.toString(conf.getCoordinatorScheduledExecutorSize()))));
+    conf.setFragmentInstanceNotificationThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "fragment_instance_notification_thread_count",
+                Integer.toString(conf.getFragmentInstanceNotificationThreadCount()))));
     conf.setDataNodeTableSchemaCacheSize(
         Long.parseLong(
             properties.getProperty(
