@@ -102,7 +102,9 @@ public class QueryExecution implements IQueryExecution {
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
 
-  /** Result blocks are published to the local exchange manager and read through this source handle. */
+  /**
+   * Result blocks are published to the local exchange manager and read through this source handle.
+   */
   private ISourceHandle resultHandle;
 
   /** Guards exactly-once cleanup of the result source handle. */

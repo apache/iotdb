@@ -66,12 +66,17 @@ public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  /** Allocates WAL nodes and applies the strategy selected for the configured consensus protocol. */
+  /**
+   * Allocates WAL nodes and applies the strategy selected for the configured consensus protocol.
+   */
   private final NodeAllocationStrategy walNodesManager;
+
   /** Single-thread scheduler that deletes expired WAL files. */
   private ScheduledExecutorService walDeleteThread;
+
   /** Aggregate disk usage of all WAL nodes. */
   private final AtomicLong totalDiskUsage = new AtomicLong();
+
   /** Aggregate number of WAL files across all WAL nodes. */
   private final AtomicLong totalFileNum = new AtomicLong();
 

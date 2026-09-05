@@ -85,10 +85,11 @@ public class ClusterManager {
   }
 
   /**
-   * Gets the cluster ID with bounded retries when the local ConfigRegion is not ready.
+   * Waits up to the specified time for the cluster ID to become available.
    *
-   * @return the cluster ID
-   * @throws ConsensusException if the cluster ID cannot be read after the retry policy is exhausted
+   * @param maxWaitTime maximum wait time in milliseconds
+   * @return the cluster ID, or null if it is unavailable after the timeout or the wait is
+   *     interrupted
    */
   public String getClusterIdWithRetry(long maxWaitTime) {
     long startTime = System.currentTimeMillis();
@@ -115,12 +116,11 @@ public class ClusterManager {
     }
   }
 
-  // TODO: Parallel test ConfigNode and DataNode
   /**
-   * Submits connectivity checks to all known ConfigNodes and DataNodes.
+   * Tests connectivity from this ConfigNode to all registered ConfigNodes and DataNodes and
+   * aggregates the results.
    *
-   * <p>The method is asynchronous; callers must use the returned or associated result mechanism
-   * to determine which nodes succeeded or failed.
+   * @return aggregated connection-test results
    */
   public TTestConnectionResp submitTestConnectionTaskToEveryNode() {
     TTestConnectionResp resp = new TTestConnectionResp();

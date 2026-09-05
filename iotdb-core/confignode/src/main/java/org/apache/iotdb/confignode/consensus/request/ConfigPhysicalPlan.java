@@ -198,8 +198,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
      * Deserializes a plan from the buffer using the encoded type discriminator.
      *
      * @param buffer the buffer containing one serialized plan
-     * @return the deserialized plan, or null when the type is unknown if that is the supported
-     *     compatibility behavior
+     * @return the deserialized plan
+     * @throws IOException if the encoded plan type or payload cannot be read
      */
     public static ConfigPhysicalPlan create(final ByteBuffer buffer) throws IOException {
       final short planType = buffer.getShort();

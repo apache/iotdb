@@ -900,8 +900,8 @@ public class StorageEngine implements IService {
   /**
    * Runs the action only when the specified DataRegion is absent.
    *
-   * <p>computeIfAbsent is intentionally not used because the action may perform initialization that
-   * must not be started while another deletion or replacement is in progress.
+   * <p>Uses computeIfAbsent to serialize the absence check and action; returning null keeps the map
+   * unchanged.
    *
    * @return true if the region is absent and the runnable is run. false if the region is present.
    */
@@ -920,8 +920,8 @@ public class StorageEngine implements IService {
   /**
    * Run the consumer if the region is present. if the region is absent, do nothing.
    *
-   * <p>We don't use computeIfPresent because we don't want to remove the region if the consumer
-   * returns null, we just want to run the consumer in a synchronized way.
+   * <p>Uses computeIfPresent to serialize consumer invocation and returns the existing region so it
+   * remains in the map.
    *
    * @return true if the region is present and the consumer is run. false if the region is absent.
    */

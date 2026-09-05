@@ -56,8 +56,8 @@ import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * Applies replicated write and query fragment operations to one DataRegion and exposes its
- * snapshot and region-resource lifecycle to the consensus layer.
+ * Applies replicated write and query fragment operations to one DataRegion and exposes its snapshot
+ * and region-resource lifecycle to the consensus layer.
  *
  * <p>Write-process rejection is retried here to preserve the atomicity expected by the consensus
  * apply path; other statuses are delegated to the consensus retry mechanism.

@@ -159,10 +159,10 @@ import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
 /**
  * The process-level service for a DataNode.
  *
- * <p>DataNode registers with the ConfigNode cluster, restores local schema and data regions,
- * starts consensus and query services, and exposes client and internal RPC endpoints. Startup
- * order is significant because query, write, and region-management services must not serve
- * requests before local recovery and runtime configuration have completed.
+ * <p>DataNode registers with the ConfigNode cluster, restores local schema and data regions, starts
+ * consensus and query services, and exposes client and internal RPC endpoints. Startup order is
+ * significant because query, write, and region-management services must not serve requests before
+ * local recovery and runtime configuration have completed.
  */
 public class DataNode extends ServerCommandLine implements DataNodeMBean {
 

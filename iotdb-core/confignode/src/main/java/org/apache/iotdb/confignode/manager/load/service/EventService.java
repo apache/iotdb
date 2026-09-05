@@ -50,9 +50,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Periodically checks cluster events that require ConfigNode-side handling.
- */
+/** Periodically checks cluster events that require ConfigNode-side handling. */
 public class EventService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EventService.class);

@@ -91,9 +91,9 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.
 /**
  * Manages local and remote source/sink handles used to exchange TsBlocks between MPP fragments.
  *
- * <p>The manager processes data-block fetch, acknowledgement, close, and end-of-stream events.
- * Late events are expected after downstream cancellation and must be ignored without leaking
- * handles or corrupting completion state.
+ * <p>The manager processes data-block fetch, acknowledgement, close, and end-of-stream events. Late
+ * events are expected after downstream cancellation and must be ignored without leaking handles or
+ * corrupting completion state.
  */
 public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
@@ -306,8 +306,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                 : (SourceHandle) sourceHandleMap.get(e.getTargetPlanNodeId());
 
         if (sourceHandle == null || sourceHandle.isAborted() || sourceHandle.isFinished()) {
-          // A downstream fragment may finish early, for example when a LimitOperator has produced enough
-          // rows, while its upstream fragment is still sending events. Ignore late events for the finished
+          // A downstream fragment may finish early, for example when a LimitOperator has produced
+          // enough
+          // rows, while its upstream fragment is still sending events. Ignore late events for the
+          // finished
           // or aborted SourceHandle.
           if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(

@@ -104,8 +104,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
- * Handles version-1 subscription requests, including handshake, heartbeat, subscribe, poll,
- * commit, seek, unsubscribe, and consumer close operations.
+ * Handles version-1 subscription requests, including handshake, heartbeat, subscribe, poll, commit,
+ * seek, unsubscribe, and consumer close operations.
  *
  * <p>Consumer state is shared across request threads and is fenced by consumer ownership. Poll,
  * commit, seek, timeout, and exit paths must preserve in-flight request and progress invariants.

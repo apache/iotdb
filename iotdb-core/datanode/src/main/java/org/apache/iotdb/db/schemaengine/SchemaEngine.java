@@ -74,12 +74,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Owns the schema regions hosted by this DataNode and coordinates their loading, recovery,
- * metrics, schema-resource management, and lifecycle operations.
+ * Owns the schema regions hosted by this DataNode and coordinates their loading, recovery, metrics,
+ * schema-resource management, and lifecycle operations.
  *
- * <p>The selected schema-engine mode determines whether schema state is memory-resident or
- * cached. Schema metrics and shared schema resources must be initialized before schema regions,
- * and cleared only after all schema regions have been cleared.
+ * <p>The selected schema-engine mode determines whether schema state is memory-resident or cached.
+ * Schema metrics and shared schema resources must be initialized before schema regions, and cleared
+ * only after all schema regions have been cleared.
  */
 public class SchemaEngine {
 
@@ -125,7 +125,7 @@ public class SchemaEngine {
 
     initSchemaEngineStatistics();
     SchemaResourceManager.initSchemaResource(schemaEngineStatistics);
-    
+
     // Cached schema metrics depend on CacheMemoryManager, so initialize them only after the cache
     // memory manager is ready.
     schemaMetricManager = new SchemaMetricManager(schemaEngineStatistics);

@@ -60,9 +60,9 @@ import java.util.Map;
  * Performs an orderly DataNode shutdown.
  *
  * <p>The hook first prevents new writes and drains write-related resources, then closes or
- * snapshots storage according to the configured consensus protocol, persists Pipe progress,
- * stops DataNode services, reports shutdown to the ConfigNode leader, and finally releases the
- * directory lock.
+ * snapshots storage according to the configured consensus protocol, persists Pipe progress, stops
+ * DataNode services, reports shutdown to the ConfigNode leader, and finally releases the directory
+ * lock.
  */
 public class DataNodeShutdownHook extends Thread {
 
@@ -142,7 +142,7 @@ public class DataNodeShutdownHook extends Thread {
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
     // consensus algorithms, which will replace the underlying storage engine based on its
-    // own latest snapshot, while other consensus algorithms will not. This judgement ensures 
+    // own latest snapshot, while other consensus algorithms will not. This judgement ensures
     // that compaction work is not discarded even if there are frequent restarts
     if (IoTDBDescriptor.getInstance()
         .getConfig()

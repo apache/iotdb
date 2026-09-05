@@ -59,8 +59,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-/** 
- * Guards heartbeat scheduling across start, stop, reload, and leadership transitions. 
+/**
+ * Periodically sends heartbeat requests from the ConfigNode leader to registered ConfigNodes,
+ * DataNodes, and AINodes, and updates the corresponding load information.
  */
 public class HeartbeatService {
 

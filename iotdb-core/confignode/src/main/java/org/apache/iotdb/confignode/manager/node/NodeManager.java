@@ -521,7 +521,8 @@ public class NodeManager {
   }
 
   /**
-   * Serialize AINode registration so concurrent requests cannot violate the single-AINode registration constraint.
+   * Serialize AINode registration so concurrent requests cannot violate the single-AINode
+   * registration constraint.
    *
    * @param req TAINodeRegisterReq
    * @return AINodeConfigurationDataSet. The {@link TSStatus} will be set to {@link

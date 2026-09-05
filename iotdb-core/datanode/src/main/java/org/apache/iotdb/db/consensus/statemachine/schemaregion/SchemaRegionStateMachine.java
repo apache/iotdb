@@ -47,8 +47,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Applies replicated schema operations to one SchemaRegion and coordinates schema-region
- * snapshot, Pipe-leader, and attribute-security lifecycle callbacks.
+ * Applies replicated schema operations to one SchemaRegion and coordinates schema-region snapshot,
+ * Pipe-leader, and attribute-security lifecycle callbacks.
  */
 public class SchemaRegionStateMachine extends BaseStateMachine {
 
