@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -52,6 +53,27 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
   private Timer transferConfigPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferCompressedTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferSliceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  private Rate handshakeDatanodeV1Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate handshakeDatanodeV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTabletInsertNodeRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTabletInsertNodeV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTabletRawRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTabletRawV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTabletBinaryRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTabletBinaryV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTabletBatchRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTabletBatchV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTsFilePieceRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTsFileSealRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTsFilePieceWithModRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferTsFileSealWithModRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferSchemaPlanRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferSchemaSnapshotPieceRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferSchemaSnapshotSealRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferConfigPlanRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferCompressedRate = DoNothingMetricManager.DO_NOTHING_RATE;
+  private Rate transferSliceRate = DoNothingMetricManager.DO_NOTHING_RATE;
 
   private static final String RECEIVER = "pipeDataNodeReceiver";
 
@@ -135,6 +157,86 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
 
   public void recordTransferSliceTimer(final long costTimeInNanos) {
     transferSliceTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void markHandshakeDatanodeV1Size(final long reqBytes) {
+    handshakeDatanodeV1Rate.mark(reqBytes);
+  }
+
+  public void markHandshakeDatanodeV2Size(final long reqBytes) {
+    handshakeDatanodeV2Rate.mark(reqBytes);
+  }
+
+  public void markTransferTabletInsertNodeSize(final long reqBytes) {
+    transferTabletInsertNodeRate.mark(reqBytes);
+  }
+
+  public void markTransferTabletInsertNodeV2Size(final long reqBytes) {
+    transferTabletInsertNodeV2Rate.mark(reqBytes);
+  }
+
+  public void markTransferTabletRawSize(final long reqBytes) {
+    transferTabletRawRate.mark(reqBytes);
+  }
+
+  public void markTransferTabletRawV2Size(final long reqBytes) {
+    transferTabletRawV2Rate.mark(reqBytes);
+  }
+
+  public void markTransferTabletBinarySize(final long reqBytes) {
+    transferTabletBinaryRate.mark(reqBytes);
+  }
+
+  public void markTransferTabletBinaryV2Size(final long reqBytes) {
+    transferTabletBinaryV2Rate.mark(reqBytes);
+  }
+
+  public void markTransferTabletBatchSize(final long reqBytes) {
+    transferTabletBatchRate.mark(reqBytes);
+  }
+
+  public void markTransferTabletBatchV2Size(final long reqBytes) {
+    transferTabletBatchV2Rate.mark(reqBytes);
+  }
+
+  public void markTransferTsFilePieceSize(final long reqBytes) {
+    transferTsFilePieceRate.mark(reqBytes);
+  }
+
+  public void markTransferTsFileSealSize(final long reqBytes) {
+    transferTsFileSealRate.mark(reqBytes);
+  }
+
+  public void markTransferTsFilePieceWithModSize(final long reqBytes) {
+    transferTsFilePieceWithModRate.mark(reqBytes);
+  }
+
+  public void markTransferTsFileSealWithModSize(final long reqBytes) {
+    transferTsFileSealWithModRate.mark(reqBytes);
+  }
+
+  public void markTransferSchemaPlanSize(final long reqBytes) {
+    transferSchemaPlanRate.mark(reqBytes);
+  }
+
+  public void markTransferSchemaSnapshotPieceSize(final long reqBytes) {
+    transferSchemaSnapshotPieceRate.mark(reqBytes);
+  }
+
+  public void markTransferSchemaSnapshotSealSize(final long reqBytes) {
+    transferSchemaSnapshotSealRate.mark(reqBytes);
+  }
+
+  public void markTransferConfigPlanSize(final long reqBytes) {
+    transferConfigPlanRate.mark(reqBytes);
+  }
+
+  public void markTransferCompressedSize(final long reqBytes) {
+    transferCompressedRate.mark(reqBytes);
+  }
+
+  public void markTransferSliceSize(final long reqBytes) {
+    transferSliceRate.mark(reqBytes);
   }
 
   @Override
@@ -303,6 +405,168 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.TYPE.toString(),
             "transferSlice");
+
+    // Rate
+    handshakeDatanodeV1Rate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "handshakeDataNodeV1");
+    handshakeDatanodeV2Rate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "handshakeDataNodeV2");
+    transferTabletInsertNodeRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletInsertNode");
+    transferTabletInsertNodeV2Rate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletInsertNodeV2");
+    transferTabletRawRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletRaw");
+    transferTabletRawV2Rate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletRawV2");
+    transferTabletBinaryRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletBinary");
+    transferTabletBinaryV2Rate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletBinaryV2");
+    transferTabletBatchRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletBatch");
+    transferTabletBatchV2Rate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTabletBatchV2");
+    transferTsFilePieceRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTsFilePiece");
+    transferTsFileSealRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTsFileSeal");
+    transferTsFilePieceWithModRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTsFilePieceWithMod");
+    transferTsFileSealWithModRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTsFileSealWithMod");
+    transferSchemaPlanRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferSchemaPlan");
+    transferSchemaSnapshotPieceRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferSchemaSnapshotPiece");
+    transferSchemaSnapshotSealRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferSchemaSnapshotSeal");
+    transferConfigPlanRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferConfigPlan");
+    transferCompressedRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferCompressed");
+    transferSliceRate =
+        metricService.getOrCreateRate(
+            Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferSlice");
   }
 
   @Override
@@ -331,6 +595,27 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
     transferConfigPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferCompressedTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferSliceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+    handshakeDatanodeV1Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+    handshakeDatanodeV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTabletInsertNodeRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTabletInsertNodeV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTabletRawRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTabletRawV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTabletBinaryRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTabletBinaryV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTabletBatchRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTabletBatchV2Rate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTsFilePieceRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTsFileSealRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTsFilePieceWithModRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferTsFileSealWithModRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferSchemaPlanRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferSchemaSnapshotPieceRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferSchemaSnapshotSealRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferConfigPlanRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferCompressedRate = DoNothingMetricManager.DO_NOTHING_RATE;
+    transferSliceRate = DoNothingMetricManager.DO_NOTHING_RATE;
 
     metricService.remove(
         MetricType.TIMER,
@@ -468,6 +753,148 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_DATANODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferSlice");
+
+    // Rate
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "handshakeDatanodeV1");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "handshakeDatanodeV2");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletInsertNode");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletInsertNodeV2");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletRaw");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletRawV2");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletBinary");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletBinaryV2");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletBatch");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTabletBatchV2");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTsFilePiece");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTsFileSeal");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTsFilePieceWithMod");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTsFileSealWithMod");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferSchemaPlan");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferSchemaSnapshotPiece");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferSchemaSnapshotSeal");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferConfigPlan");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferCompressed");
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_DATANODE_RECEIVER_REQ_SIZE.toString(),
         Tag.NAME.toString(),
         RECEIVER,
         Tag.TYPE.toString(),
