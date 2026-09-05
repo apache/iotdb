@@ -41,11 +41,11 @@ public class LeaderCacheUtils {
    * @return a list of pairs, each pair contains a device path and its redirect endpoint.
    */
   public static List<Pair<String, TEndPoint>> parseRecommendedRedirections(TSStatus status) {
-    // If there is no exception, there should be 2 sub-statuses, one for InsertRowsStatement and one
-    // for InsertMultiTabletsStatement (see IoTDBDataNodeReceiver#handleTransferTabletBatch).
+    // Each top-level sub-status corresponds to one statement constructed by the receiver. V2 batch
+    // requests may contain any number of statements because rows are grouped by database and table.
     final List<Pair<String, TEndPoint>> redirectList = new ArrayList<>();
 
-    if (status.getSubStatusSize() != 2) {
+    if (!status.isSetSubStatus()) {
       return redirectList;
     }
 
