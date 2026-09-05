@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class PipeTransferTrackableHandler
     implements AsyncMethodCallback<TPipeTransferResp>, AutoCloseable {
@@ -45,24 +46,45 @@ public abstract class PipeTransferTrackableHandler
 
   protected final IoTDBDataRegionAsyncSink sink;
   protected volatile AsyncPipeDataTransferServiceClient client;
+  // A client may report a failure through more than one path (callback, synchronous throw, or
+  // connection close). Only one path may release references, enqueue a retry, and eliminate this
+  // handler.
+  private final AtomicBoolean terminal = new AtomicBoolean(false);
 
   public PipeTransferTrackableHandler(final IoTDBDataRegionAsyncSink sink) {
     this.sink = sink;
   }
 
   @Override
-  public void onComplete(final TPipeTransferResp response) {
+  public synchronized void onComplete(final TPipeTransferResp response) {
+    if (terminal.get()) {
+      return;
+    }
+
     if (Objects.nonNull(client) && Objects.nonNull(response)) {
       sink.recordReceiverStatus(client.getEndPoint(), response.getStatus());
     }
 
     if (sink.isClosed()) {
+      if (!terminal.compareAndSet(false, true)) {
+        return;
+      }
       clearEventsReferenceCount();
       sink.eliminateHandler(this, true);
       return;
     }
 
-    if (onCompleteInternal(response)) {
+    final boolean completed;
+    try {
+      completed = onCompleteInternal(response);
+    } catch (final Exception e) {
+      onError(e);
+      return;
+    }
+    if (completed) {
+      if (!terminal.compareAndSet(false, true)) {
+        return;
+      }
       // eliminate handler only when all transmissions corresponding to the handler have been
       // completed
       // NOTE: We should not clear the reference count of events, as this would cause the
@@ -72,10 +94,22 @@ public abstract class PipeTransferTrackableHandler
   }
 
   @Override
-  public void onError(final Exception exception) {
+  public synchronized void onError(final Exception exception) {
+    if (!terminal.compareAndSet(false, true)) {
+      return;
+    }
+
     if (client != null) {
-      ThriftClient.resolveException(exception, client);
-      client.setPrintLogWhenEncounterException(false);
+      try {
+        ThriftClient.resolveException(exception, client);
+      } catch (final Exception resolveException) {
+        exception.addSuppressed(resolveException);
+        LOGGER.warn(
+            DataNodePipeMessages.LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A,
+            resolveException);
+      } finally {
+        client.setPrintLogWhenEncounterException(false);
+      }
     }
 
     if (sink.isClosed()) {
@@ -84,8 +118,11 @@ public abstract class PipeTransferTrackableHandler
       return;
     }
 
-    onErrorInternal(exception);
-    sink.eliminateHandler(this, false);
+    try {
+      onErrorInternal(exception);
+    } finally {
+      sink.eliminateHandler(this, false);
+    }
   }
 
   /**
@@ -97,9 +134,12 @@ public abstract class PipeTransferTrackableHandler
    *     is closed or the receiver probe is delayed
    * @throws TException if an error occurs during the transfer
    */
-  protected boolean tryTransfer(
+  protected synchronized boolean tryTransfer(
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
+    if (terminal.get()) {
+      return false;
+    }
     if (Objects.isNull(this.client)) {
       this.client = client;
     }
@@ -122,25 +162,31 @@ public abstract class PipeTransferTrackableHandler
     return true;
   }
 
-  private boolean returnFalseIfSinkIsClosed(final AsyncPipeDataTransferServiceClient client) {
+  private synchronized boolean returnFalseIfSinkIsClosed(
+      final AsyncPipeDataTransferServiceClient client) {
     if (!sink.isClosed()) {
       return false;
     }
 
+    if (!terminal.compareAndSet(false, true)) {
+      return true;
+    }
     clearEventsReferenceCount();
     sink.eliminateHandler(this, true);
-    client.setShouldReturnSelf(true);
-    client.returnSelf(
-        (e) -> {
-          if (e instanceof IllegalStateException) {
-            PipeLogger.log(
-                ignored ->
-                    LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO),
-                DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO);
-            return true;
-          }
-          return false;
-        });
+    if (client != null) {
+      client.setShouldReturnSelf(true);
+      client.returnSelf(
+          (e) -> {
+            if (e instanceof IllegalStateException) {
+              PipeLogger.log(
+                  ignored ->
+                      LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO),
+                  DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO);
+              return true;
+            }
+            return false;
+          });
+    }
     this.client = null;
     return true;
   }
@@ -178,7 +224,7 @@ public abstract class PipeTransferTrackableHandler
       throws TException {
     final int bodySizeLimit = PipeTransferSliceReqBuilder.getBodySizeLimit();
     if (!PipeTransferSliceReqBuilder.shouldSlice(req, bodySizeLimit)) {
-      client.pipeTransfer(req, this);
+      transferWithExactlyOnceCallback(client, req, this);
       return;
     }
 
@@ -218,7 +264,8 @@ public abstract class PipeTransferTrackableHandler
       final int bodySizeLimit)
       throws Exception {
     client.setShouldReturnSelf(shouldReturnSelf && sliceIndex == sliceCount - 1);
-    client.pipeTransfer(
+    transferWithExactlyOnceCallback(
+        client,
         PipeTransferSliceReqBuilder.buildSliceReq(
             originalReq, sliceOrderId, sliceIndex, sliceCount, bodySizeLimit),
         new AsyncMethodCallback<TPipeTransferResp>() {
@@ -303,7 +350,7 @@ public abstract class PipeTransferTrackableHandler
       if (returnFalseIfSinkIsClosed(client)) {
         return;
       }
-      client.pipeTransfer(originalReq, this);
+      transferWithExactlyOnceCallback(client, originalReq, this);
     } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
       returnClientToPool(client);
       PipeTransferTrackableHandler.this.onError(e);
@@ -328,8 +375,34 @@ public abstract class PipeTransferTrackableHandler
     }
   }
 
+  private void transferWithExactlyOnceCallback(
+      final AsyncPipeDataTransferServiceClient client,
+      final TPipeTransferReq req,
+      final AsyncMethodCallback<TPipeTransferResp> callback)
+      throws TException {
+    client.pipeTransfer(
+        req,
+        new AsyncMethodCallback<TPipeTransferResp>() {
+          private final AtomicBoolean callbackHandled = new AtomicBoolean(false);
+
+          @Override
+          public void onComplete(final TPipeTransferResp response) {
+            if (callbackHandled.compareAndSet(false, true)) {
+              callback.onComplete(response);
+            }
+          }
+
+          @Override
+          public void onError(final Exception exception) {
+            if (callbackHandled.compareAndSet(false, true)) {
+              callback.onError(exception);
+            }
+          }
+        });
+  }
+
   @Override
   public void close() {
-    // Do nothing
+    terminal.set(true);
   }
 }

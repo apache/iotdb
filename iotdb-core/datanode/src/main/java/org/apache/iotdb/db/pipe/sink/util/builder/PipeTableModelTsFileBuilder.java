@@ -100,6 +100,33 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
+  public Object createCheckpoint() {
+    final Map<String, Integer> tabletListSizes = new HashMap<>();
+    dataBase2TabletList.forEach(
+        (database, tablets) -> tabletListSizes.put(database, tablets.size()));
+    return new BatchState(tabletListSizes);
+  }
+
+  @Override
+  public void rollbackToCheckpoint(final Object checkpoint) {
+    if (!(checkpoint instanceof BatchState)) {
+      return;
+    }
+    final BatchState batchState = (BatchState) checkpoint;
+    dataBase2TabletList
+        .entrySet()
+        .removeIf(
+            entry -> {
+              final Integer size = batchState.tabletListSizes.get(entry.getKey());
+              if (size == null) {
+                return true;
+              }
+              truncate(entry.getValue(), size);
+              return false;
+            });
+  }
+
+  @Override
   public synchronized void onSuccess() {
     super.onSuccess();
     dataBase2TabletList.clear();
@@ -109,6 +136,20 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
   public synchronized void close() {
     super.close();
     dataBase2TabletList.clear();
+  }
+
+  private static <T> void truncate(final List<T> list, final int size) {
+    if (list.size() > size) {
+      list.subList(size, list.size()).clear();
+    }
+  }
+
+  private static final class BatchState {
+    private final Map<String, Integer> tabletListSizes;
+
+    private BatchState(final Map<String, Integer> tabletListSizes) {
+      this.tabletListSizes = tabletListSizes;
+    }
   }
 
   private <T extends Pair<Tablet, List<Pair<IDeviceID, Integer>>>>

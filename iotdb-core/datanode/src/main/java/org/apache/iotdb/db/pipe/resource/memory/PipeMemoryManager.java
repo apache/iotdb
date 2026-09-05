@@ -691,6 +691,24 @@ public class PipeMemoryManager {
     resize(block, targetSize, true);
   }
 
+  /**
+   * Attempts a single resize without waiting for other pipe tasks to release memory.
+   *
+   * <p>This is intended for callers that hold payload/batch locks and can actively release memory
+   * after a failed attempt. Waiting in that situation can prevent the caller itself from making
+   * forward progress.
+   */
+  public synchronized boolean tryResize(final PipeMemoryBlock block, final long targetSize) {
+    if (targetSize < 0) {
+      return false;
+    }
+    if (block == null || block.isReleased()) {
+      LOGGER.warn(DataNodePipeMessages.FORCERESIZE_CANNOT_RESIZE_A_NULL_OR_RELEASED);
+      return false;
+    }
+    return tryResizeInternal(block, targetSize);
+  }
+
   public synchronized void resize(
       final PipeMemoryBlock block, final long targetSize, final boolean force) {
     if (block == null || block.isReleased()) {
@@ -698,61 +716,18 @@ public class PipeMemoryManager {
       return;
     }
 
-    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      block.setMemoryUsageInBytes(targetSize);
+    if (tryResizeInternal(block, targetSize)) {
       return;
     }
 
-    final long oldSize = block.getMemoryUsageInBytes();
-
-    if (oldSize >= targetSize) {
-      memoryBlock.release(oldSize - targetSize);
-      if (block instanceof PipeTabletMemoryBlock) {
-        usedMemorySizeInBytesOfTablets -= oldSize - targetSize;
-      }
-      if (block instanceof PipeTsFileMemoryBlock) {
-        usedMemorySizeInBytesOfTsFiles -= oldSize - targetSize;
-      }
-      block.setMemoryUsageInBytes(targetSize);
-
-      // If no memory is used in the block, we can remove it from the allocated blocks.
-      if (targetSize == 0) {
-        allocatedBlocks.remove(block);
-      }
-
-      notifyNextTsFileParserMemoryReservationInternal();
-      this.notifyAll();
-      return;
-    }
-
-    long sizeInBytes = targetSize - oldSize;
+    final long sizeInBytes = targetSize - block.getMemoryUsageInBytes();
     final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
     for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
-      // Dynamically resized data-structure blocks must obey the same admission thresholds as
-      // blocks allocated with a non-zero initial size. Otherwise they can exhaust the pool and
-      // prevent downstream consumers from allocating the memory needed to release them.
-      if (isHardEnoughForResizing(block, sizeInBytes)
-          && getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
-              >= sizeInBytes) {
-        memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
-        if (oldSize == 0) {
-          // If the memory block is not registered, we need to register it first.
-          // Otherwise, the memory usage will be inconsistent.
-          // See registerMemoryBlock for more details.
-          allocatedBlocks.add(block);
-        }
-        if (block instanceof PipeTabletMemoryBlock) {
-          usedMemorySizeInBytesOfTablets += sizeInBytes;
-        }
-        if (block instanceof PipeTsFileMemoryBlock) {
-          usedMemorySizeInBytesOfTsFiles += sizeInBytes;
-        }
-        block.setMemoryUsageInBytes(targetSize);
-        return;
-      }
-
       try {
         tryShrinkUntilFreeMemorySatisfy(sizeInBytes);
+        if (tryResizeInternal(block, targetSize)) {
+          return;
+        }
         this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -771,6 +746,58 @@ public class PipeMemoryManager {
               memoryBlock.getUsedMemoryInBytes(),
               sizeInBytes));
     }
+  }
+
+  private boolean tryResizeInternal(final PipeMemoryBlock block, final long targetSize) {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      block.setMemoryUsageInBytes(targetSize);
+      return true;
+    }
+
+    final long oldSize = block.getMemoryUsageInBytes();
+    if (oldSize >= targetSize) {
+      final long releasedSize = oldSize - targetSize;
+      memoryBlock.release(releasedSize);
+      if (block instanceof PipeTabletMemoryBlock) {
+        usedMemorySizeInBytesOfTablets -= releasedSize;
+      }
+      if (block instanceof PipeTsFileMemoryBlock) {
+        usedMemorySizeInBytesOfTsFiles -= releasedSize;
+      }
+      block.setMemoryUsageInBytes(targetSize);
+
+      if (targetSize == 0) {
+        allocatedBlocks.remove(block);
+      }
+
+      notifyNextTsFileParserMemoryReservationInternal();
+      this.notifyAll();
+      return true;
+    }
+
+    final long sizeInBytes = targetSize - oldSize;
+    // Dynamically resized data-structure blocks must obey the same admission thresholds as blocks
+    // allocated with a non-zero initial size. Otherwise they can exhaust the pool and prevent
+    // downstream consumers from allocating the memory needed to release them.
+    if (!isHardEnoughForResizing(block, sizeInBytes)
+        || getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+            < sizeInBytes) {
+      return false;
+    }
+
+    memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
+    if (oldSize == 0) {
+      // Zero-sized blocks are registered lazily on their first successful expansion.
+      allocatedBlocks.add(block);
+    }
+    if (block instanceof PipeTabletMemoryBlock) {
+      usedMemorySizeInBytesOfTablets += sizeInBytes;
+    }
+    if (block instanceof PipeTsFileMemoryBlock) {
+      usedMemorySizeInBytesOfTsFiles += sizeInBytes;
+    }
+    block.setMemoryUsageInBytes(targetSize);
+    return true;
   }
 
   /**
