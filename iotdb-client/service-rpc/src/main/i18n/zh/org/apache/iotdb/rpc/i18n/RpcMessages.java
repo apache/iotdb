@@ -58,6 +58,11 @@ public final class RpcMessages {
   public static final String COLUMN_INDEX_OUT_OF_RANGE = "列索引 %d 超出范围 %d";
   public static final String UNKNOWN_COLUMN_NAME = "未知列名：";
   public static final String NO_RECORD_REMAINS = "没有剩余记录";
+  public static final String CANNOT_READ_BOOLEAN_FROM_TIME_COLUMN = "无法从时间列读取 boolean 值";
+  public static final String CANNOT_READ_DOUBLE_FROM_TIME_COLUMN = "无法从时间列读取 double 值";
+  public static final String CANNOT_READ_FLOAT_FROM_TIME_COLUMN = "无法从时间列读取 float 值";
+  public static final String CANNOT_READ_INT32_FROM_TIME_COLUMN = "无法从时间列读取 int32 值";
+  public static final String CANNOT_READ_BINARY_FROM_TIME_COLUMN = "无法从时间列读取 binary 值";
   public static final String CANNOT_CLOSE_DATASET = "无法关闭数据集，网络连接异常：{} ";
 
   // RpcUtils
