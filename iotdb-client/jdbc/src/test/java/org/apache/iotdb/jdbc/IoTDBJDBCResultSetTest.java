@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -362,5 +363,42 @@ public class IoTDBJDBCResultSetTest {
     }
 
     return Collections.singletonList(tsBlock);
+  }
+
+  @Test
+  public void findColumnUnknownColumnThrowsSQLExceptionNotNpe() throws Exception {
+    List<String> columns = new ArrayList<>();
+    columns.add("root.vehicle.d0.s0");
+    List<String> dataTypeList = new ArrayList<>();
+    dataTypeList.add("INT32");
+    when(execResp.isSetColumns()).thenReturn(true);
+    when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.isSetDataTypeList()).thenReturn(true);
+    when(execResp.getDataTypeList()).thenReturn(dataTypeList);
+    when(execResp.isSetOperationType()).thenReturn(true);
+    when(execResp.getOperationType()).thenReturn("QUERY");
+    when(execResp.isSetQueryId()).thenReturn(true);
+    when(execResp.getQueryId()).thenReturn(queryId);
+    when(execResp.isSetTableModel()).thenReturn(false);
+    when(execResp.isIgnoreTimeStamp()).thenReturn(false);
+    List<Integer> columnIndex2TsBlockColumnIndexList = new ArrayList<>();
+    columnIndex2TsBlockColumnIndexList.add(0);
+    when(execResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(columnIndex2TsBlockColumnIndexList);
+
+    Assert.assertTrue(statement.execute("select s0 from root.vehicle.d0"));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      // a known column resolves to its 1-based index
+      Assert.assertEquals(1, resultSet.findColumn("Time"));
+      // an unknown column must throw a clear SQLException, not a NullPointerException
+      try {
+        resultSet.findColumn("no_such_column");
+        Assert.fail("findColumn on an unknown column must throw SQLException");
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            "message should name the missing column, got: " + e.getMessage(),
+            e.getMessage() != null && e.getMessage().contains("no_such_column"));
+      }
+    }
   }
 }
