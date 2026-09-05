@@ -759,6 +759,11 @@ time_partition_interval=604800000
 # Datatype: long
 heartbeat_interval_in_ms=1000
 
+# Number of ConfigNode workers publishing cluster load statistics changes. Must be positive.
+# effectiveMode: restart
+# Datatype: int
+cn_load_statistics_publisher_thread_count=5
+
 # Default failure detector, enum from {fixed, phi_accrual}
 # effectiveMode: restart
 # Datatype: string
@@ -1223,6 +1228,21 @@ max_allowed_concurrent_queries=1000
 # effectiveMode: restart
 # Datatype: int
 query_thread_count=0
+
+# Number of coordinator workers executing read queries. Must be positive.
+# effectiveMode: restart
+# Datatype: int
+coordinator_read_executor_size=20
+
+# Number of coordinator workers scheduling query state checks and termination. Must be positive.
+# effectiveMode: restart
+# Datatype: int
+coordinator_scheduled_executor_size=10
+
+# Number of workers notifying fragment instance state changes. Must be positive.
+# effectiveMode: restart
+# Datatype: int
+fragment_instance_notification_thread_count=4
 
 # How many pipeline drivers will be created for one fragment instance. When <= 0, use CPU core number / 2.
 # effectiveMode: restart

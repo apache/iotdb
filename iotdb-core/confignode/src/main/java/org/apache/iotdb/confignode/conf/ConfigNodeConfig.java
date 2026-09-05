@@ -202,6 +202,9 @@ public class ConfigNodeConfig {
   private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
+  /** Thread pool size for publishing cluster load statistics changes. */
+  private int loadStatisticsPublisherThreadCount = 5;
+
   /** The heartbeat interval in milliseconds. */
   private volatile long heartbeatIntervalInMs = 1000;
 
@@ -736,6 +739,17 @@ public class ConfigNodeConfig {
 
   public void setProcedureCoreWorkerThreadsCount(int procedureCoreWorkerThreadsCount) {
     this.procedureCoreWorkerThreadsCount = procedureCoreWorkerThreadsCount;
+  }
+
+  public int getLoadStatisticsPublisherThreadCount() {
+    return loadStatisticsPublisherThreadCount;
+  }
+
+  public void setLoadStatisticsPublisherThreadCount(int loadStatisticsPublisherThreadCount) {
+    if (loadStatisticsPublisherThreadCount <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.loadStatisticsPublisherThreadCount = loadStatisticsPublisherThreadCount;
   }
 
   public long getHeartbeatIntervalInMs() {
