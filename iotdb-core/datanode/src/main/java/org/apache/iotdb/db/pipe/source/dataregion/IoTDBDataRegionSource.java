@@ -27,6 +27,10 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOpera
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
+import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
@@ -536,10 +540,12 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         historicalSource.getClass().getSimpleName(),
         realtimeSource.getClass().getSimpleName());
 
+    final DataRegionId dataRegionIdObject = new DataRegionId(this.regionId);
+    waitUntilAllRemotePeersSyncLogCompletedIfNecessary(dataRegionIdObject);
+
     super.start();
 
     final AtomicReference<Exception> exceptionHolder = new AtomicReference<>(null);
-    final DataRegionId dataRegionIdObject = new DataRegionId(this.regionId);
     while (true) {
       // try to start sources in the data region ...
       // first try to run if data region exists, then try to run if data region does not exist.
@@ -595,6 +601,28 @@ public class IoTDBDataRegionSource extends IoTDBSource {
           historicalSource.getClass().getSimpleName(),
           realtimeSource.getClass().getSimpleName(),
           e);
+    }
+  }
+
+  private void waitUntilAllRemotePeersSyncLogCompletedIfNecessary(final DataRegionId dataRegionId)
+      throws Exception {
+    // A heartbeat-only source cannot capture writes that arrive after historical scanning. Before
+    // starting that scan, wait for every remote IoTConsensus writer to finish applying its pending
+    // writes to this local replica. This method must be called without holding the DataRegion write
+    // lock because applying a remote write may need the same lock.
+    if (!(realtimeSource instanceof PipeRealtimeDataRegionHeartbeatSource)) {
+      return;
+    }
+
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    if (!(dataRegionConsensus instanceof IoTConsensus)) {
+      return;
+    }
+
+    final IoTConsensusServerImpl consensusServer =
+        ((IoTConsensus) dataRegionConsensus).getImpl(dataRegionId);
+    if (consensusServer != null) {
+      consensusServer.waitUntilAllRemotePeersSyncLogCompleted();
     }
   }
 
