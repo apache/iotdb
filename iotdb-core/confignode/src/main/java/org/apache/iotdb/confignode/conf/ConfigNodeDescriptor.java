@@ -495,6 +495,12 @@ public class ConfigNodeDescriptor {
                 "region_migration_concurrency_limit",
                 String.valueOf(conf.getRegionMigrationConcurrencyLimit()))));
 
+    conf.setLoadStatisticsPublisherThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_load_statistics_publisher_thread_count",
+                String.valueOf(conf.getLoadStatisticsPublisherThreadCount()))));
+
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
 

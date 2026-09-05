@@ -224,6 +224,9 @@ public class ConfigNodeConfig {
    */
   private volatile int regionMigrationConcurrencyLimit = 0;
 
+  /** Thread pool size for publishing cluster load statistics changes. */
+  private int loadStatisticsPublisherThreadCount = 5;
+
   /** The heartbeat interval in milliseconds. */
   private volatile long heartbeatIntervalInMs = 1000;
 
@@ -788,6 +791,17 @@ public class ConfigNodeConfig {
 
   public void setRegionMigrationConcurrencyLimit(int regionMigrationConcurrencyLimit) {
     this.regionMigrationConcurrencyLimit = regionMigrationConcurrencyLimit;
+  }
+
+  public int getLoadStatisticsPublisherThreadCount() {
+    return loadStatisticsPublisherThreadCount;
+  }
+
+  public void setLoadStatisticsPublisherThreadCount(int loadStatisticsPublisherThreadCount) {
+    if (loadStatisticsPublisherThreadCount <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.loadStatisticsPublisherThreadCount = loadStatisticsPublisherThreadCount;
   }
 
   public long getHeartbeatIntervalInMs() {

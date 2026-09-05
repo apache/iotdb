@@ -111,7 +111,8 @@ public class FragmentInstanceManager {
             1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT.getName());
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            4, ThreadName.FRAGMENT_INSTANCE_NOTIFICATION.getName());
+            IoTDBDescriptor.getInstance().getConfig().getFragmentInstanceNotificationThreadCount(),
+            ThreadName.FRAGMENT_INSTANCE_NOTIFICATION.getName());
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
