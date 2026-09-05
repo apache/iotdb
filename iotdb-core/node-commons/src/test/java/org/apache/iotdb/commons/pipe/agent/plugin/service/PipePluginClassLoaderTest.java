@@ -46,6 +46,41 @@ import java.util.stream.Stream;
 public class PipePluginClassLoaderTest {
 
   @Test
+  public void testTsFileClassesShouldBeLoadedFromParent() throws Exception {
+    final Path tempDir = Files.createTempDirectory("pipe-plugin-tsfile-classloader-test");
+    try {
+      final Path childSources = Files.createDirectory(tempDir.resolve("child-sources"));
+      final Path childClasses = Files.createDirectory(tempDir.resolve("child-classes"));
+      final String tabletClassName = "org.apache.tsfile.write.record.Tablet";
+      final String childTabletSource =
+          "package org.apache.tsfile.write.record;"
+              + "public class Tablet {"
+              + "  public String source() {"
+              + "    return \"child\";"
+              + "  }"
+              + "}";
+      final Map<String, String> childSourceMap = new LinkedHashMap<>();
+      childSourceMap.put(tabletClassName, childTabletSource);
+      compile(childSources, childClasses, childSourceMap);
+
+      final Path childJar = tempDir.resolve("child.jar");
+      createJar(
+          childJar, childClasses, Arrays.asList("org/apache/tsfile/write/record/Tablet.class"));
+
+      final ClassLoader parentClassLoader = PipePluginClassLoaderTest.class.getClassLoader();
+      final Class<?> parentTabletClass = Class.forName(tabletClassName, true, parentClassLoader);
+      try (final PipePluginClassLoader pluginClassLoader =
+          new PipePluginClassLoader(childJar.toString(), parentClassLoader)) {
+        final Class<?> pluginTabletClass = Class.forName(tabletClassName, true, pluginClassLoader);
+        Assert.assertSame(parentTabletClass, pluginTabletClass);
+        Assert.assertNotSame(pluginClassLoader, pluginTabletClass.getClassLoader());
+      }
+    } finally {
+      deleteRecursively(tempDir);
+    }
+  }
+
+  @Test
   public void testPluginClassesShouldOverrideParentClasses() throws Exception {
     final Path tempDir = Files.createTempDirectory("pipe-plugin-classloader-test");
     try {
