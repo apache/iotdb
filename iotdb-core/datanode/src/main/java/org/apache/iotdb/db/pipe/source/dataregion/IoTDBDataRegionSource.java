@@ -63,6 +63,7 @@ import javax.annotation.Nonnull;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_DATABASE_KEY;
@@ -141,6 +142,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   private boolean hasNoExtractionNeed = true;
   private boolean shouldExtractDeletion = false;
+  private final AtomicBoolean completionSourceStarted = new AtomicBoolean(false);
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -562,6 +564,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                   dataRegionIdObject,
                   () -> startHistoricalExtractorAndRealtimeExtractor(exceptionHolder))) {
         rethrowExceptionIfAny(exceptionHolder);
+        completionSourceStarted.set(true);
 
         LOGGER.info(
             DataNodePipeMessages.PIPE_STARTED_HISTORICAL_SOURCE_AND_REALTIME_SOURCE,
@@ -637,6 +640,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   @Override
   public void close() throws Exception {
+    completionSourceStarted.set(false);
+    PipeDataNodeSinglePipeMetrics.getInstance().deregister(this);
     if (hasNoExtractionNeed || !hasBeenStarted.get()) {
       return;
     }
@@ -646,6 +651,16 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     if (Objects.nonNull(taskID)) {
       PipeDataRegionSourceMetrics.getInstance().deregister(taskID);
     }
+  }
+
+  public PipeRealtimeDataRegionSource getRealtimeSourceForCompletion() {
+    return realtimeSource;
+  }
+
+  public boolean isReadyForCompletion() {
+    return completionSourceStarted.get()
+        && Objects.nonNull(historicalSource)
+        && historicalSource.hasConsumedAll();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

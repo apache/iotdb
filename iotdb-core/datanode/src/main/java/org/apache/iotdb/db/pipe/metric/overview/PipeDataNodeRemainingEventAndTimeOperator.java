@@ -198,6 +198,10 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
     dataRegionSources.add(source);
   }
 
+  void deregister(final IoTDBDataRegionSource source) {
+    dataRegionSources.remove(source);
+  }
+
   void register(final IoTDBSchemaRegionSource source) {
     schemaRegionSources.add(source);
   }
