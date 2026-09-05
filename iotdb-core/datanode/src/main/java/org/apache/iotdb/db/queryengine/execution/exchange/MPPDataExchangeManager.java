@@ -65,6 +65,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
@@ -115,7 +116,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         return new TFetchDeviceEntrySegmentResp(
                 new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
             .setPayload(payload);
-      } catch (NoSuchFileException e) {
+      } catch (NoSuchFileException | AccessDeniedException e) {
         LOGGER.warn(
             String.format(
                 DataNodeQueryMessages
@@ -147,8 +148,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                       DataNodeQueryMessages
                           .LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5,
                       queryId,
-                      planNodeId),
-                  e);
+                      planNodeId));
             }
           });
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

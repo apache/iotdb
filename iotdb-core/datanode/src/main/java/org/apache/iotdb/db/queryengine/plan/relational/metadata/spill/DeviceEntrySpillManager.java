@@ -106,8 +106,7 @@ public final class DeviceEntrySpillManager {
           String.format(
               DataNodeQueryMessages
                   .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-              file),
-          e);
+              file));
     }
   }
 
@@ -180,8 +179,7 @@ public final class DeviceEntrySpillManager {
                   String.format(
                       DataNodeQueryMessages
                           .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-                      file),
-                  e);
+                      file));
             }
             return FileVisitResult.CONTINUE;
           }
@@ -198,8 +196,7 @@ public final class DeviceEntrySpillManager {
                     String.format(
                         DataNodeQueryMessages
                             .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-                        file),
-                    exception);
+                        file));
               }
               return FileVisitResult.CONTINUE;
             }
@@ -223,8 +220,7 @@ public final class DeviceEntrySpillManager {
                   String.format(
                       DataNodeQueryMessages
                           .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
-                      dir),
-                  e);
+                      dir));
             }
             return FileVisitResult.CONTINUE;
           }
