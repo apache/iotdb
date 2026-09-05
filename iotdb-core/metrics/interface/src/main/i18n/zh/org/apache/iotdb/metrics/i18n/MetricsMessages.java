@@ -124,5 +124,6 @@ public final class MetricsMessages {
   public static final String LOG_IOTDBSESSIONREPORTER_START_WRITE_ARG_ARG_E79CDDAE = "IoTDBSessionReporter 启动，写入 {}:{}";
   public static final String LOG_PROMETHEUSREPORTER_STARTED_USE_PORT_ARG_A688FFC8 = "PrometheusReporter 已启动，使用端口 {}";
   public static final String LOG_DETECTED_ERROR_TAKING_METRIC_TIMER_SNAPSHOT_WILL_DISCARD_METRIC_B7154169 = "获取 metric timer 快照时检测到错误，将丢弃该 metric";
+  public static final String LOG_PROMETHEUSREPORTER_FAILED_TO_UPDATE_METRICS_SNAPSHOT_ASYNCHRONOUSLY_F19FE4E3 = "PrometheusReporter 异步更新监控项快照失败";
 
 }
