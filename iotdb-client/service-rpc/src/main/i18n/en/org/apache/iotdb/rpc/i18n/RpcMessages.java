@@ -68,6 +68,16 @@ public final class RpcMessages {
       "column index %d out of range %d";
   public static final String UNKNOWN_COLUMN_NAME = "Unknown column name: ";
   public static final String NO_RECORD_REMAINS = "No record remains";
+  public static final String CANNOT_READ_BOOLEAN_FROM_TIME_COLUMN =
+      "Cannot read boolean from time column";
+  public static final String CANNOT_READ_DOUBLE_FROM_TIME_COLUMN =
+      "Cannot read double from time column";
+  public static final String CANNOT_READ_FLOAT_FROM_TIME_COLUMN =
+      "Cannot read float from time column";
+  public static final String CANNOT_READ_INT32_FROM_TIME_COLUMN =
+      "Cannot read int32 from time column";
+  public static final String CANNOT_READ_BINARY_FROM_TIME_COLUMN =
+      "Cannot read binary from time column";
   public static final String CANNOT_CLOSE_DATASET =
       "Cannot close dataset, because of network connection: {} ";
 
