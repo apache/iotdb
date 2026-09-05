@@ -402,6 +402,12 @@ public class ConfigNodeDescriptor {
                 "procedure_core_worker_thread_count",
                 String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))));
 
+    conf.setLoadStatisticsPublisherThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_load_statistics_publisher_thread_count",
+                String.valueOf(conf.getLoadStatisticsPublisherThreadCount()))));
+
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
 
