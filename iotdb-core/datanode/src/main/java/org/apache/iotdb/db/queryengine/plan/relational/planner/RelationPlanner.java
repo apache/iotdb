@@ -287,7 +287,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
       throw new SemanticException(DataNodeQueryMessages.UNEXPECTED_RECURSIVE_CTE);
     }
 
-    if (namedQuery.isMaterialized() && namedQuery.isDone()) {
+    if (namedQuery.isMaterialized()) {
       RelationPlan materializedCtePlan = processMaterializedCte(table, namedQuery, scope);
       if (materializedCtePlan != null) {
         return materializedCtePlan;
@@ -298,7 +298,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   }
 
   private RelationPlan processMaterializedCte(Table table, Query query, Scope scope) {
-    CteDataStore dataStore = query.getCteDataStore();
+    CteDataStore dataStore = queryContext.getCteDataStore(query);
     if (dataStore == null) {
       return null;
     }
