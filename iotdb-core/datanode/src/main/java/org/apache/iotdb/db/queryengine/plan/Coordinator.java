@@ -284,7 +284,10 @@ public class Coordinator {
     this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
     this.scheduledExecutor = getScheduledExecutor();
-    int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    int dispatchThreadNum = CONFIG.getFragmentInstanceDispatchThreadCount();
+    if (dispatchThreadNum == 0) {
+      dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    }
     this.dispatchExecutor =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
