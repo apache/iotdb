@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -143,7 +144,7 @@ class PipeAgentLauncher {
 
   static Set<String> fetchAndSavePipePluginJars(List<PipePluginMeta> pipePluginMetaList) {
     if (pipePluginMetaList.isEmpty()) {
-      return new HashSet<>();
+      return Collections.emptySet();
     }
 
     final List<String> pluginNameList =

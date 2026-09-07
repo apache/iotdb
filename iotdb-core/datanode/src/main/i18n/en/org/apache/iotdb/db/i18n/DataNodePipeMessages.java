@@ -778,7 +778,7 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_CONVERT_STATEMENT_TO_TABLET_FOR =
       "Failed to convert statement to tablet for serialization";
   public static final String FAILED_TO_CREATE_GROUP_ERROR_CODE_0X =
-      "Failed to create group?error code: 0x";
+      "Failed to create group，error code: 0x";
   public static final String FAILED_TO_CREATE_NODES_AFTER_TRANSFER_DATA =
       "Failed to create nodes after transfer data value, creation status: ";
   public static final String FAILED_TO_DELETE_BATCH_FILE_THIS_FILE =
@@ -1538,17 +1538,17 @@ public final class DataNodePipeMessages {
       "Failed to unbind from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {}";
 
   // ---------------------------------------------------------------------------
-  // pipe ? AbstractSameTypeNumericOperator
+  // pipe – AbstractSameTypeNumericOperator
   // ---------------------------------------------------------------------------
   public static final String UNSUPPORTED_OUTPUT_DATATYPE_FMT = "Unsupported output datatype %s";
 
   // ---------------------------------------------------------------------------
-  // pipe ? IoTDBDataRegionSource
+  // pipe – IoTDBDataRegionSource
   // ---------------------------------------------------------------------------
   public static final String ILLEGAL_TREE_PATTERN_FMT = "Pattern \"%s\" is illegal.";
 
   // ---------------------------------------------------------------------------
-  // pipe ? OpcUaServerBuilder
+  // pipe – OpcUaServerBuilder
   // ---------------------------------------------------------------------------
   public static final String UNABLE_CREATE_SECURITY_DIR = "Unable to create security dir: ";
   public static final String OPC_UA_SECURITY_DIR = "Security dir: {}";
@@ -1563,7 +1563,7 @@ public final class DataNodePipeMessages {
               + "certificate and establish trust again.";
 
   // ---------------------------------------------------------------------------
-  // pipe ? PipeDataNodePluginAgent
+  // pipe – PipeDataNodePluginAgent
   // ---------------------------------------------------------------------------
   public static final String PLUGIN_NOT_REGISTERED_FMT = "plugin %s is not registered.";
 
@@ -1583,7 +1583,7 @@ public final class DataNodePipeMessages {
       "Failed to rewrite tree-model database from %s to %s for device %s.";
 
   // ---------------------------------------------------------------------------
-  // pipe ? PipeTransferTrackableHandler
+  // pipe – PipeTransferTrackableHandler
   // ---------------------------------------------------------------------------
   public static final String TPIPE_TRANSFER_RESP_IS_NULL_WHEN_TRANSFERRING_SLICE =
       "TPipeTransferResp is null when transferring slice.";
@@ -2523,7 +2523,7 @@ public final class DataNodePipeMessages {
   public static final String ERROR_GETTING_OPC_CLIENT_FMT = "Error getting opc client: %s: %s";
 
   // ---------------------------------------------------------------------------
-  // slice A1 ? datanode pipe (leftover literals)
+  // slice A1 – datanode pipe (leftover literals)
   // ---------------------------------------------------------------------------
   public static final String MESSAGE_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_9391AA27 =
       "Failed to load snapshot from {}";
