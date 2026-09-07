@@ -193,9 +193,7 @@ public class PipeMemoryManager {
         enqueueTsFileParserReservationRequest(pipeRegionIdentity, reservationKey);
 
     final int globalLimit = Math.max(1, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNum());
-    final int perPipeRegionLimit =
-        Math.max(
-            1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
+    final int perPipeRegionLimit = getTsFileParserInFlightMaxNumPerPipeRegion(globalLimit);
     final int reservedCountOfPipeRegion =
         reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
     if (reservedTsFileParserCount >= globalLimit
@@ -322,9 +320,7 @@ public class PipeMemoryManager {
       return;
     }
 
-    final int perPipeRegionLimit =
-        Math.max(
-            1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
+    final int perPipeRegionLimit = getTsFileParserInFlightMaxNumPerPipeRegion(globalLimit);
     final PipeRegionIdentity nextPipeRegion =
         getNextEligibleTsFileParserPipeRegion(perPipeRegionLimit, !isSoftMemoryEnough);
     if (nextPipeRegion == null) {
@@ -380,6 +376,11 @@ public class PipeMemoryManager {
       }
     }
     return firstEligiblePipeRegion;
+  }
+
+  private static int getTsFileParserInFlightMaxNumPerPipeRegion(final int globalLimit) {
+    final int configuredLimit = PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+    return configuredLimit <= 0 ? globalLimit : Math.min(globalLimit, configuredLimit);
   }
 
   private void clearTsFileParserAdmissionCursorIfIdle() {
@@ -691,8 +692,20 @@ public class PipeMemoryManager {
     resize(block, targetSize, true);
   }
 
-  public synchronized void resize(
-      final PipeMemoryBlock block, final long targetSize, final boolean force) {
+  public void forceResizeWithReservedMemory(
+      final PipeMemoryBlock block, final long targetSize, final long reservedMemoryInBytes) {
+    resize(block, targetSize, true, Math.max(0, reservedMemoryInBytes));
+  }
+
+  public void resize(final PipeMemoryBlock block, final long targetSize, final boolean force) {
+    resize(block, targetSize, force, 0);
+  }
+
+  private synchronized void resize(
+      final PipeMemoryBlock block,
+      final long targetSize,
+      final boolean force,
+      final long reservedMemoryInBytes) {
     if (block == null || block.isReleased()) {
       LOGGER.warn(DataNodePipeMessages.FORCERESIZE_CANNOT_RESIZE_A_NULL_OR_RELEASED);
       return;
@@ -725,15 +738,19 @@ public class PipeMemoryManager {
       return;
     }
 
-    long sizeInBytes = targetSize - oldSize;
+    final long sizeInBytes = targetSize - oldSize;
+    final long requiredFreeMemoryInBytes =
+        sizeInBytes > Long.MAX_VALUE - reservedMemoryInBytes
+            ? Long.MAX_VALUE
+            : sizeInBytes + reservedMemoryInBytes;
     final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
     for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
       // Dynamically resized data-structure blocks must obey the same admission thresholds as
       // blocks allocated with a non-zero initial size. Otherwise they can exhaust the pool and
       // prevent downstream consumers from allocating the memory needed to release them.
-      if (isHardEnoughForResizing(block, sizeInBytes)
+      if (isHardEnoughForResizing(block, requiredFreeMemoryInBytes)
           && getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
-              >= sizeInBytes) {
+              >= requiredFreeMemoryInBytes) {
         memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
         if (oldSize == 0) {
           // If the memory block is not registered, we need to register it first.
@@ -752,7 +769,7 @@ public class PipeMemoryManager {
       }
 
       try {
-        tryShrinkUntilFreeMemorySatisfy(sizeInBytes);
+        tryShrinkUntilFreeMemorySatisfy(requiredFreeMemoryInBytes);
         this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -764,12 +781,13 @@ public class PipeMemoryManager {
     if (force) {
       throw new PipeRuntimeOutOfMemoryCriticalException(
           String.format(
-              DataNodePipeMessages
-                  .PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC,
-              memoryAllocateMaxRetries,
-              getTotalNonFloatingMemorySizeInBytes(),
-              memoryBlock.getUsedMemoryInBytes(),
-              sizeInBytes));
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC,
+                  memoryAllocateMaxRetries,
+                  getTotalNonFloatingMemorySizeInBytes(),
+                  memoryBlock.getUsedMemoryInBytes(),
+                  sizeInBytes)
+              + String.format(", reserved memory size %d bytes", reservedMemoryInBytes));
     }
   }
 

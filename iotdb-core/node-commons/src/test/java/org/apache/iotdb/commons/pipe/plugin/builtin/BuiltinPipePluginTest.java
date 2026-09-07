@@ -40,6 +40,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
+
 import static org.mockito.Mockito.mock;
 
 public class BuiltinPipePluginTest {
@@ -75,7 +77,7 @@ public class BuiltinPipePluginTest {
 
     PipeProcessor processor = new DoNothingProcessor();
     try {
-      processor.validate(mock(PipeParameterValidator.class));
+      processor.validate(new PipeParameterValidator(new PipeParameters(Collections.emptyMap())));
     } catch (Exception ignored) {
       Assert.fail();
     }

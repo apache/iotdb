@@ -32,13 +32,27 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.IOException;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TSFILE_PARSER_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TSFILE_PARSER_PARALLELISM_KEY;
+
 @TreeModel
 @TableModel
 public class DoNothingProcessor implements PipeProcessor {
 
   @Override
-  public void validate(PipeParameterValidator validator) {
-    // do nothing
+  public void validate(final PipeParameterValidator validator) throws Exception {
+    final int parallelism =
+        validator
+            .getParameters()
+            .getIntOrDefault(
+                PROCESSOR_TSFILE_PARSER_PARALLELISM_KEY,
+                PROCESSOR_TSFILE_PARSER_PARALLELISM_DEFAULT_VALUE);
+    validator.validate(
+        value -> (Integer) value >= 1,
+        String.format(
+            "%s must be greater than or equal to 1, but got %s",
+            PROCESSOR_TSFILE_PARSER_PARALLELISM_KEY, parallelism),
+        parallelism);
   }
 
   @Override

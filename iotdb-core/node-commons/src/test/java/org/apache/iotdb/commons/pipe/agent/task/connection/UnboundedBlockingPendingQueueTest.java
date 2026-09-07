@@ -25,6 +25,11 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class UnboundedBlockingPendingQueueTest {
@@ -41,6 +46,64 @@ public class UnboundedBlockingPendingQueueTest {
 
     Assert.assertSame(event, queue.pollLast());
     Assert.assertEquals(0, eventCounter.getEventCount());
+  }
+
+  @Test
+  public void pollReleasesPendingEventMemoryReservation() {
+    final UnboundedBlockingPendingQueue<Event> queue =
+        new UnboundedBlockingPendingQueue<>(new CountingEventCounter());
+    final Event event = new Event() {};
+    final BlockingPendingQueue.PendingEventMemoryReservation reservation =
+        queue.waitForMemoryReservation(6, 10, () -> true);
+
+    Assert.assertNotNull(reservation);
+    Assert.assertTrue(queue.offer(event, reservation));
+    Assert.assertEquals(6, queue.getPendingEventMemoryUsageInBytes());
+
+    Assert.assertSame(event, queue.directPoll());
+    Assert.assertEquals(0, queue.getPendingEventMemoryUsageInBytes());
+    reservation.close();
+  }
+
+  @Test
+  public void pendingEventMemoryReservationWaitsForQueueDrain() throws Exception {
+    final UnboundedBlockingPendingQueue<Event> queue =
+        new UnboundedBlockingPendingQueue<>(new CountingEventCounter());
+    final Event firstEvent = new Event() {};
+    final BlockingPendingQueue.PendingEventMemoryReservation firstReservation =
+        queue.waitForMemoryReservation(6, 10, () -> true);
+    Assert.assertNotNull(firstReservation);
+    Assert.assertTrue(queue.offer(firstEvent, firstReservation));
+
+    final CountDownLatch reservationAttempted = new CountDownLatch(1);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      final Future<BlockingPendingQueue.PendingEventMemoryReservation> secondReservationFuture =
+          executor.submit(
+              () ->
+                  queue.waitForMemoryReservation(
+                      6,
+                      10,
+                      () -> {
+                        reservationAttempted.countDown();
+                        return true;
+                      }));
+
+      Assert.assertTrue(reservationAttempted.await(5, TimeUnit.SECONDS));
+      Assert.assertFalse(secondReservationFuture.isDone());
+
+      Assert.assertSame(firstEvent, queue.directPoll());
+      final BlockingPendingQueue.PendingEventMemoryReservation secondReservation =
+          secondReservationFuture.get(5, TimeUnit.SECONDS);
+      Assert.assertNotNull(secondReservation);
+      Assert.assertEquals(6, queue.getPendingEventMemoryUsageInBytes());
+
+      secondReservation.close();
+      Assert.assertEquals(0, queue.getPendingEventMemoryUsageInBytes());
+    } finally {
+      executor.shutdownNow();
+      queue.clear();
+    }
   }
 
   private static class CountingEventCounter extends PipeEventCounter {

@@ -110,6 +110,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       new AtomicReference<>();
   private final AtomicInteger parsedTabletInsertionEventCount = new AtomicInteger(0);
   private final AtomicBoolean isTsFileParsingCompleted = new AtomicBoolean(false);
+  private final AtomicBoolean isProgressReportManagedByTsFileParser = new AtomicBoolean(false);
+  private final AtomicBoolean isTsFileParserProgressReportAborted = new AtomicBoolean(false);
   private final AtomicLong parsedPointCountForCount = new AtomicLong(0);
 
   // The point count of the TsFile. Used for metrics on IoTConsensusV2' receiver side.
@@ -1092,6 +1094,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         waitTimeSeconds);
   }
 
+  public boolean tryReserveTsFileParserMemory() {
+    return tryReserveTsFileParserMemory(PipeDataNodeResourceManager.memory());
+  }
+
   private boolean tryReserveTsFileParserMemory(final PipeMemoryManager memoryManager) {
     synchronized (isTsFileParserMemoryReserved) {
       if (isTsFileParserMemoryReserved.get()) {
@@ -1108,7 +1114,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  private void releaseTsFileParserMemoryIfReserved() {
+  public void releaseTsFileParserMemoryIfReserved() {
     synchronized (isTsFileParserMemoryReserved) {
       if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
         PipeDataNodeResourceManager.memory()
@@ -1132,6 +1138,27 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public boolean isGeneratedByHistoricalExtractor() {
     return isGeneratedByHistoricalExtractor;
+  }
+
+  public void markProgressReportManagedByTsFileParser() {
+    isProgressReportManagedByTsFileParser.set(true);
+  }
+
+  public boolean isProgressReportManagedByTsFileParser() {
+    return isProgressReportManagedByTsFileParser.get();
+  }
+
+  public void abortProgressReportManagedByTsFileParser() {
+    if (isProgressReportManagedByTsFileParser.get()
+        && isTsFileParserProgressReportAborted.compareAndSet(false, true)) {
+      LOGGER.warn("Abort progress report for partially transferred parsed TsFile: {}", tsFile);
+    }
+  }
+
+  @Override
+  public boolean needToCommit() {
+    return !isProgressReportManagedByTsFileParser.get()
+        || !isTsFileParserProgressReportAborted.get();
   }
 
   private TsFileInsertionEventParser initEventParser() {

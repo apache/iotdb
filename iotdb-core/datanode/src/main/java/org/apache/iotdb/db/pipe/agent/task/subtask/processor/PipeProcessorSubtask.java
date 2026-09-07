@@ -19,15 +19,19 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
@@ -55,14 +59,24 @@ import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
+
+  private static final ExecutorService TS_FILE_PARSER_EXECUTOR =
+      IoTDBThreadPoolFactory.newCachedThreadPool(
+          ThreadName.PIPE_TSFILE_PARSER_EXECUTOR_POOL.getName());
 
   private static final AtomicReference<PipeProcessorSubtaskWorkerManager> subtaskWorkerManager =
       new AtomicReference<>();
@@ -81,6 +95,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   private final AtomicReference<EventProcessingContext> eventProcessingContext =
       new AtomicReference<>();
 
+  private final int tsFileParserParallelism;
+  private final Object tsFileParserTaskLock = new Object();
+  private final Deque<TsFileParserTask> inFlightTsFileParserTasks = new ArrayDeque<>();
+  private Event pendingEventAfterTsFileParserBarrier;
+  private volatile PipeTsFileInsertionEvent retryingFailedTsFileParserEvent;
+
   // This variable is used to distinguish between old and new subtasks before and after stuck
   // restart.
   private final long subtaskCreationTime;
@@ -93,6 +113,26 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       final EventSupplier inputEventSupplier,
       final PipeProcessor pipeProcessor,
       final PipeEventCollector outputEventCollector) {
+    this(
+        taskID,
+        pipeName,
+        creationTime,
+        regionId,
+        inputEventSupplier,
+        pipeProcessor,
+        outputEventCollector,
+        1);
+  }
+
+  public PipeProcessorSubtask(
+      final String taskID,
+      final String pipeName,
+      final long creationTime,
+      final int regionId,
+      final EventSupplier inputEventSupplier,
+      final PipeProcessor pipeProcessor,
+      final PipeEventCollector outputEventCollector,
+      final int tsFileParserParallelism) {
     super(taskID, creationTime);
     this.pipeName = pipeName;
     this.pipeNameWithCreationTime = pipeName + "_" + creationTime;
@@ -101,6 +141,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
     this.outputEventCollector.setProcessorExecutionGuard(executionGuard);
+    this.tsFileParserParallelism =
+        pipeProcessor.getClass() == DoNothingProcessor.class
+            ? Math.max(1, tsFileParserParallelism)
+            : 1;
     this.subtaskCreationTime = System.currentTimeMillis();
 
     // Only register dataRegions
@@ -149,12 +193,35 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     }
 
     executionGuard.check();
-    final Event event =
-        lastEvent != null
-            ? lastEvent
-            : UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
-    // Record the last event for retry when exception occurs
-    setLastEvent(event);
+    // Preserve the event currently being retried. Other parser failures are reaped after this
+    // event has been resubmitted, otherwise a later failure could overwrite lastEvent.
+    final TsFileParserTaskResult failedResult =
+        lastEvent == null ? reapCompletedTsFileParserTasks() : null;
+    if (failedResult != null) {
+      if (!retainFailedTsFileParserEvent(failedResult.event)) {
+        return false;
+      }
+      if (ExceptionUtils.getRootCause(failedResult.exception)
+          instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        recordResourceFailure(failedResult.event, PipeResourceFailureType.MEMORY_TIMEOUT);
+        PipeLogger.log(
+            LOGGER::info,
+            DataNodePipeMessages.TEMPORARILY_OUT_OF_MEMORY_IN_PIPE_EVENT_PROCESSING,
+            failedResult.exception.getMessage());
+        return false;
+      }
+      retryingFailedTsFileParserEvent = failedResult.event;
+      throw new PipeException(
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_EXCEPTION_IN_PIPE_PROCESS_SUBTASK_S_LAST_EVENT_S_ROOT_CAUSE_95B49C24,
+              getDisplayTaskID(),
+              failedResult.event.coreReportMessage(),
+              ErrorHandlingCommonUtils.getRootCause(failedResult.exception).getMessage()),
+          failedResult.exception);
+    }
+
+    final Event event = getNextEvent();
 
     if (Objects.isNull(event)) {
       return false;
@@ -171,6 +238,25 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).throwIfNoPrivilege();
       }
+
+      if (shouldParseTsFileEventInPool(event)) {
+        final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+        if (!tsFileInsertionEvent.tryReserveTsFileParserMemory()) {
+          executionGuard.yieldIfParserNotAdmitted();
+        }
+
+        executionGuard.check();
+        outputEventCollector.prepareTsFileEventForParallelParsing(tsFileInsertionEvent);
+        submitTsFileParserTask(tsFileInsertionEvent);
+        setLastEvent(null);
+        return true;
+      }
+
+      if (event != retryingFailedTsFileParserEvent && deferEventUntilTsFileParserBarrier(event)) {
+        setLastEvent(null);
+        return false;
+      }
+
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {
@@ -195,31 +281,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           }
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
         } else if (event instanceof TsFileInsertionEvent) {
-          // We have to parse the privilege first, to avoid passing no-privilege data to processor
-          if (event instanceof PipeTsFileInsertionEvent
-              && ((PipeTsFileInsertionEvent) event).shouldParse4Privilege()) {
-            final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
-            tsFileInsertionEvent.consumeTabletInsertionEventsWithRetry(
-                event1 -> {
-                  try {
-                    pipeProcessor.process(event1, outputEventCollector);
-                  } catch (PipeProcessorSubtaskYieldException e) {
-                    throw e;
-                  } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-                    throw e;
-                  } catch (Exception e) {
-                    throw new PipeException(e.getMessage(), e);
-                  }
-                },
-                "PipeProcessorSubtask::executeOnce",
-                executionGuard);
-            tsFileInsertionEvent.close();
-            if (tsFileInsertionEvent.isGeneratedByHistoricalExtractor()) {
-              PipeTerminateEvent.markHistoricalTsFileSplit(
-                  tsFileInsertionEvent.getPipeName(),
-                  tsFileInsertionEvent.getCreationTime(),
-                  regionId);
-            }
+          if (event instanceof PipeTsFileInsertionEvent) {
+            processTsFileInsertionEvent(
+                (PipeTsFileInsertionEvent) event, outputEventCollector, executionGuard);
           } else {
             pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
           }
@@ -251,15 +315,24 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               // 2. If the event is not collected (not passed to the connector), the reference count
               // of the event must be zero in the processor stage, at this time, the progress of the
               // event needs to be reported.
-              && outputEventCollector.hasNoGeneratedEvent()
+              && (outputEventCollector.hasNoGeneratedEvent()
+                  || event instanceof PipeTsFileInsertionEvent
+                      && ((PipeTsFileInsertionEvent) event).isProgressReportManagedByTsFileParser())
               // If the event's reference count cannot be increased, it means that the event has
               // been released, and the progress of the event can not be reported.
               && !outputEventCollector.isFailedToIncreaseReferenceCount()
               // Events generated from consensusPipe's transferred data should never be reported.
               && !(pipeProcessor instanceof IoTConsensusV2Processor);
+      if (!shouldReport
+          && event instanceof PipeTsFileInsertionEvent
+          && ((PipeTsFileInsertionEvent) event).isProgressReportManagedByTsFileParser()) {
+        ((PipeTsFileInsertionEvent) event).abortProgressReportManagedByTsFileParser();
+        ((PipeTsFileInsertionEvent) event).skipReportOnCommit();
+      }
       if (shouldReport
           && event instanceof EnrichedEvent
-          && outputEventCollector.hasNoCollectInvocationAfterReset()) {
+          && outputEventCollector.hasNoCollectInvocationAfterReset()
+          && ((EnrichedEvent) event).getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
         // An event should be reported here when it is not passed to the connector stage, and it
         // does not generate any new events to be passed to the connector. In our system, before
         // reporting an event, we need to enrich a commitKey and commitId, which is done in the
@@ -270,7 +343,17 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
             .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
       }
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
+      if (event == retryingFailedTsFileParserEvent) {
+        retryingFailedTsFileParserEvent = null;
+      }
     } catch (final PipeProcessorSubtaskYieldException e) {
+      if (event instanceof PipeTsFileInsertionEvent) {
+        final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+        tsFileInsertionEvent.releaseTsFileParserMemoryIfReserved();
+        if (!executionGuard.isCurrentInvocationValid()) {
+          tsFileInsertionEvent.cancelTsFileParserMemoryReservationIfPending();
+        }
+      }
       isResumingFromYield.set(true);
       throw e;
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
@@ -318,11 +401,386 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return true;
   }
 
+  private Event getNextEvent() throws Exception {
+    if (lastEvent != null) {
+      return lastEvent;
+    }
+
+    synchronized (tsFileParserTaskLock) {
+      if (pendingEventAfterTsFileParserBarrier != null) {
+        if (!inFlightTsFileParserTasks.isEmpty()) {
+          return null;
+        }
+        final Event event = pendingEventAfterTsFileParserBarrier;
+        pendingEventAfterTsFileParserBarrier = null;
+        setLastEvent(event);
+        return event;
+      }
+
+      if (inFlightTsFileParserTasks.size() >= tsFileParserParallelism) {
+        return null;
+      }
+    }
+
+    final Event event = UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
+    setLastEvent(event);
+    return event;
+  }
+
+  private synchronized boolean retainFailedTsFileParserEvent(final PipeTsFileInsertionEvent event) {
+    if (isClosed.get()) {
+      if (!event.isReleased()) {
+        event.clearReferenceCount(PipeProcessorSubtask.class.getName());
+      }
+      return false;
+    }
+    lastEvent = event;
+    return true;
+  }
+
+  private boolean shouldParseTsFileEventInPool(final Event event) {
+    return tsFileParserParallelism > 1
+        && event instanceof PipeTsFileInsertionEvent
+        && event != retryingFailedTsFileParserEvent
+        && outputEventCollector.shouldParseTsFileEvent((PipeTsFileInsertionEvent) event);
+  }
+
+  private boolean deferEventUntilTsFileParserBarrier(final Event event) {
+    // These control events do not depend on parser completion. ProgressReportEvent is committed
+    // after preceding parser tasks, while PipeHeartbeatEvent does not need ordered commits.
+    if (event instanceof ProgressReportEvent || event instanceof PipeHeartbeatEvent) {
+      return false;
+    }
+
+    synchronized (tsFileParserTaskLock) {
+      if (isClosed.get() || inFlightTsFileParserTasks.isEmpty()) {
+        return false;
+      }
+      pendingEventAfterTsFileParserBarrier = event;
+      return true;
+    }
+  }
+
+  private void processTsFileInsertionEvent(
+      final PipeTsFileInsertionEvent event,
+      final PipeEventCollector eventCollector,
+      final PipeProcessorSubtaskExecutionGuard processorExecutionGuard)
+      throws Exception {
+    // Parse privileges before invoking the processor to avoid forwarding unauthorized data.
+    if (event.shouldParse4Privilege()) {
+      event.consumeTabletInsertionEventsWithRetry(
+          parsedEvent -> {
+            try {
+              pipeProcessor.process(parsedEvent, eventCollector);
+            } catch (final PipeProcessorSubtaskYieldException e) {
+              throw e;
+            } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+              throw e;
+            } catch (final Exception e) {
+              throw new PipeException(e.getMessage(), e);
+            }
+          },
+          "PipeProcessorSubtask::processTsFileInsertionEvent",
+          processorExecutionGuard);
+      event.close();
+      if (event.isGeneratedByHistoricalExtractor()) {
+        PipeTerminateEvent.markHistoricalTsFileSplit(
+            event.getPipeName(), event.getCreationTime(), regionId);
+      }
+      return;
+    }
+
+    pipeProcessor.process(event, eventCollector);
+  }
+
+  private void submitTsFileParserTask(final PipeTsFileInsertionEvent event) {
+    submitTsFileParserTask(new TsFileParserTask(event, outputEventCollector.forkForTsFileParser()));
+  }
+
+  private void submitTsFileParserTask(final TsFileParserTask task) {
+    synchronized (tsFileParserTaskLock) {
+      if (isClosed.get() || !task.prepareForSubmission()) {
+        task.cancel();
+        return;
+      }
+      inFlightTsFileParserTasks.addLast(task);
+    }
+
+    try {
+      task.setFuture(TS_FILE_PARSER_EXECUTOR.submit(task::execute));
+    } catch (final RuntimeException e) {
+      synchronized (tsFileParserTaskLock) {
+        inFlightTsFileParserTasks.remove(task);
+      }
+      task.cancel();
+      throw e;
+    }
+  }
+
+  private TsFileParserTaskResult reapCompletedTsFileParserTasks()
+      throws InterruptedException, ExecutionException {
+    while (true) {
+      final TsFileParserTask task;
+      synchronized (tsFileParserTaskLock) {
+        TsFileParserTask completedTask = null;
+        final Iterator<TsFileParserTask> iterator = inFlightTsFileParserTasks.iterator();
+        while (iterator.hasNext()) {
+          final TsFileParserTask candidate = iterator.next();
+          if (candidate.isDone()) {
+            completedTask = candidate;
+            iterator.remove();
+            break;
+          }
+        }
+        task = completedTask;
+        if (task == null) {
+          return null;
+        }
+      }
+
+      final TsFileParserTaskResult result;
+      try {
+        result = task.getResult();
+      } catch (final CancellationException e) {
+        if (isClosed.get()) {
+          return null;
+        }
+        throw e;
+      }
+
+      if (result.outcome == TsFileParserTaskOutcome.YIELDED) {
+        submitTsFileParserTask(task);
+        continue;
+      }
+      if (result.outcome == TsFileParserTaskOutcome.FAILURE) {
+        return result;
+      }
+    }
+  }
+
+  private void completeTsFileParserTask(
+      final PipeTsFileInsertionEvent event, final PipeEventCollector eventCollector) {
+    final boolean shouldReport =
+        !isClosed.get()
+            && (event.isProgressReportManagedByTsFileParser()
+                || eventCollector.hasNoGeneratedEvent())
+            && !eventCollector.isFailedToIncreaseReferenceCount()
+            && !(pipeProcessor instanceof IoTConsensusV2Processor);
+    if (!shouldReport && event.isProgressReportManagedByTsFileParser()) {
+      event.abortProgressReportManagedByTsFileParser();
+      event.skipReportOnCommit();
+    }
+    if (shouldReport
+        && eventCollector.hasNoCollectInvocationAfterReset()
+        && event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
+      PipeEventCommitManager.getInstance()
+          .enrichWithCommitterKeyAndCommitId(event, creationTime, regionId);
+    }
+
+    if (!event.isReleased()) {
+      event.decreaseReferenceCount(PipeProcessorSubtask.class.getName(), shouldReport);
+    }
+  }
+
+  private class TsFileParserTask {
+
+    private final PipeTsFileInsertionEvent event;
+    private final PipeEventCollector eventCollector;
+
+    private Future<TsFileParserTaskResult> future;
+    private boolean isStarted;
+    private boolean isFinished;
+    private boolean isCancelled;
+    private boolean ownsEvent = true;
+    private boolean isCollectorInitialized;
+
+    private TsFileParserTask(
+        final PipeTsFileInsertionEvent event, final PipeEventCollector eventCollector) {
+      this.event = event;
+      this.eventCollector = eventCollector;
+    }
+
+    private TsFileParserTaskResult execute() {
+      synchronized (this) {
+        if (isCancelled) {
+          return TsFileParserTaskResult.cancelled(event);
+        }
+        isStarted = true;
+      }
+
+      boolean hasEnteredExecutionGuard = false;
+      try {
+        executionGuard.enter();
+        hasEnteredExecutionGuard = true;
+        if (!isCollectorInitialized) {
+          eventCollector.resetFlags();
+          isCollectorInitialized = true;
+        }
+        processTsFileInsertionEvent(event, eventCollector, executionGuard);
+
+        synchronized (this) {
+          if (isCancelled || isClosed.get()) {
+            releaseOwnedEvent();
+            isFinished = true;
+            return TsFileParserTaskResult.cancelled(event);
+          }
+        }
+
+        PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .markTsFileCollectInvocationCount(
+                pipeNameWithCreationTime, eventCollector.getCollectInvocationCount());
+        completeTsFileParserTask(event, eventCollector);
+        synchronized (this) {
+          ownsEvent = false;
+          isFinished = true;
+        }
+        return TsFileParserTaskResult.success(event);
+      } catch (final PipeProcessorSubtaskYieldException e) {
+        event.releaseTsFileParserMemoryIfReserved();
+        if (!executionGuard.isCurrentInvocationValid()) {
+          event.cancelTsFileParserMemoryReservationIfPending();
+        }
+        synchronized (this) {
+          isFinished = true;
+          if (isCancelled || isClosed.get()) {
+            releaseOwnedEvent();
+            return TsFileParserTaskResult.cancelled(event);
+          }
+        }
+        return TsFileParserTaskResult.yielded(event);
+      } catch (final Exception e) {
+        event.releaseTsFileParserMemoryIfReserved();
+        synchronized (this) {
+          isFinished = true;
+          if (isCancelled || isClosed.get()) {
+            releaseOwnedEvent();
+            return TsFileParserTaskResult.cancelled(event);
+          }
+        }
+        return TsFileParserTaskResult.failure(event, e);
+      } finally {
+        if (hasEnteredExecutionGuard) {
+          executionGuard.exit();
+        }
+      }
+    }
+
+    private synchronized boolean prepareForSubmission() {
+      if (isCancelled) {
+        return false;
+      }
+      future = null;
+      isStarted = false;
+      isFinished = false;
+      return true;
+    }
+
+    private synchronized void setFuture(final Future<TsFileParserTaskResult> future) {
+      this.future = future;
+      if (isCancelled) {
+        future.cancel(true);
+      }
+    }
+
+    private synchronized boolean isDone() {
+      return future != null && future.isDone();
+    }
+
+    private TsFileParserTaskResult getResult() throws InterruptedException, ExecutionException {
+      final Future<TsFileParserTaskResult> currentFuture;
+      synchronized (this) {
+        currentFuture = future;
+      }
+      final TsFileParserTaskResult result = currentFuture.get();
+      if (result.outcome == TsFileParserTaskOutcome.FAILURE) {
+        synchronized (this) {
+          ownsEvent = false;
+        }
+      }
+      return result;
+    }
+
+    private void cancel() {
+      final Future<TsFileParserTaskResult> currentFuture;
+      synchronized (this) {
+        isCancelled = true;
+        if ((!isStarted || isFinished) && ownsEvent) {
+          releaseOwnedEvent();
+        }
+        currentFuture = future;
+      }
+      if (currentFuture != null) {
+        currentFuture.cancel(true);
+      }
+    }
+
+    private void releaseOwnedEvent() {
+      if (!ownsEvent) {
+        return;
+      }
+      event.close();
+      if (!event.isReleased()) {
+        event.clearReferenceCount(PipeProcessorSubtask.class.getName());
+      }
+      ownsEvent = false;
+    }
+  }
+
+  private enum TsFileParserTaskOutcome {
+    SUCCESS,
+    FAILURE,
+    YIELDED,
+    CANCELLED
+  }
+
+  private static class TsFileParserTaskResult {
+
+    private final PipeTsFileInsertionEvent event;
+    private final Exception exception;
+    private final TsFileParserTaskOutcome outcome;
+
+    private TsFileParserTaskResult(
+        final PipeTsFileInsertionEvent event,
+        final Exception exception,
+        final TsFileParserTaskOutcome outcome) {
+      this.event = event;
+      this.exception = exception;
+      this.outcome = outcome;
+    }
+
+    private static TsFileParserTaskResult success(final PipeTsFileInsertionEvent event) {
+      return new TsFileParserTaskResult(event, null, TsFileParserTaskOutcome.SUCCESS);
+    }
+
+    private static TsFileParserTaskResult failure(
+        final PipeTsFileInsertionEvent event, final Exception exception) {
+      return new TsFileParserTaskResult(event, exception, TsFileParserTaskOutcome.FAILURE);
+    }
+
+    private static TsFileParserTaskResult yielded(final PipeTsFileInsertionEvent event) {
+      return new TsFileParserTaskResult(event, null, TsFileParserTaskOutcome.YIELDED);
+    }
+
+    private static TsFileParserTaskResult cancelled(final PipeTsFileInsertionEvent event) {
+      return new TsFileParserTaskResult(event, null, TsFileParserTaskOutcome.CANCELLED);
+    }
+  }
+
   @Override
   public void submitSelf() {
     // this subtask won't be submitted to the executor directly
     // instead, it will be executed by the PipeProcessorSubtaskWorker
     // and the worker will be submitted to the executor
+  }
+
+  @Override
+  public void onSuccess(final Boolean hasAtLeastOneEventProcessed) {
+    if (retryingFailedTsFileParserEvent != null) {
+      submitSelf();
+      return;
+    }
+    super.onSuccess(hasAtLeastOneEventProcessed);
   }
 
   @Override
@@ -349,6 +807,17 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
+      retryingFailedTsFileParserEvent = null;
+      final Event pendingEvent;
+      synchronized (tsFileParserTaskLock) {
+        inFlightTsFileParserTasks.forEach(TsFileParserTask::cancel);
+        inFlightTsFileParserTasks.clear();
+        pendingEvent = pendingEventAfterTsFileParserBarrier;
+        pendingEventAfterTsFileParserBarrier = null;
+      }
+      if (pendingEvent instanceof EnrichedEvent && !((EnrichedEvent) pendingEvent).isReleased()) {
+        ((EnrichedEvent) pendingEvent).clearReferenceCount(PipeProcessorSubtask.class.getName());
+      }
       pipeProcessor.close();
       // It is important to note that even if the subtask and its corresponding processor are
       // closed, the execution thread may still deliver events downstream.
