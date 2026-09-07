@@ -42,6 +42,8 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
 
   public static final String TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG =
       "The system can't allow more queries.";
+  public static final String SAME_ID_ELEMENT_ALREADY_EXISTS_ERROR_MSG =
+      "The queue has already contained the same ID element.";
 
   protected final int capacity;
   protected final E queryHolder;
@@ -57,6 +59,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
    * @throws IllegalArgumentException if maxCapacity <= 0.
    */
   protected IndexedBlockingQueue(int maxCapacity, E queryHolder) {
+    Preconditions.checkArgument(maxCapacity > 0, "maxCapacity must be greater than 0.");
     this.capacity = maxCapacity;
     this.queryHolder = queryHolder;
   }
@@ -93,6 +96,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
       throw new NullPointerException(CalcMessages.PUSHED_ELEMENT_IS_NULL);
     }
     Preconditions.checkState(size < capacity, TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
+    Preconditions.checkState(!contains(element), SAME_ID_ELEMENT_ALREADY_EXISTS_ERROR_MSG);
     pushToQueue(element);
     size++;
     this.notifyAll();

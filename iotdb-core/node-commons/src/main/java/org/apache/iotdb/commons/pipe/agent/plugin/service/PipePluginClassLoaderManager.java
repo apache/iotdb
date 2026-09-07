@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.pipe.api.PipePlugin;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.IOException;
@@ -33,6 +36,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @NotThreadSafe
 public class PipePluginClassLoaderManager implements IService {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginClassLoaderManager.class);
 
   private final String libRoot;
 
@@ -64,7 +69,18 @@ public class PipePluginClassLoaderManager implements IService {
   }
 
   public void addPluginAndClassLoader(String pluginName, PipePluginClassLoader classLoader) {
-    pipePluginNameToClassLoaderMap.put(pluginName.toUpperCase(), classLoader);
+    PipePluginClassLoader oldClassLoader =
+        pipePluginNameToClassLoaderMap.put(pluginName.toUpperCase(), classLoader);
+    if (oldClassLoader != null && oldClassLoader != classLoader) {
+      try {
+        oldClassLoader.markAsDeprecated();
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to close old PipePluginClassLoader when replacing plugin {}, because {}",
+            pluginName,
+            e.toString());
+      }
+    }
   }
 
   public PipePluginClassLoader createPipePluginClassLoader(String pluginDirPath)
