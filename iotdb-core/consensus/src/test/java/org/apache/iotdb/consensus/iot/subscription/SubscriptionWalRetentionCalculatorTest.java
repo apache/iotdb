@@ -34,6 +34,19 @@ import static org.junit.Assert.assertEquals;
 public class SubscriptionWalRetentionCalculatorTest {
 
   @Test
+  public void testTimeRetentionCutoffUsesNormalSubtractionWhenSafe() {
+    assertEquals(
+        700L, SubscriptionWalRetentionCalculator.getTimeRetentionCutoffTimeMs(1000L, 300L));
+  }
+
+  @Test
+  public void testTimeRetentionCutoffSaturatesOnUnderflow() {
+    assertEquals(
+        Long.MIN_VALUE,
+        SubscriptionWalRetentionCalculator.getTimeRetentionCutoffTimeMs(Long.MIN_VALUE, 1L));
+  }
+
+  @Test
   public void testCommittedProgressKeepsMoreWalThanTopicRetention() {
     final SubscriptionWalRetentionCalculator calculator =
         new SubscriptionWalRetentionCalculator(new RetentionTestConsensusReqReader());

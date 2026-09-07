@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.memory;
+package org.apache.iotdb.calc.plan.planner.memory;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -63,7 +63,7 @@ public abstract class PipelineMemoryEstimator {
     children.addAll(child);
   }
 
-  protected int getDependencyPipelineIndex() {
+  public int getDependencyPipelineIndex() {
     return dependencyPipelineIndex;
   }
 

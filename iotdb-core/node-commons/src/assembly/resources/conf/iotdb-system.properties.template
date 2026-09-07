@@ -382,6 +382,12 @@ metric_prometheus_reporter_username=
 # Datatype: String
 metric_prometheus_reporter_password=
 
+# Whether Prometheus metrics are collected asynchronously and served from a cached snapshot.
+# The snapshot is refreshed every 15 seconds, matching Prometheus's default scrape interval.
+# effectiveMode: restart
+# Datatype: boolean
+prometheus_reporter_async_update=true
+
 # The reporters of metric module to report metrics
 # If there are more than one reporter, please separate them by commas ",".
 # Options: [JMX, PROMETHEUS]
@@ -758,6 +764,11 @@ time_partition_interval=604800000
 # effectiveMode: hot_reload
 # Datatype: long
 heartbeat_interval_in_ms=1000
+
+# Number of ConfigNode workers publishing cluster load statistics changes. Must be positive.
+# effectiveMode: restart
+# Datatype: int
+cn_load_statistics_publisher_thread_count=5
 
 # Default failure detector, enum from {fixed, phi_accrual}
 # effectiveMode: restart
@@ -1223,6 +1234,21 @@ max_allowed_concurrent_queries=1000
 # effectiveMode: restart
 # Datatype: int
 query_thread_count=0
+
+# Number of coordinator workers executing read queries. Must be positive.
+# effectiveMode: restart
+# Datatype: int
+coordinator_read_executor_size=20
+
+# Number of coordinator workers scheduling query state checks and termination. Must be positive.
+# effectiveMode: restart
+# Datatype: int
+coordinator_scheduled_executor_size=10
+
+# Number of workers notifying fragment instance state changes. Must be positive.
+# effectiveMode: restart
+# Datatype: int
+fragment_instance_notification_thread_count=4
 
 # How many pipeline drivers will be created for one fragment instance. When <= 0, use CPU core number / 2.
 # effectiveMode: restart
@@ -2123,6 +2149,11 @@ config_node_ratis_snapshot_trigger_threshold=400000
 schema_region_ratis_snapshot_trigger_threshold=400000
 data_region_ratis_snapshot_trigger_threshold=400000
 
+# max size (in byte) of the in-memory buffer used when taking/loading ConfigNode snapshot files
+# effectiveMode: restart
+# Datatype: long
+config_node_snapshot_buffer_size_max=4194304
+
 # allow flushing Raft Log asynchronously
 # effectiveMode: restart
 # Datatype: Boolean
@@ -2454,3 +2485,10 @@ enable_retry_for_unknown_error=false
 # effectiveMode: hot_reload
 # Datatype: Boolean
 include_null_value_in_write_throughput_metric=false
+
+# Maximum DeviceEntry bytes retained in memory before spilling for a table query.
+# <= 0 uses query execution memory / query_thread_count / 4.
+# The effective value is capped by dn_thrift_max_frame_size minus 1024 bytes reserved for the RPC response envelope.
+# effectiveMode: hot_reload
+# Datatype: long
+table_query_device_entry_batch_size_in_bytes=0

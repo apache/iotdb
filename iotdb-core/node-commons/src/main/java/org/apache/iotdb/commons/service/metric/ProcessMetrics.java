@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.metrics;
+package org.apache.iotdb.commons.service.metric;
 
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -253,7 +253,7 @@ public class ProcessMetrics implements IMetricSet {
           return 0L;
       }
     } catch (Exception e) {
-      LOGGER.debug(DataNodeMiscMessages.FAILED_GET_PROCESS_RESIDENT_MEMORY, CONFIG.getPid(), e);
+      LOGGER.debug(ServiceMessages.FAILED_GET_PROCESS_RESIDENT_MEMORY, CONFIG.getPid(), e);
       return 0L;
     }
   }

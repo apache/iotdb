@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
@@ -119,6 +120,7 @@ public class CompactionScheduler {
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       LOGGER.error(StorageEngineMessages.MEET_ERROR_IN_COMPACTION_SCHEDULE, e);
     }
   }

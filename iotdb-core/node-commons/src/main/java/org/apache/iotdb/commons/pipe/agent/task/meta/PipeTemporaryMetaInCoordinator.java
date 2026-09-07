@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentMap;
 public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
 
   // ConfigNode statistics
-  private final Set<Integer> completedDataNodeIds =
+  private final Set<Integer> completedDataRegionIds =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final ConcurrentMap<Integer, Long> nodeId2RemainingEventMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Integer, Double> nodeId2RemainingTimeMap = new ConcurrentHashMap<>();
@@ -41,12 +41,12 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
   private final ConcurrentMap<Integer, RecentFailureSnapshot> nodeId2RecentFailuresMap =
       new ConcurrentHashMap<>();
 
-  public void markDataNodeCompleted(final int dataNodeId) {
-    completedDataNodeIds.add(dataNodeId);
+  public void markDataRegionCompleted(final int dataRegionId) {
+    completedDataRegionIds.add(dataRegionId);
   }
 
-  public void markDataNodeUncompleted(final int dataNodeId) {
-    completedDataNodeIds.remove(dataNodeId);
+  public Set<Integer> getCompletedDataRegionIds() {
+    return completedDataRegionIds;
   }
 
   public void setRemainingEvent(final int dataNodeId, final long remainingEventCount) {
@@ -84,10 +84,6 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
       nodeId2RecentFailuresMap.put(
           dataNodeId, new RecentFailureSnapshot(sanitizedFailures, System.currentTimeMillis()));
     }
-  }
-
-  public Set<Integer> getCompletedDataNodeIds() {
-    return completedDataNodeIds;
   }
 
   public long getGlobalRemainingEvents() {
@@ -131,7 +127,7 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
       return false;
     }
     final PipeTemporaryMetaInCoordinator that = (PipeTemporaryMetaInCoordinator) o;
-    return Objects.equals(this.completedDataNodeIds, that.completedDataNodeIds)
+    return Objects.equals(this.completedDataRegionIds, that.completedDataRegionIds)
         && Objects.equals(this.nodeId2RemainingEventMap, that.nodeId2RemainingEventMap)
         && Objects.equals(this.nodeId2RemainingTimeMap, that.nodeId2RemainingTimeMap)
         && Objects.equals(this.nodeId2IsDegradedMap, that.nodeId2IsDegradedMap)
@@ -141,7 +137,7 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
   @Override
   public int hashCode() {
     return Objects.hash(
-        completedDataNodeIds,
+        completedDataRegionIds,
         nodeId2RemainingEventMap,
         nodeId2RemainingTimeMap,
         nodeId2IsDegradedMap,
@@ -151,8 +147,8 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
   @Override
   public String toString() {
     return "PipeTemporaryMeta{"
-        + "completedDataNodeIds="
-        + completedDataNodeIds
+        + "completedDataRegionIds="
+        + completedDataRegionIds
         + ", nodeId2RemainingEventMap="
         + nodeId2RemainingEventMap
         + ", nodeId2RemainingTimeMap="

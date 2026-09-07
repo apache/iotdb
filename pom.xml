@@ -114,7 +114,7 @@
         <mockito.version>2.23.4</mockito.version>
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.18.0</moquette.version>
-        <netty.version>4.1.136.Final</netty.version>
+        <netty.version>4.1.137.Final</netty.version>
         <openapi.generator.version>7.10.0</openapi.generator.version>
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
@@ -122,8 +122,8 @@
         <ratis-thirdparty-misc.version>1.1.0</ratis-thirdparty-misc.version>
         <ratis.version>3.3.0</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
-        <reactor-netty.version>1.2.9</reactor-netty.version>
-        <reactor.version>3.7.9</reactor.version>
+        <reactor-netty.version>1.2.18</reactor-netty.version>
+        <reactor.version>3.7.19</reactor.version>
         <reflections.version>0.10.2</reflections.version>
         <slf4j.version>2.0.9</slf4j.version>
         <snappy-java.version>1.1.10.5</snappy-java.version>
@@ -143,7 +143,7 @@
         <swagger.version>2.2.50</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
-        <thrift.version>0.23.0</thrift.version>
+        <thrift.version>0.24.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
         <tsfile.version>2.4.1-260806-SNAPSHOT</tsfile.version>
@@ -717,6 +717,10 @@
                     <version>3.1.2</version>
                     <configuration>
                         <argLine>${argLine} -Xmx1024m</argLine>
+                        <!-- Subscription UT is maintained and executed by the enterprise edition. -->
+                        <excludes>
+                            <exclude>**/subscription/**</exclude>
+                        </excludes>
                         <!-- Force the working directory to be different for each fork, so forks don't trample each other -->
                         <workingDirectory>${project.build.directory}/fork_${surefire.forkNumber}</workingDirectory>
                     </configuration>

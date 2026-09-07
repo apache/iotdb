@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.storageengine.rescon.disk;
+package org.apache.iotdb.commons.disk.utils;
 
 import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.i18n.StorageMessages;
 import org.apache.iotdb.commons.utils.ProcessIdUtils;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.FSUtils;
@@ -58,14 +58,14 @@ public class DirectoryChecker {
     if (dir.exists() && !dir.isDirectory()) {
       throw new ConfigurationException(
           String.format(
-              StorageEngineMessages
+              StorageMessages
                   .STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_BECAUSE_THERE_IS_FILE_UNDER_1C59ACFC,
               dir.getAbsolutePath()));
     } else if (!dir.exists()) {
       if (!dir.mkdirs()) {
         throw new ConfigurationException(
             String.format(
-                StorageEngineMessages
+                StorageMessages
                     .STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_PLEASE_CHECK_CONFIGURATION_BA580B67,
                 dir.getAbsolutePath()));
       }
@@ -91,7 +91,7 @@ public class DirectoryChecker {
       channel.close();
       throw new ConfigurationException(
           String.format(
-              StorageEngineMessages
+              StorageMessages
                   .STORAGE_EXCEPTION_CONFLICT_IS_DETECTED_IN_DIRECTORY_S_WHICH_MAY_BE_BEING_USED_CB5C77FC,
               dir.getAbsolutePath(),
               lockOwner));
@@ -147,7 +147,7 @@ public class DirectoryChecker {
         FileUtils.delete(file);
       }
     } catch (IOException e) {
-      logger.warn(StorageEngineMessages.FAILED_TO_DEREGISTER_FILE_LOCK, e.getMessage(), e);
+      logger.warn(StorageMessages.FAILED_TO_DEREGISTER_FILE_LOCK, e.getMessage(), e);
     }
   }
 

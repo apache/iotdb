@@ -323,18 +323,40 @@ bool BitMap::isAllUnmarked() const {
 }
 
 bool BitMap::isAllMarked() const {
-  size_t j;
-  for (j = 0; j < size >> 3; j++) {
-    if (bits[j] != (char)0XFF) {
+  return isRangeAllMarked(0, size);
+}
+
+bool BitMap::isRangeAllMarked(size_t start, size_t length) const {
+  // size_t addition can wrap; short-circuit so `size - start` is only used when
+  // start <= size. Out-of-range matches mark()/isMarked(): return false.
+  if (start > size || length > size - start) {
+    return false;
+  }
+  if (length == 0) {
+    return true;
+  }
+
+  const size_t end = start + length;
+  const size_t firstByte = start >> 3;
+  const size_t lastByte = (end - 1) >> 3;
+  if (firstByte == lastByte) {
+    const unsigned char mask = static_cast<unsigned char>(((1U << length) - 1U) << (start & 7U));
+    return (static_cast<unsigned char>(bits[firstByte]) & mask) == mask;
+  }
+
+  const unsigned char firstMask = static_cast<unsigned char>((0xFFU << (start & 7U)) & 0xFFU);
+  if ((static_cast<unsigned char>(bits[firstByte]) & firstMask) != firstMask) {
+    return false;
+  }
+  for (size_t index = firstByte + 1; index < lastByte; index++) {
+    if (static_cast<unsigned char>(bits[index]) != 0xFFU) {
       return false;
     }
   }
-  for (j = 0; j < size % 8; j++) {
-    if ((bits[size >> 3] & ((char)1 << j)) == 0) {
-      return false;
-    }
-  }
-  return true;
+  const size_t lastBitCount = end & 7U;
+  const unsigned char lastMask =
+      lastBitCount == 0 ? 0xFFU : static_cast<unsigned char>((1U << lastBitCount) - 1U);
+  return (static_cast<unsigned char>(bits[lastByte]) & lastMask) == lastMask;
 }
 
 const std::vector<char>& BitMap::getByteArray() const {

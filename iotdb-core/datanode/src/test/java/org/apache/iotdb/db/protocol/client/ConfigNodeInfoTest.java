@@ -36,8 +36,7 @@ public class ConfigNodeInfoTest {
 
   @Before
   public void setUp() {
-    ConfigNodeInfo.reinitializeStatics();
-    ConfigNodeInfo.getInstance().systemPropertiesHandler = new NoopSystemPropertiesHandler();
+    ConfigNodeInfo.reinitializeStatics(new NoopSystemPropertiesHandler());
   }
 
   @Test

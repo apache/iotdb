@@ -427,7 +427,29 @@ public class LogDispatcher {
     }
 
     void waitForBatchAccumulation(long waitingTimeInMs) throws InterruptedException {
-      Thread.sleep(waitingTimeInMs);
+      if (waitingTimeInMs <= 0) {
+        return;
+      }
+
+      final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(waitingTimeInMs);
+      final int maxLogEntriesNumPerBatch = config.getReplication().getMaxLogEntriesNumPerBatch();
+
+      // Keep collecting while the batch is below its entry limit. A plain sleep makes the
+      // dispatcher wait for the full accumulation interval even when the batch becomes full
+      // immediately, which unnecessarily throttles IoTConsensus under sustained write load.
+      while (bufferedEntries.size() < maxLogEntriesNumPerBatch) {
+        final long remainingNanos = deadlineNanos - System.nanoTime();
+        if (remainingNanos <= 0) {
+          return;
+        }
+
+        final IndexedConsensusRequest request =
+            pendingEntries.poll(remainingNanos, TimeUnit.NANOSECONDS);
+        if (request == null) {
+          return;
+        }
+        bufferedEntries.add(request);
+      }
     }
 
     public void updateSafelyDeletedSearchIndex() {
@@ -629,6 +651,7 @@ public class LogDispatcher {
           currentIndex,
           maxIndex);
       boolean hasCorruptedData = false;
+      final boolean consensusGroupContainsUserData = impl.containsUserData();
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
@@ -653,6 +676,9 @@ public class LogDispatcher {
           hasCorruptedData = true;
         }
         targetIndex = data.getSearchIndex() + 1;
+        // The WAL reader derives this bit directly from the entry type. Apply the group-level
+        // exclusion here without deserializing the request solely for audit classification.
+        data.setContainsUserData(consensusGroupContainsUserData && data.containsUserData());
         data.buildSerializedRequests();
         // construct request from wal
         TLogEntry logEntry =
@@ -660,7 +686,7 @@ public class LogDispatcher {
                 data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize());
         logEntry.setRoutingEpoch(data.getRoutingEpoch());
         logEntry.setPhysicalTime(data.getPhysicalTime());
-        logBatches.addTLogEntry(logEntry);
+        logBatches.addTLogEntry(logEntry, data.containsUserData());
       }
       // In the case of corrupt Data, we return true so that we can send a batch as soon as
       // possible, avoiding potential duplication
@@ -677,7 +703,7 @@ public class LogDispatcher {
               request.getMemorySize());
       logEntry.setRoutingEpoch(request.getRoutingEpoch());
       logEntry.setPhysicalTime(request.getPhysicalTime());
-      logBatches.addTLogEntry(logEntry);
+      logBatches.addTLogEntry(logEntry, request.containsUserData());
     }
   }
 

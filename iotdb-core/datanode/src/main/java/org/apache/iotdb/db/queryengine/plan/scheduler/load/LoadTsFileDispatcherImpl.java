@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -32,6 +33,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
@@ -222,16 +224,30 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
 
   private void dispatchRemote(TTsFilePieceReq loadTsFileReq, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
+    boolean transferAttemptRecorded = false;
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
       client.setTimeout(CONNECTION_TIMEOUT_MS.get());
 
       final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
       if (!loadResp.isAccepted()) {
+        recordTransferAttempt(
+            endPoint,
+            false,
+            loadResp.isSetStatus()
+                ? String.valueOf(loadResp.getStatus().getCode())
+                : UserDataTransferErrorCode.REMOTE_REJECTED.name(),
+            null);
+        transferAttemptRecorded = true;
         LOGGER.warn(loadResp.message);
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
+      recordTransferAttempt(endPoint, true, null, null);
+      transferAttemptRecorded = true;
     } catch (Exception e) {
+      if (!transferAttemptRecorded) {
+        recordTransferAttempt(endPoint, false, null, e);
+      }
       adjustTimeoutIfNecessary(e);
 
       final String exceptionMessage =
@@ -244,6 +260,13 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
               .setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode())
               .setMessage(exceptionMessage));
     }
+  }
+
+  private void recordTransferAttempt(
+      TEndPoint target, boolean success, String errorCode, Throwable error) {
+    final TEndPoint localEndPoint = new TEndPoint(localhostIpAddr, localhostInternalPort);
+    DataNodeUserDataTransferAuditor.record(
+        localEndPoint, localEndPoint, target, success, errorCode, error);
   }
 
   public Future<FragInstanceDispatchResult> dispatchCommand(

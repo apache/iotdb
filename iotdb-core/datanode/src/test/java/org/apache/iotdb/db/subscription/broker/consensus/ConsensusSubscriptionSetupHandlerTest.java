@@ -50,6 +50,12 @@ public class ConsensusSubscriptionSetupHandlerTest {
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
+  public void testRuntimeUpdatesAreIgnoredWhenSubscriptionIsDisabled() {
+    ConsensusSubscriptionSetupHandler.applyRuntimeState(null, null);
+    ConsensusSubscriptionSetupHandler.onRegionRouteChanged(null, 0);
+  }
+
+  @Test
   public void testSingleTopicSetupFailurePropagates() {
     SubscriptionException failure = null;
     try {

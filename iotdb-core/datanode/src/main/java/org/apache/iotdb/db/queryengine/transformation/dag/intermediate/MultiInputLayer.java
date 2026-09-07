@@ -51,6 +51,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MultiInputLayer.class);
@@ -398,7 +400,8 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
-        long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
+        long nextWindowTimeEnd =
+            Math.min(saturatedAdd(nextWindowTimeBegin, timeInterval), displayWindowEnd);
         while (currentEndTime < nextWindowTimeEnd) {
           final YieldableState state = udfInputDataSet.yield();
           if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -468,7 +471,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
-            nextWindowTimeBegin + timeInterval - 1);
+            saturatedAdd(nextWindowTimeBegin, timeInterval - 1));
 
         hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == rowRecordList.size());
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
@@ -477,7 +480,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
       @Override
       public void readyForNext() {
         hasCached = false;
-        nextWindowTimeBegin += slidingStep;
+        nextWindowTimeBegin = saturatedAdd(nextWindowTimeBegin, slidingStep);
 
         rowRecordList.setEvictionUpperBound(nextIndexBegin + 1);
       }

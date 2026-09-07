@@ -38,16 +38,59 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class SubscriptionReceiverAgentTest {
+
+  @Test
+  public void testDisabledSubscriptionRejectsRequest() throws IOException {
+    final SubscriptionReceiverAgent agent =
+        new SubscriptionReceiverAgent(
+            () -> {
+              throw new AssertionError(
+                  "Receiver must not be created when subscription is disabled");
+            },
+            false,
+            () -> false);
+
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR.getStatusCode(),
+        agent.handle(createHandshakeRequest("group", "consumer"), "root").getStatus().getCode());
+  }
+
+  @Test
+  public void testTimeoutCheckerIsNotScheduledWhenSubscriptionIsDisabled() throws Exception {
+    final SubscriptionReceiverAgent agent = new SubscriptionReceiverAgent();
+
+    Assert.assertNull(getReceiverTimeoutChecker(agent));
+  }
+
+  @Test
+  public void testTimeoutCheckerIsScheduledWhenSubscriptionIsEnabled() throws Exception {
+    SubscriptionReceiverAgent agent = null;
+    try {
+      agent =
+          new SubscriptionReceiverAgent(() -> new FakeSubscriptionReceiver(true), true, () -> true);
+
+      Assert.assertNotNull(getReceiverTimeoutChecker(agent));
+    } finally {
+      if (agent != null) {
+        final ScheduledExecutorService receiverTimeoutChecker = getReceiverTimeoutChecker(agent);
+        if (receiverTimeoutChecker != null) {
+          receiverTimeoutChecker.shutdownNow();
+        }
+      }
+    }
+  }
 
   @Test
   public void testDisconnectedReceiverIsRetainedUntilTimeout() throws IOException {
@@ -173,7 +216,14 @@ public class SubscriptionReceiverAgentTest {
           receivers.add(receiver);
           return receiver;
         };
-    return new SubscriptionReceiverAgent(constructor, false);
+    return new SubscriptionReceiverAgent(constructor, false, () -> true);
+  }
+
+  private ScheduledExecutorService getReceiverTimeoutChecker(final SubscriptionReceiverAgent agent)
+      throws Exception {
+    final Field field = SubscriptionReceiverAgent.class.getDeclaredField("receiverTimeoutChecker");
+    field.setAccessible(true);
+    return (ScheduledExecutorService) field.get(agent);
   }
 
   private TPipeSubscribeReq createHandshakeRequest(

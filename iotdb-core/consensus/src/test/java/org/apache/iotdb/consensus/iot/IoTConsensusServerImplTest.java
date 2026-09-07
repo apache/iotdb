@@ -20,10 +20,14 @@
 package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 
 import org.junit.Rule;
@@ -44,6 +48,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class IoTConsensusServerImplTest {
@@ -53,6 +58,37 @@ public class IoTConsensusServerImplTest {
   private static final int PEERS_PER_WRITER = 1_000;
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testSnapshotTransferAppliesGroupClassifier() {
+    final DataRegionId groupId = new DataRegionId(1);
+    final UserDataTransferAuditHandler enabledHandler = event -> {};
+    final UserDataTransferAuditClassifier auditDatabaseClassifier =
+        new UserDataTransferAuditClassifier() {
+          @Override
+          public boolean containsUserData(
+              ConsensusGroupId ignoredGroupId, IConsensusRequest request) {
+            return false;
+          }
+
+          @Override
+          public boolean containsUserData(ConsensusGroupId ignoredGroupId) {
+            return false;
+          }
+        };
+
+    assertTrue(
+        IoTConsensusServerImpl.shouldAuditSnapshotTransfer(
+            enabledHandler, (ignoredGroupId, request) -> false, groupId));
+    assertFalse(
+        IoTConsensusServerImpl.shouldAuditSnapshotTransfer(
+            enabledHandler, auditDatabaseClassifier, groupId));
+    assertFalse(
+        IoTConsensusServerImpl.shouldAuditSnapshotTransfer(
+            UserDataTransferAuditHandler.NO_OP,
+            UserDataTransferAuditClassifier.NO_USER_DATA,
+            groupId));
+  }
 
   /**
    * Verifies that configuration snapshots can be read while several writers concurrently add and

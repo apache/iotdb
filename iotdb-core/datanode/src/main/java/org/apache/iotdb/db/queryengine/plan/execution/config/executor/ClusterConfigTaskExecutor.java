@@ -3086,6 +3086,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         showSubscriptionReq.setTopicName(showSubscriptionsStatement.getTopicName());
       }
       showSubscriptionReq.setIsTableModel(showSubscriptionsStatement.isTableModel());
+      showSubscriptionReq.setDetails(showSubscriptionsStatement.isDetails());
 
       final TShowSubscriptionResp showSubscriptionResp =
           configNodeClient.showSubscription(showSubscriptionReq);
@@ -3098,11 +3099,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
 
-      ShowSubscriptionsTask.buildTSBlock(
-          showSubscriptionResp.isSetSubscriptionInfoList()
-              ? showSubscriptionResp.getSubscriptionInfoList()
-              : Collections.emptyList(),
-          future);
+      if (showSubscriptionsStatement.isDetails()) {
+        ShowSubscriptionsTask.buildDetailsTSBlock(
+            showSubscriptionResp.isSetSubscriptionProgressList()
+                ? showSubscriptionResp.getSubscriptionProgressList()
+                : Collections.emptyList(),
+            future);
+      } else {
+        ShowSubscriptionsTask.buildTSBlock(
+            showSubscriptionResp.isSetSubscriptionInfoList()
+                ? showSubscriptionResp.getSubscriptionInfoList()
+                : Collections.emptyList(),
+            future);
+      }
     } catch (final Exception e) {
       future.setException(e);
     }

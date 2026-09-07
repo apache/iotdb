@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime;
 
+import org.apache.iotdb.common.rpc.thrift.TPipeCompletedDataRegion;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -98,7 +99,8 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
       /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
       /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent,
       /* @Nullable */ final List<Integer> pipeDegradedStatusListFromAgent,
-      /* @Nullable */ final List<Map<String, Long>> pipeRecentFailureListFromAgent) {
+      /* @Nullable */ final List<Map<String, Long>> pipeRecentFailureListFromAgent,
+      /* @Nullable */ final List<TPipeCompletedDataRegion> pipeCompletedDataRegionListFromAgent) {
     pipeHeartbeatScheduler.parseHeartbeat(
         dataNodeId,
         new PipeHeartbeat(
@@ -107,6 +109,7 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
             pipeRemainingEventCountListFromAgent,
             pipeRemainingTimeListFromAgent,
             pipeDegradedStatusListFromAgent,
-            pipeRecentFailureListFromAgent));
+            pipeRecentFailureListFromAgent,
+            pipeCompletedDataRegionListFromAgent));
   }
 }

@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -94,16 +95,7 @@ public class CapacityTableFunctionTest {
    * through process(). Returns captured (windowIndex, passThroughIndex) pairs.
    */
   private List<long[]> runProcessor(long size, long slide, int rowCount) throws UDFException {
-    Map<String, Argument> args = new HashMap<>();
-    args.put("SIZE", new ScalarArgument(Type.INT64, size));
-    args.put("SLIDE", new ScalarArgument(Type.INT64, slide == -1 ? -1L : slide));
-
-    TableFunctionAnalysis analysis = function.analyze(args);
-    TableFunctionHandle handle = analysis.getTableFunctionHandle();
-
-    TableFunctionProcessorProvider provider = function.getProcessorProvider(handle);
-    TableFunctionDataProcessor processor = provider.getDataProcessor();
-
+    TableFunctionDataProcessor processor = newProcessor(size, slide);
     Record mockRecord = Mockito.mock(Record.class);
     List<long[]> results = new ArrayList<>();
 
@@ -126,6 +118,18 @@ public class CapacityTableFunctionTest {
       }
     }
     return results;
+  }
+
+  private TableFunctionDataProcessor newProcessor(long size, long slide) throws UDFException {
+    Map<String, Argument> args = new HashMap<>();
+    args.put("SIZE", new ScalarArgument(Type.INT64, size));
+    args.put("SLIDE", new ScalarArgument(Type.INT64, slide == -1 ? -1L : slide));
+
+    TableFunctionAnalysis analysis = function.analyze(args);
+    TableFunctionHandle handle = analysis.getTableFunctionHandle();
+
+    TableFunctionProcessorProvider provider = function.getProcessorProvider(handle);
+    return provider.getDataProcessor();
   }
 
   @Test
@@ -182,6 +186,40 @@ public class CapacityTableFunctionTest {
     List<long[]> results = runProcessor(3, 1, 1);
     long[][] expected = {{0, 0}};
     assertResultsEqual(expected, results);
+  }
+
+  @Test
+  public void testWindowEndAtLongMaxDoesNotOverflow() throws Exception {
+    TableFunctionDataProcessor processor = newProcessor(1, Long.MAX_VALUE);
+    Field curIndexField = processor.getClass().getDeclaredField("curIndex");
+    curIndexField.setAccessible(true);
+    curIndexField.setLong(processor, Long.MAX_VALUE);
+
+    ColumnBuilder properBuilder = Mockito.mock(ColumnBuilder.class);
+    ColumnBuilder passThroughBuilder = Mockito.mock(ColumnBuilder.class);
+
+    processor.process(
+        Mockito.mock(Record.class), Collections.singletonList(properBuilder), passThroughBuilder);
+
+    Mockito.verify(properBuilder).writeLong(1L);
+    Mockito.verify(passThroughBuilder).writeLong(Long.MAX_VALUE);
+  }
+
+  @Test
+  public void testLastWindowIndexDoesNotLoopForever() throws Exception {
+    TableFunctionDataProcessor processor = newProcessor(1, 1);
+    Field curIndexField = processor.getClass().getDeclaredField("curIndex");
+    curIndexField.setAccessible(true);
+    curIndexField.setLong(processor, Long.MAX_VALUE);
+
+    ColumnBuilder properBuilder = Mockito.mock(ColumnBuilder.class);
+    ColumnBuilder passThroughBuilder = Mockito.mock(ColumnBuilder.class);
+
+    processor.process(
+        Mockito.mock(Record.class), Collections.singletonList(properBuilder), passThroughBuilder);
+
+    Mockito.verify(properBuilder).writeLong(Long.MAX_VALUE);
+    Mockito.verify(passThroughBuilder).writeLong(Long.MAX_VALUE);
   }
 
   @Test
