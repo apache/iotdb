@@ -178,6 +178,72 @@ public class LogDispatcherTest {
   }
 
   @Test
+  public void testBatchAccumulationStopsWhenMemoryLimitIsReached() throws Exception {
+    final Peer localPeer = createPeer(1, 6697);
+    final Peer remotePeer = createPeer(2, 6698);
+    final IoTConsensusConfig config =
+        IoTConsensusConfig.newBuilder()
+            .setReplication(
+                IoTConsensusConfig.Replication.newBuilder()
+                    .setMaxLogEntriesNumPerBatch(1024)
+                    .setMaxSizePerBatch(1)
+                    .setMaxWaitingTimeForAccumulatingBatchInMs(10_000)
+                    .build())
+            .build();
+    final ScheduledExecutorService backgroundTaskService =
+        Executors.newSingleThreadScheduledExecutor();
+    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    LogDispatcher.LogDispatcherThread dispatcherThread = null;
+    Future<?> dispatcherFuture = null;
+    try {
+      final IoTConsensusServerImpl server =
+          createServer(
+              localPeer, Collections.singletonList(localPeer), config, backgroundTaskService);
+      final CountDownLatch batchSent = new CountDownLatch(1);
+      final AtomicInteger getBatchInvocations = new AtomicInteger();
+      dispatcherThread =
+          server.getLogDispatcher().new LogDispatcherThread(remotePeer, config, 0) {
+            @Override
+            public Batch getBatch() {
+              return getBatchInvocations.getAndIncrement() == 0
+                  ? new Batch(config)
+                  : createBatch(config, 1);
+            }
+
+            @Override
+            public void sendBatchAsync(Batch sentBatch, DispatchLogHandler handler) {
+              assertEquals(1, getPendingEntriesSize());
+              assertEquals(1, getBufferRequestSize());
+              batchSent.countDown();
+              Thread.currentThread().interrupt();
+            }
+          };
+      final IndexedConsensusRequest firstRequest =
+          new IndexedConsensusRequest(1, Collections.singletonList(new TestEntry(1, localPeer)));
+      firstRequest.buildSerializedRequests();
+      final IndexedConsensusRequest secondRequest =
+          new IndexedConsensusRequest(2, Collections.singletonList(new TestEntry(2, localPeer)));
+      secondRequest.buildSerializedRequests();
+      assertTrue(dispatcherThread.offer(firstRequest));
+      assertTrue(dispatcherThread.offer(secondRequest));
+
+      dispatcherFuture = executorService.submit(dispatcherThread);
+      assertTrue(batchSent.await(2, TimeUnit.SECONDS));
+      dispatcherFuture.get(2, TimeUnit.SECONDS);
+    } finally {
+      if (dispatcherFuture != null) {
+        dispatcherFuture.cancel(true);
+      }
+      executorService.shutdownNow();
+      executorService.awaitTermination(5, TimeUnit.SECONDS);
+      if (dispatcherThread != null) {
+        dispatcherThread.stop();
+      }
+      backgroundTaskService.shutdownNow();
+    }
+  }
+
+  @Test
   public void testReloadConfigUpdatesExistingDispatcherPipeline() throws Exception {
     final Peer localPeer = createPeer(1, 6677);
     final Peer remotePeer = createPeer(2, 6678);
