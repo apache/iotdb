@@ -49,6 +49,7 @@ public class FirstAccumulator implements TableAccumulator {
   protected final TSDataType seriesDataType;
   protected final Type type;
   private final TypeServices.PrimitiveColumnValueSetter valueSetter;
+  private final TypeServices.StatisticsValueSetter statisticsValueSetter;
   protected TsPrimitiveType firstValue;
   protected long minTime = Long.MAX_VALUE;
   protected boolean initResult = false;
@@ -60,6 +61,7 @@ public class FirstAccumulator implements TableAccumulator {
     this.type = Type.fromTsDataType(seriesDataType);
     this.firstValue = type.getTsPrimitiveType();
     this.valueSetter = TypeServices.PRIMITIVE_COLUMN_VALUE_SETTER_SERVICE.call(type);
+    this.statisticsValueSetter = TypeServices.STATISTICS_VALUE_SETTER_SERVICE.call(type);
     this.canFinishAfterInit = canFinishAfterInit;
   }
 
@@ -169,53 +171,18 @@ public class FirstAccumulator implements TableAccumulator {
     if (statistics == null || statistics[0] == null) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntFirstValue(
-            ((Number) statistics[0].getFirstValue()).intValue(), statistics[0].getStartTime());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongFirstValue(
-            ((Number) statistics[0].getFirstValue()).longValue(), statistics[0].getStartTime());
-        break;
-      case FLOAT:
-        updateFloatFirstValue(
-            ((Number) statistics[0].getFirstValue()).floatValue(), statistics[0].getStartTime());
-        break;
-      case DOUBLE:
-        updateDoubleFirstValue(
-            ((Number) statistics[0].getFirstValue()).doubleValue(), statistics[0].getStartTime());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        if (statistics[0] instanceof DateStatistics) {
-          updateBinaryFirstValue(
-              new Binary(
-                  TSDataType.getDateStringValue((Integer) statistics[0].getFirstValue()),
-                  StandardCharsets.UTF_8),
-              statistics[0].getStartTime());
-        } else {
-          if (statistics[0].getFirstValue() instanceof Binary) {
-            updateBinaryFirstValue(
-                (Binary) statistics[0].getFirstValue(), statistics[0].getStartTime());
-          } else {
-            updateBinaryFirstValue(
-                new Binary(String.valueOf(statistics[0].getFirstValue()), StandardCharsets.UTF_8),
-                statistics[0].getStartTime());
-          }
-        }
-        break;
-      case BOOLEAN:
-        updateBooleanFirstValue(
-            (boolean) statistics[0].getFirstValue(), statistics[0].getStartTime());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_AGGREGATION, seriesDataType));
+    Object value = statistics[0].getFirstValue();
+    if (statistics[0] instanceof DateStatistics) {
+      value = new Binary(TSDataType.getDateStringValue((Integer) value), StandardCharsets.UTF_8);
+    }
+    if (checkAndUpdateFirstTime(statistics[0].getStartTime())) {
+      statisticsValueSetter.set(
+          firstValue,
+          value,
+          () ->
+              new UnSupportedDataTypeException(
+                  String.format(
+                      CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_AGGREGATION, seriesDataType)));
     }
   }
 

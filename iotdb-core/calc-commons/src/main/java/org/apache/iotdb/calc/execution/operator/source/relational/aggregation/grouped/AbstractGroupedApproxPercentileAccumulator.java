@@ -32,7 +32,6 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
@@ -42,6 +41,7 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
       RamUsageEstimator.shallowSizeOfInstance(GroupedApproxPercentileAccumulator.class);
   protected final TSDataType seriesDataType;
   private final TypeServices.NumericResultWriter resultWriter;
+  private final TypeServices.TriConsumer<int[], Column[], AggregationMask> inputAdder;
   protected double percentage;
   protected final TDigestBigArray array = new TDigestBigArray();
 
@@ -49,6 +49,10 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
     this.seriesDataType = seriesDataType;
     this.resultWriter =
         TypeServices.NUMERIC_RESULT_WRITER_SERVICE.call(Type.fromTsDataType(seriesDataType));
+    this.inputAdder =
+        TypeServices.GROUPED_APPROX_PERCENTILE_INPUT_SERVICE
+            .call(Type.fromTsDataType(seriesDataType))
+            .apply(this);
   }
 
   @Override
@@ -73,26 +77,7 @@ public abstract class AbstractGroupedApproxPercentileAccumulator implements Grou
               CalcMessages.APPROX_PERCENTILE_REQUIRES_TWO_OR_THREE_ARGUMENTS, arguments.length));
     }
 
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(groupIds, arguments, mask);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(groupIds, arguments, mask);
-        break;
-      case FLOAT:
-        addFloatInput(groupIds, arguments, mask);
-        break;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments, mask);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_APPROX_PERCENTILE_AGGREGATION,
-                seriesDataType));
-    }
+    inputAdder.accept(groupIds, arguments, mask);
   }
 
   @Override

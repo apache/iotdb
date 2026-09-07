@@ -25,7 +25,6 @@ import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
@@ -33,7 +32,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.nio.charset.StandardCharsets;
+import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -43,6 +42,7 @@ public class MinAccumulator implements TableAccumulator {
   private final TSDataType seriesDataType;
   private final Type type;
   private final TypeServices.ColumnValueUpdater valueUpdater;
+  private final TypeServices.StatisticsValueUpdater statisticsValueUpdater;
   private final TsPrimitiveType minResult;
   private boolean initResult;
 
@@ -51,6 +51,7 @@ public class MinAccumulator implements TableAccumulator {
     this.type = Type.fromTsDataType(seriesDataType);
     this.minResult = type.getTsPrimitiveType();
     this.valueUpdater = TypeServices.MIN_COLUMN_VALUE_UPDATER_SERVICE.call(type);
+    this.statisticsValueUpdater = TypeServices.MIN_STATISTICS_VALUE_UPDATER_SERVICE.call(type);
   }
 
   @Override
@@ -112,41 +113,14 @@ public class MinAccumulator implements TableAccumulator {
     if (statistics == null || statistics[0] == null) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntMinValue(((Number) statistics[0].getMinValue()).intValue());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongMinValue(((Number) statistics[0].getMinValue()).longValue());
-        break;
-      case FLOAT:
-        updateFloatMinValue(((Number) statistics[0].getMinValue()).floatValue());
-        break;
-      case DOUBLE:
-        updateDoubleMinValue(((Number) statistics[0].getMinValue()).doubleValue());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        if (statistics[0] instanceof BinaryStatistics) {
-          updateBinaryMinValue((Binary) statistics[0].getMinValue());
-        } else {
-          if (statistics[0].getMinValue() instanceof Binary) {
-            updateBinaryMinValue((Binary) statistics[0].getMinValue());
-          } else {
-            updateBinaryMinValue(
-                new Binary(String.valueOf(statistics[0].getMinValue()), StandardCharsets.UTF_8));
-          }
-        }
-        break;
-      case BOOLEAN:
-        updateBooleanMinValue((boolean) statistics[0].getMinValue());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MIN_AGGREGATION, seriesDataType));
+    Supplier<RuntimeException> exceptionSupplier =
+        () ->
+            new UnSupportedDataTypeException(
+                String.format(
+                    CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MIN_AGGREGATION, seriesDataType));
+    if (statisticsValueUpdater.update(
+        minResult, statistics[0].getMinValue(), initResult, exceptionSupplier)) {
+      initResult = true;
     }
   }
 

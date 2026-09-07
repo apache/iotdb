@@ -28,6 +28,7 @@ public final class CalcMessages {
   public static final String ARRAYS_NOT_SAME_LENGTH = "Arrays not same length";
   public static final String CANNOT_ADD_NAN_TO_T_DIGEST = "Cannot add NaN to t-digest";
   public static final String CANNOT_CAST_TO_BOOLEAN = "\"%s\" cannot be cast to [BOOLEAN]";
+  public static final String CANNOT_CAST_TO_TYPE = "\"%s\" cannot be cast to [%s]";
   public static final String CANNOT_PARSE_STRING_TO_DOUBLE = "Cannot parse String to double: ";
   public static final String CANT_HAPPEN_LOOP_FELL_THROUGH =
       "Can't happen ... loop fell through";
@@ -73,6 +74,8 @@ public final class CalcMessages {
   public static final String INITIAL_CAPACITY_EXCEEDS_LIMIT = "Initial capacity (%d) exceeds %d";
   public static final String INPUT_ROW_UTILS_SHOULD_NOT_BE_INSTANTIATED =
       "InputRowUtils should not be instantiated.";
+  public static final String IN_LIST_LITERAL_FOR_TIMESTAMP_TYPE_RESTRICTION =
+      "InList Literal for TIMESTAMP can only be LongLiteral, DoubleLiteral and GenericLiteral, current is %s";
   public static final String INVALID_AGGREGATION_FUNCTION = "Invalid Aggregation function: ";
   public static final String INVALID_TEXT_INPUT_FOR_BOOLEAN =
       "Invalid text input for boolean type: %s";

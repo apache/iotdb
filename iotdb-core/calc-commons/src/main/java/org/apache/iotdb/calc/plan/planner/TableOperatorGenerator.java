@@ -42,12 +42,6 @@ import org.apache.iotdb.calc.execution.operator.process.TableTopKOperator;
 import org.apache.iotdb.calc.execution.operator.process.ValuesOperator;
 import org.apache.iotdb.calc.execution.operator.process.fill.IFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.BinaryConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.BooleanConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.DoubleConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.FloatConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.IntConstantFill;
-import org.apache.iotdb.calc.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.calc.execution.operator.process.function.TableFunctionLeafOperator;
 import org.apache.iotdb.calc.execution.operator.process.function.TableFunctionOperator;
 import org.apache.iotdb.calc.execution.operator.process.gapfill.GapFillWGroupWMoOperator;
@@ -97,15 +91,6 @@ import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
-import org.apache.iotdb.calc.plan.relational.planner.CastToBlobLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToBooleanLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToDateLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToDoubleLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToFloatLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToInt32LiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToInt64LiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToStringLiteralVisitor;
-import org.apache.iotdb.calc.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.calc.utils.TypeServices;
@@ -180,13 +165,11 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -214,9 +197,7 @@ import static org.apache.iotdb.calc.execution.operator.process.rowpattern.Physic
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory.createBuiltinAccumulator;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
-import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.IDENTITY_FILL;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
-import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getLinearFill;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getNextFill;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getPreviousFill;
@@ -697,85 +678,10 @@ public abstract class TableOperatorGenerator<
       int inputColumnCount, List<TSDataType> inputDataTypes, Literal filledValue, C context) {
     IFill[] constantFill = new IFill[inputColumnCount];
     for (int i = 0; i < inputColumnCount; i++) {
-      switch (inputDataTypes.get(i)) {
-        case BOOLEAN:
-          Boolean bool = filledValue.accept(new CastToBooleanLiteralVisitor(), null);
-          if (bool == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new BooleanConstantFill(bool);
-          }
-          break;
-        case TEXT:
-        case STRING:
-          Binary binary =
-              filledValue.accept(new CastToStringLiteralVisitor(TSFileConfig.STRING_CHARSET), null);
-          if (binary == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new BinaryConstantFill(binary);
-          }
-          break;
-        case BLOB:
-          Binary blob = filledValue.accept(new CastToBlobLiteralVisitor(), null);
-          if (blob == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new BinaryConstantFill(blob);
-          }
-          break;
-        case INT32:
-          Integer intValue = filledValue.accept(new CastToInt32LiteralVisitor(), null);
-          if (intValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new IntConstantFill(intValue);
-          }
-          break;
-        case DATE:
-          Integer dateValue = filledValue.accept(new CastToDateLiteralVisitor(), null);
-          if (dateValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new IntConstantFill(dateValue);
-          }
-          break;
-        case INT64:
-          Long longValue = filledValue.accept(new CastToInt64LiteralVisitor(), null);
-          if (longValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new LongConstantFill(longValue);
-          }
-          break;
-        case TIMESTAMP:
-          Long timestampValue =
-              filledValue.accept(new CastToTimestampLiteralVisitor(context.getZoneId()), null);
-          if (timestampValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new LongConstantFill(timestampValue);
-          }
-          break;
-        case FLOAT:
-          Float floatValue = filledValue.accept(new CastToFloatLiteralVisitor(), null);
-          if (floatValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new FloatConstantFill(floatValue);
-          }
-          break;
-        case DOUBLE:
-          Double doubleValue = filledValue.accept(new CastToDoubleLiteralVisitor(), null);
-          if (doubleValue == null) {
-            constantFill[i] = IDENTITY_FILL;
-          } else {
-            constantFill[i] = new DoubleConstantFill(doubleValue);
-          }
-          break;
-        default:
-          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
-      }
+      constantFill[i] =
+          TypeServices.VALUE_FILL_SERVICE
+              .call(Type.fromTsDataType(inputDataTypes.get(i)))
+              .create(filledValue, context.getZoneId());
     }
     return constantFill;
   }

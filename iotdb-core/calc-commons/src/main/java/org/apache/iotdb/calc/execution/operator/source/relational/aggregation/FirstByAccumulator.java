@@ -37,7 +37,6 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.serializeTimeValueWithNull;
@@ -57,6 +56,7 @@ public class FirstByAccumulator implements TableAccumulator {
 
   private final Type xType;
   private final TypeServices.PrimitiveColumnValueSetter xValueSetter;
+  private final TypeServices.StatisticsValueSetter xStatisticsValueSetter;
   private final TsPrimitiveType xResult;
   private boolean xIsNull = true;
 
@@ -78,6 +78,7 @@ public class FirstByAccumulator implements TableAccumulator {
 
     this.xType = Type.fromTsDataType(xDataType);
     this.xValueSetter = TypeServices.PRIMITIVE_COLUMN_VALUE_SETTER_SERVICE.call(xType);
+    this.xStatisticsValueSetter = TypeServices.STATISTICS_VALUE_SETTER_SERVICE.call(xType);
     this.xResult = xType.getTsPrimitiveType();
     this.canFinishAfterInit = canFinishAfterInit;
   }
@@ -195,41 +196,13 @@ public class FirstByAccumulator implements TableAccumulator {
           yFirstTime = yStatistics.getStartTime();
           xIsNull = false;
 
-          switch (xDataType) {
-            case INT32:
-            case DATE:
-              xResult.setInt(((Number) xStatistics.getFirstValue()).intValue());
-              break;
-            case INT64:
-            case TIMESTAMP:
-              xResult.setLong(((Number) xStatistics.getFirstValue()).longValue());
-              break;
-            case FLOAT:
-              xResult.setFloat(((Number) statistics[0].getFirstValue()).floatValue());
-              break;
-            case DOUBLE:
-              xResult.setDouble(((Number) statistics[0].getFirstValue()).doubleValue());
-              break;
-            case TEXT:
-            case BLOB:
-            case OBJECT:
-            case STRING:
-              if (statistics[0].getFirstValue() instanceof Binary) {
-                xResult.setBinary((Binary) statistics[0].getFirstValue());
-              } else {
-                xResult.setBinary(
-                    new Binary(
-                        String.valueOf(statistics[0].getFirstValue()), StandardCharsets.UTF_8));
-              }
-              break;
-            case BOOLEAN:
-              xResult.setBoolean((boolean) statistics[0].getFirstValue());
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format(
-                      CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, yDataType));
-          }
+          xStatisticsValueSetter.set(
+              xResult,
+              xStatistics.getFirstValue(),
+              () ->
+                  new UnSupportedDataTypeException(
+                      String.format(
+                          CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, yDataType)));
         }
       }
     } else {

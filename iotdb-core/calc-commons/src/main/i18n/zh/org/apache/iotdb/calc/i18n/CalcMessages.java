@@ -28,6 +28,7 @@ public final class CalcMessages {
   public static final String ARRAYS_NOT_SAME_LENGTH = "数组长度不一致";
   public static final String CANNOT_ADD_NAN_TO_T_DIGEST = "不能将 NaN 添加到 t-digest";
   public static final String CANNOT_CAST_TO_BOOLEAN = "\"%s\" 无法转换为 [BOOLEAN]";
+  public static final String CANNOT_CAST_TO_TYPE = "\"%s\" 无法转换为 [%s]";
   public static final String CANNOT_PARSE_STRING_TO_DOUBLE = "无法将字符串解析为 double：";
   public static final String CANT_HAPPEN_LOOP_FELL_THROUGH = "不应发生……循环穿透";
   public static final String COUNT_ALL_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS =
@@ -71,6 +72,8 @@ public final class CalcMessages {
   public static final String INITIAL_CAPACITY_EXCEEDS_LIMIT = "初始容量 (%d) 超过 %d";
   public static final String INPUT_ROW_UTILS_SHOULD_NOT_BE_INSTANTIATED =
       "InputRowUtils 不应被实例化。";
+  public static final String IN_LIST_LITERAL_FOR_TIMESTAMP_TYPE_RESTRICTION =
+      "TIMESTAMP 的 InList 字面量只能是 LongLiteral、DoubleLiteral 和 GenericLiteral，当前为 %s";
   public static final String INVALID_AGGREGATION_FUNCTION = "无效的聚合函数：";
   public static final String INVALID_TEXT_INPUT_FOR_BOOLEAN =
       "布尔类型的文本输入无效：%s";

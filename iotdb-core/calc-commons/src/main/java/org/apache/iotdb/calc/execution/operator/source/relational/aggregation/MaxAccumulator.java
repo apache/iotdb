@@ -25,7 +25,6 @@ import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
@@ -33,7 +32,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.nio.charset.StandardCharsets;
+import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -43,6 +42,7 @@ public class MaxAccumulator implements TableAccumulator {
   private final TSDataType seriesDataType;
   private final Type type;
   private final TypeServices.ColumnValueUpdater valueUpdater;
+  private final TypeServices.StatisticsValueUpdater statisticsValueUpdater;
   private final TsPrimitiveType maxResult;
   private boolean initResult;
 
@@ -51,6 +51,7 @@ public class MaxAccumulator implements TableAccumulator {
     this.type = Type.fromTsDataType(seriesDataType);
     this.maxResult = type.getTsPrimitiveType();
     this.valueUpdater = TypeServices.MAX_COLUMN_VALUE_UPDATER_SERVICE.call(type);
+    this.statisticsValueUpdater = TypeServices.MAX_STATISTICS_VALUE_UPDATER_SERVICE.call(type);
   }
 
   @Override
@@ -112,41 +113,14 @@ public class MaxAccumulator implements TableAccumulator {
     if (statistics == null || statistics[0] == null) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntMaxValue(((Number) statistics[0].getMaxValue()).intValue());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongMaxValue(((Number) statistics[0].getMaxValue()).longValue());
-        break;
-      case FLOAT:
-        updateFloatMaxValue(((Number) statistics[0].getMaxValue()).floatValue());
-        break;
-      case DOUBLE:
-        updateDoubleMaxValue(((Number) statistics[0].getMaxValue()).doubleValue());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        if (statistics[0] instanceof BinaryStatistics) {
-          updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
-        } else {
-          if (statistics[0].getMaxValue() instanceof Binary) {
-            updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
-          } else {
-            updateBinaryMaxValue(
-                new Binary(String.valueOf(statistics[0].getMaxValue()), StandardCharsets.UTF_8));
-          }
-        }
-        break;
-      case BOOLEAN:
-        updateBooleanMaxValue((boolean) statistics[0].getMaxValue());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_AGGREGATION, seriesDataType));
+    Supplier<RuntimeException> exceptionSupplier =
+        () ->
+            new UnSupportedDataTypeException(
+                String.format(
+                    CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_AGGREGATION, seriesDataType));
+    if (statisticsValueUpdater.update(
+        maxResult, statistics[0].getMaxValue(), initResult, exceptionSupplier)) {
+      initResult = true;
     }
   }
 

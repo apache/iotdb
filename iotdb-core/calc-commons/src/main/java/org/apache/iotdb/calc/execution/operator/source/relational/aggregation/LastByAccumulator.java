@@ -56,6 +56,7 @@ public class LastByAccumulator implements TableAccumulator {
 
   private final Type xType;
   private final TypeServices.PrimitiveColumnValueSetter xValueSetter;
+  private final TypeServices.StatisticsValueSetter xStatisticsValueSetter;
   private final TsPrimitiveType xResult;
   private boolean xIsNull = true;
 
@@ -70,6 +71,7 @@ public class LastByAccumulator implements TableAccumulator {
     this.yIsTimeColumn = yIsTimeColumn;
     this.xType = Type.fromTsDataType(xDataType);
     this.xValueSetter = TypeServices.PRIMITIVE_COLUMN_VALUE_SETTER_SERVICE.call(xType);
+    this.xStatisticsValueSetter = TypeServices.STATISTICS_VALUE_SETTER_SERVICE.call(xType);
     this.xResult = xType.getTsPrimitiveType();
   }
 
@@ -201,35 +203,13 @@ public class LastByAccumulator implements TableAccumulator {
           yLastTime = yStatistics.getEndTime();
           xIsNull = false;
 
-          switch (xDataType) {
-            case INT32:
-            case DATE:
-              xResult.setInt(((Number) xStatistics.getLastValue()).intValue());
-              break;
-            case INT64:
-            case TIMESTAMP:
-              xResult.setLong(((Number) xStatistics.getLastValue()).longValue());
-              break;
-            case FLOAT:
-              xResult.setFloat(((Number) statistics[0].getLastValue()).floatValue());
-              break;
-            case DOUBLE:
-              xResult.setDouble(((Number) statistics[0].getLastValue()).doubleValue());
-              break;
-            case TEXT:
-            case BLOB:
-            case STRING:
-            case OBJECT:
-              xResult.setBinary((Binary) statistics[0].getLastValue());
-              break;
-            case BOOLEAN:
-              xResult.setBoolean((boolean) statistics[0].getLastValue());
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format(
-                      CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, yDataType));
-          }
+          xStatisticsValueSetter.set(
+              xResult,
+              xStatistics.getLastValue(),
+              () ->
+                  new UnSupportedDataTypeException(
+                      String.format(
+                          CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_BY_AGGREGATION, yDataType)));
         }
       }
     } else {

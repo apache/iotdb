@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
 
 import java.time.ZoneId;
 
@@ -37,47 +36,9 @@ public class TryCastFunctionColumnTransformer extends AbstractCastFunctionColumn
   }
 
   @Override
-  protected void transform(
-      Column column, ColumnBuilder columnBuilder, TypeEnum sourceType, Type childType, int i) {
+  protected void transform(Column column, ColumnBuilder columnBuilder, int i) {
     try {
-      switch (sourceType) {
-        case INT32:
-          cast(columnBuilder, childType.getInt(column, i));
-          break;
-        case DATE:
-          castDate(columnBuilder, childType.getInt(column, i));
-          break;
-        case INT64:
-          cast(columnBuilder, childType.getLong(column, i));
-          break;
-        case TIMESTAMP:
-          castTimestamp(columnBuilder, childType.getLong(column, i));
-          break;
-        case FLOAT:
-          cast(columnBuilder, childType.getFloat(column, i));
-          break;
-        case DOUBLE:
-          cast(columnBuilder, childType.getDouble(column, i));
-          break;
-        case BOOLEAN:
-          cast(columnBuilder, childType.getBoolean(column, i));
-          break;
-        case TEXT:
-        case STRING:
-          castString(columnBuilder, childType.getBinary(column, i));
-          break;
-        case BLOB:
-          castBlob(columnBuilder, childType.getBinary(column, i));
-          break;
-        case OBJECT:
-          castObject(columnBuilder, childType.getBinary(column, i));
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              String.format(
-                  "Unsupported source dataType: %s",
-                  childColumnTransformer.getType().getTypeEnum()));
-      }
+      castSourceValue(column, columnBuilder, i);
     } catch (IoTDBRuntimeException e) {
       columnBuilder.appendNull();
     }

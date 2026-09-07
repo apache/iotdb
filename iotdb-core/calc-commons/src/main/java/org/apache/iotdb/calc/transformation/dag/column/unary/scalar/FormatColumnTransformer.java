@@ -21,15 +21,13 @@ package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.multi.MultiColumnTransformer;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 
 import java.time.ZoneId;
 import java.util.IllegalFormatConversionException;
@@ -42,11 +40,18 @@ import static org.apache.iotdb.pipe.api.type.Binary.stringToBytes;
 public class FormatColumnTransformer extends MultiColumnTransformer {
 
   private final ZoneId zoneId;
+  private final TypeServices.FormatValueConverter[] valueConverters;
 
   public FormatColumnTransformer(
       Type returnType, List<ColumnTransformer> columnTransformerList, ZoneId zoneId) {
     super(returnType, columnTransformerList);
     this.zoneId = zoneId;
+    this.valueConverters = new TypeServices.FormatValueConverter[columnTransformerList.size() - 1];
+    for (int i = 0; i < valueConverters.length; i++) {
+      valueConverters[i] =
+          TypeServices.FORMAT_VALUE_CONVERTER_SERVICE.call(
+              columnTransformerList.get(i + 1).getType());
+    }
   }
 
   @Override
@@ -75,11 +80,10 @@ public class FormatColumnTransformer extends MultiColumnTransformer {
     String pattern = String.valueOf(childrenColumns.get(0).getBinary(i));
     for (int j = 0; j < valueColumns.size(); j++) {
       Column column = valueColumns.get(j);
-      TypeEnum type = columnTransformerList.get(j + 1).getType().getTypeEnum();
       if (column.isNull(i)) {
         values[j] = null;
       } else {
-        values[j] = valueConverter(type, column, i);
+        values[j] = valueConverters[j].convert(column, i, zoneId);
       }
     }
     try {
@@ -89,29 +93,6 @@ public class FormatColumnTransformer extends MultiColumnTransformer {
       String message = e.toString().replaceFirst("^java\\.util\\.(\\w+)Exception", "$1");
       throw new SemanticException(
           String.format("Invalid format string: %s (%s)", pattern, message));
-    }
-  }
-
-  private Object valueConverter(TypeEnum type, Column column, int i) {
-    switch (type) {
-      case UNKNOWN:
-        return null;
-      case INT32:
-      case INT64:
-      case FLOAT:
-      case DOUBLE:
-      case BOOLEAN:
-      case TEXT:
-      case STRING:
-      case BLOB:
-        return column.getObject(i);
-      case DATE:
-        return DateUtils.parseIntToLocalDate(column.getInt(i));
-      case TIMESTAMP:
-        return DateTimeUtils.convertToZonedDateTime(column.getLong(i), zoneId);
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported source dataType: %s", type));
     }
   }
 

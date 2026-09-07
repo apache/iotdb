@@ -49,6 +49,7 @@ public class LastAccumulator implements TableAccumulator, TypeServices.LastValue
   protected final TSDataType seriesDataType;
   protected final Type type;
   private final TypeServices.PrimitiveColumnValueSetter valueSetter;
+  private final TypeServices.StatisticsValueSetter statisticsValueSetter;
   private final TypeServices.LastValueDeserializer valueDeserializer;
   protected TsPrimitiveType lastValue;
   protected long maxTime = Long.MIN_VALUE;
@@ -60,6 +61,7 @@ public class LastAccumulator implements TableAccumulator, TypeServices.LastValue
     this.type = Type.fromTsDataType(seriesDataType);
     this.lastValue = type.getTsPrimitiveType();
     this.valueSetter = TypeServices.PRIMITIVE_COLUMN_VALUE_SETTER_SERVICE.call(type);
+    this.statisticsValueSetter = TypeServices.STATISTICS_VALUE_SETTER_SERVICE.call(type);
     this.valueDeserializer = TypeServices.LAST_VALUE_DESERIALIZER_SERVICE.call(type);
   }
 
@@ -227,52 +229,18 @@ public class LastAccumulator implements TableAccumulator, TypeServices.LastValue
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntLastValue(
-            ((Number) statistics[0].getLastValue()).intValue(), statistics[0].getEndTime());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongLastValue(
-            ((Number) statistics[0].getLastValue()).longValue(), statistics[0].getEndTime());
-        break;
-      case FLOAT:
-        updateFloatLastValue(
-            ((Number) statistics[0].getLastValue()).floatValue(), statistics[0].getEndTime());
-        break;
-      case DOUBLE:
-        updateDoubleLastValue(
-            ((Number) statistics[0].getLastValue()).doubleValue(), statistics[0].getEndTime());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        if (statistics[0] instanceof DateStatistics) {
-          updateBinaryLastValue(
-              new Binary(
-                  TSDataType.getDateStringValue((Integer) statistics[0].getLastValue()),
-                  StandardCharsets.UTF_8),
-              statistics[0].getEndTime());
-        } else {
-          if (statistics[0].getLastValue() instanceof Binary) {
-            updateBinaryLastValue(
-                (Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
-          } else {
-            updateBinaryLastValue(
-                new Binary(String.valueOf(statistics[0].getLastValue()), StandardCharsets.UTF_8),
-                statistics[0].getEndTime());
-          }
-        }
-        break;
-      case BOOLEAN:
-        updateBooleanLastValue((boolean) statistics[0].getLastValue(), statistics[0].getEndTime());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_AGGREGATION, seriesDataType));
+    Object value = statistics[0].getLastValue();
+    if (statistics[0] instanceof DateStatistics) {
+      value = new Binary(TSDataType.getDateStringValue((Integer) value), StandardCharsets.UTF_8);
+    }
+    if (checkAndUpdateLastTime(statistics[0].getEndTime())) {
+      statisticsValueSetter.set(
+          lastValue,
+          value,
+          () ->
+              new UnSupportedDataTypeException(
+                  String.format(
+                      CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_AGGREGATION, seriesDataType)));
     }
   }
 

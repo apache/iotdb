@@ -38,7 +38,6 @@ import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -48,13 +47,24 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.utils.BytesUtils.boolToBytes;
 
 /** max(x,y) returns the value of x associated with the maximum value of y over all input values. */
-public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulator {
+public abstract class GroupedMaxMinByBaseAccumulator
+    implements GroupedAccumulator, TypeServices.GroupedMaxMinByValueUpdater {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedAccumulator.class);
 
   private final TSDataType xDataType;
 
   private final TSDataType yDataType;
+  private final Type xType;
+  private final TypeServices.GroupedValueService xValueService;
+  private final TypeServices.GroupedValueService yValueService;
+  private final TypeServices.GroupedValueSerializer xValueSerializer;
+  private final TypeServices.GroupedValueSerializer yValueSerializer;
+  private final TypeServices.GroupedValueSetter xValueSetter;
+  private final TypeServices.GroupedMaxMinByInput inputReader;
+  private final TypeServices.GroupedMaxMinByIntermediateInput intermediateInputReader;
+  private final TypeServices.GroupedValueAccessor xValueAccessor = new ValueAccessor(true);
+  private final TypeServices.GroupedValueAccessor yValueAccessor = new ValueAccessor(false);
 
   private final BooleanBigArray inits = new BooleanBigArray();
 
@@ -77,13 +87,18 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   protected GroupedMaxMinByBaseAccumulator(TSDataType xDataType, TSDataType yDataType) {
     this.xDataType = xDataType;
     this.yDataType = yDataType;
-
-    TypeServices.INTERMEDIATE_VALUE_INITIALIZER_SERVICE
-        .call(Type.fromTsDataType(xDataType))
-        .initialize(this, true);
-    TypeServices.INTERMEDIATE_VALUE_INITIALIZER_SERVICE
-        .call(Type.fromTsDataType(yDataType))
-        .initialize(this, false);
+    this.xType = Type.fromTsDataType(xDataType);
+    Type yType = Type.fromTsDataType(yDataType);
+    this.xValueService = TypeServices.GROUPED_VALUE_SERVICE.call(xType);
+    this.yValueService = TypeServices.GROUPED_VALUE_SERVICE.call(yType);
+    this.xValueSerializer = TypeServices.GROUPED_VALUE_SERIALIZER_SERVICE.call(xType);
+    this.yValueSerializer = TypeServices.GROUPED_VALUE_SERIALIZER_SERVICE.call(yType);
+    this.xValueSetter = TypeServices.GROUPED_VALUE_SETTER_SERVICE.call(xType);
+    this.inputReader = TypeServices.GROUPED_MAX_MIN_BY_INPUT_SERVICE.call(yType);
+    this.intermediateInputReader =
+        TypeServices.GROUPED_MAX_MIN_BY_INTERMEDIATE_INPUT_SERVICE.call(yType);
+    xValueService.initialize(xValueAccessor);
+    yValueService.initialize(yValueAccessor);
   }
 
   public LongBigArray getXLongValues() {
@@ -184,132 +199,19 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
 
   @Override
   public long getEstimatedSize() {
-    long valuesSize = 0;
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        valuesSize += xIntValues.sizeOf();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        valuesSize += xLongValues.sizeOf();
-        break;
-      case FLOAT:
-        valuesSize += xFloatValues.sizeOf();
-        break;
-      case DOUBLE:
-        valuesSize += xDoubleValues.sizeOf();
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        valuesSize += xBinaryValues.sizeOf();
-        break;
-      case BOOLEAN:
-        valuesSize += xBooleanValues.sizeOf();
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
-    }
-
-    switch (yDataType) {
-      case INT32:
-      case DATE:
-        valuesSize += yIntValues.sizeOf();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        valuesSize += yLongValues.sizeOf();
-        break;
-      case FLOAT:
-        valuesSize += yFloatValues.sizeOf();
-        break;
-      case DOUBLE:
-        valuesSize += yDoubleValues.sizeOf();
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        valuesSize += yBinaryValues.sizeOf();
-        break;
-      case BOOLEAN:
-        valuesSize += yBooleanValues.sizeOf();
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
-    }
-
-    return INSTANCE_SIZE + valuesSize + inits.sizeOf() + xNulls.sizeOf();
+    return INSTANCE_SIZE
+        + xValueService.sizeOf(xValueAccessor)
+        + yValueService.sizeOf(yValueAccessor)
+        + inits.sizeOf()
+        + xNulls.sizeOf();
   }
 
   @Override
   public void setGroupCount(long groupCount) {
     inits.ensureCapacity(groupCount);
     xNulls.ensureCapacity(groupCount);
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        xIntValues.ensureCapacity(groupCount);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        xLongValues.ensureCapacity(groupCount);
-        break;
-      case FLOAT:
-        xFloatValues.ensureCapacity(groupCount);
-        break;
-      case DOUBLE:
-        xDoubleValues.ensureCapacity(groupCount);
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        xBinaryValues.ensureCapacity(groupCount);
-        break;
-      case BOOLEAN:
-        xBooleanValues.ensureCapacity(groupCount);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
-    }
-    switch (yDataType) {
-      case INT32:
-      case DATE:
-        yIntValues.ensureCapacity(groupCount);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        yLongValues.ensureCapacity(groupCount);
-        break;
-      case FLOAT:
-        yFloatValues.ensureCapacity(groupCount);
-        break;
-      case DOUBLE:
-        yDoubleValues.ensureCapacity(groupCount);
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        yBinaryValues.ensureCapacity(groupCount);
-        break;
-      case BOOLEAN:
-        yBooleanValues.ensureCapacity(groupCount);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
-    }
+    xValueService.ensureCapacity(xValueAccessor, groupCount);
+    yValueService.ensureCapacity(yValueAccessor, groupCount);
   }
 
   @Override
@@ -319,98 +221,13 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   public void reset() {
     inits.reset();
     xNulls.reset();
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        xIntValues.reset();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        xLongValues.reset();
-        break;
-      case FLOAT:
-        xFloatValues.reset();
-        break;
-      case DOUBLE:
-        xDoubleValues.reset();
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        xBinaryValues.reset();
-        break;
-      case BOOLEAN:
-        xBooleanValues.reset();
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
-    }
-
-    switch (yDataType) {
-      case INT32:
-      case DATE:
-        yIntValues.reset();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        yLongValues.reset();
-        break;
-      case FLOAT:
-        yFloatValues.reset();
-        break;
-      case DOUBLE:
-        yDoubleValues.reset();
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        yBinaryValues.reset();
-        break;
-      case BOOLEAN:
-        yBooleanValues.reset();
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, yDataType));
-    }
+    xValueService.reset(xValueAccessor);
+    yValueService.reset(yValueAccessor);
   }
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    switch (yDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(groupIds, arguments, mask);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(groupIds, arguments, mask);
-        return;
-      case FLOAT:
-        addFloatInput(groupIds, arguments, mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments, mask);
-        return;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        addBinaryInput(groupIds, arguments, mask);
-        return;
-      case BOOLEAN:
-        addBooleanInput(groupIds, arguments, mask);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, yDataType));
-    }
+    inputReader.add(groupIds, arguments, mask, this);
   }
 
   @Override
@@ -453,29 +270,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     writeX(groupId, columnBuilder);
   }
 
-  private void addIntInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!arguments[1].isNull(i)) {
-          updateIntResult(groupIds[i], arguments[1].getInt(i), arguments[0], i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!arguments[1].isNull(position)) {
-          updateIntResult(
-              groupIds[position], arguments[1].getInt(position), arguments[0], position);
-        }
-      }
-    }
-  }
-
-  private void updateIntResult(int groupId, int yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateInt(int groupId, int yValue, Column xColumn, int xIndex) {
     if (!inits.get(groupId) || check(yValue, yIntValues.get(groupId))) {
       inits.set(groupId, true);
       yIntValues.set(groupId, yValue);
@@ -483,29 +279,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addLongInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!arguments[1].isNull(i)) {
-          updateLongResult(groupIds[i], arguments[1].getLong(i), arguments[0], i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!arguments[1].isNull(position)) {
-          updateLongResult(
-              groupIds[position], arguments[1].getLong(position), arguments[0], position);
-        }
-      }
-    }
-  }
-
-  private void updateLongResult(int groupId, long yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateLong(int groupId, long yValue, Column xColumn, int xIndex) {
     if (!inits.get(groupId) || check(yValue, yLongValues.get(groupId))) {
       inits.set(groupId, true);
       yLongValues.set(groupId, yValue);
@@ -513,29 +288,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addFloatInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!arguments[1].isNull(i)) {
-          updateFloatResult(groupIds[i], arguments[1].getFloat(i), arguments[0], i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!arguments[1].isNull(position)) {
-          updateFloatResult(
-              groupIds[position], arguments[1].getFloat(position), arguments[0], position);
-        }
-      }
-    }
-  }
-
-  private void updateFloatResult(int groupId, float yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateFloat(int groupId, float yValue, Column xColumn, int xIndex) {
     if (!inits.get(groupId) || check(yValue, yFloatValues.get(groupId))) {
       inits.set(groupId, true);
       yFloatValues.set(groupId, yValue);
@@ -543,29 +297,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addDoubleInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!arguments[1].isNull(i)) {
-          updateDoubleResult(groupIds[i], arguments[1].getDouble(i), arguments[0], i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!arguments[1].isNull(position)) {
-          updateDoubleResult(
-              groupIds[position], arguments[1].getDouble(position), arguments[0], position);
-        }
-      }
-    }
-  }
-
-  private void updateDoubleResult(int groupId, double yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateDouble(int groupId, double yValue, Column xColumn, int xIndex) {
     if (!inits.get(groupId) || check(yValue, yDoubleValues.get(groupId))) {
       inits.set(groupId, true);
       yDoubleValues.set(groupId, yValue);
@@ -573,29 +306,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addBinaryInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!arguments[1].isNull(i)) {
-          updateBinaryResult(groupIds[i], arguments[1].getBinary(i), arguments[0], i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!arguments[1].isNull(position)) {
-          updateBinaryResult(
-              groupIds[position], arguments[1].getBinary(position), arguments[0], position);
-        }
-      }
-    }
-  }
-
-  private void updateBinaryResult(int groupId, Binary yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateBinary(int groupId, Binary yValue, Column xColumn, int xIndex) {
     if (!inits.get(groupId) || check(yValue, yBinaryValues.get(groupId))) {
       inits.set(groupId, true);
       yBinaryValues.set(groupId, yValue);
@@ -603,29 +315,8 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addBooleanInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!arguments[1].isNull(i)) {
-          updateBooleanResult(groupIds[i], arguments[1].getBoolean(i), arguments[0], i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!arguments[1].isNull(position)) {
-          updateBooleanResult(
-              groupIds[position], arguments[1].getBoolean(position), arguments[0], position);
-        }
-      }
-    }
-  }
-
-  private void updateBooleanResult(int groupId, boolean yValue, Column xColumn, int xIndex) {
+  @Override
+  public void updateBoolean(int groupId, boolean yValue, Column xColumn, int xIndex) {
     if (!inits.get(groupId) || check(yValue, yBooleanValues.get(groupId))) {
       inits.set(groupId, true);
       yBooleanValues.set(groupId, yValue);
@@ -638,35 +329,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       columnBuilder.appendNull();
       return;
     }
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(xIntValues.get(groupId));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(xLongValues.get(groupId));
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(xFloatValues.get(groupId));
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(xDoubleValues.get(groupId));
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        columnBuilder.writeBinary(xBinaryValues.get(groupId));
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(xBooleanValues.get(groupId));
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
-    }
+    xValueService.write(xValueAccessor, groupId, columnBuilder);
   }
 
   private void updateX(int groupId, Column xColumn, int xIndex) {
@@ -674,162 +337,127 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       xNulls.set(groupId, true);
     } else {
       xNulls.set(groupId, false);
-      switch (xDataType) {
-        case INT32:
-        case DATE:
-          xIntValues.set(groupId, xColumn.getInt(xIndex));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          xLongValues.set(groupId, xColumn.getLong(xIndex));
-          break;
-        case FLOAT:
-          xFloatValues.set(groupId, xColumn.getFloat(xIndex));
-          break;
-        case DOUBLE:
-          xDoubleValues.set(groupId, xColumn.getDouble(xIndex));
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          xBinaryValues.set(groupId, xColumn.getBinary(xIndex));
-          break;
-        case BOOLEAN:
-          xBooleanValues.set(groupId, xColumn.getBoolean(xIndex));
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
-      }
+      xValueSetter.set(xValueAccessor, groupId, xColumn, xIndex);
     }
   }
 
   private byte[] serialize(int groupId) {
     boolean xNull = xNulls.get(groupId);
-    int yLength = calculateValueLength(groupId, yDataType, false);
-    int length = yLength + 1 + (xNull ? 0 : calculateValueLength(groupId, xDataType, true));
+    int yLength = yValueSerializer.calcTypeSize(yValueAccessor, groupId);
+    int length = yLength + 1 + (xNull ? 0 : xValueSerializer.calcTypeSize(xValueAccessor, groupId));
     byte[] bytes = new byte[length];
 
-    writeIntermediate(groupId, false, yDataType, bytes, 0);
+    yValueSerializer.serialize(yValueAccessor, groupId, bytes, 0);
     boolToBytes(xNull, bytes, yLength);
     if (!xNull) {
-      writeIntermediate(groupId, true, xDataType, bytes, yLength + 1);
+      xValueSerializer.serialize(xValueAccessor, groupId, bytes, yLength + 1);
     }
 
     return bytes;
   }
 
-  private void writeIntermediate(
-      int groupId, boolean isX, TSDataType dataType, byte[] bytes, int offset) {
-    TypeServices.INTERMEDIATE_VALUE_WRITER_SERVICE
-        .call(Type.fromTsDataType(dataType))
-        .write(this, isX, groupId, bytes, offset);
-  }
-
-  private int calculateValueLength(int groupId, TSDataType dataType, boolean isX) {
-    Object value =
-        dataType.isBinary()
-            ? (isX ? xBinaryValues.get(groupId) : yBinaryValues.get(groupId))
-            : null;
-    return Type.fromTsDataType(dataType).calcTypeSize(value);
-  }
-
   private void updateFromBytesIntermediateInput(int groupId, byte[] bytes) {
-    // long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
-    int offset = 0;
-    // Use Column to store x value
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(xDataType));
     ColumnBuilder columnBuilder = builder.getValueColumnBuilders()[0];
-    switch (yDataType) {
-      case INT32:
-      case DATE:
-        int intMaxVal = BytesUtils.bytesToInt(bytes, offset);
-        offset += Integer.BYTES;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateIntResult(groupId, intMaxVal, columnBuilder.build(), 0);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long longMaxVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-        offset += Long.BYTES;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateLongResult(groupId, longMaxVal, columnBuilder.build(), 0);
-        break;
-      case FLOAT:
-        float floatMaxVal = BytesUtils.bytesToFloat(bytes, offset);
-        offset += Float.BYTES;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateFloatResult(groupId, floatMaxVal, columnBuilder.build(), 0);
-        break;
-      case DOUBLE:
-        double doubleMaxVal = BytesUtils.bytesToDouble(bytes, offset);
-        offset += Long.BYTES;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateDoubleResult(groupId, doubleMaxVal, columnBuilder.build(), 0);
-        break;
-      case STRING:
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-        int length = BytesUtils.bytesToInt(bytes, offset);
-        offset += Integer.BYTES;
-        Binary binaryMaxVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-        offset += length;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateBinaryResult(groupId, binaryMaxVal, columnBuilder.build(), 0);
-        break;
-      case BOOLEAN:
-        boolean booleanVal = BytesUtils.bytesToBool(bytes, offset);
-        offset += 1;
-        readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateBooleanResult(groupId, booleanVal, columnBuilder.build(), 0);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, yDataType));
-    }
+    intermediateInputReader.update(groupId, bytes, xType, columnBuilder, this);
   }
 
-  private void readXFromBytesIntermediateInput(
-      byte[] bytes, int offset, ColumnBuilder columnBuilder) {
-    boolean isXNull = BytesUtils.bytesToBool(bytes, offset);
-    offset += 1;
-    if (isXNull) {
-      columnBuilder.appendNull();
-    } else {
-      switch (xDataType) {
-        case INT32:
-        case DATE:
-          columnBuilder.writeInt(BytesUtils.bytesToInt(bytes, offset));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columnBuilder.writeLong(BytesUtils.bytesToLongFromOffset(bytes, 8, offset));
-          break;
-        case FLOAT:
-          columnBuilder.writeFloat(BytesUtils.bytesToFloat(bytes, offset));
-          break;
-        case DOUBLE:
-          columnBuilder.writeDouble(BytesUtils.bytesToDouble(bytes, offset));
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          int length = BytesUtils.bytesToInt(bytes, offset);
-          offset += Integer.BYTES;
-          columnBuilder.writeBinary(new Binary(BytesUtils.subBytes(bytes, offset, length)));
-          break;
-        case BOOLEAN:
-          columnBuilder.writeBoolean(BytesUtils.bytesToBool(bytes, offset));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, xDataType));
+  private final class ValueAccessor implements TypeServices.GroupedValueAccessor {
+    private final boolean x;
+
+    private ValueAccessor(boolean x) {
+      this.x = x;
+    }
+
+    @Override
+    public RuntimeException unsupportedException() {
+      TSDataType dataType = x ? xDataType : yDataType;
+      return new UnSupportedDataTypeException(
+          String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_BY_MIN_BY_AGGREGATION, dataType));
+    }
+
+    @Override
+    public void initializeIntValues() {
+      if (x) {
+        xIntValues = new IntBigArray();
+      } else {
+        yIntValues = new IntBigArray();
       }
+    }
+
+    @Override
+    public void initializeLongValues() {
+      if (x) {
+        xLongValues = new LongBigArray();
+      } else {
+        yLongValues = new LongBigArray();
+      }
+    }
+
+    @Override
+    public void initializeFloatValues() {
+      if (x) {
+        xFloatValues = new FloatBigArray();
+      } else {
+        yFloatValues = new FloatBigArray();
+      }
+    }
+
+    @Override
+    public void initializeDoubleValues() {
+      if (x) {
+        xDoubleValues = new DoubleBigArray();
+      } else {
+        yDoubleValues = new DoubleBigArray();
+      }
+    }
+
+    @Override
+    public void initializeBinaryValues() {
+      if (x) {
+        xBinaryValues = new BinaryBigArray();
+      } else {
+        yBinaryValues = new BinaryBigArray();
+      }
+    }
+
+    @Override
+    public void initializeBooleanValues() {
+      if (x) {
+        xBooleanValues = new BooleanBigArray();
+      } else {
+        yBooleanValues = new BooleanBigArray();
+      }
+    }
+
+    @Override
+    public IntBigArray getIntValues() {
+      return x ? xIntValues : yIntValues;
+    }
+
+    @Override
+    public LongBigArray getLongValues() {
+      return x ? xLongValues : yLongValues;
+    }
+
+    @Override
+    public FloatBigArray getFloatValues() {
+      return x ? xFloatValues : yFloatValues;
+    }
+
+    @Override
+    public DoubleBigArray getDoubleValues() {
+      return x ? xDoubleValues : yDoubleValues;
+    }
+
+    @Override
+    public BinaryBigArray getBinaryValues() {
+      return x ? xBinaryValues : yBinaryValues;
+    }
+
+    @Override
+    public BooleanBigArray getBooleanValues() {
+      return x ? xBooleanValues : yBooleanValues;
     }
   }
 

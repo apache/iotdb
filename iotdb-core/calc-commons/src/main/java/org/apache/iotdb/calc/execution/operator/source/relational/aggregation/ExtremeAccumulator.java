@@ -31,6 +31,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.util.function.Supplier;
+
 public class ExtremeAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ExtremeAccumulator.class);
@@ -38,6 +40,7 @@ public class ExtremeAccumulator implements TableAccumulator {
   private final Type type;
   private final TsPrimitiveType extremeResult;
   private final TypeServices.ColumnValueUpdater valueUpdater;
+  private final TypeServices.StatisticsValueUpdater statisticsValueUpdater;
   private boolean initResult;
 
   public ExtremeAccumulator(TSDataType seriesDataType) {
@@ -45,6 +48,7 @@ public class ExtremeAccumulator implements TableAccumulator {
     this.type = Type.fromTsDataType(seriesDataType);
     this.extremeResult = type.getTsPrimitiveType();
     this.valueUpdater = TypeServices.EXTREME_COLUMN_VALUE_UPDATER_SERVICE.call(type);
+    this.statisticsValueUpdater = TypeServices.EXTREME_STATISTICS_VALUE_UPDATER_SERVICE.call(type);
   }
 
   @Override
@@ -95,34 +99,18 @@ public class ExtremeAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-        updateIntResult(((Number) statistics[0].getMaxValue()).intValue());
-        updateIntResult(((Number) statistics[0].getMinValue()).intValue());
-        break;
-      case INT64:
-        updateLongResult(((Number) statistics[0].getMaxValue()).longValue());
-        updateLongResult(((Number) statistics[0].getMinValue()).longValue());
-        break;
-      case FLOAT:
-        updateFloatResult(((Number) statistics[0].getMaxValue()).floatValue());
-        updateFloatResult(((Number) statistics[0].getMinValue()).floatValue());
-        break;
-      case DOUBLE:
-        updateDoubleResult(((Number) statistics[0].getMaxValue()).doubleValue());
-        updateDoubleResult(((Number) statistics[0].getMinValue()).doubleValue());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.UNSUPPORTED_DATA_TYPE_IN_EXTREME_AGGREGATION, seriesDataType));
+    Supplier<RuntimeException> exceptionSupplier =
+        () ->
+            new UnSupportedDataTypeException(
+                String.format(
+                    CalcMessages.UNSUPPORTED_DATA_TYPE_IN_EXTREME_AGGREGATION, seriesDataType));
+    if (statisticsValueUpdater.update(
+        extremeResult, statistics[0].getMaxValue(), initResult, exceptionSupplier)) {
+      initResult = true;
+    }
+    if (statisticsValueUpdater.update(
+        extremeResult, statistics[0].getMinValue(), initResult, exceptionSupplier)) {
+      initResult = true;
     }
   }
 

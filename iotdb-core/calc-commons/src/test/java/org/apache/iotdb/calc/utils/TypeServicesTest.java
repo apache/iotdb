@@ -38,12 +38,15 @@ import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -52,6 +55,34 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class TypeServicesTest {
+
+  @Test
+  public void testStatisticsValueSetterCreatesExceptionOnlyForUnsupportedType() {
+    AtomicInteger exceptionCount = new AtomicInteger();
+    RuntimeException expected = new UnsupportedOperationException("unsupported statistics type");
+    Supplier<RuntimeException> exceptionSupplier =
+        () -> {
+          exceptionCount.incrementAndGet();
+          return expected;
+        };
+    TsPrimitiveType result = Type.fromTsDataType(TSDataType.INT32).getTsPrimitiveType();
+
+    TypeServices.STATISTICS_VALUE_SETTER_SERVICE
+        .call(Type.fromTsDataType(TSDataType.INT32))
+        .set(result, 42, exceptionSupplier);
+    assertEquals(42, result.getInt());
+    assertEquals(0, exceptionCount.get());
+
+    assertSame(
+        expected,
+        Assert.assertThrows(
+            UnsupportedOperationException.class,
+            () ->
+                TypeServices.STATISTICS_VALUE_SETTER_SERVICE
+                    .call(Type.fromTsDataType(TSDataType.VECTOR))
+                    .set(result, 42, exceptionSupplier)));
+    assertEquals(1, exceptionCount.get());
+  }
 
   @Test
   public void testNumericColumnToDoubleConversion() {
@@ -79,6 +110,40 @@ public class TypeServicesTest {
   }
 
   @Test
+  public void testStatisticsValueUpdatersCreateExceptionOnlyForUnsupportedType() {
+    for (org.apache.tsfile.read.common.type.service.TypeService<TypeServices.StatisticsValueUpdater>
+        service :
+            List.of(
+                TypeServices.MAX_STATISTICS_VALUE_UPDATER_SERVICE,
+                TypeServices.MIN_STATISTICS_VALUE_UPDATER_SERVICE,
+                TypeServices.EXTREME_STATISTICS_VALUE_UPDATER_SERVICE)) {
+      AtomicInteger exceptionCount = new AtomicInteger();
+      RuntimeException expected = new UnsupportedOperationException("unsupported statistics type");
+      Supplier<RuntimeException> exceptionSupplier =
+          () -> {
+            exceptionCount.incrementAndGet();
+            return expected;
+          };
+      TsPrimitiveType result = Type.fromTsDataType(TSDataType.INT32).getTsPrimitiveType();
+      TypeServices.StatisticsValueUpdater updater =
+          service.call(Type.fromTsDataType(TSDataType.INT32));
+      assertTrue(updater.update(result, 42, false, exceptionSupplier));
+      assertEquals(42, result.getInt());
+      assertFalse(updater.update(result, 42, true, exceptionSupplier));
+      assertEquals(0, exceptionCount.get());
+      assertSame(
+          expected,
+          Assert.assertThrows(
+              UnsupportedOperationException.class,
+              () ->
+                  service
+                      .call(Type.fromTsDataType(TSDataType.VECTOR))
+                      .update(result, 42, true, exceptionSupplier)));
+      assertEquals(1, exceptionCount.get());
+    }
+  }
+
+  @Test
   public void testNumericColumnToDoubleConversionUsesCallerException() {
     final UnsupportedOperationException expected = new UnsupportedOperationException("expected");
     final TypeServices.ColumnToDoubleConverter converter =
@@ -92,6 +157,25 @@ public class TypeServicesTest {
             () -> converter.convert(new IntColumn(1, Optional.empty(), new int[] {1}), 0));
 
     assertSame(expected, actual);
+  }
+
+  @Test
+  public void testInColumnValueMatcherServiceUsesTypeStrategies() {
+    TypeServices.InColumnValueMatcher matcher =
+        TypeServices.IN_COLUMN_VALUE_MATCHER_SERVICE
+            .call(Type.fromTsDataType(TSDataType.INT32))
+            .create(Collections.singleton("2"));
+
+    Column input = new IntColumn(2, Optional.empty(), new int[] {1, 2});
+    assertFalse(matcher.matches(input, 0));
+    assertTrue(matcher.matches(input, 1));
+
+    Assert.assertThrows(
+        UnsupportedOperationException.class,
+        () ->
+            TypeServices.IN_COLUMN_VALUE_MATCHER_SERVICE
+                .call(Type.fromTsDataType(TSDataType.DATE))
+                .create(Collections.emptySet()));
   }
 
   @Test
