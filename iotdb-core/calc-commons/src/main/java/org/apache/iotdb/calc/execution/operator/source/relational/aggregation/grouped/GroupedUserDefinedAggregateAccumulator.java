@@ -137,7 +137,8 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of UDAF should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_UDAF_SHOULD_BE_BINARYCOLUMN_6F28900F);
 
     for (int i = 0; i < groupIds.length; i++) {
       if (!argument.isNull(i)) {
@@ -154,7 +155,8 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
     initIfNeeded();
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of UDAF should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_UDAF_SHOULD_BE_BINARYCOLUMN_6F28900F);
     if (stateArray.get(groupId) == null) {
       throw new IllegalStateException(
           String.format(CalcMessages.STATE_FOR_GROUP_NOT_FOUND, groupId));

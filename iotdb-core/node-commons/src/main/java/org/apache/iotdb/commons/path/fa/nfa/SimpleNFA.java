@@ -27,10 +27,12 @@ import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -116,7 +118,15 @@ public class SimpleNFA implements IPatternFA {
   }
 
   @Override
+  public boolean hasMultiExactMatchTransitions(final IFAState state) {
+    return getNextNode((SinglePathPatternNode) state) instanceof MultiExactMatchNode;
+  }
+
+  @Override
   public IFAState getNextState(IFAState sourceState, IFATransition transition) {
+    if (transition instanceof MultiExactTransition) {
+      return ((MultiExactTransition) transition).targetNode;
+    }
     return (SinglePathPatternNode) transition;
   }
 
@@ -154,13 +164,21 @@ public class SimpleNFA implements IPatternFA {
       } else if (rawNodes[nextIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         patternNodes[nextIndex] = new MultiLevelWildcardMatchNode(nextIndex);
       } else if (rawNodes[nextIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
+        final ExtendedPartialPath extendedPath =
+            pathPattern instanceof ExtendedPartialPath ? (ExtendedPartialPath) pathPattern : null;
         patternNodes[nextIndex] =
-            new OneLevelWildcardMatchNode(
-                nextIndex,
-                currentNode.getTracebackNode(),
-                pathPattern instanceof ExtendedPartialPath
-                    ? event -> ((ExtendedPartialPath) pathPattern).match(nextIndex, event)
-                    : event -> true);
+            extendedPath != null && extendedPath.hasMultiExactMatch(nextIndex)
+                ? new MultiExactMatchNode(
+                    nextIndex,
+                    currentNode.getTracebackNode(),
+                    extendedPath.getMultiExactMatch(nextIndex),
+                    event -> extendedPath.match(nextIndex, event))
+                : new OneLevelWildcardMatchNode(
+                    nextIndex,
+                    currentNode.getTracebackNode(),
+                    extendedPath != null
+                        ? event -> extendedPath.match(nextIndex, event)
+                        : event -> true);
       } else if (PathPatternUtil.hasWildcard(rawNodes[nextIndex])) {
         patternNodes[nextIndex] = new RegexMatchNode(nextIndex, currentNode.getTracebackNode());
       } else {
@@ -419,6 +437,78 @@ public class SimpleNFA implements IPatternFA {
       } else {
         return 2;
       }
+    }
+  }
+
+  /** The patternNode of a group of specified names. */
+  private class MultiExactMatchNode extends SinglePathPatternNode {
+
+    private final Map<String, IFATransition> preciseTransitions = new HashMap<>();
+
+    private MultiExactMatchNode(
+        final int patternIndex,
+        final SinglePathPatternNode tracebackNode,
+        final Set<String> values,
+        final Function<String, Boolean> matchFunction) {
+      super(patternIndex, tracebackNode);
+      for (final String value : values) {
+        if (matchFunction.apply(value)) {
+          preciseTransitions.put(value, new MultiExactTransition(value, this));
+        }
+      }
+    }
+
+    @Override
+    public boolean isMatch(final String event) {
+      return preciseTransitions.containsKey(event);
+    }
+
+    @Override
+    protected Map<String, IFATransition> getPreNodePreciseMatchTransition() {
+      return preciseTransitions;
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodePreciseMatchTransitionIterator() {
+      return preciseTransitions.values().iterator();
+    }
+
+    @Override
+    protected Iterator<IFATransition> getPreNodeFuzzyMatchTransitionIterator() {
+      return tracebackNode == null
+          ? Collections.emptyIterator()
+          : new SingletonIterator<>(tracebackNode);
+    }
+
+    @Override
+    protected int getPreNodeFuzzyMatchTransitionSize() {
+      return tracebackNode == null ? 0 : 1;
+    }
+  }
+
+  private class MultiExactTransition implements IFATransition {
+
+    private final String acceptEvent;
+    private final MultiExactMatchNode targetNode;
+
+    private MultiExactTransition(final String acceptEvent, final MultiExactMatchNode targetNode) {
+      this.acceptEvent = acceptEvent;
+      this.targetNode = targetNode;
+    }
+
+    @Override
+    public String getAcceptEvent() {
+      return acceptEvent;
+    }
+
+    @Override
+    public boolean isMatch(final String event) {
+      return Objects.equals(acceptEvent, event);
+    }
+
+    @Override
+    public int getIndex() {
+      return targetNode.getIndex();
     }
   }
 

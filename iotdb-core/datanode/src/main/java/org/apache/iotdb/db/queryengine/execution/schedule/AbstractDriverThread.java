@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -85,7 +86,32 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           try (SetThreadName driverTaskName =
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
             Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
-            if (rootCause instanceof IoTDBRuntimeException) {
+            if (rootCause instanceof CorruptedTsFileException) {
+              // CorruptedTsFileException no longer chains the original IOException as its
+              // cause (it uses addSuppressed instead), so getRootCause returns the exception
+              // itself and we can match it here.
+              CorruptedTsFileException corruptedTsFileException =
+                  (CorruptedTsFileException) rootCause;
+              if (next.getDriver()
+                  .getDriverContext()
+                  .getFragmentInstanceContext()
+                  .isExternalTsFileScan()) {
+                logger.info(
+                    DataNodeQueryMessages
+                        .LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3,
+                    corruptedTsFileException.getTsFile(),
+                    corruptedTsFileException.getStage(),
+                    rootCause);
+              } else {
+                logger.warn(
+                    DataNodeQueryMessages
+                        .LOG_TSFILE_MAY_BE_CORRUPTED_DURING_QUERY_EXECUTION_FILE_ARG_STAGE_ARG_9F77E8B3,
+                    corruptedTsFileException.getTsFile(),
+                    corruptedTsFileException.getStage(),
+                    rootCause);
+              }
+              next.setAbortCause(rootCause);
+            } else if (rootCause instanceof IoTDBRuntimeException) {
               next.setAbortCause(rootCause);
             } else if (rootCause instanceof IoTDBException) {
               next.setAbortCause(rootCause);
@@ -115,7 +141,8 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
       // Unless we have been closed, we need to replace this thread
       if (!closed) {
         logger.warn(
-            "Executor {} exits because it's interrupted. We will produce another thread to replace.",
+            DataNodeQueryMessages
+                .EXECUTOR_ARG_EXITS_BECAUSE_IT_S_INTERRUPTED_WE_WILL_PRODUCE_ANOTHER_THREAD_TO_REPLACE,
             this.getName());
         producer.produce(getName(), getThreadGroup(), queue, producer);
       } else {

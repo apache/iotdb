@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNod
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
@@ -297,7 +298,8 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitTopK(TopKNode node, Context context) {
       throw new IllegalStateException(
-          "TopKNode must be appeared after PushLimitOffsetIntoTableScan");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_TOPKNODE_MUST_BE_APPEARED_AFTER_PUSHLIMITOFFSETINTOTABLESCAN_844A065D);
     }
   }
 

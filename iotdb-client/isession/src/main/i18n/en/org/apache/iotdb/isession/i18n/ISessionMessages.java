@@ -32,4 +32,9 @@ public final class ISessionMessages {
       "It is not a direct child of the template: ";
 
   private ISessionMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "Data type %s is not supported.";
+
 }

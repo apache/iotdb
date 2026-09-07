@@ -100,7 +100,8 @@ public class TsFileValidationScan extends TsFileSequenceScan {
     if (!new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()) {
       // resource file does not exist, tsfile may not be flushed yet
       LOGGER.warn(
-          "{} does not exist ,skip it.", file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+          DataNodeMiscMessages.MISC_LOG_DOES_NOT_EXIST_SKIP_IT_EFB94454,
+          file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
       return false;
     } else {
       resource.deserialize();

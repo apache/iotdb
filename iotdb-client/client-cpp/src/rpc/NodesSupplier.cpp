@@ -17,6 +17,7 @@
  * under the License.
  */
 #include "NodesSupplier.h"
+#include "RpcCommon.h"
 #include "RpcSslUtils.h"
 #include "Session.h"
 #include "SessionDataSet.h"
@@ -67,12 +68,13 @@ std::vector<TEndPoint> StaticNodesSupplier::getEndPointList() {
 
 StaticNodesSupplier::~StaticNodesSupplier() = default;
 
-std::shared_ptr<NodesSupplier> NodesSupplier::create(
-    const std::vector<TEndPoint>& endpoints, const std::string& userName,
-    const std::string& password, const SslConfig& sslConfig, const std::string& zoneId,
-    int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize, int32_t connectionTimeoutInMs,
-    bool enableRPCCompression, const std::string& version, std::chrono::milliseconds refreshInterval,
-    NodeSelectionPolicy policy) {
+std::shared_ptr<NodesSupplier>
+NodesSupplier::create(const std::vector<TEndPoint>& endpoints, const std::string& userName,
+                      const std::string& password, const SslConfig& sslConfig,
+                      const std::string& zoneId, int32_t thriftDefaultBufferSize,
+                      int32_t thriftMaxFrameSize, int32_t connectionTimeoutInMs,
+                      bool enableRPCCompression, const std::string& version,
+                      std::chrono::milliseconds refreshInterval, NodeSelectionPolicy policy) {
   if (endpoints.empty()) {
     return nullptr;
   }
@@ -188,7 +190,7 @@ std::vector<TEndPoint> NodesSupplier::fetchLatestEndpoints() {
           port = record->fields.at(columnPortIdx).intV.value();
         }
 
-        if (ip == "0.0.0.0") {
+        if (UrlUtils::isWildcardAddress(ip)) {
           log_warn("Skipping invalid node: " + ip + ":" + std::to_string(port));
           continue;
         }

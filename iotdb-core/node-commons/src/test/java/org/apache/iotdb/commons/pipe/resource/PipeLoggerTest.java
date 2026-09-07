@@ -24,20 +24,27 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeLoggerTest {
 
   @Test
+  public void testDefaultLoggerReducesDuplicateMessages() {
+    final AtomicInteger logCount = new AtomicInteger(0);
+    final String message = "PipeLoggerTest-" + System.nanoTime();
+
+    PipeLogger.log(ignored -> logCount.incrementAndGet(), message);
+    PipeLogger.log(ignored -> logCount.incrementAndGet(), message);
+
+    Assert.assertEquals(1, logCount.get());
+  }
+
+  @Test
   public void testLogMessageWithPercent() {
     final AtomicReference<String> message = new AtomicReference<>();
 
-    setStringFormatLogger();
-    try {
-      PipeLogger.log(message::set, "data_{sink.password=%/broken}");
-    } finally {
-      setStringFormatLogger();
-    }
+    PipeLogger.log(message::set, "data_{sink.password=%/broken}");
 
     Assert.assertEquals("data_{sink.password=%/broken}", message.get());
   }
@@ -46,12 +53,7 @@ public class PipeLoggerTest {
   public void testLogMessageWithSlf4jPlaceholder() {
     final AtomicReference<String> message = new AtomicReference<>();
 
-    setStringFormatLogger();
-    try {
-      PipeLogger.log(message::set, "PipeLoggerCacheMaxSizeInBytes: {}", 1024);
-    } finally {
-      setStringFormatLogger();
-    }
+    PipeLogger.log(message::set, "PipeLoggerCacheMaxSizeInBytes: {}", 1024);
 
     Assert.assertEquals("PipeLoggerCacheMaxSizeInBytes: 1024", message.get());
   }
@@ -60,24 +62,13 @@ public class PipeLoggerTest {
   public void testLogThrowableWithPercentInStackTrace() {
     final AtomicReference<String> message = new AtomicReference<>();
 
-    setStringFormatLogger();
-    try {
-      PipeLogger.log(
-          message::set,
-          new RuntimeException("data_{sink.password=%/broken}"),
-          "Failed to transfer event %s",
-          "root.sg.d1");
-    } finally {
-      setStringFormatLogger();
-    }
+    PipeLogger.log(
+        message::set,
+        new RuntimeException("data_{sink.password=%/broken}"),
+        "Failed to transfer event %s",
+        "root.sg.d1");
 
     Assert.assertTrue(message.get().contains("Failed to transfer event root.sg.d1"));
     Assert.assertTrue(message.get().contains("data_{sink.password=%/broken}"));
-  }
-
-  private void setStringFormatLogger() {
-    PipeLogger.setLogger(
-        (loggerFunction, rawMessage, formatter) ->
-            loggerFunction.accept(String.format(rawMessage, formatter)));
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
@@ -57,11 +58,19 @@ public interface PlanOptimizer {
       this.analysis = analysis;
       this.metadata = metadata;
       this.queryContext = queryContext;
-      this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-      this.queryIdAllocator = requireNonNull(queryIdAllocator, "idAllocator is null");
-      this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+      this.symbolAllocator =
+          requireNonNull(
+              symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+      this.queryIdAllocator =
+          requireNonNull(
+              queryIdAllocator, DataNodeQueryMessages.EXCEPTION_IDALLOCATOR_IS_NULL_752B308D);
+      this.warningCollector =
+          requireNonNull(
+              warningCollector, DataNodeQueryMessages.EXCEPTION_WARNINGCOLLECTOR_IS_NULL_7A524A68);
       this.planOptimizersStatsCollector =
-          requireNonNull(planOptimizersStatsCollector, "planOptimizersStatsCollector is null");
+          requireNonNull(
+              planOptimizersStatsCollector,
+              DataNodeQueryMessages.EXCEPTION_PLANOPTIMIZERSSTATSCOLLECTOR_IS_NULL_9DA4B0CC);
     }
 
     public SessionInfo sessionInfo() {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.constructor;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
@@ -63,12 +64,14 @@ public abstract class PipePluginConstructor {
   private PipePlugin reflect(String pluginName) {
     if (pluginMetaKeeper == null) {
       throw new PipeException(
-          "Failed to reflect PipePlugin instance, because PipePluginMetaKeeper is null.");
+          PipeMessages
+              .EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGINMETAKEEPER_NULL_0C9BD2E2);
     }
 
     if (pluginName == null) {
       throw new PipeException(
-          "Failed to reflect PipePlugin instance, because plugin name is null.");
+          PipeMessages
+              .EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PLUGIN_NAME_NULL_416BD04D);
     }
 
     final PipePluginMeta information = pluginMetaKeeper.getPipePluginMeta(pluginName);

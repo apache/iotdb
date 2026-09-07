@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.source;
 
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
@@ -114,16 +115,10 @@ public abstract class IoTDBSource implements PipeExtractor {
   }
 
   private void validateDoubleLiving(final PipeParameters parameters) {
-    final boolean isDoubleLiving =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    final boolean isDoubleLiving = PipeSourceConstant.isDoubleLiving(parameters);
     if (!isDoubleLiving) {
       return;
     }
-
     // check 'forwarding-pipe-requests'
     final Boolean isForwardingPipeRequests =
         parameters.getBooleanByKeys(
@@ -131,7 +126,8 @@ public abstract class IoTDBSource implements PipeExtractor {
             PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY);
     if (Objects.nonNull(isForwardingPipeRequests) && isForwardingPipeRequests) {
       throw new PipeParameterNotValidException(
-          "forwarding-pipe-requests can not be specified to true when double living is enabled");
+          PipeMessages
+              .EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1);
     }
   }
 
@@ -148,20 +144,13 @@ public abstract class IoTDBSource implements PipeExtractor {
       pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
     }
 
-    final boolean isDoubleLiving =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    final boolean isDoubleLiving = PipeSourceConstant.isDoubleLiving(parameters);
     if (isDoubleLiving) {
       isForwardingPipeRequests = false;
     } else {
       isForwardingPipeRequests =
           parameters.getBooleanOrDefault(
-              Arrays.asList(
-                  PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                  PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+              PipeSourceConstant.FORWARDING_PIPE_REQUESTS_KEYS,
               PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
     }
 
@@ -210,7 +199,9 @@ public abstract class IoTDBSource implements PipeExtractor {
     boolean skipIfNoPrivileges = skipIfOptionSet.remove(EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
     if (!skipIfOptionSet.isEmpty()) {
       throw new PipeParameterNotValidException(
-          String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
+          String.format(
+              PipeMessages.EXCEPTION_PARAMETERS_SET_ARG_NOT_ALLOWED_SKIPIF_2B9AA054,
+              skipIfOptionSet));
     }
     return skipIfNoPrivileges;
   }

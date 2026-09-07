@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -108,7 +109,7 @@ public class ConcatExpressionWithSuffixPathsVisitor
         final MPPQueryContext queryContext) {
       this.prefixPaths = prefixPaths;
       this.patternTree = patternTree;
-      Validate.notNull(queryContext, "QueryContext is null");
+      Validate.notNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_C2344379);
       this.queryContext = queryContext;
     }
 

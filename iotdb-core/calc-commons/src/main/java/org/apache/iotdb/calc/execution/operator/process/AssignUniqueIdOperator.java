@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -127,7 +128,9 @@ public class AssignUniqueIdOperator implements ProcessOperator {
         requestValues();
       }
       long rowId = rowIdCounter++;
-      verify((rowId & uniqueValueMask) == 0, "RowId and uniqueValue mask overlaps");
+      verify(
+          (rowId & uniqueValueMask) == 0,
+          CalcMessages.EXCEPTION_ROWID_AND_UNIQUEVALUE_MASK_OVERLAPS_9A092E09);
       columnBuilder.writeLong(uniqueValueMask | rowId);
     }
     return columnBuilder.build();
@@ -136,6 +139,9 @@ public class AssignUniqueIdOperator implements ProcessOperator {
   private void requestValues() {
     rowIdCounter = rowIdPool.getAndAdd(ROW_IDS_PER_REQUEST);
     maxRowIdCounterValue = Math.min(rowIdCounter + ROW_IDS_PER_REQUEST, MAX_ROW_ID);
-    checkState(rowIdCounter < MAX_ROW_ID, "Unique row id exceeds a limit: %s", MAX_ROW_ID);
+    checkState(
+        rowIdCounter < MAX_ROW_ID,
+        CalcMessages.EXCEPTION_UNIQUE_ROW_ID_EXCEEDS_A_LIMIT_COLON_ARG_71EE4B7D,
+        MAX_ROW_ID);
   }
 }

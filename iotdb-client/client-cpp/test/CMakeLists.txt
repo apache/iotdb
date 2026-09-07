@@ -42,7 +42,8 @@ set(_plain_test_targets
         session_tests
         session_relational_tests
         session_c_tests
-        session_c_relational_tests)
+        session_c_relational_tests
+        session_utils_tests)
 
 set(_rpc_ssl_test_targets rpc_ssl_utils_tests rpc_ntls_utils_tests)
 
@@ -52,6 +53,7 @@ add_executable(session_tests              main.cpp              cpp/sessionIT.cp
 add_executable(session_relational_tests   main_Relational.cpp   cpp/sessionRelationalIT.cpp)
 add_executable(session_c_tests            main_c.cpp            cpp/sessionCIT.cpp)
 add_executable(session_c_relational_tests main_c_Relational.cpp cpp/sessionCRelationalIT.cpp)
+add_executable(session_utils_tests        main_utils.cpp        cpp/sessionUtilsTest.cpp)
 add_executable(rpc_ssl_utils_tests
         main_rpc_ssl.cpp
         cpp/RpcSslUtilsTest.cpp
@@ -123,7 +125,7 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
     set(_iotdb_asan_targets session_tests session_relational_tests session_c_tests
-            session_c_relational_tests rpc_ssl_utils_tests rpc_ntls_utils_tests)
+            session_c_relational_tests session_utils_tests rpc_ssl_utils_tests rpc_ntls_utils_tests)
     foreach(_t IN LISTS _iotdb_asan_targets)
         target_compile_options(${_t} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
         target_link_options(${_t} PRIVATE -fsanitize=address)
@@ -145,6 +147,7 @@ if(MSVC)
     add_test(NAME sessionRelationalIT    CONFIGURATIONS Release COMMAND session_relational_tests)
     add_test(NAME sessionCIT             CONFIGURATIONS Release COMMAND session_c_tests)
     add_test(NAME sessionCRelationalIT   CONFIGURATIONS Release COMMAND session_c_relational_tests)
+    add_test(NAME sessionUtilsTest       CONFIGURATIONS Release COMMAND session_utils_tests)
     add_test(NAME rpcSslUtilsTest      CONFIGURATIONS Release COMMAND rpc_ssl_utils_tests)
     add_test(NAME rpcNtlsUtilsTest     CONFIGURATIONS Release COMMAND rpc_ntls_utils_tests)
     foreach(_t IN LISTS _test_targets)
@@ -166,6 +169,7 @@ else()
     add_test(NAME sessionRelationalIT    COMMAND session_relational_tests)
     add_test(NAME sessionCIT             COMMAND session_c_tests)
     add_test(NAME sessionCRelationalIT   COMMAND session_c_relational_tests)
+    add_test(NAME sessionUtilsTest       COMMAND session_utils_tests)
     add_test(NAME rpcSslUtilsTest      COMMAND rpc_ssl_utils_tests)
     add_test(NAME rpcNtlsUtilsTest     COMMAND rpc_ntls_utils_tests)
     foreach(_t IN LISTS _test_targets)
@@ -186,6 +190,8 @@ else()
     endforeach()
 endif()
 
+# Run sequentially: parallel ctest overloads the single local IoTDB instance.
+# sessionUtilsTest is a pure unit test and can run anytime.
 set_tests_properties(
         sessionIT sessionRelationalIT sessionCIT sessionCRelationalIT
         PROPERTIES LABELS "plain" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)

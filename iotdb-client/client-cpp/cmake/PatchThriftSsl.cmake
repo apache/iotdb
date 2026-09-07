@@ -28,7 +28,7 @@ endif()
 
 set(_thrift_ssl_header "${_thrift_src}/lib/cpp/src/thrift/transport/TSSLSocket.h")
 set(_thrift_ssl_cpp "${_thrift_src}/lib/cpp/src/thrift/transport/TSSLSocket.cpp")
-set(_thrift_ssl_patch_marker "${_thrift_root}/.patched-ssl-context-${THRIFT_GIT_COMMIT}")
+set(_thrift_ssl_patch_marker "${_thrift_root}/.patched-ssl-context-${THRIFT_VERSION}")
 
 if(EXISTS "${_thrift_ssl_patch_marker}")
     return()

@@ -235,7 +235,8 @@ public class UDFEnvelopeAnalysis implements UDTF {
       case TIMESTAMP:
       default:
         throw new UDFOutputSeriesDataTypeNotValidException(
-            index, "Fail to get data type in row " + row.getTime());
+            index,
+            LibraryUdfMessages.EXCEPTION_FAIL_TO_GET_DATA_TYPE_IN_ROW_8CD82629 + row.getTime());
     }
     return ans;
   }

@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.Co
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher.ArrayView;
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import java.util.List;
 
@@ -65,8 +66,9 @@ public class PatternVariableRecognizer {
     this.searchStart = searchStart;
     this.searchEnd = searchEnd;
     this.patternVariableComputations =
-        requireNonNull(patternVariableComputations, "evaluations is null");
-    this.partition = requireNonNull(partition, "partition is null");
+        requireNonNull(
+            patternVariableComputations, CalcMessages.EXCEPTION_EVALUATIONS_IS_NULL_F3F72380);
+    this.partition = requireNonNull(partition, CalcMessages.EXCEPTION_PARTITION_IS_NULL_27FD9756);
   }
 
   public int getInputLength() {
@@ -112,7 +114,8 @@ public class PatternVariableRecognizer {
         List<PatternAggregator> patternAggregators,
         List<String> labelNames) {
       super(valueAccessors, computation, patternAggregators);
-      this.labelNames = requireNonNull(labelNames, "labelNames is null");
+      this.labelNames =
+          requireNonNull(labelNames, CalcMessages.EXCEPTION_LABELNAMES_IS_NULL_EEFDB807);
     }
 
     /**

@@ -41,7 +41,7 @@
 
 include(ExternalProject)
 
-set(_thrift_dirname "thrift-${THRIFT_GIT_COMMIT}")
+set(_thrift_dirname "thrift-${THRIFT_VERSION}")
 set(_thrift_tarname "${_thrift_dirname}.tar.gz")
 
 # ---------------------------------------------------------------------------
@@ -54,8 +54,7 @@ if(NOT EXISTS "${_thrift_tarball}")
                 "[Thrift] IOTDB_OFFLINE=ON but ${_thrift_tarname} is missing in "
                 "${IOTDB_OS_DEPS_DIR}.")
     endif()
-    set(_thrift_url
-            "https://github.com/apache/thrift/archive/${THRIFT_GIT_COMMIT}.tar.gz")
+    set(_thrift_url "https://archive.apache.org/dist/thrift/${THRIFT_VERSION}/${_thrift_tarname}")
     message(STATUS "[Thrift] downloading ${_thrift_url}")
     file(DOWNLOAD "${_thrift_url}" "${_thrift_tarball}"
             SHOW_PROGRESS TLS_VERIFY ON
@@ -76,7 +75,7 @@ set(_thrift_root  "${CMAKE_BINARY_DIR}/_deps/thrift")
 set(_thrift_src   "${_thrift_root}/src/${_thrift_dirname}")
 set(_thrift_build "${_thrift_root}/build")
 set(_thrift_install "${_thrift_root}/install")
-set(_thrift_marker "${_thrift_root}/.extracted-${THRIFT_GIT_COMMIT}")
+set(_thrift_marker "${_thrift_root}/.extracted-${THRIFT_VERSION}")
 
 set(_thrift_build_config "Release")
 if(MSVC AND CMAKE_BUILD_TYPE)
@@ -187,7 +186,7 @@ if(WITH_SSL)
 else()
     set(_thrift_ssl_stamp "-nossl")
 endif()
-set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_GIT_COMMIT}-${_thrift_build_config}-mdll${_thrift_abi_stamp}${_thrift_ssl_stamp}-sslctx")
+set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-${_thrift_build_config}-mdll${_thrift_abi_stamp}${_thrift_ssl_stamp}-sslctx-tongsuo")
 if(NOT EXISTS "${_thrift_stamp}")
     file(MAKE_DIRECTORY "${_thrift_build}")
     message(STATUS "[Thrift] configuring ${_thrift_dirname}")

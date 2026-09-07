@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class QueryInBatchStatementException extends IoTDBException {
@@ -28,7 +29,7 @@ public class QueryInBatchStatementException extends IoTDBException {
 
   public QueryInBatchStatementException(String statement) {
     super(
-        String.format("Query statement not allowed in batch: [%s]", statement),
+        String.format(DataNodeQueryMessages.QUERY_STATEMENT_NOT_ALLOWED_IN_BATCH_FMT, statement),
         TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode());
   }
 }

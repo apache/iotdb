@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -50,10 +52,13 @@ public class WindowSpecification extends Node implements Window {
       Optional<OrderBy> orderBy,
       Optional<WindowFrame> frame) {
     super(requireNonNull(location));
-    this.existingWindowName = requireNonNull(existingWindowName, "existingWindowName is null");
-    this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
-    this.orderBy = requireNonNull(orderBy, "orderBy is null");
-    this.frame = requireNonNull(frame, "frame is null");
+    this.existingWindowName =
+        requireNonNull(
+            existingWindowName, QueryMessages.EXCEPTION_EXISTINGWINDOWNAME_IS_NULL_5D67FD72);
+    this.partitionBy =
+        requireNonNull(partitionBy, QueryMessages.EXCEPTION_PARTITIONBY_IS_NULL_84791B6B);
+    this.orderBy = requireNonNull(orderBy, QueryMessages.EXCEPTION_ORDERBY_IS_NULL_AA2494DE);
+    this.frame = requireNonNull(frame, QueryMessages.EXCEPTION_FRAME_IS_NULL_5A92D609);
   }
 
   public Optional<Identifier> getExistingWindowName() {

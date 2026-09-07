@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.warnings;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import java.util.Objects;
 
 import static java.lang.String.format;
@@ -29,8 +31,10 @@ public final class IoTDBWarning {
   private final String message;
 
   public IoTDBWarning(WarningCode warningCode, String message) {
-    this.warningCode = requireNonNull(warningCode, "warningCode is null");
-    this.message = requireNonNull(message, "message is null");
+    this.warningCode =
+        requireNonNull(warningCode, DataNodeQueryMessages.EXCEPTION_WARNINGCODE_IS_NULL_3CCAE5B7);
+    this.message =
+        requireNonNull(message, DataNodeQueryMessages.EXCEPTION_MESSAGE_IS_NULL_D2D078AA);
   }
 
   public IoTDBWarning(WarningCodeSupplier warningCodeSupplier, String message) {

@@ -1498,8 +1498,9 @@ public class ColumnTransformerBuilder
     }
     throw new IllegalArgumentException(
         String.format(
-            "Unknown function %s on Node: %d.",
-            functionName, CommonDescriptor.getInstance().getConfig().getNodeId()));
+            CalcMessages.EXCEPTION_UNKNOWN_FUNCTION_ARG_NODE_ARG_927DA6A7,
+            functionName,
+            CommonDescriptor.getInstance().getConfig().getNodeId()));
   }
 
   @Override
@@ -1575,7 +1576,8 @@ public class ColumnTransformerBuilder
               timestampSet.add(Long.parseLong(((GenericLiteral) value).getValue()));
             } else {
               throw new SemanticException(
-                  "InList Literal for TIMESTAMP can only be LongLiteral, DoubleLiteral and GenericLiteral, current is "
+                  CalcMessages
+                          .EXCEPTION_INLIST_LITERAL_TIMESTAMP_CAN_ONLY_LONGLITERAL_DOUBLELITERAL_GENERICLITERAL_CURRENT_A3105E67
                       + value.getClass().getSimpleName());
             }
           } catch (IllegalArgumentException e) {

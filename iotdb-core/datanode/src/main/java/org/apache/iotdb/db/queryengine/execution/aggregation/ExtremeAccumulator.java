@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -66,14 +67,18 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
   // partialResult should be like: | PartialExtremeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of ExtremeValue should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_EXTREMEVALUE_SHOULD_BE_1_A7713D8A);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -99,7 +104,9 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
@@ -134,7 +141,9 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
@@ -166,14 +175,18 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
   // columnBuilder should be single in ExtremeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of ExtremeValue should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_EXTREMEVALUE_SHOULD_BE_1_A7713D8A);
     if (!initResult) {
       columnBuilders[0].appendNull();
       return;
@@ -200,7 +213,9 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 
@@ -232,7 +247,9 @@ public class ExtremeAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EXTREME_S_84B651D3,
+                seriesDataType));
     }
   }
 

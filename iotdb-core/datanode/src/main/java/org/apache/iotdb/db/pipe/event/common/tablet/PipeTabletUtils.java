@@ -244,6 +244,8 @@ public final class PipeTabletUtils {
       return new Binary(((String) value).getBytes(TSFileConfig.STRING_CHARSET));
     }
     throw new IllegalArgumentException(
-        String.format("Expected Binary, byte[] or String, but was %s.", value.getClass()));
+        String.format(
+            DataNodePipeMessages.PIPE_EXCEPTION_EXPECTED_BINARY_BYTE_OR_STRING_BUT_WAS_S_7976B10F,
+            value.getClass()));
   }
 }

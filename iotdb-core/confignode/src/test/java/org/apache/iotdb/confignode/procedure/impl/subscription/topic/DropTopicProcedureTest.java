@@ -49,4 +49,23 @@ public class DropTopicProcedureTest {
       fail();
     }
   }
+
+  @Test
+  public void serializeDeserializeTableModelTest() {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    DropTopicProcedure proc = new DropTopicProcedure("test_topic", true);
+
+    try {
+      proc.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      DropTopicProcedure proc2 = (DropTopicProcedure) ProcedureFactory.getInstance().create(buffer);
+
+      assertEquals(proc, proc2);
+    } catch (Exception e) {
+      fail();
+    }
+  }
 }

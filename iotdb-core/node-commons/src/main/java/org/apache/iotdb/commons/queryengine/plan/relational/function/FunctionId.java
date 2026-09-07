@@ -31,7 +31,7 @@ public class FunctionId {
   private final String id;
 
   public FunctionId(String id) {
-    requireNonNull(id, "id is null");
+    requireNonNull(id, QueryMessages.EXCEPTION_ID_IS_NULL_9D5D27B1);
     if (id.isEmpty()) {
       throw new IllegalArgumentException(QueryMessages.FUNCTION_ID_MUST_NOT_BE_EMPTY);
     }

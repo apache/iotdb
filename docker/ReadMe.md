@@ -108,7 +108,7 @@ docker run -d \
   -e AIN_CLUSTER_INGRESS_PORT=6667 \
   -e AIN_CLUSTER_INGRESS_USERNAME=root \
   -e AIN_CLUSTER_INGRESS_PASSWORD=root \
-  apache/iotdb:2.0.7-SNAPSHOT-ainode
+  apache/iotdb:2.0.11-SNAPSHOT-ainode
 ```
 
 ## Quick start

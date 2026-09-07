@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.binary.factory;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.binary.strategies.HmacStrategy;
 import org.apache.iotdb.commons.exception.SemanticException;
 
@@ -53,7 +54,8 @@ public final class HmacStrategiesFactory {
       hashFunction = Hashing.hmacMd5(constantKey);
     } catch (IllegalArgumentException e) {
       throw new SemanticException(
-          "Failed to execute function hmac_md5 due to an invalid input format, the empty key is not allowed in HMAC operation.");
+          CalcMessages
+              .EXCEPTION_FAILED_EXECUTE_FUNCTION_HMAC_MD5_INVALID_INPUT_FORMAT_EMPTY_KEY_DED1C525);
     }
     return (data, ignoredKey) -> hashFunction.hashBytes(data).asBytes();
   }
@@ -64,7 +66,8 @@ public final class HmacStrategiesFactory {
       hashFunction = Hashing.hmacSha1(constantKey);
     } catch (IllegalArgumentException e) {
       throw new SemanticException(
-          "Failed to execute function hmac_sha1 due to an invalid input format, the empty key is not allowed in HMAC operation.");
+          CalcMessages
+              .EXCEPTION_FAILED_EXECUTE_FUNCTION_HMAC_SHA1_INVALID_INPUT_FORMAT_EMPTY_KEY_518063E5);
     }
     return (data, ignoredKey) -> hashFunction.hashBytes(data).asBytes();
   }
@@ -75,7 +78,8 @@ public final class HmacStrategiesFactory {
       hashFunction = Hashing.hmacSha256(constantKey);
     } catch (IllegalArgumentException e) {
       throw new SemanticException(
-          "Failed to execute function hmac_sha256 due to an invalid input format, the empty key is not allowed in HMAC operation.");
+          CalcMessages
+              .EXCEPTION_FAILED_EXECUTE_FUNCTION_HMAC_SHA256_INVALID_INPUT_FORMAT_EMPTY_KEY_2F6AD64E);
     }
     return (data, ignoredKey) -> hashFunction.hashBytes(data).asBytes();
   }
@@ -86,7 +90,8 @@ public final class HmacStrategiesFactory {
       hashFunction = Hashing.hmacSha512(constantKey);
     } catch (IllegalArgumentException e) {
       throw new SemanticException(
-          "Failed to execute function hmac_sha512 due to an invalid input format, the empty key is not allowed in HMAC operation.");
+          CalcMessages
+              .EXCEPTION_FAILED_EXECUTE_FUNCTION_HMAC_SHA512_INVALID_INPUT_FORMAT_EMPTY_KEY_3671AF09);
     }
     return (data, ignoredKey) -> hashFunction.hashBytes(data).asBytes();
   }

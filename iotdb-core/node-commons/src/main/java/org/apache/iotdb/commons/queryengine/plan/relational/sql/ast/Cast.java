@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -52,7 +54,7 @@ public final class Cast extends Expression {
 
   public Cast(Expression expression, DataType type, boolean safe, boolean typeOnly) {
     super(null);
-    requireNonNull(expression, "expression is null");
+    requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
 
     this.expression = expression;
     this.type = type;
@@ -61,11 +63,21 @@ public final class Cast extends Expression {
   }
 
   public Cast(@Nonnull NodeLocation location, Expression expression, DataType type) {
-    this(requireNonNull(location, "location is null"), expression, type, false, false);
+    this(
+        requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388),
+        expression,
+        type,
+        false,
+        false);
   }
 
   public Cast(@Nonnull NodeLocation location, Expression expression, DataType type, boolean safe) {
-    this(requireNonNull(location, "location is null"), expression, type, safe, false);
+    this(
+        requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388),
+        expression,
+        type,
+        safe,
+        false);
   }
 
   private Cast(
@@ -75,7 +87,7 @@ public final class Cast extends Expression {
       boolean safe,
       boolean typeOnly) {
     super(location);
-    requireNonNull(expression, "expression is null");
+    requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
 
     this.expression = expression;
     this.type = type;

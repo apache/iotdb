@@ -39,6 +39,7 @@ public class Batch {
   private long memorySize;
   // indicates whether this batch has been successfully synchronized to another node
   private boolean synced;
+  private boolean containsUserData;
 
   public Batch(IoTConsensusConfig config) {
     this.config = config;
@@ -55,14 +56,23 @@ public class Batch {
   }
 
   public void addTLogEntry(TLogEntry entry) {
+    addTLogEntry(entry, false);
+  }
+
+  public void addTLogEntry(TLogEntry entry, boolean containsUserData) {
     logEntries.add(entry);
     if (entry.fromWAL) {
       logEntriesNumFromWAL++;
     }
     memorySize += entry.getMemorySize();
+    this.containsUserData |= containsUserData;
   }
 
   public boolean canAccumulate() {
+    return canAccumulate(config, logEntries.size(), memorySize);
+  }
+
+  static boolean canAccumulate(IoTConsensusConfig config, int logEntriesSize, long memorySize) {
     // When reading entries from the WAL, the memory size is calculated based on the serialized
     // size, which can be significantly smaller than the actual size.
     // Thus, we add a multiplier to sender's memory size to estimate the receiver's memory cost.
@@ -71,7 +81,7 @@ public class Batch {
     long senderMemSize = LogDispatcher.getSenderMemSizeSum().get();
     double multiplier = senderMemSize > 0 ? (double) receiverMemSize / senderMemSize : 1.0;
     multiplier = Math.max(multiplier, 1.0);
-    return logEntries.size() < config.getReplication().getMaxLogEntriesNumPerBatch()
+    return logEntriesSize < config.getReplication().getMaxLogEntriesNumPerBatch()
         && ((long) (memorySize * multiplier)) < config.getReplication().getMaxSizePerBatch();
   }
 
@@ -105,6 +115,10 @@ public class Batch {
 
   public long getLogEntriesNumFromWAL() {
     return logEntriesNumFromWAL;
+  }
+
+  public boolean containsUserData() {
+    return containsUserData;
   }
 
   @Override

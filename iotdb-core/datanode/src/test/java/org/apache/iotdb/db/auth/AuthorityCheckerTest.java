@@ -36,16 +36,19 @@ public class AuthorityCheckerTest {
   public void testLogReduce() throws IllegalPathException {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     final int oldSize = config.getPathLogMaxSize();
-    config.setPathLogMaxSize(1);
-    Assert.assertEquals(
-        "No permissions for this operation, please add privilege WRITE_DATA on [root.db.device.s1, ...]",
-        AuthorityChecker.getTSStatus(
-                Arrays.asList(0, 1),
-                Arrays.asList(
-                    new MeasurementPath("root.db.device.s1"),
-                    new MeasurementPath("root.db.device.s2")),
-                PrivilegeType.WRITE_DATA)
-            .getMessage());
-    config.setPathLogMaxSize(oldSize);
+    try {
+      config.setPathLogMaxSize(1);
+      Assert.assertEquals(
+          "No permissions for this operation, please add privilege WRITE_DATA on [root.db.device.s1, ...]",
+          AuthorityChecker.getTSStatus(
+                  Arrays.asList(0, 1),
+                  Arrays.asList(
+                      new MeasurementPath("root.db.device.s1"),
+                      new MeasurementPath("root.db.device.s2")),
+                  PrivilegeType.WRITE_DATA)
+              .getMessage());
+    } finally {
+      config.setPathLogMaxSize(oldSize);
+    }
   }
 }

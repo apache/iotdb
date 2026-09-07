@@ -19,20 +19,27 @@
 
 package org.apache.iotdb.udf.api.exception;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 public class UDFInputSeriesNumberNotValidException extends UDFParameterNotValidException {
 
   public UDFInputSeriesNumberNotValidException(int actual, int expected) {
     super(
         String.format(
-            "the number of the input series is not valid. expected: %d. actual: %d.",
-            expected, actual));
+            UdfApiMessages
+                .EXCEPTION_THE_NUMBER_OF_THE_INPUT_SERIES_IS_NOT_VALID_EXPECTED_ARG_ACTUAL_ARG_48AF79C9,
+            expected,
+            actual));
   }
 
   public UDFInputSeriesNumberNotValidException(
       int actual, int expectedLowerBound, int expectedUpperBound) {
     super(
         String.format(
-            "the number of the input series is not valid. expected: [%d, %d]. actual: %d.",
-            expectedLowerBound, expectedUpperBound, actual));
+            UdfApiMessages
+                .EXCEPTION_THE_NUMBER_OF_THE_INPUT_SERIES_IS_NOT_VALID_EXPECTED_ARG_ARG_ACTUAL_ARG_819C0F0A,
+            expectedLowerBound,
+            expectedUpperBound,
+            actual));
   }
 }

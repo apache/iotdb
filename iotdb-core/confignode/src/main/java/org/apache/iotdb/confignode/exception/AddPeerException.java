@@ -20,10 +20,14 @@
 package org.apache.iotdb.confignode.exception;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 public class AddPeerException extends ConfigNodeException {
 
   public AddPeerException(TConfigNodeLocation configNodeLocation) {
-    super(String.format("Add peer: %s failed.", configNodeLocation.toString()));
+    super(
+        String.format(
+            ConfigNodeMessages.EXCEPTION_ADD_PEER_ARG_FAILED_17DEB6CA,
+            configNodeLocation.toString()));
   }
 }

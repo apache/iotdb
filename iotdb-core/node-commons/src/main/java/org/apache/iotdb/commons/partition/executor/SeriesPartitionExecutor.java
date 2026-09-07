@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.partition.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -69,7 +70,10 @@ public abstract class SeriesPartitionExecutor {
           | IllegalAccessException
           | InvocationTargetException e) {
         throw new IllegalArgumentException(
-            String.format("Couldn't Constructor SeriesPartitionExecutor class: %s", executorName));
+            String.format(
+                CommonMessages
+                    .EXCEPTION_COULDN_T_CONSTRUCTOR_SERIESPARTITIONEXECUTOR_CLASS_ARG_34FB9F45,
+                executorName));
       }
     }
   }

@@ -97,32 +97,46 @@ public class AccumulatorFactory {
       TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
     switch (aggregationType) {
       case MAX_BY:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
         return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case MIN_BY:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
         return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case CORR:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
         return new CorrelationAccumulator(
             new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)});
       case COVAR_POP:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
         return new CovarianceAccumulator(
             new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
             CovarianceAccumulator.CovarianceType.COVAR_POP);
       case COVAR_SAMP:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
         return new CovarianceAccumulator(
             new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
             CovarianceAccumulator.CovarianceType.COVAR_SAMP);
       case REGR_SLOPE:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
         return new RegressionAccumulator(
             new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
             RegressionAccumulator.RegressionType.REGR_SLOPE);
       case REGR_INTERCEPT:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        checkState(
+            inputDataTypes.size() == 2,
+            DataNodeQueryMessages.EXCEPTION_WRONG_INPUTDATATYPES_SIZE_DOT_675FF289);
         return new RegressionAccumulator(
             new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
             RegressionAccumulator.RegressionType.REGR_INTERCEPT);
@@ -266,7 +280,9 @@ public class AccumulatorFactory {
           return keep -> keep != constant;
         default:
           throw new IllegalArgumentException(
-              "unsupported expression type: " + keepExpression.getExpressionType());
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_FD6F5B7C,
+                  keepExpression.getExpressionType()));
       }
     }
   }

@@ -183,9 +183,9 @@ public class OpcDaServerHandle implements Closeable {
       return clsidStr;
     } else {
       throw new PipeException(
-          DataNodePipeMessages.ERROR_PROGID_IS_INVALID_OR_UNREGISTERED_HRESULT
-              + Integer.toHexString(hr.intValue())
-              + ")");
+          String.format(
+              DataNodePipeMessages.ERROR_PROGID_INVALID_OR_UNREGISTERED_HRESULT_FMT,
+              Integer.toHexString(hr.intValue())));
     }
   }
 
@@ -244,10 +244,10 @@ public class OpcDaServerHandle implements Closeable {
           LOGGER.debug(DataNodePipeMessages.SUCCESSFULLY_ADDED_ITEM, itemId);
         } else {
           throw new PipeException(
-              DataNodePipeMessages.FAILED_TO_ADD_ITEM
-                  + itemId
-                  + ", opc error code: 0x"
-                  + Integer.toHexString(itemError));
+              String.format(
+                  DataNodePipeMessages.FAILED_TO_ADD_ITEM_WITH_OPC_ERROR_CODE_FMT,
+                  itemId,
+                  Integer.toHexString(itemError)));
         }
       } finally {
         Ole32.INSTANCE.CoTaskMemFree(pErrors);
@@ -291,12 +291,11 @@ public class OpcDaServerHandle implements Closeable {
       try {
         if (itemError != WinError.S_OK.intValue()) {
           throw new PipeException(
-              DataNodePipeMessages.FAILED_TO_WRITE
-                  + itemId
-                  + ", value: "
-                  + value
-                  + ", opc error code: 0x"
-                  + Integer.toHexString(itemError));
+              String.format(
+                  DataNodePipeMessages.FAILED_TO_WRITE_WITH_VALUE_AND_OPC_ERROR_CODE_FMT,
+                  itemId,
+                  value,
+                  Integer.toHexString(itemError)));
         }
       } finally {
         Ole32.INSTANCE.CoTaskMemFree(pErrors);

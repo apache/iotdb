@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
 
@@ -31,16 +32,20 @@ public class BatchCompactionCannotAlignedException extends RuntimeException {
       PageHeader pageHeader, CompactChunkPlan compactChunkPlan, int pageIndex) {
     super(
         String.format(
-            "Current page %s cannot be aligned with time chunk %s, page index is %s",
-            pageHeader, compactChunkPlan, pageIndex));
+            StorageEngineMessages.CURRENT_PAGE_CANNOT_BE_ALIGNED_WITH_TIME_CHUNK_FMT,
+            pageHeader,
+            compactChunkPlan,
+            pageIndex));
   }
 
   public BatchCompactionCannotAlignedException(
       Statistics pageStatistics, CompactChunkPlan compactChunkPlan, int pageIndex) {
     super(
         String.format(
-            "Current page %s cannot be aligned with time chunk %s, page index is %s",
-            pageStatistics, compactChunkPlan, pageIndex));
+            StorageEngineMessages.CURRENT_PAGE_CANNOT_BE_ALIGNED_WITH_TIME_CHUNK_FMT,
+            pageStatistics,
+            compactChunkPlan,
+            pageIndex));
   }
 
   public BatchCompactionCannotAlignedException(
@@ -49,7 +54,9 @@ public class BatchCompactionCannotAlignedException extends RuntimeException {
       BatchCompactionPlan batchCompactionPlan) {
     super(
         String.format(
-            "Current chunk %s cannot be aligned with time chunk: %s, all time chunk in first batch is %s",
-            chunkMetadata, compactChunkPlan, batchCompactionPlan));
+            StorageEngineMessages.CURRENT_CHUNK_CANNOT_BE_ALIGNED_WITH_TIME_CHUNK_FMT,
+            chunkMetadata,
+            compactChunkPlan,
+            batchCompactionPlan));
   }
 }

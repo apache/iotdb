@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
@@ -73,7 +74,8 @@ public class TransformUncorrelatedSubqueryToJoin implements Rule<CorrelatedJoinN
     checkState(
         correlatedJoinNode.getJoinType() == JoinNode.JoinType.RIGHT
             || correlatedJoinNode.getJoinType() == JoinNode.JoinType.FULL,
-        "unexpected CorrelatedJoin type: " + correlatedJoinNode.getType());
+        DataNodeQueryMessages.EXCEPTION_UNEXPECTED_CORRELATEDJOIN_TYPE_COLON_47A368C1
+            + correlatedJoinNode.getType());
 
     // handle RIGHT and FULL correlated join ON TRUE
     JoinNode.JoinType type;

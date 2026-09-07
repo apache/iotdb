@@ -208,5 +208,10 @@ endif()
 
 set(OPENSSL_ROOT_DIR "${_tongsuo_inst}" CACHE PATH "Tongsuo install root" FORCE)
 set(OPENSSL_USE_STATIC_LIBS OFF)
+# Do not reuse paths cached by an earlier configure that resolved the system
+# OpenSSL. WITH_SSL requires Tongsuo because RpcSslUtils uses its TLCP APIs.
+unset(OPENSSL_INCLUDE_DIR CACHE)
+unset(OPENSSL_SSL_LIBRARY CACHE)
+unset(OPENSSL_CRYPTO_LIBRARY CACHE)
 find_package(OpenSSL REQUIRED)
 message(STATUS "[Tongsuo] built from source (shared) at ${OPENSSL_ROOT_DIR}")

@@ -307,8 +307,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
     if (!roleProfile.exists() && !backFile.exists()) {
       return false;
     }
-    if ((roleProfile.exists() && !roleProfile.delete())
-        || (backFile.exists() && !backFile.delete())) {
+    if (!FileUtils.deleteFileIfExist(roleProfile) || !FileUtils.deleteFileIfExist(backFile)) {
       throw new IOException(String.format(AuthMessages.CANNOT_DELETE_ROLE_FILE, entityName));
     }
     return true;
@@ -352,7 +351,7 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
       result = FileUtils.copyDir(roleFolder, roleTmpSnapshotDir);
       result &= roleTmpSnapshotDir.renameTo(roleSnapshotDir);
     } finally {
-      if (roleTmpSnapshotDir.exists() && !roleTmpSnapshotDir.delete()) {
+      if (roleTmpSnapshotDir.exists() && !FileUtils.deleteFileIfExist(roleTmpSnapshotDir)) {
         FileUtils.deleteFileOrDirectory(roleTmpSnapshotDir);
       }
     }

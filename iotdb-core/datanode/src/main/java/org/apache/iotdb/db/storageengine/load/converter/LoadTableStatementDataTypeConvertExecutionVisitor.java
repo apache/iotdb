@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
@@ -28,15 +29,17 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileParserMemoryManager;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -75,25 +78,56 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
 
     LOGGER.info(StorageEngineMessages.START_DATA_TYPE_CONVERSION_DOT, loadTsFileStatement);
 
-    // TODO: Use batch insert after Table model supports insertMultiTablets
-    for (final File file : loadTsFileStatement.getTsFiles()) {
-      try (final TsFileInsertionEventTableParser parser =
-          new TsFileInsertionEventTableParser(
-              file,
-              new TablePattern(true, null, null),
-              Long.MIN_VALUE,
-              Long.MAX_VALUE,
-              null,
-              null,
-              null,
-              true)) {
-        for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
+    final boolean isManagedTask = PipeTsFileConversionTaskManager.getCurrentTaskId() != null;
+    final TabletConversionContext conversionContext =
+        isManagedTask
+            ? PipeTsFileConversionTaskManager.getOrCreateCurrentContext(
+                TabletConversionContext::new)
+            : new TabletConversionContext();
+    boolean shouldReleaseContext = !isManagedTask;
+
+    try {
+      final List<File> files = loadTsFileStatement.getTsFiles();
+      while (conversionContext.fileIndex < files.size()) {
+        if (conversionContext.pendingStatement != null) {
+          final TSStatus status =
+              executeInsertTabletWithRetry(conversionContext.pendingStatement, databaseName);
+          if (!handleTSStatus(status, loadTsFileStatement)) {
+            shouldReleaseContext = !isManagedTask || !isTemporaryUnavailable(status);
+            return Optional.of(status);
+          }
+          conversionContext.pendingStatement = null;
+        }
+
+        if (conversionContext.parser == null) {
+          conversionContext.parser =
+              new TsFileInsertionEventTableParser(
+                  files.get(conversionContext.fileIndex),
+                  new TablePattern(true, null, null),
+                  Long.MIN_VALUE,
+                  Long.MAX_VALUE,
+                  null,
+                  null,
+                  null,
+                  true,
+                  LoadTsFileParserMemoryManager.getInstance());
+          conversionContext.iterator =
+              conversionContext.parser.toTabletInsertionEvents().iterator();
+        }
+
+        while (conversionContext.pendingTabletInsertionEvent != null
+            || conversionContext.iterator.hasNext()) {
+          if (conversionContext.pendingTabletInsertionEvent == null) {
+            conversionContext.pendingTabletInsertionEvent = conversionContext.iterator.next();
+          }
+          final TabletInsertionEvent tabletInsertionEvent =
+              conversionContext.pendingTabletInsertionEvent;
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+            conversionContext.pendingTabletInsertionEvent = null;
             continue;
           }
           final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
               (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-
           final LoadConvertedInsertTabletStatement statement =
               new LoadConvertedInsertTabletStatement(
                   PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
@@ -102,38 +136,95 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
                           databaseName)
                       .constructStatement(),
                   loadTsFileStatement.isConvertOnTypeMismatch());
+          conversionContext.pendingStatement = statement;
+          conversionContext.pendingTabletInsertionEvent = null;
 
           final TSStatus status = executeInsertTabletWithRetry(statement, databaseName);
           if (!handleTSStatus(status, loadTsFileStatement)) {
+            shouldReleaseContext = !isManagedTask || !isTemporaryUnavailable(status);
             return Optional.of(status);
           }
+          conversionContext.pendingStatement = null;
         }
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-        return Optional.of(
-            LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR.process(
-                loadTsFileStatement, e));
+
+        conversionContext.closeParser();
+        conversionContext.fileIndex++;
+      }
+
+      shouldReleaseContext = true;
+      if (loadTsFileStatement.isDeleteAfterLoad()) {
+        deleteSourceFiles(loadTsFileStatement);
+      }
+
+      LOGGER.info(
+          StorageEngineMessages
+              .STORAGE_LOG_DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL_99016326,
+          loadTsFileStatement);
+      return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    } catch (final Exception e) {
+      LOGGER.warn(
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
+          loadTsFileStatement,
+          e);
+      final TSStatus status =
+          LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR.process(
+              loadTsFileStatement, e);
+      shouldReleaseContext =
+          !isManagedTask || !LoadTsFileDataTypeConverter.isMemoryPressureException(e);
+      return Optional.of(status);
+    } finally {
+      if (shouldReleaseContext) {
+        if (isManagedTask) {
+          PipeTsFileConversionTaskManager.clearCurrentContext();
+        } else {
+          conversionContext.close();
+        }
       }
     }
+  }
 
-    if (loadTsFileStatement.isDeleteAfterLoad()) {
-      loadTsFileStatement
-          .getTsFiles()
-          .forEach(
-              tsfile -> {
-                FileUtils.deleteQuietly(tsfile);
-                final String tsFilePath = tsfile.getAbsolutePath();
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
-                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
-              });
+  private static boolean isTemporaryUnavailable(final TSStatus status) {
+    return status != null
+        && (status.getCode() == TSStatusCode.LOAD_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
+            || status.getCode()
+                == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode());
+  }
+
+  private static void deleteSourceFiles(final LoadTsFile statement) {
+    statement
+        .getTsFiles()
+        .forEach(
+            tsFile -> {
+              FileUtils.deleteFileIfExist(tsFile);
+              final String tsFilePath = tsFile.getAbsolutePath();
+              FileUtils.deleteFileIfExist(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+              FileUtils.deleteFileIfExist(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+              FileUtils.deleteFileIfExist(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
+            });
+  }
+
+  private static final class TabletConversionContext implements AutoCloseable {
+    private int fileIndex;
+    private TsFileInsertionEventTableParser parser;
+    private Iterator<TabletInsertionEvent> iterator;
+    private TabletInsertionEvent pendingTabletInsertionEvent;
+    private LoadConvertedInsertTabletStatement pendingStatement;
+
+    private void closeParser() {
+      if (parser != null) {
+        parser.close();
+        parser = null;
+      }
+      iterator = null;
     }
 
-    LOGGER.info(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
-
-    return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    @Override
+    public void close() {
+      closeParser();
+      pendingTabletInsertionEvent = null;
+      pendingStatement = null;
+    }
   }
 
   private TSStatus executeInsertTabletWithRetry(

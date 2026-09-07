@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.transformation.dag.column;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.external.commons.lang3.Validate;
@@ -42,7 +44,8 @@ public abstract class AbstractCaseWhenThenColumnTransformer extends ColumnTransf
     super(returnType);
     Validate.isTrue(
         whenTransformers.size() == thenTransformers.size(),
-        "the size between whenTransformers and thenTransformers needs to be same");
+        CalcMessages
+            .EXCEPTION_THE_SIZE_BETWEEN_WHENTRANSFORMERS_AND_THENTRANSFORMERS_NEEDS_TO_BE_SAME_AC796883);
     this.whenThenTransformers = new ArrayList<>();
     for (int i = 0; i < whenTransformers.size(); i++) {
       this.whenThenTransformers.add(new Pair<>(whenTransformers.get(i), thenTransformers.get(i)));

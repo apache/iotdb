@@ -45,7 +45,8 @@ public class ReplaceFunctionHelper implements BuiltInScalarFunctionHelper {
       return;
     }
     throw new SemanticException(
-        String.format("Unsupported data type %s for function REPLACE.", tsDataType));
+        String.format(
+            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_S_FOR_FUNCTION_REPLACE, tsDataType));
   }
 
   @Override

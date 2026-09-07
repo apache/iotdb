@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.TDigest;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
@@ -64,7 +65,8 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
     } else {
       throw new SemanticException(
           String.format(
-              "APPROX_PERCENTILE requires 2 or 3 arguments, but got %d", arguments.length));
+              CalcMessages.EXCEPTION_APPROX_PERCENTILE_REQUIRES_2_3_ARGUMENTS_BUT_GOT_ARG_D78590AA,
+              arguments.length));
     }
     switch (seriesDataType) {
       case INT32:
@@ -83,7 +85,9 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in APPROX_PERCENTILE Aggregation: %s", seriesDataType));
+                CalcMessages
+                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_PERCENTILE_AGGREGATION_ARG_CFEC0431,
+                seriesDataType));
     }
   }
 
@@ -135,7 +139,9 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "Unsupported data type in APPROX_PERCENTILE Aggregation: %s", seriesDataType));
+                CalcMessages
+                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_PERCENTILE_AGGREGATION_ARG_CFEC0431,
+                seriesDataType));
     }
   }
 
@@ -147,7 +153,7 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
   @Override
   public void addStatistics(Statistics[] statistics) {
     throw new UnsupportedOperationException(
-        "ApproxPercentileAccumulator does not support statistics");
+        CalcMessages.EXCEPTION_APPROXPERCENTILEACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_2BB01365);
   }
 
   @Override
@@ -167,7 +173,8 @@ public abstract class AbstractApproxPercentileAccumulator implements TableAccumu
     double doubleValue = (double) value;
     if ((long) doubleValue != value) {
       throw new SemanticException(
-          String.format("no exact double representation for long: %s", value));
+          String.format(
+              CalcMessages.EXCEPTION_NO_EXACT_DOUBLE_REPRESENTATION_LONG_ARG_3E5B7550, value));
     }
     return value;
   }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -36,7 +38,7 @@ public class IrLabel extends IrRowPattern {
    * identifier semantics.
    */
   public IrLabel(String name) {
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
   }
 
   public String getName() {

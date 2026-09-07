@@ -137,7 +137,8 @@ public class MeasurementPath extends PartialPath {
     super(nodes);
     if (nodes.length < 2) {
       throw new IllegalArgumentException(
-          "nodes.length for MeasurementPath should always be greater than 2, current is: "
+          PathMessages
+                  .EXCEPTION_NODES_LENGTH_MEASUREMENTPATH_SHOULD_ALWAYS_GREATER_THAN_2_CURRENT_39B913AE
               + Arrays.toString(nodes));
     }
   }

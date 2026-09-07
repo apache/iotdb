@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.t
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -98,6 +99,7 @@ public class TsFileTableDiskUsageIndexWriter extends AbstractTableSizeIndexWrite
               Files.move(tempValueFile.toPath(), valueFile.toPath());
             } catch (IOException e) {
               logger.warn(StorageEngineMessages.FAILED_TO_MOVE_FILE, tempValueFile, valueFile, e);
+              DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
               continue;
             }
             valueFiles.add(valueFile);
@@ -125,6 +127,7 @@ public class TsFileTableDiskUsageIndexWriter extends AbstractTableSizeIndexWrite
           new TsFileTableSizeIndexFileWriter(
               regionId, currentKeyIndexFile, currentValueIndexFile, needRecover);
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       failedToRecover(e);
     }
   }
@@ -192,6 +195,7 @@ public class TsFileTableDiskUsageIndexWriter extends AbstractTableSizeIndexWrite
       }
     } catch (IOException e) {
       logger.error(StorageEngineMessages.FAILED_TO_READ_KEY_FILE_DURING_COMPACTION, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       return;
     } finally {
       indexFileReader.closeCurrentFile();

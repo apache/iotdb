@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
 import org.apache.iotdb.calc.transformation.datastructure.iterator.TVListForwardIterator;
 import org.apache.iotdb.calc.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -43,6 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+
+import static com.google.common.math.LongMath.saturatedAdd;
 
 public class SingleInputMultiReferenceLayer extends IntermediateLayer {
 
@@ -165,7 +168,8 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              DataNodeQueryMessages
+                  .LAYERROWWINDOWREADER_INDEX_OVERFLOW_BEGININDEX_ARG_ENDINDEX_ARG_WINDOWSIZE_ARG,
               beginIndex,
               endIndex,
               windowSize);
@@ -286,7 +290,8 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
-        long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
+        long nextWindowTimeEnd =
+            Math.min(saturatedAdd(nextWindowTimeBegin, timeInterval), displayWindowEnd);
         while (currentEndTime < nextWindowTimeEnd) {
           final YieldableState state = parentLayerReader.yield();
           if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -357,7 +362,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
-            nextWindowTimeBegin + timeInterval - 1);
+            saturatedAdd(nextWindowTimeBegin, timeInterval - 1));
 
         hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.size());
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
@@ -366,7 +371,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
       @Override
       public void readyForNext() {
         hasCached = false;
-        nextWindowTimeBegin += slidingStep;
+        nextWindowTimeBegin = saturatedAdd(nextWindowTimeBegin, slidingStep);
 
         safetyPile.moveForwardTo(nextIndexBegin + 1);
         tvList.setEvictionUpperBound(safetyLine.getSafetyLine());

@@ -43,6 +43,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.common.math.LongMath.saturatedAdd;
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
 public class SessionTableFunction implements TableFunction {
@@ -116,6 +117,7 @@ public class SessionTableFunction implements TableFunction {
     private long currentStartIndex = 0;
     private long curIndex = 0;
     private long windowStart = Long.MIN_VALUE;
+    private long currentWindowEnd = Long.MIN_VALUE;
     private long windowEnd = Long.MIN_VALUE;
 
     public SessionDataProcessor(long gap) {
@@ -133,7 +135,8 @@ public class SessionTableFunction implements TableFunction {
         currentStartIndex = curIndex;
         windowStart = timeValue;
       }
-      windowEnd = timeValue + gap;
+      currentWindowEnd = timeValue;
+      windowEnd = saturatedAdd(timeValue, gap);
       curIndex++;
     }
 
@@ -145,7 +148,6 @@ public class SessionTableFunction implements TableFunction {
 
     private void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      long currentWindowEnd = windowEnd - gap;
       for (long i = currentStartIndex; i < curIndex; i++) {
         properColumnBuilders.get(0).writeLong(windowStart);
         properColumnBuilders.get(1).writeLong(currentWindowEnd);

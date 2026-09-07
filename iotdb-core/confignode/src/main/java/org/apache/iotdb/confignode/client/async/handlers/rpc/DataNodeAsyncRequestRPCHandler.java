@@ -236,6 +236,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case SET_SYSTEM_STATUS:
       case NOTIFY_REGION_MIGRATION:
       case UPDATE_REGION_ROUTE_MAP:
+      case INVALIDATE_PARTITION_CACHE:
       case INVALIDATE_SCHEMA_CACHE:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
@@ -243,7 +244,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case KILL_QUERY_INSTANCE:
       case RESET_PEER_LIST:
       case TEST_CONNECTION:
-      case INVALIDATE_TABLE_CACHE:
+      case PRE_DELETE_TABLE:
       case DELETE_DATA_FOR_DROP_TABLE:
       case DELETE_DEVICES_FOR_DROP_TABLE:
       case INVALIDATE_COLUMN_CACHE:

@@ -22,6 +22,7 @@ package org.apache.iotdb.session.util;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -222,6 +223,88 @@ public class SessionUtilsTest {
     assertThrows(
         ClassCastException.class,
         () -> SessionUtils.getValueBuffer(typeList, valueList, measurements));
+  }
+
+  @Test
+  public void testFilterNullColumns() {
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("s1", TSDataType.INT32));
+    schemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemas.add(new MeasurementSchema("s3", TSDataType.FLOAT));
+    schemas.add(new MeasurementSchema("s4", TSDataType.DOUBLE));
+    schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+
+    Tablet tablet = new Tablet("root.sg.d1", schemas, 1);
+    tablet.addTimestamp(0, 1000L);
+    tablet.addValue("s1", 0, 1);
+    tablet.addValue("s2", 0, null);
+    tablet.addValue("s3", 0, 1.5f);
+    tablet.addValue("s4", 0, null);
+    tablet.addValue("s5", 0, null);
+
+    Tablet filtered = SessionUtils.filterNullColumns(tablet);
+    Assert.assertNotNull(filtered);
+    Assert.assertNotSame(tablet, filtered);
+    Assert.assertEquals(2, filtered.getSchemas().size());
+    Assert.assertEquals("s1", filtered.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("s3", filtered.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals(1, ((int[]) filtered.getValues()[0])[0]);
+    Assert.assertEquals(1.5f, ((float[]) filtered.getValues()[1])[0], 0.0001f);
+
+    // no BitMap -> same instance
+    long[] timestamps = new long[] {1L};
+    Object[] values = new Object[] {new int[] {1}};
+    List<IMeasurementSchema> singleSchema =
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32));
+    Tablet noBitMapTablet = new Tablet("root.sg.d1", singleSchema, timestamps, values, null, 1);
+    Assert.assertSame(noBitMapTablet, SessionUtils.filterNullColumns(noBitMapTablet));
+
+    // all columns null -> null
+    Tablet allNull = new Tablet("root.sg.d1", schemas, 1);
+    allNull.addTimestamp(0, 2000L);
+    allNull.addValue("s1", 0, null);
+    allNull.addValue("s2", 0, null);
+    allNull.addValue("s3", 0, null);
+    allNull.addValue("s4", 0, null);
+    allNull.addValue("s5", 0, null);
+    Assert.assertNull(SessionUtils.filterNullColumns(allNull));
+
+    // table model: keep TAG when all FIELD columns are null
+    List<String> tableMeasurements = Arrays.asList("tag1", "s1", "s2");
+    List<TSDataType> tableDataTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.INT32, TSDataType.INT32);
+    List<ColumnCategory> columnCategories = new ArrayList<>();
+    columnCategories.add(ColumnCategory.TAG);
+    columnCategories.add(ColumnCategory.FIELD);
+    columnCategories.add(ColumnCategory.FIELD);
+    Tablet tableModelTablet =
+        new Tablet("table1", tableMeasurements, tableDataTypes, columnCategories, 1);
+    tableModelTablet.addTimestamp(0, 3000L);
+    tableModelTablet.addValue("tag1", 0, "d1");
+    tableModelTablet.addValue("s1", 0, null);
+    tableModelTablet.addValue("s2", 0, null);
+    Tablet tableModelFiltered = SessionUtils.filterNullColumns(tableModelTablet);
+    Assert.assertNotNull(tableModelFiltered);
+    Assert.assertNotSame(tableModelTablet, tableModelFiltered);
+    Assert.assertEquals(1, tableModelFiltered.getSchemas().size());
+    Assert.assertEquals("tag1", tableModelFiltered.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals(ColumnCategory.TAG, tableModelFiltered.getColumnTypes().get(0));
+  }
+
+  @Test
+  public void testFilterNullColumnsActiveRowsWhenBitmapSizedToMaxRowNumber() {
+    List<IMeasurementSchema> twoSchemas = new ArrayList<>();
+    twoSchemas.add(new MeasurementSchema("s1", TSDataType.INT32));
+    twoSchemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    Tablet partialRowTablet = new Tablet("root.sg.d1", twoSchemas, 10);
+    partialRowTablet.addTimestamp(0, 4000L);
+    partialRowTablet.addValue("s1", 0, 1);
+    partialRowTablet.addValue("s2", 0, null);
+    Tablet partialRowFiltered = SessionUtils.filterNullColumns(partialRowTablet);
+    Assert.assertNotNull(partialRowFiltered);
+    Assert.assertNotSame(partialRowTablet, partialRowFiltered);
+    Assert.assertEquals(1, partialRowFiltered.getSchemas().size());
+    Assert.assertEquals("s1", partialRowFiltered.getSchemas().get(0).getMeasurementName());
   }
 
   @Test

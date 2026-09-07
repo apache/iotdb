@@ -195,17 +195,22 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   public void check() {
     if (timeInterval <= 0) {
       throw new RuntimeException(
-          String.format("Parameter timeInterval(%d) should be positive.", timeInterval));
+          String.format(
+              UdfApiMessages.EXCEPTION_PARAMETER_TIMEINTERVAL_ARG_SHOULD_BE_POSITIVE_7CF8DCE4,
+              timeInterval));
     }
     if (slidingStep <= 0) {
       throw new RuntimeException(
-          String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
+          String.format(
+              UdfApiMessages.EXCEPTION_PARAMETER_SLIDINGSTEP_ARG_SHOULD_BE_POSITIVE_BBB66A4C,
+              slidingStep));
     }
     if (displayWindowEnd < displayWindowBegin) {
       throw new RuntimeException(
           String.format(
-              "displayWindowEnd(%d) < displayWindowBegin(%d)",
-              displayWindowEnd, displayWindowBegin));
+              UdfApiMessages.EXCEPTION_DISPLAYWINDOWEND_ARG_DISPLAYWINDOWBEGIN_ARG_216864F1,
+              displayWindowEnd,
+              displayWindowBegin));
     }
   }
 

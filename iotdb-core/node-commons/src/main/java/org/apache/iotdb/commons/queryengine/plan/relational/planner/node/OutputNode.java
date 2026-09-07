@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -56,7 +57,7 @@ public class OutputNode extends SingleChildProcessNode {
     this.child = child;
     checkArgument(
         columnNames.size() == outputSymbols.size(),
-        "columnNames and outputSymbols sizes don't match");
+        QueryMessages.EXCEPTION_COLUMNNAMES_AND_OUTPUTSYMBOLS_SIZES_DON_QUOTE_T_MATCH_1BDF6B28);
     this.columnNames = ImmutableList.copyOf(columnNames);
     this.outputSymbols = ImmutableList.copyOf(outputSymbols);
   }

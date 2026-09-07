@@ -21,20 +21,21 @@
 package org.apache.iotdb.db.exception.metadata.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SegmentNotFoundException extends MetadataException {
 
   public SegmentNotFoundException(int pageIndex, short segIndex) {
     super(
-        String.format("Segment(index:%d) not found in page(index:%d).", segIndex, pageIndex),
+        String.format(DataNodeSchemaMessages.SEGMENT_NOT_FOUND_FMT, segIndex, pageIndex),
         TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
         true);
   }
 
   public SegmentNotFoundException(short segIndex) {
     super(
-        String.format("Segment(index:%d) is not the last segment within the page", segIndex),
+        String.format(DataNodeSchemaMessages.SEGMENT_IS_NOT_LAST_FMT, segIndex),
         TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
         true);
   }
@@ -45,7 +46,7 @@ public class SegmentNotFoundException extends MetadataException {
 
   public SegmentNotFoundException(int pid) {
     super(
-        String.format("No splittable segment found in page [%s]", pid),
+        String.format(DataNodeSchemaMessages.NO_SPLITTABLE_SEGMENT_FOUND_FMT, pid),
         TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
         true);
   }

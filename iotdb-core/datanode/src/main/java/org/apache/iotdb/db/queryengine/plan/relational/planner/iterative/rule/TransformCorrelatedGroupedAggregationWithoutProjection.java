@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Aggrega
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
@@ -135,7 +136,9 @@ public class TransformCorrelatedGroupedAggregationWithoutProjection
   private final PlannerContext plannerContext;
 
   public TransformCorrelatedGroupedAggregationWithoutProjection(PlannerContext plannerContext) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
   }
 
   @Override

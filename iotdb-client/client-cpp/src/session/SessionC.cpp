@@ -421,8 +421,8 @@ TsStatus ts_session_set_trust_cert_file_path(CSession* session, const char* trus
   clearError();
   if (!session)
     return setError(TS_ERR_NULL_PTR, "session is null");
-  TsStatus status =
-      setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath, "trustCertFilePath");
+  TsStatus status = setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath,
+                                      "trustCertFilePath");
   if (status == TS_OK) {
     session->sslConfigured = true;
   }
@@ -558,8 +558,8 @@ TsStatus ts_table_session_set_trust_cert_file_path(CTableSession* session,
   clearError();
   if (!session)
     return setError(TS_ERR_NULL_PTR, "session is null");
-  TsStatus status =
-      setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath, "trustCertFilePath");
+  TsStatus status = setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath,
+                                      "trustCertFilePath");
   if (status == TS_OK) {
     session->sslConfigured = true;
   }
@@ -1652,8 +1652,10 @@ int32_t ts_row_record_get_date_int32(CRowRecord* record, int index) {
   if (index < 0 || index >= (int)record->cpp->fields.size())
     return 0;
   const Field& f = record->cpp->fields[index];
-  if (f.dataType != TSDataType::DATE || !f.dateV.is_initialized())
+  if (f.dataType != TSDataType::DATE || !f.dateV.is_initialized() ||
+      f.dateV.value().is_not_a_date()) {
     return 0;
+  }
   return parseDateExpressionToInt(f.dateV.value());
 }
 

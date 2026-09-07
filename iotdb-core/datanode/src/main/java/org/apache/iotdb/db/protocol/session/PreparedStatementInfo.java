@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import java.util.Objects;
 
@@ -37,16 +38,20 @@ public class PreparedStatementInfo {
   private final long memorySizeInBytes; // Memory size allocated for this PreparedStatement
 
   public PreparedStatementInfo(String statementName, Statement sql, long memorySizeInBytes) {
-    this.statementName = requireNonNull(statementName, "statementName is null");
-    this.sql = requireNonNull(sql, "sql is null");
+    this.statementName =
+        requireNonNull(
+            statementName, DataNodeMiscMessages.EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4);
+    this.sql = requireNonNull(sql, DataNodeMiscMessages.EXCEPTION_SQL_IS_NULL_BEDB2B7A);
     this.createTime = System.currentTimeMillis();
     this.memorySizeInBytes = memorySizeInBytes;
   }
 
   public PreparedStatementInfo(
       String statementName, Statement sql, long createTime, long memorySizeInBytes) {
-    this.statementName = requireNonNull(statementName, "statementName is null");
-    this.sql = requireNonNull(sql, "sql is null");
+    this.statementName =
+        requireNonNull(
+            statementName, DataNodeMiscMessages.EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4);
+    this.sql = requireNonNull(sql, DataNodeMiscMessages.EXCEPTION_SQL_IS_NULL_BEDB2B7A);
     this.createTime = createTime;
     this.memorySizeInBytes = memorySizeInBytes;
   }

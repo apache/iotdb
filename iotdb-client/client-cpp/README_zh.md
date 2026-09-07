@@ -49,8 +49,8 @@
 示例：
 
 ```bash
-unzip iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28.zip
-export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28
+unzip iotdb-session-cpp-2.0.11-SNAPSHOT-linux-x86_64-glibc2.28.zip
+export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.11-SNAPSHOT-linux-x86_64-glibc2.28
 ```
 
 解压后的 SDK 主要包含：
@@ -72,7 +72,7 @@ Thrift 或 Boost 的头文件/库。
 项目中的 `CMakeLists.txt` 可这样写：
 
 ```cmake
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 project(my_iotdb_app LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -243,9 +243,10 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 | `BOOST_INCLUDEDIR` | `boost.include.dir` |
 | `CMAKE_BUILD_TYPE` | `cmake.build.type`，例如 `-Dcmake.build.type=Debug` |
 
-SSL 默认开启（`WITH_SSL=ON`）。配置阶段**始终从源码构建**
+SSL 默认开启（`WITH_SSL=ON`）。Apache Thrift 0.24.0 和
 [Tongsuo](https://github.com/Tongsuo-Project/Tongsuo) **8.4-stable**
-（OpenSSL 兼容 API，Apache-2.0，支持国密/TLCP），并把 `libssl`/`libcrypto`
+均在配置阶段从源码构建。Tongsuo 提供 OpenSSL 兼容 API（Apache-2.0，支持国密/TLCP），
+构建会把 `libssl`/`libcrypto`
 动态库复制到产物 `lib/` 目录。Windows 需要 Perl 与 VS 的 `nmake`。
 直接使用 CMake 时传入 `-DWITH_SSL=OFF`、`-DIOTDB_OFFLINE=ON` 等即可。
 

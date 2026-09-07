@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -36,12 +38,16 @@ public final class Intersect extends SetOperation {
 
   public Intersect(List<Relation> relations, boolean distinct) {
     super(null, distinct);
-    this.relations = ImmutableList.copyOf(requireNonNull(relations, "relations is null"));
+    this.relations =
+        ImmutableList.copyOf(
+            requireNonNull(relations, QueryMessages.EXCEPTION_RELATIONS_IS_NULL_0275CA3C));
   }
 
   public Intersect(NodeLocation location, List<Relation> relations, boolean distinct) {
-    super(requireNonNull(location, "location is null"), distinct);
-    this.relations = ImmutableList.copyOf(requireNonNull(relations, "relations is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388), distinct);
+    this.relations =
+        ImmutableList.copyOf(
+            requireNonNull(relations, QueryMessages.EXCEPTION_RELATIONS_IS_NULL_0275CA3C));
   }
 
   @Override

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.subscription.topic;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -227,6 +229,32 @@ public class TopicDeSerTest {
 
     Assert.assertEquals("test_user", extractorAttributes.get("username"));
     Assert.assertEquals("encrypted-password", extractorAttributes.get("password"));
+  }
+
+  @Test
+  public void testGenerateExtractorAttributesPreservesTreeViewSourceAttributes() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    topicAttributes.put(TopicConstant.DATABASE_KEY, "db");
+    topicAttributes.put(TopicConstant.TABLE_KEY, "view_table");
+    topicAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, Boolean.TRUE.toString());
+    topicAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.FALSE.toString());
+    topicAttributes.put(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY, "root.db.**");
+
+    final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
+
+    final Map<String, String> extractorAttributes = topicMeta.generateExtractorAttributes("root");
+
+    Assert.assertEquals(
+        Boolean.TRUE.toString(),
+        extractorAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY));
+    Assert.assertEquals(
+        Boolean.FALSE.toString(),
+        extractorAttributes.get(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY));
+    Assert.assertEquals(
+        "root.db.**", extractorAttributes.get(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY));
+    Assert.assertEquals("db", extractorAttributes.get(TopicConstant.DATABASE_KEY));
+    Assert.assertEquals("view_table", extractorAttributes.get(TopicConstant.TABLE_KEY));
   }
 
   @Test

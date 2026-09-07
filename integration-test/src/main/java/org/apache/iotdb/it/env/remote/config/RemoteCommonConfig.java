@@ -45,6 +45,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     return this;
   }
@@ -355,11 +360,6 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
     return this;
   }
 

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,7 +39,8 @@ public class DoubleLiteral extends Literal {
 
   public DoubleLiteral(String value) {
     super(null);
-    this.value = Double.parseDouble(requireNonNull(value, "value is null"));
+    this.value =
+        Double.parseDouble(requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF));
   }
 
   public DoubleLiteral(double value) {
@@ -46,8 +49,9 @@ public class DoubleLiteral extends Literal {
   }
 
   public DoubleLiteral(NodeLocation location, String value) {
-    super(requireNonNull(location, "location is null"));
-    this.value = Double.parseDouble(requireNonNull(value, "value is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.value =
+        Double.parseDouble(requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF));
   }
 
   public double getValue() {

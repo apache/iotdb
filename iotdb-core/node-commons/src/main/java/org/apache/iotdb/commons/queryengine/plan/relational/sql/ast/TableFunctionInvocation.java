@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -37,8 +39,8 @@ public class TableFunctionInvocation extends Relation {
   public TableFunctionInvocation(
       NodeLocation location, QualifiedName name, List<TableFunctionArgument> arguments) {
     super(location);
-    this.name = requireNonNull(name, "name is null");
-    this.arguments = requireNonNull(arguments, "arguments is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.arguments = requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
   }
 
   public QualifiedName getName() {

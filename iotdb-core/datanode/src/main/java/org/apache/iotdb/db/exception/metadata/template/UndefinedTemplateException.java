@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.exception.metadata.template;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class UndefinedTemplateException extends MetadataException {
   public UndefinedTemplateException(String path) {
     super(
-        String.format("Undefined template name: %s", path),
+        String.format(DataNodeSchemaMessages.UNDEFINED_TEMPLATE_NAME_FMT, path),
         TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
         true);
   }

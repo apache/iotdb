@@ -76,7 +76,8 @@ public class SelectIntoUtils {
       if (curNode.equals(DOUBLE_COLONS)) {
         if (nodeIndex != templateNodes.length - 1) {
           throw new SemanticException(
-              "select into: placeholder `::` can only be used at the end of the path.");
+              DataNodeQueryMessages
+                  .SELECT_INTO_PLACEHOLDER_CAN_ONLY_BE_USED_AT_THE_END_OF_THE_PATH);
         }
         while (nodeIndex < sourceNodes.length) {
           targetNodes.add(sourceNodes[nodeIndex]);
@@ -112,7 +113,8 @@ public class SelectIntoUtils {
       }
       if (index < 1 || index >= sourceNodes.length) {
         throw new SemanticException(
-            "select into: the i of ${i} should be greater than 0 and equal to or less than the length of queried path prefix.");
+            DataNodeQueryMessages
+                .SELECT_INTO_THE_I_OF_DOLLAR_I_SHOULD_BE_GREATER_THAN_0_AND_EQUAL_TO_OR_LESS_THAN_THE);
       }
       resNode = matcher.replaceFirst(sourceNodes[index]);
       matcher = LEVELED_PATH_TEMPLATE_PATTERN.matcher(resNode);

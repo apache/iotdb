@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.block.column.Column;
@@ -98,7 +99,9 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataTypes[i]));
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                  dataTypes[i]));
       }
     }
     this.bitMaps = new BitMap[this.measurements.length];
@@ -149,7 +152,9 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", dataTypes[i]));
+                String.format(
+                    DataNodeQueryMessages.QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    dataTypes[i]));
         }
       }
     }
@@ -220,7 +225,8 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
       default:
         throw new UnSupportedDataTypeException(
             String.format(
-                "data type %s is not supported when convert data at client",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
                 valueColumn.getDataType()));
     }
   }
@@ -279,7 +285,9 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
         default:
           throw new UnSupportedDataTypeException(
               String.format(
-                  "data type %s is not supported when convert data at client", dataTypes[i]));
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
+                  dataTypes[i]));
       }
     }
     return bytes;

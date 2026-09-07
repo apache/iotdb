@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.g
 import org.apache.iotdb.calc.execution.operator.source.relational.Percentile;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.PercentileBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.exception.SemanticException;
 
@@ -68,7 +69,9 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     if (arguments.length != 2) {
       throw new SemanticException(
-          String.format("PERCENTILE requires 2 arguments, but got %d", arguments.length));
+          String.format(
+              CalcMessages.EXCEPTION_PERCENTILE_REQUIRES_2_ARGUMENTS_BUT_GOT_ARG_F3F1882F,
+              arguments.length));
     }
     if (!percentageInitialized) {
       percentage = arguments[1].getDouble(0);
@@ -91,7 +94,9 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in PERCENTILE Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION_ARG_8ACED24D,
+                seriesDataType));
     }
     updateMemoryReservation();
   }
@@ -152,7 +157,9 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in PERCENTILE Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_PERCENTILE_AGGREGATION_ARG_8ACED24D,
+                seriesDataType));
     }
   }
 

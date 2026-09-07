@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
@@ -150,7 +151,7 @@ public class ClusterScheduler implements IScheduler {
     stateMachine.transitionToRunning();
 
     this.stateTracker.start();
-    logger.debug("state tracker starts");
+    logger.debug(DataNodeQueryMessages.STATE_TRACKER_STARTS);
   }
 
   @Override

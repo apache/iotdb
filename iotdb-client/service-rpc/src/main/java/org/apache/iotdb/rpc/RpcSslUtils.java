@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TTransportException;
 
@@ -223,7 +225,8 @@ public final class RpcSslUtils {
     if (lastException instanceof IOException) {
       throw (IOException) lastException;
     }
-    throw new IOException("No supported keystore or truststore type is available");
+    throw new IOException(
+        RpcMessages.EXCEPTION_NO_SUPPORTED_KEYSTORE_OR_TRUSTSTORE_TYPE_IS_AVAILABLE_B6EA1528);
   }
 
   private static KeyStore loadStore(String storePath, String storePassword, String storeType)
@@ -232,9 +235,11 @@ public final class RpcSslUtils {
     try (InputStream inputStream = Files.newInputStream(Path.of(storePath))) {
       store.load(inputStream, toPassword(storePassword));
     } catch (AccessDeniedException e) {
-      throw new AccessDeniedException("Failed to load keystore or truststore file");
+      throw new AccessDeniedException(
+          RpcMessages.EXCEPTION_FAILED_TO_LOAD_KEYSTORE_OR_TRUSTSTORE_FILE_F3306313);
     } catch (FileNotFoundException | NoSuchFileException e) {
-      throw new FileNotFoundException("keystore or truststore file not found: " + storePath);
+      throw new FileNotFoundException(
+          RpcMessages.EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 + storePath);
     }
     return store;
   }

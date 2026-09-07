@@ -448,7 +448,8 @@ public class ExpressionTypeAnalyzer {
       if (typeSet.contains(TSDataType.TEXT)) {
         if (typeSet.stream().anyMatch(tsDataType -> tsDataType != TSDataType.TEXT)) {
           throw new SemanticException(
-              "CASE expression: TEXT and other types cannot exist at the same time");
+              DataNodeQueryMessages
+                  .CASE_EXPRESSION_TEXT_AND_OTHER_TYPES_CANNOT_EXIST_AT_THE_SAME_TIME);
         }
         return setExpressionType(caseWhenThenExpression, TSDataType.TEXT);
       }
@@ -456,7 +457,8 @@ public class ExpressionTypeAnalyzer {
       if (typeSet.contains(TSDataType.BOOLEAN)) {
         if (typeSet.stream().anyMatch(tsDataType -> tsDataType != TSDataType.BOOLEAN)) {
           throw new SemanticException(
-              "CASE expression: BOOLEAN and other types cannot exist at the same time");
+              DataNodeQueryMessages
+                  .CASE_EXPRESSION_BOOLEAN_AND_OTHER_TYPES_CANNOT_EXIST_AT_THE_SAME_TIME);
         }
         return setExpressionType(caseWhenThenExpression, TSDataType.BOOLEAN);
       }
@@ -472,8 +474,10 @@ public class ExpressionTypeAnalyzer {
       if (!whenType.equals(TSDataType.BOOLEAN)) {
         throw new SemanticException(
             String.format(
-                "The expression in the WHEN clause must return BOOLEAN. expression: %s, actual data type: %s.",
-                whenThenExpression.getWhen().getExpressionString(), whenType.name()));
+                DataNodeQueryMessages
+                    .THE_EXPRESSION_IN_THE_WHEN_CLAUSE_MUST_RETURN_BOOLEAN_EXPRESSION_S_ACTUAL_DATA_TYPE_S,
+                whenThenExpression.getWhen().getExpressionString(),
+                whenType.name()));
       }
       TSDataType thenType = process(whenThenExpression.getThen(), context);
       return setExpressionType(whenThenExpression, thenType);
@@ -493,8 +497,11 @@ public class ExpressionTypeAnalyzer {
       }
       throw new SemanticException(
           String.format(
-              "Invalid input expression data type. expression: %s, actual data type: %s, expected data type(s): %s.",
-              expressionString, actual.name(), Arrays.toString(expected)));
+              DataNodeQueryMessages
+                  .INVALID_INPUT_EXPRESSION_DATA_TYPE_EXPRESSION_S_ACTUAL_DATA_TYPE_S_EXPECTED_DATA_TYPE_S,
+              expressionString,
+              actual.name(),
+              Arrays.toString(expected)));
     }
 
     private boolean isExpressionDataTypeSatisfy(Expression input, TSDataType... expected) {
@@ -505,7 +512,10 @@ public class ExpressionTypeAnalyzer {
           return true;
         }
         throw new IllegalStateException(
-            String.format("The type of input expression %s is unknown", input));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_THE_TYPE_OF_INPUT_EXPRESSION_S_IS_UNKNOWN_841AC714,
+                input));
       }
       for (TSDataType type : expected) {
         if (actual.equals(type)) {

@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,6 +52,7 @@ import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBMigrateMultiRegionForIoTV1IT extends IoTDBRegionOperationReliabilityITFramework {
   private static final String MULTI_REGION_MIGRATE_FORMAT = "migrate region %s from %d to %d";
+  private static final String EXPAND_FORMAT = "extend region %d to %d";
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBMigrateMultiRegionForIoTV1IT.class);
@@ -89,6 +91,10 @@ public class IoTDBMigrateMultiRegionForIoTV1IT extends IoTDBRegionOperationRelia
 
       Map<Integer, Set<Integer>> regionMap = getAllRegionMap(statement);
       Set<Integer> allDataNodeId = getAllDataNodes(statement);
+
+      // INSERTION1 only creates one schema region and one data region; with replication factor 1
+      // they are often placed on different DataNodes. Colocate them before multi-region migrate.
+      regionMap = ensureDataNodeHostsMultipleRegions(statement, client, regionMap);
 
       // With replication factor 1 every region lives on exactly one DataNode. Pick a source
       // DataNode that hosts at least two regions, then migrate all its regions to a fresh
@@ -175,6 +181,66 @@ public class IoTDBMigrateMultiRegionForIoTV1IT extends IoTDBRegionOperationRelia
       }
       LOGGER.info("Multi-region migrate test passed");
     }
+  }
+
+  private Map<Integer, Set<Integer>> ensureDataNodeHostsMultipleRegions(
+      Statement statement,
+      SyncConfigNodeIServiceClient client,
+      Map<Integer, Set<Integer>> regionMap)
+      throws Exception {
+    if (hasDataNodeHostingMultipleRegions(regionMap)) {
+      return regionMap;
+    }
+    List<Integer> regionIds = new ArrayList<>(regionMap.keySet());
+    Assert.assertTrue("Need at least two regions to colocate", regionIds.size() >= 2);
+
+    int firstRegion = regionIds.get(0);
+    int secondRegion = regionIds.get(1);
+    int targetDataNode = regionMap.get(secondRegion).iterator().next();
+    regionGroupExpand(statement, client, firstRegion, targetDataNode);
+    return getAllRegionMap(statement);
+  }
+
+  private boolean hasDataNodeHostingMultipleRegions(Map<Integer, Set<Integer>> regionMap) {
+    return regionMap.values().stream()
+        .flatMap(Set::stream)
+        .collect(Collectors.groupingBy(dataNodeId -> dataNodeId, Collectors.counting()))
+        .values()
+        .stream()
+        .anyMatch(count -> count >= 2);
+  }
+
+  private void regionGroupExpand(
+      Statement statement,
+      SyncConfigNodeIServiceClient client,
+      int selectedRegion,
+      int targetDataNode)
+      throws Exception {
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              statement.execute(String.format(EXPAND_FORMAT, selectedRegion, targetDataNode));
+              return true;
+            });
+
+    Predicate<TShowRegionResp> expandRegionPredicate =
+        tShowRegionResp -> {
+          Map<Integer, Set<Integer>> newRegionMap =
+              getRunningRegionMap(tShowRegionResp.getRegionInfoList());
+          Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+          return dataNodes != null && dataNodes.contains(targetDataNode);
+        };
+
+    awaitUntilSuccess(
+        client,
+        selectedRegion,
+        expandRegionPredicate,
+        Optional.of(targetDataNode),
+        Optional.empty());
+
+    LOGGER.info("Region {} has expanded to DataNode {}", selectedRegion, targetDataNode);
   }
 
   private int selectDataNodeHostingMultipleRegions(Map<Integer, Set<Integer>> regionMap) {

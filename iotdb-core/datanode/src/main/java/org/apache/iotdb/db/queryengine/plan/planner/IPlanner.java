@@ -34,6 +34,12 @@ public interface IPlanner {
 
   IAnalysis analyze(MPPQueryContext context);
 
+  default void beginAnalysisAttempt() {}
+
+  default void rollbackAnalysisAttempt() {}
+
+  default void commitAnalysisAttempt() {}
+
   LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context);
 
   DistributedQueryPlan doDistributionPlan(

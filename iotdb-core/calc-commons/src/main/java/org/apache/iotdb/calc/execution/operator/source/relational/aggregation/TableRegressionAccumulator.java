@@ -15,6 +15,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.RegressionAccumulator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -109,7 +110,9 @@ public class TableRegressionAccumulator implements TableAccumulator {
         return column.getDouble(position);
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in Regression Aggregation: %s", dataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_REGRESSION_AGGREGATION_ARG_7BB08DA2,
+                dataType));
     }
   }
 
@@ -176,7 +179,7 @@ public class TableRegressionAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate output of Regression should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_OUTPUT_OF_REGRESSION_SHOULD_BE_BINARYCOLUMN_E74D77ED);
     if (count == 0) {
       columnBuilder.appendNull();
     } else {
@@ -215,13 +218,14 @@ public class TableRegressionAccumulator implements TableAccumulator {
         }
         break;
       default:
-        throw new UnsupportedOperationException("Unknown type: " + regressionType);
+        throw new UnsupportedOperationException(CalcMessages.UNKNOWN_TYPE + regressionType);
     }
   }
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 2, "Input of Regression should be 2");
+    checkArgument(
+        arguments.length == 2, CalcMessages.EXCEPTION_INPUT_OF_REGRESSION_SHOULD_BE_2_3893EEE3);
     if (count == 0 || arguments[0].isNull(0) || arguments[1].isNull(0)) {
       return;
     }

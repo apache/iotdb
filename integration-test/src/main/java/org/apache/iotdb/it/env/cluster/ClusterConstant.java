@@ -44,6 +44,7 @@ public class ClusterConstant {
   public static final String DEFAULT_DATA_NODE_COMMON_PROPERTIES =
       "DefaultDataNodeCommonProperties";
   public static final String DATA_REGION_PER_DATANODE = "integrationTest.dataRegionPerDataNode";
+  public static final String TEST_NODE_ADDRESS = "IoTDBTestNodeAddress";
 
   // Cluster Configurations
   public static final String CLUSTER_CONFIGURATIONS = "ClusterConfigurations";

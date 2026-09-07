@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import org.apache.tsfile.block.column.Column;
@@ -73,7 +74,9 @@ public class MeasurementToTableViewAdaptorUtils {
           break;
         default:
           throw new IllegalArgumentException(
-              "Unexpected column category: " + columnSchemas.get(i).getColumnCategory());
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_COLUMN_CATEGORY_S_6E60A44E,
+                  columnSchemas.get(i).getColumnCategory()));
       }
     }
     return new TsBlock(

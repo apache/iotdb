@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -45,12 +46,12 @@ public final class Use extends Statement {
 
   public Use(@Nonnull Identifier db) {
     super(null);
-    this.db = requireNonNull(db, "db is null");
+    this.db = requireNonNull(db, DataNodeQueryMessages.EXCEPTION_DB_IS_NULL_E1AD1B58);
   }
 
   public Use(@Nonnull NodeLocation location, @Nonnull Identifier db) {
-    super(requireNonNull(location, "location is null"));
-    this.db = requireNonNull(db, "db is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.db = requireNonNull(db, DataNodeQueryMessages.EXCEPTION_DB_IS_NULL_E1AD1B58);
   }
 
   public Identifier getDatabaseId() {

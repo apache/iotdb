@@ -43,11 +43,14 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySpillManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchDeviceEntrySegmentReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchDeviceEntrySegmentResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
@@ -62,6 +65,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -97,6 +102,59 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         DataExchangeCountMetricSet.getInstance();
 
     @Override
+    public TFetchDeviceEntrySegmentResp fetchDeviceEntrySegment(
+        TFetchDeviceEntrySegmentReq request) {
+      try {
+        DeviceEntrySpillManager spillManager = DeviceEntrySpillManager.getInstance();
+        byte[] payload =
+            spillManager.readSegment(
+                request.getQueryId(), request.getPlanNodeId(), request.getSegmentId());
+        if (request.getSegmentId() > 0) {
+          spillManager.deleteSegment(
+              request.getQueryId(), request.getPlanNodeId(), request.getSegmentId() - 1);
+        }
+        return new TFetchDeviceEntrySegmentResp(
+                new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+            .setPayload(payload);
+      } catch (NoSuchFileException | AccessDeniedException e) {
+        LOGGER.warn(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
+                e.getFile()));
+        return new TFetchDeviceEntrySegmentResp(
+            new TSStatus(TSStatusCode.DEVICE_ENTRY_SPILL_NOT_FOUND.getStatusCode())
+                .setMessage(
+                    String.format(
+                        DataNodeQueryMessages
+                            .EXCEPTION_DEVICEENTRY_SPILL_SEGMENT_UNAVAILABLE_MAY_BE_DUE_TO_TIMEOUT_OR_KILL_ARG_B932D10D,
+                        e.getFile())));
+      } catch (IOException | RuntimeException e) {
+        return new TFetchDeviceEntrySegmentResp(
+            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                .setMessage(e.getMessage()));
+      }
+    }
+
+    @Override
+    public TSStatus finishDeviceEntrySegment(String queryId, String planNodeId) {
+      executorService.submit(
+          () -> {
+            try {
+              DeviceEntrySpillManager.getInstance().finishSegmentDataSet(queryId, planNodeId);
+            } catch (IOException | RuntimeException e) {
+              LOGGER.warn(
+                  String.format(
+                      DataNodeQueryMessages
+                          .LOG_FAILED_TO_CLEAN_DEVICEENTRY_DATA_SET_ASYNCHRONOUSLY_QUERYID_ARG_PLANNODEID_ARG_9106C4C5,
+                      queryId,
+                      planNodeId));
+            }
+          });
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
       long startTime = System.nanoTime();
       try (SetThreadName fragmentInstanceName =
@@ -107,7 +165,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   req.sourceFragmentInstanceId.instanceId))) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[ProcessGetTsBlockRequest] sequence ID in [{}, {})",
+              DataNodeQueryMessages.PROCESSGETTSBLOCKREQUEST_SEQUENCE_ID_IN_ARG_ARG,
               req.getStartSequenceId(),
               req.getEndSequenceId());
         }
@@ -150,7 +208,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   e.sourceFragmentInstanceId.instanceId))) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "Received AcknowledgeDataBlockEvent for TsBlocks whose sequence ID are in [{}, {}) from {}.",
+              DataNodeQueryMessages
+                  .RECEIVED_ACKNOWLEDGEDATABLOCKEVENT_FOR_TSBLOCKS_WHOSE_SEQUENCE_ID_ARE_IN_ARG_ARG_FROM,
               e.getStartSequenceId(),
               e.getEndSequenceId(),
               e.getSourceFragmentInstanceId());
@@ -159,7 +218,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         if (sinkHandle == null) {
           if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
-                "received ACK event but target FragmentInstance[{}] is not found.",
+                DataNodeQueryMessages
+                    .RECEIVED_ACK_EVENT_BUT_TARGET_FRAGMENTINSTANCE_ARG_IS_NOT_FOUND,
                 e.getSourceFragmentInstanceId());
           }
           return;
@@ -192,7 +252,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   e.sourceFragmentInstanceId.instanceId))) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "Closed source handle of ShuffleSinkHandle {}, channel index: {}.",
+              DataNodeQueryMessages.CLOSED_SOURCE_HANDLE_OF_SHUFFLESINKHANDLE_ARG_CHANNEL_INDEX_ARG,
               e.getSourceFragmentInstanceId(),
               e.getIndex());
         }
@@ -201,7 +261,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         if (sinkHandle == null) {
           if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
-                "received CloseSinkChannelEvent but target FragmentInstance[{}] is not found.",
+                DataNodeQueryMessages
+                    .RECEIVED_CLOSESINKCHANNELEVENT_BUT_TARGET_FRAGMENTINSTANCE_ARG_IS_NOT_FOUND,
                 e.getSourceFragmentInstanceId());
           }
           return;
@@ -224,7 +285,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           new SetThreadName(createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId))) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "New data block event received, for plan node {} of {} from {}.",
+              DataNodeQueryMessages.NEW_DATA_BLOCK_EVENT_RECEIVED_FOR_PLAN_NODE_ARG_OF_ARG_FROM_ARG,
               e.getTargetPlanNodeId(),
               e.getTargetFragmentInstanceId(),
               e.getSourceFragmentInstanceId());
@@ -244,7 +305,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           // FragmentInstance may be finished, although the upstream is still working.
           if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
-                "received NewDataBlockEvent but the downstream FragmentInstance[{}] is not found",
+                DataNodeQueryMessages
+                    .RECEIVED_NEWDATABLOCKEVENT_BUT_THE_DOWNSTREAM_FRAGMENTINSTANCE_ARG_IS_NOT_FOUND,
                 e.getTargetFragmentInstanceId());
           }
           return;
@@ -265,7 +327,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           new SetThreadName(createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId))) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "End of data block event received, for plan node {} of {} from {}.",
+              DataNodeQueryMessages
+                  .END_OF_DATA_BLOCK_EVENT_RECEIVED_FOR_PLAN_NODE_ARG_OF_ARG_FROM_ARG,
               e.getTargetPlanNodeId(),
               e.getTargetFragmentInstanceId(),
               e.getSourceFragmentInstanceId());
@@ -281,7 +344,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         if (sourceHandle == null || sourceHandle.isAborted() || sourceHandle.isFinished()) {
           if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
-                "received onEndOfDataBlockEvent but the downstream FragmentInstance[{}] is not found",
+                DataNodeQueryMessages
+                    .RECEIVED_ONENDOFDATABLOCKEVENT_BUT_THE_DOWNSTREAM_FRAGMENTINSTANCE_ARG_IS_NOT_FOUND,
                 e.getTargetFragmentInstanceId());
           }
           return;
@@ -457,17 +521,21 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     private final AtomicInteger cnt;
 
+    private final AtomicBoolean hasChannelFailedOrAborted;
+
     private final AtomicBoolean hasDecremented = new AtomicBoolean(false);
 
     public ISinkChannelListenerImpl(
         TFragmentInstanceId localFragmentInstanceId,
         FragmentInstanceContext context,
         IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
-        AtomicInteger cnt) {
+        AtomicInteger cnt,
+        AtomicBoolean hasChannelFailedOrAborted) {
       this.shuffleSinkHandleId = localFragmentInstanceId;
       this.context = context;
       this.onFailureCallback = onFailureCallback;
       this.cnt = cnt;
+      this.hasChannelFailedOrAborted = hasChannelFailedOrAborted;
     }
 
     @Override
@@ -490,6 +558,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(DataNodeQueryMessages.SKH_LISTENER_ON_ABORT);
       }
+      hasChannelFailedOrAborted.set(true);
       decrementCnt();
       return context.getFailureCause();
     }
@@ -497,21 +566,25 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFailure(ISink sink, Throwable t) {
       LOGGER.warn(DataNodeQueryMessages.ISINKCHANNEL_FAILED_DUE_TO, t);
-      decrementCnt();
-      if (onFailureCallback != null) {
-        onFailureCallback.call(t);
+      hasChannelFailedOrAborted.set(true);
+      try {
+        if (onFailureCallback != null) {
+          onFailureCallback.call(t);
+        }
+      } finally {
+        decrementCnt();
       }
     }
 
     private void decrementCnt() {
       if (hasDecremented.compareAndSet(false, true) && (cnt.decrementAndGet() == 0)) {
-        closeShuffleSinkHandle();
+        releaseShuffleSinkHandle();
       }
     }
 
-    private void closeShuffleSinkHandle() {
+    private void releaseShuffleSinkHandle() {
       ISinkHandle sinkHandle = shuffleSinkHandles.remove(shuffleSinkHandleId);
-      if (sinkHandle != null) {
+      if (sinkHandle != null && !hasChannelFailedOrAborted.get()) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(DataNodeQueryMessages.CLOSE_SHUFFLE_SINK_HANDLE, shuffleSinkHandleId);
         }
@@ -590,13 +663,22 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       ExecutorService executorService,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.localMemoryManager = Validate.notNull(localMemoryManager, "localMemoryManager is null.");
+    this.localMemoryManager =
+        Validate.notNull(
+            localMemoryManager,
+            DataNodeQueryMessages.EXCEPTION_LOCALMEMORYMANAGER_IS_NULL_DOT_69FE497A);
     this.tsBlockSerdeFactory =
-        Validate.notNull(tsBlockSerdeFactory, "tsBlockSerdeFactory is null.");
-    this.executorService = Validate.notNull(executorService, "executorService is null.");
+        Validate.notNull(
+            tsBlockSerdeFactory,
+            DataNodeQueryMessages.EXCEPTION_TSBLOCKSERDEFACTORY_IS_NULL_DOT_32EB5BD2);
+    this.executorService =
+        Validate.notNull(
+            executorService, DataNodeQueryMessages.EXCEPTION_EXECUTORSERVICE_IS_NULL_DOT_7B057909);
     this.mppDataExchangeServiceClientManager =
         Validate.notNull(
-            mppDataExchangeServiceClientManager, "mppDataExchangeServiceClientManager is null.");
+            mppDataExchangeServiceClientManager,
+            DataNodeQueryMessages
+                .EXCEPTION_MPPDATAEXCHANGESERVICECLIENTMANAGER_IS_NULL_DOT_F31E746C);
     sourceHandles = new ConcurrentHashMap<>();
     shuffleSinkHandles = new ConcurrentHashMap<>();
   }
@@ -606,6 +688,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       mppDataExchangeService = new MPPDataExchangeServiceImpl();
     }
     return mppDataExchangeService;
+  }
+
+  public IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+      getMppDataExchangeServiceClientManager() {
+    return mppDataExchangeServiceClientManager;
   }
 
   public void deRegisterFragmentInstanceFromMemoryPool(
@@ -636,7 +723,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      AtomicBoolean hasChannelFailedOrAborted) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -672,7 +760,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         localFragmentInstanceId,
         queue,
         new ISinkChannelListenerImpl(
-            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt));
+            localFragmentInstanceId,
+            instanceContext,
+            instanceContext::failed,
+            cnt,
+            hasChannelFailedOrAborted));
   }
 
   /**
@@ -708,7 +800,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      AtomicBoolean hasChannelFailedOrAborted) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -728,7 +821,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         executorService,
         tsBlockSerdeFactory.get(),
         new ISinkChannelListenerImpl(
-            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt),
+            localFragmentInstanceId,
+            instanceContext,
+            instanceContext::failed,
+            cnt,
+            hasChannelFailedOrAborted),
         instanceContext.isHighestPriority(),
         mppDataExchangeServiceClientManager);
   }
@@ -752,6 +849,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     int channelNum = downStreamChannelLocationList.size();
     AtomicInteger cnt = new AtomicInteger(channelNum);
+    AtomicBoolean hasChannelFailedOrAborted = new AtomicBoolean(false);
     List<ISinkChannel> downStreamChannelList =
         downStreamChannelLocationList.stream()
             .map(
@@ -761,7 +859,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                         localPlanNodeId,
                         downStreamChannelLocation,
                         instanceContext,
-                        cnt))
+                        cnt,
+                        hasChannelFailedOrAborted))
             .collect(Collectors.toList());
 
     ShuffleSinkHandle shuffleSinkHandle =
@@ -780,7 +879,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       String localPlanNodeId,
       DownStreamChannelLocation downStreamChannelLocation,
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      AtomicBoolean hasChannelFailedOrAborted) {
     if (isSameNode(downStreamChannelLocation.getRemoteEndpoint())) {
       return createLocalSinkChannel(
           localFragmentInstanceId,
@@ -788,7 +888,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
           instanceContext,
-          cnt);
+          cnt,
+          hasChannelFailedOrAborted);
     } else {
       return createSinkChannel(
           localFragmentInstanceId,
@@ -797,7 +898,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
           instanceContext,
-          cnt);
+          cnt,
+          hasChannelFailedOrAborted);
     }
   }
 
@@ -928,7 +1030,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Create source handle from {} for plan node {} of {}",
+          DataNodeQueryMessages.CREATE_SOURCE_HANDLE_FROM_ARG_FOR_PLAN_NODE_ARG_OF_ARG,
           remoteFragmentInstanceId,
           localPlanNodeId,
           localFragmentInstanceId);

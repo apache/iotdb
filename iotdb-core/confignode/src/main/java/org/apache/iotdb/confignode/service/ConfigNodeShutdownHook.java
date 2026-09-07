@@ -92,7 +92,8 @@ public class ConfigNodeShutdownHook extends Thread {
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          ConfigNodeConstant.GLOBAL_NAME + " exits. Jvm memory usage: {}",
+          ConfigNodeConstant.GLOBAL_NAME
+              + ConfigNodeMessages.LOG_EXITS_JVM_MEMORY_USAGE_ARG_0BCD1CCF,
           MemUtils.bytesCntToStr(
               Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
     }

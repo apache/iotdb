@@ -62,6 +62,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    cnConfig.setMetadataLeaseFenceMs(metadataLeaseFenceMs);
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     cnConfig.setPartitionInterval(partitionInterval);
     dnConfig.setPartitionInterval(partitionInterval);
@@ -503,13 +509,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     dnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
     cnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
     return this;
   }
 

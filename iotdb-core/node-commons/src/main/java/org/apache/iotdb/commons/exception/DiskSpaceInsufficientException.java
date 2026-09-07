@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
@@ -28,7 +29,9 @@ public class DiskSpaceInsufficientException extends IoTDBException {
 
   public DiskSpaceInsufficientException(List<String> folders) {
     super(
-        String.format("Can't get next folder from [%s], because they are all full.", folders),
+        String.format(
+            CommonMessages.EXCEPTION_CAN_T_GET_NEXT_FOLDER_ARG_BECAUSE_THEY_ALL_FULL_A105BB2D,
+            folders),
         TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
   }
 

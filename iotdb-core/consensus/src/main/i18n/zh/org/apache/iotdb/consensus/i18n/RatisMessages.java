@@ -92,7 +92,7 @@ public final class RatisMessages {
   // ===================== DiskGuardian =====================
 
   public static final String ERROR_LISTING_FILES =
-      "{}：列出共识组 {} 的文件时出错：";
+      "{}：列出 {} 在 {} 下的文件时出错：";
   public static final String CLEAR_SNAPSHOT_FLAG_FAILED =
       "{}：清除共识组 {} 的快照标志失败，请检查相关实现";
   public static final String TAKE_SNAPSHOT_FAILED =
@@ -118,4 +118,16 @@ public final class RatisMessages {
       "JMX Reporter 在 RatisMetricRegistries 中已禁用";
   public static final String CONSOLE_REPORTER_DISABLED =
       "Console Reporter 在 RatisMetricRegistries 中已禁用";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_RESET_PEER_LIST_CURRENT_PEER_LIST_CORRECT_NOTHING_NEED_RESET_0E009CDA = "[RESET PEER LIST] 当前 peer 列表正确，无需重置：{}";
+  public static final String EXCEPTION_INTERNAL_GRPC_CONNECTION_ERROR_59404D15 = "内部 GRPC 连接错误：";
+  public static final String LOG_FAILED_ARG_ATTEMPT_ARG_SLEEP_ARG_THEN_RETRY_36A9A0C2 = "{} 失败，第 {} 次尝试，休眠 {} 后重试";
+  public static final String LOG_ARG_INTERRUPTED_WAITING_RETRY_38D69BCC = "{}：等待重试时被中断";
+  public static final String EXCEPTION_SUPPLIER_EQUALS_EQUALS_NULL_13BACC3E = "supplier == null";
+  public static final String EXCEPTION_CONDITION_EQUALS_EQUALS_NULL_E3A6C947 = "condition == null";
+  public static final String EXCEPTION_ARG_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_A12E23D7 =
+      "%s：从 %s 加载快照失败";
+
 }

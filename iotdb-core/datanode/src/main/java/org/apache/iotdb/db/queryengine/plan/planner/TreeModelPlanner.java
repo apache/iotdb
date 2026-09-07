@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.TreeAnalysisMutationJournal;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -57,6 +58,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DIST
 public class TreeModelPlanner implements IPlanner {
 
   private final Statement statement;
+  private final TreeAnalysisMutationJournal mutationJournal = new TreeAnalysisMutationJournal();
 
   private final ExecutorService executor;
   private final ScheduledExecutorService scheduledExecutor;
@@ -91,7 +93,23 @@ public class TreeModelPlanner implements IPlanner {
 
   @Override
   public IAnalysis analyze(MPPQueryContext context) {
-    return new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
+    return new Analyzer(context, partitionFetcher, schemaFetcher, mutationJournal)
+        .analyze(statement);
+  }
+
+  @Override
+  public void beginAnalysisAttempt() {
+    mutationJournal.begin();
+  }
+
+  @Override
+  public void rollbackAnalysisAttempt() {
+    mutationJournal.rollback();
+  }
+
+  @Override
+  public void commitAnalysisAttempt() {
+    mutationJournal.commit();
   }
 
   @Override

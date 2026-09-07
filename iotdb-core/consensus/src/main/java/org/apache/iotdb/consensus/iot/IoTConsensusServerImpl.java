@@ -21,6 +21,9 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditEvent;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
+import org.apache.iotdb.commons.audit.UserDataTransferProtectionMethod;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -35,12 +38,14 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
@@ -84,21 +89,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -108,6 +114,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.LongSupplier;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
@@ -142,10 +149,10 @@ public class IoTConsensusServerImpl {
   private final ConcurrentHashMap<String, ConcurrentHashMap<String, String>>
       snapshotReceiveFolderMap = new ConcurrentHashMap<>();
 
-  private final TreeSet<Peer> configuration;
+  private final Set<Peer> configuration = ConcurrentHashMap.newKeySet();
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
-  private IoTConsensusConfig config;
+  private volatile IoTConsensusConfig config;
   private final ConsensusReqReader consensusReqReader;
   private volatile boolean active;
   private String newSnapshotDirName;
@@ -155,6 +162,8 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
+  private final UserDataTransferAuditHandler userDataTransferAuditHandler;
+  private final UserDataTransferAuditClassifier userDataTransferAuditClassifier;
   private IndexedConsensusRequest lastConsensusRequest;
 
   // Subscription queues receive IndexedConsensusRequest in real-time from write(),
@@ -186,12 +195,41 @@ public class IoTConsensusServerImpl {
       List<String> recvSnapshotDirs,
       DirectoryStrategyType recvFolderStrategyType,
       Peer thisNode,
-      TreeSet<Peer> configuration,
+      Collection<Peer> configuration,
       IStateMachine stateMachine,
       ScheduledExecutorService backgroundTaskService,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
       IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
       IoTConsensusConfig config)
+      throws DiskSpaceInsufficientException {
+    this(
+        storageDir,
+        recvSnapshotDirs,
+        recvFolderStrategyType,
+        thisNode,
+        configuration,
+        stateMachine,
+        backgroundTaskService,
+        clientManager,
+        syncClientManager,
+        config,
+        UserDataTransferAuditHandler.NO_OP,
+        UserDataTransferAuditClassifier.NO_USER_DATA);
+  }
+
+  public IoTConsensusServerImpl(
+      String storageDir,
+      List<String> recvSnapshotDirs,
+      DirectoryStrategyType recvFolderStrategyType,
+      Peer thisNode,
+      Collection<Peer> configuration,
+      IStateMachine stateMachine,
+      ScheduledExecutorService backgroundTaskService,
+      IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
+      IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
+      IoTConsensusConfig config,
+      UserDataTransferAuditHandler userDataTransferAuditHandler,
+      UserDataTransferAuditClassifier userDataTransferAuditClassifier)
       throws DiskSpaceInsufficientException {
     this.active = true;
     this.storageDir = storageDir;
@@ -209,9 +247,11 @@ public class IoTConsensusServerImpl {
     this.stateMachine = stateMachine;
     this.cacheQueueMap = new ConcurrentHashMap<>();
     this.syncClientManager = syncClientManager;
-    this.configuration = configuration;
+    this.configuration.addAll(configuration);
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
+    this.userDataTransferAuditHandler = userDataTransferAuditHandler;
+    this.userDataTransferAuditClassifier = userDataTransferAuditClassifier;
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.consensusReqReader =
         (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
@@ -312,31 +352,36 @@ public class IoTConsensusServerImpl {
         // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
         // in one transaction.
         synchronized (searchIndex) {
-          logDispatcher.offer(indexedConsensusRequest);
           // Deliver to subscription queues for real-time in-memory consumption.
           // Offer AFTER stateMachine.write() so that InsertNode has inferred types
           // and properly typed values (same timing as LogDispatcher).
-          final int sqCount = subscriptionQueueRegistry.size();
-          if (sqCount > 0) {
-            subscriptionQueueRegistry.offer(indexedConsensusRequest);
-          } else if (logger.isDebugEnabled()
+          final boolean offeredToSubscription =
+              subscriptionQueueRegistry.offer(indexedConsensusRequest);
+          logDispatcher.offer(indexedConsensusRequest, offeredToSubscription);
+          if (!offeredToSubscription
+              && subscriptionQueueRegistry.isEmpty()
+              && logger.isDebugEnabled()
               && indexedConsensusRequest.getSearchIndex() % 50 == 0) {
             // Log periodically when no subscription queues are registered
             logger.debug(
-                "write() no subscription queues registered, " + "group={}, searchIndex={}, this={}",
+                IoTConsensusMessages.LOG_WRITE_NO_SUBSCRIPTION_QUEUES_REGISTERED_0F4E697B
+                    + IoTConsensusMessages.LOG_GROUP_ARG_SEARCHINDEX_ARG_ARG_D5E034E6,
                 consensusGroupId,
                 indexedConsensusRequest.getSearchIndex(),
                 System.identityHashCode(this));
           }
           searchIndex.incrementAndGet();
         }
-        updateWriterMetaOnSuccess(indexedConsensusRequest);
+        latestWriterMeta =
+            new WriterMeta(
+                indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime());
         // statistic the time of offering request into queue
         ioTConsensusServerMetrics.recordOfferRequestToQueueTime(
             System.nanoTime() - writeToStateMachineEndTime);
       } else if (logger.isDebugEnabled()) {
         logger.debug(
-            IoTConsensusMessages.WRITE_OPERATION_FAILED + ", subscriptionQueues: {}, this: {}",
+            IoTConsensusMessages
+                .LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576,
             thisNode.getGroupId(),
             indexedConsensusRequest.getSearchIndex(),
             result.getCode(),
@@ -349,6 +394,7 @@ public class IoTConsensusServerImpl {
       return result;
     } finally {
       stateMachineLock.unlock();
+      persistLatestWriterMeta(false);
     }
   }
 
@@ -382,6 +428,9 @@ public class IoTConsensusServerImpl {
   public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
+    final boolean auditSnapshotTransfer =
+        shouldAuditSnapshotTransfer(
+            userDataTransferAuditHandler, userDataTransferAuditClassifier, thisNode.getGroupId());
     long snapshotSizeSum = 0;
     for (File file : snapshotPaths) {
       snapshotSizeSum += file.length();
@@ -424,7 +473,19 @@ public class IoTConsensusServerImpl {
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
             req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
             ioTConsensusRateLimiter.acquireTransitDataSizeWithRateLimiter(req.getChunkLength());
-            TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
+            final TSendSnapshotFragmentRes res;
+            try {
+              res = client.sendSnapshotFragment(req);
+              recordSnapshotTransferAttempt(
+                  targetPeer,
+                  auditSnapshotTransfer,
+                  isSuccess(res.getStatus()),
+                  isSuccess(res.getStatus()) ? null : String.valueOf(res.getStatus().getCode()),
+                  null);
+            } catch (Exception e) {
+              recordSnapshotTransferAttempt(targetPeer, auditSnapshotTransfer, false, null, e);
+              throw e;
+            }
             if (!isSuccess(res.getStatus())) {
               throw new ConsensusGroupModifyPeerException(
                   String.format(IoTConsensusMessages.SNAPSHOT_TRANSMISSION_ERROR, targetPeer));
@@ -459,6 +520,41 @@ public class IoTConsensusServerImpl {
         CommonDateTimeUtils.convertMillisecondToDurationStr(
             (System.nanoTime() - startTime) / 1_000_000),
         snapshotDir);
+  }
+
+  private void recordSnapshotTransferAttempt(
+      Peer targetPeer,
+      boolean auditSnapshotTransfer,
+      boolean success,
+      String errorCode,
+      Throwable error) {
+    if (!auditSnapshotTransfer) {
+      return;
+    }
+    try {
+      userDataTransferAuditHandler.onAttempt(
+          new UserDataTransferAuditEvent(
+              thisNode.getEndpoint(),
+              thisNode.getEndpoint(),
+              targetPeer.getEndpoint(),
+              UserDataTransferProtectionMethod.fromTlsEnabled(config.getRpc().isEnableSSL()),
+              success,
+              errorCode != null ? errorCode : error == null ? null : error.getClass().getName()));
+    } catch (RuntimeException ignored) {
+      // Audit recording must not affect snapshot transmission.
+    }
+  }
+
+  static boolean shouldAuditSnapshotTransfer(
+      UserDataTransferAuditHandler auditHandler,
+      UserDataTransferAuditClassifier auditClassifier,
+      ConsensusGroupId groupId) {
+    try {
+      return auditHandler.isEnabled() && auditClassifier.containsUserData(groupId);
+    } catch (RuntimeException ignored) {
+      // Audit classification must not affect snapshot transmission.
+      return false;
+    }
   }
 
   public void receiveSnapshotFragment(
@@ -523,8 +619,9 @@ public class IoTConsensusServerImpl {
     if (!Files.exists(parentDir)) {
       Files.createDirectories(parentDir);
     }
-    try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
-        FileChannel channel = fos.getChannel()) {
+    try (FileChannel channel =
+        FileChannel.open(
+            targetFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
       channel.write(fileChunk.slice(), fileOffset);
     }
   }
@@ -724,8 +821,8 @@ public class IoTConsensusServerImpl {
           // after current operation
           // TODO: (xingtanzjr) design more reliable way for IoTConsensus
           logger.error(
-              "cannot notify {} to build sync log channel. "
-                  + "Please check the status of this node manually",
+              IoTConsensusMessages.LOG_CANNOT_NOTIFY_ARG_BUILD_SYNC_LOG_CHANNEL_490770FB
+                  + IoTConsensusMessages.LOG_PLEASE_CHECK_STATUS_NODE_MANUALLY_40FBC9B3,
               peer,
               e);
         }
@@ -860,8 +957,8 @@ public class IoTConsensusServerImpl {
       return res.getStatus();
     } catch (Exception e) {
       logger.debug(
-          "Failed to sync writer safe-time barrier to peer {} for group {}, "
-              + "safePt={}, writerNodeId={}, barrier={}",
+          IoTConsensusMessages.LOG_FAILED_SYNC_WRITER_SAFE_TIME_BARRIER_PEER_ARG_GROUP_ARG_05A13E6A
+              + IoTConsensusMessages.LOG_SAFEPT_ARG_WRITERNODEID_ARG_BARRIER_ARG_AC74618F,
           targetPeer,
           consensusGroupId,
           safePhysicalTime,
@@ -930,7 +1027,9 @@ public class IoTConsensusServerImpl {
           new IoTProgressIndex(thisNode.getNodeId(), searchIndex.get() + 1);
       ((ComparableConsensusRequest) request).setProgressIndex(iotProgressIndex);
     }
-    return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request))
+    final List<IConsensusRequest> requests = Collections.singletonList(request);
+    return new IndexedConsensusRequest(searchIndex.get() + 1, requests)
+        .setContainsUserData(containsUserData(request))
         .setPhysicalTime(assignPhysicalTimeInMs())
         .setNodeId(thisNode.getNodeId());
   }
@@ -948,6 +1047,33 @@ public class IoTConsensusServerImpl {
     req.setPhysicalTime(physicalTime);
     req.setNodeId(nodeId);
     return req;
+  }
+
+  public boolean containsUserData() {
+    try {
+      return userDataTransferAuditClassifier.containsUserData(thisNode.getGroupId());
+    } catch (RuntimeException ignored) {
+      // Classification is advisory and must not affect consensus replication.
+      return false;
+    }
+  }
+
+  public boolean containsUserData(List<IConsensusRequest> requests) {
+    for (IConsensusRequest request : requests) {
+      if (containsUserData(request)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean containsUserData(IConsensusRequest request) {
+    try {
+      return userDataTransferAuditClassifier.containsUserData(thisNode.getGroupId(), request);
+    } catch (RuntimeException ignored) {
+      // Classification is advisory and must not affect consensus replication.
+      return false;
+    }
   }
 
   public TSStatus syncIdleWriterSafeTimeBarrierToPeer(final Peer targetPeer) {
@@ -1013,8 +1139,9 @@ public class IoTConsensusServerImpl {
       if (writerMetaOptional.isPresent()) {
         final WriterMeta writerMeta = writerMetaOptional.get();
         logger.info(
-            "Recovered writer meta for group {} from {}, recoveredLocalSeq={}, "
-                + "persistedLocalSeq={}",
+            IoTConsensusMessages
+                    .LOG_RECOVERED_WRITER_META_GROUP_ARG_ARG_RECOVEREDLOCALSEQ_ARG_9B989AAC
+                + IoTConsensusMessages.LOG_PERSISTEDLOCALSEQ_ARG_5EBAA9A5,
             consensusGroupId,
             writerMetaPath,
             recoveredSearchIndex,
@@ -1028,22 +1155,22 @@ public class IoTConsensusServerImpl {
       }
     } catch (IOException e) {
       logger.warn(
-          "Failed to load writer meta for group {} from {}. Starting fresh writer metadata.",
+          IoTConsensusMessages
+              .LOG_FAILED_LOAD_WRITER_META_GROUP_ARG_ARG_STARTING_FRESH_WRITER_A24EDEFE,
           consensusGroupId,
           writerMetaPath,
           e);
     }
     lastAssignedPhysicalTime.set(System.currentTimeMillis());
     logger.info(
-        "Initialized fresh writer meta for group {}, recoveredLocalSeq={}",
+        IoTConsensusMessages
+            .LOG_INITIALIZED_FRESH_WRITER_META_GROUP_ARG_RECOVEREDLOCALSEQ_ARG_A7254C6E,
         consensusGroupId,
         recoveredSearchIndex);
   }
 
   private void updateWriterMetaOnSuccess(final IndexedConsensusRequest indexedConsensusRequest) {
-    latestWriterMeta =
-        new WriterMeta(
-            indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime());
+
     persistLatestWriterMeta(false);
   }
 
@@ -1062,8 +1189,8 @@ public class IoTConsensusServerImpl {
     synchronized (writerMetaPersistLock) {
       final WriterMeta latestMeta = latestWriterMeta;
       if (latestMeta == null
-          || (latestMeta.getLastAllocatedLocalSeq() == lastPersistedWriterLocalSeq
-              && latestMeta.getLastAssignedPhysicalTimeMs() == lastPersistedWriterPhysicalTime)) {
+          || (latestMeta.getLastAllocatedLocalSeq() <= lastPersistedWriterLocalSeq
+              && latestMeta.getLastAssignedPhysicalTimeMs() <= lastPersistedWriterPhysicalTime)) {
         return;
       }
 
@@ -1080,7 +1207,8 @@ public class IoTConsensusServerImpl {
         lastPersistedWriterPhysicalTime = latestMeta.getLastAssignedPhysicalTimeMs();
       } catch (IOException e) {
         logger.warn(
-            "Failed to persist writer meta for group {} at localSeq={}, pt={}",
+            IoTConsensusMessages
+                .LOG_FAILED_PERSIST_WRITER_META_GROUP_ARG_AT_LOCALSEQ_ARG_PT_3502F119,
             consensusGroupId,
             latestMeta.getLastAllocatedLocalSeq(),
             latestMeta.getLastAssignedPhysicalTimeMs(),
@@ -1109,8 +1237,14 @@ public class IoTConsensusServerImpl {
     return thisNode;
   }
 
+  public UserDataTransferAuditHandler getUserDataTransferAuditHandler() {
+    return userDataTransferAuditHandler;
+  }
+
   public List<Peer> getConfiguration() {
-    return new ArrayList<>(configuration);
+    List<Peer> result = new ArrayList<>(configuration);
+    Collections.sort(result);
+    return result;
   }
 
   public long getSearchIndex() {
@@ -1131,13 +1265,16 @@ public class IoTConsensusServerImpl {
    */
   public void registerSubscriptionQueue(
       final BlockingQueue<IndexedConsensusRequest> queue,
-      final SubscriptionWalRetentionPolicy retentionPolicy) {
-    subscriptionQueueRegistry.register(queue, retentionPolicy);
+      final SubscriptionWalRetentionPolicy retentionPolicy,
+      final LongSupplier committedRetainedMinVersionIdSupplier) {
+    subscriptionQueueRegistry.register(
+        queue, retentionPolicy, committedRetainedMinVersionIdSupplier);
     // Immediately re-evaluate the safe delete index with new subscription awareness
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
-        "Registered subscription queue for group {}, "
-            + "total subscription queues: {}, currentSearchIndex={}, this={}",
+        IoTConsensusMessages.LOG_REGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_5102ABA0
+            + IoTConsensusMessages
+                .LOG_TOTAL_SUBSCRIPTION_QUEUES_ARG_CURRENTSEARCHINDEX_ARG_ARG_9BF9006A,
         consensusGroupId,
         subscriptionQueueRegistry.size(),
         searchIndex.get(),
@@ -1149,7 +1286,8 @@ public class IoTConsensusServerImpl {
     // Re-evaluate: with fewer subscribers, more WAL may be deletable
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
-        "Deregistered subscription queue for group {}, remaining subscription queues: {}",
+        IoTConsensusMessages
+            .LOG_DEREGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_REMAINING_SUBSCRIPTION_QUEUES_ARG_B86E31AF,
         consensusGroupId,
         subscriptionQueueRegistry.size());
   }
@@ -1273,8 +1411,8 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * Computes and updates the safe-to-delete WAL search index based on replication progress and
-   * subscription WAL retention policy.
+   * Computes and updates the safe-to-delete WAL search index based on replication progress,
+   * subscription WAL retention policy, and consumer-group committed progress.
    *
    * <p>Because multiple subscription topics share one region WAL, the effective per-region
    * retention policy is the most conservative policy across all active subscription queues on this
@@ -1301,7 +1439,8 @@ public class IoTConsensusServerImpl {
 
     final SubscriptionRetentionBound subscriptionRetentionBound =
         subscriptionWalRetentionCalculator.calculate(
-            subscriptionQueueRegistry.getRetentionPolicies());
+            subscriptionQueueRegistry.getRetentionPolicies(),
+            subscriptionQueueRegistry.getCommittedRetainedMinVersionIds());
 
     consensusReqReader.setSafelyDeletedSearchIndex(
         Math.min(replicationIndex, subscriptionRetentionBound.getSafelyDeletedSearchIndex()));
@@ -1335,6 +1474,7 @@ public class IoTConsensusServerImpl {
   /** This method is used for hot reload of IoTConsensusConfig. */
   public void reloadConsensusConfig(IoTConsensusConfig config) {
     this.config = config;
+    logDispatcher.reloadConfig(config);
   }
 
   /**
@@ -1423,16 +1563,40 @@ public class IoTConsensusServerImpl {
           } catch (InterruptedException e) {
             logger.warn(
                 IoTConsensusMessages.CURRENT_WAITING_INTERRUPTED, request.getStartSyncIndex(), e);
+            requestCache.remove(request);
+            queueSortCondition.signalAll();
             Thread.currentThread().interrupt();
-            break;
+            return new TSStatus()
+                .setSubStatus(
+                    Collections.nCopies(
+                        request.getInsertNodes().size(),
+                        RpcUtils.getStatus(
+                            TSStatusCode.INTERNAL_SERVER_ERROR,
+                            String.format(
+                                IoTConsensusMessages
+                                    .MESSAGE_SYNC_LOG_REQUEST_WITH_SYNC_INDEX_ARG_WAS_INTERRUPTED_WHILE_WAITING_81B4ABB2,
+                                request.getStartSyncIndex()))));
           }
         }
         long sortTime = System.nanoTime();
         ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
         List<TSStatus> subStatus = new LinkedList<>();
-        for (IConsensusRequest insertNode : request.getInsertNodes()) {
+        List<IConsensusRequest> insertNodes = request.getInsertNodes();
+        for (int i = 0; i < insertNodes.size(); i++) {
+          IConsensusRequest insertNode = insertNodes.get(i);
           insertNode.markAsGeneratedByRemoteConsensusLeader();
-          subStatus.add(stateMachine.write(insertNode));
+          TSStatus status = stateMachine.write(insertNode);
+          subStatus.add(status);
+          if (RetryUtils.needRetryForWrite(status.getCode())) {
+            for (int j = i + 1; j < insertNodes.size(); j++) {
+              subStatus.add(
+                  RpcUtils.getStatus(
+                      TSStatusCode.WRITE_PROCESS_REJECT,
+                      IoTConsensusMessages
+                          .MESSAGE_THE_REQUEST_MUST_WAIT_FOR_THE_PREVIOUS_REQUEST_TO_COMPLETE_470849A7));
+            }
+            break;
+          }
         }
         if (subStatus.stream()
             .allMatch(status -> status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {

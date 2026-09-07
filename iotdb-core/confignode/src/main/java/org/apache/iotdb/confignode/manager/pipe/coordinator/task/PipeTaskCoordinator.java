@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
@@ -48,7 +49,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -121,16 +121,15 @@ public class PipeTaskCoordinator {
   }
 
   private boolean isDoubleLivingPipe(final TCreatePipeReq req) {
-    return new PipeParameters(req.getExtractorAttributes())
-        .getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    return PipeSourceConstant.isDoubleLiving(new PipeParameters(req.getExtractorAttributes()));
   }
 
   private TSStatus createDoubleLivingPipe(final TCreatePipeReq req) {
     final PipeParameters sourceParameters = new PipeParameters(req.getExtractorAttributes());
+    final TSStatus validationStatus = validateDoubleLivingPipeParameters(sourceParameters);
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != validationStatus.getCode()) {
+      return validationStatus;
+    }
     final String currentDialect =
         sourceParameters.getStringOrDefault(
             SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
@@ -180,11 +179,24 @@ public class PipeTaskCoordinator {
     return secondStatus;
   }
 
+  private TSStatus validateDoubleLivingPipeParameters(final PipeParameters sourceParameters) {
+    final Boolean isForwardingPipeRequests =
+        sourceParameters.getBooleanByKeys(
+            PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+            PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY);
+    return Boolean.TRUE.equals(isForwardingPipeRequests)
+        ? RpcUtils.getStatus(
+            TSStatusCode.PIPE_ERROR,
+            PipeMessages
+                .EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1)
+        : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   private TCreatePipeReq cloneCreatePipeRequestWithDialect(
       final TCreatePipeReq req, final PipeParameters sourceParameters, final String sqlDialect) {
     final Map<String, String> sourceAttributes = new HashMap<>(sourceParameters.getAttribute());
-    sourceAttributes.remove(PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY);
-    sourceAttributes.remove(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY);
+    PipeSourceConstant.removeDoubleLivingAttributes(sourceAttributes);
+    PipeSourceConstant.disableForwardingPipeRequests(sourceAttributes);
     sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, sqlDialect);
     sourceAttributes.put(
         SystemConstant.PIPE_VISIBILITY_KEY, SystemConstant.PIPE_VISIBILITY_STRICT_VALUE);
@@ -215,6 +227,14 @@ public class PipeTaskCoordinator {
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
     final boolean isTableModel =
         resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (pipeTaskInfo.isPipeBeingDropped(pipeName, isTableModel)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B,
+              pipeName));
+    }
     if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
@@ -254,6 +274,14 @@ public class PipeTaskCoordinator {
     final String pipeName = req.getPipeName();
     final boolean isTableModel =
         resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (pipeTaskInfo.isPipeBeingDropped(pipeName, isTableModel)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638,
+              pipeName));
+    }
     if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
@@ -286,6 +314,14 @@ public class PipeTaskCoordinator {
     final String pipeName = req.getPipeName();
     final boolean isTableModel =
         resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (pipeTaskInfo.isPipeBeingDropped(pipeName, isTableModel)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B,
+              pipeName));
+    }
     if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,

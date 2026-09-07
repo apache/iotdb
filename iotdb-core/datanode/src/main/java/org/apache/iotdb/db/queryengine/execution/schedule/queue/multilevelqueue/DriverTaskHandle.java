@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import javax.annotation.concurrent.GuardedBy;
 
 import java.util.Objects;
@@ -46,8 +48,12 @@ public class DriverTaskHandle {
       MultilevelPriorityQueue driverTaskQueue,
       OptionalInt maxDriversPerTask) {
     this.driverTaskHandleId = driverTaskHandleId;
-    this.driverTaskQueue = requireNonNull(driverTaskQueue, "driverTaskQueue is null");
-    this.maxDriversPerTask = requireNonNull(maxDriversPerTask, "maxDriversPerTask is null");
+    this.driverTaskQueue =
+        requireNonNull(
+            driverTaskQueue, DataNodeQueryMessages.EXCEPTION_DRIVERTASKQUEUE_IS_NULL_7C3C8B7B);
+    this.maxDriversPerTask =
+        requireNonNull(
+            maxDriversPerTask, DataNodeQueryMessages.EXCEPTION_MAXDRIVERSPERTASK_IS_NULL_8408F9B7);
   }
 
   public synchronized Priority addScheduledTimeInNanos(long durationNanos) {

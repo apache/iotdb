@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
@@ -46,6 +47,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchem
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -115,6 +117,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.BatchDeviceEntrySource;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.InMemoryDeviceEntrySource;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.SegmentDeviceEntrySource;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
@@ -169,6 +174,8 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import jakarta.validation.constraints.NotNull;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -222,6 +229,53 @@ public class DataNodeTableOperatorGenerator
     super(metadata);
   }
 
+  /**
+   * Producer side: register a shared {@link TopKRuntimeFilter} before visiting TopK children so
+   * nested Scan nodes can resolve the same instance during operator generation.
+   */
+  private TopKRuntimeFilter registerTopKRuntimeFilterForTopK(
+      TopKNode node, LocalExecutionPlanContext context) {
+    if (node.getTopKRuntimeFilterSourceId() == null) {
+      return null;
+    }
+    return context.dataNodeQueryContext.registerTopKRuntimeFilter(
+        node.getTopKRuntimeFilterSourceId(),
+        new TopKRuntimeFilter(node.isTopKRuntimeFilterAscending()));
+  }
+
+  /**
+   * Consumer side: lookup the shared filter by root TopK plan node id ({@code
+   * topKRuntimeFilterSourceId}).
+   */
+  private TopKRuntimeFilter resolveTopKRuntimeFilterForDeviceScan(
+      DeviceTableScanNode scanNode, LocalExecutionPlanContext context) {
+    if (scanNode.getTopKRuntimeFilterSourceId() == null) {
+      return null;
+    }
+    return context.dataNodeQueryContext.getTopKRuntimeFilter(
+        scanNode.getTopKRuntimeFilterSourceId());
+  }
+
+  @Override
+  protected TopKRuntimeFilter registerRuntimeFilter(
+      LocalExecutionPlanContext context, TopKNode node) {
+    return registerTopKRuntimeFilterForTopK(node, context);
+  }
+
+  private void applyTopKRuntimeFilter(
+      SeriesScanOptions.Builder builder,
+      DeviceTableScanNode scanNode,
+      LocalExecutionPlanContext context,
+      TopKRuntimeFilter preResolvedFilter) {
+    TopKRuntimeFilter filter =
+        preResolvedFilter != null
+            ? preResolvedFilter
+            : resolveTopKRuntimeFilterForDeviceScan(scanNode, context);
+    if (filter != null) {
+      builder.withTopKRuntimeFilter(filter);
+    }
+  }
+
   @Override
   protected String getSortTmpDir(CommonOperatorContext operatorContext) {
     OperatorContext dataNodeOperatorContext = (OperatorContext) operatorContext;
@@ -272,7 +326,8 @@ public class DataNodeTableOperatorGenerator
       operatorContext.recordSpecifiedInfo(DOWNSTREAM_PLAN_NODE_ID, downStreamPlanNodeId);
     }
     checkArgument(
-        MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
+        MPP_DATA_EXCHANGE_MANAGER != null,
+        DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
     ISinkHandle sinkHandle =
@@ -294,7 +349,8 @@ public class DataNodeTableOperatorGenerator
           operatorContext, children, downStreamChannelIndex, sinkHandle);
     } else {
       throw new IllegalStateException(
-          "IdentitySinkNode should only have one child in table model.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_IDENTITYSINKNODE_SHOULD_ONLY_HAVE_ONE_CHILD_IN_TABLE_MODEL_5E995EB3);
     }
   }
 
@@ -352,7 +408,10 @@ public class DataNodeTableOperatorGenerator
         return new FourOrHigherLevelDBExtractor(dbLevel);
       } else {
         throw new IllegalArgumentException(
-            "tree db name should at least be two level: " + treeDBName);
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_TREE_DB_NAME_SHOULD_AT_LEAST_BE_TWO_LEVEL_S_772B6832,
+                treeDBName));
       }
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(e);
@@ -362,38 +421,15 @@ public class DataNodeTableOperatorGenerator
   @Override
   public Operator visitTreeNonAlignedDeviceViewScan(
       TreeNonAlignedDeviceViewScanNode node, LocalExecutionPlanContext context) {
-
-    boolean containsFieldColumn = false;
-    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
-      if (entry.getValue().getColumnCategory() == FIELD) {
-        containsFieldColumn = true;
-        break;
-      }
-    }
     TsTable tsTable =
         DataNodeTableCache.getInstance()
             .getTable(
                 node.getQualifiedObjectName().getDatabaseName(),
                 node.getQualifiedObjectName().getObjectName());
-    if (!containsFieldColumn) {
-      Map<Symbol, ColumnSchema> newAssignments = new LinkedHashMap<>(node.getAssignments());
-      for (TsTableColumnSchema columnSchema : tsTable.getColumnList()) {
-        if (columnSchema.getColumnCategory() == FIELD) {
-          newAssignments.put(
-              new Symbol(columnSchema.getColumnName()),
-              new ColumnSchema(
-                  columnSchema.getColumnName(),
-                  TypeFactory.getType(columnSchema.getDataType()),
-                  false,
-                  columnSchema.getColumnCategory()));
-          containsFieldColumn = true;
-        }
-      }
-      node.setAssignments(newAssignments);
-    }
+    boolean containsFieldColumn = ensureFieldColumnForTreeNonAlignedDeviceViewScan(node, tsTable);
     // For non-aligned series, scan cannot be performed when no field columns
     // can be obtained, so an empty result set is returned.
-    if (!containsFieldColumn || node.getDeviceEntries().isEmpty()) {
+    if (!containsFieldColumn || node.getDeviceEntryCount() == 0) {
       OperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName());
@@ -414,8 +450,7 @@ public class DataNodeTableOperatorGenerator
             viewTTL);
 
     DeviceIteratorScanOperator treeNonAlignedDeviceIteratorScanOperator =
-        new DeviceIteratorScanOperator(
-            parameter.context, parameter.deviceEntries, parameter.generator);
+        new DeviceIteratorScanOperator(parameter);
     addSource(
         treeNonAlignedDeviceIteratorScanOperator,
         context,
@@ -448,7 +483,8 @@ public class DataNodeTableOperatorGenerator
           long viewTTL) {
     if (node.isPushLimitToEachDevice() && node.getPushDownOffset() > 0) {
       throw new IllegalArgumentException(
-          "PushDownOffset should not be set when isPushLimitToEachDevice is true.");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_PUSHDOWNOFFSET_SHOULD_NOT_BE_SET_WHEN_ISPUSHLIMITTOEACHDEVICE_9B6D5144);
     }
     CommonTableScanOperatorParameters commonParameter =
         new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, true);
@@ -482,6 +518,9 @@ public class DataNodeTableOperatorGenerator
           private final long INSTANCE_SIZE =
               RamUsageEstimator.shallowSizeOfInstance(this.getClass());
 
+          private final long maxReturnSize =
+              TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
           @Override
           public long ramBytesUsed() {
             return INSTANCE_SIZE
@@ -490,6 +529,27 @@ public class DataNodeTableOperatorGenerator
                     : seriesScanOptionsList.stream()
                         .mapToLong(seriesScanOption -> seriesScanOption.ramBytesUsed())
                         .sum());
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            if (operator != null) {
+              return operator.calculateMaxPeekMemory();
+            }
+            return maxReturnSize * (measurementSchemas.size() + 1L);
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return operator == null ? maxReturnSize : operator.calculateMaxReturnSize();
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            if (operator != null) {
+              return operator.calculateRetainedSizeAfterCallingNext();
+            }
+            return maxReturnSize * measurementSchemas.size();
           }
 
           @Override
@@ -620,6 +680,7 @@ public class DataNodeTableOperatorGenerator
                 builder.withPushDownOffset(
                     node.isPushLimitToEachDevice() ? 0 : node.getPushDownOffset());
               }
+              applyTopKRuntimeFilter(builder, node, context, null);
               SeriesScanOptions options = builder.build();
               options.setTTLForTableView(viewTTL);
               seriesScanOptionsList.add(options);
@@ -838,9 +899,9 @@ public class DataNodeTableOperatorGenerator
     return new DeviceIteratorScanOperator.TreeNonAlignedDeviceViewScanParameters(
         allSensors,
         operatorContext,
-        node.getDeviceEntries(),
         measurementColumnNames,
         measurementSchemas,
+        createDeviceEntrySource(node),
         deviceChildOperatorTreeGenerator);
   }
 
@@ -882,7 +943,9 @@ public class DataNodeTableOperatorGenerator
       boolean addedTimeColumn = false;
       for (Symbol columnName : outputColumnNames) {
         ColumnSchema schema =
-            requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
+            requireNonNull(
+                columnSchemaMap.get(columnName),
+                columnName + DataNodeQueryMessages.EXCEPTION_IS_NULL_97AAF381);
 
         symbolInputs.add(columnName);
         switch (schema.getColumnCategory()) {
@@ -890,7 +953,8 @@ public class DataNodeTableOperatorGenerator
           case ATTRIBUTE:
             columnsIndexArray[idx++] =
                 requireNonNull(
-                    tagAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+                    tagAndAttributeColumnsIndexMap.get(columnName),
+                    columnName + DataNodeQueryMessages.EXCEPTION_IS_NULL_97AAF381);
             columnSchemas.add(schema);
             break;
           case FIELD:
@@ -915,7 +979,9 @@ public class DataNodeTableOperatorGenerator
             break;
           default:
             throw new IllegalArgumentException(
-                "Unexpected column category: " + schema.getColumnCategory());
+                String.format(
+                    DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_COLUMN_CATEGORY_S_6E60A44E,
+                    schema.getColumnCategory()));
         }
       }
       Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
@@ -962,13 +1028,15 @@ public class DataNodeTableOperatorGenerator
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
         createTreeDeviceIdColumnValueExtractor(DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable));
 
+    TopKRuntimeFilter topKRuntimeFilter = resolveTopKRuntimeFilterForDeviceScan(node, context);
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructAbstractTableScanOperatorParameter(
             node,
             context,
             TreeAlignedDeviceViewScanOperator.class.getSimpleName(),
             node.getMeasurementColumnNameMap(),
-            tsTable.getCachedTableTTL());
+            tsTable.getCachedTableTTL(),
+            topKRuntimeFilter);
 
     TreeAlignedDeviceViewScanOperator treeAlignedDeviceViewScanOperator =
         new TreeAlignedDeviceViewScanOperator(parameter, idColumnValueExtractor);
@@ -996,11 +1064,20 @@ public class DataNodeTableOperatorGenerator
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(sourceOperator);
 
+    if (sourceOperator.isBatchQueryDataSource()) {
+      context.getDriverContext().setInputDriver(true);
+      return;
+    }
+
     for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
       DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
       if (deviceEntry == null) {
         throw new IllegalStateException(
-            "Device entries of index " + i + " in " + planNodeName + " is empty");
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DEVICE_ENTRIES_OF_INDEX_S_IN_S_IS_EMPTY_68D1DB60,
+                i,
+                planNodeName));
       }
       if (deviceEntry instanceof NonAlignedDeviceEntry) {
         for (IMeasurementSchema schema : measurementSchemas) {
@@ -1069,6 +1146,9 @@ public class DataNodeTableOperatorGenerator
         columnSchemas,
         columnsIndexArray,
         node.getDeviceEntries(),
+        node.getDeviceEntryCount(),
+        createDeviceEntrySource(node),
+        !(node instanceof ExternalTsFileScanNode),
         node.getScanOrder(),
         seriesScanOptions,
         measurementColumnNames,
@@ -1076,16 +1156,94 @@ public class DataNodeTableOperatorGenerator
         maxTsBlockLineNum);
   }
 
+  private AbstractTableScanOperator.AbstractTableScanOperatorParameter
+      constructAbstractTableScanOperatorParameter(
+          DeviceTableScanNode node,
+          LocalExecutionPlanContext context,
+          String className,
+          Map<String, String> fieldColumnsRenameMap,
+          long viewTTL,
+          TopKRuntimeFilter topKRuntimeFilter) {
+
+    CommonTableScanOperatorParameters commonParameter =
+        new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, false);
+    List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
+    List<String> measurementColumnNames = commonParameter.measurementColumnNames;
+    List<ColumnSchema> columnSchemas = commonParameter.columnSchemas;
+    int[] columnsIndexArray = commonParameter.columnsIndexArray;
+    SeriesScanOptions seriesScanOptions =
+        buildSeriesScanOptions(
+            context,
+            commonParameter.columnSchemaMap,
+            measurementColumnNames,
+            commonParameter.measurementColumnsIndexMap,
+            commonParameter.timeColumnName,
+            node.getTimePredicate(),
+            node.getPushDownLimit(),
+            node.getPushDownOffset(),
+            node.isPushLimitToEachDevice(),
+            node.getPushDownPredicate(),
+            node,
+            topKRuntimeFilter);
+    seriesScanOptions.setTTLForTableView(viewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof TreeDeviceViewScanNode);
+
+    OperatorContext operatorContext = addOperatorContext(context, node.getPlanNodeId(), className);
+
+    int maxTsBlockLineNum = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    if (context.getTypeProvider().getTemplatedInfo() != null) {
+      maxTsBlockLineNum =
+          (int)
+              Math.min(
+                  context.getTypeProvider().getTemplatedInfo().getLimitValue(), maxTsBlockLineNum);
+    }
+
+    Set<String> allSensors = new HashSet<>(measurementColumnNames);
+    allSensors.add("");
+
+    return new AbstractTableScanOperator.AbstractTableScanOperatorParameter(
+        allSensors,
+        operatorContext,
+        node.getPlanNodeId(),
+        columnSchemas,
+        columnsIndexArray,
+        node.getDeviceEntries(),
+        node.getDeviceEntryCount(),
+        createDeviceEntrySource(node),
+        !(node instanceof ExternalTsFileScanNode),
+        node.getScanOrder(),
+        seriesScanOptions,
+        measurementColumnNames,
+        measurementSchemas,
+        maxTsBlockLineNum);
+  }
+
+  private BatchDeviceEntrySource createDeviceEntrySource(DeviceTableScanNode node) {
+    return node.getDeviceEntryDataSetHandle()
+        .<BatchDeviceEntrySource>map(SegmentDeviceEntrySource::create)
+        .orElseGet(() -> new InMemoryDeviceEntrySource(node.getDeviceEntries()));
+  }
+
+  private BatchDeviceEntrySource createAggregationDeviceEntrySource(AggregationTableScanNode node) {
+    if (node.getDeviceEntryCount() == 0 && node.getGroupingKeys().isEmpty()) {
+      return new InMemoryDeviceEntrySource(Collections.singletonList(null));
+    }
+    return createDeviceEntrySource(node);
+  }
+
   // used for TableScanOperator
   private AbstractTableScanOperator.AbstractTableScanOperatorParameter
       constructAbstractTableScanOperatorParameter(
-          DeviceTableScanNode node, LocalExecutionPlanContext context) {
+          DeviceTableScanNode node,
+          LocalExecutionPlanContext context,
+          TopKRuntimeFilter topKRuntimeFilter) {
     return constructAbstractTableScanOperatorParameter(
         node,
         context,
         TableScanOperator.class.getSimpleName(),
         Collections.emptyMap(),
-        Long.MAX_VALUE);
+        Long.MAX_VALUE,
+        topKRuntimeFilter);
   }
 
   @Override
@@ -1104,9 +1262,10 @@ public class DataNodeTableOperatorGenerator
   @Override
   public Operator visitDeviceTableScan(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    TopKRuntimeFilter topKRuntimeFilter = resolveTopKRuntimeFilterForDeviceScan(node, context);
 
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
-        constructAbstractTableScanOperatorParameter(node, context);
+        constructAbstractTableScanOperatorParameter(node, context, topKRuntimeFilter);
 
     TableScanOperator tableScanOperator = new TableScanOperator(parameter);
 
@@ -1133,13 +1292,15 @@ public class DataNodeTableOperatorGenerator
       return new EmptyDataOperator(operatorContext);
     }
 
+    TopKRuntimeFilter topKRuntimeFilter = resolveTopKRuntimeFilterForDeviceScan(node, context);
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructAbstractTableScanOperatorParameter(
             node,
             context,
             ExternalTsFileTableScanOperator.class.getSimpleName(),
             Collections.emptyMap(),
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            topKRuntimeFilter);
 
     AbstractTableScanOperator externalTsFileTableScanOperator =
         new ExternalTsFileTableScanOperator(parameter, node.getDeviceTaskPartitionIndex());
@@ -1297,7 +1458,8 @@ public class DataNodeTableOperatorGenerator
   public Operator visitAggregationTreeDeviceViewScan(
       AggregationTreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
     throw new UnsupportedOperationException(
-        "The AggregationTreeDeviceViewScanNode should has been transferred to its child class node");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_THE_AGGREGATIONTREEDEVICEVIEWSCANNODE_SHOULD_HAS_BEEN_TRANSFERRED_76A35037);
   }
 
   @Override
@@ -1339,6 +1501,7 @@ public class DataNodeTableOperatorGenerator
     TsTable tsTable =
         DataNodeTableCache.getInstance()
             .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
+    ensureFieldColumnForTreeNonAlignedDeviceViewScan(node, tsTable);
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
         createTreeDeviceIdColumnValueExtractor(DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable));
 
@@ -1370,30 +1533,62 @@ public class DataNodeTableOperatorGenerator
             true,
             node.getTreeDBName(),
             node.getMeasurementColumnNameMap());
+    node.copyDeviceEntryDataSetTo(scanNode);
 
-    Operator sourceOperator = visitTreeNonAlignedDeviceViewScan(scanNode, context);
-    if (!(sourceOperator instanceof EmptyDataOperator)) {
-      // Use deviceChildOperatorTreeGenerator directly, we will control switch of devices in
-      // TreeNonAlignedDeviceViewAggregationScanOperator
-      TreeNonAlignedDeviceViewAggregationScanOperator aggTableScanOperator =
-          new TreeNonAlignedDeviceViewAggregationScanOperator(
-              parameter,
-              idColumnValueExtractor,
-              ((DeviceIteratorScanOperator) sourceOperator).getDeviceChildOperatorTreeGenerator());
-
-      addSource(
-          aggTableScanOperator,
-          context,
-          node,
-          parameter.getMeasurementColumnNames(),
-          parameter.getMeasurementSchemas(),
-          parameter.getAllSensors(),
-          NonAlignedAggregationTreeDeviceViewScanNode.class.getSimpleName());
-      return aggTableScanOperator;
-    } else {
-      // source data is empty, return directly
-      return sourceOperator;
+    if (!ensureFieldColumnForTreeNonAlignedDeviceViewScan(scanNode, tsTable)
+        || node.getDeviceEntryCount() == 0) {
+      return new EmptyDataOperator(
+          addOperatorContext(
+              context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName()));
     }
+
+    DeviceIteratorScanOperator.TreeNonAlignedDeviceViewScanParameters scanParameter =
+        constructTreeNonAlignedDeviceViewScanOperatorParameter(
+            scanNode,
+            context,
+            TreeNonAlignedDeviceViewScanNode.class.getSimpleName(),
+            scanNode.getMeasurementColumnNameMap(),
+            idColumnValueExtractor,
+            tsTable.getCachedTableTTL());
+    TreeNonAlignedDeviceViewAggregationScanOperator aggTableScanOperator =
+        new TreeNonAlignedDeviceViewAggregationScanOperator(
+            parameter, idColumnValueExtractor, scanParameter.generator);
+
+    addSource(
+        aggTableScanOperator,
+        context,
+        node,
+        parameter.getMeasurementColumnNames(),
+        parameter.getMeasurementSchemas(),
+        parameter.getAllSensors(),
+        NonAlignedAggregationTreeDeviceViewScanNode.class.getSimpleName());
+    return aggTableScanOperator;
+  }
+
+  private boolean ensureFieldColumnForTreeNonAlignedDeviceViewScan(
+      DeviceTableScanNode node, TsTable tsTable) {
+    for (ColumnSchema columnSchema : node.getAssignments().values()) {
+      if (columnSchema.getColumnCategory() == FIELD) {
+        return true;
+      }
+    }
+
+    Map<Symbol, ColumnSchema> newAssignments = new LinkedHashMap<>(node.getAssignments());
+    boolean containsFieldColumn = false;
+    for (TsTableColumnSchema columnSchema : tsTable.getColumnList()) {
+      if (columnSchema.getColumnCategory() == FIELD) {
+        newAssignments.put(
+            new Symbol(columnSchema.getColumnName()),
+            new ColumnSchema(
+                columnSchema.getColumnName(),
+                TypeFactory.getType(columnSchema.getDataType()),
+                false,
+                columnSchema.getColumnCategory()));
+        containsFieldColumn = true;
+      }
+    }
+    node.setAssignments(newAssignments);
+    return containsFieldColumn;
   }
 
   private AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter
@@ -1435,14 +1630,17 @@ public class DataNodeTableOperatorGenerator
       for (Expression argument : entry.getValue().getArguments()) {
         Symbol symbol = Symbol.from(argument);
         ColumnSchema schema =
-            requireNonNull(node.getAssignments().get(symbol), symbol + " is null");
+            requireNonNull(
+                node.getAssignments().get(symbol),
+                symbol + DataNodeQueryMessages.EXCEPTION_IS_NULL_97AAF381);
         if (!aggColumnLayout.containsKey(symbol)) {
           switch (schema.getColumnCategory()) {
             case TAG:
             case ATTRIBUTE:
               aggColumnsIndexArray[channel] =
                   requireNonNull(
-                      node.getTagAndAttributeIndexMap().get(symbol), symbol + " is null");
+                      node.getTagAndAttributeIndexMap().get(symbol),
+                      symbol + DataNodeQueryMessages.EXCEPTION_IS_NULL_97AAF381);
               break;
             case FIELD:
               aggColumnsIndexArray[channel] = measurementColumnCount;
@@ -1461,7 +1659,9 @@ public class DataNodeTableOperatorGenerator
               break;
             default:
               throw new IllegalArgumentException(
-                  "Unexpected column category: " + schema.getColumnCategory());
+                  String.format(
+                      DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_COLUMN_CATEGORY_S_6E60A44E,
+                      schema.getColumnCategory()));
           }
 
           aggColumnSchemas.add(schema);
@@ -1538,7 +1738,8 @@ public class DataNodeTableOperatorGenerator
             timeRangeIterator = new TableDateBinTimeRangeIterator(dateBinTransformer);
           } else {
             throw new IllegalStateException(
-                "grouping key must be ID or Attribute in AggregationTableScan");
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_GROUPING_KEY_MUST_BE_ID_OR_ATTRIBUTE_IN_AGGREGATIONTABLESCAN_7B592AE6);
           }
         }
       }
@@ -1581,7 +1782,9 @@ public class DataNodeTableOperatorGenerator
         aggColumnSchemas,
         aggColumnsIndexArray,
         node.getDeviceEntries(),
-        node.getDeviceEntries().size(),
+        node.getDeviceEntryCount(),
+        createAggregationDeviceEntrySource(node),
+        !(node instanceof ExternalTsFileAggregationScanNode),
         seriesScanOptions,
         measurementColumnNames,
         allSensors,
@@ -1616,9 +1819,18 @@ public class DataNodeTableOperatorGenerator
     AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter =
         constructAbstractAggTableScanOperatorParameter(node, context);
 
+    // When the device set resolves to zero devices AND there are no grouping
+    // keys (e.g. a global last/last_by over a device that was never written),
+    // fall back to the default aggregation operator, which already emits the
+    // single all-NULL row required for a global aggregation over empty input.
+    // The last-cache optimization has no device to read and would otherwise
+    // emit zero rows. A GROUP BY over an empty device set is intentionally left
+    // on the last-cache path, which already (correctly) returns zero rows.
     OptimizeType optimizeType =
-        canUseLastCacheOptimize(
-            parameter.getTableAggregators(), node, parameter.getTimeColumnName());
+        node.getDeviceEntryCount() == 0 && node.getGroupingKeys().isEmpty()
+            ? OptimizeType.NOOP
+            : canUseLastCacheOptimize(
+                parameter.getTableAggregators(), node, parameter.getTimeColumnName());
     if (optimizeType != OptimizeType.NOOP) {
       return constructLastQueryAggTableScanOperator(
           node, parameter, optimizeType == OptimizeType.LAST_ROW, context);
@@ -1671,6 +1883,9 @@ public class DataNodeTableOperatorGenerator
       AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter,
       boolean isLastRowOptimize,
       LocalExecutionPlanContext context) {
+    // Last Query intentionally materializes every segment while building the operator tree. The
+    // resulting cached and uncached device lists are retained in memory, and the uncached devices
+    // are scanned through the shared query data source below.
     List<Integer> hitCachesIndexes = new ArrayList<>();
     List<Pair<OptionalLong, TsPrimitiveType[]>> lastRowCacheResults = null;
     List<TimeValuePair[]> lastValuesCacheResults = null;
@@ -1685,69 +1900,77 @@ public class DataNodeTableOperatorGenerator
         updateFilterUsingTTL(parameter.getSeriesScanOptions().getGlobalTimeFilter(), tableTTL);
     if (isLastRowOptimize) {
       lastRowCacheResults = new ArrayList<>();
-      for (int i = 0; i < node.getDeviceEntries().size(); i++) {
-        Optional<Pair<OptionalLong, TsPrimitiveType[]>> lastByResult =
-            TableDeviceSchemaCache.getInstance()
-                .getLastRow(
-                    node.getQualifiedObjectName().getDatabaseName(),
-                    node.getDeviceEntries().get(i).getDeviceID(),
-                    "",
-                    parameter.getMeasurementColumnNames());
-        boolean allHitCache = true;
-        if (lastByResult.isPresent() && lastByResult.get().getLeft().isPresent()) {
-          for (int j = 0; j < lastByResult.get().getRight().length; j++) {
-            TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
-            if (tsPrimitiveType == null
-                // Known-null at the aligned row time can still hit cache. Only miss or stale target
-                // values need to fall back to scan for correctness.
-                || tsPrimitiveType == PLACEHOLDER_STALE_VALUE
-                || (updateTimeFilter != null
-                    && !LastQueryUtil.satisfyFilter(
-                        updateTimeFilter,
-                        new TimeValuePair(
-                            lastByResult.get().getLeft().getAsLong(), tsPrimitiveType)))) {
-              // the process logic is different from tree model which examine if
-              // `isFilterGtOrGe(seriesScanOptions.getGlobalTimeFilter())`, set
-              // `lastByResult.get().getRight()[j] = EMPTY_PRIMITIVE_TYPE`,
-              // but it should skip in table model
+      int deviceIndex = 0;
+      try (BatchDeviceEntrySource deviceEntrySource = createDeviceEntrySource(node)) {
+        while (deviceEntrySource.hasNextBatch()) {
+          for (DeviceEntry deviceEntry : deviceEntrySource.nextBatch()) {
+            int i = deviceIndex++;
+            Optional<Pair<OptionalLong, TsPrimitiveType[]>> lastByResult =
+                TableDeviceSchemaCache.getInstance()
+                    .getLastRow(
+                        node.getQualifiedObjectName().getDatabaseName(),
+                        deviceEntry.getDeviceID(),
+                        "",
+                        parameter.getMeasurementColumnNames());
+            boolean allHitCache = true;
+            if (lastByResult.isPresent() && lastByResult.get().getLeft().isPresent()) {
+              for (int j = 0; j < lastByResult.get().getRight().length; j++) {
+                TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
+                if (tsPrimitiveType == null
+                    // Known-null at the aligned row time can still hit cache. Only miss or stale
+                    // target
+                    // values need to fall back to scan for correctness.
+                    || tsPrimitiveType == PLACEHOLDER_STALE_VALUE
+                    || (updateTimeFilter != null
+                        && !LastQueryUtil.satisfyFilter(
+                            updateTimeFilter,
+                            new TimeValuePair(
+                                lastByResult.get().getLeft().getAsLong(), tsPrimitiveType)))) {
+                  // the process logic is different from tree model which examine if
+                  // `isFilterGtOrGe(seriesScanOptions.getGlobalTimeFilter())`, set
+                  // `lastByResult.get().getRight()[j] = EMPTY_PRIMITIVE_TYPE`,
+                  // but it should skip in table model
+                  allHitCache = false;
+                  break;
+                }
+              }
+            } else {
               allHitCache = false;
-              break;
+            }
+
+            if (!allHitCache) {
+              AlignedFullPath alignedPath =
+                  constructAlignedPath(
+                      deviceEntry,
+                      parameter.getMeasurementColumnNames(),
+                      parameter.getMeasurementSchemas(),
+                      parameter.getAllSensors());
+              ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+              unCachedDeviceEntries.add(deviceEntry);
+              addUncachedDeviceToContext(node, context, deviceEntry);
+
+              // last cache updateColumns need to put "" as time column
+              String[] updateColumns = new String[parameter.getMeasurementColumnNames().size() + 1];
+              updateColumns[0] = "";
+              for (int j = 1; j < updateColumns.length; j++) {
+                updateColumns[j] = parameter.getMeasurementColumnNames().get(j - 1);
+              }
+              TableDeviceSchemaCache.getInstance()
+                  .initOrInvalidateLastCache(
+                      node.getQualifiedObjectName().getDatabaseName(),
+                      deviceEntry.getDeviceID(),
+                      updateColumns,
+                      false);
+            } else {
+              hitCachesIndexes.add(i);
+              lastRowCacheResults.add(lastByResult.get());
+              cachedDeviceEntries.add(deviceEntry);
+              decreaseDeviceCount(node, context, deviceEntry);
             }
           }
-        } else {
-          allHitCache = false;
         }
-
-        DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
-        if (!allHitCache) {
-          AlignedFullPath alignedPath =
-              constructAlignedPath(
-                  deviceEntry,
-                  parameter.getMeasurementColumnNames(),
-                  parameter.getMeasurementSchemas(),
-                  parameter.getAllSensors());
-          ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
-          unCachedDeviceEntries.add(deviceEntry);
-          addUncachedDeviceToContext(node, context, deviceEntry);
-
-          // last cache updateColumns need to put "" as time column
-          String[] updateColumns = new String[parameter.getMeasurementColumnNames().size() + 1];
-          updateColumns[0] = "";
-          for (int j = 1; j < updateColumns.length; j++) {
-            updateColumns[j] = parameter.getMeasurementColumnNames().get(j - 1);
-          }
-          TableDeviceSchemaCache.getInstance()
-              .initOrInvalidateLastCache(
-                  node.getQualifiedObjectName().getDatabaseName(),
-                  deviceEntry.getDeviceID(),
-                  updateColumns,
-                  false);
-        } else {
-          hitCachesIndexes.add(i);
-          lastRowCacheResults.add(lastByResult.get());
-          cachedDeviceEntries.add(deviceEntry);
-          decreaseDeviceCount(node, context, deviceEntry);
-        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
       }
     } else {
       // LAST_VALUES optimize
@@ -1780,67 +2003,75 @@ public class DataNodeTableOperatorGenerator
         targetColumns[j] = parameter.getMeasurementColumnNames().get(j);
       }
 
-      for (int i = 0; i < node.getDeviceEntries().size(); i++) {
-        TimeValuePair[] lastResult =
-            TableDeviceSchemaCache.getInstance()
-                .getLastEntries(
-                    node.getQualifiedObjectName().getDatabaseName(),
-                    node.getDeviceEntries().get(i).getDeviceID(),
-                    targetColumns);
-        boolean allHitCache = true;
-        if (lastResult != null) {
-          for (TimeValuePair timeValuePair : lastResult) {
-            if (timeValuePair == null || timeValuePair.getValue() == null) {
+      int deviceIndex = 0;
+      try (BatchDeviceEntrySource deviceEntrySource = createDeviceEntrySource(node)) {
+        while (deviceEntrySource.hasNextBatch()) {
+          for (DeviceEntry deviceEntry : deviceEntrySource.nextBatch()) {
+            int i = deviceIndex++;
+            TimeValuePair[] lastResult =
+                TableDeviceSchemaCache.getInstance()
+                    .getLastEntries(
+                        node.getQualifiedObjectName().getDatabaseName(),
+                        deviceEntry.getDeviceID(),
+                        targetColumns);
+            boolean allHitCache = true;
+            if (lastResult != null) {
+              for (TimeValuePair timeValuePair : lastResult) {
+                if (timeValuePair == null || timeValuePair.getValue() == null) {
+                  allHitCache = false;
+                  break;
+                }
+
+                if (updateTimeFilter != null
+                    && !LastQueryUtil.satisfyFilter(
+                        parameter.getSeriesScanOptions().getGlobalTimeFilter(), timeValuePair)) {
+                  if (isFilterGtOrGe(updateTimeFilter)) {
+                    // it means there is no data meets Filter
+                    timeValuePair.setValue(PLACEHOLDER_NO_VALUE);
+                  } else {
+                    allHitCache = false;
+                    break;
+                  }
+                }
+              }
+            } else {
               allHitCache = false;
-              break;
             }
 
-            if (updateTimeFilter != null
-                && !LastQueryUtil.satisfyFilter(
-                    parameter.getSeriesScanOptions().getGlobalTimeFilter(), timeValuePair)) {
-              if (isFilterGtOrGe(updateTimeFilter)) {
-                // it means there is no data meets Filter
-                timeValuePair.setValue(PLACEHOLDER_NO_VALUE);
-              } else {
-                allHitCache = false;
-                break;
-              }
+            if (!allHitCache) {
+              AlignedFullPath alignedPath =
+                  constructAlignedPath(
+                      deviceEntry,
+                      parameter.getMeasurementColumnNames(),
+                      parameter.getMeasurementSchemas(),
+                      parameter.getAllSensors());
+              ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+              unCachedDeviceEntries.add(deviceEntry);
+              addUncachedDeviceToContext(node, context, deviceEntry);
+
+              TableDeviceSchemaCache.getInstance()
+                  .initOrInvalidateLastCache(
+                      node.getQualifiedObjectName().getDatabaseName(),
+                      deviceEntry.getDeviceID(),
+                      needInitTime || node.getGroupingKeys().isEmpty()
+                          ? targetColumns
+                          : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
+                      false);
+            } else {
+              hitCachesIndexes.add(i);
+              lastValuesCacheResults.add(lastResult);
+              cachedDeviceEntries.add(deviceEntry);
+              decreaseDeviceCount(node, context, deviceEntry);
             }
           }
-        } else {
-          allHitCache = false;
         }
-
-        DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
-        if (!allHitCache) {
-          AlignedFullPath alignedPath =
-              constructAlignedPath(
-                  deviceEntry,
-                  parameter.getMeasurementColumnNames(),
-                  parameter.getMeasurementSchemas(),
-                  parameter.getAllSensors());
-          ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
-          unCachedDeviceEntries.add(deviceEntry);
-          addUncachedDeviceToContext(node, context, deviceEntry);
-
-          TableDeviceSchemaCache.getInstance()
-              .initOrInvalidateLastCache(
-                  node.getQualifiedObjectName().getDatabaseName(),
-                  deviceEntry.getDeviceID(),
-                  needInitTime || node.getGroupingKeys().isEmpty()
-                      ? targetColumns
-                      : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
-                  false);
-        } else {
-          hitCachesIndexes.add(i);
-          lastValuesCacheResults.add(lastResult);
-          cachedDeviceEntries.add(deviceEntry);
-          decreaseDeviceCount(node, context, deviceEntry);
-        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
       }
     }
 
     parameter.setDeviceEntries(unCachedDeviceEntries);
+    parameter.useSharedQueryDataSource();
 
     // context add TableLastQueryOperator
     LastQueryAggTableScanOperator lastQueryOperator =
@@ -1910,6 +2141,34 @@ public class DataNodeTableOperatorGenerator
       long pushDownOffset,
       boolean pushLimitToEachDevice,
       Expression pushDownPredicate) {
+    return buildSeriesScanOptions(
+        context,
+        columnSchemaMap,
+        measurementColumnNames,
+        measurementColumnsIndexMap,
+        timeColumnName,
+        timePredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice,
+        pushDownPredicate,
+        null,
+        null);
+  }
+
+  private SeriesScanOptions buildSeriesScanOptions(
+      LocalExecutionPlanContext context,
+      Map<Symbol, ColumnSchema> columnSchemaMap,
+      List<String> measurementColumnNames,
+      Map<String, Integer> measurementColumnsIndexMap,
+      String timeColumnName,
+      Optional<Expression> timePredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      boolean pushLimitToEachDevice,
+      Expression pushDownPredicate,
+      DeviceTableScanNode scanNode,
+      TopKRuntimeFilter topKRuntimeFilter) {
     SeriesScanOptions.Builder scanOptionsBuilder =
         timePredicate
             .map(expression -> getSeriesScanOptionsBuilder(context, expression))
@@ -1927,6 +2186,9 @@ public class DataNodeTableOperatorGenerator
               timeColumnName,
               context.getZoneId(),
               TimestampPrecisionUtils.currPrecision));
+    }
+    if (scanNode != null) {
+      applyTopKRuntimeFilter(scanOptionsBuilder, scanNode, context, topKRuntimeFilter);
     }
     return scanOptionsBuilder.build();
   }

@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
@@ -66,11 +67,13 @@ public class MarkDistinctOperator implements ProcessOperator {
       List<Type> types,
       List<Integer> markDistinctChannels,
       Optional<Integer> hashChannel) {
-    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
+    this.operatorContext =
+        requireNonNull(operatorContext, CalcMessages.EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB);
     this.child = child;
 
-    requireNonNull(hashChannel, "hashChannel is null");
-    requireNonNull(markDistinctChannels, "markDistinctChannels is null");
+    requireNonNull(hashChannel, CalcMessages.EXCEPTION_HASHCHANNEL_IS_NULL_A5E70672);
+    requireNonNull(
+        markDistinctChannels, CalcMessages.EXCEPTION_MARKDISTINCTCHANNELS_IS_NULL_7130C56A);
 
     ImmutableList.Builder<Type> distinctTypes = ImmutableList.builder();
     for (int channel : markDistinctChannels) {

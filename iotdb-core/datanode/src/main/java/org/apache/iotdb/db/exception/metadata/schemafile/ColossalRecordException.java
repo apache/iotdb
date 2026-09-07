@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.exception.metadata.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISegment;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -32,22 +33,21 @@ public class ColossalRecordException extends MetadataException {
 
   public ColossalRecordException(String key, int size) {
     super(
-        String.format(
-            "Record of key [%s] is too large for SchemaFile to store, content size:%d", key, size),
+        String.format(DataNodeSchemaMessages.COLOSSAL_RECORD_FMT, key, size),
         TSStatusCode.OVERSIZE_RECORD.getStatusCode(),
         true);
   }
 
   public ColossalRecordException(String key) {
     super(
-        String.format("Key [%s] is too large to store in a InternalPage as index entry.", key),
+        String.format(DataNodeSchemaMessages.KEY_TOO_LARGE_FOR_INTERNAL_PAGE_FMT, key),
         TSStatusCode.OVERSIZE_RECORD.getStatusCode(),
         true);
   }
 
   public ColossalRecordException(String key, String alias) {
     super(
-        String.format("Key-Alias pair (%s, %s) is too large for SchemaFile to store.", key, alias),
+        String.format(DataNodeSchemaMessages.KEY_ALIAS_PAIR_TOO_LARGE_FMT, key, alias),
         TSStatusCode.OVERSIZE_RECORD.getStatusCode(),
         true);
   }

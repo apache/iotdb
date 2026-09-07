@@ -53,7 +53,8 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
       // folderManager remains null when disk space is insufficient during initialization
       // It will be lazily initialized later when disk space becomes available
       logger.error(
-          "Fail to create wal node allocation strategy because all disks of wal folders are full.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAIL_TO_CREATE_WAL_NODE_ALLOCATION_STRATEGY_BECAUSE_ALL_72801644,
           e);
     }
   }

@@ -86,7 +86,8 @@ public class TsFileAndModSettleTool {
       }
     }
     logger.info(
-        "Totally find {} tsFiles to be settled, including {} tsFiles to be recovered.",
+        DataNodeMiscMessages
+            .MISC_LOG_TOTALLY_FIND_TSFILES_TO_BE_SETTLED_INCLUDING_TSFILES_TO_522BCA28,
         oldTsFileResources.size(),
         getInstance().recoverSettleFileMap.size());
     settleTsFilesAndMods(oldTsFileResources);
@@ -181,11 +182,14 @@ public class TsFileAndModSettleTool {
                 + SettleLog.COMMA_SEPERATOR
                 + SettleCheckStatus.SETTLE_SUCCESS);
         logger.info(
-            "Finish settling successfully for tsFile : {}", resourceToBeSettled.getTsFilePath());
+            DataNodeMiscMessages.MISC_LOG_FINISH_SETTLING_SUCCESSFULLY_FOR_TSFILE_C8BF06D7,
+            resourceToBeSettled.getTsFilePath());
         successCount++;
       } catch (Exception e) {
         logger.info(
-            "Meet error while settling the tsFile : {}", resourceToBeSettled.getTsFilePath(), e);
+            DataNodeMiscMessages.MISC_LOG_MEET_ERROR_WHILE_SETTLING_THE_TSFILE_A3515E1A,
+            resourceToBeSettled.getTsFilePath(),
+            e);
       }
     }
     if (resourcesToBeSettled.size() == successCount) {
@@ -193,7 +197,8 @@ public class TsFileAndModSettleTool {
       logger.info(DataNodeMiscMessages.FINISH_SETTLING_ALL);
     } else {
       logger.info(
-          "Finish Settling, {} tsfiles meet errors.", (resourcesToBeSettled.size() - successCount));
+          DataNodeMiscMessages.MISC_LOG_FINISH_SETTLING_TSFILES_MEET_ERRORS_6B564B68,
+          (resourcesToBeSettled.size() - successCount));
     }
   }
 
@@ -207,7 +212,8 @@ public class TsFileAndModSettleTool {
       throws WriteProcessException, IllegalPathException, IOException {
     if (!resourceToBeSettled.isClosed()) {
       logger.warn(
-          "The tsFile {} should be sealed when rewritting.", resourceToBeSettled.getTsFilePath());
+          DataNodeMiscMessages.MISC_LOG_THE_TSFILE_SHOULD_BE_SEALED_WHEN_REWRITTING_8B631F6C,
+          resourceToBeSettled.getTsFilePath());
       return;
     }
     // if no deletions to this tsfile, then return.
@@ -238,7 +244,9 @@ public class TsFileAndModSettleTool {
         }
       } catch (IOException e) {
         logger.error(
-            "meet error when reading settle log, log path:{}", SettleLog.getSettleLogPath(), e);
+            DataNodeMiscMessages.MISC_LOG_MEET_ERROR_WHEN_READING_SETTLE_LOG_LOG_PATH_2B076234,
+            SettleLog.getSettleLogPath(),
+            e);
       } finally {
         File f = FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath());
         try {

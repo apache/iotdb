@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.TypeUtil;
 
 import org.apache.tsfile.read.common.type.Type;
@@ -41,8 +42,10 @@ public class BoundSignature {
   private final List<Type> argumentTypes;
 
   public BoundSignature(String functionName, Type returnType, List<Type> argumentTypes) {
-    this.functionName = requireNonNull(functionName, "functionName is null");
-    this.returnType = requireNonNull(returnType, "returnType is null");
+    this.functionName =
+        requireNonNull(functionName, QueryMessages.EXCEPTION_FUNCTIONNAME_IS_NULL_0818CBC7);
+    this.returnType =
+        requireNonNull(returnType, QueryMessages.EXCEPTION_RETURNTYPE_IS_NULL_07C7C6A5);
     this.argumentTypes = argumentTypes;
   }
 

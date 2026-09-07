@@ -20,35 +20,77 @@
 package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 
 public class PipeReceiverTest {
   @Test
-  public void testIoTDBThriftReceiverV1() {
+  public void testUnauthenticatedPipeTransferRejected() {
+    final IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
+
+    final TPipeTransferResp resp = receiver.receive(buildEmptyRawTabletTransferReq());
+
+    Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), resp.getStatus().getCode());
+  }
+
+  @Test
+  public void testUnauthenticatedWrappedPipeTransferRejected() throws IOException {
+    final IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
+    final TPipeTransferReq rawReq = buildEmptyRawTabletTransferReq();
+
+    final TPipeTransferResp compressedResp =
+        receiver.receive(
+            PipeTransferCompressedReq.toTPipeTransferReq(rawReq, Collections.emptyList()));
+    Assert.assertEquals(
+        TSStatusCode.NOT_LOGIN.getStatusCode(), compressedResp.getStatus().getCode());
+
+    final TPipeTransferReq sliceReq =
+        PipeTransferSliceReq.toTPipeTransferReq(
+            0,
+            PipeRequestType.TRANSFER_TABLET_RAW.getType(),
+            0,
+            1,
+            rawReq.body.duplicate(),
+            0,
+            rawReq.body.limit());
+    final TPipeTransferResp sliceResp = receiver.receive(sliceReq);
+    Assert.assertEquals(TSStatusCode.NOT_LOGIN.getStatusCode(), sliceResp.getStatus().getCode());
+  }
+
+  @Test
+  public void testIoTDBThriftReceiverV1HandshakeRejected() {
     IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
     try {
-      receiver.receive(
-          PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
-              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
-      receiver.receive(
-          PipeTransferTabletRawReq.toTPipeTransferReq(
-              new Tablet(
-                  "root.sg.d",
-                  Collections.singletonList(new MeasurementSchema("s", TSDataType.INT32))),
-              true));
+      final TPipeTransferResp handshakeResp =
+          receiver.receive(
+              PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+      Assert.assertEquals(
+          TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(), handshakeResp.getStatus().getCode());
     } catch (IOException e) {
       Assert.fail();
     }
+  }
+
+  private TPipeTransferReq buildEmptyRawTabletTransferReq() {
+    final TPipeTransferReq req = new TPipeTransferReq();
+    req.setVersion(IoTDBSinkRequestVersion.VERSION_1.getVersion());
+    req.setType(PipeRequestType.TRANSFER_TABLET_RAW.getType());
+    req.setBody(ByteBuffer.allocate(0));
+    return req;
   }
 }

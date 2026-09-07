@@ -36,6 +36,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -194,6 +195,14 @@ public class StateProgressIndex extends ProgressIndex {
   @Override
   public ProgressIndexType getType() {
     return ProgressIndexType.STATE_PROGRESS_INDEX;
+  }
+
+  @Override
+  public <T extends ProgressIndex> Optional<T> getProgressIndexByType(
+      final Class<T> progressIndexClass) {
+    return progressIndexClass.isInstance(this)
+        ? Optional.of(progressIndexClass.cast(this))
+        : getInnerProgressIndex().getProgressIndexByType(progressIndexClass);
   }
 
   @Override

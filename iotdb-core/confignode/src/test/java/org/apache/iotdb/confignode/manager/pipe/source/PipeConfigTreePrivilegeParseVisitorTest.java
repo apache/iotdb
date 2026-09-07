@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -52,6 +53,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -273,6 +275,47 @@ public class PipeConfigTreePrivilegeParseVisitorTest {
                 new SetTTLPlan(new String[] {"root", "db2", "device", "measurement"}, 100),
                 FAKE_USER_ENTITY)
             .isPresent());
+  }
+
+  @Test
+  public void testSourcePrivilegeTrimDoesNotFallbackToTableDefaultForTreePlan() throws Exception {
+    final PipeConfigRegionWritePlanEvent unauthorizedTreeEvent =
+        new PipeConfigRegionWritePlanEvent(
+            new SetTTLPlan(new String[] {"root", "db2", "device", "measurement"}, 100), false);
+
+    final TestIoTDBConfigRegionSource skipSource = new TestIoTDBConfigRegionSource(true);
+    Assert.assertFalse(skipSource.trimRealtimeEventByPrivilege(unauthorizedTreeEvent).isPresent());
+
+    final PipeConfigRegionWritePlanEvent trimmedTreeEvent =
+        (PipeConfigRegionWritePlanEvent)
+            skipSource
+                .trimRealtimeEventByPrivilege(
+                    new PipeConfigRegionWritePlanEvent(
+                        new SetTTLPlan(new String[] {"root", "*", "device", "measurement"}, 100),
+                        false))
+                .get();
+    Assert.assertArrayEquals(
+        new String[] {"root", "db", "device", "measurement"},
+        ((SetTTLPlan) trimmedTreeEvent.getConfigPhysicalPlan()).getPathPattern());
+
+    final TestIoTDBConfigRegionSource throwSource = new TestIoTDBConfigRegionSource(false);
+    Assert.assertThrows(
+        AccessDeniedException.class,
+        () -> throwSource.trimRealtimeEventByPrivilege(unauthorizedTreeEvent));
+  }
+
+  private static class TestIoTDBConfigRegionSource extends IoTDBConfigRegionSource {
+
+    private TestIoTDBConfigRegionSource(final boolean skip)
+        throws NoSuchFieldException, IllegalAccessException {
+      userEntity = new UserEntity(0L, "", "");
+      skipIfNoPrivileges = skip;
+
+      final Field visitorField =
+          IoTDBConfigRegionSource.class.getDeclaredField("treePrivilegeParseVisitor");
+      visitorField.setAccessible(true);
+      visitorField.set(this, new PipeConfigTreePrivilegeParseVisitor(skip));
+    }
   }
 
   private static class TestPermissionManager extends PermissionManager {

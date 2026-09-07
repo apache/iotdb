@@ -25,6 +25,7 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
@@ -283,7 +284,9 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
       LOGGER.info("Step 6: Verifying schema consistency on each DataNode independently...");
       List<DataNodeWrapper> dataNodeWrappers = EnvFactory.getEnv().getDataNodeWrapperList();
       for (DataNodeWrapper wrapper : dataNodeWrappers) {
-        String nodeDescription = "DataNode " + wrapper.getIp() + ":" + wrapper.getPort();
+        String nodeDescription =
+            "DataNode "
+                + UrlUtils.formatTEndPointIpv4AndIpv6Url(wrapper.getIp(), wrapper.getPort());
         LOGGER.info("Verifying schema on {}", nodeDescription);
         Awaitility.await()
             .atMost(60, TimeUnit.SECONDS)
@@ -307,7 +310,10 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
       LOGGER.info(
           "Step 7: Stopping each DataNode in turn and verifying remaining nodes show consistent schema...");
       for (DataNodeWrapper stoppedNode : dataNodeWrappers) {
-        String stoppedDesc = "DataNode " + stoppedNode.getIp() + ":" + stoppedNode.getPort();
+        String stoppedDesc =
+            "DataNode "
+                + UrlUtils.formatTEndPointIpv4AndIpv6Url(
+                    stoppedNode.getIp(), stoppedNode.getPort());
         LOGGER.info("Stopping {}", stoppedDesc);
         stoppedNode.stopForcibly();
         Assert.assertFalse(stoppedDesc + " should be stopped", stoppedNode.isAlive());
@@ -318,7 +324,10 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
             if (aliveNode == stoppedNode) {
               continue;
             }
-            String aliveDesc = "DataNode " + aliveNode.getIp() + ":" + aliveNode.getPort();
+            String aliveDesc =
+                "DataNode "
+                    + UrlUtils.formatTEndPointIpv4AndIpv6Url(
+                        aliveNode.getIp(), aliveNode.getPort());
             Awaitility.await()
                 .pollDelay(1, TimeUnit.SECONDS)
                 .atMost(90, TimeUnit.SECONDS)
@@ -446,7 +455,9 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
   protected void waitForReplicationComplete(DataNodeWrapper leaderNode) {
     final long timeoutSeconds = 120;
     final String metricsUrl =
-        "http://" + leaderNode.getIp() + ":" + leaderNode.getMetricPort() + "/metrics";
+        "http://"
+            + UrlUtils.formatTEndPointIpv4AndIpv6Url(leaderNode.getIp(), leaderNode.getMetricPort())
+            + "/metrics";
     LOGGER.info(
         "Waiting for consensus pipe syncLag to reach 0 on leader DataNode (url: {}, timeout: {}s)...",
         metricsUrl,

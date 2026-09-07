@@ -70,8 +70,8 @@ public class ConfigNodeMemoryConfig {
         MemoryConfig.global().getOrCreateMemoryManager("ConfigNodeOnHeap", maxMemoryAvailable);
     pipeMemoryManager =
         onHeapMemoryManager.getOrCreateMemoryManager(PIPE_MEMORY_MANAGER_NAME, pipeMemorySize);
-    // Keep the rest of ConfigNode heap unconnected for now. The memory framework currently only
-    // serves PipePeriodicalLogReducer on ConfigNode.
+    // Keep the rest of ConfigNode heap unconnected for now. The memory framework currently
+    // serves ConfigNode Pipe memory control.
 
     LOGGER.info(
         ConfigNodeMessages.INITIAL_CONFIGNODE_ALLOCATE_MEMORY_FOR_PIPE,

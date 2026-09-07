@@ -135,6 +135,7 @@ public class IoTDBTableIT {
       String[] ttls = new String[] {"INF"};
       String[] statuses = new String[] {"USING"};
       String[] comments = new String[] {"test"};
+      String[] needLastCaches = new String[] {"true"};
 
       statement.execute("use test2");
 
@@ -154,6 +155,7 @@ public class IoTDBTableIT {
           assertEquals(ttls[cnt], resultSet.getString(2));
           assertEquals(statuses[cnt], resultSet.getString(3));
           assertEquals(comments[cnt], resultSet.getString(4));
+          assertEquals(needLastCaches[cnt], resultSet.getString(6));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -198,6 +200,9 @@ public class IoTDBTableIT {
 
       statement.execute("comment on table test1.table1 is 'new_test'");
       comments = new String[] {"new_test"};
+
+      statement.execute("alter table test1.table1 set properties need_last_cache=false");
+      needLastCaches = new String[] {"false"};
       // using SHOW tables from
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables details from test1")) {
         int cnt = 0;
@@ -211,6 +216,7 @@ public class IoTDBTableIT {
           assertEquals(tableNames[cnt], resultSet.getString(1));
           assertEquals(ttls[cnt], resultSet.getString(2));
           assertEquals(comments[cnt], resultSet.getString(4));
+          assertEquals(needLastCaches[cnt], resultSet.getString(6));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -314,7 +320,7 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table table2"),
           "Table,Create Table,",
           Collections.singleton(
-              "table2,CREATE TABLE \"table2\" (\"t1\" TIMESTAMP TIME,\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000),"));
+              "table2,CREATE TABLE \"table2\" (\"t1\" TIMESTAMP TIME,\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000, need_last_cache=true),"));
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -626,11 +632,120 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table test100"),
           "Table,Create Table,",
           Collections.singleton(
-              "test100,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl='INF'),"));
+              "test100,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl='INF', need_last_cache=true),"));
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testNeedLastCacheTableAndViewProperty() throws Exception {
+    try (final Connection treeConnection = EnvFactory.getEnv().getConnection();
+        final Statement treeStatement = treeConnection.createStatement()) {
+      treeStatement.execute("create database root.need_cache_view_source");
+      treeStatement.execute("create timeseries root.need_cache_view_source.d1.s1 int32");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database need_cache_db with (need_last_cache=false)");
+      statement.execute("create database need_cache_default_db");
+      statement.execute("use need_cache_db");
+
+      statement.execute(
+          "create table inherited_table(time timestamp time, device_id string tag, temperature float field)");
+      statement.execute(
+          "create table override_table(time timestamp time, device_id string tag, temperature float field) with (need_last_cache=true)");
+      statement.execute(
+          "create table explicit_false_table(time timestamp time, device_id string tag, temperature float field) with (need_last_cache=false)");
+
+      assertTableNeedLastCache(statement, "need_cache_db", "inherited_table", false);
+      assertTableNeedLastCache(statement, "need_cache_db", "override_table", true);
+      assertTableNeedLastCache(statement, "need_cache_db", "explicit_false_table", false);
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table explicit_false_table"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "explicit_false_table,CREATE TABLE \"explicit_false_table\" (\"time\" TIMESTAMP TIME,\"device_id\" STRING TAG,\"temperature\" FLOAT FIELD) WITH (ttl='INF', need_last_cache=false),"));
+
+      statement.execute("alter table inherited_table set properties need_last_cache=true");
+      assertTableNeedLastCache(statement, "need_cache_db", "inherited_table", true);
+
+      statement.execute("alter table inherited_table set properties need_last_cache=default");
+      assertTableNeedLastCache(statement, "need_cache_db", "inherited_table", false);
+
+      statement.execute("alter table override_table set properties need_last_cache=false");
+      assertTableNeedLastCache(statement, "need_cache_db", "override_table", false);
+
+      statement.execute("alter table override_table set properties need_last_cache=true");
+      assertTableNeedLastCache(statement, "need_cache_db", "override_table", true);
+
+      statement.execute("use need_cache_default_db");
+      statement.execute(
+          "create table default_reset_table(time timestamp time, device_id string tag, temperature float field) with (need_last_cache=false)");
+      statement.execute("alter table default_reset_table set properties need_last_cache=default");
+      assertTableNeedLastCache(statement, "need_cache_default_db", "default_reset_table", true);
+
+      statement.execute("use need_cache_db");
+      try {
+        statement.execute(
+            "create view invalid_need_cache_view (tag1 string tag, s1 int32 field) restrict with (ttl=100, need_last_cache=false) as root.need_cache_view_source.**");
+        fail("tree view need_last_cache should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The tree view does not support need_last_cache property.", e.getMessage());
+      }
+
+      statement.execute(
+          "create view explicit_view (tag1 string tag, s1 int32 field) restrict with (ttl=100) as root.need_cache_view_source.**");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create view explicit_view"),
+          "View,Create View,",
+          Collections.singleton(
+              "explicit_view,CREATE VIEW \"explicit_view\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"s1\" INT32 FIELD) RESTRICT WITH (ttl=100) AS root.\"need_cache_view_source\".**,"));
+
+      try {
+        statement.execute("alter view explicit_view set properties need_last_cache=false");
+        fail("tree view need_last_cache alter should be rejected");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The tree view does not support need_last_cache property.", e.getMessage());
+      }
+    }
+  }
+
+  private static void assertTableNeedLastCache(
+      final Statement statement,
+      final String database,
+      final String table,
+      final boolean expectedNeedLastCache)
+      throws SQLException {
+    try (final ResultSet resultSet =
+        statement.executeQuery("show tables details from " + database)) {
+      boolean found = false;
+      while (resultSet.next()) {
+        if (!table.equals(resultSet.getString("TableName"))) {
+          continue;
+        }
+        found = true;
+        assertEquals(expectedNeedLastCache, resultSet.getBoolean("NeedLastCache"));
+      }
+      assertTrue(found);
+    }
+
+    TestUtils.assertResultSetEqual(
+        statement.executeQuery(
+            "select database, table_name, need_last_cache from information_schema.tables where database = '"
+                + database
+                + "' and table_name = '"
+                + table
+                + "'"),
+        "database,table_name,need_last_cache,",
+        Collections.singleton(database + "," + table + "," + expectedNeedLastCache + ","));
   }
 
   @Test
@@ -649,7 +764,7 @@ public class IoTDBTableIT {
       Assert.assertThrows(SQLException.class, () -> userStmt.execute("select * from db.test"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.tables where database = 'db'"),
-          "database,table_name,ttl(ms),status,comment,table_type,",
+          "database,table_name,ttl(ms),status,comment,table_type,need_last_cache,",
           Collections.emptySet());
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.columns where database = 'db'"),
@@ -932,8 +1047,8 @@ public class IoTDBTableIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables details"),
-          "TableName,TTL(ms),Status,Comment,TableType,",
-          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,"));
+          "TableName,TTL(ms),Status,Comment,TableType,NeedLastCache,",
+          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,true,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc view_table"),

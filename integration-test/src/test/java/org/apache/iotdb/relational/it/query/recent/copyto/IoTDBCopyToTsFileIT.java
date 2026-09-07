@@ -277,6 +277,38 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
+  public void testDuplicateTagColumns()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      try {
+        session.executeQueryStatement(
+            "copy table1(time,tag1,tag2,s1) to 'dup.tsfile' with (tags(tag1,tag1), memory_threshold 1000000)");
+        Assert.fail("Should report duplicate tag column error");
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(
+            e.getMessage(), e.getMessage().contains("Duplicate tag column in TAGS clause: tag1"));
+      }
+    }
+  }
+
+  @Test
+  public void testDuplicateOption()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      try {
+        session.executeQueryStatement(
+            "copy table1(time,tag1,tag2,s1) to 'dup_option.tsfile' with (tags(tag1), tags(tag2), memory_threshold 1000000)");
+        Assert.fail("Should report duplicate option error");
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(
+            e.getMessage(), e.getMessage().contains("Duplicate option in COPY TO statement: TAGS"));
+      }
+    }
+  }
+
+  @Test
   public void testCopyWithSpecifiedTag()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
@@ -474,7 +506,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(2, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
-        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("default(auto_gen)", tableName);
         Assert.assertEquals("time(auto_gen)", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 
@@ -515,7 +547,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(2, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
-        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("default(auto_gen)", tableName);
         Assert.assertEquals("time(auto_gen)", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 
@@ -648,7 +680,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(1, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
-        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("default(auto_gen)", tableName);
         Assert.assertEquals("time", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 

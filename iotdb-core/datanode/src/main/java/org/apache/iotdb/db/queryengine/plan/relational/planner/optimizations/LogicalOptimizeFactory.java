@@ -390,6 +390,7 @@ public class LogicalOptimizeFactory {
                 new MergeLimitWithSort(),
                 new MergeLimitOverProjectWithSort(),
                 new PushTopKThroughUnion())),
+        new TopKRuntimeFilterOptimizer(),
         new ParallelizeGrouping());
 
     this.planOptimizers = optimizerBuilder.build();

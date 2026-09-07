@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -55,10 +56,14 @@ public class MarkDistinctNode extends SingleChildProcessNode {
       Optional<Symbol> hashSymbol) {
     super(id);
     this.child = child;
-    this.markerSymbol = requireNonNull(markerSymbol, "markerSymbol is null");
-    this.hashSymbol = requireNonNull(hashSymbol, "hashSymbol is null");
-    requireNonNull(distinctSymbols, "distinctSymbols is null");
-    checkArgument(!distinctSymbols.isEmpty(), "distinctSymbols cannot be empty");
+    this.markerSymbol =
+        requireNonNull(markerSymbol, QueryMessages.EXCEPTION_MARKERSYMBOL_IS_NULL_0313F046);
+    this.hashSymbol =
+        requireNonNull(hashSymbol, QueryMessages.EXCEPTION_HASHSYMBOL_IS_NULL_1BD487F2);
+    requireNonNull(distinctSymbols, QueryMessages.EXCEPTION_DISTINCTSYMBOLS_IS_NULL_28B8DB52);
+    checkArgument(
+        !distinctSymbols.isEmpty(),
+        QueryMessages.EXCEPTION_DISTINCTSYMBOLS_CANNOT_BE_EMPTY_A44A693E);
     this.distinctSymbols = ImmutableList.copyOf(distinctSymbols);
   }
 

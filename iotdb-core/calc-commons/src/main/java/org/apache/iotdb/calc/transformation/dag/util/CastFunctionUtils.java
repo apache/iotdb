@@ -41,7 +41,8 @@ public class CastFunctionUtils {
   public static int castLongToInt(long value) {
     if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
       throw new SemanticException(
-          String.format("long value %d is out of range of integer value.", value));
+          String.format(
+              CalcMessages.EXCEPTION_LONG_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_B3F9016B, value));
     }
     return (int) value;
   }
@@ -49,7 +50,8 @@ public class CastFunctionUtils {
   public static int castFloatToInt(float value) {
     if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
       throw new SemanticException(
-          String.format("Float value %f is out of range of integer value.", value));
+          String.format(
+              CalcMessages.EXCEPTION_FLOAT_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_B0E6DDED, value));
     }
     return Math.round(value);
   }
@@ -57,7 +59,8 @@ public class CastFunctionUtils {
   public static long castFloatToLong(float value) {
     if (value > Long.MAX_VALUE || value < Long.MIN_VALUE) {
       throw new SemanticException(
-          String.format("Float value %f is out of range of long value.", value));
+          String.format(
+              CalcMessages.EXCEPTION_FLOAT_VALUE_ARG_OUT_RANGE_LONG_VALUE_62F8153E, value));
     }
     return Math.round((double) value);
   }
@@ -65,7 +68,8 @@ public class CastFunctionUtils {
   public static int castDoubleToInt(double value) {
     if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
       throw new SemanticException(
-          String.format("Double value %f is out of range of integer value.", value));
+          String.format(
+              CalcMessages.EXCEPTION_DOUBLE_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_BAB52E11, value));
     }
     return Math.round((float) value);
   }
@@ -73,7 +77,8 @@ public class CastFunctionUtils {
   public static long castDoubleToLong(double value) {
     if (value > Long.MAX_VALUE || value < Long.MIN_VALUE) {
       throw new SemanticException(
-          String.format("Double value %f is out of range of long value.", value));
+          String.format(
+              CalcMessages.EXCEPTION_DOUBLE_VALUE_ARG_OUT_RANGE_LONG_VALUE_5793A91E, value));
     }
     return Math.round(value);
   }
@@ -81,7 +86,8 @@ public class CastFunctionUtils {
   public static float castDoubleToFloat(double value) {
     if (value > Float.MAX_VALUE || value < -Float.MAX_VALUE) {
       throw new SemanticException(
-          String.format("Double value %f is out of range of float value.", value));
+          String.format(
+              CalcMessages.EXCEPTION_DOUBLE_VALUE_ARG_OUT_RANGE_FLOAT_VALUE_DB914FA0, value));
     }
     return (float) value;
   }
@@ -90,7 +96,8 @@ public class CastFunctionUtils {
     float f = Float.parseFloat(value);
     if (f == Float.POSITIVE_INFINITY || f == Float.NEGATIVE_INFINITY) {
       throw new SemanticException(
-          String.format("Text value %s is out of range of float value.", value));
+          String.format(
+              CalcMessages.EXCEPTION_TEXT_VALUE_ARG_OUT_RANGE_FLOAT_VALUE_D171B313, value));
     }
     return f;
   }
@@ -99,7 +106,8 @@ public class CastFunctionUtils {
     double d = Double.parseDouble(value);
     if (d == Double.POSITIVE_INFINITY || d == Double.NEGATIVE_INFINITY) {
       throw new SemanticException(
-          String.format("Text value %s is out of range of double value.", value));
+          String.format(
+              CalcMessages.EXCEPTION_TEXT_VALUE_ARG_OUT_RANGE_DOUBLE_VALUE_C0589D83, value));
     }
     return d;
   }
@@ -148,7 +156,9 @@ public class CastFunctionUtils {
         return castBinary(binaryV, targetType, session.getZoneId());
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported source dataType: %s", sourceType.getTypeEnum()));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_ARG_678B759C,
+                sourceType.getTypeEnum()));
     }
   }
 
@@ -350,7 +360,10 @@ public class CastFunctionUtils {
       }
     } catch (DateTimeParseException | NumberFormatException e) {
       throw new SemanticException(
-          String.format("Cannot cast %s to %s type", stringValue, targetType.getDisplayName()));
+          String.format(
+              CalcMessages.EXCEPTION_CANNOT_CAST_ARG_ARG_TYPE_8266A2C6,
+              stringValue,
+              targetType.getDisplayName()));
     }
   }
 }

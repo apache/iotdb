@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.read.common.type.Type;
 
@@ -42,8 +43,8 @@ public class Field {
   private final boolean aliased;
 
   public static Field newUnqualified(String name, Type type, TsTableColumnCategory columnCategory) {
-    requireNonNull(name, "name is null");
-    requireNonNull(type, "type is null");
+    requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
 
     return new Field(
         Optional.empty(),
@@ -58,8 +59,8 @@ public class Field {
 
   public static Field newUnqualified(
       Optional<String> name, Type type, TsTableColumnCategory columnCategory) {
-    requireNonNull(name, "name is null");
-    requireNonNull(type, "type is null");
+    requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
 
     return new Field(
         Optional.empty(),
@@ -79,9 +80,9 @@ public class Field {
       Optional<QualifiedObjectName> originTable,
       Optional<String> originColumn,
       boolean aliased) {
-    requireNonNull(name, "name is null");
-    requireNonNull(type, "type is null");
-    requireNonNull(originTable, "originTable is null");
+    requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    requireNonNull(originTable, DataNodeQueryMessages.EXCEPTION_ORIGINTABLE_IS_NULL_18AC52C3);
 
     return new Field(
         Optional.empty(), name, type, columnCategory, false, originTable, originColumn, aliased);
@@ -96,10 +97,10 @@ public class Field {
       Optional<QualifiedObjectName> originTable,
       Optional<String> originColumn,
       boolean aliased) {
-    requireNonNull(relationAlias, "relationAlias is null");
-    requireNonNull(name, "name is null");
-    requireNonNull(type, "type is null");
-    requireNonNull(originTable, "originTable is null");
+    requireNonNull(relationAlias, DataNodeQueryMessages.EXCEPTION_RELATIONALIAS_IS_NULL_C363AD25);
+    requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    requireNonNull(originTable, DataNodeQueryMessages.EXCEPTION_ORIGINTABLE_IS_NULL_18AC52C3);
 
     return new Field(
         Optional.of(relationAlias),
@@ -121,11 +122,12 @@ public class Field {
       Optional<QualifiedObjectName> originTable,
       Optional<String> originColumnName,
       boolean aliased) {
-    requireNonNull(relationAlias, "relationAlias is null");
-    requireNonNull(name, "name is null");
-    requireNonNull(type, "type is null");
-    requireNonNull(originTable, "originTable is null");
-    requireNonNull(originColumnName, "originColumnName is null");
+    requireNonNull(relationAlias, DataNodeQueryMessages.EXCEPTION_RELATIONALIAS_IS_NULL_C363AD25);
+    requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    requireNonNull(originTable, DataNodeQueryMessages.EXCEPTION_ORIGINTABLE_IS_NULL_18AC52C3);
+    requireNonNull(
+        originColumnName, DataNodeQueryMessages.EXCEPTION_ORIGINCOLUMNNAME_IS_NULL_98607162);
 
     this.relationAlias = relationAlias;
     this.name = name;

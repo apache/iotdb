@@ -205,6 +205,10 @@ public interface BaseEnv {
   Connection getConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException;
 
+  default void setTestClassName(String testClassName) {
+    // Default no-op for env implementations that do not create local node log directories.
+  }
+
   void setTestMethodName(String testCaseName);
 
   void dumpTestJVMSnapshot();

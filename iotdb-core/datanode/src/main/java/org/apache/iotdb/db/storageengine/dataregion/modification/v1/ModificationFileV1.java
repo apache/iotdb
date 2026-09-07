@@ -154,7 +154,9 @@ public class ModificationFileV1 implements AutoCloseable {
 
   public void remove() throws IOException {
     close();
-    boolean deleted = FSFactoryProducer.getFSFactory().getFile(filePath).delete();
+    boolean deleted =
+        FSFactoryProducer.getFSFactory()
+            .deleteIfExists(FSFactoryProducer.getFSFactory().getFile(filePath));
     if (!deleted) {
       logger.warn(StorageEngineMessages.DELETE_MODIFICATION_FILE_FAILED, filePath);
     }
@@ -244,7 +246,8 @@ public class ModificationFileV1 implements AutoCloseable {
 
         if (getSize() > COMPACT_THRESHOLD) {
           logger.warn(
-              "After the mod file is settled, the file size is still greater than 1M,the size of the file before settle is {},after settled the file size is {}",
+              StorageEngineMessages
+                  .STORAGE_LOG_AFTER_THE_MOD_FILE_IS_SETTLED_THE_FILE_SIZE_IS_STILL_GREATER_FA454979,
               originFileSize,
               getSize());
         }

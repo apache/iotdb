@@ -146,10 +146,14 @@ remote_ports_check() {
       if [ -n "$unreachable_ports" ]; then
         unreachable_combinations+=("IP: $host, Ports: $unreachable_ports")
       fi
+      display_host="$host"
+      if [[ "$display_host" == *:* ]] && [[ "${display_host:0:1}" != "[" ]]; then
+        display_host="[$display_host]"
+      fi
       if [ -n "$ip_port_list" ]; then
-        ip_port_list="$ip_port_list,$host:$all_ports"
+        ip_port_list="$ip_port_list,$display_host:$all_ports"
       else
-        ip_port_list="$host:$all_ports"
+        ip_port_list="$display_host:$all_ports"
       fi
   done
   echo ""

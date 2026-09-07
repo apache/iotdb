@@ -400,7 +400,8 @@ public class IoTDBJDBCDataSet {
       return resp.hasResultSet;
     } catch (TException e) {
       throw new IoTDBConnectionException(
-          "Cannot fetch result from server, because of network connection: {} ", e);
+          RpcMessages.EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326,
+          e);
     }
   }
 

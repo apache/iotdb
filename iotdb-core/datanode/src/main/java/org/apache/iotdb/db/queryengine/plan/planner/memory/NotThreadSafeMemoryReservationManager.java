@@ -80,7 +80,14 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
   public void reserveMemoryCumulatively(final long size) {
     bytesToBeReserved += size;
     if (bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
-      reserveMemoryImmediately();
+      try {
+        reserveMemoryImmediately();
+      } catch (RuntimeException | Error failure) {
+        // reserveMemoryImmediately can fail only while asking the planner for memory, before it
+        // updates this manager's counters. Keep the caller-visible reservation operation atomic.
+        bytesToBeReserved -= size;
+        throw failure;
+      }
     }
   }
 
@@ -126,6 +133,13 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     if (bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
       releaseBytesImmediately(bytesToBeReleased);
       bytesToBeReleased = 0;
+    }
+  }
+
+  @Override
+  public void releaseMemoryImmediately(final long size) {
+    if (size > 0) {
+      releaseBytesImmediately(size);
     }
   }
 

@@ -49,13 +49,10 @@ public class NodeUrlUtils {
    * Convert TEndPoint to TEndPointUrl
    *
    * @param endPoint TEndPoint
-   * @return TEndPointUrl with format ip:port
+   * @return TEndPointUrl with format host:port or [ipv6]:port
    */
   public static String convertTEndPointUrl(TEndPoint endPoint) {
-    StringJoiner url = new StringJoiner(":");
-    url.add(endPoint.getIp());
-    url.add(String.valueOf(endPoint.getPort()));
-    return url.toString();
+    return UrlUtils.convertTEndPointIpv4AndIpv6Url(endPoint);
   }
 
   /**
@@ -75,7 +72,7 @@ public class NodeUrlUtils {
   /**
    * Parse TEndPoint from a given TEndPointUrl
    *
-   * @param endPointUrl ip:port
+   * @param endPointUrl host:port or [ipv6]:port
    * @return TEndPoint
    * @throws BadNodeUrlException Throw when unable to parse
    */

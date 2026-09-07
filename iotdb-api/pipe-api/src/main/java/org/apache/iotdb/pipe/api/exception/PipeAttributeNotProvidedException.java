@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.pipe.api.exception;
 
+import org.apache.iotdb.pipe.api.i18n.PipeApiMessages;
+
 public class PipeAttributeNotProvidedException extends PipeParameterNotValidException {
 
   public PipeAttributeNotProvidedException(String key) {
-    super(String.format("Attribute \"%s\" is required but was not provided.", key));
+    super(
+        String.format(
+            PipeApiMessages.EXCEPTION_ATTRIBUTE_ARG_IS_REQUIRED_BUT_WAS_NOT_PROVIDED_5A6C1F93,
+            key));
   }
 }

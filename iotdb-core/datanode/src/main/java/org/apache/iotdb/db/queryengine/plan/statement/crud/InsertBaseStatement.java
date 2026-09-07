@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -59,6 +60,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public abstract class InsertBaseStatement extends Statement implements Accountable {
 
@@ -205,6 +207,50 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     return Collections.emptyList();
   }
 
+  public Stream<PartialPath> getPathsStream() {
+    if (measurements == null) {
+      return Stream.empty();
+    }
+    return Arrays.stream(measurements)
+        .filter(Objects::nonNull)
+        .map(devicePath::concatAsMeasurementPath);
+  }
+
+  public Stream<PartialPath> getDevicePathsStream() {
+    return Stream.of(devicePath);
+  }
+
+  /** Returns a bounded log representation generated lazily from this statement's distinct paths. */
+  public String getPathsStringForLog() {
+    return getPathsStringForLog(getPathsStream().distinct());
+  }
+
+  /**
+   * Returns a bounded log representation of paths that were already collected for authorization.
+   */
+  public String getPathsStringForLog(List<? extends PartialPath> paths) {
+    return getPathsStringForLog(paths.stream());
+  }
+
+  private static String getPathsStringForLog(Stream<? extends PartialPath> pathStream) {
+    final int maxSize = Math.max(1, CommonDescriptor.getInstance().getConfig().getPathLogMaxSize());
+    final List<String> paths = pathStream.limit((long) maxSize + 1).map(String::valueOf).toList();
+    final boolean truncated = paths.size() > maxSize;
+    final int size = truncated ? maxSize : paths.size();
+
+    final StringBuilder result = new StringBuilder("[");
+    if (size > 0) {
+      result.append(paths.get(0));
+      for (int i = 1; i < size; i++) {
+        result.append(", ").append(paths.get(i));
+      }
+      if (truncated) {
+        result.append(", ...");
+      }
+    }
+    return result.append("]").toString();
+  }
+
   public abstract ISchemaValidation getSchemaValidation();
 
   public abstract List<ISchemaValidation> getSchemaValidationList();
@@ -230,7 +276,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
       // if enable partial insert, mark failed measurements with exception
       if (measurementSchema == null) {
-        markFailedMeasurement(index, new PathNotExistException(fullPath));
+        markFailedMeasurement(index, createPathNotExistException(fullPath, dataType));
       } else if ((dataType != measurementSchema.getType()
           && !checkAndCastDataType(index, measurementSchema.getType()))) {
         markFailedMeasurement(
@@ -246,7 +292,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     } else {
       // if not enable partial insert, throw the exception directly
       if (measurementSchema == null) {
-        throw new PathNotExistException(fullPath);
+        throw createPathNotExistException(fullPath, dataType);
       } else if ((dataType != measurementSchema.getType()
           && !checkAndCastDataType(index, measurementSchema.getType()))) {
         throw new DataTypeMismatchException(
@@ -258,6 +304,13 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             getFirstValueOfIndex(index));
       }
     }
+  }
+
+  protected PathNotExistException createPathNotExistException(
+      String fullPath, TSDataType dataType) {
+    return dataType == null
+        ? PathNotExistException.forNullValue(fullPath)
+        : new PathNotExistException(fullPath);
   }
 
   protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType);
@@ -283,7 +336,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
           continue;
         }
         throw new SemanticException(
-            "Measurement contains null or empty string: " + Arrays.toString(measurements));
+            DataNodeQueryMessages.MEASUREMENT_CONTAINS_NULL_OR_EMPTY_STRING
+                + Arrays.toString(measurements));
       }
       index++;
       deduplicatedMeasurements.add(measurement);
@@ -692,7 +746,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   public void swapColumn(int src, int target) {
     if (src < 0 || src >= measurements.length || target < 0 || target >= measurements.length) {
-      throw new ArrayIndexOutOfBoundsException(src + "/" + target);
+      throw new ArrayIndexOutOfBoundsException(
+          src + DataNodeQueryMessages.EXCEPTION_SLASH_BC35AB27 + target);
     }
     ensureBaseArraysLength(measurements.length);
     if (measurementSchemas != null) {

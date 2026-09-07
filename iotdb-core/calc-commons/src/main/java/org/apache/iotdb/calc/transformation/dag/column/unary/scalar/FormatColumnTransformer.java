@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -88,7 +89,8 @@ public class FormatColumnTransformer extends MultiColumnTransformer {
     } catch (IllegalFormatConversionException | MissingFormatArgumentException e) {
       String message = e.toString().replaceFirst("^java\\.util\\.(\\w+)Exception", "$1");
       throw new SemanticException(
-          String.format("Invalid format string: %s (%s)", pattern, message));
+          String.format(
+              CalcMessages.EXCEPTION_INVALID_FORMAT_STRING_ARG_ARG_05853138, pattern, message));
     }
   }
 
@@ -111,7 +113,7 @@ public class FormatColumnTransformer extends MultiColumnTransformer {
         return DateTimeUtils.convertToZonedDateTime(column.getLong(i), zoneId);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported source dataType: %s", type));
+            String.format(CalcMessages.EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_ARG_678B759C, type));
     }
   }
 

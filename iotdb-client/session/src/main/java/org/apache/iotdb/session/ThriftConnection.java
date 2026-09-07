@@ -87,12 +87,12 @@ public class ThriftConnection {
       ZoneId zoneId,
       String version)
       throws IoTDBConnectionException {
-    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(thriftDefaultBufferSize);
-    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(thriftMaxFrameSize);
+    DeepCopyRpcTransportFactory transportFactory =
+        DeepCopyRpcTransportFactory.getInstance(thriftDefaultBufferSize, thriftMaxFrameSize);
     try {
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 connectionTimeoutInMs,
@@ -103,7 +103,7 @@ public class ThriftConnection {
                 sslProtocol);
       } else {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 // as there is a try-catch already, we do not need to use TSocket.wrap
                 endPoint.getIp(), endPoint.getPort(), connectionTimeoutInMs);
       }
@@ -137,14 +137,15 @@ public class ThriftConnection {
 
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         LOGGER.warn(
-            "Protocol differ, Client version is {}}, but Server version is {}",
+            SessionMessages.LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_9C8EC583,
             Session.protocolVersion.getValue(),
             openResp.getServerProtocolVersion().getValue());
         // less than 0.10
         if (openResp.getServerProtocolVersion().getValue() == 0) {
           throw new TException(
               String.format(
-                  "Protocol not supported, Client version is %s, but Server version is %s",
+                  SessionMessages
+                      .EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC,
                   Session.protocolVersion.getValue(),
                   openResp.getServerProtocolVersion().getValue()));
         }

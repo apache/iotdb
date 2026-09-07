@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.process.window.function.value;
 
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -111,7 +112,7 @@ public class LeadFunction extends ValueWindowFunction {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            "Unsupported default value's data type in Lag: " + dataType);
+            CalcMessages.EXCEPTION_UNSUPPORTED_DEFAULT_VALUE_S_DATA_TYPE_LAG_BEB00511 + dataType);
     }
   }
 

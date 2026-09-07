@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.SpaceSavingStateFactory;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import com.google.gson.Gson;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -52,7 +53,7 @@ public abstract class AbstractApproxMostFrequentAccumulator<T> implements TableA
   @Override
   public void addStatistics(Statistics[] statistics) {
     throw new UnsupportedOperationException(
-        "ApproxMostFrequentAccumulator does not support statistics");
+        CalcMessages.EXCEPTION_APPROXMOSTFREQUENTACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_DB1E218B);
   }
 
   @Override

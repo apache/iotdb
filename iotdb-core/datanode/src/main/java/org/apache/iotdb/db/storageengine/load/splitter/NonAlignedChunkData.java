@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 
 import org.apache.tsfile.exception.write.PageException;
@@ -181,11 +182,7 @@ public class NonAlignedChunkData implements ChunkData {
       throws IOException {
     pageNumber += 1;
     final long startTime = timePartitionSlot.getStartTime();
-    // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
-    if (endTime <= startTime) {
-      endTime = Long.MAX_VALUE;
-    }
+    final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
 
@@ -220,7 +217,9 @@ public class NonAlignedChunkData implements ChunkData {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                String.format(
+                    StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    chunkHeader.getDataType()));
         }
       }
     }
@@ -282,7 +281,9 @@ public class NonAlignedChunkData implements ChunkData {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                  String.format(
+                      StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                      chunkHeader.getDataType()));
           }
         }
 

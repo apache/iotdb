@@ -32,6 +32,8 @@ public interface CommonConfig {
 
   CommonConfig setMemtableSizeThreshold(long memtableSizeThreshold);
 
+  CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs);
+
   CommonConfig setPartitionInterval(long partitionInterval);
 
   CommonConfig setCompressor(String compressor);
@@ -156,8 +158,6 @@ public interface CommonConfig {
   CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled);
 
   CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
-
-  CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
 
   CommonConfig setSubscriptionOwnerLeaseDurationMsMin(long subscriptionOwnerLeaseDurationMsMin);
 

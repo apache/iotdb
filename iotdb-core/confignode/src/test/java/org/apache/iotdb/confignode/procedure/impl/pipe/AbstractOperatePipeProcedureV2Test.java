@@ -29,6 +29,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class AbstractOperatePipeProcedureV2Test {
@@ -82,10 +83,37 @@ public class AbstractOperatePipeProcedureV2Test {
     Assert.assertTrue(procedure.isYieldAfterExecution(null));
     Assert.assertEquals(1, procedure.calculateExecutionCount);
 
-    Assert.assertNull(procedure.runOnce());
+    final Procedure<?>[] failedSubProcedures = procedure.runOnce();
+    Assert.assertEquals(0, failedSubProcedures.length);
     Assert.assertTrue(procedure.hasException());
     Assert.assertFalse(procedure.isYieldAfterExecution(null));
     Assert.assertEquals(2, procedure.calculateExecutionCount);
+  }
+
+  @Test
+  public void testTimeoutDiagnosticReportsCurrentStateAndRetryReason() throws Exception {
+    final TestOperatePipeProcedure procedure = new TestOperatePipeProcedure();
+    procedure.failValidation = true;
+
+    procedure.executeFromState(null, OperatePipeTaskState.VALIDATE_TASK);
+
+    final String diagnosticMessage = procedure.getTimeoutDiagnosticMessage();
+    Assert.assertTrue(diagnosticMessage.contains("START_PIPE"));
+    Assert.assertTrue(diagnosticMessage.contains("VALIDATE_TASK"));
+    Assert.assertTrue(diagnosticMessage.contains("retry"));
+  }
+
+  @Test
+  public void testTimeoutDiagnosticReportsDataNodeOperation() throws Exception {
+    final TestOperatePipeProcedure procedure = new TestOperatePipeProcedure();
+    procedure.setPendingDataNodeIdsForTest(Set.of(3, 1));
+
+    procedure.executeFromState(null, OperatePipeTaskState.OPERATE_ON_DATA_NODES);
+
+    final String diagnosticMessage = procedure.getTimeoutDiagnosticMessage();
+    Assert.assertTrue(diagnosticMessage.contains("OPERATE_ON_DATA_NODES"));
+    Assert.assertTrue(diagnosticMessage.contains("DataNodes [1, 3]"));
+    Assert.assertTrue(diagnosticMessage.contains("SHOW CLUSTER"));
   }
 
   private static class TestOperatePipeProcedure extends AbstractOperatePipeProcedureV2 {
@@ -101,6 +129,10 @@ public class AbstractOperatePipeProcedureV2Test {
 
     private Procedure<?>[] runOnce() throws InterruptedException {
       return execute(null);
+    }
+
+    private void setPendingDataNodeIdsForTest(final Set<Integer> pendingDataNodeIds) {
+      setPendingDataNodeIds(pendingDataNodeIds);
     }
 
     @Override

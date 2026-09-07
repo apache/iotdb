@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFun
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RangeQuantifier;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -45,7 +46,8 @@ public class PatternRecognitionAnalysis {
       Set<String> allLabels,
       Set<String> undefinedLabels,
       Map<NodeRef<RangeQuantifier>, Analysis.Range> ranges) {
-    this.allLabels = requireNonNull(allLabels, "allLabels is null");
+    this.allLabels =
+        requireNonNull(allLabels, DataNodeQueryMessages.EXCEPTION_ALLLABELS_IS_NULL_9F240FB5);
     this.undefinedLabels = ImmutableSet.copyOf(undefinedLabels);
     this.ranges = ImmutableMap.copyOf(ranges);
   }
@@ -94,8 +96,10 @@ public class PatternRecognitionAnalysis {
     private final Descriptor descriptor;
 
     public PatternFunctionAnalysis(Expression expression, Descriptor descriptor) {
-      this.expression = requireNonNull(expression, "expression is null");
-      this.descriptor = requireNonNull(descriptor, "descriptor is null");
+      this.expression =
+          requireNonNull(expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
+      this.descriptor =
+          requireNonNull(descriptor, DataNodeQueryMessages.EXCEPTION_DESCRIPTOR_IS_NULL_E6EC1F14);
     }
 
     public Expression getExpression() {
@@ -153,12 +157,18 @@ public class PatternRecognitionAnalysis {
         Set<String> labels,
         List<FunctionCall> matchNumberCalls,
         List<FunctionCall> classifierCalls) {
-      this.function = requireNonNull(function, "function is null");
-      this.arguments = requireNonNull(arguments, "arguments is null");
-      this.mode = requireNonNull(mode, "mode is null");
-      this.labels = requireNonNull(labels, "labels is null");
-      this.matchNumberCalls = requireNonNull(matchNumberCalls, "matchNumberCalls is null");
-      this.classifierCalls = requireNonNull(classifierCalls, "classifierCalls is null");
+      this.function =
+          requireNonNull(function, DataNodeQueryMessages.EXCEPTION_FUNCTION_IS_NULL_E0FA4B62);
+      this.arguments =
+          requireNonNull(arguments, DataNodeQueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
+      this.mode = requireNonNull(mode, DataNodeQueryMessages.EXCEPTION_MODE_IS_NULL_54A948DB);
+      this.labels = requireNonNull(labels, DataNodeQueryMessages.EXCEPTION_LABELS_IS_NULL_F4FBBECE);
+      this.matchNumberCalls =
+          requireNonNull(
+              matchNumberCalls, DataNodeQueryMessages.EXCEPTION_MATCHNUMBERCALLS_IS_NULL_EC08D0D0);
+      this.classifierCalls =
+          requireNonNull(
+              classifierCalls, DataNodeQueryMessages.EXCEPTION_CLASSIFIERCALLS_IS_NULL_92AA8B77);
     }
 
     public ResolvedFunction getFunction() {
@@ -229,8 +239,9 @@ public class PatternRecognitionAnalysis {
     private final Navigation navigation;
 
     public ScalarInputDescriptor(Optional<String> label, Navigation navigation) {
-      this.label = requireNonNull(label, "label is null");
-      this.navigation = requireNonNull(navigation, "navigation is null");
+      this.label = requireNonNull(label, DataNodeQueryMessages.EXCEPTION_LABEL_IS_NULL_B21FE26B);
+      this.navigation =
+          requireNonNull(navigation, DataNodeQueryMessages.EXCEPTION_NAVIGATION_IS_NULL_3D0CBEE1);
     }
 
     public Optional<String> getLabel() {
@@ -265,8 +276,9 @@ public class PatternRecognitionAnalysis {
     private final Navigation navigation;
 
     public ClassifierDescriptor(Optional<String> label, Navigation navigation) {
-      this.label = requireNonNull(label, "label is null");
-      this.navigation = requireNonNull(navigation, "navigation is null");
+      this.label = requireNonNull(label, DataNodeQueryMessages.EXCEPTION_LABEL_IS_NULL_B21FE26B);
+      this.navigation =
+          requireNonNull(navigation, DataNodeQueryMessages.EXCEPTION_NAVIGATION_IS_NULL_3D0CBEE1);
     }
 
     public Optional<String> getLabel() {
@@ -314,8 +326,8 @@ public class PatternRecognitionAnalysis {
 
     public Navigation(
         NavigationAnchor anchor, NavigationMode mode, int logicalOffset, int physicalOffset) {
-      this.anchor = requireNonNull(anchor, "anchor is null");
-      this.mode = requireNonNull(mode, "mode is null");
+      this.anchor = requireNonNull(anchor, DataNodeQueryMessages.EXCEPTION_ANCHOR_IS_NULL_4AF93E60);
+      this.mode = requireNonNull(mode, DataNodeQueryMessages.EXCEPTION_MODE_IS_NULL_54A948DB);
       this.logicalOffset = logicalOffset;
       this.physicalOffset = physicalOffset;
     }

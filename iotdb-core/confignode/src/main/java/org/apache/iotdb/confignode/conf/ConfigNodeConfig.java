@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
@@ -201,6 +202,9 @@ public class ConfigNodeConfig {
   private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
+  /** Thread pool size for publishing cluster load statistics changes. */
+  private int loadStatisticsPublisherThreadCount = 5;
+
   /** The heartbeat interval in milliseconds. */
   private volatile long heartbeatIntervalInMs = 1000;
 
@@ -244,6 +248,9 @@ public class ConfigNodeConfig {
 
   private long configNodeRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
   private long schemaRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
+
+  /** Max size (in bytes) of the in-memory buffer used when taking/loading ConfigNode snapshots. */
+  private long configNodeSnapshotBufferSizeMax = 4 * 1024 * 1024L;
 
   /**
    * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
@@ -350,6 +357,13 @@ public class ConfigNodeConfig {
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
+
+  // The DataNode self-fences its ConfigNode-pushed metadata caches (table/tree schema, template,
+  // TTL, permission, ...) if it has not received a ConfigNode heartbeat within this duration. Kept
+  // aligned with the failure detector threshold so a partitioned DataNode stops trusting stale
+  // caches around the same time the cluster would consider it dead. Also used by the ConfigNode to
+  // derive how long it must wait before treating an unreachable DataNode as safely fenced.
+  private long metadataLeaseFenceMs = 20_000;
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -727,6 +741,17 @@ public class ConfigNodeConfig {
     this.procedureCoreWorkerThreadsCount = procedureCoreWorkerThreadsCount;
   }
 
+  public int getLoadStatisticsPublisherThreadCount() {
+    return loadStatisticsPublisherThreadCount;
+  }
+
+  public void setLoadStatisticsPublisherThreadCount(int loadStatisticsPublisherThreadCount) {
+    if (loadStatisticsPublisherThreadCount <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.loadStatisticsPublisherThreadCount = loadStatisticsPublisherThreadCount;
+  }
+
   public long getHeartbeatIntervalInMs() {
     return heartbeatIntervalInMs;
   }
@@ -964,6 +989,22 @@ public class ConfigNodeConfig {
       long schemaRegionRatisConsensusLogAppenderBufferSize) {
     this.schemaRegionRatisConsensusLogAppenderBufferSize =
         schemaRegionRatisConsensusLogAppenderBufferSize;
+  }
+
+  public long getConfigNodeSnapshotBufferSizeMax() {
+    return configNodeSnapshotBufferSizeMax;
+  }
+
+  public void setConfigNodeSnapshotBufferSizeMax(long configNodeSnapshotBufferSizeMax) {
+    if (configNodeSnapshotBufferSizeMax > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          String.format(
+              CommonMessages
+                  .EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E,
+              Integer.MAX_VALUE,
+              configNodeSnapshotBufferSizeMax));
+    }
+    this.configNodeSnapshotBufferSizeMax = configNodeSnapshotBufferSizeMax;
   }
 
   public long getSchemaRegionRatisSnapshotTriggerThreshold() {
@@ -1259,6 +1300,14 @@ public class ConfigNodeConfig {
 
   public void setForceWalPeriodForConfigNodeSimpleInMs(long forceWalPeriodForConfigNodeSimpleInMs) {
     this.forceWalPeriodForConfigNodeSimpleInMs = forceWalPeriodForConfigNodeSimpleInMs;
+  }
+
+  public long getMetadataLeaseFenceMs() {
+    return metadataLeaseFenceMs;
+  }
+
+  public void setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    this.metadataLeaseFenceMs = metadataLeaseFenceMs;
   }
 
   public String getConfigMessage() {

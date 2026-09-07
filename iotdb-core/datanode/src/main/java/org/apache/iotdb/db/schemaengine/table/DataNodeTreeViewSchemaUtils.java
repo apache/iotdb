@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -43,8 +44,9 @@ public class DataNodeTreeViewSchemaUtils {
       throw new SemanticException(
           new IoTDBException(
               String.format(
-                  "The table %s.%s is a view from tree, cannot be written or deleted from",
-                  database, table.getTableName()),
+                  DataNodeSchemaMessages.TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED,
+                  database,
+                  table.getTableName()),
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
     }
   }

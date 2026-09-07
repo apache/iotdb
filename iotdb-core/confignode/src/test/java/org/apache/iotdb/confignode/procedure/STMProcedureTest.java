@@ -21,11 +21,15 @@ package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.confignode.procedure.entity.SimpleSTMProcedure;
 import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class STMProcedureTest extends TestProcedureBase {
@@ -54,5 +58,71 @@ public class STMProcedureTest extends TestProcedureBase {
     System.out.println(success);
     System.out.println(rolledback);
     Assert.assertEquals(1 + success - rolledback, acc.get());
+  }
+
+  @Test
+  public void testEofStateReexecutionDoesNotCallExecuteFromState() throws Exception {
+    EofReexecutionProcedure procedure = new EofReexecutionProcedure();
+    procedure.setProcId(1);
+    procedure.setState(ProcedureState.RUNNABLE);
+
+    forceEofStateWithHasMoreFlow(procedure);
+
+    Assert.assertEquals(0, procedure.doExecute(env).length);
+    Assert.assertEquals(0, procedure.executeCount);
+  }
+
+  private static void forceEofStateWithHasMoreFlow(StateMachineProcedure<?, ?> procedure)
+      throws Exception {
+    Field eofStateField = StateMachineProcedure.class.getDeclaredField("EOF_STATE");
+    eofStateField.setAccessible(true);
+
+    Field statesField = StateMachineProcedure.class.getDeclaredField("states");
+    statesField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    ConcurrentLinkedDeque<Integer> states =
+        (ConcurrentLinkedDeque<Integer>) statesField.get(procedure);
+    states.clear();
+    states.add(eofStateField.getInt(null));
+
+    Field stateFlowField = StateMachineProcedure.class.getDeclaredField("stateFlow");
+    stateFlowField.setAccessible(true);
+    stateFlowField.set(procedure, StateMachineProcedure.Flow.HAS_MORE_STATE);
+  }
+
+  private static class EofReexecutionProcedure
+      extends StateMachineProcedure<TestProcEnv, EofReexecutionProcedure.TestState> {
+
+    private int executeCount = 0;
+
+    private enum TestState {
+      STEP
+    }
+
+    @Override
+    protected Flow executeFromState(TestProcEnv testProcEnv, TestState testState) {
+      executeCount++;
+      return Flow.NO_MORE_STATE;
+    }
+
+    @Override
+    protected void rollbackState(TestProcEnv testProcEnv, TestState testState) {
+      // No rollback work is required for this regression test.
+    }
+
+    @Override
+    protected TestState getState(int stateId) {
+      return TestState.values()[stateId];
+    }
+
+    @Override
+    protected int getStateId(TestState testState) {
+      return testState.ordinal();
+    }
+
+    @Override
+    protected TestState getInitialState() {
+      return TestState.STEP;
+    }
   }
 }

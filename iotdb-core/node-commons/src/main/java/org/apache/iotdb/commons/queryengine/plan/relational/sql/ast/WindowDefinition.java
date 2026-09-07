@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,8 +39,8 @@ public class WindowDefinition extends Node {
 
   public WindowDefinition(NodeLocation location, Identifier name, WindowSpecification window) {
     super(location);
-    this.name = requireNonNull(name, "name is null");
-    this.window = requireNonNull(window, "window is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.window = requireNonNull(window, QueryMessages.EXCEPTION_WINDOW_IS_NULL_7532B76A);
   }
 
   public Identifier getName() {

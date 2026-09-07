@@ -151,17 +151,17 @@ public class PipeDataNodePluginAgentTest {
                     }))
             .getClass());
     Assert.assertEquals(
-        IoTDBDataRegionSyncSink.class,
+        IoTDBDataRegionAsyncSink.class,
         agent.dataRegion().reflectSink(new PipeParameters(new HashMap<>())).getClass());
     Assert.assertEquals(
-        IoTDBDataRegionAsyncSink.class,
+        IoTDBDataRegionSyncSink.class,
         agent
             .dataRegion()
             .reflectSink(
                 new PipeParameters(
                     new HashMap<String, String>() {
                       {
-                        put(PipeSinkConstant.CONNECTOR_SERIALIZE_BY_REGION_KEY, "false");
+                        put(PipeSinkConstant.CONNECTOR_SERIALIZE_BY_REGION_KEY, "true");
                       }
                     }))
             .getClass());

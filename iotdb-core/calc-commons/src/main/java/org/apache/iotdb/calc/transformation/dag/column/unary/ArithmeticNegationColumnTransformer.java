@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -59,7 +60,8 @@ public class ArithmeticNegationColumnTransformer extends UnaryColumnTransformer 
   protected final void checkType() {
     if (!childColumnTransformer.isReturnTypeNumeric()) {
       throw new UnsupportedOperationException(
-          "Unsupported Type: " + childColumnTransformer.getType().toString());
+          CalcMessages.EXCEPTION_UNSUPPORTED_TYPE_FF7F518D
+              + childColumnTransformer.getType().toString());
     }
   }
 }

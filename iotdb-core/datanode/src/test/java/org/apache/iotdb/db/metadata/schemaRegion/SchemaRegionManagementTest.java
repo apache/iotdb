@@ -140,6 +140,44 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     }
   }
 
+  @Test
+  public void testLoadSnapshotWithTableDeviceBelowTopLevelTreeDevice() throws Exception {
+    if (!testParams.getTestModeName().equals("MemoryMode")) {
+      return;
+    }
+
+    final String schemaRegionConsensusProtocolClass =
+        config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+
+      // Build a mixed-model tree where the table-name node is also a tree-model device.
+      schemaRegion.createTimeSeries(
+          SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
+              new MeasurementPath("root.sg.t.s1"),
+              TSDataType.INT32,
+              TSEncoding.PLAIN,
+              CompressionType.UNCOMPRESSED,
+              null,
+              null,
+              null,
+              null),
+          -1);
+      SchemaRegionTestUtil.createTableDevice(
+          schemaRegion, "t", new String[] {"d1"}, Collections.emptyMap());
+
+      final File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+      Assert.assertTrue(snapshotDir.mkdir());
+      Assert.assertTrue(schemaRegion.createSnapshot(snapshotDir));
+
+      Assert.assertTrue(schemaRegion.loadSnapshot(snapshotDir));
+      Assert.assertEquals(1, schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber("t"));
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+  }
+
   private Template generateTemplate() throws IllegalPathException {
     Template template =
         new Template(

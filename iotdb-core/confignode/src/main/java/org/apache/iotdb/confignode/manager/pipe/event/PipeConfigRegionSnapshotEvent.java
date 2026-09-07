@@ -174,8 +174,10 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for snapshot %s error. Holder Message: %s",
-              snapshotPath, holderMessage),
+              ManagerMessages
+                  .LOG_INCREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_962E8672,
+              snapshotPath,
+              holderMessage),
           e);
       return false;
     }
@@ -192,8 +194,10 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
-              "Decrease reference count for snapshot %s error. Holder Message: %s",
-              snapshotPath, holderMessage),
+              ManagerMessages
+                  .LOG_DECREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_8C7FF9CE,
+              snapshotPath,
+              holderMessage),
           e);
       return false;
     }

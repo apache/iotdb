@@ -68,6 +68,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       final boolean useSSL,
       final String trustStorePath,
       final String trustStorePwd,
+      final String keyStorePath,
+      final String keyStorePwd,
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
@@ -84,6 +86,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
         useSSL,
         Objects.nonNull(trustStorePath) ? ConfigNodeConfig.addHomeDir(trustStorePath) : null,
         trustStorePwd,
+        Objects.nonNull(keyStorePath) ? ConfigNodeConfig.addHomeDir(keyStorePath) : null,
+        keyStorePwd,
         loadBalanceStrategy,
         userEntity,
         password,

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.subscription.payload.poll;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -256,7 +258,8 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
     final byte version = ReadWriteIOUtils.readByte(buffer);
     if (version != SERIALIZATION_VERSION) {
       throw new IllegalArgumentException(
-          "Unsupported SubscriptionCommitContext version: " + version);
+          SubscriptionMessages.EXCEPTION_UNSUPPORTED_SUBSCRIPTIONCOMMITCONTEXT_VERSION_8021B27B
+              + version);
     }
     final int dataNodeId = ReadWriteIOUtils.readInt(buffer);
     final int rebootTimes = ReadWriteIOUtils.readInt(buffer);

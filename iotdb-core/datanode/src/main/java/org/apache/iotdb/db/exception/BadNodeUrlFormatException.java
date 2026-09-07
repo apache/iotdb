@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.exception;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 public class BadNodeUrlFormatException extends Exception {
   public BadNodeUrlFormatException(String nodeUrl) {
-    super(
-        String.format(
-            "Node url %s has bad format, which should be " + "{IP/DomainName}:{Port}", nodeUrl));
+    super(String.format(DataNodeMiscMessages.BAD_NODE_URL_FORMAT_FMT, nodeUrl));
   }
 }

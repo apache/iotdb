@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.udf;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.adapter.PointCollectorAdaptor;
 import org.apache.iotdb.calc.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.calc.transformation.datastructure.tv.ElasticSerializableTVList;
@@ -281,12 +282,15 @@ public class UDTFExecutor {
 
   private void onError(String methodName, Exception e) {
     LOGGER.warn(
-        "Error occurred during executing UDTF, please check whether the implementation of UDF is correct according to the udf-api description.",
+        CalcMessages
+            .LOG_ERROR_OCCURRED_DURING_EXECUTING_UDTF_PLEASE_CHECK_WHETHER_IMPLEMENTATION_UDF_7A719D38,
         e);
     throw new RuntimeException(
         String.format(
-                "Error occurred during executing UDTF#%s: %s, please check whether the implementation of UDF is correct according to the udf-api description.",
-                methodName, System.lineSeparator())
+                CalcMessages
+                    .EXCEPTION_ERROR_OCCURRED_DURING_EXECUTING_UDTF_ARG_ARG_PLEASE_CHECK_WHETHER_4E706370,
+                methodName,
+                System.lineSeparator())
             + e);
   }
 

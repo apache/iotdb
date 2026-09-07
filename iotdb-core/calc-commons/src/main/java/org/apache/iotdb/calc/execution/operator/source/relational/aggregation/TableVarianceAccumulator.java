@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.VarianceAccumulator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -86,7 +87,9 @@ public class TableVarianceAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in VARIANCE Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_VARIANCE_AGGREGATION_ARG_C641D425,
+                seriesDataType));
     }
   }
 
@@ -114,7 +117,9 @@ public class TableVarianceAccumulator implements TableAccumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in VARIANCE Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_VARIANCE_AGGREGATION_ARG_C641D425,
+                seriesDataType));
     }
   }
 
@@ -124,7 +129,7 @@ public class TableVarianceAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -150,7 +155,7 @@ public class TableVarianceAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     if (count == 0) {
       columnBuilder.appendNull();

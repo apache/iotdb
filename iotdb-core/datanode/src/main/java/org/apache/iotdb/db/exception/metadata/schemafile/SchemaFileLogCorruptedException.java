@@ -21,13 +21,14 @@
 package org.apache.iotdb.db.exception.metadata.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SchemaFileLogCorruptedException extends MetadataException {
 
   public SchemaFileLogCorruptedException(String fileName, String reason) {
     super(
-        String.format("PBTreeFileLog [%s] corrupted for [%s].", fileName, reason),
+        String.format(DataNodeSchemaMessages.PBTREE_FILE_LOG_CORRUPTED_FMT, fileName, reason),
         TSStatusCode.PBTREE_FILE_REDO_LOG_BROKEN.getStatusCode(),
         true);
   }

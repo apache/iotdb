@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalSourceFileTypeException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -42,11 +43,13 @@ public interface ICompactionPerformer {
 
   default void setSourceFiles(List<TsFileResource> files) {
     throw new IllegalSourceFileTypeException(
-        "Cannot set single type of source files to this kind of performer");
+        StorageEngineMessages
+            .STORAGE_EXCEPTION_CANNOT_SET_SINGLE_TYPE_OF_SOURCE_FILES_TO_THIS_KIND_OF_PERFORMER_6B422172);
   }
 
   default void setSourceFiles(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     throw new IllegalSourceFileTypeException(
-        "Cannot set both seq files and unseq files to this kind of performer");
+        StorageEngineMessages
+            .STORAGE_EXCEPTION_CANNOT_SET_BOTH_SEQ_FILES_AND_UNSEQ_FILES_TO_THIS_KIND_OF_F68F629E);
   }
 }

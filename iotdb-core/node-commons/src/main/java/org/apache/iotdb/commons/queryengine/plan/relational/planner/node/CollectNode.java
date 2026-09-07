@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -82,7 +83,9 @@ public class CollectNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(children.size() == newChildren.size(), "wrong number of new children");
+    checkArgument(
+        children.size() == newChildren.size(),
+        QueryMessages.EXCEPTION_WRONG_NUMBER_OF_NEW_CHILDREN_817AF800);
     return new CollectNode(id, newChildren, outputSymbols);
   }
 

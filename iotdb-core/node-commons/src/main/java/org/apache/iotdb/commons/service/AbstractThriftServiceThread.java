@@ -97,13 +97,15 @@ public abstract class AbstractThriftServiceThread extends Thread {
       threadStopLatch.countDown();
     }
     logger.debug(
-        "{}: close TThreadPoolServer and TServerSocket for {}",
+        ServiceMessages.CLOSE_THREAD_POOL_SERVER_AND_SERVER_SOCKET,
         IoTDBConstant.GLOBAL_DB_NAME,
         serviceName);
     logger.error(ServiceMessages.FAILED_TO_START_BECAUSE, e.getCause());
     throw new RPCServiceException(
         String.format(
-            "%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName),
+            ServiceMessages.FAILED_TO_START_SERVICE_BECAUSE,
+            IoTDBConstant.GLOBAL_DB_NAME,
+            serviceName),
         e);
   }
 
@@ -325,7 +327,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
         threadStopLatch.countDown();
       }
       logger.debug(
-          "{}: close TThreadPoolServer and TServerSocket for {}",
+          ServiceMessages.CLOSE_THREAD_POOL_SERVER_AND_SERVER_SOCKET,
           IoTDBConstant.GLOBAL_DB_NAME,
           serviceName);
     }

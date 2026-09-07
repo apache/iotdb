@@ -20,7 +20,8 @@
 @echo off
 
 @REM You can set datanode memory size, example '2G' or '2048M'
-set MEMORY_SIZE=
+@REM If the MEMORY_SIZE environment variable is already set, its value will be used.
+if not defined MEMORY_SIZE set MEMORY_SIZE=
 
 @REM true or false
 @REM DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%IOTDB_CONF%\jmx.password and %{IOTDB_CONF%\jmx.access)
@@ -125,6 +126,8 @@ set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UseAdaptiveSizePolicy
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xss512k
 @REM options below try to optimize safepoint stw time.
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UnlockDiagnosticVMOptions
+@REM Enable the CRC32 intrinsic on compiled paths to avoid the JNI critical fallback.
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UseCRC32Intrinsics
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:GuaranteedSafepointInterval=0
 @REM these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.txt"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:SafepointTimeoutDelay=1000

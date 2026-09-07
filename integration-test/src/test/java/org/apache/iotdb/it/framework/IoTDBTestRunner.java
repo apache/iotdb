@@ -44,6 +44,11 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
   @Override
   public void run(final RunNotifier notifier) {
     TimeZone.setDefault(TimeZone.getTimeZone("UTC+08:00"));
+    final String testClassName = getTestClass().getJavaClass().getSimpleName();
+    if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
+      EnvFactory.getEnv().setTestClassName(testClassName);
+    }
+    MultiEnvFactory.setTestClassName(testClassName);
     listener = new IoTDBTestListener(this.getName());
     notifier.addListener(listener);
     super.run(notifier);
@@ -54,9 +59,12 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
     final Description description = describeChild(method);
     logger.info("Run {}", description.getMethodName());
     final long currentTime = System.currentTimeMillis();
+    final String testClassName = getTestClass().getJavaClass().getSimpleName();
     if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
+      EnvFactory.getEnv().setTestClassName(testClassName);
       EnvFactory.getEnv().setTestMethodName(description.getMethodName());
     }
+    MultiEnvFactory.setTestClassName(testClassName);
     MultiEnvFactory.setTestMethodName(description.getMethodName());
     if (Thread.currentThread().getName().equals("main")) {
       Thread.currentThread().setName("main-" + description.getMethodName());

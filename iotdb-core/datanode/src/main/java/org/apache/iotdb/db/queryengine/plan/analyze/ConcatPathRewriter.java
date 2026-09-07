@@ -51,7 +51,10 @@ public class ConcatPathRewriter {
   }
 
   public Statement rewrite(
-      Statement statement, PathPatternTree patternTree, MPPQueryContext queryContext)
+      Statement statement,
+      PathPatternTree patternTree,
+      MPPQueryContext queryContext,
+      TreeAnalysisMutationJournal mutationJournal)
       throws StatementAnalyzeException {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.patternTree = patternTree;
@@ -79,20 +82,20 @@ public class ConcatPathRewriter {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
           concatSelectWithFrom(queryStatement.getSelectComponent(), prefixPaths, queryContext);
-      queryStatement.getSelectComponent().setResultColumns(resultColumns);
+      mutationJournal.replaceResultColumns(queryStatement, resultColumns);
 
       // concat GROUP BY with FROM
       if (queryStatement.hasGroupByExpression()) {
-        queryStatement
-            .getGroupByComponent()
-            .setControlColumnExpression(
-                contactGroupByWithFrom(
-                    queryStatement.getGroupByComponent().getControlColumnExpression(),
-                    prefixPaths,
-                    queryContext));
+        mutationJournal.replaceGroupByControlExpression(
+            queryStatement,
+            contactGroupByWithFrom(
+                queryStatement.getGroupByComponent().getControlColumnExpression(),
+                prefixPaths,
+                queryContext));
       }
       if (queryStatement.hasOrderByExpression()) {
-        List<Expression> sortItemExpressions = queryStatement.getExpressionSortItemList();
+        List<Expression> sortItemExpressions =
+            mutationJournal.getMutableOrderByComponent(queryStatement).getExpressionSortItemList();
         sortItemExpressions.replaceAll(
             expression -> contactOrderByWithFrom(expression, prefixPaths, queryContext));
       }

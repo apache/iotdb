@@ -119,9 +119,10 @@ public class MemoryManager {
 
     throw new MemoryException(
         String.format(
-            "exactAllocate: failed to allocate memory after %d retries, "
-                + "total memory size %d bytes, used memory size %d bytes, "
-                + "requested memory size %d bytes",
+            CommonMessages.EXCEPTION_EXACTALLOCATE_FAILED_ALLOCATE_MEMORY_AFTER_ARG_RETRIES_957A647B
+                + CommonMessages
+                    .EXCEPTION_TOTAL_MEMORY_SIZE_ARG_BYTES_USED_MEMORY_SIZE_ARG_BYTES_9FC9A9C6
+                + CommonMessages.EXCEPTION_REQUESTED_MEMORY_SIZE_ARG_BYTES_E6340842,
             MEMORY_ALLOCATE_MAX_RETRIES,
             totalMemorySizeInBytes,
             allocatedMemorySizeInBytes,
@@ -164,9 +165,9 @@ public class MemoryManager {
     } else {
       // TODO @spricoder: consider to find more memory in active way
       LOGGER.debug(
-          "exactAllocateIfSufficient: failed to allocate memory, "
-              + "total memory size {} bytes, used memory size {} bytes, "
-              + "requested memory size {} bytes, used threshold {}",
+          CommonMessages.LOG_EXACTALLOCATEIFSUFFICIENT_FAILED_ALLOCATE_MEMORY_A47897D9
+              + CommonMessages.LOG_TOTAL_MEMORY_SIZE_ARG_BYTES_USED_MEMORY_SIZE_ARG_BYTES_5FB5059F
+              + CommonMessages.LOG_REQUESTED_MEMORY_SIZE_ARG_BYTES_USED_THRESHOLD_ARG_D7061DEB,
           totalMemorySizeInBytes,
           allocatedMemorySizeInBytes,
           sizeInBytes,
@@ -202,10 +203,10 @@ public class MemoryManager {
     while (sizeToAllocateInBytes >= MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES) {
       if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeToAllocateInBytes) {
         LOGGER.debug(
-            "tryAllocate: allocated memory, "
-                + "total memory size {} bytes, used memory size {} bytes, "
-                + "original requested memory size {} bytes, "
-                + "actual requested memory size {} bytes",
+            CommonMessages.LOG_TRYALLOCATE_ALLOCATED_MEMORY_B3D564D9
+                + CommonMessages.LOG_TOTAL_MEMORY_SIZE_ARG_BYTES_USED_MEMORY_SIZE_ARG_BYTES_5FB5059F
+                + CommonMessages.LOG_ORIGINAL_REQUESTED_MEMORY_SIZE_ARG_BYTES_03D28A6B
+                + CommonMessages.LOG_ACTUAL_REQUESTED_MEMORY_SIZE_ARG_BYTES_62760058,
             totalMemorySizeInBytes,
             allocatedMemorySizeInBytes,
             sizeInBytes,
@@ -221,9 +222,9 @@ public class MemoryManager {
 
     // TODO @spricoder: consider to find more memory in active way
     LOGGER.warn(
-        "tryAllocate: failed to allocate memory, "
-            + "total memory size {} bytes, used memory size {} bytes, "
-            + "requested memory size {} bytes",
+        CommonMessages.LOG_TRYALLOCATE_FAILED_ALLOCATE_MEMORY_838FA6FB
+            + CommonMessages.LOG_TOTAL_MEMORY_SIZE_ARG_BYTES_USED_MEMORY_SIZE_ARG_BYTES_5FB5059F
+            + CommonMessages.LOG_REQUESTED_MEMORY_SIZE_ARG_BYTES_BF9CEF81,
         totalMemorySizeInBytes,
         allocatedMemorySizeInBytes,
         sizeInBytes);
@@ -243,7 +244,9 @@ public class MemoryManager {
     if (sizeInBytes < 0) {
       throw new MemoryException(
           String.format(
-              "register memory block %s failed: sizeInBytes should be non-negative", name));
+              CommonMessages
+                  .EXCEPTION_REGISTER_MEMORY_BLOCK_ARG_FAILED_SIZEINBYTES_SHOULD_NON_NEGATIVE_EC54AA75,
+              name));
     }
     return allocatedMemoryBlocks.compute(
         name,
@@ -251,8 +254,9 @@ public class MemoryManager {
           if (block != null) {
             if (block.getTotalMemorySizeInBytes() != sizeInBytes) {
               LOGGER.warn(
-                  "getOrRegisterMemoryBlock failed: memory block {} already exists, "
-                      + "it's size is {}, requested size is {}",
+                  CommonMessages
+                          .LOG_GETORREGISTERMEMORYBLOCK_FAILED_MEMORY_BLOCK_ARG_ALREADY_EXISTS_42CA8914
+                      + CommonMessages.LOG_IT_S_SIZE_ARG_REQUESTED_SIZE_ARG_AF8F04B2,
                   blockName,
                   block.getTotalMemorySizeInBytes(),
                   sizeInBytes);
@@ -323,7 +327,8 @@ public class MemoryManager {
           }
           if (manager != null) {
             LOGGER.debug(
-                "getMemoryManager: memory manager {} already exists, it's size is {}, enabled is {}",
+                CommonMessages
+                    .LOG_GETMEMORYMANAGER_MEMORY_MANAGER_ARG_ALREADY_EXISTS_IT_S_SIZE_ARG_0102560A,
                 managerName,
                 manager.getTotalMemorySizeInBytes(),
                 manager.isEnable());
@@ -332,7 +337,8 @@ public class MemoryManager {
             if (this.enabled
                 && sizeInBytes + this.allocatedMemorySizeInBytes > this.totalMemorySizeInBytes) {
               LOGGER.warn(
-                  "getOrCreateMemoryManager failed: total memory size {} bytes is less than allocated memory size {} bytes",
+                  CommonMessages
+                      .LOG_GETORCREATEMEMORYMANAGER_FAILED_TOTAL_MEMORY_SIZE_ARG_BYTES_LESS_THAN_ALLOCATED_3D110256,
                   sizeInBytes,
                   allocatedMemorySizeInBytes);
               return null;

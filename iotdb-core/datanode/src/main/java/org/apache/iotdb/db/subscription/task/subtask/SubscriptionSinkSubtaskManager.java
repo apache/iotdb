@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeRealtimePriorityBlockingQueue;
@@ -78,7 +79,8 @@ public class SubscriptionSinkSubtaskManager {
             .toLowerCase();
     if (!SUBSCRIPTION_SINK.getPipePluginName().equals(connectorKey)) {
       throw new SubscriptionException(
-          "The SubscriptionConnectorSubtaskManager only supports subscription-sink.");
+          DataNodePipeMessages
+              .PIPE_EXCEPTION_THE_SUBSCRIPTIONCONNECTORSUBTASKMANAGER_ONLY_SUPPORTS_SUBSCRIPTION_CEFFAAA9);
     }
 
     PipeEventCommitManager.getInstance()
@@ -116,7 +118,8 @@ public class SubscriptionSinkSubtaskManager {
           pipeSink.close();
         } catch (final Exception closeException) {
           LOGGER.warn(
-              "Failed to close sink after failed to initialize sink. " + "Ignore this exception.",
+              DataNodePipeMessages
+                  .PIPE_LOG_FAILED_TO_CLOSE_SINK_AFTER_FAILED_TO_INITIALIZE_SINK_IGNORE_CF2E3D90,
               closeException);
         }
         throw new PipeException(
@@ -130,9 +133,10 @@ public class SubscriptionSinkSubtaskManager {
       if (Objects.isNull(topicName) || Objects.isNull(consumerGroupId)) {
         throw new SubscriptionException(
             String.format(
-                "Failed to construct subscription sink, because of %s or %s "
-                    + "does not exist in pipe connector parameters",
-                PipeSinkConstant.SINK_TOPIC_KEY, PipeSinkConstant.SINK_CONSUMER_GROUP_KEY));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_FAILED_TO_CONSTRUCT_SUBSCRIPTION_SINK_BECAUSE_OF_S_OR_S_DBA27DC2,
+                PipeSinkConstant.SINK_TOPIC_KEY,
+                PipeSinkConstant.SINK_CONSUMER_GROUP_KEY));
       }
 
       // 3. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
@@ -206,7 +210,10 @@ public class SubscriptionSinkSubtaskManager {
       final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(
-          "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK_S_B445404A,
+              attributeSortedString));
     }
 
     return attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).getPendingQueue();

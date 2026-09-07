@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import com.google.common.io.BaseEncoding;
@@ -62,21 +63,21 @@ public class TierManager {
   /**
    * seq folder manager of each storage tier, managing both data directories and multi-dir strategy
    */
-  private final List<FolderManager> seqTiers = new ArrayList<>();
+  private volatile List<FolderManager> seqTiers = new ArrayList<>();
 
   /**
    * unSeq folder manager of each storage tier, managing both data directories and multi-dir
    * strategy
    */
-  private final List<FolderManager> unSeqTiers = new ArrayList<>();
+  private volatile List<FolderManager> unSeqTiers = new ArrayList<>();
 
-  private final List<FolderManager> objectTiers = new ArrayList<>();
+  private volatile List<FolderManager> objectTiers = new ArrayList<>();
 
   /** seq file folder's rawFsPath path -> tier level */
-  private final Map<String, Integer> seqDir2TierLevel = new HashMap<>();
+  private volatile Map<String, Integer> seqDir2TierLevel = new HashMap<>();
 
   /** unSeq file folder's rawFsPath path -> tier level */
-  private final Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
+  private volatile Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
 
   private List<String> objectDirs;
 
@@ -95,6 +96,15 @@ public class TierManager {
   }
 
   public synchronized void initFolders() {
+    initFolders(seqTiers, unSeqTiers, objectTiers, seqDir2TierLevel, unSeqDir2TierLevel);
+  }
+
+  private void initFolders(
+      List<FolderManager> seqTiers,
+      List<FolderManager> unSeqTiers,
+      List<FolderManager> objectTiers,
+      Map<String, Integer> seqDir2TierLevel,
+      Map<String, Integer> unSeqDir2TierLevel) {
     directoryStrategyType =
         DirectoryStrategyType.fromClassName(config.getMultiDirStrategyClassName());
 
@@ -108,6 +118,7 @@ public class TierManager {
               tierDirs[i][j] = new File(tierDirs[i][j]).getCanonicalPath();
             } catch (IOException e) {
               logger.error(StorageEngineMessages.FAIL_TO_GET_CANONICAL_PATH, tierDirs[i][j], e);
+              DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
             }
             break;
           case OBJECT_STORAGE:
@@ -204,13 +215,19 @@ public class TierManager {
 
   public synchronized void resetFolders() {
     long startTime = System.currentTimeMillis();
-    seqTiers.clear();
-    unSeqTiers.clear();
-    objectTiers.clear();
-    seqDir2TierLevel.clear();
-    unSeqDir2TierLevel.clear();
+    List<FolderManager> newSeqTiers = new ArrayList<>();
+    List<FolderManager> newUnSeqTiers = new ArrayList<>();
+    List<FolderManager> newObjectTiers = new ArrayList<>();
+    Map<String, Integer> newSeqDir2TierLevel = new HashMap<>();
+    Map<String, Integer> newUnSeqDir2TierLevel = new HashMap<>();
 
-    initFolders();
+    initFolders(
+        newSeqTiers, newUnSeqTiers, newObjectTiers, newSeqDir2TierLevel, newUnSeqDir2TierLevel);
+    seqTiers = newSeqTiers;
+    unSeqTiers = newUnSeqTiers;
+    objectTiers = newObjectTiers;
+    seqDir2TierLevel = newSeqDir2TierLevel;
+    unSeqDir2TierLevel = newUnSeqDir2TierLevel;
     long endTime = System.currentTimeMillis();
     logger.info(StorageEngineMessages.FOLDERS_RESET_SUCCESSFULLY, (endTime - startTime));
   }
@@ -225,7 +242,9 @@ public class TierManager {
         logger.info(StorageEngineMessages.FOLDER_NOT_EXIST_CREATE_IT, file.getPath());
       } else {
         logger.info(
-            "create folder {} failed. Is the folder existed: {}", file.getPath(), file.exists());
+            StorageEngineMessages.STORAGE_LOG_CREATE_FOLDER_FAILED_IS_THE_FOLDER_EXISTED_18E29D51,
+            file.getPath(),
+            file.exists());
       }
     }
   }
@@ -350,6 +369,7 @@ public class TierManager {
       filePath = file.getCanonicalFile().toPath();
     } catch (IOException e) {
       logger.error(StorageEngineMessages.FAIL_TO_GET_CANONICAL_PATH, file, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       filePath = file.toPath();
     }
 
@@ -401,6 +421,7 @@ public class TierManager {
             }
           } catch (IOException e) {
             logger.error(StorageEngineMessages.FAILED_TO_STATISTIC_SIZE, fileStore, e);
+            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           }
         }
       }

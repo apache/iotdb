@@ -140,7 +140,8 @@ public class SyncConfigNodeClientPool {
       updateConfigNodeLeader(status);
       if (configNodeLeader == null) {
         LOGGER.warn(
-            "Redirection recommended for removeConfigNode but no leader endpoint provided, abort retry.");
+            ConfigNodeMessages
+                .LOG_REDIRECTION_RECOMMENDED_REMOVECONFIGNODE_BUT_NO_LEADER_ENDPOINT_PROVIDED_ABORT_RETRY_520A4C64);
         break;
       }
       try (SyncConfigNodeIServiceClient clientLeader =

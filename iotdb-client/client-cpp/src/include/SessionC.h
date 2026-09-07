@@ -135,8 +135,7 @@ TsStatus ts_session_set_use_ssl(CSession* session, bool useSsl);
 TsStatus ts_session_set_ssl_protocol(CSession* session, const char* sslProtocol);
 TsStatus ts_session_set_trust_store(CSession* session, const char* trustStore,
                                     const char* trustStorePwd);
-TsStatus ts_session_set_key_store(CSession* session, const char* keyStore,
-                                  const char* keyStorePwd);
+TsStatus ts_session_set_key_store(CSession* session, const char* keyStore, const char* keyStorePwd);
 /** @deprecated Use ts_session_set_trust_store() instead. */
 TsStatus ts_session_set_trust_cert_file_path(CSession* session, const char* trustCertFilePath);
 

@@ -306,7 +306,8 @@ public class DataPartition extends Partition {
   // TODO(beyyes) if join queries more than one table, may trigger the unmodication error in
   // Collections.singletonMap
   public void upsertDataPartition(DataPartition targetDataPartition) {
-    requireNonNull(this.dataPartitionMap, "dataPartitionMap is null");
+    requireNonNull(
+        this.dataPartitionMap, CommonMessages.EXCEPTION_DATAPARTITIONMAP_IS_NULL_B764418A);
 
     for (Map.Entry<
             String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>

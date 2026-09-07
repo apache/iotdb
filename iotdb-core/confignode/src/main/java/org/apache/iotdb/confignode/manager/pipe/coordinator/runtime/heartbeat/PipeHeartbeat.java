@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TPipeCompletedDataRegion;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,10 +33,11 @@ import java.util.Objects;
 
 public class PipeHeartbeat {
   private final Map<PipeStaticMeta, PipeMeta> pipeMetaMap = new HashMap<>();
-  private final Map<PipeStaticMeta, Boolean> isCompletedMap = new HashMap<>();
   private final Map<PipeStaticMeta, Long> remainingEventCountMap = new HashMap<>();
   private final Map<PipeStaticMeta, Double> remainingTimeMap = new HashMap<>();
   private final Map<PipeStaticMeta, Boolean> isDegradedMap = new HashMap<>();
+  private final Map<PipeStaticMeta, Map<String, Long>> recentFailuresMap = new HashMap<>();
+  private final Map<PipeStaticMeta, List<Integer>> completedDataRegionIdsMap = new HashMap<>();
 
   public PipeHeartbeat(
       final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
@@ -42,6 +45,41 @@ public class PipeHeartbeat {
       /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
       /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent,
       /* @Nullable */ final List<Integer> pipeDegradedStatusListFromAgent) {
+    this(
+        pipeMetaByteBufferListFromAgent,
+        pipeCompletedListFromAgent,
+        pipeRemainingEventCountListFromAgent,
+        pipeRemainingTimeListFromAgent,
+        pipeDegradedStatusListFromAgent,
+        null,
+        null);
+  }
+
+  public PipeHeartbeat(
+      final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
+      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
+      /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
+      /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent,
+      /* @Nullable */ final List<Integer> pipeDegradedStatusListFromAgent,
+      /* @Nullable */ final List<Map<String, Long>> pipeRecentFailureListFromAgent) {
+    this(
+        pipeMetaByteBufferListFromAgent,
+        pipeCompletedListFromAgent,
+        pipeRemainingEventCountListFromAgent,
+        pipeRemainingTimeListFromAgent,
+        pipeDegradedStatusListFromAgent,
+        pipeRecentFailureListFromAgent,
+        null);
+  }
+
+  public PipeHeartbeat(
+      final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
+      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
+      /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
+      /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent,
+      /* @Nullable */ final List<Integer> pipeDegradedStatusListFromAgent,
+      /* @Nullable */ final List<Map<String, Long>> pipeRecentFailureListFromAgent,
+      /* @Nullable */ final List<TPipeCompletedDataRegion> completedDataRegionListFromAgent) {
     // Shall not reach here, just in case
     if (Objects.isNull(pipeMetaByteBufferListFromAgent)) {
       return;
@@ -50,11 +88,6 @@ public class PipeHeartbeat {
       final PipeMeta pipeMeta =
           PipeMeta.deserialize4TaskAgent(pipeMetaByteBufferListFromAgent.get(i));
       pipeMetaMap.put(pipeMeta.getStaticMeta(), pipeMeta);
-      isCompletedMap.put(
-          pipeMeta.getStaticMeta(),
-          Objects.nonNull(pipeCompletedListFromAgent)
-              && i < pipeCompletedListFromAgent.size()
-              && pipeCompletedListFromAgent.get(i));
       // If remaining event count & remaining time can not be got, it implies that the heartbeat is
       // from an ancient version of DataNode. Here we guarantee that "0" will not affect both of
       // the final results and namely these dataNodes are omitted in calculation.
@@ -77,6 +110,24 @@ public class PipeHeartbeat {
                       && i < pipeDegradedStatusListFromAgent.size()
                   ? pipeDegradedStatusListFromAgent.get(i)
                   : null));
+      recentFailuresMap.put(
+          pipeMeta.getStaticMeta(),
+          Objects.nonNull(pipeRecentFailureListFromAgent)
+                  && i < pipeRecentFailureListFromAgent.size()
+                  && Objects.nonNull(pipeRecentFailureListFromAgent.get(i))
+              ? new HashMap<>(pipeRecentFailureListFromAgent.get(i))
+              : Collections.emptyMap());
+      if (completedDataRegionListFromAgent != null) {
+        for (final TPipeCompletedDataRegion completedDataRegion :
+            completedDataRegionListFromAgent) {
+          if (pipeMeta.getStaticMeta().getPipeName().equals(completedDataRegion.getPipeName())
+              && pipeMeta.getStaticMeta().getCreationTime()
+                  == completedDataRegion.getCreationTime()) {
+            completedDataRegionIdsMap.put(
+                pipeMeta.getStaticMeta(), completedDataRegion.getCompletedDataRegionIds());
+          }
+        }
+      }
     }
   }
 
@@ -88,8 +139,12 @@ public class PipeHeartbeat {
     return pipeMetaMap.get(pipeStaticMeta);
   }
 
-  public Boolean isCompleted(final PipeStaticMeta pipeStaticMeta) {
-    return isCompletedMap.get(pipeStaticMeta);
+  public List<Integer> getCompletedDataRegionIds(final PipeStaticMeta pipeStaticMeta) {
+    return completedDataRegionIdsMap.getOrDefault(pipeStaticMeta, Collections.emptyList());
+  }
+
+  public boolean hasCompletedDataRegionReport(final PipeStaticMeta pipeStaticMeta) {
+    return completedDataRegionIdsMap.containsKey(pipeStaticMeta);
   }
 
   public Long getRemainingEventCount(final PipeStaticMeta pipeStaticMeta) {
@@ -102,6 +157,10 @@ public class PipeHeartbeat {
 
   public Boolean getDegraded(final PipeStaticMeta pipeStaticMeta) {
     return isDegradedMap.get(pipeStaticMeta);
+  }
+
+  public Map<String, Long> getRecentFailures(final PipeStaticMeta pipeStaticMeta) {
+    return recentFailuresMap.get(pipeStaticMeta);
   }
 
   public boolean isEmpty() {

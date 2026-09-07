@@ -21,19 +21,22 @@ package org.apache.iotdb.db.exception.metadata.view;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import java.util.List;
 
 public class BrokenViewException extends MetadataException {
 
   public BrokenViewException(String sourcePath) {
-    super(String.format("The source path [%s] is deleted", sourcePath));
+    super(String.format(DataNodeSchemaMessages.SOURCE_PATH_DELETED_FMT, sourcePath));
   }
 
   public BrokenViewException(String sourcePath, List<MeasurementPath> matchedPaths) {
     super(
         String.format(
-            "View is broken! The source path [%s] maps to unmatched %s path(s): %s.",
-            sourcePath, matchedPaths.size(), matchedPaths));
+            DataNodeSchemaMessages.BROKEN_VIEW_UNMATCHED_FMT,
+            sourcePath,
+            matchedPaths.size(),
+            matchedPaths));
   }
 }

@@ -32,6 +32,12 @@ public class PipeRuntimeSinkRetryTimesConfigurableException
     this.retryTimes = retryTimes;
   }
 
+  public PipeRuntimeSinkRetryTimesConfigurableException(
+      final String message, final int retryTimes, final Throwable cause) {
+    super(message, cause);
+    this.retryTimes = retryTimes;
+  }
+
   public int getRetryTimes() {
     return retryTimes;
   }

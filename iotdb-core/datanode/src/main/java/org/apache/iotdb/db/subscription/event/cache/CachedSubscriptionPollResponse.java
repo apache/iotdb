@@ -42,8 +42,30 @@ public class CachedSubscriptionPollResponse extends SubscriptionPollResponse {
     super(responseType, payload, commitContext);
   }
 
+  public CachedSubscriptionPollResponse(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected) {
+    super(responseType, payload, commitContext, timeSelected);
+  }
+
+  public CachedSubscriptionPollResponse(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
+    super(responseType, payload, commitContext, timeSelected, timeSelectedByTable);
+  }
+
   public CachedSubscriptionPollResponse(final SubscriptionPollResponse response) {
-    super(response.getResponseType(), response.getPayload(), response.getCommitContext());
+    super(
+        response.getResponseType(),
+        response.getPayload(),
+        response.getCommitContext(),
+        response.isTimeSelected(),
+        response.getTimeSelectedByTable());
   }
 
   public void setMemoryBlock(final PipeFixedMemoryBlock memoryBlock) {

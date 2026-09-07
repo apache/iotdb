@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -45,7 +46,7 @@ public class RelationType {
   }
 
   public RelationType(List<Field> fields) {
-    requireNonNull(fields, "fields is null");
+    requireNonNull(fields, DataNodeQueryMessages.EXCEPTION_FIELDS_IS_NULL_DE209DBF);
     this.allFields = ImmutableList.copyOf(fields);
     this.visibleFields =
         fields.stream().filter(field -> !field.isHidden()).collect(toImmutableList());
@@ -64,9 +65,12 @@ public class RelationType {
    * @throws IllegalArgumentException when field is not found
    */
   public int indexOf(Field field) {
-    requireNonNull(field, "field cannot be null");
+    requireNonNull(field, DataNodeQueryMessages.EXCEPTION_FIELD_CANNOT_BE_NULL_09155004);
     Integer index = fieldIndexes.get(field);
-    checkArgument(index != null, "Field '%s' not found", field);
+    checkArgument(
+        index != null,
+        DataNodeQueryMessages.EXCEPTION_FIELD_QUOTE_ARG_QUOTE_NOT_FOUND_1BC2FDED,
+        field);
     return index;
   }
 
@@ -132,7 +136,7 @@ public class RelationType {
     if (columnAliases != null) {
       checkArgument(
           columnAliases.size() == visibleFields.size(),
-          "Column alias list has %s entries but '%s' has %s columns available",
+          DataNodeQueryMessages.COLUMN_ALIAS_LIST_HAS_S_ENTRIES_BUT_S_HAS_S_COLUMNS_AVAILABLE,
           columnAliases.size(),
           relationAlias,
           visibleFields.size());

@@ -48,7 +48,8 @@ public class ExpressionAndValuePointers {
   private final List<Assignment> assignments;
 
   public ExpressionAndValuePointers(Expression expression, List<Assignment> assignments) {
-    this.expression = requireNonNull(expression, "expression is null");
+    this.expression =
+        requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
     this.assignments = ImmutableList.copyOf(assignments);
   }
 

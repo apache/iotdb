@@ -29,11 +29,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -45,15 +45,13 @@ public class DeletionReader implements Closeable {
   private final int regionId;
   private final Consumer<DeletionResource> removeHook;
   private final File logFile;
-  private final FileInputStream fileInputStream;
   private final FileChannel fileChannel;
 
   public DeletionReader(File logFile, int regionId, Consumer<DeletionResource> removeHook)
       throws IOException {
     this.logFile = logFile;
     this.regionId = regionId;
-    this.fileInputStream = new FileInputStream(logFile);
-    this.fileChannel = fileInputStream.getChannel();
+    this.fileChannel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ);
     this.removeHook = removeHook;
   }
 
@@ -95,6 +93,5 @@ public class DeletionReader implements Closeable {
   @Override
   public void close() throws IOException {
     this.fileChannel.close();
-    this.fileInputStream.close();
   }
 }

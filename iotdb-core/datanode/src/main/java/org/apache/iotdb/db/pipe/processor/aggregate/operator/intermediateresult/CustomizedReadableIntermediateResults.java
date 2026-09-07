@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.type.Binary;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -46,7 +47,9 @@ public class CustomizedReadableIntermediateResults {
       return (boolean) typeResultPair.getRight();
     }
     throw new UnsupportedOperationException(
-        String.format("The type %s cannot be casted to boolean.", typeResultPair.getLeft()));
+        String.format(
+            DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_BOOLEAN_F19CCF75,
+            typeResultPair.getLeft()));
   }
 
   public int getInt(final String key) {
@@ -72,7 +75,9 @@ public class CustomizedReadableIntermediateResults {
       case STRING:
       default:
         throw new UnsupportedOperationException(
-            String.format("The type %s cannot be casted to int.", typeResultPair.getLeft()));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_INT_659069CC,
+                typeResultPair.getLeft()));
     }
   }
 
@@ -99,7 +104,9 @@ public class CustomizedReadableIntermediateResults {
       case BLOB:
       default:
         throw new UnsupportedOperationException(
-            String.format("The type %s cannot be casted to long.", typeResultPair.getLeft()));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_LONG_2D206561,
+                typeResultPair.getLeft()));
     }
   }
 
@@ -126,7 +133,9 @@ public class CustomizedReadableIntermediateResults {
       case STRING:
       default:
         throw new UnsupportedOperationException(
-            String.format("The type %s cannot be casted to float.", typeResultPair.getLeft()));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_FLOAT_C15A8A95,
+                typeResultPair.getLeft()));
     }
   }
 
@@ -153,7 +162,9 @@ public class CustomizedReadableIntermediateResults {
       case BLOB:
       default:
         throw new UnsupportedOperationException(
-            String.format("The type %s cannot be casted to double.", typeResultPair.getLeft()));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_DOUBLE_E577C0D7,
+                typeResultPair.getLeft()));
     }
   }
 
@@ -190,7 +201,9 @@ public class CustomizedReadableIntermediateResults {
         return BytesUtils.parseBlobByteArrayToString(((Binary) value).getValues());
       default:
         throw new UnsupportedOperationException(
-            String.format("The type %s cannot be casted to string.", typeResultPair.getLeft()));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_STRING_34983FBD,
+                typeResultPair.getLeft()));
     }
   }
 
