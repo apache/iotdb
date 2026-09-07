@@ -19,7 +19,9 @@
 
 #include <catch.hpp>
 
+#include <cstdio>
 #include <fstream>
+#include <initializer_list>
 
 #include "Common.h"
 #include "RpcSslUtils.h"
@@ -31,6 +33,27 @@ bool fixtureExists(const std::string& path) {
   std::ifstream in(path.c_str(), std::ios::binary);
   return in.good();
 }
+
+void concatenate(const std::string& output, std::initializer_list<std::string> inputs) {
+  std::ofstream out(output, std::ios::binary | std::ios::trunc);
+  REQUIRE(out.good());
+  for (const auto& input : inputs) {
+    std::ifstream in(input, std::ios::binary);
+    REQUIRE(in.good());
+    out << in.rdbuf();
+    out << '\n';
+  }
+}
+
+struct TemporaryPemBundles {
+  std::string certChain = "tongsuo-client-certs.pem";
+  std::string privateKeys = "tongsuo-client-keys.pem";
+
+  ~TemporaryPemBundles() {
+    std::remove(certChain.c_str());
+    std::remove(privateKeys.c_str());
+  }
+};
 
 } // namespace
 
@@ -55,6 +78,33 @@ TEST_CASE("TLCP mutual auth creates client SSL_CTX from dual PKCS12", "[rpc][ssl
 
   SSL_CTX* ctx = RpcSslUtils::createClientSslContext(config);
   REQUIRE(ctx != nullptr);
+  SSL_CTX_free(ctx);
+#endif
+}
+
+TEST_CASE("TLCP mutual auth creates client SSL_CTX from PEM bundles", "[rpc][ssl][mutual]") {
+#if WITH_SSL
+  TemporaryPemBundles files;
+  concatenate(files.certChain,
+              {ssltest::tlcpFixture("client_sign.crt"), ssltest::tlcpFixture("client_enc.crt"),
+               ssltest::tlcpFixture("ca.crt")});
+  concatenate(files.privateKeys,
+              {ssltest::tlcpFixture("client_sign.key"), ssltest::tlcpFixture("client_enc.key")});
+
+  SslConfig config;
+  config.useSsl = true;
+  config.sslProtocol = "TLCP";
+  config.trustStore = ssltest::tlcpFixture("ca.crt");
+  config.tlcpCertChainFile = files.certChain;
+  config.tlcpPrivateKeyFile = files.privateKeys;
+  config.tlcpPrivateKeyPwd = ssltest::kStorePassword;
+
+  SSL_CTX* ctx = RpcSslUtils::createClientSslContext(config);
+  REQUIRE(ctx != nullptr);
+  STACK_OF(X509)* certificateChain = nullptr;
+  SSL_CTX_get_extra_chain_certs(ctx, &certificateChain);
+  REQUIRE(certificateChain != nullptr);
+  REQUIRE(sk_X509_num(certificateChain) == 1);
   SSL_CTX_free(ctx);
 #endif
 }

@@ -27,6 +27,11 @@ Tongsuo is an OpenSSL-compatible cryptographic library with additional Chinese
 commercial cipher and TLCP protocol support.
 
 ------------------------------------------------------------------------------
+GmSSL  (optional NTLS provider; bundled shared library: libgmssl)
+Copyright 2014-2026 The GmSSL Project. All Rights Reserved.
+Licensed under the Apache License, Version 2.0 (see the top-level LICENSE).
+
+------------------------------------------------------------------------------
 Boost C++ Libraries  (header-only; used at build time to compile Apache Thrift
 and the iotdb_session library, so portions may be inlined into the shipped
 binary)

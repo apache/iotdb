@@ -24,8 +24,12 @@
 #include <string>
 
 #if WITH_SSL
+#if defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 #include <openssl/ssl.h>
 #include <thrift/transport/TSSLSocket.h>
+#elif defined(IOTDB_NTLS_PROVIDER_GMSSL)
+#include <gmssl/tls.h>
+#endif
 #endif
 
 struct SslConfig {
@@ -35,6 +39,11 @@ struct SslConfig {
   std::string trustStorePwd;
   std::string keyStore;
   std::string keyStorePwd;
+  /** TLCP PEM client certificate chain; provider-specific ordering is documented in README. */
+  std::string tlcpCertChainFile;
+  /** TLCP PEM client private key bundle; provider-specific contents are documented in README. */
+  std::string tlcpPrivateKeyFile;
+  std::string tlcpPrivateKeyPwd;
   /** Legacy PEM trust certificate path; used when trustStore is empty. */
   std::string trustCertFilePath;
 
@@ -59,9 +68,14 @@ public:
                                const std::string& keyStorePassword);
 
 #if WITH_SSL
+#if defined(IOTDB_NTLS_PROVIDER_TONGSUO)
   static SSL_CTX* createClientSslContext(const SslConfig& config);
   static std::shared_ptr<apache::thrift::transport::TSSLSocketFactory>
   createSslSocketFactory(const SslConfig& config);
+#elif defined(IOTDB_NTLS_PROVIDER_GMSSL)
+  static void validateGmsslTlcpConfig(const SslConfig& config);
+  static void configureGmsslTlcpContext(TLS_CTX* context, const SslConfig& config);
+#endif
 #endif
 };
 

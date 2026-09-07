@@ -23,7 +23,7 @@
 #include <vector>
 #include <string>
 #include <thrift/transport/TTransport.h>
-#if WITH_SSL
+#if WITH_SSL && defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 #include <thrift/transport/TSSLSocket.h>
 #endif
 
@@ -183,7 +183,7 @@ private:
   TSStatus insertTabletsInternal(TSInsertTabletsReq request);
 
   TSStatus deleteDataInternal(TSDeleteDataReq request);
-#if WITH_SSL
+#if WITH_SSL && defined(IOTDB_NTLS_PROVIDER_TONGSUO)
   std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
       std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
 #endif

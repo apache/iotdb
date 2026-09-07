@@ -17,6 +17,9 @@
  * under the License.
  */
 #include "SessionConnection.h"
+#if defined(IOTDB_NTLS_PROVIDER_GMSSL)
+#include "GmsslTlcpSocket.h"
+#endif
 #include "SessionImpl.h"
 #include "RpcSslUtils.h"
 #include "RpcCommon.h"
@@ -96,8 +99,12 @@ SessionConnection::~SessionConnection() {
 void SessionConnection::init(const TEndPoint& endpoint, const SslConfig& sslConfig) {
   if (sslConfig.useSsl) {
 #if WITH_SSL
+#if defined(IOTDB_NTLS_PROVIDER_GMSSL)
+    auto sslSocket = std::make_shared<GmsslTlcpSocket>(endPoint.ip, endPoint.port, sslConfig);
+#else
     socketFactory_ = RpcSslUtils::createSslSocketFactory(sslConfig);
     auto sslSocket = socketFactory_->createSocket(endPoint.ip, endPoint.port);
+#endif
     sslSocket->setConnTimeout(connectionTimeoutInMs);
     transport = std::make_shared<TFramedTransport>(sslSocket);
 #else

@@ -417,6 +417,28 @@ TsStatus ts_session_set_key_store(CSession* session, const char* keyStore,
   return TS_OK;
 }
 
+TsStatus ts_session_set_tlcp_pem_files(CSession* session, const char* certChainFile,
+                                       const char* privateKeyFile, const char* privateKeyPwd) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status =
+      setSslStringField(session->sslConfig.tlcpCertChainFile, certChainFile, "certChainFile");
+  if (status != TS_OK) {
+    return status;
+  }
+  status =
+      setSslStringField(session->sslConfig.tlcpPrivateKeyFile, privateKeyFile, "privateKeyFile");
+  if (status != TS_OK) {
+    return status;
+  }
+  if (privateKeyPwd != nullptr) {
+    session->sslConfig.tlcpPrivateKeyPwd = privateKeyPwd;
+  }
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
 TsStatus ts_session_set_trust_cert_file_path(CSession* session, const char* trustCertFilePath) {
   clearError();
   if (!session)
@@ -548,6 +570,29 @@ TsStatus ts_table_session_set_key_store(CTableSession* session, const char* keyS
   }
   if (keyStorePwd != nullptr) {
     session->sslConfig.keyStorePwd = keyStorePwd;
+  }
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
+TsStatus ts_table_session_set_tlcp_pem_files(CTableSession* session, const char* certChainFile,
+                                             const char* privateKeyFile,
+                                             const char* privateKeyPwd) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status =
+      setSslStringField(session->sslConfig.tlcpCertChainFile, certChainFile, "certChainFile");
+  if (status != TS_OK) {
+    return status;
+  }
+  status =
+      setSslStringField(session->sslConfig.tlcpPrivateKeyFile, privateKeyFile, "privateKeyFile");
+  if (status != TS_OK) {
+    return status;
+  }
+  if (privateKeyPwd != nullptr) {
+    session->sslConfig.tlcpPrivateKeyPwd = privateKeyPwd;
   }
   session->sslConfigured = true;
   return TS_OK;

@@ -136,6 +136,8 @@ TsStatus ts_session_set_ssl_protocol(CSession* session, const char* sslProtocol)
 TsStatus ts_session_set_trust_store(CSession* session, const char* trustStore,
                                     const char* trustStorePwd);
 TsStatus ts_session_set_key_store(CSession* session, const char* keyStore, const char* keyStorePwd);
+TsStatus ts_session_set_tlcp_pem_files(CSession* session, const char* certChainFile,
+                                       const char* privateKeyFile, const char* privateKeyPwd);
 /** @deprecated Use ts_session_set_trust_store() instead. */
 TsStatus ts_session_set_trust_cert_file_path(CSession* session, const char* trustCertFilePath);
 
@@ -162,6 +164,8 @@ TsStatus ts_table_session_set_trust_store(CTableSession* session, const char* tr
                                           const char* trustStorePwd);
 TsStatus ts_table_session_set_key_store(CTableSession* session, const char* keyStore,
                                         const char* keyStorePwd);
+TsStatus ts_table_session_set_tlcp_pem_files(CTableSession* session, const char* certChainFile,
+                                             const char* privateKeyFile, const char* privateKeyPwd);
 /** @deprecated Use ts_table_session_set_trust_store() instead. */
 TsStatus ts_table_session_set_trust_cert_file_path(CTableSession* session,
                                                    const char* trustCertFilePath);

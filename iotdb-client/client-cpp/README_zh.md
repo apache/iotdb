@@ -237,23 +237,34 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 | CMake 变量 | Maven 属性 |
 |------------|------------|
 | `WITH_SSL` | `with.ssl`（默认 `ON`，关闭用 `-Dwith.ssl=OFF`） |
+| `IOTDB_NTLS_PROVIDER` | `ntls.provider`（`TONGSUO` 或 `GMSSL`） |
+| `IOTDB_GMSSL_ROOT_DIR` | `gmssl.root.dir` |
 | `IOTDB_OFFLINE` | `iotdb.offline` |
 | `BUILD_TESTING` | `build.tests` |
 | `IOTDB_DEPS_DIR` | `iotdb.deps.dir` |
 | `BOOST_INCLUDEDIR` | `boost.include.dir` |
 | `CMAKE_BUILD_TYPE` | `cmake.build.type`，例如 `-Dcmake.build.type=Debug` |
 
-SSL 默认开启（`WITH_SSL=ON`）。Apache Thrift 0.24.0 和
-[Tongsuo](https://github.com/Tongsuo-Project/Tongsuo) **8.4-stable**
-均在配置阶段从源码构建。Tongsuo 提供 OpenSSL 兼容 API（Apache-2.0，支持国密/TLCP），
-构建会把 `libssl`/`libcrypto`
-动态库复制到产物 `lib/` 目录。Windows 需要 Perl 与 VS 的 `nmake`。
+SSL 默认开启（`WITH_SSL=ON`）。支持的 NTLS Provider：
+
+- `TONGSUO`（默认）：源码构建 Tongsuo 8.4-stable，支持 TLS/TLCP 及
+  PKCS12、PEM 凭据。
+- `GMSSL`：使用预安装的 GmSSL 3.2 原生 TLCP API，支持 TLCP 及 PEM 凭据。
+  OCL 未实现 Thrift 所需的完整 OpenSSL API，因此不使用 OCL。
+
+选择 GmSSL 时传入
+`-DIOTDB_NTLS_PROVIDER=GMSSL -DIOTDB_GMSSL_ROOT_DIR=<gmssl>`。
+Provider 动态库会复制到产物 `lib/` 目录。GmSSL 仅支持 TLCP，必须设置
+`sslProtocol("TLCP")`；PKCS12 `keyStore` 会被拒绝，双向认证需使用 TLCP PEM
+证书和私钥 setter。配置阶段会根据库符号自动推导影响 ABI 的 `ENABLE_*`
+定义，并校验 GmSSL 3.2 的头文件/动态库 ABI。Tongsuo 在 Windows 上需要
+Perl 与 VS 的 `nmake`。
 直接使用 CMake 时传入 `-DWITH_SSL=OFF`、`-DIOTDB_OFFLINE=ON` 等即可。
 
 ### 客户端 SSL / TLCP 配置
 
-C++ 客户端 API 与 Java Session 对齐。`trustStore` 与 `keyStore` 请使用
-**PKCS12**（`.p12` / `.pfx`）。JKS 需先转换为 PKCS12（C++ 端不解析 JKS）。
+C++ 客户端 API 与 Java Session 对齐。Tongsuo 的 `trustStore` 支持 PKCS12 或 PEM，
+GmSSL 使用 PEM；C++ 端不解析 JKS。
 
 **TLS 单向认证：**
 
@@ -293,6 +304,22 @@ auto session = SessionBuilder()
                    ->trustStorePwd("thrift")
                    ->keyStore("/path/to/client-dual.p12")
                    ->keyStorePwd("thrift")
+                   ->build();
+```
+
+Tongsuo 使用 PEM 时，将签名/加密证书及 CA 链合并到一个文件，并将两个私钥合并到另一个文件。
+GmSSL 则使用客户端签名证书及其中间证书链，以及对应的单个私钥：
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLCP")
+                   ->trustStore("/path/to/ca.pem")
+                   ->tlcpCertChainFile("/path/to/client-certs.pem")
+                   ->tlcpPrivateKeyFile("/path/to/client-keys.pem")
+                   ->tlcpPrivateKeyPwd("secret")
                    ->build();
 ```
 

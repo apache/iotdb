@@ -367,6 +367,8 @@ pass them as Maven properties (the POM maps them to `-D` options for CMake):
 | CMake variable | Maven property (`-D...`) |
 |----------------|--------------------------|
 | `WITH_SSL` | `with.ssl` (e.g. `-Dwith.ssl=ON`) |
+| `IOTDB_NTLS_PROVIDER` | `ntls.provider` (`TONGSUO` or `GMSSL`) |
+| `IOTDB_GMSSL_ROOT_DIR` | `gmssl.root.dir` |
 | `IOTDB_OFFLINE` | `iotdb.offline` |
 | `BUILD_TESTING` | `build.tests` |
 | `IOTDB_DEPS_DIR` | `iotdb.deps.dir` |
@@ -385,7 +387,9 @@ etc. directly.
 | `IOTDB_DEPS_DIR`      | `<client-cpp>/third-party`       | Override the local tarball cache directory.                                                              |
 | `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
 | `THRIFT_VERSION`      | `0.24.0`                         | Apache Thrift version to build from source.                                                              |
+| `IOTDB_NTLS_PROVIDER` | `TONGSUO`                        | NTLS provider: `TONGSUO` or `GMSSL`.                                                                     |
 | `TONGSUO_GIT_REF`     | `8.4-stable`                     | Tongsuo git ref built from source when `WITH_SSL=ON`.                                                    |
+| `IOTDB_GMSSL_ROOT_DIR` | (unset)                         | Preinstalled GmSSL 3 root required by the `GMSSL` provider.                                             |
 | `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
 | `CMAKE_INSTALL_PREFIX`| `<build>/install`                | Install location.                                                                                        |
 | `CMAKE_BUILD_TYPE`    | `Release`                        | Single-config generator build type. Use `Debug` to produce a debug library.                              |
@@ -508,18 +512,23 @@ the GNU autotools tarballs assume a POSIX shell environment.
 
 ## SSL
 
-`iotdb_session` builds **with SSL/TLS by default** (`WITH_SSL=ON`). Disable
-it with `-Dwith.ssl=OFF` (Maven) or `-DWITH_SSL=OFF` (standalone CMake).
+`iotdb_session` builds with SSL/TLS by default. Supported NTLS providers:
 
-[Tongsuo](https://github.com/Tongsuo-Project/Tongsuo) **8.4-stable** is
-**always built from source** during configure (Apache-2.0 licensed,
-OpenSSL-compatible API). It adds Chinese commercial cipher and TLCP protocol
-support on top of standard TLS. The resulting `libssl` / `libcrypto` shared
-libraries are **bundled into the package `lib/` directory** (next to
-`iotdb_session`, which records an `$ORIGIN`/`@loader_path` runtime path) so the
-published SDK is self-contained.
+- `TONGSUO` (default): Tongsuo 8.4-stable, built from source; TLS/TLCP and
+  PKCS12 or PEM credentials.
+- `GMSSL`: preinstalled GmSSL 3.2 using its native TLCP API; TLCP with PEM
+  credentials. OCL is not used because it does not implement
+  the complete OpenSSL API required by Thrift.
 
-Host prerequisites when `WITH_SSL=ON`:
+Select GmSSL with
+`-DIOTDB_NTLS_PROVIDER=GMSSL -DIOTDB_GMSSL_ROOT_DIR=<gmssl>`. Provider runtime
+libraries are bundled into the package `lib/` directory. GmSSL supports TLCP
+only: set `sslProtocol("TLCP")`. PKCS12 `keyStore` is rejected; mutual
+authentication requires the TLCP PEM certificate and private-key setters.
+CMake probes ABI-affecting `ENABLE_*` symbols and validates the GmSSL 3.2
+headers/library pair during configuration.
+
+Host prerequisites for the default `TONGSUO` provider:
 
 - **Linux / macOS** – `perl`, `make`, and a C compiler (Tongsuo `./config`).
 - **Windows** – Perl (e.g. Strawberry Perl) and `nmake` from the Visual Studio
@@ -527,8 +536,8 @@ Host prerequisites when `WITH_SSL=ON`:
 
 ### Client SSL / TLCP configuration
 
-The C++ client mirrors the Java Session API. Use **PKCS12** (`.p12` / `.pfx`)
-for `trustStore` and `keyStore`. JKS files must be converted to PKCS12 first
+The C++ client mirrors the Java Session API. `trustStore` accepts PKCS12 or PEM
+with Tongsuo and PEM with GmSSL. JKS files must be converted first
 (the C++ client does not parse JKS).
 
 **TLS one-way (server authentication):**
@@ -588,6 +597,24 @@ auto session = SessionBuilder()
                    ->trustStorePwd("thrift")
                    ->keyStore("/path/to/client-dual.p12")
                    ->keyStorePwd("thrift")
+                   ->build();
+```
+
+For Tongsuo PEM, put signing/encryption certificates (then the CA chain) in one
+file and both private keys in another. For GmSSL, use the client signing
+certificate followed by its intermediate chain, plus the matching single
+private key:
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLCP")
+                   ->trustStore("/path/to/ca.pem")
+                   ->tlcpCertChainFile("/path/to/client-certs.pem")
+                   ->tlcpPrivateKeyFile("/path/to/client-keys.pem")
+                   ->tlcpPrivateKeyPwd("secret")
                    ->build();
 ```
 

@@ -20,7 +20,7 @@
 #define IOTDB_THRIFTCONNECTION_H
 
 #include <memory>
-#if WITH_SSL
+#if WITH_SSL && defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 #include <thrift/transport/TSSLSocket.h>
 #endif
 #include "IClientRPCService.h"
@@ -60,7 +60,7 @@ private:
   int connectionTimeoutInMs_;
   int fetchSize_;
 
-#if WITH_SSL
+#if WITH_SSL && defined(IOTDB_NTLS_PROVIDER_TONGSUO)
   std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
       std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
 #endif

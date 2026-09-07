@@ -193,6 +193,9 @@ public:
   SessionPool& setTrustStorePwd(std::string trustStorePwd);
   SessionPool& setKeyStore(std::string keyStore);
   SessionPool& setKeyStorePwd(std::string keyStorePwd);
+  SessionPool& setTlcpCertChainFile(std::string path);
+  SessionPool& setTlcpPrivateKeyFile(std::string path);
+  SessionPool& setTlcpPrivateKeyPwd(std::string password);
 
   // Borrow a Session. Blocks until one is free or a new one can be created,
   // up to timeoutMs (<= 0 means use the pool default). Throws IoTDBException on
@@ -259,6 +262,9 @@ private:
   std::string trustStorePwd_;
   std::string keyStore_;
   std::string keyStorePwd_;
+  std::string tlcpCertChainFile_;
+  std::string tlcpPrivateKeyFile_;
+  std::string tlcpPrivateKeyPwd_;
 
   // pool sizing / waiting policy
   size_t maxSize_;
@@ -369,6 +375,18 @@ public:
     AbstractSessionBuilder::keyStorePwd = v;
     return this;
   }
+  SessionPoolBuilder* tlcpCertChainFile(const std::string& v) {
+    AbstractSessionBuilder::tlcpCertChainFile = v;
+    return this;
+  }
+  SessionPoolBuilder* tlcpPrivateKeyFile(const std::string& v) {
+    AbstractSessionBuilder::tlcpPrivateKeyFile = v;
+    return this;
+  }
+  SessionPoolBuilder* tlcpPrivateKeyPwd(const std::string& v) {
+    AbstractSessionBuilder::tlcpPrivateKeyPwd = v;
+    return this;
+  }
   SessionPoolBuilder* maxSize(size_t v) {
     maxSize_ = v;
     return this;
@@ -415,7 +433,10 @@ public:
         .setTrustStore(AbstractSessionBuilder::trustStore)
         .setTrustStorePwd(AbstractSessionBuilder::trustStorePwd)
         .setKeyStore(AbstractSessionBuilder::keyStore)
-        .setKeyStorePwd(AbstractSessionBuilder::keyStorePwd);
+        .setKeyStorePwd(AbstractSessionBuilder::keyStorePwd)
+        .setTlcpCertChainFile(AbstractSessionBuilder::tlcpCertChainFile)
+        .setTlcpPrivateKeyFile(AbstractSessionBuilder::tlcpPrivateKeyFile)
+        .setTlcpPrivateKeyPwd(AbstractSessionBuilder::tlcpPrivateKeyPwd);
     return pool;
   }
 

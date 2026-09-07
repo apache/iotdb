@@ -19,7 +19,9 @@
 
 #include <catch.hpp>
 
+#include <cstdio>
 #include <fstream>
+#include <initializer_list>
 #include <memory>
 #include <string>
 
@@ -50,8 +52,37 @@ SslConfig tlcpMutualConfig() {
   return config;
 }
 
-bool startTlcpServer(ssltest::OpenSslServerProcess& server, bool requireClientCert) {
-  const std::string caFile = ssltest::tlcpFixture("ca.crt");
+void concatenate(const std::string& output, std::initializer_list<std::string> inputs) {
+  std::ofstream out(output, std::ios::binary | std::ios::trunc);
+  REQUIRE(out.good());
+  for (const auto& input : inputs) {
+    std::ifstream in(input, std::ios::binary);
+    REQUIRE(in.good());
+    out << in.rdbuf() << '\n';
+  }
+}
+
+struct IntermediatePemCredentials {
+  std::string certChain = "tongsuo-intermediate-client-certs.pem";
+  std::string privateKeys = "tongsuo-intermediate-client-keys.pem";
+
+  IntermediatePemCredentials() {
+    concatenate(certChain, {ssltest::tlcpFixture("intermediate_client_sign.crt"),
+                            ssltest::tlcpFixture("intermediate_client_enc.crt"),
+                            ssltest::tlcpFixture("intermediate_ca.crt")});
+    concatenate(privateKeys, {ssltest::tlcpFixture("intermediate_client_sign.key"),
+                              ssltest::tlcpFixture("intermediate_client_enc.key")});
+  }
+
+  ~IntermediatePemCredentials() {
+    std::remove(certChain.c_str());
+    std::remove(privateKeys.c_str());
+  }
+};
+
+bool startTlcpServer(ssltest::OpenSslServerProcess& server, bool requireClientCert,
+                     const std::string& clientCaFile = "") {
+  const std::string caFile = clientCaFile.empty() ? ssltest::tlcpFixture("ca.crt") : clientCaFile;
   const std::string signCert = ssltest::tlcpFixture("server_sign.crt");
   const std::string signKey = ssltest::tlcpFixture("server_sign.key");
   const std::string encCert = ssltest::tlcpFixture("server_enc.crt");
@@ -62,18 +93,13 @@ bool startTlcpServer(ssltest::OpenSslServerProcess& server, bool requireClientCe
   }
 
   std::vector<std::string> args = {
-      "-enable_ntls",
-      "-ntls",
-      "-CAfile", caFile,
-      "-sign_cert", signCert,
-      "-sign_key", signKey,
-      "-enc_cert", encCert,
-      "-enc_key", encKey,
-      "-www",
+      "-enable_ntls", "-ntls",     "-CAfile", caFile,     "-sign_cert", signCert, "-sign_key",
+      signKey,        "-enc_cert", encCert,   "-enc_key", encKey,       "-www",
   };
   if (requireClientCert) {
     args.push_back("-Verify");
-    args.push_back("1");
+    args.push_back("2");
+    args.push_back("-verify_return_error");
   }
   return server.start(args) && server.running() && server.port() > 0;
 }
@@ -93,7 +119,8 @@ TEST_CASE("TLCP one-way auth fails when server requires client certificate", "[r
 #if WITH_SSL
   ssltest::OpenSslServerProcess server;
   REQUIRE(startTlcpServer(server, true));
-  REQUIRE_FALSE(ssltest::tlsHandshakeWithSslConfig(tlcpTrustOnlyConfig(), "127.0.0.1", server.port()));
+  REQUIRE_FALSE(
+      ssltest::tlsHandshakeWithSslConfig(tlcpTrustOnlyConfig(), "127.0.0.1", server.port()));
   server.stop();
 #endif
 }
@@ -108,6 +135,20 @@ TEST_CASE("TLCP mutual auth handshake with dual PKCS12 client store", "[rpc][ntl
   SSL_CTX* ctx = RpcSslUtils::createClientSslContext(config);
   REQUIRE(ctx != nullptr);
   SSL_CTX_free(ctx);
+  server.stop();
+#endif
+}
+
+TEST_CASE("TLCP mutual auth sends the intermediate PEM certificate chain", "[rpc][ntls][e2e]") {
+#if WITH_SSL
+  IntermediatePemCredentials files;
+  ssltest::OpenSslServerProcess server;
+  REQUIRE(startTlcpServer(server, true, ssltest::tlcpFixture("intermediate_root.crt")));
+
+  SslConfig config = tlcpTrustOnlyConfig();
+  config.tlcpCertChainFile = files.certChain;
+  config.tlcpPrivateKeyFile = files.privateKeys;
+  REQUIRE(ssltest::tlsHandshakeWithSslConfig(config, "127.0.0.1", server.port()));
   server.stop();
 #endif
 }

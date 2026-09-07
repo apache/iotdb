@@ -134,6 +134,21 @@ SessionPool& SessionPool::setKeyStorePwd(std::string keyStorePwd) {
   return *this;
 }
 
+SessionPool& SessionPool::setTlcpCertChainFile(std::string path) {
+  tlcpCertChainFile_ = std::move(path);
+  return *this;
+}
+
+SessionPool& SessionPool::setTlcpPrivateKeyFile(std::string path) {
+  tlcpPrivateKeyFile_ = std::move(path);
+  return *this;
+}
+
+SessionPool& SessionPool::setTlcpPrivateKeyPwd(std::string password) {
+  tlcpPrivateKeyPwd_ = std::move(password);
+  return *this;
+}
+
 std::shared_ptr<Session> SessionPool::constructNewSession() {
   AbstractSessionBuilder builder;
   builder.host = host_;
@@ -156,6 +171,9 @@ std::shared_ptr<Session> SessionPool::constructNewSession() {
   builder.trustStorePwd = trustStorePwd_;
   builder.keyStore = keyStore_;
   builder.keyStorePwd = keyStorePwd_;
+  builder.tlcpCertChainFile = tlcpCertChainFile_;
+  builder.tlcpPrivateKeyFile = tlcpPrivateKeyFile_;
+  builder.tlcpPrivateKeyPwd = tlcpPrivateKeyPwd_;
 
   auto session = std::make_shared<Session>(&builder);
   session->open(enableRPCCompression_, connectTimeoutMs_);

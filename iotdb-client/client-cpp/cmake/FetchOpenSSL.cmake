@@ -18,17 +18,16 @@
 # =============================================================================
 # FetchOpenSSL.cmake  (only included when WITH_SSL=ON)
 #
-# Builds Tongsuo (OpenSSL-compatible, Apache-2.0) from source for Thrift
-# TSSLSocket and iotdb_session. Tongsuo adds Chinese commercial cipher / TLCP
-# support on top of the standard TLS stack.
+# Resolves the selected NTLS provider. Tongsuo is built from source for
+# Thrift TSSLSocket; GmSSL uses a preinstalled native TLCP library.
 #
 # Side effects:
-#   Sets OPENSSL_ROOT_DIR to the local Tongsuo install tree, then defines
-#   imported targets OpenSSL::SSL / OpenSSL::Crypto via find_package so callers
-#   can link against them unchanged.
+#   TONGSUO defines OpenSSL::SSL / OpenSSL::Crypto; GMSSL defines IoTDB::gmssl.
+#   IOTDB_NTLS_RUNTIME_LIBRARIES lists the selected provider's runtime files.
 # =============================================================================
 
-# --- Build Tongsuo ${TONGSUO_GIT_REF} from source ---
+# --- Default provider: build Tongsuo ${TONGSUO_GIT_REF} from source ---
+if(IOTDB_NTLS_PROVIDER STREQUAL "TONGSUO")
 if(TONGSUO_GIT_REF MATCHES "^[0-9a-fA-F]{7,40}$")
     set(_tongsuo_extracted_dir "Tongsuo-${TONGSUO_GIT_REF}")
     set(_tongsuo_url "https://github.com/Tongsuo-Project/Tongsuo/archive/${TONGSUO_GIT_REF}.tar.gz")
@@ -153,7 +152,8 @@ if(NOT EXISTS "${_tongsuo_stamp}")
         set(_tongsuo_target "VC-WIN64A")
         message(STATUS "[Tongsuo] configuring (${_tongsuo_target}) -> ${_tongsuo_inst}")
         execute_process(
-                COMMAND "${PERL_EXECUTABLE}" Configure enable-ntls no-asm ${_tongsuo_target}
+                COMMAND "${CMAKE_COMMAND}" -E env "CC=cl" "CXX=cl"
+                        "${PERL_EXECUTABLE}" Configure enable-ntls no-asm ${_tongsuo_target}
                         --prefix=${_tongsuo_inst}
                         --openssldir=${_tongsuo_inst}/ssl
                 WORKING_DIRECTORY "${_tongsuo_src}"
@@ -214,4 +214,130 @@ unset(OPENSSL_INCLUDE_DIR CACHE)
 unset(OPENSSL_SSL_LIBRARY CACHE)
 unset(OPENSSL_CRYPTO_LIBRARY CACHE)
 find_package(OpenSSL REQUIRED)
+set(IOTDB_NTLS_RUNTIME_LIBRARIES
+        "${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY}"
+        CACHE INTERNAL "NTLS provider runtime libraries" FORCE)
 message(STATUS "[Tongsuo] built from source (shared) at ${OPENSSL_ROOT_DIR}")
+
+# --- Alternative provider: use preinstalled GmSSL 3 through its native TLCP API ---
+elseif(IOTDB_NTLS_PROVIDER STREQUAL "GMSSL")
+    if(NOT IOTDB_GMSSL_ROOT_DIR OR NOT IS_DIRECTORY "${IOTDB_GMSSL_ROOT_DIR}")
+        message(FATAL_ERROR
+                "[GmSSL] IOTDB_GMSSL_ROOT_DIR must point to a preinstalled GmSSL 3.2")
+    endif()
+
+    unset(_gmssl_include_dir CACHE)
+    unset(_gmssl_library CACHE)
+    find_path(_gmssl_include_dir gmssl/tls.h
+            PATHS "${IOTDB_GMSSL_ROOT_DIR}/include" NO_DEFAULT_PATH REQUIRED)
+    find_library(_gmssl_library NAMES gmssl libgmssl
+            PATHS "${IOTDB_GMSSL_ROOT_DIR}/lib" "${IOTDB_GMSSL_ROOT_DIR}/lib64"
+            NO_DEFAULT_PATH REQUIRED)
+
+    include(CMakePushCheckState)
+    include(CheckCXXSourceCompiles)
+    include(CheckCXXSourceRuns)
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_INCLUDES "${_gmssl_include_dir}")
+    set(CMAKE_REQUIRED_LIBRARIES "${_gmssl_library}")
+    if(WIN32)
+        list(APPEND CMAKE_REQUIRED_LIBRARIES ws2_32)
+        set(_gmssl_saved_path "$ENV{PATH}")
+        set(ENV{PATH} "${IOTDB_GMSSL_ROOT_DIR}/bin;$ENV{PATH}")
+    else()
+        set(_gmssl_saved_library_path "$ENV{LD_LIBRARY_PATH}")
+        set(ENV{LD_LIBRARY_PATH}
+                "${IOTDB_GMSSL_ROOT_DIR}/lib:${IOTDB_GMSSL_ROOT_DIR}/lib64:$ENV{LD_LIBRARY_PATH}")
+    endif()
+
+    set(_gmssl_compile_definitions "")
+    macro(_iotdb_probe_gmssl_abi_definition _definition _symbol)
+        string(MAKE_C_IDENTIFIER
+                "IOTDB_GMSSL_HAS_${_definition}_${_symbol}" _probe_variable)
+        unset(${_probe_variable} CACHE)
+        check_cxx_source_compiles(
+                "extern \"C\" void ${_symbol}();\nint main() { ${_symbol}(); return 0; }"
+                ${_probe_variable})
+        if(${_probe_variable})
+            list(APPEND _gmssl_compile_definitions "${_definition}")
+        endif()
+    endmacro()
+    _iotdb_probe_gmssl_abi_definition(ENABLE_SHA1 sha1_init)
+    _iotdb_probe_gmssl_abi_definition(ENABLE_SHA2 sha256_init)
+    _iotdb_probe_gmssl_abi_definition(ENABLE_AES aes_set_encrypt_key)
+    _iotdb_probe_gmssl_abi_definition(ENABLE_SECP256R1 x509_key_set_secp256r1_key)
+    _iotdb_probe_gmssl_abi_definition(ENABLE_LMS x509_key_set_lms_key)
+    _iotdb_probe_gmssl_abi_definition(ENABLE_XMSS x509_key_set_xmss_key)
+    _iotdb_probe_gmssl_abi_definition(ENABLE_SPHINCS x509_key_set_sphincs_key)
+    _iotdb_probe_gmssl_abi_definition(ENABLE_KYBER x509_key_set_kyber_key)
+    _iotdb_probe_gmssl_abi_definition(ENABLE_SM9 x509_key_set_sm9_sign_key)
+    unset(_iotdb_probe_gmssl_abi_definition)
+    message(STATUS "[GmSSL] detected ABI definitions: ${_gmssl_compile_definitions}")
+
+    foreach(_definition IN LISTS _gmssl_compile_definitions)
+        list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D${_definition}")
+    endforeach()
+    unset(IOTDB_GMSSL_ABI_COMPATIBLE CACHE)
+    check_cxx_source_runs([=[
+        #include <gmssl/tls.h>
+        #include <gmssl/version.h>
+        #include <cstdint>
+        #include <cstring>
+        #if GMSSL_VERSION_NUM < 30200 || GMSSL_VERSION_NUM >= 30300
+        #error "IoTDB requires GmSSL 3.2.x"
+        #endif
+        struct GuardedContext {
+          TLS_CTX context;
+          std::uint64_t canary[8];
+        };
+        int main() {
+          GuardedContext guarded{};
+          std::memset(guarded.canary, 0xA5, sizeof(guarded.canary));
+          if (tls_ctx_init(&guarded.context, TLS_protocol_tlcp, 1) != 1) {
+            return 1;
+          }
+          const int cipher = TLS_cipher_ecc_sm4_cbc_sm3;
+          if (tls_ctx_set_cipher_suites(&guarded.context, &cipher, 1) != 1 ||
+              guarded.context.is_client != 1 ||
+              guarded.context.protocol != TLS_protocol_tlcp ||
+              guarded.context.cipher_suites_cnt != 1 ||
+              guarded.context.cipher_suites[0] != cipher) {
+            tls_ctx_cleanup(&guarded.context);
+            return 2;
+          }
+          const std::uint64_t expected = UINT64_C(0xA5A5A5A5A5A5A5A5);
+          for (std::uint64_t value : guarded.canary) {
+            if (value != expected) {
+              tls_ctx_cleanup(&guarded.context);
+              return 3;
+            }
+          }
+          tls_ctx_cleanup(&guarded.context);
+          return 0;
+        }
+    ]=] IOTDB_GMSSL_ABI_COMPATIBLE)
+    if(WIN32)
+        set(ENV{PATH} "${_gmssl_saved_path}")
+    else()
+        set(ENV{LD_LIBRARY_PATH} "${_gmssl_saved_library_path}")
+    endif()
+    cmake_pop_check_state()
+    if(NOT IOTDB_GMSSL_ABI_COMPATIBLE)
+        message(FATAL_ERROR
+                "[GmSSL] headers/library ABI check failed after probing its "
+                "ABI-affecting ENABLE_* symbols.")
+    endif()
+
+    if(NOT TARGET IoTDB::gmssl)
+        add_library(IoTDB::gmssl UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(IoTDB::gmssl PROPERTIES
+                IMPORTED_LOCATION "${_gmssl_library}"
+                INTERFACE_INCLUDE_DIRECTORIES "${_gmssl_include_dir}"
+                INTERFACE_COMPILE_DEFINITIONS "${_gmssl_compile_definitions}")
+    endif()
+
+    set(IOTDB_NTLS_RUNTIME_LIBRARIES
+            "${_gmssl_library}"
+            CACHE INTERNAL "NTLS provider runtime libraries" FORCE)
+    message(STATUS "[GmSSL] using native GmSSL TLCP library ${_gmssl_library}")
+endif()

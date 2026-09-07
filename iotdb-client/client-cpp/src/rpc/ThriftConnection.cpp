@@ -17,6 +17,9 @@
  * under the License.
  */
 #include "ThriftConnection.h"
+#if defined(IOTDB_NTLS_PROVIDER_GMSSL)
+#include "GmsslTlcpSocket.h"
+#endif
 #include "RpcSslUtils.h"
 #include <ctime>
 #include <iostream>
@@ -69,8 +72,12 @@ void ThriftConnection::init(const std::string& username, const std::string& pass
                             const std::string& zoneId, const std::string& version) {
   if (sslConfig.useSsl) {
 #if WITH_SSL
+#if defined(IOTDB_NTLS_PROVIDER_GMSSL)
+    auto sslSocket = std::make_shared<GmsslTlcpSocket>(endPoint_.ip, endPoint_.port, sslConfig);
+#else
     socketFactory_ = RpcSslUtils::createSslSocketFactory(sslConfig);
     auto sslSocket = socketFactory_->createSocket(endPoint_.ip, endPoint_.port);
+#endif
     sslSocket->setConnTimeout(connectionTimeoutInMs_);
     transport_ = std::make_shared<TFramedTransport>(sslSocket);
 #else

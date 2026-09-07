@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 #include <catch.hpp>
 
 #include "Common.h"
@@ -55,7 +54,7 @@ TEST_CASE("RpcSslUtils store validation rejects missing files", "[rpc][ssl]") {
                     IoTDBException);
 }
 
-#if WITH_SSL
+#if WITH_SSL && defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 TEST_CASE("RpcSslUtils createClientSslContext for TLS without trust store", "[rpc][ssl]") {
   SslConfig config;
   config.useSsl = true;

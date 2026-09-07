@@ -78,7 +78,7 @@ if(NOT MSVC)
     file(WRITE "${_iotdb_cxx11_abi_stamp}" "${_iotdb_cxx11_abi_stamp_value}")
 endif()
 
-option(WITH_SSL "Build with Tongsuo SSL/TLS support" ON)
+option(WITH_SSL "Build with SSL/TLS support" ON)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
 set(IOTDB_SESSION_VERSION "0.0.0"
@@ -99,8 +99,17 @@ set(BOOST_VERSION "${_iotdb_default_boost_version}"
     CACHE STRING "Boost version used when downloading / unpacking (Thrift build only)")
 set(THRIFT_VERSION "0.24.0"
     CACHE STRING "Apache Thrift version used when downloading / building")
+set(IOTDB_NTLS_PROVIDER "TONGSUO"
+    CACHE STRING "NTLS provider: TONGSUO (default) or GMSSL")
+set_property(CACHE IOTDB_NTLS_PROVIDER PROPERTY STRINGS TONGSUO GMSSL)
+string(TOUPPER "${IOTDB_NTLS_PROVIDER}" IOTDB_NTLS_PROVIDER)
+if(NOT IOTDB_NTLS_PROVIDER MATCHES "^(TONGSUO|GMSSL)$")
+    message(FATAL_ERROR "IOTDB_NTLS_PROVIDER must be TONGSUO or GMSSL")
+endif()
 set(TONGSUO_GIT_REF "8.4-stable"
     CACHE STRING "Tongsuo git ref used when building SSL/TLS from source")
+set(IOTDB_GMSSL_ROOT_DIR ""
+    CACHE PATH "Preinstalled GmSSL 3.2 root (required for the GMSSL provider)")
 
 if(WIN32)
     set(IOTDB_OS_DEPS_DIR "${IOTDB_DEPS_DIR}/windows")
@@ -196,8 +205,14 @@ else()
 endif()
 
 if(WITH_SSL)
-    target_link_libraries(iotdb_session PUBLIC OpenSSL::SSL OpenSSL::Crypto)
     target_compile_definitions(iotdb_session PUBLIC WITH_SSL=1)
+    if(IOTDB_NTLS_PROVIDER STREQUAL "GMSSL")
+        target_link_libraries(iotdb_session PRIVATE IoTDB::gmssl)
+        target_compile_definitions(iotdb_session PUBLIC IOTDB_NTLS_PROVIDER_GMSSL=1)
+    else()
+        target_link_libraries(iotdb_session PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+        target_compile_definitions(iotdb_session PUBLIC IOTDB_NTLS_PROVIDER_TONGSUO=1)
+    endif()
 else()
     target_compile_definitions(iotdb_session PUBLIC WITH_SSL=0)
 endif()
@@ -298,6 +313,7 @@ file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         "cmake.generator=${CMAKE_GENERATOR}\n"
         "cmake.build.type=${CMAKE_BUILD_TYPE}\n"
         "with.ssl=${WITH_SSL}\n"
+        "ntls.provider=${IOTDB_NTLS_PROVIDER}\n"
         "iotdb.offline=${IOTDB_OFFLINE}\n"
         "iotdb.use.cxx11.abi=${IOTDB_USE_CXX11_ABI}\n"
         "iotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}\n")
@@ -318,6 +334,7 @@ endif()
 
 message(STATUS "iotdb_session configuration summary:")
 message(STATUS "    WITH_SSL              = ${WITH_SSL}")
+message(STATUS "    IOTDB_NTLS_PROVIDER   = ${IOTDB_NTLS_PROVIDER}")
 message(STATUS "    BUILD_TESTING         = ${BUILD_TESTING}")
 message(STATUS "    IOTDB_OFFLINE         = ${IOTDB_OFFLINE}")
 message(STATUS "    IOTDB_USE_CXX11_ABI   = ${IOTDB_USE_CXX11_ABI}")

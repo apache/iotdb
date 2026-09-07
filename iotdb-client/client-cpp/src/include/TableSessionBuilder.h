@@ -80,6 +80,21 @@ public:
     return this;
   }
 
+  TableSessionBuilder* tlcpCertChainFile(const std::string& path) {
+    AbstractSessionBuilder::tlcpCertChainFile = path;
+    return this;
+  }
+
+  TableSessionBuilder* tlcpPrivateKeyFile(const std::string& path) {
+    AbstractSessionBuilder::tlcpPrivateKeyFile = path;
+    return this;
+  }
+
+  TableSessionBuilder* tlcpPrivateKeyPwd(const std::string& password) {
+    AbstractSessionBuilder::tlcpPrivateKeyPwd = password;
+    return this;
+  }
+
   TableSessionBuilder* username(const std::string& username) {
     AbstractSessionBuilder::username = username;
     return this;

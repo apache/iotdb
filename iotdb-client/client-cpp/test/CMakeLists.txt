@@ -54,18 +54,27 @@ add_executable(session_relational_tests   main_Relational.cpp   cpp/sessionRelat
 add_executable(session_c_tests            main_c.cpp            cpp/sessionCIT.cpp)
 add_executable(session_c_relational_tests main_c_Relational.cpp cpp/sessionCRelationalIT.cpp)
 add_executable(session_utils_tests        main_utils.cpp        cpp/sessionUtilsTest.cpp)
-add_executable(rpc_ssl_utils_tests
-        main_rpc_ssl.cpp
-        cpp/RpcSslUtilsTest.cpp
-        cpp/RpcSslTlsMutualAuthTest.cpp
-        cpp/RpcSslIotdbE2eTest.cpp
-        cpp/SslTestFixtures.cpp
-        cpp/ItSslConnection.cpp)
-add_executable(rpc_ntls_utils_tests
-        main_rpc_ntls.cpp
-        cpp/RpcSslTlcpMutualAuthTest.cpp
-        cpp/RpcNtlsE2eTest.cpp
-        cpp/SslTestFixtures.cpp)
+if(IOTDB_NTLS_PROVIDER STREQUAL "GMSSL")
+    add_executable(rpc_ssl_utils_tests
+            main_rpc_ssl.cpp
+            cpp/RpcSslUtilsTest.cpp)
+    add_executable(rpc_ntls_utils_tests
+            main_rpc_ntls.cpp
+            cpp/RpcGmsslNtlsTest.cpp)
+else()
+    add_executable(rpc_ssl_utils_tests
+            main_rpc_ssl.cpp
+            cpp/RpcSslUtilsTest.cpp
+            cpp/RpcSslTlsMutualAuthTest.cpp
+            cpp/RpcSslIotdbE2eTest.cpp
+            cpp/SslTestFixtures.cpp
+            cpp/ItSslConnection.cpp)
+    add_executable(rpc_ntls_utils_tests
+            main_rpc_ntls.cpp
+            cpp/RpcSslTlcpMutualAuthTest.cpp
+            cpp/RpcNtlsE2eTest.cpp
+            cpp/SslTestFixtures.cpp)
+endif()
 
 foreach(_t IN LISTS _test_targets)
     target_include_directories(${_t} PRIVATE
@@ -79,14 +88,31 @@ foreach(_t IN LISTS _test_targets)
     endif()
     target_link_libraries(${_t} PRIVATE iotdb_session)
     if(WITH_SSL)
-        target_link_libraries(${_t} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+        if(IOTDB_NTLS_PROVIDER STREQUAL "GMSSL")
+            target_link_libraries(${_t} PRIVATE IoTDB::gmssl)
+        else()
+            target_link_libraries(${_t} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+        endif()
     endif()
+endforeach()
+foreach(_t IN LISTS _rpc_ssl_test_targets)
+    # Catch2 2.13.7 declares a SIGSTKSZ-sized static array, which is not a
+    # constant expression with newer glibc versions.
+    target_compile_definitions(${_t} PRIVATE CATCH_CONFIG_NO_POSIX_SIGNALS=1)
 endforeach()
 
 if(WITH_SSL)
-    target_compile_definitions(rpc_ssl_utils_tests PRIVATE IOTDB_RPC_SSL_IT=1)
+    if(IOTDB_NTLS_PROVIDER STREQUAL "TONGSUO")
+        target_compile_definitions(rpc_ssl_utils_tests PRIVATE IOTDB_RPC_SSL_IT=1)
+    endif()
 
-    if(WIN32)
+    if(IOTDB_NTLS_PROVIDER STREQUAL "GMSSL")
+        if(WIN32)
+            set(_iotdb_openssl_executable "${IOTDB_GMSSL_ROOT_DIR}/bin/gmssl.exe")
+        else()
+            set(_iotdb_openssl_executable "${IOTDB_GMSSL_ROOT_DIR}/bin/gmssl")
+        endif()
+    elseif(WIN32)
         set(_iotdb_openssl_executable "${OPENSSL_ROOT_DIR}/bin/openssl.exe")
     else()
         set(_iotdb_openssl_executable "${OPENSSL_ROOT_DIR}/bin/openssl")
@@ -112,6 +138,10 @@ if(WITH_SSL)
     target_compile_definitions(rpc_ntls_utils_tests PRIVATE
             IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}"
             IOTDB_OPENSSL_ROOT_DIR="${_iotdb_openssl_root_dir_fwd}")
+    if(IOTDB_NTLS_PROVIDER STREQUAL "GMSSL")
+        target_compile_definitions(rpc_ntls_utils_tests PRIVATE
+                IOTDB_GMSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}")
+    endif()
     if(WIN32)
         foreach(_t IN LISTS _rpc_ssl_test_targets)
             target_link_libraries(${_t} PRIVATE ws2_32 "${THRIFT_STATIC_LIB_PATH}")
@@ -178,7 +208,7 @@ else()
                         $<TARGET_FILE:iotdb_session> $<TARGET_FILE_DIR:${_t}>
                 COMMENT "Copy IoTDB runtime library next to ${_t}")
         if(WITH_SSL AND ${_t} IN_LIST _rpc_ssl_test_targets)
-            foreach(_ssl_lib IN LISTS OPENSSL_SSL_LIBRARY OPENSSL_CRYPTO_LIBRARY)
+            foreach(_ssl_lib IN LISTS IOTDB_NTLS_RUNTIME_LIBRARIES)
                 if(_ssl_lib AND EXISTS "${_ssl_lib}")
                     add_custom_command(TARGET ${_t} POST_BUILD
                             COMMAND ${CMAKE_COMMAND} -E copy_if_different

@@ -26,7 +26,7 @@
 #endif
 #endif
 
-#if WITH_SSL
+#if WITH_SSL && defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -34,6 +34,8 @@
 #include <openssl/pkcs12.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
+#elif WITH_SSL && defined(IOTDB_NTLS_PROVIDER_GMSSL)
+#include <gmssl/tls.h>
 #endif
 
 #include "RpcSslUtils.h"
@@ -44,6 +46,7 @@
 #include <cctype>
 #include <fstream>
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace {
@@ -84,6 +87,7 @@ bool isPkcs12Path(const std::string& path) {
 
 #if WITH_SSL
 
+#if defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 std::string collectOpenSslErrors() {
   std::string errors;
   unsigned long errCode = 0;
@@ -101,6 +105,7 @@ std::string collectOpenSslErrors() {
 void throwSslError(const std::string& message) {
   throw IoTDBException(message + ": " + collectOpenSslErrors());
 }
+#endif
 
 void ensureFileReadable(const std::string& path, const std::string& label) {
   if (!hasText(path)) {
@@ -111,6 +116,8 @@ void ensureFileReadable(const std::string& path, const std::string& label) {
     throw IoTDBException(label + " file not found: " + path);
   }
 }
+
+#if defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 
 PKCS12* loadPkcs12(const std::string& path, const std::string& password) {
   BIO* bio = BIO_new_file(path.c_str(), "rb");
@@ -472,6 +479,89 @@ void loadTlcpKeyStoreFromPkcs12(SSL_CTX* ctx, const std::string& path,
   freeTlcpIdentity(identity);
 }
 
+void loadTlcpIdentityFromPemBundles(SSL_CTX* ctx, const std::string& certificateChainFile,
+                                    const std::string& privateKeyFile,
+                                    const std::string& privateKeyPassword) {
+  ensureFileReadable(certificateChainFile, "TLCP certificate chain");
+  ensureFileReadable(privateKeyFile, "TLCP private key");
+
+  BIO* certBio = BIO_new_file(certificateChainFile.c_str(), "rb");
+  if (certBio == nullptr) {
+    throwSslError("Failed to open TLCP certificate chain " + certificateChainFile);
+  }
+  X509* signCert = PEM_read_bio_X509(certBio, nullptr, nullptr, nullptr);
+  X509* encCert = PEM_read_bio_X509(certBio, nullptr, nullptr, nullptr);
+  std::vector<X509*> certificateChain;
+  while (true) {
+    X509* chainCert = PEM_read_bio_X509(certBio, nullptr, nullptr, nullptr);
+    if (chainCert == nullptr) {
+      ERR_clear_error();
+      break;
+    }
+    certificateChain.push_back(chainCert);
+  }
+  BIO_free(certBio);
+  if (signCert == nullptr || encCert == nullptr) {
+    X509_free(signCert);
+    X509_free(encCert);
+    for (X509* cert : certificateChain) {
+      X509_free(cert);
+    }
+    throw IoTDBException(
+        "TLCP certificate-chain PEM must contain signing and encryption certificates: " +
+        certificateChainFile);
+  }
+
+  BIO* keyBio = BIO_new_file(privateKeyFile.c_str(), "rb");
+  if (keyBio == nullptr) {
+    X509_free(signCert);
+    X509_free(encCert);
+    for (X509* cert : certificateChain) {
+      X509_free(cert);
+    }
+    throwSslError("Failed to open TLCP private-key bundle " + privateKeyFile);
+  }
+  void* password =
+      privateKeyPassword.empty() ? nullptr : const_cast<char*>(privateKeyPassword.c_str());
+  EVP_PKEY* signKey = PEM_read_bio_PrivateKey(keyBio, nullptr, nullptr, password);
+  EVP_PKEY* encKey = PEM_read_bio_PrivateKey(keyBio, nullptr, nullptr, password);
+  BIO_free(keyBio);
+  if (signKey == nullptr || encKey == nullptr) {
+    X509_free(signCert);
+    X509_free(encCert);
+    EVP_PKEY_free(signKey);
+    EVP_PKEY_free(encKey);
+    for (X509* cert : certificateChain) {
+      X509_free(cert);
+    }
+    throw IoTDBException("TLCP private-key PEM must contain signing and encryption private keys: " +
+                         privateKeyFile);
+  }
+
+  const bool loaded = SSL_CTX_use_sign_certificate(ctx, signCert) == 1 &&
+                      SSL_CTX_use_sign_PrivateKey(ctx, signKey) == 1 &&
+                      SSL_CTX_use_enc_certificate(ctx, encCert) == 1 &&
+                      SSL_CTX_use_enc_PrivateKey(ctx, encKey) == 1;
+  X509_free(signCert);
+  X509_free(encCert);
+  EVP_PKEY_free(signKey);
+  EVP_PKEY_free(encKey);
+  if (!loaded) {
+    for (X509* cert : certificateChain) {
+      X509_free(cert);
+    }
+    throwSslError("Failed to load TLCP PEM client credentials");
+  }
+  for (size_t index = 0; index < certificateChain.size(); ++index) {
+    if (SSL_CTX_add_extra_chain_cert(ctx, certificateChain[index]) != 1) {
+      for (size_t remaining = index; remaining < certificateChain.size(); ++remaining) {
+        X509_free(certificateChain[remaining]);
+      }
+      throwSslError("Failed to load TLCP PEM client certificate chain");
+    }
+  }
+}
+
 void applyTlsProtocolVersion(SSL_CTX* ctx, const std::string& protocol) {
   const std::string resolved = RpcSslUtils::normalizeProtocol(protocol);
   const std::string upper = toUpper(resolved);
@@ -510,27 +600,40 @@ SSL_CTX* createTlsClientContext(const SslConfig& config) {
 }
 
 SSL_CTX* createTlcpClientContext(const SslConfig& config) {
-  SSL_CTX* ctx = SSL_CTX_new(NTLS_client_method());
+  std::unique_ptr<SSL_CTX, decltype(&SSL_CTX_free)> ctx(SSL_CTX_new(NTLS_client_method()),
+                                                        SSL_CTX_free);
   if (ctx == nullptr) {
     throwSslError("Failed to create TLCP client context");
   }
-  SSL_CTX_enable_ntls(ctx);
-  if (SSL_CTX_set_cipher_list(ctx, RpcSslUtils::DEFAULT_TLCP_CIPHER) != 1) {
-    SSL_CTX_free(ctx);
+  SSL_CTX_enable_ntls(ctx.get());
+  if (SSL_CTX_set_cipher_list(ctx.get(), RpcSslUtils::DEFAULT_TLCP_CIPHER) != 1) {
     throwSslError("Failed to set TLCP cipher suite");
   }
 
   const std::string trustStore = config.effectiveTrustStore();
   if (hasText(trustStore)) {
-    loadTrustStore(ctx, trustStore, config.trustStorePwd);
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
+    loadTrustStore(ctx.get(), trustStore, config.trustStorePwd);
+    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_PEER, nullptr);
   } else {
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, nullptr);
+    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_NONE, nullptr);
   }
   if (hasText(config.keyStore)) {
-    loadTlcpKeyStoreFromPkcs12(ctx, config.keyStore, config.keyStorePwd);
+    loadTlcpKeyStoreFromPkcs12(ctx.get(), config.keyStore, config.keyStorePwd);
   }
-  return ctx;
+  const bool hasCertificate = hasText(config.tlcpCertChainFile);
+  const bool hasPrivateKey = hasText(config.tlcpPrivateKeyFile);
+  if (hasCertificate != hasPrivateKey) {
+    throw IoTDBException(
+        "Mutual TLCP authentication requires both certificate-chain and private-key PEM files.");
+  }
+  if (hasText(config.keyStore) && hasCertificate) {
+    throw IoTDBException("Configure either a TLCP PKCS12 key store or PEM credentials, not both.");
+  }
+  if (hasCertificate) {
+    loadTlcpIdentityFromPemBundles(ctx.get(), config.tlcpCertChainFile, config.tlcpPrivateKeyFile,
+                                   config.tlcpPrivateKeyPwd);
+  }
+  return ctx.release();
 }
 
 void validatePkcs12Store(const std::string& path, const std::string& password) {
@@ -583,6 +686,46 @@ void validatePemStore(const std::string& path) {
   }
 }
 
+#elif defined(IOTDB_NTLS_PROVIDER_GMSSL)
+
+void configureGmsslTlcpContextImpl(TLS_CTX* ctx, const SslConfig& config) {
+  const int cipherSuite = TLS_cipher_ecc_sm4_cbc_sm3;
+  if (tls_ctx_set_cipher_suites(ctx, &cipherSuite, 1) != 1) {
+    throw IoTDBException("Failed to configure GmSSL TLCP cipher suite");
+  }
+
+  const std::string trustStore = config.effectiveTrustStore();
+  if (hasText(trustStore)) {
+    ensureFileReadable(trustStore, "Trust store");
+    if (isPkcs12Path(trustStore)) {
+      throw IoTDBException("The GmSSL provider requires a PEM trust store: " + trustStore);
+    }
+    if (tls_ctx_set_ca_certificates(ctx, trustStore.c_str(), TLS_DEFAULT_VERIFY_DEPTH) != 1) {
+      throw IoTDBException("Failed to load GmSSL PEM trust store " + trustStore);
+    }
+  }
+
+  const bool hasCertificate = hasText(config.tlcpCertChainFile);
+  const bool hasPrivateKey = hasText(config.tlcpPrivateKeyFile);
+  if (hasCertificate != hasPrivateKey) {
+    throw IoTDBException(
+        "GmSSL mutual TLCP authentication requires both certificate-chain and private-key PEM "
+        "files.");
+  }
+  if (hasCertificate) {
+    ensureFileReadable(config.tlcpCertChainFile, "TLCP certificate chain");
+    ensureFileReadable(config.tlcpPrivateKeyFile, "TLCP private key");
+    const char* password =
+        config.tlcpPrivateKeyPwd.empty() ? nullptr : config.tlcpPrivateKeyPwd.c_str();
+    if (tls_ctx_set_certificate_and_key(ctx, config.tlcpCertChainFile.c_str(),
+                                        config.tlcpPrivateKeyFile.c_str(), password) != 1) {
+      throw IoTDBException("Failed to load GmSSL TLCP client credentials");
+    }
+  }
+}
+
+#endif
+
 #endif // WITH_SSL
 
 } // namespace
@@ -620,11 +763,18 @@ void RpcSslUtils::validateTrustStore(const std::string& trustStorePath,
                                      const std::string& trustStorePassword) {
 #if WITH_SSL
   ensureFileReadable(trustStorePath, "Trust store");
+#if defined(IOTDB_NTLS_PROVIDER_TONGSUO)
   if (isPkcs12Path(trustStorePath)) {
     validatePkcs12Store(trustStorePath, trustStorePassword);
   } else {
     validatePemStore(trustStorePath);
   }
+#else
+  (void)trustStorePassword;
+  if (isPkcs12Path(trustStorePath)) {
+    throw IoTDBException("The GmSSL provider requires a PEM trust store: " + trustStorePath);
+  }
+#endif
 #else
   (void)trustStorePath;
   (void)trustStorePassword;
@@ -636,11 +786,18 @@ void RpcSslUtils::validateKeyStore(const std::string& keyStorePath,
                                    const std::string& keyStorePassword) {
 #if WITH_SSL
   ensureFileReadable(keyStorePath, "Key store");
+#if defined(IOTDB_NTLS_PROVIDER_TONGSUO)
   if (isPkcs12Path(keyStorePath)) {
     validatePkcs12Store(keyStorePath, keyStorePassword);
   } else {
     validatePemStore(keyStorePath);
   }
+#else
+  (void)keyStorePassword;
+  if (isPkcs12Path(keyStorePath)) {
+    throw IoTDBException("The GmSSL provider requires PEM client credentials: " + keyStorePath);
+  }
+#endif
 #else
   (void)keyStorePath;
   (void)keyStorePassword;
@@ -650,6 +807,7 @@ void RpcSslUtils::validateKeyStore(const std::string& keyStorePath,
 
 #if WITH_SSL
 
+#if defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 SSL_CTX* RpcSslUtils::createClientSslContext(const SslConfig& config) {
   const std::string protocol = resolveProtocol(config.sslProtocol);
   if (isTlcpProtocol(protocol)) {
@@ -669,5 +827,25 @@ RpcSslUtils::createSslSocketFactory(const SslConfig& config) {
   factory->authenticate(false);
   return factory;
 }
+#elif defined(IOTDB_NTLS_PROVIDER_GMSSL)
+void RpcSslUtils::validateGmsslTlcpConfig(const SslConfig& config) {
+  if (!isTlcpProtocol(resolveProtocol(config.sslProtocol))) {
+    throw IoTDBException("The GmSSL provider supports TLCP only; configure sslProtocol as TLCP.");
+  }
+  if (hasText(config.keyStore)) {
+    throw IoTDBException(
+        "The GmSSL provider does not support PKCS12 keyStore; configure TLCP PEM certificate and "
+        "private-key files.");
+  }
+}
+
+void RpcSslUtils::configureGmsslTlcpContext(TLS_CTX* context, const SslConfig& config) {
+  if (context == nullptr) {
+    throw IoTDBException("GmSSL TLCP context must not be null.");
+  }
+  validateGmsslTlcpConfig(config);
+  configureGmsslTlcpContextImpl(context, config);
+}
+#endif
 
 #endif

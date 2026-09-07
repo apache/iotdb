@@ -62,6 +62,9 @@ public:
   std::string trustStorePwd;
   std::string keyStore;
   std::string keyStorePwd;
+  std::string tlcpCertChainFile;
+  std::string tlcpPrivateKeyFile;
+  std::string tlcpPrivateKeyPwd;
 };
 
 #endif // IOTDB_ABSTRACTSESSIONBUILDER_H
