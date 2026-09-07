@@ -67,6 +67,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       final long creationTime,
       final PipeParameters pipeProcessorParameters,
       final int regionId,
+      final long completionSourceId,
       final EventSupplier pipeSourceInputEventSupplier,
       final UnboundedBlockingPendingQueue<Event> pipeSinkOutputPendingQueue,
       final PipeProcessorSubtaskExecutor executor,
@@ -111,6 +112,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeSinkOutputPendingQueue,
             creationTime,
             regionId,
+            completionSourceId,
             forceTabletFormat,
             skipParsing,
             isUsedForConsensusPipe);

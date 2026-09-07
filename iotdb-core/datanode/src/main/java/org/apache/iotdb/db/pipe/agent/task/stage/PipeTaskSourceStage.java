@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -106,5 +108,18 @@ public class PipeTaskSourceStage extends PipeTaskStage {
 
   public EventSupplier getEventSupplier() {
     return pipeExtractor::supply;
+  }
+
+  public PipeExtractor getPipeExtractor() {
+    return pipeExtractor;
+  }
+
+  public long getCompletionSourceId() {
+    if (!(pipeExtractor instanceof IoTDBDataRegionSource)) {
+      return Long.MIN_VALUE;
+    }
+    final PipeRealtimeDataRegionSource realtimeSource =
+        ((IoTDBDataRegionSource) pipeExtractor).getRealtimeSourceForCompletion();
+    return realtimeSource == null ? Long.MIN_VALUE : realtimeSource.getCompletionSourceId();
   }
 }
