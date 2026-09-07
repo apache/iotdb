@@ -62,13 +62,23 @@ def start_iotdb(dist_root: Path, start_script: Path, wait_s: int) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("build_dir", help="CMake build directory containing CTestTestfile.cmake")
+    parser.add_argument(
+        "build_dir", help="CMake build directory containing CTestTestfile.cmake"
+    )
     parser.add_argument("dist_root", help="IoTDB distribution root")
     parser.add_argument("fixtures_root", help="C++ test fixtures root")
-    parser.add_argument("scripts_root", help="Directory containing configure_iotdb_ssl_it.py")
-    parser.add_argument("start_script", help="Relative path to start-standalone script under dist sbin/")
-    parser.add_argument("--config", default="Release", help="CTest build configuration (MSVC)")
-    parser.add_argument("--wait-seconds", type=int, default=45, help="Seconds to wait after IoTDB start")
+    parser.add_argument(
+        "scripts_root", help="Directory containing configure_iotdb_ssl_it.py"
+    )
+    parser.add_argument(
+        "start_script", help="Relative path to start-standalone script under dist sbin/"
+    )
+    parser.add_argument(
+        "--config", default="Release", help="CTest build configuration (MSVC)"
+    )
+    parser.add_argument(
+        "--wait-seconds", type=int, default=45, help="Seconds to wait after IoTDB start"
+    )
     args = parser.parse_args()
 
     build_dir = Path(args.build_dir).resolve()
@@ -91,8 +101,12 @@ def main() -> int:
         [sys.executable, str(configure), str(dist_root), str(fixtures_root), "enable"],
         cwd=scripts_root,
     )
-    start_iotdb(dist_root, start_script, args.wait_seconds)
-    run(ctest_base + ["-L", "ssl"], build_dir)
+    try:
+        start_iotdb(dist_root, start_script, args.wait_seconds)
+        run(ctest_base + ["-L", "ssl"], build_dir)
+    finally:
+        stop_iotdb(dist_root)
+
     print("=== Phase 2b: NTLS (no IoTDB; openssl s_server) ===")
     run(ctest_base + ["-L", "ntls"], build_dir)
 
