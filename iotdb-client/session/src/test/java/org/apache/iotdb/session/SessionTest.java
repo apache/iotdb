@@ -25,11 +25,15 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
@@ -41,6 +45,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -58,6 +63,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 
 public class SessionTest {
 
@@ -984,6 +990,609 @@ public class SessionTest {
   }
 
   @Test
+  public void testMergeRelationalTabletsWithHighDuplicatedColumns() throws Exception {
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s2"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            1,
+            "d1",
+            11L,
+            1.1);
+    final Tablet second =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s3"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.BOOLEAN),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            2,
+            "d2",
+            22L,
+            true);
+
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(session, "mergeRelationalTablets", Arrays.asList(first, second));
+
+    assertEquals(1, mergedTablets.size());
+    final Tablet mergedTablet = mergedTablets.get(0);
+    assertEquals("table1", mergedTablet.getTableName());
+    assertEquals(2, mergedTablet.getRowSize());
+    assertEquals(Arrays.asList("tag1", "s1", "s2", "s3"), getMeasurementNames(mergedTablet));
+    assertEquals(1L, mergedTablet.getTimestamp(0));
+    assertEquals(2L, mergedTablet.getTimestamp(1));
+    assertEquals(11L, mergedTablet.getValue(0, 1));
+    assertEquals(22L, mergedTablet.getValue(1, 1));
+    assertEquals(1.1, (double) mergedTablet.getValue(0, 2), 0.001);
+    Assert.assertNull(mergedTablet.getBitMaps()[0]);
+    Assert.assertNull(mergedTablet.getBitMaps()[1]);
+    Assert.assertTrue(mergedTablet.isNull(1, 2));
+    Assert.assertTrue(mergedTablet.isNull(0, 3));
+    Assert.assertTrue((boolean) mergedTablet.getValue(1, 3));
+  }
+
+  @Test
+  public void testMergeRelationalTabletsDoesNotCrossUnmergeableTablet() throws Exception {
+    final List<String> firstMeasurements =
+        Arrays.asList("tag1", "color", "sticky", "s1", "s2", "s3");
+    final List<String> secondMeasurements =
+        Arrays.asList("tag1", "color", "sticky", "s4", "s5", "s6");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(
+            TSDataType.STRING,
+            TSDataType.STRING,
+            TSDataType.STRING,
+            TSDataType.INT64,
+            TSDataType.INT64,
+            TSDataType.INT64);
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(
+            ColumnCategory.TAG,
+            ColumnCategory.ATTRIBUTE,
+            ColumnCategory.ATTRIBUTE,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD,
+            ColumnCategory.FIELD);
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            firstMeasurements,
+            dataTypes,
+            columnTypes,
+            1,
+            "d1",
+            "red",
+            "keep",
+            11L,
+            12L,
+            13L);
+    final Tablet second =
+        createRelationalTablet(
+            "table1",
+            secondMeasurements,
+            dataTypes,
+            columnTypes,
+            2,
+            "d1",
+            "blue",
+            "replace",
+            21L,
+            22L,
+            23L);
+    final Tablet third =
+        createRelationalTablet(
+            "table1",
+            firstMeasurements,
+            dataTypes,
+            columnTypes,
+            3,
+            "d1",
+            "red",
+            "keep",
+            31L,
+            32L,
+            33L);
+
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(
+            session, "mergeRelationalTablets", Arrays.asList(first, second, third));
+
+    assertEquals(3, mergedTablets.size());
+    Assert.assertSame(first, mergedTablets.get(0));
+    Assert.assertSame(second, mergedTablets.get(1));
+    Assert.assertSame(third, mergedTablets.get(2));
+  }
+
+  @Test
+  public void testMergeRelationalTabletsDoesNotReorderTabletTimeRanges() throws Exception {
+    final List<String> measurements = Arrays.asList("tag1", "color", "s1");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.INT64);
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+    final Tablet first =
+        createRelationalTablet(
+            "table1", measurements, dataTypes, columnTypes, 10, "d1", "red", 10L);
+    final Tablet second =
+        createRelationalTablet("table1", measurements, dataTypes, columnTypes, 1, "d1", "blue", 1L);
+
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(session, "mergeRelationalTablets", Arrays.asList(first, second));
+
+    assertEquals(2, mergedTablets.size());
+    Assert.assertSame(first, mergedTablets.get(0));
+    Assert.assertSame(second, mergedTablets.get(1));
+  }
+
+  @Test
+  public void testMergeRelationalTabletsChecksColumnsAddedByEarlierTablets() throws Exception {
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s2"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            1,
+            "d1",
+            11L,
+            1.1);
+    final Tablet second =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s3"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.BOOLEAN),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            2,
+            "d2",
+            22L,
+            true);
+    final Tablet conflicting =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s3"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.INT32),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            3,
+            "d3",
+            33L,
+            3);
+
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(
+            session, "mergeRelationalTablets", Arrays.asList(first, second, conflicting));
+
+    assertEquals(2, mergedTablets.size());
+    assertEquals(2, mergedTablets.get(0).getRowSize());
+    Assert.assertSame(conflicting, mergedTablets.get(1));
+  }
+
+  @Test(timeout = 10000)
+  public void testMergeLargeRelationalTabletList() throws Exception {
+    final int tabletCount = 5000;
+    final List<Tablet> tablets = new ArrayList<>(tabletCount);
+    for (int i = 0; i < tabletCount; i++) {
+      tablets.add(
+          createRelationalTablet(
+              "table1",
+              Arrays.asList("tag1", "s1"),
+              Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+              Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+              i,
+              "d" + i,
+              (long) i));
+    }
+
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(session, "mergeRelationalTablets", tablets);
+
+    assertEquals(1, mergedTablets.size());
+    assertEquals(tabletCount, mergedTablets.get(0).getRowSize());
+    assertEquals((long) tabletCount - 1, mergedTablets.get(0).getValue(tabletCount - 1, 1));
+  }
+
+  @Test
+  public void testMergeRelationalTabletsSkipLowDuplicatedColumnsAndDifferentTables()
+      throws Exception {
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s2"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            1,
+            "d1",
+            11L,
+            1.1);
+    final Tablet second =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s3", "s4"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT32, TSDataType.BOOLEAN),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            2,
+            "d2",
+            22,
+            true);
+    final Tablet third =
+        createRelationalTablet(
+            "table2",
+            Arrays.asList("tag1", "s1", "s2"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            3,
+            "d3",
+            33L,
+            3.3);
+    final Tablet fourth =
+        createRelationalTablet(
+            "table0",
+            Arrays.asList("tag1", "s1", "s2"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            4,
+            "d4",
+            44L,
+            4.4);
+
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(
+            session, "mergeRelationalTablets", Arrays.asList(first, second, third, fourth));
+
+    assertEquals(4, mergedTablets.size());
+    Assert.assertSame(fourth, mergedTablets.get(0));
+    Assert.assertSame(first, mergedTablets.get(1));
+    Assert.assertSame(second, mergedTablets.get(2));
+    Assert.assertSame(third, mergedTablets.get(3));
+  }
+
+  @Test
+  public void testMergeRelationalTabletsStopAfterConsecutiveMisses() throws Exception {
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s2"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            1,
+            "d1",
+            11L,
+            1.1);
+    final Tablet second =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s3", "s4"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT32, TSDataType.BOOLEAN),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            2,
+            "d2",
+            22,
+            true);
+
+    for (int i = 0; i < 10; i++) {
+      final List<Tablet> mergedTablets =
+          Whitebox.invokeMethod(session, "mergeRelationalTablets", Arrays.asList(first, second));
+      assertEquals(2, mergedTablets.size());
+    }
+
+    final Tablet mergeable =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s3"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.BOOLEAN),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            3,
+            "d3",
+            33L,
+            false);
+    final List<Tablet> tablets = Arrays.asList(first, mergeable);
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(session, "mergeRelationalTablets", tablets);
+    Assert.assertSame(tablets, mergedTablets);
+  }
+
+  @Test
+  public void testMergeRelationalTabletsResetConsecutiveMissesAfterMerge() throws Exception {
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s2"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            1,
+            "d1",
+            11L,
+            1.1);
+    final Tablet unmergeable =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s3", "s4"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT32, TSDataType.BOOLEAN),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            2,
+            "d2",
+            22,
+            true);
+    final Tablet mergeable =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s3"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.BOOLEAN),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            3,
+            "d3",
+            33L,
+            false);
+
+    for (int i = 0; i < 9; i++) {
+      Whitebox.invokeMethod(session, "mergeRelationalTablets", Arrays.asList(first, unmergeable));
+    }
+    final List<Tablet> firstMergedTablets =
+        Whitebox.invokeMethod(session, "mergeRelationalTablets", Arrays.asList(first, mergeable));
+    assertEquals(1, firstMergedTablets.size());
+    for (int i = 0; i < 9; i++) {
+      Whitebox.invokeMethod(session, "mergeRelationalTablets", Arrays.asList(first, unmergeable));
+    }
+
+    final List<Tablet> mergedTablets =
+        Whitebox.invokeMethod(session, "mergeRelationalTablets", Arrays.asList(first, mergeable));
+    assertEquals(1, mergedTablets.size());
+  }
+
+  @Test
+  public void testMergeTabletsDisabledWhenMergeCostExceedsHalfOfInsertCost() throws Exception {
+    for (int i = 0; i < 9; i++) {
+      Whitebox.invokeMethod(session, "recordMergeTabletsCost", 11L, 20L);
+      Assert.assertTrue(Whitebox.getInternalState(session, "enableMergeTablets"));
+    }
+
+    Whitebox.invokeMethod(session, "recordMergeTabletsCost", 11L, 20L);
+
+    Assert.assertFalse(Whitebox.getInternalState(session, "enableMergeTablets"));
+  }
+
+  @Test
+  public void testMergeTabletsKeepsEnabledWhenMergeCostIsNotTooHigh() throws Exception {
+    for (int i = 0; i < 10; i++) {
+      Whitebox.invokeMethod(session, "recordMergeTabletsCost", 5L, 20L);
+    }
+
+    Assert.assertTrue(Whitebox.getInternalState(session, "enableMergeTablets"));
+    assertEquals(0, (int) Whitebox.getInternalState(session, "mergeTabletsPerformanceCheckCount"));
+    assertEquals(0L, (long) Whitebox.getInternalState(session, "mergeTabletsCostInNanos"));
+    assertEquals(0L, (long) Whitebox.getInternalState(session, "insertTabletsCostInNanos"));
+  }
+
+  @Test
+  public void testMergeTabletsCostNotRecordedWhenInsertFails() throws Exception {
+    Mockito.doThrow(new StatementExecutionException("expected"))
+        .when(sessionConnection)
+        .insertTablets(any(TSInsertTabletsReq.class), anyList());
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s2"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            1L,
+            "tag1",
+            11L,
+            1.1);
+    final Tablet second =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1", "s3"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.BOOLEAN),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            2L,
+            "tag2",
+            22L,
+            true);
+
+    try {
+      ((Session) session).insertRelationalTablets(Arrays.asList(first, second));
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertEquals("expected", e.getMessage());
+    }
+
+    assertEquals(0, (int) Whitebox.getInternalState(session, "mergeTabletsPerformanceCheckCount"));
+    assertEquals(0L, (long) Whitebox.getInternalState(session, "mergeTabletsCostInNanos"));
+    assertEquals(0L, (long) Whitebox.getInternalState(session, "insertTabletsCostInNanos"));
+  }
+
+  @Test
+  public void testInsertRelationalTabletsUseTableModelLeaderCache() throws Exception {
+    final Tablet tablet =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            1L,
+            "tag1",
+            11L);
+    final SessionConnection redirectedSessionConnection = Mockito.mock(SessionConnection.class);
+    final TEndPoint endPoint = new TEndPoint("127.0.0.2", 6667);
+    final Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint = new HashMap<>();
+    tableModelDeviceIdToEndpoint.put(tablet.getDeviceID(0), endPoint);
+    final Map<TEndPoint, SessionConnection> endPointToSessionConnection = new HashMap<>();
+    endPointToSessionConnection.put(endPoint, redirectedSessionConnection);
+    Whitebox.setInternalState(session, "enableRedirection", true);
+    Whitebox.setInternalState(
+        session, "tableModelDeviceIdToEndpoint", tableModelDeviceIdToEndpoint);
+    Whitebox.setInternalState(session, "endPointToSessionConnection", endPointToSessionConnection);
+
+    ((Session) session).insertRelationalTablets(Collections.singletonList(tablet));
+
+    Mockito.verify(redirectedSessionConnection)
+        .insertTablets(any(TSInsertTabletsReq.class), anyList());
+    Mockito.verify(sessionConnection, Mockito.never())
+        .insertTablets(any(TSInsertTabletsReq.class), anyList());
+  }
+
+  @Test
+  public void testInsertRelationalTabletsUpdatesTableModelLeaderCache() throws Exception {
+    final Tablet tablet =
+        createRelationalTablet(
+            "table1",
+            Arrays.asList("tag1", "s1"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            1L,
+            "tag1",
+            11L);
+    final IDeviceID deviceID = tablet.getDeviceID(0);
+    final TEndPoint redirectEndPoint = new TEndPoint("127.0.0.2", 6667);
+    final Map<TEndPoint, SessionConnection> endPointToSessionConnection = new HashMap<>();
+    endPointToSessionConnection.put(redirectEndPoint, Mockito.mock(SessionConnection.class));
+    Whitebox.setInternalState(session, "enableRedirection", true);
+    Whitebox.setInternalState(session, "tableModelDeviceIdToEndpoint", new HashMap<>());
+    Whitebox.setInternalState(session, "endPointToSessionConnection", endPointToSessionConnection);
+    Mockito.doThrow(
+            new RedirectException(Collections.singletonMap(deviceID.toString(), redirectEndPoint)))
+        .when(sessionConnection)
+        .insertTablets(any(TSInsertTabletsReq.class), anyList());
+
+    ((Session) session).insertRelationalTablets(Collections.singletonList(tablet));
+
+    final Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint =
+        Whitebox.getInternalState(session, "tableModelDeviceIdToEndpoint");
+    assertEquals(redirectEndPoint, tableModelDeviceIdToEndpoint.get(deviceID));
+    Mockito.verify(sessionConnection).insertTablets(any(TSInsertTabletsReq.class), anyList());
+  }
+
+  @Test
+  public void testInsertRelationalTabletsWithRedirectionDisabledIgnoresRedirect() throws Exception {
+    final List<String> measurements = Arrays.asList("tag1", "s1");
+    final Tablet tablet =
+        new Tablet(
+            "table1",
+            measurements,
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            2);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue("tag1", 0, "d1");
+    tablet.addValue("s1", 0, 11L);
+    tablet.addTimestamp(1, 2L);
+    tablet.addValue("tag1", 1, "d2");
+    tablet.addValue("s1", 1, 22L);
+    Whitebox.setInternalState(session, "enableRedirection", false);
+
+    ((Session) session).insertRelationalTablets(Collections.singletonList(tablet));
+
+    Mockito.verify(sessionConnection).insertTabletsWithoutRedirect(any(TSInsertTabletsReq.class));
+    Mockito.verify(sessionConnection, Mockito.never()).insertTablets(any(TSInsertTabletsReq.class));
+    Mockito.verify(sessionConnection, Mockito.never())
+        .insertTablets(any(TSInsertTabletsReq.class), anyList());
+  }
+
+  @Test
+  public void testInsertRelationalTabletsIgnoresAllEmptyTablets() throws Exception {
+    final Tablet first =
+        new Tablet(
+            "table1",
+            Arrays.asList("tag1", "s1"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            1);
+    final Tablet second =
+        new Tablet(
+            "table1",
+            Arrays.asList("tag1", "s1"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            1);
+    Whitebox.setInternalState(session, "enableRedirection", true);
+
+    ((Session) session).insertRelationalTablets(Arrays.asList(first, second));
+
+    Mockito.verify(sessionConnection, Mockito.never())
+        .insertTablets(any(TSInsertTabletsReq.class), anyList());
+    Mockito.verify(sessionConnection, Mockito.never()).insertTablets(any(TSInsertTabletsReq.class));
+  }
+
+  @Test
+  public void testSplitRelationalTabletAllocatesExactCapacityPerDevice() throws Exception {
+    final int rowCount = 1000;
+    final List<String> measurements = Arrays.asList("tag1", "s1");
+    final Tablet tablet =
+        new Tablet(
+            "table1",
+            measurements,
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            rowCount);
+    for (int row = 0; row < rowCount; row++) {
+      tablet.addTimestamp(row, row);
+      tablet.addValue(measurements.get(0), row, "d" + row);
+      tablet.addValue(measurements.get(1), row, (long) row);
+    }
+    Whitebox.setInternalState(session, "tableModelDeviceIdToEndpoint", new HashMap<>());
+    final Map<SessionConnection, Object> tabletGroup = new HashMap<>();
+
+    Whitebox.invokeMethod(session, "addRelationalTabletToGroup", tabletGroup, tablet);
+
+    assertEquals(1, tabletGroup.size());
+    final List<Tablet> groupedTablets =
+        Whitebox.getInternalState(tabletGroup.values().iterator().next(), "tablets");
+    assertEquals(rowCount, groupedTablets.size());
+    int totalCapacity = 0;
+    for (final Tablet groupedTablet : groupedTablets) {
+      assertEquals(1, groupedTablet.getMaxRowNumber());
+      assertEquals(1, groupedTablet.getRowSize());
+      totalCapacity += groupedTablet.getMaxRowNumber();
+    }
+    assertEquals(rowCount, totalCapacity);
+  }
+
+  @Test
+  public void testInsertRelationalTabletsPreservesOrderWhenSplittingByDevice() throws Exception {
+    final List<String> measurements = Arrays.asList("tag1", "color", "s1");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.INT64);
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+    final Tablet first =
+        createRelationalTablet(
+            "table1",
+            measurements,
+            dataTypes,
+            columnTypes,
+            new long[] {1, 101},
+            new Object[][] {{"d1", "red", 11L}, {"d2", "green", 12L}});
+    final Tablet second =
+        createRelationalTablet(
+            "table1", measurements, dataTypes, columnTypes, 2, "d1", "blue", 21L);
+    final Tablet third =
+        createRelationalTablet(
+            "table1",
+            measurements,
+            dataTypes,
+            columnTypes,
+            new long[] {3, 103},
+            new Object[][] {{"d1", null, 31L}, {"d2", "black", 32L}});
+    Whitebox.setInternalState(session, "enableMergeTablets", false);
+    Whitebox.setInternalState(session, "enableRedirection", true);
+    Whitebox.setInternalState(
+        session, "tableModelDeviceIdToEndpoint", new HashMap<IDeviceID, TEndPoint>());
+
+    ((Session) session).insertRelationalTablets(Arrays.asList(first, second, third));
+
+    final ArgumentCaptor<TSInsertTabletsReq> requestCaptor =
+        ArgumentCaptor.forClass(TSInsertTabletsReq.class);
+    Mockito.verify(sessionConnection).insertTablets(requestCaptor.capture(), anyList());
+    final TSInsertTabletsReq request = requestCaptor.getValue();
+    assertEquals(Arrays.asList(1, 1, 1, 1, 1), request.getSizeList());
+    final List<Long> firstTimestamps = new ArrayList<>();
+    for (int i = 0; i < request.getTimestampsListSize(); i++) {
+      firstTimestamps.add(request.getTimestampsList().get(i).getLong(0));
+    }
+    assertEquals(Arrays.asList(1L, 101L, 2L, 3L, 103L), firstTimestamps);
+  }
+
+  @Test
   public void testTestInsertTablet() throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
@@ -1218,5 +1827,54 @@ public class SessionTest {
   public void testTimeoutUsingBuilder() {
     ISession session1 = new Session.Builder().timeOut(1).build();
     assertEquals(1L, session1.getQueryTimeout());
+  }
+
+  @Test
+  public void testEnableMergeTabletsUsingBuilder() {
+    Session sessionWithMergeTabletsDisabled =
+        new Session.Builder().enableMergeTablets(false).build();
+    Assert.assertFalse(
+        Whitebox.getInternalState(sessionWithMergeTabletsDisabled, "enableMergeTablets"));
+  }
+
+  private Tablet createRelationalTablet(
+      final String tableName,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes,
+      final List<ColumnCategory> columnTypes,
+      final long timestamp,
+      final Object... values) {
+    final Tablet tablet = new Tablet(tableName, measurements, dataTypes, columnTypes, 1);
+    tablet.addTimestamp(0, timestamp);
+    for (int i = 0; i < values.length; i++) {
+      tablet.addValue(measurements.get(i), 0, values[i]);
+    }
+    return tablet;
+  }
+
+  private Tablet createRelationalTablet(
+      final String tableName,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes,
+      final List<ColumnCategory> columnTypes,
+      final long[] timestamps,
+      final Object[][] values) {
+    final Tablet tablet =
+        new Tablet(tableName, measurements, dataTypes, columnTypes, timestamps.length);
+    for (int row = 0; row < timestamps.length; row++) {
+      tablet.addTimestamp(row, timestamps[row]);
+      for (int column = 0; column < values[row].length; column++) {
+        tablet.addValue(measurements.get(column), row, values[row][column]);
+      }
+    }
+    return tablet;
+  }
+
+  private List<String> getMeasurementNames(final Tablet tablet) {
+    final List<String> measurementNames = new ArrayList<>();
+    for (final IMeasurementSchema schema : tablet.getSchemas()) {
+      measurementNames.add(schema.getMeasurementName());
+    }
+    return measurementNames;
   }
 }

@@ -198,6 +198,18 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   }
 
   /**
+   * Enables or disables client-side relational tablets merge before batch insert.
+   *
+   * @param enableMergeTablets whether to enable client-side tablets merge.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue true
+   */
+  public TableSessionPoolBuilder enableMergeTablets(boolean enableMergeTablets) {
+    this.enableMergeTablets = enableMergeTablets;
+    return this;
+  }
+
+  /**
    * Sets the connection timeout in milliseconds.
    *
    * @param connectionTimeoutInMs the connection timeout in milliseconds.

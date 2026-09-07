@@ -119,6 +119,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -481,6 +482,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return RelationalDeleteDataNode.deserialize(buffer);
       case 2004:
         return ObjectNode.deserialize(buffer);
+      case 2005:
+        return RelationalInsertMultiTabletsNode.deserialize(buffer);
       default:
         return super.deserialize(buffer, nodeType);
     }

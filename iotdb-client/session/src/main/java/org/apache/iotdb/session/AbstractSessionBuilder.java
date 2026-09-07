@@ -53,6 +53,7 @@ public abstract class AbstractSessionBuilder {
   // datanode while encountering retriable errors in current DataNode
   public boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
   public boolean enableRecordsAutoConvertTablet = SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
+  public boolean enableMergeTablets = SessionConfig.DEFAULT_ENABLE_MERGE_TABLETS;
   public Version version = SessionConfig.DEFAULT_VERSION;
   public long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 

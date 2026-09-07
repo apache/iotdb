@@ -66,6 +66,7 @@ import org.apache.iotdb.session.util.ThreadUtils;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -92,6 +93,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -167,9 +169,16 @@ public class Session implements ISession {
   protected boolean enableRedirection;
   protected boolean enableRecordsAutoConvertTablet =
       SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
+  protected boolean enableMergeTablets = SessionConfig.DEFAULT_ENABLE_MERGE_TABLETS;
   private static final double CONVERT_THRESHOLD = 0.5;
   private static final double SAMPLE_PROPORTION = 0.05;
   private static final int MIN_RECORDS_SIZE = 40;
+  private static final int MAX_CONSECUTIVE_RELATIONAL_TABLET_MERGE_MISS_COUNT = 10;
+  private static final int MERGE_TABLETS_PERFORMANCE_CHECK_COUNT = 10;
+  private int consecutiveRelationalTabletMergeMissCount = 0;
+  private int mergeTabletsPerformanceCheckCount = 0;
+  private long mergeTabletsCostInNanos = 0;
+  private long insertTabletsCostInNanos = 0;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
@@ -466,6 +475,7 @@ public class Session implements ISession {
     this.columnEncodersMap = builder.columnEncodersMap;
     this.enableRedirection = builder.enableRedirection;
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
+    this.enableMergeTablets = builder.enableMergeTablets;
     this.username = builder.username;
     this.password = builder.pw;
     this.useEncryptedPassword = builder.useEncryptedPassword;
@@ -2873,6 +2883,579 @@ public class Session implements ISession {
     }
   }
 
+  /**
+   * insert relational Tablets.
+   *
+   * @param tablets data batches
+   */
+  public void insertRelationalTablets(List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    if (tablets.isEmpty()) {
+      throw new BatchExecutionException(SessionMessages.NO_TABLET_INSERTING);
+    }
+    final List<Tablet> nonEmptyTablets = new ArrayList<>(tablets.size());
+    for (final Tablet tablet : tablets) {
+      if (tablet.getRowSize() > 0) {
+        nonEmptyTablets.add(tablet);
+      }
+    }
+    if (nonEmptyTablets.isEmpty()) {
+      return;
+    }
+    tablets = nonEmptyTablets;
+    final boolean recordMergeTabletsCost = enableMergeTablets;
+    long mergeTabletsCost = 0;
+    if (enableMergeTablets) {
+      final long mergeTabletsStartTime = System.nanoTime();
+      tablets = mergeRelationalTablets(tablets);
+      mergeTabletsCost = System.nanoTime() - mergeTabletsStartTime;
+    }
+    final long insertTabletsStartTime = System.nanoTime();
+    if (enableRedirection) {
+      insertRelationalTabletsWithLeaderCache(tablets);
+    } else {
+      TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, false, false);
+      request.setWriteToTable(true);
+      for (Tablet tablet : tablets) {
+        request.addToColumnCategoriesList(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
+      }
+      getDefaultSessionConnection().insertTabletsWithoutRedirect(request);
+    }
+    if (recordMergeTabletsCost) {
+      recordMergeTabletsCost(mergeTabletsCost, System.nanoTime() - insertTabletsStartTime);
+    }
+  }
+
+  private void insertRelationalTabletsWithLeaderCache(final List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final Map<SessionConnection, RelationalTabletsReq> tabletGroup = new HashMap<>();
+    for (final Tablet tablet : tablets) {
+      addRelationalTabletToGroup(tabletGroup, tablet);
+    }
+    if (tabletGroup.size() == 1) {
+      insertRelationalTabletsOnce(tabletGroup);
+    } else {
+      insertRelationalTabletsByGroup(tabletGroup);
+    }
+  }
+
+  private void addRelationalTabletToGroup(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup, final Tablet tablet)
+      throws IoTDBConnectionException {
+    if (SessionUtils.isTabletContainsSingleDevice(tablet)) {
+      final SessionConnection connection = getTableModelSessionConnection(tablet.getDeviceID(0));
+      updateRelationalTabletsReq(tabletGroup, connection, tablet);
+      return;
+    }
+    final List<SessionConnection> connections = new ArrayList<>(tablet.getRowSize());
+    final List<IDeviceID> deviceIDs = new ArrayList<>(tablet.getRowSize());
+    final Map<SessionConnection, Map<IDeviceID, Integer>> rowCountByDevice = new LinkedHashMap<>();
+    for (int row = 0; row < tablet.getRowSize(); row++) {
+      final IDeviceID deviceID = tablet.getDeviceID(row);
+      final SessionConnection connection = getTableModelSessionConnection(deviceID);
+      connections.add(connection);
+      deviceIDs.add(deviceID);
+      rowCountByDevice
+          .computeIfAbsent(connection, ignored -> new LinkedHashMap<>())
+          .merge(deviceID, 1, Integer::sum);
+    }
+    final Map<SessionConnection, Map<IDeviceID, Tablet>> subTabletsByConnection =
+        new LinkedHashMap<>();
+    rowCountByDevice.forEach(
+        (connection, rowCountByDeviceID) -> {
+          final Map<IDeviceID, Tablet> subTablets = new LinkedHashMap<>();
+          rowCountByDeviceID.forEach(
+              (deviceID, rowCount) ->
+                  subTablets.put(deviceID, createEmptyRelationalTabletLike(tablet, rowCount)));
+          subTabletsByConnection.put(connection, subTablets);
+        });
+    for (int row = 0; row < tablet.getRowSize(); row++) {
+      final Tablet subTablet =
+          subTabletsByConnection.get(connections.get(row)).get(deviceIDs.get(row));
+      for (int column = 0; column < subTablet.getSchemas().size(); column++) {
+        subTablet.addValue(
+            subTablet.getSchemas().get(column).getMeasurementName(),
+            subTablet.getRowSize(),
+            tablet.getValue(row, column));
+      }
+      subTablet.addTimestamp(subTablet.getRowSize(), tablet.getTimestamp(row));
+    }
+    subTabletsByConnection.forEach(
+        (connection, subTablets) ->
+            subTablets
+                .values()
+                .forEach(
+                    subTablet -> updateRelationalTabletsReq(tabletGroup, connection, subTablet)));
+  }
+
+  private SessionConnection getTableModelSessionConnection(final IDeviceID deviceID)
+      throws IoTDBConnectionException {
+    return tableModelDeviceIdToEndpoint == null || tableModelDeviceIdToEndpoint.isEmpty()
+        ? getDefaultSessionConnection()
+        : getSessionConnection(deviceID);
+  }
+
+  private Tablet createEmptyRelationalTabletLike(final Tablet tablet) {
+    return createEmptyRelationalTabletLike(tablet, tablet.getRowSize());
+  }
+
+  private Tablet createEmptyRelationalTabletLike(final Tablet tablet, final int rowSize) {
+    final List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
+    final List<TSDataType> dataTypes = new ArrayList<>(tablet.getSchemas().size());
+    tablet
+        .getSchemas()
+        .forEach(
+            schema -> {
+              measurements.add(schema.getMeasurementName());
+              dataTypes.add(schema.getType());
+            });
+    return new Tablet(
+        tablet.getTableName(), measurements, dataTypes, tablet.getColumnTypes(), rowSize);
+  }
+
+  private void updateRelationalTabletsReq(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup,
+      final SessionConnection connection,
+      final Tablet tablet) {
+    tabletGroup
+        .computeIfAbsent(connection, ignored -> new RelationalTabletsReq())
+        .addTablet(tablet);
+  }
+
+  private void buildRelationalTabletsRequests(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup) {
+    for (final RelationalTabletsReq relationalTabletsReq : tabletGroup.values()) {
+      relationalTabletsReq.buildRequest();
+    }
+  }
+
+  private void insertRelationalTabletsOnce(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
+    buildRelationalTabletsRequests(tabletGroup);
+    final Map.Entry<SessionConnection, RelationalTabletsReq> entry =
+        tabletGroup.entrySet().iterator().next();
+    final SessionConnection connection = entry.getKey();
+    final RelationalTabletsReq relationalTabletsReq = entry.getValue();
+    try {
+      connection.insertTablets(relationalTabletsReq.request, relationalTabletsReq.deviceIDStrings);
+    } catch (RedirectException e) {
+      handleRelationalTabletsRedirection(e, relationalTabletsReq.deviceIDs);
+    } catch (IoTDBConnectionException e) {
+      if (endPointToSessionConnection != null && endPointToSessionConnection.size() > 1) {
+        removeBrokenSessionConnection(connection);
+        try {
+          getDefaultSessionConnection()
+              .insertTablets(relationalTabletsReq.request, relationalTabletsReq.deviceIDStrings);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  private void insertRelationalTabletsByGroup(
+      final Map<SessionConnection, RelationalTabletsReq> tabletGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
+    buildRelationalTabletsRequests(tabletGroup);
+    final List<CompletableFuture<Void>> completableFutures =
+        tabletGroup.entrySet().stream()
+            .map(
+                entry -> {
+                  final SessionConnection connection = entry.getKey();
+                  final RelationalTabletsReq relationalTabletsReq = entry.getValue();
+                  return CompletableFuture.runAsync(
+                      () -> {
+                        try {
+                          connection.insertTablets(
+                              relationalTabletsReq.request, relationalTabletsReq.deviceIDStrings);
+                        } catch (RedirectException e) {
+                          handleRelationalTabletsRedirection(e, relationalTabletsReq.deviceIDs);
+                        } catch (StatementExecutionException e) {
+                          throw new CompletionException(e);
+                        } catch (IoTDBConnectionException e) {
+                          removeBrokenSessionConnection(connection);
+                          try {
+                            getDefaultSessionConnection()
+                                .insertTablets(
+                                    relationalTabletsReq.request,
+                                    relationalTabletsReq.deviceIDStrings);
+                          } catch (IoTDBConnectionException | StatementExecutionException ex) {
+                            throw new CompletionException(ex);
+                          } catch (RedirectException ignored) {
+                          }
+                        }
+                      },
+                      OPERATION_EXECUTOR);
+                })
+            .collect(Collectors.toList());
+
+    final StringBuilder errMsgBuilder = new StringBuilder();
+    for (final CompletableFuture<Void> completableFuture : completableFutures) {
+      try {
+        completableFuture.join();
+      } catch (CompletionException completionException) {
+        final Throwable cause = completionException.getCause();
+        logger.error(SessionMessages.MEET_ERROR_WHEN_ASYNC_INSERT, cause);
+        if (cause instanceof IoTDBConnectionException) {
+          throw (IoTDBConnectionException) cause;
+        }
+        if (errMsgBuilder.length() > 0) {
+          errMsgBuilder.append(";");
+        }
+        errMsgBuilder.append(cause.getMessage());
+      }
+    }
+    if (errMsgBuilder.length() > 0) {
+      throw new StatementExecutionException(errMsgBuilder.toString());
+    }
+  }
+
+  private void handleRelationalTabletsRedirection(
+      final RedirectException redirectException, final List<IDeviceID> deviceIDs) {
+    final Map<String, TEndPoint> deviceEndPointMap = redirectException.getDeviceEndPointMap();
+    if (deviceEndPointMap != null) {
+      for (final IDeviceID deviceID : deviceIDs) {
+        final TEndPoint endPoint = deviceEndPointMap.get(deviceID.toString());
+        if (endPoint != null) {
+          handleRedirection(deviceID, endPoint);
+        }
+      }
+      return;
+    }
+    final List<TEndPoint> endPointList = redirectException.getEndPointList();
+    if (endPointList == null) {
+      return;
+    }
+    for (int i = 0; i < endPointList.size() && i < deviceIDs.size(); i++) {
+      if (endPointList.get(i) != null) {
+        handleRedirection(deviceIDs.get(i), endPointList.get(i));
+      }
+    }
+  }
+
+  private List<Tablet> mergeRelationalTablets(final List<Tablet> tablets) {
+    if (consecutiveRelationalTabletMergeMissCount
+        >= MAX_CONSECUTIVE_RELATIONAL_TABLET_MERGE_MISS_COUNT) {
+      return tablets;
+    }
+    final List<Tablet> sortedTablets = new ArrayList<>(tablets);
+    sortedTablets.sort(
+        Comparator.comparing(
+            Tablet::getTableName, Comparator.nullsFirst(Comparator.naturalOrder())));
+    final List<Tablet> mergedTablets = new ArrayList<>(tablets.size());
+    final List<Tablet> currentGroup = new ArrayList<>();
+    Map<String, Integer> currentColumnIndexMap = new LinkedHashMap<>();
+    List<String> currentMeasurements = new ArrayList<>();
+    List<TSDataType> currentDataTypes = new ArrayList<>();
+    List<ColumnCategory> currentColumnTypes = new ArrayList<>();
+    boolean currentGroupHasRows = false;
+    long currentGroupMaxTimestamp = Long.MIN_VALUE;
+    boolean anyMerged = false;
+    for (final Tablet tablet : sortedTablets) {
+      final long[] timestampRange = getTimestampRange(tablet);
+      if (currentGroup.isEmpty()) {
+        currentGroup.add(tablet);
+        currentColumnIndexMap = getColumnIndexMap(tablet);
+        currentMeasurements = getMeasurements(tablet);
+        currentDataTypes = getDataTypes(tablet);
+        currentColumnTypes = new ArrayList<>(tablet.getColumnTypes());
+        currentGroupHasRows = tablet.getRowSize() > 0;
+        currentGroupMaxTimestamp = timestampRange[1];
+        continue;
+      }
+      if (canMergeRelationalTablets(
+          currentGroup.get(0).getTableName(),
+          currentColumnIndexMap,
+          currentDataTypes,
+          currentColumnTypes,
+          currentGroupHasRows,
+          currentGroupMaxTimestamp,
+          timestampRange[0],
+          tablet)) {
+        currentGroup.add(tablet);
+        addMissingColumns(
+            tablet,
+            currentColumnIndexMap,
+            currentMeasurements,
+            currentDataTypes,
+            currentColumnTypes);
+        if (tablet.getRowSize() > 0) {
+          currentGroupHasRows = true;
+          currentGroupMaxTimestamp = Math.max(currentGroupMaxTimestamp, timestampRange[1]);
+        }
+        anyMerged = true;
+        continue;
+      }
+      mergedTablets.add(
+          mergeRelationalTablets(
+              currentGroup, currentMeasurements, currentDataTypes, currentColumnTypes));
+      currentGroup.clear();
+      currentGroup.add(tablet);
+      currentColumnIndexMap = getColumnIndexMap(tablet);
+      currentMeasurements = getMeasurements(tablet);
+      currentDataTypes = getDataTypes(tablet);
+      currentColumnTypes = new ArrayList<>(tablet.getColumnTypes());
+      currentGroupHasRows = tablet.getRowSize() > 0;
+      currentGroupMaxTimestamp = timestampRange[1];
+    }
+    if (!currentGroup.isEmpty()) {
+      mergedTablets.add(
+          mergeRelationalTablets(
+              currentGroup, currentMeasurements, currentDataTypes, currentColumnTypes));
+    }
+    if (anyMerged) {
+      consecutiveRelationalTabletMergeMissCount = 0;
+    } else {
+      consecutiveRelationalTabletMergeMissCount++;
+      if (consecutiveRelationalTabletMergeMissCount
+          >= MAX_CONSECUTIVE_RELATIONAL_TABLET_MERGE_MISS_COUNT) {
+        enableMergeTablets = false;
+      }
+    }
+    return mergedTablets;
+  }
+
+  private void recordMergeTabletsCost(
+      final long currentMergeTabletsCostInNanos, final long currentInsertTabletsCostInNanos) {
+    mergeTabletsPerformanceCheckCount++;
+    mergeTabletsCostInNanos += currentMergeTabletsCostInNanos;
+    insertTabletsCostInNanos += currentInsertTabletsCostInNanos;
+    if (mergeTabletsPerformanceCheckCount < MERGE_TABLETS_PERFORMANCE_CHECK_COUNT) {
+      return;
+    }
+    if (mergeTabletsCostInNanos > insertTabletsCostInNanos / 2) {
+      enableMergeTablets = false;
+      return;
+    }
+    mergeTabletsPerformanceCheckCount = 0;
+    mergeTabletsCostInNanos = 0;
+    insertTabletsCostInNanos = 0;
+  }
+
+  private boolean canMergeRelationalTablets(
+      final String leftTableName,
+      final Map<String, Integer> leftColumnIndexMap,
+      final List<TSDataType> leftDataTypes,
+      final List<ColumnCategory> leftColumnTypes,
+      final boolean leftHasRows,
+      final long leftMaxTimestamp,
+      final long rightMinTimestamp,
+      final Tablet right) {
+    if (!Objects.equals(leftTableName, right.getTableName())) {
+      return false;
+    }
+    if (leftHasRows && right.getRowSize() > 0 && leftMaxTimestamp > rightMinTimestamp) {
+      return false;
+    }
+    final List<IMeasurementSchema> rightSchemas = right.getSchemas();
+    int duplicatedColumnCount = 0;
+    for (int rightIndex = 0; rightIndex < rightSchemas.size(); rightIndex++) {
+      final IMeasurementSchema rightSchema = rightSchemas.get(rightIndex);
+      final Integer leftIndex = leftColumnIndexMap.get(rightSchema.getMeasurementName());
+      if (leftIndex == null) {
+        continue;
+      }
+      if (leftDataTypes.get(leftIndex) != rightSchema.getType()
+          || leftColumnTypes.get(leftIndex) != right.getColumnTypes().get(rightIndex)) {
+        return false;
+      }
+      duplicatedColumnCount++;
+    }
+    return (double) duplicatedColumnCount / Math.max(leftDataTypes.size(), rightSchemas.size())
+        > 0.5;
+  }
+
+  private long[] getTimestampRange(final Tablet tablet) {
+    long minTimestamp = Long.MAX_VALUE;
+    long maxTimestamp = Long.MIN_VALUE;
+    for (int row = 0; row < tablet.getRowSize(); row++) {
+      minTimestamp = Math.min(minTimestamp, tablet.getTimestamp(row));
+      maxTimestamp = Math.max(maxTimestamp, tablet.getTimestamp(row));
+    }
+    return new long[] {minTimestamp, maxTimestamp};
+  }
+
+  private Map<String, Integer> getColumnIndexMap(final Tablet tablet) {
+    final Map<String, Integer> columnIndexMap = new HashMap<>(tablet.getSchemas().size());
+    for (int i = 0; i < tablet.getSchemas().size(); i++) {
+      columnIndexMap.put(tablet.getSchemas().get(i).getMeasurementName(), i);
+    }
+    return columnIndexMap;
+  }
+
+  private List<String> getMeasurements(final Tablet tablet) {
+    final List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
+    tablet.getSchemas().forEach(schema -> measurements.add(schema.getMeasurementName()));
+    return measurements;
+  }
+
+  private List<TSDataType> getDataTypes(final Tablet tablet) {
+    final List<TSDataType> dataTypes = new ArrayList<>(tablet.getSchemas().size());
+    tablet.getSchemas().forEach(schema -> dataTypes.add(schema.getType()));
+    return dataTypes;
+  }
+
+  private void addMissingColumns(
+      final Tablet tablet,
+      final Map<String, Integer> columnIndexMap,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes,
+      final List<ColumnCategory> columnTypes) {
+    for (int i = 0; i < tablet.getSchemas().size(); i++) {
+      final IMeasurementSchema schema = tablet.getSchemas().get(i);
+      if (columnIndexMap.containsKey(schema.getMeasurementName())) {
+        continue;
+      }
+      columnIndexMap.put(schema.getMeasurementName(), measurements.size());
+      measurements.add(schema.getMeasurementName());
+      dataTypes.add(schema.getType());
+      columnTypes.add(tablet.getColumnTypes().get(i));
+    }
+  }
+
+  private Tablet mergeRelationalTablets(
+      final List<Tablet> tablets,
+      final List<String> measurements,
+      final List<TSDataType> dataTypes,
+      final List<ColumnCategory> columnTypes) {
+    if (tablets.size() == 1) {
+      return tablets.get(0);
+    }
+    int rowCount = 0;
+    for (final Tablet tablet : tablets) {
+      rowCount += tablet.getRowSize();
+    }
+    final Tablet merged =
+        new Tablet(tablets.get(0).getTableName(), measurements, dataTypes, columnTypes, rowCount);
+    final long[] timestamps = new long[rowCount];
+    final Object[] values = new Object[measurements.size()];
+    final BitMap[] bitMaps = new BitMap[measurements.size()];
+    for (int i = 0; i < measurements.size(); i++) {
+      values[i] = createValueColumn(dataTypes.get(i), rowCount);
+    }
+    int targetRowOffset = 0;
+    for (final Tablet tablet : tablets) {
+      copyTabletColumns(tablet, targetRowOffset, measurements, values, bitMaps, timestamps);
+      targetRowOffset += tablet.getRowSize();
+    }
+    merged.setTimestamps(timestamps);
+    merged.setValues(values);
+    merged.setBitMaps(bitMaps);
+    merged.setRowSize(rowCount);
+    return merged;
+  }
+
+  private void copyTabletColumns(
+      final Tablet source,
+      final int targetRowOffset,
+      final List<String> targetMeasurements,
+      final Object[] targetValues,
+      final BitMap[] targetBitMaps,
+      final long[] targetTimestamps) {
+    final int rowSize = source.getRowSize();
+    System.arraycopy(source.getTimestamps(), 0, targetTimestamps, targetRowOffset, rowSize);
+    final Object[] sourceValues = source.getValues();
+    final BitMap[] sourceBitMaps = source.getBitMaps();
+    final Map<String, Integer> sourceColumnIndexMap = getColumnIndexMap(source);
+    for (int column = 0; column < targetMeasurements.size(); column++) {
+      final Integer sourceColumn = sourceColumnIndexMap.get(targetMeasurements.get(column));
+      if (sourceColumn == null) {
+        markNulls(targetBitMaps, column, targetTimestamps.length, targetRowOffset, rowSize);
+        continue;
+      }
+      System.arraycopy(
+          sourceValues[sourceColumn], 0, targetValues[column], targetRowOffset, rowSize);
+      if (sourceBitMaps != null && sourceBitMaps[sourceColumn] != null) {
+        for (int row = 0; row < rowSize; row++) {
+          if (sourceBitMaps[sourceColumn].isMarked(row)) {
+            markNull(targetBitMaps, column, targetTimestamps.length, targetRowOffset + row);
+          }
+        }
+      }
+    }
+  }
+
+  private void markNulls(
+      final BitMap[] targetBitMaps,
+      final int column,
+      final int rowCount,
+      final int targetRowOffset,
+      final int nullCount) {
+    if (targetBitMaps[column] == null) {
+      targetBitMaps[column] = new BitMap(rowCount);
+    }
+    for (int row = 0; row < nullCount; row++) {
+      targetBitMaps[column].mark(targetRowOffset + row);
+    }
+  }
+
+  private void markNull(
+      final BitMap[] targetBitMaps, final int column, final int rowCount, final int targetRow) {
+    if (targetBitMaps[column] == null) {
+      targetBitMaps[column] = new BitMap(rowCount);
+    }
+    targetBitMaps[column].mark(targetRow);
+  }
+
+  private Object createValueColumn(final TSDataType dataType, final int rowCount) {
+    switch (dataType) {
+      case BOOLEAN:
+        return new boolean[rowCount];
+      case INT32:
+        return new int[rowCount];
+      case INT64:
+      case TIMESTAMP:
+        return new long[rowCount];
+      case FLOAT:
+        return new float[rowCount];
+      case DOUBLE:
+        return new double[rowCount];
+      case DATE:
+        return new LocalDate[rowCount];
+      case TEXT:
+      case STRING:
+      case BLOB:
+      case OBJECT:
+        return new Binary[rowCount];
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(
+                SessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
+    }
+  }
+
+  private class RelationalTabletsReq {
+
+    private final TSInsertTabletsReq request = new TSInsertTabletsReq();
+    private final List<IDeviceID> deviceIDs = new ArrayList<>();
+    private final List<String> deviceIDStrings = new ArrayList<>();
+    private final List<Tablet> tablets = new ArrayList<>();
+
+    private void addTablet(final Tablet tablet) {
+      tablets.add(tablet);
+    }
+
+    private void buildRequest() {
+      request.setWriteToTable(true);
+      tablets.forEach(this::addTabletToRequest);
+    }
+
+    private void addTabletToRequest(final Tablet tablet) {
+      updateTSInsertTabletsReq(request, tablet, false, false);
+      request.addToColumnCategoriesList(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
+      for (int row = 0; row < tablet.getRowSize(); row++) {
+        final IDeviceID deviceID = tablet.getDeviceID(row);
+        deviceIDs.add(deviceID);
+        deviceIDStrings.add(deviceID.toString());
+      }
+    }
+  }
+
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
@@ -4471,6 +5054,11 @@ public class Session implements ISession {
 
     public Builder enableRecordsAutoConvertTablet(boolean enableRecordsAutoConvertTablet) {
       this.enableRecordsAutoConvertTablet = enableRecordsAutoConvertTablet;
+      return this;
+    }
+
+    public Builder enableMergeTablets(boolean enableMergeTablets) {
+      this.enableMergeTablets = enableMergeTablets;
       return this;
     }
 

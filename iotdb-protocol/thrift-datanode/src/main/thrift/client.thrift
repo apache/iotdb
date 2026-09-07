@@ -285,6 +285,8 @@ struct TSInsertTabletsReq {
   6: required list<list<i32>> typesList
   7: required list<i32> sizeList
   8: optional bool isAligned
+  9: optional bool writeToTable
+  10: optional list<list<byte>> columnCategoriesList
 }
 
 struct TSInsertRecordsReq {

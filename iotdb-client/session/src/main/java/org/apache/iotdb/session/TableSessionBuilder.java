@@ -168,6 +168,18 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
+   * Enables or disables client-side relational tablets merge before batch insert.
+   *
+   * @param enableMergeTablets whether to enable client-side tablets merge.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue true
+   */
+  public TableSessionBuilder enableMergeTablets(boolean enableMergeTablets) {
+    this.enableMergeTablets = enableMergeTablets;
+    return this;
+  }
+
+  /**
    * Enables or disables automatic fetching of available DataNodes.
    *
    * @param enableAutoFetch whether to enable automatic fetching.

@@ -54,9 +54,12 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -78,6 +81,12 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSessionRelationalIT {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionRelationalIT.class);
+  private static final int TABLET_PERFORMANCE_ROWS_PER_TABLET = 20;
+  private static final int TABLET_PERFORMANCE_REPEAT_COUNT = 20;
+  private static final int TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT = 16;
+  private static final int[] TABLET_PERFORMANCE_TABLET_COUNTS = {1, 2, 4, 8, 16};
 
   @BeforeClass
   public static void classSetUp() throws Exception {
@@ -671,6 +680,386 @@ public class IoTDBSessionRelationalIT {
         cnt++;
       }
       assertEquals(30, cnt);
+    }
+  }
+
+  @Test
+  public void insertTabletsAutoCreateTableTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      final List<Tablet> tablets = createTabletPerformanceTablets("auto_create_tablets", 2, 0);
+
+      session.insert(tablets);
+
+      assertEquals(
+          (long) TABLET_PERFORMANCE_ROWS_PER_TABLET * 2,
+          queryTabletPerformanceRowCount(session, "select count(s1) from auto_create_tablets"));
+    }
+  }
+
+  @Test
+  public void insertTabletsPreservesDeviceAttributeOrderTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final String tableName = "multi_tablet_attribute_order";
+    final TableSessionBuilder sessionBuilder =
+        new TableSessionBuilder()
+            .nodeUrls(
+                Collections.singletonList(
+                    EnvFactory.getEnv().getDataNodeWrapperList().get(0).getIpAndPortString()))
+            .database("db1")
+            .enableRedirection(false)
+            .enableMergeTablets(true);
+    try (ITableSession session = sessionBuilder.build()) {
+      session.executeNonQueryStatement(
+          "CREATE TABLE "
+              + tableName
+              + " (tag1 STRING TAG, color STRING ATTRIBUTE, sticky STRING ATTRIBUTE, "
+              + "s1 INT64 FIELD, s2 INT64 FIELD, s3 INT64 FIELD, "
+              + "s4 INT64 FIELD, s5 INT64 FIELD, s6 INT64 FIELD)");
+      session.executeNonQueryStatement(
+          "INSERT INTO "
+              + tableName
+              + " (time, tag1, color, sticky, s1) VALUES (0, 'd1', 'black', 'keep', 0)");
+
+      session.insert(
+          Arrays.asList(
+              createDeviceAttributeTablet(tableName, Arrays.asList("s1", "s2", "s3"), 1, "red"),
+              createDeviceAttributeTablet(tableName, Arrays.asList("s4", "s5", "s6"), 2, "blue"),
+              createDeviceAttributeTablet(tableName, Arrays.asList("s1", "s2", "s3"), 3, "red")));
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT color, sticky FROM " + tableName + " LIMIT 1")) {
+        assertTrue(dataSet.hasNext());
+        final RowRecord rowRecord = dataSet.next();
+        assertEquals("red", rowRecord.getFields().get(0).getBinaryV().toString());
+        assertEquals("keep", rowRecord.getFields().get(1).getBinaryV().toString());
+      }
+    }
+  }
+
+  @Test
+  public void insertTabletsCoalescesNoTagDeviceAttributesTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final String tableName = "multi_tablet_no_tag_attributes";
+    final TableSessionBuilder sessionBuilder =
+        new TableSessionBuilder()
+            .nodeUrls(
+                Collections.singletonList(
+                    EnvFactory.getEnv().getDataNodeWrapperList().get(0).getIpAndPortString()))
+            .database("db1")
+            .enableRedirection(false)
+            .enableMergeTablets(false);
+    try (ITableSession session = sessionBuilder.build()) {
+      session.executeNonQueryStatement(
+          "CREATE TABLE "
+              + tableName
+              + " (color STRING ATTRIBUTE, sticky STRING ATTRIBUTE, s1 INT64 FIELD)");
+
+      session.insert(
+          Arrays.asList(
+              createNoTagAttributeTablet(
+                  tableName,
+                  Collections.singletonList("color"),
+                  Collections.singletonList("red"),
+                  1),
+              createNoTagAttributeTablet(
+                  tableName,
+                  Collections.singletonList("sticky"),
+                  Collections.singletonList("large"),
+                  2),
+              createNoTagAttributeTablet(
+                  tableName, Arrays.asList("sticky", "color"), Arrays.asList(null, null), 3)));
+      assertDeviceAttributes(session, tableName, "red", "large");
+
+      session.insert(
+          Arrays.asList(
+              createNoTagAttributeTablet(
+                  tableName, Arrays.asList("sticky", "color"), Arrays.asList("medium", "blue"), 4),
+              createNoTagAttributeTablet(
+                  tableName,
+                  Collections.singletonList("sticky"),
+                  Collections.singletonList(null),
+                  5),
+              createNoTagAttributeTablet(
+                  tableName,
+                  Collections.singletonList("sticky"),
+                  Collections.singletonList("small"),
+                  6)));
+      assertDeviceAttributes(session, tableName, "blue", "small");
+    }
+  }
+
+  @Test
+  public void insertTabletsPreservesDeviceAttributeOrderWithRedirectionTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final String tableName = "multi_tablet_redirect_attribute_order";
+    final TableSessionBuilder sessionBuilder =
+        new TableSessionBuilder()
+            .nodeUrls(
+                Collections.singletonList(
+                    EnvFactory.getEnv().getDataNodeWrapperList().get(0).getIpAndPortString()))
+            .database("db1")
+            .enableRedirection(true)
+            .enableMergeTablets(false);
+    try (ITableSession session = sessionBuilder.build()) {
+      session.executeNonQueryStatement(
+          "CREATE TABLE "
+              + tableName
+              + " (tag1 STRING TAG, color STRING ATTRIBUTE, s1 INT64 FIELD)");
+
+      session.insert(
+          Arrays.asList(
+              createDeviceAttributeTablet(
+                  tableName,
+                  new long[] {1, 101},
+                  new String[] {"d1", "d2"},
+                  new String[] {"red", "green"}),
+              createDeviceAttributeTablet(
+                  tableName, new long[] {2}, new String[] {"d1"}, new String[] {"blue"}),
+              createDeviceAttributeTablet(
+                  tableName,
+                  new long[] {3, 103},
+                  new String[] {"d1", "d2"},
+                  new String[] {null, "black"})));
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "SELECT color FROM " + tableName + " WHERE tag1 = 'd1' LIMIT 1")) {
+        assertTrue(dataSet.hasNext());
+        assertEquals("blue", dataSet.next().getFields().get(0).getBinaryV().toString());
+      }
+    }
+  }
+
+  @Test
+  @Ignore("Performance comparison test for manual execution.")
+  public void compareInsertTabletAndInsertTabletsPerformanceWithIncreasingTabletCount()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      createTabletPerformanceTable(session, "single_tablet_perf");
+      createTabletPerformanceTable(session, "multi_tablets_perf");
+
+      long expectedRows = warmUpTabletPerformanceTest(session);
+      for (int tabletCount : TABLET_PERFORMANCE_TABLET_COUNTS) {
+        long singleTabletCost = 0;
+        long multiTabletsCost = 0;
+        final long stageBaseTime = expectedRows;
+        for (int repeatIndex = 0; repeatIndex < TABLET_PERFORMANCE_REPEAT_COUNT; repeatIndex++) {
+          final long baseTime =
+              stageBaseTime + (long) tabletCount * TABLET_PERFORMANCE_ROWS_PER_TABLET * repeatIndex;
+          final List<Tablet> singleTablets =
+              createTabletPerformanceTablets("single_tablet_perf", tabletCount, baseTime);
+          final List<Tablet> multiTablets =
+              createTabletPerformanceTablets("multi_tablets_perf", tabletCount, baseTime);
+
+          if (repeatIndex % 2 == 0) {
+            singleTabletCost += insertTabletPerformanceTest(session, singleTablets);
+            multiTabletsCost += insertTabletsPerformanceTest(session, multiTablets);
+          } else {
+            multiTabletsCost += insertTabletsPerformanceTest(session, multiTablets);
+            singleTabletCost += insertTabletPerformanceTest(session, singleTablets);
+          }
+        }
+
+        expectedRows +=
+            (long) tabletCount
+                * TABLET_PERFORMANCE_REPEAT_COUNT
+                * TABLET_PERFORMANCE_ROWS_PER_TABLET;
+        assertEquals(
+            expectedRows,
+            queryTabletPerformanceRowCount(session, "select count(s1) from single_tablet_perf"));
+        assertEquals(
+            expectedRows,
+            queryTabletPerformanceRowCount(session, "select count(s1) from multi_tablets_perf"));
+        Assert.assertTrue(singleTabletCost > 0);
+        Assert.assertTrue(multiTabletsCost > 0);
+        LOGGER.info(
+            "Relational tablet insert performance with tabletCount={}, rowsPerTablet={}, "
+                + "repeatCount={}, insertTablet={} ms, insertTablets={} ms, insertTablets/"
+                + "insertTablet ratio={}",
+            tabletCount,
+            TABLET_PERFORMANCE_ROWS_PER_TABLET,
+            TABLET_PERFORMANCE_REPEAT_COUNT,
+            singleTabletCost / 1_000_000,
+            multiTabletsCost / 1_000_000,
+            String.format("%.3f", (double) multiTabletsCost / singleTabletCost));
+      }
+    }
+  }
+
+  private void createTabletPerformanceTable(final ITableSession session, final String tableName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement(
+        "CREATE TABLE "
+            + tableName
+            + " (tag1 string tag, attr1 string attribute, s1 int64 field, s2 double field)");
+  }
+
+  private long warmUpTabletPerformanceTest(final ITableSession session)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final List<Tablet> singleTablets =
+        createTabletPerformanceTablets(
+            "single_tablet_perf", TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT, 0);
+    final List<Tablet> multiTablets =
+        createTabletPerformanceTablets(
+            "multi_tablets_perf", TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT, 0);
+    for (Tablet tablet : singleTablets) {
+      session.insert(tablet);
+    }
+    session.insert(multiTablets);
+
+    final long expectedRows =
+        (long) TABLET_PERFORMANCE_WARM_UP_TABLET_COUNT * TABLET_PERFORMANCE_ROWS_PER_TABLET;
+    assertEquals(
+        expectedRows,
+        queryTabletPerformanceRowCount(session, "select count(s1) from single_tablet_perf"));
+    assertEquals(
+        expectedRows,
+        queryTabletPerformanceRowCount(session, "select count(s1) from multi_tablets_perf"));
+    return expectedRows;
+  }
+
+  private long insertTabletPerformanceTest(final ITableSession session, final List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final long startTime = System.nanoTime();
+    for (Tablet tablet : tablets) {
+      session.insert(tablet);
+    }
+    return System.nanoTime() - startTime;
+  }
+
+  private long insertTabletsPerformanceTest(final ITableSession session, final List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final long startTime = System.nanoTime();
+    session.insert(tablets);
+    return System.nanoTime() - startTime;
+  }
+
+  private Tablet createDeviceAttributeTablet(
+      final String tableName,
+      final List<String> fieldNames,
+      final long timestamp,
+      final String color) {
+    final List<String> measurements = new ArrayList<>(Arrays.asList("tag1", "color", "sticky"));
+    measurements.addAll(fieldNames);
+    final List<TSDataType> dataTypes =
+        new ArrayList<>(Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.STRING));
+    final List<ColumnCategory> columnTypes =
+        new ArrayList<>(
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.ATTRIBUTE));
+    for (int i = 0; i < fieldNames.size(); i++) {
+      dataTypes.add(TSDataType.INT64);
+      columnTypes.add(ColumnCategory.FIELD);
+    }
+
+    final Tablet tablet = new Tablet(tableName, measurements, dataTypes, columnTypes, 1);
+    tablet.addTimestamp(0, timestamp);
+    tablet.addValue("tag1", 0, "d1");
+    tablet.addValue("color", 0, color);
+    tablet.addValue("sticky", 0, null);
+    for (int i = 0; i < fieldNames.size(); i++) {
+      tablet.addValue(fieldNames.get(i), 0, timestamp * 10 + i);
+    }
+    return tablet;
+  }
+
+  private Tablet createNoTagAttributeTablet(
+      final String tableName,
+      final List<String> attributeNames,
+      final List<String> attributeValues,
+      final long timestamp) {
+    final List<String> measurements = new ArrayList<>(attributeNames);
+    measurements.add("s1");
+    final List<TSDataType> dataTypes =
+        new ArrayList<>(Collections.nCopies(attributeNames.size(), TSDataType.STRING));
+    dataTypes.add(TSDataType.INT64);
+    final List<ColumnCategory> columnTypes =
+        new ArrayList<>(Collections.nCopies(attributeNames.size(), ColumnCategory.ATTRIBUTE));
+    columnTypes.add(ColumnCategory.FIELD);
+
+    final Tablet tablet = new Tablet(tableName, measurements, dataTypes, columnTypes, 1);
+    tablet.addTimestamp(0, timestamp);
+    for (int i = 0; i < attributeNames.size(); i++) {
+      tablet.addValue(attributeNames.get(i), 0, attributeValues.get(i));
+    }
+    tablet.addValue("s1", 0, timestamp);
+    return tablet;
+  }
+
+  private Tablet createDeviceAttributeTablet(
+      final String tableName,
+      final long[] timestamps,
+      final String[] deviceIds,
+      final String[] colors) {
+    final List<String> measurements = Arrays.asList("tag1", "color", "s1");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.INT64);
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+    final Tablet tablet =
+        new Tablet(tableName, measurements, dataTypes, columnTypes, timestamps.length);
+    for (int row = 0; row < timestamps.length; row++) {
+      tablet.addTimestamp(row, timestamps[row]);
+      tablet.addValue("tag1", row, deviceIds[row]);
+      tablet.addValue("color", row, colors[row]);
+      tablet.addValue("s1", row, timestamps[row]);
+    }
+    return tablet;
+  }
+
+  private void assertDeviceAttributes(
+      final ITableSession session,
+      final String tableName,
+      final String expectedColor,
+      final String expectedSticky)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (SessionDataSet dataSet =
+        session.executeQueryStatement("SELECT color, sticky FROM " + tableName + " LIMIT 1")) {
+      assertTrue(dataSet.hasNext());
+      final RowRecord rowRecord = dataSet.next();
+      assertEquals(expectedColor, rowRecord.getFields().get(0).getBinaryV().toString());
+      assertEquals(expectedSticky, rowRecord.getFields().get(1).getBinaryV().toString());
+    }
+  }
+
+  private List<Tablet> createTabletPerformanceTablets(
+      final String tableName, final int tabletCount, final long baseTime) {
+    final List<Tablet> tablets = new ArrayList<>(tabletCount);
+    for (int tabletIndex = 0; tabletIndex < tabletCount; tabletIndex++) {
+      final Tablet tablet =
+          new Tablet(
+              tableName,
+              Arrays.asList("tag1", "attr1", "s1", "s2"),
+              Arrays.asList(
+                  TSDataType.STRING, TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE),
+              Arrays.asList(
+                  ColumnCategory.TAG,
+                  ColumnCategory.ATTRIBUTE,
+                  ColumnCategory.FIELD,
+                  ColumnCategory.FIELD),
+              TABLET_PERFORMANCE_ROWS_PER_TABLET);
+      for (int row = 0; row < TABLET_PERFORMANCE_ROWS_PER_TABLET; row++) {
+        final int rowIndex = tablet.getRowSize();
+        final long timestamp =
+            baseTime + (long) tabletIndex * TABLET_PERFORMANCE_ROWS_PER_TABLET + row;
+        tablet.addTimestamp(rowIndex, timestamp);
+        tablet.addValue("tag1", rowIndex, "tag:" + tabletIndex);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("s1", rowIndex, timestamp);
+        tablet.addValue("s2", rowIndex, timestamp * 1.0);
+      }
+      tablets.add(tablet);
+    }
+    return tablets;
+  }
+
+  private long queryTabletPerformanceRowCount(final ITableSession session, final String query)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (SessionDataSet dataSet = session.executeQueryStatement(query)) {
+      assertTrue(dataSet.hasNext());
+      return dataSet.next().getFields().get(0).getLongV();
     }
   }
 
