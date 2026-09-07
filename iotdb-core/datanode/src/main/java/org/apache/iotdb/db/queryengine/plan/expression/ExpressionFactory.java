@@ -216,6 +216,11 @@ public class ExpressionFactory {
   }
 
   public static GroupByTimeExpression groupByTime(GroupByTimeParameter parameter) {
+    if (!parameter.isLeftCRightO() && parameter.getEndTime() == Long.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          "Right-closed GROUP BY TIME with Long.MAX_VALUE end time cannot be represented "
+              + "as a single right-open time filter.");
+    }
     long startTime =
         parameter.isLeftCRightO()
             ? parameter.getStartTime()
