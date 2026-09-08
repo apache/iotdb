@@ -192,6 +192,13 @@ target_include_directories(iotdb_session
             ${THRIFT_INCLUDE_DIR}
             $<$<BOOL:${BOOST_INCLUDE_DIR}>:${BOOST_INCLUDE_DIR}>)
 
+if(WITH_SSL AND IOTDB_NTLS_PROVIDER STREQUAL "TONGSUO")
+    # Homebrew installs Boost and OpenSSL into the same broad include prefix.
+    # Put Tongsuo first so Boost's -I prefix cannot shadow its NTLS headers.
+    set_target_properties(iotdb_session PROPERTIES NO_SYSTEM_FROM_IMPORTED ON)
+    target_include_directories(iotdb_session BEFORE PRIVATE "${OPENSSL_INCLUDE_DIR}")
+endif()
+
 if(APPLE)
     target_link_libraries(iotdb_session PRIVATE "-Wl,-force_load,${THRIFT_STATIC_LIB_PATH}")
 elseif(UNIX AND NOT MSVC)
