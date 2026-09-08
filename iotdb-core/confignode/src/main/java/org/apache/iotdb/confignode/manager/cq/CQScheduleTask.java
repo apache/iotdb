@@ -310,6 +310,17 @@ public class CQScheduleTask implements Runnable {
                   Math.multiplyExact(everyDuration.nonMonthDuration, currentOccurrenceIndex),
                   endDuration.nonMonthDuration),
               scheduleZone);
+      // A RANGE with an omitted end offset defaults to the current occurrence. Guard against
+      // malformed/legacy requests that deserialize both offsets identically; GroupByMonthFilter
+      // cannot initialize an empty range and would otherwise throw an array bounds exception.
+      if (endTime <= startTime) {
+        endTime =
+            CQCalendarUtils.applyVector(
+                startTime,
+                everyDuration.monthDuration,
+                everyDuration.nonMonthDuration,
+                scheduleZone);
+      }
     }
 
     Optional<TDataNodeLocation> targetDataNode =
