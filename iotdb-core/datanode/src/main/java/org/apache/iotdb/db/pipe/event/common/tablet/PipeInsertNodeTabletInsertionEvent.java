@@ -80,6 +80,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private InsertNode insertNode;
 
   private ProgressIndex progressIndex;
+  private long bytes = Long.MIN_VALUE;
 
   private long extractTime = 0;
 
@@ -433,15 +434,18 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   // Notes:
-  // 1. We only consider insertion event's memory for degrade and restart, because degrade/restart
-  // may not be of use for releasing other events' memory.
-  // 2. We do not consider eventParsers because they may not exist and if it is invoked, the event
+  // 1. We only consider insertion event's memory for degrading, because degrading may not be of use
+  // for releasing other events' memory.
+  // 2. We do not consider dataContainers because they may not exist and if it is invoked, the event
   // will soon be released.
   @Override
   public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
-        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
+    return bytes > 0
+        ? bytes
+        : (bytes =
+            INSTANCE_SIZE
+                + (Objects.nonNull(insertNode) ? InsertNodeMemoryEstimator.sizeOf(insertNode) : 0)
+                + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0));
   }
 
   /////////////////////////// ReferenceTrackableEvent ///////////////////////////
