@@ -144,6 +144,25 @@ public final class DataNodePipeMessages {
       "Failed to get pipe metas, will be synced by configNode later...";
   public static final String FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM =
       "Failed to get pipe plugin jar from config node.";
+  public static final String
+      LOG_FAILED_TO_FETCH_PIPE_PLUGIN_JARS_FROM_CONFIGNODE_PLUGINS_ARG_JARS_ARG_STATUS_ARG_RETRYING_EACH_PLUGIN_INDIVIDUALLY_574C0077 =
+          "Failed to fetch pipe plugin jars from ConfigNode. Plugins: {}, jars: {}, status: {}. "
+              + "Retrying each plugin individually.";
+  public static final String
+      LOG_CONFIGNODE_RETURNED_ARG_PIPE_PLUGIN_JARS_FOR_ARG_REQUESTED_PLUGINS_PLUGINS_ARG_JARS_ARG_RETRYING_EACH_PLUGIN_INDIVIDUALLY_27E32FDE =
+          "ConfigNode returned {} pipe plugin jars for {} requested plugins. Plugins: {}, jars: {}. "
+              + "Retrying each plugin individually.";
+  public static final String
+      EXCEPTION_FAILED_TO_FETCH_PIPE_PLUGIN_JAR_FROM_CONFIGNODE_FOR_PLUGIN_ARG_JAR_ARG_STATUS_ARG_B7C7FDE5 =
+          "Failed to fetch pipe plugin jar from ConfigNode for plugin %s (jar %s). Status: %s.";
+  public static final String
+      EXCEPTION_CONFIGNODE_RETURNED_ARG_JARS_FOR_PIPE_PLUGIN_ARG_WHILE_ONE_WAS_REQUESTED_A724E582 =
+          "ConfigNode returned %d jars for pipe plugin %s while one was requested.";
+  public static final String
+      LOG_FAILED_TO_FETCH_PIPE_PLUGIN_JAR_ARG_FOR_PIPE_PLUGIN_ARG_FROM_CONFIGNODE_4929C5D9 =
+          "Failed to fetch pipe plugin jar {} for pipe plugin {} from ConfigNode.";
+  public static final String LOG_FAILED_TO_SAVE_JAR_ARG_FOR_PIPE_PLUGIN_ARG_A64D1530 =
+      "Failed to save jar {} for pipe plugin {}.";
   public static final String FAILED_TO_GET_PIPE_TASK_META_FROM =
       "Failed to get pipe task meta from config node. Ignore the exception, because config "
           + "node may not be ready yet, and meta will be pushed by config node later.";
