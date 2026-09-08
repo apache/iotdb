@@ -610,7 +610,7 @@ public class WALBuffer extends AbstractWALBuffer {
                 .STORAGE_LOG_FAIL_TO_SYNC_WAL_NODE_S_BUFFER_CHANGE_SYSTEM_MODE_TO_ERROR_8C379D57,
             identifier,
             e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
       } finally {
         switchSyncingBufferToIdle();
       }
@@ -643,7 +643,7 @@ public class WALBuffer extends AbstractWALBuffer {
             info.rollWALFileWriterListener.fail(e);
           }
           DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
         // after rolling file
@@ -660,7 +660,7 @@ public class WALBuffer extends AbstractWALBuffer {
           for (WALFlushListener fsyncListener : info.fsyncListeners) {
             fsyncListener.fail(e);
           }
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
         }
       }
 

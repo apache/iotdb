@@ -34,7 +34,17 @@ public enum NodeStatus {
 
   /** Only query statements are permitted */
   ReadOnly("ReadOnly");
+
+  /**
+   * Reasons for entering ReadOnly. These strings cross node RPCs and are compared literally (e.g.
+   * the DiskFull auto-recovery in sampleDiskLoad), so they must stay locale-independent plain
+   * constants instead of i18n messages.
+   */
   public static final String DISK_FULL = "DiskFull";
+
+  public static final String MANUAL = "Manual";
+  public static final String STOPPING = "Stopping";
+  public static final String UNRECOVERABLE_ERROR = "UnrecoverableError";
 
   private final String status;
 

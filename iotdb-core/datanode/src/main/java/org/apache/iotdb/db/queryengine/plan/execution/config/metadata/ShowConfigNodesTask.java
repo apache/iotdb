@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -36,6 +35,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.BytesUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -53,25 +53,47 @@ public class ShowConfigNodesTask implements IConfigTask {
 
   public static void buildTSBlock(
       TShowConfigNodesResp showConfigNodesResp, SettableFuture<ConfigTaskResult> future) {
+    boolean hasStatusReason =
+        showConfigNodesResp.getConfigNodesInfoList() != null
+            && showConfigNodesResp.getConfigNodesInfoList().stream()
+                .anyMatch(
+                    configNodeInfo ->
+                        configNodeInfo.getStatusReason() != null
+                            && !configNodeInfo.getStatusReason().isEmpty());
+    List<ColumnHeader> columnHeaders =
+        new ArrayList<>(ColumnHeaderConstant.showConfigNodesColumnHeaders);
+    if (hasStatusReason) {
+      // insert after the Status column
+      columnHeaders.add(2, new ColumnHeader(ColumnHeaderConstant.STATUS_REASON, TSDataType.TEXT));
+    }
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showConfigNodesColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
+        columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     if (showConfigNodesResp.getConfigNodesInfoList() != null) {
       for (TConfigNodeInfo configNodeInfo : showConfigNodesResp.getConfigNodesInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeInt(configNodeInfo.getConfigNodeId());
         builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(configNodeInfo.getStatus()));
+        if (hasStatusReason) {
+          String statusReason = configNodeInfo.getStatusReason();
+          if (statusReason == null) {
+            builder.getColumnBuilder(2).appendNull();
+          } else {
+            builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(statusReason));
+          }
+        }
+        int offset = hasStatusReason ? 1 : 0;
         builder
-            .getColumnBuilder(2)
+            .getColumnBuilder(2 + offset)
             .writeBinary(BytesUtils.valueOf(configNodeInfo.getInternalAddress()));
-        builder.getColumnBuilder(3).writeInt(configNodeInfo.getInternalPort());
-        builder.getColumnBuilder(4).writeBinary(BytesUtils.valueOf(configNodeInfo.getRoleType()));
+        builder.getColumnBuilder(3 + offset).writeInt(configNodeInfo.getInternalPort());
+        builder
+            .getColumnBuilder(4 + offset)
+            .writeBinary(BytesUtils.valueOf(configNodeInfo.getRoleType()));
         builder.declarePosition();
       }
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowConfigNodesHeader();
+    DatasetHeader datasetHeader = new DatasetHeader(columnHeaders, true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

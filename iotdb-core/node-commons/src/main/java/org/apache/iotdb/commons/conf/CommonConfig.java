@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.i18n.ConfigMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -174,12 +175,19 @@ public class CommonConfig {
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
+  /** Reason for the current status, meaningful for ReadOnly and updated independently of it. */
+  private volatile String statusReason = null;
+
+  /**
+   * Maximum length of the error message embedded in the UnrecoverableError status reason, keeping
+   * the reason bounded in heartbeats and SHOW results.
+   */
+  private static final int MAX_STATUS_REASON_LENGTH = 256;
+
   private NodeStatus lastStatus = NodeStatus.Unknown;
   private String lastStatusReason = "";
 
   private volatile boolean isStopping = false;
-
-  private volatile String statusReason = null;
 
   private final int TTimePartitionSlotTransmitLimit = 1000;
 
@@ -791,8 +799,30 @@ public class CommonConfig {
     this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
-  public void handleUnrecoverableError() {
-    handleSystemErrorStrategy.handle();
+  /**
+   * Handles an unrecoverable error with the given exception. The ReadOnly status reason is
+   * assembled here so that all call sites share one format: "UnrecoverableError, <timestamp>,
+   * <error message>". The error message is truncated to {@link #MAX_STATUS_REASON_LENGTH}
+   * characters so that the reason published in heartbeats and SHOW results stays bounded.
+   */
+  public void handleUnrecoverableError(Throwable e) {
+    String errorMessage =
+        e.getMessage() == null || e.getMessage().isEmpty()
+            ? e.getClass().getSimpleName()
+            : e.getMessage();
+    if (errorMessage.length() > MAX_STATUS_REASON_LENGTH) {
+      errorMessage = errorMessage.substring(0, MAX_STATUS_REASON_LENGTH) + "...";
+    }
+    handleUnrecoverableError(
+        NodeStatus.UNRECOVERABLE_ERROR
+            + ", "
+            + DateTimeUtils.convertLongToDate(System.currentTimeMillis(), "ms")
+            + ", "
+            + errorMessage);
+  }
+
+  public void handleUnrecoverableError(String errorReason) {
+    handleSystemErrorStrategy.handle(errorReason);
   }
 
   public double getDiskSpaceWarningThreshold() {
@@ -835,15 +865,53 @@ public class CommonConfig {
     return status;
   }
 
+  public String getStatusReason() {
+    return statusReason;
+  }
+
+  /**
+   * Sets the status reason independently of the status. The status and its reason are two separate
+   * values that can be updated separately, e.g. the disk-full ReadOnly and its recovery in the
+   * heartbeat sampler.
+   */
+  public synchronized void setStatusReason(String statusReason) {
+    this.statusReason = statusReason;
+  }
+
+  /**
+   * Sets the node status, clearing the status reason when the status changes. A write of the same
+   * status keeps the current reason unchanged, so an existing reason (e.g. ReadOnly + DiskFull) is
+   * preserved.
+   */
   public synchronized void setNodeStatus(NodeStatus newStatus) {
-    if (status == newStatus) {
+    setNodeStatusWithReason(newStatus, null);
+  }
+
+  /**
+   * Sets the node status and reason together. For ReadOnly the write is priority-guarded by {@link
+   * #setReadOnlyWithReason}. The status reason is only meaningful for ReadOnly: avoid passing a
+   * non-null reason together with another status (it would be displayed as e.g. Running(reason) in
+   * SHOW CLUSTER, and no production code does this) — the value is still written through for
+   * generality.
+   */
+  public synchronized void setNodeStatusWithReason(NodeStatus newStatus, String newReason) {
+    if (newStatus == NodeStatus.ReadOnly) {
+      setReadOnlyWithReason(newReason);
       return;
     }
-
-    logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
+    if (status == newStatus && Objects.equals(statusReason, newReason)) {
+      return;
+    }
+    logNodeStatusChange(status, newStatus);
     this.status = newStatus;
-    this.statusReason = null;
+    this.statusReason = newReason;
+  }
 
+  private void logNodeStatusChange(NodeStatus oldStatus, NodeStatus newStatus) {
+    if (oldStatus == newStatus) {
+      return;
+    }
+    logger.info(ConfigMessages.SET_SYSTEM_MODE, oldStatus, newStatus);
     switch (newStatus) {
       case ReadOnly:
         logger.warn(ConfigMessages.STATUS_CHANGE_TO_READ_ONLY);
@@ -856,12 +924,47 @@ public class CommonConfig {
     }
   }
 
-  public String getStatusReason() {
-    return statusReason;
+  /**
+   * Sets the node status to ReadOnly with the given reason, respecting reason priority: Stopping >
+   * Manual > UnrecoverableError > DiskFull. If a ReadOnly reason with equal or higher priority is
+   * already set, this call is a no-op (in particular, an UnrecoverableError keeps the first reason
+   * that was set). Non-ReadOnly statuses are always overridden. A null reason is treated as the
+   * legacy/unclassified ReadOnly with the lowest priority: it can only enter from a non-ReadOnly
+   * status and can never override a classified reason.
+   *
+   * <p>Must be called with the monitor held (only {@link #setNodeStatusWithReason} calls it).
+   */
+  private void setReadOnlyWithReason(String reason) {
+    int newPriority = getReadOnlyReasonPriority(reason);
+    if (status == NodeStatus.ReadOnly && getReadOnlyReasonPriority(statusReason) >= newPriority) {
+      return;
+    }
+    logNodeStatusChange(status, NodeStatus.ReadOnly);
+    this.status = NodeStatus.ReadOnly;
+    this.statusReason = reason;
   }
 
-  public void setStatusReason(String statusReason) {
-    this.statusReason = statusReason;
+  /**
+   * Priority of ReadOnly reasons. Higher wins. Unknown reasons and null are treated as the lowest
+   * priority so that classified reasons can always override legacy/unknown ones.
+   */
+  private static int getReadOnlyReasonPriority(String reason) {
+    if (reason == null) {
+      return 0;
+    }
+    if (reason.startsWith(NodeStatus.UNRECOVERABLE_ERROR)) {
+      return 2;
+    }
+    switch (reason) {
+      case NodeStatus.STOPPING:
+        return 4;
+      case NodeStatus.MANUAL:
+        return 3;
+      case NodeStatus.DISK_FULL:
+        return 1;
+      default:
+        return 0;
+    }
   }
 
   public int getTTimePartitionSlotTransmitLimit() {

@@ -53,11 +53,11 @@ public class DataNodeInternalRPCServiceImplDiskTest {
     originalDataNodeId = dataNodeConfig.getDataNodeId();
 
     dataNodeConfig.setDataNodeId(0);
+    // Go through Running first so that a ReadOnly with a higher-priority reason left behind by
+    // another test can always be overridden.
     commonConfig.setNodeStatus(NodeStatus.Running);
-    commonConfig.setStatusReason(null);
     commonConfig.setDiskSpaceWarningThreshold(0.05);
-    commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-    commonConfig.setStatusReason(NodeStatus.DISK_FULL);
+    commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
   }
 
   @After
@@ -95,7 +95,6 @@ public class DataNodeInternalRPCServiceImplDiskTest {
     when(systemMetrics.getSystemDiskTotalSpace()).thenReturn(100L);
 
     commonConfig.setNodeStatus(NodeStatus.Running);
-    commonConfig.setStatusReason(null);
     DataNodeContext dataNodeContext = mock(DataNodeContext.class);
     DataNodeInternalRPCServiceImpl service =
         new DataNodeInternalRPCServiceImpl(dataNodeContext, systemMetrics);
@@ -104,5 +103,32 @@ public class DataNodeInternalRPCServiceImplDiskTest {
 
     Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
     Assert.assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
+  }
+
+  @Test
+  public void testRecoveryRequiresExactReadOnlyWithDiskFullReason() {
+    SystemMetrics systemMetrics = mock(SystemMetrics.class);
+    // The aggregate free ratio is 52%, so a ReadOnly + DiskFull state would recover.
+    when(systemMetrics.getSystemDiskAvailableSpace()).thenReturn(104L);
+    when(systemMetrics.getSystemDiskTotalSpace()).thenReturn(200L);
+
+    DataNodeContext dataNodeContext = mock(DataNodeContext.class);
+    DataNodeInternalRPCServiceImpl service =
+        new DataNodeInternalRPCServiceImpl(dataNodeContext, systemMetrics);
+
+    // A manually set ReadOnly must not be auto-recovered by a disk ratio that recovered.
+    commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+    service.sampleDiskLoad(new TLoadSample());
+    Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+    Assert.assertEquals(NodeStatus.MANUAL, commonConfig.getStatusReason());
+
+    // Neither can a ReadOnly entered through an unrecoverable error.
+    // (Manual outranks UnrecoverableError, so go through Running to enter it.)
+    commonConfig.setNodeStatus(NodeStatus.Running);
+    commonConfig.setNodeStatusWithReason(
+        NodeStatus.ReadOnly, NodeStatus.UNRECOVERABLE_ERROR + ", 2026-09-02 10:00:00.000, broken");
+    service.sampleDiskLoad(new TLoadSample());
+    Assert.assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+    Assert.assertTrue(commonConfig.getStatusReason().startsWith(NodeStatus.UNRECOVERABLE_ERROR));
   }
 }
