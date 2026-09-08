@@ -37,7 +37,7 @@ public class IoTConsensusMemoryManager {
   private final AtomicLong syncMemorySizeInByte = new AtomicLong(0);
   private IMemoryBlock memoryBlock =
       new AtomicLongMemoryBlock("Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
-  private Double maxMemoryRatioForQueue = 0.6;
+  private volatile double maxMemoryRatioForQueue = 0.6;
 
   private IoTConsensusMemoryManager() {
     MetricService.getInstance().addMetricSet(new IoTConsensusMemoryManagerMetrics(this));
@@ -155,6 +155,10 @@ public class IoTConsensusMemoryManager {
 
   public void init(IMemoryBlock memoryBlock, double maxMemoryRatioForQueue) {
     this.memoryBlock = memoryBlock;
+    this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
+  }
+
+  public void updateMaxMemoryRatioForQueue(double maxMemoryRatioForQueue) {
     this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
   }
 

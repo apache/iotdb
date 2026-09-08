@@ -18,7 +18,7 @@
 # =============================================================================
 # FetchOpenSSL.cmake  (only included when WITH_SSL=ON)
 #
-# Apache Thrift 0.23 (bundled by this client) builds against OpenSSL 1.x and 3.x,
+# Apache Thrift 0.24 (bundled by this client) builds against OpenSSL 1.x and 3.x,
 # so any system OpenSSL is used as-is, whatever its version.
 #
 # Resolution order:

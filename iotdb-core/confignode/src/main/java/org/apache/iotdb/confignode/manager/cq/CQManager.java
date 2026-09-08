@@ -382,6 +382,32 @@ public class CQManager {
     }
   }
 
+  /** Reconciles a callback after an ambiguous or stale progress write. */
+  public void reconcileCQ(String cqId, String cqToken) {
+    if (!configManager.getConsensusManager().isLeader()) {
+      return;
+    }
+    try {
+      ShowCQResp response =
+          (ShowCQResp) configManager.getConsensusManager().read(new ShowCQPlan(cqId));
+      response.getCqList().stream()
+          .filter(entry -> cqToken.equals(entry.getCqToken()) && entry.getState() == CQState.ACTIVE)
+          .findFirst()
+          .ifPresent(
+              entry -> {
+                // The failed callback is still registered under this token. Remove that finished
+                // task before installing the task rebuilt from durable progress.
+                unmarkCQLocallyScheduled(cqId, cqToken);
+                CQScheduleTask task = new CQScheduleTask(entry, executor, configManager);
+                if (markCQLocallyScheduled(cqId, cqToken, task)) {
+                  task.submitSelf();
+                }
+              });
+    } catch (ConsensusException | RuntimeException e) {
+      LOGGER.warn(ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_FETCHING_CQ_LIST, e);
+    }
+  }
+
   public boolean markCQLocallyScheduled(String cqId, String cqToken, CQScheduleTask task) {
     AtomicBoolean shouldSchedule = new AtomicBoolean(false);
     LocallyScheduledCQ schedule = new LocallyScheduledCQ(cqToken, task);

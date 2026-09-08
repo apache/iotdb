@@ -522,6 +522,10 @@ public class CQScheduleTask implements Runnable {
             () -> persistProgress(targetIndex, callbackTime),
             retryWaitTimeInMS,
             TimeUnit.MILLISECONDS);
+      } else if (needSubmit()) {
+        // The write may have committed before its response was lost. Re-read durable progress
+        // and let CQManager install the single task for the current token/index.
+        configManager.getCQManager().reconcileCQ(cqId, cqToken);
       }
     }
 

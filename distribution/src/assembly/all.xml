@@ -101,6 +101,7 @@
             <excludes>
                 <exclude>*ainode.*</exclude>
                 <exclude>**/*ainode.*</exclude>
+                <exclude>**/*edge.*</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>

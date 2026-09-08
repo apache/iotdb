@@ -759,12 +759,26 @@ public class AnalyzeUtils {
 
       switch (comparisonExpression.getOperator()) {
         case LESS_THAN:
+          if (rightHandValue == Long.MIN_VALUE) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                    comparisonExpression));
+          }
           timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue - 1));
           break;
         case LESS_THAN_OR_EQUAL:
           timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue));
           break;
         case GREATER_THAN:
+          if (rightHandValue == Long.MAX_VALUE) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_THE_TIME_PREDICATE_DOES_NOT_SELECT_ANY_TIME_RANGE_ARG_98DBCE32,
+                    comparisonExpression));
+          }
           timeRange.setStartTime(Math.max(timeRange.getStartTime(), rightHandValue + 1));
           break;
         case GREATER_THAN_OR_EQUAL:

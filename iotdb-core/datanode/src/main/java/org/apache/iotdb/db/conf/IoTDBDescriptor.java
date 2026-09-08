@@ -120,6 +120,8 @@ public class IoTDBDescriptor {
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
+  private static final long DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES = 1024;
+
   private static final String[] DEFAULT_WAL_THRESHOLD_NAME = {
     "iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte"
   };
@@ -354,6 +356,7 @@ public class IoTDBDescriptor {
 
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
+
     String[] defaultTierDirs = new String[conf.getTierDataDirs().length];
     for (int i = 0; i < defaultTierDirs.length; ++i) {
       defaultTierDirs[i] = String.join(",", conf.getTierDataDirs()[i]);
@@ -822,6 +825,8 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
 
+    loadTableQueryDeviceEntryBatchSize(properties);
+
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
             properties.getProperty(
@@ -997,6 +1002,16 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "coordinator_read_executor_size",
                 Integer.toString(conf.getCoordinatorReadExecutorSize()))));
+    conf.setCoordinatorScheduledExecutorSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "coordinator_scheduled_executor_size",
+                Integer.toString(conf.getCoordinatorScheduledExecutorSize()))));
+    conf.setFragmentInstanceNotificationThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "fragment_instance_notification_thread_count",
+                Integer.toString(conf.getFragmentInstanceNotificationThreadCount()))));
     conf.setDataNodeTableSchemaCacheSize(
         Long.parseLong(
             properties.getProperty(
@@ -2243,6 +2258,8 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "enable_topk_runtime_filter"))));
 
+      loadTableQueryDeviceEntryBatchSize(properties);
+
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
       loadWALHotModifiedProps(properties);
@@ -2433,7 +2450,37 @@ public class IoTDBDescriptor {
     ConfigurationFileUtils.updateAppliedProperties(
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
     ConfigurationFileUtils.updateAppliedProperties(
+        "table_query_device_entry_batch_size_in_bytes",
+        Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
         DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
+  }
+
+  private void loadTableQueryDeviceEntryBatchSize(TrimProperties properties) {
+    long deviceEntryBatchSize =
+        Long.parseLong(
+            properties.getProperty(
+                "table_query_device_entry_batch_size_in_bytes",
+                Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes())));
+    if (deviceEntryBatchSize <= 0) {
+      deviceEntryBatchSize =
+          memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
+              / memoryConfig.getQueryThreadCount()
+              / 4;
+    }
+    long maxBatchSize =
+        Math.max(1, conf.getThriftMaxFrameSize() - DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES);
+    long effectiveBatchSize = Math.min(deviceEntryBatchSize, maxBatchSize);
+    if (deviceEntryBatchSize > maxBatchSize) {
+      LOGGER.warn(
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA,
+              deviceEntryBatchSize,
+              conf.getThriftMaxFrameSize(),
+              effectiveBatchSize));
+    }
+    conf.setTableQueryDeviceEntryBatchSizeInBytes(effectiveBatchSize);
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {

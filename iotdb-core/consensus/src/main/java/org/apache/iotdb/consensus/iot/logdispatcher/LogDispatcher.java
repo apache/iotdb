@@ -183,6 +183,10 @@ public class LogDispatcher {
     impl.checkAndUpdateSafeDeletedSearchIndex();
   }
 
+  public synchronized void reloadConfig(IoTConsensusConfig config) {
+    threads.forEach(thread -> thread.reloadConfig(config));
+  }
+
   public void offer(IndexedConsensusRequest request) {
     offer(request, true);
   }
@@ -230,7 +234,7 @@ public class LogDispatcher {
 
     private static final long PENDING_REQUEST_TAKING_TIME_OUT_IN_MS = 10_000L;
     private static final long START_INDEX = 1;
-    private final IoTConsensusConfig config;
+    private volatile IoTConsensusConfig config;
     private final Peer peer;
     private final IndexController controller;
     // A sliding window class that manages asynchronous pendingBatches
@@ -287,6 +291,11 @@ public class LogDispatcher {
 
     public IoTConsensusConfig getConfig() {
       return config;
+    }
+
+    private void reloadConfig(IoTConsensusConfig config) {
+      this.config = config;
+      syncStatus.reloadConfig(config);
     }
 
     public int getPendingEntriesSize() {
@@ -375,11 +384,16 @@ public class LogDispatcher {
             IndexedConsensusRequest request =
                 pendingEntries.poll(calculateIdlePollTimeoutInMs(), TimeUnit.MILLISECONDS);
             if (request != null) {
+              final IoTConsensusConfig currentConfig = config;
+              final boolean shouldWaitForBatchAccumulation =
+                  pendingEntries.size()
+                          <= currentConfig.getReplication().getMaxLogEntriesNumPerBatch()
+                      && bufferedEntries.isEmpty();
               bufferedEntries.add(request);
               // If write pressure is low, we simply sleep a little to reduce the number of RPC
-              if (pendingEntries.size() <= config.getReplication().getMaxLogEntriesNumPerBatch()
-                  && bufferedEntries.isEmpty()) {
-                Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
+              if (shouldWaitForBatchAccumulation) {
+                waitForBatchAccumulation(
+                    currentConfig.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
               }
             } else {
               maybeSendIdleWriterSafeTimeBarrier();
@@ -412,6 +426,38 @@ public class LogDispatcher {
       logger.info(IoTConsensusMessages.DISPATCHER_EXITS, impl.getThisNode(), peer);
     }
 
+    void waitForBatchAccumulation(long waitingTimeInMs) throws InterruptedException {
+      if (waitingTimeInMs <= 0) {
+        return;
+      }
+
+      final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(waitingTimeInMs);
+      final IoTConsensusConfig currentConfig = config;
+      int accumulatedEntries = bufferedEntries.size();
+      long accumulatedMemorySize =
+          bufferedEntries.stream().mapToLong(IndexedConsensusRequest::getMemorySize).sum();
+
+      // Keep collecting while the batch is below both its entry and memory limits. A plain sleep,
+      // or checking only the entry limit, makes the dispatcher wait for the full accumulation
+      // interval after a batch has already reached its memory limit. This unnecessarily throttles
+      // IoTConsensus when each request contains a large tablet.
+      while (Batch.canAccumulate(currentConfig, accumulatedEntries, accumulatedMemorySize)) {
+        final long remainingNanos = deadlineNanos - System.nanoTime();
+        if (remainingNanos <= 0) {
+          return;
+        }
+
+        final IndexedConsensusRequest request =
+            pendingEntries.poll(remainingNanos, TimeUnit.NANOSECONDS);
+        if (request == null) {
+          return;
+        }
+        bufferedEntries.add(request);
+        accumulatedEntries++;
+        accumulatedMemorySize += request.getMemorySize();
+      }
+    }
+
     public void updateSafelyDeletedSearchIndex() {
       // update safely deleted search index to delete outdated info,
       // indicating that insert nodes whose search index are before this value can be deleted
@@ -428,6 +474,7 @@ public class LogDispatcher {
 
     public Batch getBatch() {
 
+      final IoTConsensusConfig currentConfig = config;
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex;
       synchronized (impl.getIndexObject()) {
@@ -442,7 +489,7 @@ public class LogDispatcher {
         // Use drainTo instead of poll to reduce lock overhead
         pendingEntries.drainTo(
             bufferedEntries,
-            config.getReplication().getMaxLogEntriesNumPerBatch() - bufferedEntries.size());
+            currentConfig.getReplication().getMaxLogEntriesNumPerBatch() - bufferedEntries.size());
       }
       // remove all request that searchIndex < startIndex
       Iterator<IndexedConsensusRequest> iterator = bufferedEntries.iterator();
@@ -456,7 +503,7 @@ public class LogDispatcher {
         }
       }
 
-      Batch batches = new Batch(config);
+      Batch batches = new Batch(currentConfig);
       // This condition will be executed in several scenarios:
       // 1. restart
       // 2. The getBatch() is invoked immediately at the moment the PendingEntries are consumed
@@ -610,6 +657,7 @@ public class LogDispatcher {
           currentIndex,
           maxIndex);
       boolean hasCorruptedData = false;
+      final boolean consensusGroupContainsUserData = impl.containsUserData();
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
@@ -634,6 +682,9 @@ public class LogDispatcher {
           hasCorruptedData = true;
         }
         targetIndex = data.getSearchIndex() + 1;
+        // The WAL reader derives this bit directly from the entry type. Apply the group-level
+        // exclusion here without deserializing the request solely for audit classification.
+        data.setContainsUserData(consensusGroupContainsUserData && data.containsUserData());
         data.buildSerializedRequests();
         // construct request from wal
         TLogEntry logEntry =
@@ -641,7 +692,7 @@ public class LogDispatcher {
                 data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize());
         logEntry.setRoutingEpoch(data.getRoutingEpoch());
         logEntry.setPhysicalTime(data.getPhysicalTime());
-        logBatches.addTLogEntry(logEntry);
+        logBatches.addTLogEntry(logEntry, data.containsUserData());
       }
       // In the case of corrupt Data, we return true so that we can send a batch as soon as
       // possible, avoiding potential duplication
@@ -658,7 +709,7 @@ public class LogDispatcher {
               request.getMemorySize());
       logEntry.setRoutingEpoch(request.getRoutingEpoch());
       logEntry.setPhysicalTime(request.getPhysicalTime());
-      logBatches.addTLogEntry(logEntry);
+      logBatches.addTLogEntry(logEntry, request.containsUserData());
     }
   }
 

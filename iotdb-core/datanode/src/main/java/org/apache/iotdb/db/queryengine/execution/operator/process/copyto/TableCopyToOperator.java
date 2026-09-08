@@ -28,6 +28,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.TsFileFormatCopyToWriter;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -106,6 +107,7 @@ public class TableCopyToOperator implements ProcessOperator {
   }
 
   private IoTDBRuntimeException newCopyToWriteError(IOException e) {
+    DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
     LOGGER.warn(
         DataNodeQueryMessages.LOG_FAILED_TO_WRITE_THE_TARGET_FILE_DURING_COPY_TO_EE25EF37, e);
     return new IoTDBRuntimeException(

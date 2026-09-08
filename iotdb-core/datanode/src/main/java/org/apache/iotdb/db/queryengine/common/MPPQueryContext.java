@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryResource;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryIOContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
@@ -69,6 +71,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongConsumer;
 
@@ -131,6 +134,9 @@ public class MPPQueryContext implements IAuditEntity {
   private boolean verbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
+
+  private DeviceEntryIOContext deviceEntryIOContext;
+  private final AtomicBoolean deviceEntryDiskIOMetricsRecorded = new AtomicBoolean();
 
   // To avoid query front-end from consuming too much memory, it needs to reserve memory when
   // constructing some Expression and PlanNode.
@@ -403,6 +409,13 @@ public class MPPQueryContext implements IAuditEntity {
     this.startTime = startTime;
   }
 
+  public DeviceEntryIOContext getOrCreateDeviceEntryIOContext() {
+    if (deviceEntryIOContext == null) {
+      deviceEntryIOContext = new DeviceEntryIOContext(this);
+    }
+    return deviceEntryIOContext;
+  }
+
   public void addFailedEndPoint(TEndPoint endPoint) {
     this.endPointBlackList.add(endPoint);
   }
@@ -526,6 +539,67 @@ public class MPPQueryContext implements IAuditEntity {
 
   public long getDispatchCost() {
     return queryPlanStatistics.getDispatchCost();
+  }
+
+  public void recordDeviceEntryDiskIODuringFetchSchema(long bytes, long timeCost) {
+    getOrCreateQueryPlanStatistics().recordDeviceEntryDiskIODuringFetchSchema(bytes, timeCost);
+  }
+
+  public void recordDeviceEntryDiskIODuringDistributionPlan(long bytes, long timeCost) {
+    getOrCreateQueryPlanStatistics().recordDeviceEntryDiskIODuringDistributionPlan(bytes, timeCost);
+  }
+
+  public void recordDeviceEntryCount(long count) {
+    getOrCreateQueryPlanStatistics().recordDeviceEntryCount(count);
+  }
+
+  /** Records coordinator-side DeviceEntry spill IO metrics once when the query is released. */
+  public void recordDeviceEntryDiskIOMetricsOnRelease() {
+    if (queryPlanStatistics == null
+        || !deviceEntryDiskIOMetricsRecorded.compareAndSet(false, true)) {
+      return;
+    }
+    SeriesScanCostMetricSet.getInstance()
+        .recordDeviceEntryDiskIOMetrics(
+            queryPlanStatistics.getDiskIOSizeForDeviceEntryDuringFetchSchema(),
+            queryPlanStatistics.getDiskIOTimeCostForDeviceEntryDuringFetchSchema(),
+            queryPlanStatistics.getDiskIOSizeForDeviceEntryDuringDistributionPlan(),
+            queryPlanStatistics.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan());
+  }
+
+  public long getDiskIOSizeForDeviceEntryDuringFetchSchema() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOSizeForDeviceEntryDuringFetchSchema();
+  }
+
+  public long getDiskIOTimeCostForDeviceEntryDuringFetchSchema() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOTimeCostForDeviceEntryDuringFetchSchema();
+  }
+
+  public long getDiskIOSizeForDeviceEntryDuringDistributionPlan() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOSizeForDeviceEntryDuringDistributionPlan();
+  }
+
+  public long getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan();
+  }
+
+  public long getDeviceEntryCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getDeviceEntryCount();
+  }
+
+  private QueryPlanStatistics getOrCreateQueryPlanStatistics() {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    return queryPlanStatistics;
   }
 
   public void setAnalyzeCost(long analyzeCost) {

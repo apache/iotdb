@@ -124,6 +124,9 @@ public final class DataNodePipeMessages {
       "减少 reference count for event {} in PipeRealtimePriorityBlockingQueue 失败";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "获取 PendingQueue 失败，没有该子任务:  ";
+  public static final String
+      EXCEPTION_MULTIPLE_PIPES_MATCH_THE_REQUESTED_SINK_SUBTASK_USE_THE_PIPE_SPECIFIC_PIPESINKSUBTASKMANAGER_API_C180D94C =
+          "多个 Pipe 匹配请求的 sink 子任务。请使用指定 Pipe 的 PipeSinkSubtaskManager API。";
   public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
       "从 CN 处获取 pipe 信息失败，状态是 %s。";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
@@ -2412,6 +2415,13 @@ public final class DataNodePipeMessages {
       "已上报 %s 个 pipe meta。";
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "传输文件 %s 出错，结果状态为 %s。";
+
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_5B4B2E7C =
+          "重试 retry queue 中的事件失败。剩余事件：%d（tablet 事件：%d，tsfile 事件：%d）。";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_LAST_FAILURE_ARG_EB8F9DCD =
+          "重试 retry queue 中的事件失败。剩余事件：%d（tablet 事件：%d，tsfile 事件：%d）。最近一次失败：%s。";
 
   public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
       "Legacy pipe receiver 需要已登录的 session。";

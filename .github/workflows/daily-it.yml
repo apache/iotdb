@@ -718,3 +718,69 @@ jobs:
           name: cluster-log-dual-table-manual-enhanced-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
           path: integration-test/target/cluster-logs
           retention-days: 30
+  TableClusterITWithDeviceEntrySpill:
+    runs-on: [self-hosted, iotdb]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set DeviceEntry spill threshold
+        shell: bash
+        run: |
+          printf '\ntable_query_device_entry_batch_size_in_bytes=1\n' \
+            >> iotdb-core/node-commons/src/assembly/resources/conf/iotdb-system.properties
+      - name: IT/UT Test
+        shell: bash
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -PTableClusterIT \
+          -DskipUTs \
+          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
+          -pl integration-test \
+          -am
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: table-cluster-device-entry-spill-log
+          path: integration-test/target/cluster-logs
+          retention-days: 3
+  TableLocalStandaloneITWithDeviceEntrySpill:
+    runs-on: [self-hosted, iotdb]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set DeviceEntry spill threshold
+        shell: bash
+        run: |
+          printf '\ntable_query_device_entry_batch_size_in_bytes=1\n' \
+            >> iotdb-core/node-commons/src/assembly/resources/conf/iotdb-system.properties
+      - name: IT/UT Test
+        shell: bash
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -PTableSimpleIT \
+          -DskipUTs \
+          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 \
+          -pl integration-test \
+          -am
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: table-local-device-entry-spill-log
+          path: integration-test/target/cluster-logs
+          retention-days: 3

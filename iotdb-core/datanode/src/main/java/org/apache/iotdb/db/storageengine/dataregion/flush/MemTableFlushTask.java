@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
@@ -213,6 +214,7 @@ public class MemTableFlushTask {
           WritingMetrics.WRITE_PLAN_INDICES,
           System.currentTimeMillis() - writePlanIndicesStartTime);
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new ExecutionException(e);
     }
 
@@ -363,6 +365,7 @@ public class MemTableFlushTask {
                 storageGroup,
                 memTable,
                 e);
+            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
             return;
           }
           long subTaskTime = System.currentTimeMillis() - starTime;

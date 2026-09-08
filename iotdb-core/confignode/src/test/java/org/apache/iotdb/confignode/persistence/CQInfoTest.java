@@ -201,6 +201,39 @@ public class CQInfoTest {
   }
 
   @Test
+  public void testCommittedProgressRetryIsDetectedAsStaleForReconciliation() throws TException {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "lostAckCq",
+            1000,
+            0,
+            1000,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq lostAckCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1000));
+    req.setStartOffsetDuration(new TCQDuration(0, 1000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "lostAckToken", 1000)).getCode());
+    UpdateCQLastExecTimePlan advance =
+        new UpdateCQLastExecTimePlan("lostAckCq", 1000, "lostAckToken", 1, 2);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.updateCQLastExecutionTime(advance).getCode());
+    // A retry after the first response was lost must be recognized as stale and reconciled.
+    Assert.assertEquals(
+        TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode(),
+        cqInfo.updateCQLastExecutionTime(advance).getCode());
+  }
+
+  @Test
   public void testMixedCalendarDurationUsesStructuredFixedEveryForLastExecution() {
     TCreateCQReq req =
         new TCreateCQReq(

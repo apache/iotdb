@@ -70,6 +70,65 @@ public class PropertiesTest {
   }
 
   @Test
+  public void testDeviceEntryBatchSizeIsCappedByThriftFrameSizeOnStartup() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final IoTDBConfig config = descriptor.getConfig();
+    final int originalFrameSize = config.getThriftMaxFrameSize();
+    final long originalBatchSize = config.getTableQueryDeviceEntryBatchSizeInBytes();
+
+    try {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty("dn_thrift_max_frame_size", "4096");
+      properties.setProperty("table_query_device_entry_batch_size_in_bytes", "8192");
+      descriptor.loadProperties(properties);
+
+      Assert.assertEquals(4096, config.getThriftMaxFrameSize());
+      Assert.assertEquals(3072, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(
+          "3072",
+          ConfigurationFileUtils.getAppliedProperties()
+              .get("table_query_device_entry_batch_size_in_bytes"));
+    } finally {
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty("dn_thrift_max_frame_size", Integer.toString(originalFrameSize));
+      properties.setProperty(
+          "table_query_device_entry_batch_size_in_bytes", Long.toString(originalBatchSize));
+      descriptor.loadProperties(properties);
+    }
+  }
+
+  @Test
+  public void testDeviceEntryBatchSizeIsCappedByThriftFrameSizeOnHotReload() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final IoTDBConfig config = descriptor.getConfig();
+    final int originalFrameSize = config.getThriftMaxFrameSize();
+    final long originalBatchSize = config.getTableQueryDeviceEntryBatchSizeInBytes();
+
+    try {
+      config.setThriftMaxFrameSize(4096);
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty("table_query_device_entry_batch_size_in_bytes", "4096");
+      descriptor.loadHotModifiedProps(properties);
+
+      Assert.assertEquals(3072, config.getTableQueryDeviceEntryBatchSizeInBytes());
+      Assert.assertEquals(
+          "3072",
+          ConfigurationFileUtils.getAppliedProperties()
+              .get("table_query_device_entry_batch_size_in_bytes"));
+
+      properties.setProperty("table_query_device_entry_batch_size_in_bytes", "512");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(512, config.getTableQueryDeviceEntryBatchSizeInBytes());
+    } finally {
+      config.setThriftMaxFrameSize(originalFrameSize);
+      final TrimProperties properties = new TrimProperties();
+      properties.setProperty(
+          "table_query_device_entry_batch_size_in_bytes", Long.toString(originalBatchSize));
+      descriptor.loadHotModifiedProps(properties);
+    }
+  }
+
+  @Test
   public void testHotReloadNegativeWalThrottleThresholdUsesDefault() throws Exception {
     final String key = "wal_throttle_threshold_in_byte";
     final long configuredThreshold = 1024 * 1024 * 1024L;

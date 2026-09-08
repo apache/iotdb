@@ -42,6 +42,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+      - name: Test Edge ops scripts
+        run: python3 .github/scripts/test-edge-ops.py
       - name: Set up JDK
         uses: actions/setup-java@v5
         with:
@@ -89,6 +91,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Test Edge ops scripts
+        run: python .github/scripts/test-edge-ops.py
       - name: Test Edge Windows launchers
         shell: powershell
         run: .github/scripts/test-edge-windows.ps1

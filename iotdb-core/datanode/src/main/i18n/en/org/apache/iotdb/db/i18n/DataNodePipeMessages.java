@@ -134,6 +134,10 @@ public final class DataNodePipeMessages {
       "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "Failed to get PendingQueue. No such subtask: ";
+  public static final String
+      EXCEPTION_MULTIPLE_PIPES_MATCH_THE_REQUESTED_SINK_SUBTASK_USE_THE_PIPE_SPECIFIC_PIPESINKSUBTASKMANAGER_API_C180D94C =
+          "Multiple pipes match the requested sink subtask. Use the pipe-specific "
+              + "PipeSinkSubtaskManager API.";
   public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
       "Failed to get pipe info from config node, status is %s.";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
@@ -2585,6 +2589,13 @@ public final class DataNodePipeMessages {
       "Reported %s pipe metas.";
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "Transfer file %s error, result status %s.";
+
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_5B4B2E7C =
+          "Failed to retry transferring events in the retry queue. Remaining events: %d (tablet events: %d, tsfile events: %d).";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_LAST_FAILURE_ARG_EB8F9DCD =
+          "Failed to retry transferring events in the retry queue. Remaining events: %d (tablet events: %d, tsfile events: %d). Last failure: %s.";
 
   public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
       "Legacy pipe receiver requires a logged-in session.";

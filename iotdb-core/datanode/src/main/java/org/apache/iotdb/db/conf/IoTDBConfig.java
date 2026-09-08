@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -258,6 +259,12 @@ public class IoTDBConfig {
   /** Query directory, stores temporary files of query */
   private String queryDir =
       IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+
+  /**
+   * Maximum DeviceEntry bytes kept in memory before a table-query spill, capped by the effective
+   * Thrift frame size minus 1 KiB reserved for the RPC response envelope.
+   */
+  private long tableQueryDeviceEntryBatchSizeInBytes;
 
   /** External lib directory, stores user-uploaded JAR files */
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
@@ -1012,6 +1019,12 @@ public class IoTDBConfig {
 
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
+
+  /** Thread pool size for scheduling query state checks and termination. */
+  private int coordinatorScheduledExecutorSize = 10;
+
+  /** Thread pool size for fragment instance state change notifications. */
+  private int fragmentInstanceNotificationThreadCount = 4;
 
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
@@ -1790,6 +1803,14 @@ public class IoTDBConfig {
 
   public void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
+  }
+
+  public long getTableQueryDeviceEntryBatchSizeInBytes() {
+    return tableQueryDeviceEntryBatchSizeInBytes;
+  }
+
+  public void setTableQueryDeviceEntryBatchSizeInBytes(long tableQueryDeviceEntryBatchSizeInBytes) {
+    this.tableQueryDeviceEntryBatchSizeInBytes = tableQueryDeviceEntryBatchSizeInBytes;
   }
 
   public String getRatisDataRegionSnapshotDir() {
@@ -3562,7 +3583,33 @@ public class IoTDBConfig {
   }
 
   public void setCoordinatorReadExecutorSize(int coordinatorReadExecutorSize) {
+    if (coordinatorReadExecutorSize <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
     this.coordinatorReadExecutorSize = coordinatorReadExecutorSize;
+  }
+
+  public int getCoordinatorScheduledExecutorSize() {
+    return coordinatorScheduledExecutorSize;
+  }
+
+  public void setCoordinatorScheduledExecutorSize(int coordinatorScheduledExecutorSize) {
+    if (coordinatorScheduledExecutorSize <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.coordinatorScheduledExecutorSize = coordinatorScheduledExecutorSize;
+  }
+
+  public int getFragmentInstanceNotificationThreadCount() {
+    return fragmentInstanceNotificationThreadCount;
+  }
+
+  public void setFragmentInstanceNotificationThreadCount(
+      int fragmentInstanceNotificationThreadCount) {
+    if (fragmentInstanceNotificationThreadCount <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.fragmentInstanceNotificationThreadCount = fragmentInstanceNotificationThreadCount;
   }
 
   public TEndPoint getAddressAndPort() {
