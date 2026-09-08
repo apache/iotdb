@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterCon
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -282,6 +283,24 @@ public class CreateSubscriptionProcedureTest {
         env,
         createWritableViewTopic(
             "base_regex_topic", "view_db", "base_.*", TopicConstant.FORMAT_RECORD_HANDLER_VALUE));
+  }
+
+  @Test
+  public void validateWritableViewTopicShouldAcceptTargetBeforeDatabaseCreation() throws Exception {
+    final ConfigNodeProcedureEnv env = mockWritableViewValidationEnv();
+    Mockito.when(
+            env.getConfigManager()
+                .getClusterSchemaManager()
+                .getTableIfExists("future_db", "future_table"))
+        .thenThrow(new DatabaseNotSetException("root.future_db"));
+
+    CreateSubscriptionProcedure.validateWritableViewTopicCompatibility(
+        env,
+        createWritableViewTopic(
+            "future_topic",
+            "future_db",
+            "future_table",
+            TopicConstant.FORMAT_RECORD_HANDLER_VALUE));
   }
 
   private static ConfigNodeProcedureEnv mockConsensusFailureEnv(final TSStatus response)

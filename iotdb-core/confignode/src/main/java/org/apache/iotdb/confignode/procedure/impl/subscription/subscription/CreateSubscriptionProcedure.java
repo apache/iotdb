@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -191,10 +192,15 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     final boolean matchesWritableView;
     try {
       if (isExactPattern) {
-        final Optional<TsTable> table =
-            env.getConfigManager()
-                .getClusterSchemaManager()
-                .getTableIfExists(databasePattern, tablePattern);
+        final Optional<TsTable> table;
+        try {
+          table =
+              env.getConfigManager()
+                  .getClusterSchemaManager()
+                  .getTableIfExists(databasePattern, tablePattern);
+        } catch (final DatabaseNotSetException ignored) {
+          return;
+        }
         matchesWritableView = table.isPresent() && table.get() instanceof WritableView;
       } else {
         final TablePattern pattern = new TablePattern(true, databasePattern, tablePattern);
