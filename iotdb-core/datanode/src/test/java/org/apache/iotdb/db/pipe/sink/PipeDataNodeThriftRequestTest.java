@@ -53,6 +53,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFil
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -1046,6 +1047,138 @@ public class PipeDataNodeThriftRequestTest {
         new HashSet<>(java.util.Arrays.asList("root.db1", "root.db2")), insertRowsDatabases);
     Assert.assertEquals(
         new HashSet<>(java.util.Arrays.asList("root.db1", "root.db2")), insertTabletsDatabases);
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqV2SeparatesTableModelTables() throws IOException {
+    final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
+    final List<String> insertNodeDataBases = new ArrayList<>();
+
+    insertNodeBuffers.add(
+        new InsertRowNode(
+                new PlanNodeId(""),
+                new PartialPath("table1", false),
+                false,
+                new String[] {"s"},
+                new TSDataType[] {TSDataType.INT32},
+                1,
+                new Object[] {1},
+                false)
+            .serializeToByteBuffer());
+    insertNodeDataBases.add("db1");
+
+    insertNodeBuffers.add(
+        new InsertRowNode(
+                new PlanNodeId(""),
+                new PartialPath("table2", false),
+                false,
+                new String[] {"s"},
+                new TSDataType[] {TSDataType.INT32},
+                2,
+                new Object[] {2},
+                false)
+            .serializeToByteBuffer());
+    insertNodeDataBases.add("db1");
+
+    insertNodeBuffers.add(
+        new InsertRowNode(
+                new PlanNodeId(""),
+                new PartialPath("table1", false),
+                false,
+                new String[] {"s"},
+                new TSDataType[] {TSDataType.INT32},
+                3,
+                new Object[] {3},
+                false)
+            .serializeToByteBuffer());
+    insertNodeDataBases.add("db1");
+
+    final PipeTransferTabletBatchReqV2 request =
+        PipeTransferTabletBatchReqV2.fromTPipeTransferReq(
+            PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+                insertNodeBuffers,
+                Collections.emptyList(),
+                insertNodeDataBases,
+                Collections.emptyList()));
+
+    final List<InsertBaseStatement> statements = request.constructStatements();
+
+    Assert.assertEquals(2, statements.size());
+    final InsertRowsStatement table1Statement = (InsertRowsStatement) statements.get(0);
+    final InsertRowsStatement table2Statement = (InsertRowsStatement) statements.get(1);
+    Assert.assertTrue(table1Statement.isWriteToTable());
+    Assert.assertTrue(table2Statement.isWriteToTable());
+    Assert.assertEquals("db1", table1Statement.getDatabaseName().get());
+    Assert.assertEquals("db1", table2Statement.getDatabaseName().get());
+    Assert.assertEquals(2, table1Statement.getInsertRowStatementList().size());
+    Assert.assertEquals(1, table2Statement.getInsertRowStatementList().size());
+    Assert.assertEquals(
+        "table1", table1Statement.getInsertRowStatementList().get(0).getTableName());
+    Assert.assertEquals(
+        "table1", table1Statement.getInsertRowStatementList().get(1).getTableName());
+    Assert.assertEquals(
+        "table2", table2Statement.getInsertRowStatementList().get(0).getTableName());
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqV2SeparatesTablesWithinInsertRowsNode()
+      throws IOException {
+    final InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId("rows"));
+    insertRowsNode.addOneInsertRowNode(
+        new InsertRowNode(
+            new PlanNodeId("row1"),
+            new PartialPath("table1", false),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1,
+            new Object[] {1},
+            false),
+        0);
+    insertRowsNode.addOneInsertRowNode(
+        new InsertRowNode(
+            new PlanNodeId("row2"),
+            new PartialPath("table2", false),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            2,
+            new Object[] {2},
+            false),
+        1);
+    insertRowsNode.addOneInsertRowNode(
+        new InsertRowNode(
+            new PlanNodeId("row3"),
+            new PartialPath("table1", false),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            3,
+            new Object[] {3},
+            false),
+        2);
+
+    final PipeTransferTabletBatchReqV2 request =
+        PipeTransferTabletBatchReqV2.fromTPipeTransferReq(
+            PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+                Collections.singletonList(insertRowsNode.serializeToByteBuffer()),
+                Collections.emptyList(),
+                Collections.singletonList("db1"),
+                Collections.emptyList()));
+
+    final List<InsertBaseStatement> statements = request.constructStatements();
+
+    Assert.assertEquals(2, statements.size());
+    final InsertRowsStatement table1Statement = (InsertRowsStatement) statements.get(0);
+    final InsertRowsStatement table2Statement = (InsertRowsStatement) statements.get(1);
+    Assert.assertEquals(2, table1Statement.getInsertRowStatementList().size());
+    Assert.assertEquals(1, table2Statement.getInsertRowStatementList().size());
+    Assert.assertEquals(
+        "table1", table1Statement.getInsertRowStatementList().get(0).getTableName());
+    Assert.assertEquals(
+        "table1", table1Statement.getInsertRowStatementList().get(1).getTableName());
+    Assert.assertEquals(
+        "table2", table2Statement.getInsertRowStatementList().get(0).getTableName());
   }
 
   @Test
