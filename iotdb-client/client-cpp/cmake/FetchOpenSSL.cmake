@@ -139,7 +139,7 @@ if(NOT EXISTS "${_ossl_stamp}")
                 "call \"${_vcvars}\"\r\n"
                 "if errorlevel 1 exit /b %errorlevel%\r\n"
                 "cd /d \"${_ossl_src_native}\"\r\n"
-                "\"${_ossl_perl_native}\" Configure VC-WIN64A --prefix=\"${_ossl_inst_native}\" --openssldir=\"${_ossl_inst_native}\\ssl\" shared no-tests\r\n"
+                "\"${_ossl_perl_native}\" Configure VC-WIN64A --prefix=\"${_ossl_inst_native}\" --openssldir=\"${_ossl_inst_native}\\ssl\" shared no-tests no-asm\r\n"
                 "if errorlevel 1 exit /b %errorlevel%\r\n"
                 "nmake\r\n"
                 "if errorlevel 1 exit /b %errorlevel%\r\n"
