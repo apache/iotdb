@@ -768,6 +768,9 @@
                             <exclude>**/package-metadata/third_party/licenses/**</exclude>
                             <!-- generated certificates and private keys used only by C++ transport tests -->
                             <exclude>**/client-cpp/test/fixtures/**</exclude>
+                            <!-- same fixtures when RAT runs from the client-cpp module base directory -->
+                            <exclude>test/fixtures/**/*.crt</exclude>
+                            <exclude>test/fixtures/**/*.key</exclude>
                             <!-- only for Travis CI with WinOS-->
                             <exclude>hadoopbin</exclude>
                             <exclude>windowssystem32</exclude>
