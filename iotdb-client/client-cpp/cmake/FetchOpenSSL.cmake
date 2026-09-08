@@ -101,7 +101,12 @@ if(NOT EXISTS "${_ossl_stamp}")
 
     message(STATUS "[OpenSSL] configuring -> ${_ossl_inst}")
     if(WIN32)
-        find_program(_ossl_perl NAMES perl REQUIRED)
+        # Git for Windows also ships a minimal Perl, but it lacks modules required by OpenSSL.
+        find_program(_ossl_perl NAMES perl.exe perl
+                PATHS "C:/Strawberry/perl/bin" NO_DEFAULT_PATH)
+        if(NOT _ossl_perl)
+            find_program(_ossl_perl NAMES perl.exe perl REQUIRED)
+        endif()
         find_program(_vswhere NAMES vswhere.exe
                 PATHS "$ENV{ProgramFiles}/Microsoft Visual Studio/Installer"
                       "C:/Program Files (x86)/Microsoft Visual Studio/Installer")
