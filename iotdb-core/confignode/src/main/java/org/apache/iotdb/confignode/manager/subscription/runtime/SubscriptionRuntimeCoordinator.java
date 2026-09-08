@@ -155,6 +155,9 @@ public class SubscriptionRuntimeCoordinator {
   }
 
   private static boolean isRuntimeSensitiveStatus(final NodeStatus status) {
-    return status == NodeStatus.Unknown || status == NodeStatus.Removing;
+    // A Stopped node is handled like Unknown: its runtime leader pairs must be refreshed too
+    return status == NodeStatus.Unknown
+        || status == NodeStatus.Removing
+        || status == NodeStatus.Stopped;
   }
 }

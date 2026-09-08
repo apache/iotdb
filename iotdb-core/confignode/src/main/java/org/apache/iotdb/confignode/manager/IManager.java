@@ -345,7 +345,9 @@ public interface IManager {
   /**
    * Report that the specified DataNode will be shutdown.
    *
-   * <p>The ConfigNode-leader will mark it as {@link NodeStatus#Unknown}
+   * <p>The ConfigNode-leader will mark it as {@link NodeStatus#Stopped}. A node that is currently
+   * {@link NodeStatus#Removing} keeps its status. If the report never reaches the leader, the node
+   * will be marked as {@link NodeStatus#Unknown} by heartbeat timeout instead.
    *
    * @return {@link TSStatusCode#SUCCESS_STATUS} if reporting successfully
    */
@@ -539,7 +541,9 @@ public interface IManager {
 
   /**
    * Report that the specified ConfigNode will be shutdown. The ConfigNode-leader will mark it as
-   * Unknown.
+   * {@link NodeStatus#Stopped}. A node that is currently {@link NodeStatus#Removing} keeps its
+   * status. If the report never reaches the leader, the node will be marked as {@link
+   * NodeStatus#Unknown} by heartbeat timeout instead.
    *
    * @return {@link TSStatusCode#SUCCESS_STATUS} if reporting successfully
    */

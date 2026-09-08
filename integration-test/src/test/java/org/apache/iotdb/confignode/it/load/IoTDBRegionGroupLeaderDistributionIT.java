@@ -208,7 +208,7 @@ public class IoTDBRegionGroupLeaderDistributionIT {
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(0)),
-              Collections.singletonList(NodeStatus.Unknown));
+              Collections.singletonList(NodeStatus.Stopped));
 
       // Check leader distribution
       isDistributionBalanced = false;

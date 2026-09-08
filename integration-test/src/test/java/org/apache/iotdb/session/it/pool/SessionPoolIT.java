@@ -23,6 +23,7 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -252,7 +253,10 @@ public class SessionPoolIT {
       node.stop();
       EnvFactory.getEnv()
           .ensureNodeStatus(
-              Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
+              // A gracefully stopped DataNode is reported as Stopped by its shutdown hook (on
+              // Windows the process is hard-killed, so it is marked Unknown instead)
+              Collections.singletonList(node),
+              Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
       // user does not know what happens.
       while (wrapper.hasNext()) {
         wrapper.next();
@@ -263,7 +267,10 @@ public class SessionPoolIT {
       node.stop();
       EnvFactory.getEnv()
           .ensureNodeStatus(
-              Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
+              // A gracefully stopped DataNode is reported as Stopped by its shutdown hook (on
+              // Windows the process is hard-killed, so it is marked Unknown instead)
+              Collections.singletonList(node),
+              Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
       node.start();
       EnvFactory.getEnv()
           .ensureNodeStatus(
@@ -289,7 +296,10 @@ public class SessionPoolIT {
         node.stop();
         EnvFactory.getEnv()
             .ensureNodeStatus(
-                Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
+                // A gracefully stopped DataNode is reported as Stopped by its shutdown hook (on
+                // Windows the process is hard-killed, so it is marked Unknown instead)
+                Collections.singletonList(node),
+                Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
         node.start();
         EnvFactory.getEnv()
             .ensureNodeStatus(
@@ -345,7 +355,10 @@ public class SessionPoolIT {
     node.stop();
     EnvFactory.getEnv()
         .ensureNodeStatus(
-            Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
+            // A gracefully stopped DataNode is reported as Stopped by its shutdown hook (on
+            // Windows the process is hard-killed, so it is marked Unknown instead)
+            Collections.singletonList(node),
+            Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
     pool = EnvFactory.getEnv().getSessionPool(1);
     // all this ten data will fail.
     write10Data(pool, false);

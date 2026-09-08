@@ -309,7 +309,9 @@ public class RegionMaintainHandler {
         new TMaintainPeerReq(regionId, originalDataNode, procedureId);
 
     final NodeStatus nodeStatus = getDataNodeStatus(originalDataNode.getDataNodeId());
-    final boolean useFullRetry = !NodeStatus.Unknown.equals(nodeStatus);
+    // A Stopped node does not respond to requests either, so it is handled like Unknown
+    final boolean useFullRetry =
+        !NodeStatus.Unknown.equals(nodeStatus) && !NodeStatus.Stopped.equals(nodeStatus);
     if (!useFullRetry) {
       LOGGER.info(
           ProcedureMessages.DATANODE_IS_SUBMIT_DELETE_OLD_REGION_PEER_WITH_A_SINGLE,
