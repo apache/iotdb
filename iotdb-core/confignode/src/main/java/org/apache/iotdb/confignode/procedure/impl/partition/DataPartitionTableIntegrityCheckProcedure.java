@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
@@ -303,7 +304,9 @@ public class DataPartitionTableIntegrityCheckProcedure
 
         // Merge with existing timeslots (take minimum)
         for (Map.Entry<String, Long> entry : nodeTimeslots.entrySet()) {
-          earliestTimeslots.merge(entry.getKey(), entry.getValue(), Math::min);
+          if (!PathUtils.isTableModelDatabase(entry.getKey())) {
+            earliestTimeslots.merge(entry.getKey(), entry.getValue(), Math::min);
+          }
         }
 
         if (LOG.isDebugEnabled()) {
@@ -362,16 +365,19 @@ public class DataPartitionTableIntegrityCheckProcedure
       String database = entry.getKey();
       long earliestTimeslot = entry.getValue();
 
+      if (PathUtils.isTableModelDatabase(database)) {
+        continue;
+      }
+
       // Get current DataPartitionTable from ConfigManager
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           localDataPartitionTable = getLocalDataPartitionTable(env, database);
 
       // Check if ConfigNode has a data partition that is associated with the earliestTimeslot
       if ((localDataPartitionTable == null
-              || localDataPartitionTable.isEmpty()
-              || localDataPartitionTable.get(database) == null
-              || localDataPartitionTable.get(database).isEmpty())
-          && database.startsWith("root.")) {
+          || localDataPartitionTable.isEmpty()
+          || localDataPartitionTable.get(database) == null
+          || localDataPartitionTable.get(database).isEmpty())) {
         databasesWithLostDataPartition.add(database);
         LOG.warn(
             ProcedureMessages
