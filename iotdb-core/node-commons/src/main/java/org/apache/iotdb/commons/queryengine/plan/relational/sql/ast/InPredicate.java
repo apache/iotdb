@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -40,14 +42,14 @@ public class InPredicate extends Expression {
 
   public InPredicate(Expression value, Expression valueList) {
     super(null);
-    this.value = requireNonNull(value, "value is null");
-    this.valueList = requireNonNull(valueList, "valueList is null");
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    this.valueList = requireNonNull(valueList, QueryMessages.EXCEPTION_VALUELIST_IS_NULL_9271DC51);
   }
 
   public InPredicate(NodeLocation location, Expression value, Expression valueList) {
-    super(requireNonNull(location, "location is null"));
-    this.value = requireNonNull(value, "value is null");
-    this.valueList = requireNonNull(valueList, "valueList is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    this.valueList = requireNonNull(valueList, QueryMessages.EXCEPTION_VALUELIST_IS_NULL_9271DC51);
   }
 
   public Expression getValue() {

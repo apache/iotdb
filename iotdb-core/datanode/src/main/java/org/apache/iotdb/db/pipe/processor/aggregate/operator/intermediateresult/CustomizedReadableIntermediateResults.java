@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
@@ -45,7 +47,9 @@ public class CustomizedReadableIntermediateResults {
       return (boolean) typeResultPair.getRight();
     }
     throw new UnsupportedOperationException(
-        String.format("The type %s cannot be casted to boolean.", typeResultPair.getLeft()));
+        String.format(
+            DataNodePipeMessages.PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_BOOLEAN_F19CCF75,
+            typeResultPair.getLeft()));
   }
 
   public int getInt(final String key) {

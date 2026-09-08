@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -88,7 +90,9 @@ public class CorrelationAccumulator implements Accumulator {
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of Correlation should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        CalcMessages.EXCEPTION_PARTIALRESULT_OF_CORRELATION_SHOULD_BE_1_D5A8CED6);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -141,7 +145,9 @@ public class CorrelationAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of Correlation should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        CalcMessages.EXCEPTION_PARTIALRESULT_OF_CORRELATION_SHOULD_BE_1_D5A8CED6);
     if (count == 0) {
       columnBuilders[0].appendNull();
     } else {
@@ -169,7 +175,8 @@ public class CorrelationAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] input) {
-    checkArgument(input.length == 1, "Input of Correlation should be 1");
+    checkArgument(
+        input.length == 1, CalcMessages.EXCEPTION_INPUT_OF_CORRELATION_SHOULD_BE_1_5D666DB5);
     if (input[0].isNull(0)) {
       return;
     }
@@ -182,7 +189,9 @@ public class CorrelationAccumulator implements Accumulator {
       return;
     }
     checkArgument(
-        count >= otherCount, "Correlation state count is smaller than removed state count");
+        count >= otherCount,
+        CalcMessages
+            .EXCEPTION_CORRELATION_STATE_COUNT_IS_SMALLER_THAN_REMOVED_STATE_COUNT_66C90757);
 
     if (count == otherCount) {
       reset();

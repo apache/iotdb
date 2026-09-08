@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,8 +39,8 @@ public class PatternAlternation extends RowPattern {
 
   public PatternAlternation(NodeLocation location, List<RowPattern> patterns) {
     super(location);
-    this.patterns = requireNonNull(patterns, "patterns is null");
-    checkArgument(!patterns.isEmpty(), "patterns list is empty");
+    this.patterns = requireNonNull(patterns, QueryMessages.EXCEPTION_PATTERNS_IS_NULL_7E0DDDF0);
+    checkArgument(!patterns.isEmpty(), QueryMessages.EXCEPTION_PATTERNS_LIST_IS_EMPTY_D4D1802F);
   }
 
   public List<RowPattern> getPatterns() {

@@ -99,7 +99,8 @@ public class LastAccumulator implements TableAccumulator, TypeServices.LastValue
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of LAST should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_LAST_SHOULD_BE_BINARYCOLUMN_24E654CD);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -118,7 +119,8 @@ public class LastAccumulator implements TableAccumulator, TypeServices.LastValue
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of LAST should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_LAST_SHOULD_BE_BINARYCOLUMN_24E654CD);
 
     if (initResult || initNullTimeValue) {
       // if the initResult is activated, the result must carry a not null time

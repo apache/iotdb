@@ -124,8 +124,11 @@ public class DelayAnalyzer {
       if (windowSize < MIN_WINDOW_SIZE || windowSize > MAX_WINDOW_SIZE) {
         throw new IllegalArgumentException(
             String.format(
-                "Window size must be between %d and %d, got %d",
-                MIN_WINDOW_SIZE, MAX_WINDOW_SIZE, windowSize));
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_WINDOW_SIZE_MUST_BE_BETWEEN_D_AND_D_GOT_D_3559BE09,
+                MIN_WINDOW_SIZE,
+                MAX_WINDOW_SIZE,
+                windowSize));
       }
     }
 
@@ -163,12 +166,18 @@ public class DelayAnalyzer {
     if (windowSize < minWindowSize || windowSize > maxWindowSize) {
       throw new IllegalArgumentException(
           String.format(
-              "Window size must be between %d and %d, got %d",
-              minWindowSize, maxWindowSize, windowSize));
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_WINDOW_SIZE_MUST_BE_BETWEEN_D_AND_D_GOT_D_3559BE09,
+              minWindowSize,
+              maxWindowSize,
+              windowSize));
     }
     if (confidenceLevel <= 0 || confidenceLevel > 1) {
       throw new IllegalArgumentException(
-          String.format("Confidence level must be between 0 and 1, got %f", confidenceLevel));
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_CONFIDENCE_LEVEL_MUST_BE_BETWEEN_0_AND_1_GOT_F_2CDA358E,
+              confidenceLevel));
     }
 
     this.windowSize = windowSize;
@@ -234,7 +243,9 @@ public class DelayAnalyzer {
   public long getDelayQuantile(double percentile) {
     if (percentile <= 0 || percentile > 1) {
       throw new IllegalArgumentException(
-          String.format("Percentile must be between 0 and 1, got %f", percentile));
+          String.format(
+              DataNodeMiscMessages.MISC_EXCEPTION_PERCENTILE_MUST_BE_BETWEEN_0_AND_1_GOT_F_DE6B1311,
+              percentile));
     }
 
     long[] snapshot;
@@ -290,7 +301,8 @@ public class DelayAnalyzer {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "[DelayAnalyzer] Calculated safe watermark: {} (currentTime: {}, P{} delay: {}ms)",
+          DataNodeMiscMessages
+              .MISC_LOG_DELAYANALYZER_CALCULATED_SAFE_WATERMARK_CURRENTTIME_P_DELAY_74E1214C,
           watermark,
           currentSystemTime,
           (int) (confidenceLevel * 100),

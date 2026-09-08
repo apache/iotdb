@@ -426,7 +426,9 @@ public class MTreeBelowSGMemoryImpl {
                   devicePath.concatAsMeasurementPath(measurements.get(i)));
             } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
               throw new MeasurementAlreadyExistException(
-                  devicePath.getFullPath() + "." + measurements.get(i),
+                  devicePath.getFullPath()
+                      + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                      + measurements.get(i),
                   node.getAsMeasurementMNode().getMeasurementPath());
             } else {
               existingMeasurementIndexes.add(i);
@@ -434,12 +436,17 @@ public class MTreeBelowSGMemoryImpl {
             }
           } else {
             throw new PathAlreadyExistException(
-                devicePath.getFullPath() + "." + measurements.get(i));
+                devicePath.getFullPath()
+                    + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                    + measurements.get(i));
           }
         }
         if (aliasList != null && aliasList.get(i) != null && device.hasChild(aliasList.get(i))) {
           throw new AliasAlreadyExistException(
-              devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
+              devicePath.getFullPath()
+                  + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                  + measurements.get(i),
+              aliasList.get(i));
         }
       }
 
@@ -561,21 +568,28 @@ public class MTreeBelowSGMemoryImpl {
             failingMeasurementMap.put(
                 i,
                 new MeasurementAlreadyExistException(
-                    devicePath.getFullPath() + "." + measurementList.get(i),
+                    devicePath.getFullPath()
+                        + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                        + measurementList.get(i),
                     node.getAsMeasurementMNode().getMeasurementPath()));
           }
         } else {
           failingMeasurementMap.put(
               i,
               new PathAlreadyExistException(
-                  devicePath.getFullPath() + "." + measurementList.get(i)));
+                  devicePath.getFullPath()
+                      + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                      + measurementList.get(i)));
         }
       }
       if (aliasList != null && aliasList.get(i) != null && device.hasChild(aliasList.get(i))) {
         failingMeasurementMap.put(
             i,
             new AliasAlreadyExistException(
-                devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
+                devicePath.getFullPath()
+                    + DataNodeSchemaMessages.EXCEPTION_DOT_9D9B854A
+                    + measurementList.get(i),
+                aliasList.get(i)));
       }
       if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
         if (!DataNodeSpaceQuotaManager.getInstance().checkTimeSeriesNum(databaseMNode.getName())) {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.source.schemaregion;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -38,7 +39,8 @@ public class PipeTreeStatementToPlanVisitor extends StatementVisitor<PlanNode, V
   public PlanNode visitNode(final StatementNode node, final Void context) {
     throw new UnsupportedOperationException(
         String.format(
-            "PipeTreeStatementToPlanVisitor does not support visiting general statement, Statement: %s",
+            DataNodePipeMessages
+                .PIPE_EXCEPTION_PIPETREESTATEMENTTOPLANVISITOR_DOES_NOT_SUPPORT_VISITING_3A4A6524,
             node));
   }
 

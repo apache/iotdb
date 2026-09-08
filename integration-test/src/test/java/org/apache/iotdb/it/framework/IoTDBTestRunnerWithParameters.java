@@ -20,6 +20,8 @@
 package org.apache.iotdb.it.framework;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.EnvType;
+import org.apache.iotdb.it.env.MultiEnvFactory;
 
 import org.junit.runner.Description;
 import org.junit.runner.notification.RunNotifier;
@@ -40,6 +42,11 @@ public class IoTDBTestRunnerWithParameters extends BlockJUnit4ClassRunnerWithPar
 
   @Override
   public void run(RunNotifier notifier) {
+    final String testClassName = getTestClass().getJavaClass().getSimpleName();
+    if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
+      EnvFactory.getEnv().setTestClassName(testClassName);
+    }
+    MultiEnvFactory.setTestClassName(testClassName);
     listener = new IoTDBTestListener(this.getName());
     notifier.addListener(listener);
     super.run(notifier);
@@ -50,7 +57,13 @@ public class IoTDBTestRunnerWithParameters extends BlockJUnit4ClassRunnerWithPar
     Description description = describeChild(method);
     logger.info("Run {}", description.getMethodName());
     long currentTime = System.currentTimeMillis();
-    EnvFactory.getEnv().setTestMethodName(description.getMethodName());
+    final String testClassName = getTestClass().getJavaClass().getSimpleName();
+    if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
+      EnvFactory.getEnv().setTestClassName(testClassName);
+      EnvFactory.getEnv().setTestMethodName(description.getMethodName());
+    }
+    MultiEnvFactory.setTestClassName(testClassName);
+    MultiEnvFactory.setTestMethodName(description.getMethodName());
     super.runChild(method, notifier);
     double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
     String testName = description.getClassName() + "." + description.getMethodName();

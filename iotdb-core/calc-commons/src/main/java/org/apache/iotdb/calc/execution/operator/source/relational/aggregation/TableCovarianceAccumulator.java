@@ -15,6 +15,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.CovarianceAccumulator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -109,7 +110,8 @@ public class TableCovarianceAccumulator implements TableAccumulator {
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 2, "Input of Covariance should be 2");
+    checkArgument(
+        arguments.length == 2, CalcMessages.EXCEPTION_INPUT_OF_COVARIANCE_SHOULD_BE_2_786B97E6);
     if (count == 0 || arguments[0].isNull(0) || arguments[1].isNull(0)) {
       return;
     }
@@ -149,7 +151,7 @@ public class TableCovarianceAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -194,7 +196,7 @@ public class TableCovarianceAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     if (count == 0) {
       columnBuilder.appendNull();
@@ -228,7 +230,7 @@ public class TableCovarianceAccumulator implements TableAccumulator {
         }
         break;
       default:
-        throw new UnsupportedOperationException("Unknown type: " + covarianceType);
+        throw new UnsupportedOperationException(CalcMessages.UNKNOWN_TYPE + covarianceType);
     }
   }
 

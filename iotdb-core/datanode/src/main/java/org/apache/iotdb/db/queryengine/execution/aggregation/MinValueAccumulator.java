@@ -61,7 +61,9 @@ public class MinValueAccumulator implements Accumulator, ExtremeValueAccumulator
   // partialResult should be like: | partialMinValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MinValue should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MINVALUE_SHOULD_BE_1_C9DAF94D);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -89,7 +91,9 @@ public class MinValueAccumulator implements Accumulator, ExtremeValueAccumulator
   // columnBuilder should be single in MinValueAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MinValue should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MINVALUE_SHOULD_BE_1_C9DAF94D);
     if (!initResult) {
       columnBuilders[0].appendNull();
       return;

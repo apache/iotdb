@@ -66,7 +66,7 @@ public class RegionGroupCache {
    * @param newHeartbeatSample The newest RegionHeartbeatSample
    * @param overwrite Able to overwrite Adding or Removing
    */
-  public void cacheHeartbeatSample(
+  public synchronized void cacheHeartbeatSample(
       int dataNodeId, RegionHeartbeatSample newHeartbeatSample, boolean overwrite) {
     // Only cache sample when the corresponding loadCache exists
     Optional.ofNullable(regionCacheMap.get(dataNodeId))
@@ -83,7 +83,7 @@ public class RegionGroupCache {
    *
    * @param dataNodeId the specified DataNode
    */
-  public void createRegionCache(int dataNodeId, TConsensusGroupId groupId) {
+  public synchronized void createRegionCache(int dataNodeId, TConsensusGroupId groupId) {
     regionCacheMap.put(dataNodeId, new RegionCache(dataNodeId, groupId));
   }
 
@@ -92,7 +92,7 @@ public class RegionGroupCache {
    *
    * @param dataNodeId the specified DataNode
    */
-  public void removeRegionCache(int dataNodeId) {
+  public synchronized void removeRegionCache(int dataNodeId) {
     regionCacheMap.remove(dataNodeId);
   }
 
@@ -100,7 +100,7 @@ public class RegionGroupCache {
    * Update currentStatistics based on the latest NodeHeartbeatSamples that cached in the
    * slidingWindow.
    */
-  public void updateCurrentStatistics() {
+  public synchronized void updateCurrentStatistics() {
     regionCacheMap.values().forEach(regionCache -> regionCache.updateCurrentStatistics(false));
     Map<Integer, RegionStatistics> regionStatisticsMap =
         regionCacheMap.entrySet().stream()

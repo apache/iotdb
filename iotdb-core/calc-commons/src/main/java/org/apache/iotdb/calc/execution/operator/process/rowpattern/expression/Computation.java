@@ -165,7 +165,8 @@ public abstract class Computation {
         return new CastComputation(inner, targetType);
       } else {
         throw new SemanticException(
-            "Unsupported expression type: " + expression.getClass().getName());
+            CalcMessages.EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_5C50C92E
+                + expression.getClass().getName());
       }
     }
 

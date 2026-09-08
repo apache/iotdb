@@ -36,6 +36,10 @@ public class PipeRuntimeSinkCriticalException extends PipeRuntimeCriticalExcepti
     super(message);
   }
 
+  public PipeRuntimeSinkCriticalException(final String message, final Throwable cause) {
+    super(message, cause);
+  }
+
   public PipeRuntimeSinkCriticalException(final String message, final long timeStamp) {
     super(message, timeStamp);
   }

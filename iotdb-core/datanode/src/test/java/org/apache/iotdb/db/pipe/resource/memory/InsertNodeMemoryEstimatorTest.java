@@ -23,11 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -162,6 +166,89 @@ public class InsertNodeMemoryEstimatorTest {
             > InsertNodeMemoryEstimator.sizeOf(shortPlanNodeIdRow));
   }
 
+  @Test
+  public void testLeafNodesDoNotDeduplicateRepeatedMeasurementSchemas()
+      throws IllegalPathException {
+    assertLeafNodeDoesNotDeduplicateRepeatedMeasurementSchemas(
+        createTextInsertRowNode(
+            "row", "root.sg.d1", new String[] {"s0", "s1"}, new String[] {"v0", "v1"}));
+    assertLeafNodeDoesNotDeduplicateRepeatedMeasurementSchemas(
+        createTextRelationalInsertRowNode(
+            "relational-row", "root.sg.d1", new String[] {"s0", "s1"}, new String[] {"v0", "v1"}));
+    assertLeafNodeDoesNotDeduplicateRepeatedMeasurementSchemas(
+        createTextInsertTabletNode("tablet", "root.sg.d1", 2, 1, 1));
+    assertLeafNodeDoesNotDeduplicateRepeatedMeasurementSchemas(
+        createTextRelationalInsertTabletNode("relational-tablet", "root.sg.d1", 2, 1, 1));
+  }
+
+  @Test
+  public void testSingleChildCompositesDoNotDeduplicateRepeatedMeasurementSchemas()
+      throws IllegalPathException {
+    final InsertRowNode rowWithDistinctSchemas =
+        createTextInsertRowNode(
+            "row", "root.sg.d1", new String[] {"s0", "s1"}, new String[] {"v0", "v1"});
+    final InsertRowNode rowWithRepeatedSchema =
+        createTextInsertRowNode(
+            "row", "root.sg.d1", new String[] {"s0", "s1"}, new String[] {"v0", "v1"});
+    replaceSecondSchemaWithEquivalentDistinctSchema(rowWithDistinctSchemas);
+    rowWithRepeatedSchema.getMeasurementSchemas()[1] =
+        rowWithRepeatedSchema.getMeasurementSchemas()[0];
+    Assert.assertEquals(
+        InsertNodeMemoryEstimator.sizeOf(createInsertRowsNode("parent", rowWithDistinctSchemas)),
+        InsertNodeMemoryEstimator.sizeOf(createInsertRowsNode("parent", rowWithRepeatedSchema)));
+
+    final InsertTabletNode tabletWithDistinctSchemas =
+        createTextInsertTabletNode("tablet", "root.sg.d1", 2, 1, 1);
+    final InsertTabletNode tabletWithRepeatedSchema =
+        createTextInsertTabletNode("tablet", "root.sg.d1", 2, 1, 1);
+    replaceSecondSchemaWithEquivalentDistinctSchema(tabletWithDistinctSchemas);
+    tabletWithRepeatedSchema.getMeasurementSchemas()[1] =
+        tabletWithRepeatedSchema.getMeasurementSchemas()[0];
+    Assert.assertEquals(
+        InsertNodeMemoryEstimator.sizeOf(
+            createInsertMultiTabletsNode("parent", tabletWithDistinctSchemas)),
+        InsertNodeMemoryEstimator.sizeOf(
+            createInsertMultiTabletsNode("parent", tabletWithRepeatedSchema)));
+  }
+
+  @Test
+  public void testMultiChildCompositeDeduplicatesSharedMeasurementSchemas()
+      throws IllegalPathException {
+    final long sizeWithDistinctSchemas =
+        InsertNodeMemoryEstimator.sizeOf(
+            createInsertMultiTabletsNode(
+                "parent",
+                createTextInsertTabletNode("tablet-1", "root.sg.d1", 2, 1, 1),
+                createTextInsertTabletNode("tablet-2", "root.sg.d2", 2, 1, 1)));
+
+    final InsertTabletNode firstTablet =
+        createTextInsertTabletNode("tablet-1", "root.sg.d1", 2, 1, 1);
+    final InsertTabletNode secondTablet =
+        createTextInsertTabletNode("tablet-2", "root.sg.d2", 2, 1, 1);
+    secondTablet.setMeasurementSchemas(firstTablet.getMeasurementSchemas());
+
+    Assert.assertTrue(
+        InsertNodeMemoryEstimator.sizeOf(
+                createInsertMultiTabletsNode("parent", firstTablet, secondTablet))
+            < sizeWithDistinctSchemas);
+  }
+
+  private static void assertLeafNodeDoesNotDeduplicateRepeatedMeasurementSchemas(
+      final InsertNode node) {
+    replaceSecondSchemaWithEquivalentDistinctSchema(node);
+    final long sizeWithDistinctSchemas = InsertNodeMemoryEstimator.sizeOf(node);
+    node.getMeasurementSchemas()[1] = node.getMeasurementSchemas()[0];
+
+    Assert.assertEquals(sizeWithDistinctSchemas, InsertNodeMemoryEstimator.sizeOf(node));
+  }
+
+  private static void replaceSecondSchemaWithEquivalentDistinctSchema(final InsertNode node) {
+    final MeasurementSchema firstMeasurementSchema = node.getMeasurementSchemas()[0];
+    node.getMeasurementSchemas()[1] =
+        new MeasurementSchema(
+            firstMeasurementSchema.getMeasurementName(), firstMeasurementSchema.getType());
+  }
+
   private static InsertRowsNode createInsertRowsNode(
       String planNodeId, InsertRowNode... insertRowNodes) {
     InsertRowsNode node = new InsertRowsNode(new PlanNodeId(planNodeId));
@@ -220,6 +307,24 @@ public class InsertNodeMemoryEstimatorTest {
         false);
   }
 
+  private static RelationalInsertRowNode createTextRelationalInsertRowNode(
+      String planNodeId, String devicePath, String[] measurements, String[] values)
+      throws IllegalPathException {
+    final InsertRowNode insertRowNode =
+        createTextInsertRowNode(planNodeId, devicePath, measurements, values);
+    return new RelationalInsertRowNode(
+        new PlanNodeId(planNodeId),
+        new PartialPath(devicePath),
+        false,
+        insertRowNode.getMeasurements(),
+        insertRowNode.getDataTypes(),
+        insertRowNode.getMeasurementSchemas(),
+        1L,
+        insertRowNode.getValues(),
+        false,
+        createFieldColumnCategories(measurements.length));
+  }
+
   private static InsertTabletNode createTextInsertTabletNode(
       String planNodeId, String devicePath, int measurementCount, int rowCount, int repeatCount)
       throws IllegalPathException {
@@ -258,6 +363,31 @@ public class InsertNodeMemoryEstimatorTest {
         null,
         columns,
         rowCount);
+  }
+
+  private static RelationalInsertTabletNode createTextRelationalInsertTabletNode(
+      String planNodeId, String devicePath, int measurementCount, int rowCount, int repeatCount)
+      throws IllegalPathException {
+    final InsertTabletNode insertTabletNode =
+        createTextInsertTabletNode(planNodeId, devicePath, measurementCount, rowCount, repeatCount);
+    return new RelationalInsertTabletNode(
+        new PlanNodeId(planNodeId),
+        new PartialPath(devicePath),
+        false,
+        insertTabletNode.getMeasurements(),
+        insertTabletNode.getDataTypes(),
+        insertTabletNode.getMeasurementSchemas(),
+        insertTabletNode.getTimes(),
+        insertTabletNode.getBitMaps(),
+        insertTabletNode.getColumns(),
+        insertTabletNode.getRowCount(),
+        createFieldColumnCategories(measurementCount));
+  }
+
+  private static TsTableColumnCategory[] createFieldColumnCategories(final int measurementCount) {
+    final TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurementCount];
+    Arrays.fill(columnCategories, TsTableColumnCategory.FIELD);
+    return columnCategories;
   }
 
   private static TSStatus createStatus(String message) {

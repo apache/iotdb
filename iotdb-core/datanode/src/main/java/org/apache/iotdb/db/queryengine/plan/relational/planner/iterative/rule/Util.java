@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Project
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 
@@ -102,7 +103,8 @@ final class Util {
 
     checkArgument(
         (node.getChildren().size() == permittedChildOutputs.size()),
-        "Mismatched child (%s) and permitted outputs (%s) sizes",
+        DataNodeQueryMessages
+            .EXCEPTION_MISMATCHED_CHILD_LEFT_PAREN_ARG_RIGHT_PAREN_AND_PERMITTED_OUTPUTS_LEFT_PAREN_ARG_57801144,
         node.getChildren().size(),
         permittedChildOutputs.size());
 

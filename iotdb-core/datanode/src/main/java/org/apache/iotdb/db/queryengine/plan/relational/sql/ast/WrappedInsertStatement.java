@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
@@ -209,8 +210,10 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     } else if (!columnCategory.equals(existingColumn.getColumnCategory())) {
       throw new SemanticException(
           String.format(
-              "Inconsistent column category of column %s: %s/%s",
-              measurement, columnCategory, existingColumn.getColumnCategory()),
+              DataNodeQueryMessages.INCONSISTENT_COLUMN_CATEGORY_OF_COLUMN_S_S_S,
+              measurement,
+              columnCategory,
+              existingColumn.getColumnCategory()),
           TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
     }
 
@@ -428,7 +431,10 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     // the column does not exist and auto-creation is disabled
     SemanticException semanticException =
         new SemanticException(
-            "Column " + name + " does not exists or fails to be " + "created",
+            DataNodeQueryMessages.COLUMN
+                + name
+                + DataNodeQueryMessages.DOES_NOT_EXISTS_OR_FAILS_TO_BE
+                + DataNodeQueryMessages.CREATED,
             TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
     if (columnCategory != TsTableColumnCategory.FIELD
         || !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -445,8 +451,10 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     SemanticException semanticException =
         new SemanticException(
             String.format(
-                "Incompatible data type of column %s: %s/%s",
-                incoming.getName(), incoming.getType(), real.getType()),
+                DataNodeQueryMessages.INCOMPATIBLE_DATA_TYPE_OF_COLUMN_S_S_S,
+                incoming.getName(),
+                incoming.getType(),
+                real.getType()),
             TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
     if (incoming.getColumnCategory() != TsTableColumnCategory.FIELD
         || !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -468,8 +476,10 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     SemanticException semanticException =
         new SemanticException(
             String.format(
-                "Incompatible data type of column %s: %s/%s",
-                incomingMeasurement, incomingDataType, real.getDataType()),
+                DataNodeQueryMessages.INCOMPATIBLE_DATA_TYPE_OF_COLUMN_S_S_S,
+                incomingMeasurement,
+                incomingDataType,
+                real.getDataType()),
             TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
     if (columnCategory != TsTableColumnCategory.FIELD
         || !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {

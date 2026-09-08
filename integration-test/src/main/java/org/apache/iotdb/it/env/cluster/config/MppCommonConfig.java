@@ -86,6 +86,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    setProperty("metadata_lease_fence_ms", String.valueOf(metadataLeaseFenceMs));
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     setProperty("time_partition_interval", String.valueOf(partitionInterval));
     return this;
@@ -490,12 +496,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
-    return this;
-  }
-
-  @Override
   public CommonConfig setSubscriptionOwnerLeaseDurationMsMin(
       long subscriptionOwnerLeaseDurationMsMin) {
     setProperty(
@@ -629,6 +629,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setEnableThriftClientSSL(boolean enableThriftClientSSL) {
     setProperty("enable_thrift_ssl", String.valueOf(enableThriftClientSSL));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setThriftSSLClientAuth(boolean thriftSSLClientAuth) {
+    setProperty("thrift_ssl_client_auth", String.valueOf(thriftSSLClientAuth));
     return this;
   }
 

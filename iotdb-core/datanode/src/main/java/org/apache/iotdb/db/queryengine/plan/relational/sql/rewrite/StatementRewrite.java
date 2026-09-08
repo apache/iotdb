@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 
@@ -39,7 +40,9 @@ public final class StatementRewrite {
   private final Set<Rewrite> rewrites;
 
   public StatementRewrite(Set<Rewrite> rewrites) {
-    this.rewrites = ImmutableSet.copyOf(requireNonNull(rewrites, "rewrites is null"));
+    this.rewrites =
+        ImmutableSet.copyOf(
+            requireNonNull(rewrites, DataNodeQueryMessages.EXCEPTION_REWRITES_IS_NULL_4E5AD77A));
   }
 
   public Statement rewrite(
@@ -54,7 +57,7 @@ public final class StatementRewrite {
           requireNonNull(
               rewrite.rewrite(
                   analyzerFactory, session, node, parameters, parameterLookup, warningCollector),
-              "Statement rewrite returned null");
+              DataNodeQueryMessages.EXCEPTION_STATEMENT_REWRITE_RETURNED_NULL_AB1E89EA);
     }
     return node;
   }

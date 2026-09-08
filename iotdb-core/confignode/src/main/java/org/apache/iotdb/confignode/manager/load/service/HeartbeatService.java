@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -266,6 +267,7 @@ public class HeartbeatService {
   private void pingRegisteredDataNodes(
       TDataNodeHeartbeatReq heartbeatReq, List<TDataNodeConfiguration> registeredDataNodes) {
     // Send heartbeat requests
+    final DataNodeContactTracker contactTracker = DataNodeContactTracker.getInstance();
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
       if (loadCache.checkAndSetHeartbeatProcessing(dataNodeId)) {
@@ -284,6 +286,11 @@ public class HeartbeatService {
               configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
       addConfigNodeLocationsToReq(dataNodeId, heartbeatReq);
+      if (contactTracker.hasDeliveredCurrentFenceThreshold(dataNodeId)) {
+        heartbeatReq.setFenceThresholdMsIsSet(false);
+      } else {
+        heartbeatReq.setFenceThresholdMs(contactTracker.getCurrentFenceThresholdMs());
+      }
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);

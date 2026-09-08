@@ -145,7 +145,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     byte version = reader.readMarker();
     if (version != (byte) 3 && version != (byte) 4) {
       throw new WriteProcessException(
-          "The version of this tsfile is too low, please upgrade it to the version 4.");
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_THE_VERSION_OF_THIS_TSFILE_IS_TOO_LOW_PLEASE_UPGRADE_IT_19CC276C);
     }
     // start to scan chunks and chunkGroups
     byte marker;
@@ -232,10 +233,11 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
 
     } catch (IOException e2) {
       throw new IOException(
-          "TsFile rewrite process cannot proceed at position "
-              + reader.position()
-              + "because: "
-              + e2.getMessage());
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_TSFILE_REWRITE_PROCESS_CANNOT_PROCEED_AT_POSITION_SBECAUSE_3763D32F,
+              reader.position(),
+              e2.getMessage()));
     } finally {
       if (reader != null) {
         reader.close();

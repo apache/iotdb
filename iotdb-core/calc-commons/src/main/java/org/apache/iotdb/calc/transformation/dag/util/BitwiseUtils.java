@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.util;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 public class BitwiseUtils {
@@ -41,15 +42,18 @@ public class BitwiseUtils {
     if (num > lowBitsMask || num < ~lowBitsMask) {
       throw new SemanticException(
           String.format(
-              "Argument exception, the scalar function num must be representable with the bits specified. %s cannot be represented with %s bits.",
-              num, bits));
+              CalcMessages
+                  .EXCEPTION_ARGUMENT_EXCEPTION_SCALAR_FUNCTION_NUM_MUST_REPRESENTABLE_BITS_SPECIFIED_ARG_241AD2FE,
+              num,
+              bits));
     }
   }
 
   public static void bitCountCheckBits(long bits) {
     if (bits <= 1 || bits > 64) {
       throw new SemanticException(
-          "Argument exception, the scalar function bit_count bits must be between 2 and 64.");
+          CalcMessages
+              .EXCEPTION_ARGUMENT_EXCEPTION_SCALAR_FUNCTION_BIT_COUNT_BITS_MUST_BETWEEN_2_6A365911);
     }
   }
 

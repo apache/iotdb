@@ -75,7 +75,8 @@ public class CompactionRecoverManager {
             new File(
                 dir + File.separator + logicalStorageGroupName + File.separator + dataRegionId);
         logger.info(
-            "{} [Compaction][Recover] recover compaction in data region dir {}",
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTION_RECOVER_RECOVER_COMPACTION_IN_DATA_REGION_DIR_ABD144CC,
             logicalStorageGroupName,
             storageGroupDir.getAbsolutePath());
         if (!storageGroupDir.exists()) {
@@ -91,7 +92,8 @@ public class CompactionRecoverManager {
             continue;
           }
           logger.info(
-              "{} [Compaction][Recover] recover compaction in time partition dir {}",
+              StorageEngineMessages
+                  .STORAGE_LOG_COMPACTION_RECOVER_RECOVER_COMPACTION_IN_TIME_PARTITION_FA2FC44D,
               logicalStorageGroupName,
               timePartitionDir.getAbsolutePath());
           // including repair task
@@ -125,7 +127,9 @@ public class CompactionRecoverManager {
                   }
                 } catch (IOException e) {
                   logger.error(
-                      "recover mods file error on delete origin file or rename mods settle,", e);
+                      StorageEngineMessages
+                          .STORAGE_LOG_RECOVER_MODS_FILE_ERROR_ON_DELETE_ORIGIN_FILE_OR_RENAME_7033152A,
+                      e);
                 }
               });
     } catch (IOException e) {

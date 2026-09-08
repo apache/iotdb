@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.process.gapfill;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
@@ -99,7 +100,8 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
     }
     checkArgument(
         outputColumnCount == block.getValueColumnCount(),
-        "outputColumnCount is not equal to value column count of child operator's TsBlock");
+        CalcMessages
+            .EXCEPTION_OUTPUTCOLUMNCOUNT_IS_NOT_EQUAL_TO_VALUE_COLUMN_COUNT_OF_CHILD_OPERATOR_QUOTE_S_T_8E30BAD8);
 
     resultBuilder.reset();
     SortKey previousGroupKey = lastGroupKey;
@@ -122,11 +124,12 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
       }
 
       Column timeColumn = block.getColumn(timeColumnIndex);
-      // -1 because we should not include current row, current row will be appended in
-      // writeCurrentRow
-      long currentEndTime =
-          timeColumn.isNull(i) ? endTime : block.getColumn(timeColumnIndex).getLong(i) - 1;
-      fillGaps(block, i, currentEndTime);
+      if (timeColumn.isNull(i)) {
+        fillGaps(block, i, endTime, true);
+      } else {
+        // The real row is appended by writeCurrentRow, so its timestamp is an exclusive bound.
+        fillGaps(block, i, timeColumn.getLong(i), false);
+      }
       writeCurrentRow(block, i);
     }
     lastGroupKey = new SortKey(block, size - 1);
@@ -154,9 +157,18 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   }
 
   private void fillGaps(TsBlock block, int rowIndex, long currentEndTime) {
-    while (currentTime <= currentEndTime) {
+    fillGaps(block, rowIndex, currentEndTime, true);
+  }
+
+  private void fillGaps(
+      TsBlock block, int rowIndex, long currentEndTime, boolean endTimeInclusive) {
+    while (currentTime < currentEndTime || (endTimeInclusive && currentTime == currentEndTime)) {
+      long previousTime = currentTime;
       gapFillRow(currentTime, block, rowIndex);
       nextTime();
+      if (currentTime <= previousTime) {
+        break;
+      }
     }
   }
 

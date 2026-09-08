@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.quotas.FixedIntervalRateLimiter;
 import org.apache.iotdb.commons.quotas.RateLimiter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Map;
@@ -113,26 +114,35 @@ public class QuotaLimiter {
       throws RpcThrottlingException {
     if (!reqsLimiter.canExecute(writeReqs + readReqs)) {
       throw new RpcThrottlingException(
-          "number of requests exceeded - wait " + reqsLimiter.waitInterval() + "ms",
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_NUMBER_OF_REQUESTS_EXCEEDED_WAIT_SMS_30F0842F,
+              reqsLimiter.waitInterval()),
           TSStatusCode.NUM_REQUESTS_EXCEEDED.getStatusCode());
     }
 
     if (!reqSizeLimiter.canExecute(estimateWriteSize + estimateReadSize)) {
       throw new RpcThrottlingException(
-          "request size limit exceeded - wait " + reqSizeLimiter.waitInterval() + "ms",
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_REQUEST_SIZE_LIMIT_EXCEEDED_WAIT_SMS_11C1E549,
+              reqSizeLimiter.waitInterval()),
           TSStatusCode.REQUEST_SIZE_EXCEEDED.getStatusCode());
     }
 
     if (estimateWriteSize > 0) {
       if (!writeReqsLimiter.canExecute(writeReqs)) {
         throw new RpcThrottlingException(
-            "number of write requests exceeded - wait " + writeReqsLimiter.waitInterval() + "ms",
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_NUMBER_OF_WRITE_REQUESTS_EXCEEDED_WAIT_SMS_D11F94D2,
+                writeReqsLimiter.waitInterval()),
             TSStatusCode.NUM_WRITE_REQUESTS_EXCEEDED.getStatusCode());
       }
 
       if (!writeSizeLimiter.canExecute(estimateWriteSize)) {
         throw new RpcThrottlingException(
-            "write size limit exceeded - wait " + writeSizeLimiter.waitInterval() + "ms",
+            String.format(
+                StorageEngineMessages.STORAGE_EXCEPTION_WRITE_SIZE_LIMIT_EXCEEDED_WAIT_SMS_AA3796DC,
+                writeSizeLimiter.waitInterval()),
             TSStatusCode.WRITE_SIZE_EXCEEDED.getStatusCode());
       }
     }
@@ -140,13 +150,18 @@ public class QuotaLimiter {
     if (estimateReadSize > 0) {
       if (!readReqsLimiter.canExecute(readReqs)) {
         throw new RpcThrottlingException(
-            "number of read requests exceeded - wait " + readReqsLimiter.waitInterval() + "ms",
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_NUMBER_OF_READ_REQUESTS_EXCEEDED_WAIT_SMS_C92D6C43,
+                readReqsLimiter.waitInterval()),
             TSStatusCode.NUM_READ_REQUESTS_EXCEEDED.getStatusCode());
       }
 
       if (!readSizeLimiter.canExecute(estimateReadSize)) {
         throw new RpcThrottlingException(
-            "read size limit exceeded - wait " + readSizeLimiter.waitInterval() + "ms",
+            String.format(
+                StorageEngineMessages.STORAGE_EXCEPTION_READ_SIZE_LIMIT_EXCEEDED_WAIT_SMS_E19598BA,
+                readSizeLimiter.waitInterval()),
             TSStatusCode.READ_SIZE_EXCEEDED.getStatusCode());
       }
     }

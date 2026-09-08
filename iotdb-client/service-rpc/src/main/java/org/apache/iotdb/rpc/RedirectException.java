@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 
 import java.io.IOException;
 import java.util.List;
@@ -33,21 +34,25 @@ public class RedirectException extends IOException {
   private final List<TEndPoint> endPointList;
 
   public RedirectException(TEndPoint endPoint) {
-    super("later request in same group will be redirected to " + endPoint.toString());
+    super(
+        RpcMessages.EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B
+            + endPoint.toString());
     this.endPoint = endPoint;
     this.deviceEndPointMap = null;
     this.endPointList = null;
   }
 
   public RedirectException(Map<String, TEndPoint> deviceEndPointMap) {
-    super("later request in same group will be redirected to " + deviceEndPointMap);
+    super(
+        RpcMessages.EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B
+            + deviceEndPointMap);
     this.endPoint = null;
     this.deviceEndPointMap = deviceEndPointMap;
     this.endPointList = null;
   }
 
   public RedirectException(List<TEndPoint> endPointList) {
-    super("later request in same group will be redirected to " + endPointList);
+    super(RpcMessages.EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B + endPointList);
     this.endPoint = null;
     this.deviceEndPointMap = null;
     this.endPointList = endPointList;

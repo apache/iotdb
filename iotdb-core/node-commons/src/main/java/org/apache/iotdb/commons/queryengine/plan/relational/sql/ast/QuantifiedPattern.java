@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -38,8 +40,10 @@ public class QuantifiedPattern extends RowPattern {
   public QuantifiedPattern(
       NodeLocation location, RowPattern pattern, PatternQuantifier patternQuantifier) {
     super(location);
-    this.pattern = requireNonNull(pattern, "pattern is null");
-    this.patternQuantifier = requireNonNull(patternQuantifier, "patternQuantifier is null");
+    this.pattern = requireNonNull(pattern, QueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
+    this.patternQuantifier =
+        requireNonNull(
+            patternQuantifier, QueryMessages.EXCEPTION_PATTERNQUANTIFIER_IS_NULL_0AC88BAB);
   }
 
   public RowPattern getPattern() {

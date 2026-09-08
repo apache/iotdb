@@ -257,6 +257,21 @@ public class PipeInclusionOptions {
     return options;
   }
 
+  public static boolean areOptionsEnabled(final PipeParameters parameters, final String... options)
+      throws IllegalPathException {
+    final Set<PartialPath> inclusionOptions = parseOptions(getInclusionString(parameters));
+    final Set<PartialPath> exclusionOptions = parseOptions(getExclusionString(parameters));
+
+    for (final String option : options) {
+      final PartialPath optionPath = new PartialPath(option);
+      if (inclusionOptions.stream().noneMatch(optionPath::matchPrefixPath)
+          || exclusionOptions.stream().anyMatch(optionPath::matchPrefixPath)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private PipeInclusionOptions() {
     // Utility class
   }

@@ -525,24 +525,26 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     if (shouldLogFailure(currentTime, failureMessage)) {
       if (exception == null) {
         LOGGER.warn(
-            "{}. Windows disk metrics will be skipped for {} ms before retrying.",
+            MetricsMessages
+                .LOG_ARG_WINDOWS_DISK_METRICS_WILL_SKIPPED_ARG_MS_BEFORE_RETRYING_1F1EB4C4,
             failureMessage,
             POWERSHELL_RETRY_INTERVAL);
       } else {
         LOGGER.warn(
-            "{}: {}. Windows disk metrics will be skipped for {} ms before retrying.",
+            MetricsMessages.LOG_ARG_ARG_WINDOWS_DISK_METRICS_WILL_SKIPPED_ARG_MS_BEFORE_74269D0A,
             failureMessage,
             exception.toString(),
             POWERSHELL_RETRY_INTERVAL);
       }
       LOGGER.debug(
-          "Failed windows disk metrics powershell command: {}, output: {}",
+          MetricsMessages
+              .LOG_FAILED_WINDOWS_DISK_METRICS_POWERSHELL_COMMAND_ARG_OUTPUT_ARG_16D24C0C,
           command,
           output == null ? "" : String.join(" | ", output),
           exception);
     } else {
       LOGGER.debug(
-          "{}. Windows disk metrics collection is still in retry backoff.",
+          MetricsMessages.LOG_ARG_WINDOWS_DISK_METRICS_COLLECTION_STILL_RETRY_BACKOFF_C237EE87,
           failureMessage,
           exception);
     }
@@ -559,7 +561,9 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
   private void clearPowerShellFailure() {
     if (!lastPowerShellFailure.isEmpty() || nextPowerShellRetryTime > 0L) {
-      LOGGER.info("Recovered windows disk metrics collection through PowerShell/CIM.");
+      LOGGER.info(
+          MetricsMessages
+              .LOG_RECOVERED_WINDOWS_DISK_METRICS_COLLECTION_THROUGH_POWERSHELL_CIM_03B9110E);
     }
     lastPowerShellFailure = "";
     nextFailureLogTime = 0L;

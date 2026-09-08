@@ -153,7 +153,10 @@ public class ConvertPredicateToFilterVisitor
 
     if (!context.isMeasurementColumn(symbolReference)) {
       throw new IllegalStateException(
-          String.format("Only support measurement column in filter: %s", symbolReference));
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ONLY_SUPPORT_MEASUREMENT_COLUMN_IN_FILTER_S_140800D9,
+              symbolReference));
     }
 
     int measurementIndex = context.getMeasurementIndex(symbolReference.getName());
@@ -232,7 +235,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -249,7 +254,9 @@ public class ConvertPredicateToFilterVisitor
         return new ValueIsNotNullOperator(measurementIndex);
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -268,7 +275,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -292,7 +301,9 @@ public class ConvertPredicateToFilterVisitor
         return ValueFilterApi.ltEq(measurementIndex, value, dataType);
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_COMPARISON_OPERATOR_S_8357E642,
+                operator));
     }
   }
 
@@ -305,7 +316,10 @@ public class ConvertPredicateToFilterVisitor
 
     if (!context.isMeasurementColumn(symbolReference)) {
       throw new IllegalStateException(
-          String.format("Only support measurement column in filter: %s", symbolReference));
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ONLY_SUPPORT_MEASUREMENT_COLUMN_IN_FILTER_S_140800D9,
+              symbolReference));
     }
 
     int measurementIndex = context.getMeasurementIndex(symbolReference.getName());
@@ -334,7 +348,10 @@ public class ConvertPredicateToFilterVisitor
             measurementIndex, value, field1, zoneId, currPrecision);
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported extract comparison operator %s", operator));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_EXTRACT_COMPARISON_OPERATOR_S_38A9CDFA,
+                operator));
     }
   }
 
@@ -395,7 +412,9 @@ public class ConvertPredicateToFilterVisitor
             node.getTerms().stream().map(n -> process(n, context)).collect(Collectors.toList()));
       default:
         throw new IllegalArgumentException(
-            String.format("Unsupported logical operator %s", node.getOperator()));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_LOGICAL_OPERATOR_S_FDC60986,
+                node.getOperator()));
     }
   }
 
@@ -442,7 +461,9 @@ public class ConvertPredicateToFilterVisitor
           context);
     } else {
       throw new IllegalStateException(
-          String.format("%s is not supported in value push down", node));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_S_IS_NOT_SUPPORTED_IN_VALUE_PUSH_DOWN_DD54E38A,
+              node));
     }
   }
 
@@ -528,13 +549,17 @@ public class ConvertPredicateToFilterVisitor
                   measurementIndex, maxValue, field, zoneId, currPrecision)));
     } else if (context.isExtractMeasurementColumn(secondExpression)) {
       throw new IllegalStateException(
-          "Should not reach here before PredicateCombineIntoTableScanChecker support Extract push-down in third child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_PREDICATECOMBINEINTOTABLESCANCHECKER_C591ED7D);
     } else if (context.isExtractMeasurementColumn(thirdExpression)) {
       throw new IllegalStateException(
-          "Should not reach here before PredicateCombineIntoTableScanChecker support Extract push-down in third child");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_SHOULD_NOT_REACH_HERE_BEFORE_PREDICATECOMBINEINTOTABLESCANCHECKER_C591ED7D);
     } else {
       throw new IllegalStateException(
-          String.format("%s is not supported in value push down", node));
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_S_IS_NOT_SUPPORTED_IN_VALUE_PUSH_DOWN_DD54E38A,
+              node));
     }
   }
 
@@ -572,7 +597,9 @@ public class ConvertPredicateToFilterVisitor
       Integer index = measuremrntsMap.get(measurement);
       if (index == null) {
         throw new IllegalArgumentException(
-            String.format("Measurement %s does not exist", measurement));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_MEASUREMENT_S_DOES_NOT_EXIST_23D2B5BE,
+                measurement));
       }
       return index;
     }
@@ -581,7 +608,10 @@ public class ConvertPredicateToFilterVisitor
       Type type = schemaMap.get(symbol).getType();
       if (type == null) {
         throw new IllegalArgumentException(
-            String.format("ColumnSchema of Symbol %s isn't saved in schemaMap", symbol));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_COLUMNSCHEMA_OF_SYMBOL_S_ISN_T_SAVED_IN_SCHEMAMAP_3A172EBC,
+                symbol));
       }
       return type;
     }

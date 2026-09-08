@@ -271,7 +271,9 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
         appendInternalBatchActivateTemplateNode((InternalBatchActivateTemplateNode) planNode);
         break;
       default:
-        throw new IllegalArgumentException("Unsupported schema plan node " + planNode.getType());
+        throw new IllegalArgumentException(
+            DataNodePipeMessages.EXCEPTION_UNSUPPORTED_SCHEMA_PLAN_NODE_9A833E0B
+                + planNode.getType());
     }
   }
 
@@ -416,7 +418,9 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
             new BatchActivateTemplateNode(EMPTY_PLAN_NODE_ID, new HashMap<>(templateActivationMap));
         return cachedPlanNode;
       default:
-        throw new IllegalStateException("Cannot build schema batch plan node from empty batch.");
+        throw new IllegalStateException(
+            DataNodePipeMessages
+                .EXCEPTION_CANNOT_BUILD_SCHEMA_BATCH_PLAN_NODE_FROM_EMPTY_BATCH_842D9E9B);
     }
   }
 

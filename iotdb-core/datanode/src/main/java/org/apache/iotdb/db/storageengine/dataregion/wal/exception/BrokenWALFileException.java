@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.exception;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import java.io.File;
 import java.io.IOException;
 
 public class BrokenWALFileException extends IOException {
 
   public BrokenWALFileException(File logFile) {
-    super(String.format("Broken wal file %s, size %d", logFile, logFile.length()));
+    super(String.format(StorageEngineMessages.BROKEN_WAL_FILE_FMT, logFile, logFile.length()));
   }
 }

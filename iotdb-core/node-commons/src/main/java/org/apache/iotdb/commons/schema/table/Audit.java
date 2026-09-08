@@ -52,6 +52,19 @@ public class Audit {
         && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(nodes[1]);
   }
 
+  public static boolean isAuditDatabase(final String databaseName) {
+    return isDatabaseOrDescendant(databaseName, TABLE_MODEL_AUDIT_DATABASE)
+        || isDatabaseOrDescendant(databaseName, TREE_MODEL_AUDIT_DATABASE);
+  }
+
+  private static boolean isDatabaseOrDescendant(
+      final String databaseName, final String auditDatabaseName) {
+    return databaseName != null
+        && databaseName.regionMatches(true, 0, auditDatabaseName, 0, auditDatabaseName.length())
+        && (databaseName.length() == auditDatabaseName.length()
+            || databaseName.charAt(auditDatabaseName.length()) == '.');
+  }
+
   public static String getReservedDatabaseNameErrorMsg(String databaseName) {
     return String.format(RESERVED_DATABASE_NAME_ERROR_MSG, databaseName);
   }

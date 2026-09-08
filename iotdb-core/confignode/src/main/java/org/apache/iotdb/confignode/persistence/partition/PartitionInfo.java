@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.snapshot.SnapshotStreamFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
@@ -64,7 +65,6 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
-import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
@@ -81,11 +81,11 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -119,9 +119,6 @@ import java.util.stream.Collectors;
 public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
-
-  // Allocate 8MB buffer for load snapshot of PartitionInfo
-  private static final int PARTITION_TABLE_BUFFER_SIZE = 32 * 1024 * 1024;
 
   /** For Cluster Partition. */
   // For allocating Regions
@@ -233,19 +230,7 @@ public class PartitionInfo implements SnapshotProcessor {
   public TSStatus offerRegionMaintainTasks(
       OfferRegionMaintainTasksPlan offerRegionMaintainTasksPlan) {
     synchronized (regionMaintainTaskList) {
-      // The RegionMaintainer queue only recreates failed region replicas now; region deletion is
-      // owned by RemoveRegionGroupProcedure. Drop any legacy DELETE task that an upgraded node may
-      // replay from an old consensus log, so it cannot get stuck in the queue and block the
-      // recreation of that region's other replicas.
-      for (RegionMaintainTask task : offerRegionMaintainTasksPlan.getRegionMaintainTaskList()) {
-        if (RegionMaintainType.DELETE.equals(task.getType())) {
-          LOGGER.info(
-              "Dropping legacy region-delete task for {} while replaying offer plan; region deletion is now handled by RemoveRegionGroupProcedure.",
-              task.getRegionId());
-          continue;
-        }
-        regionMaintainTaskList.add(task);
-      }
+      regionMaintainTaskList.addAll(offerRegionMaintainTasksPlan.getRegionMaintainTaskList());
       return RpcUtils.SUCCESS_STATUS;
     }
   }
@@ -1006,9 +991,11 @@ public class PartitionInfo implements SnapshotProcessor {
     // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
+    // The write buffer is bounded by config_node_snapshot_buffer_size_max, so a small partition
+    // table no longer allocates a fixed 32MB buffer per snapshot.
     try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-        BufferedOutputStream bufferedOutputStream =
-            new BufferedOutputStream(fileOutputStream, PARTITION_TABLE_BUFFER_SIZE);
+        OutputStream bufferedOutputStream =
+            SnapshotStreamFactory.createOutputStream(fileOutputStream);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(bufferedOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
@@ -1041,7 +1028,8 @@ public class PartitionInfo implements SnapshotProcessor {
     } finally {
       // with or without success, delete temporary files anyway
       for (int retry = 0; retry < 5; retry++) {
-        if (!tmpFile.exists() || tmpFile.delete()) {
+        if (!tmpFile.exists()
+            || org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpFile)) {
           break;
         } else {
           LOGGER.warn(
@@ -1062,9 +1050,12 @@ public class PartitionInfo implements SnapshotProcessor {
       return;
     }
 
-    try (final BufferedInputStream fileInputStream =
-            new BufferedInputStream(
-                Files.newInputStream(snapshotFile.toPath()), PARTITION_TABLE_BUFFER_SIZE);
+    // The read buffer is sized from the file size and capped by
+    // config_node_snapshot_buffer_size_max,
+    // so loading a snapshot never allocates more than the configured cap.
+    try (final InputStream fileInputStream =
+            SnapshotStreamFactory.createInputStream(
+                Files.newInputStream(snapshotFile.toPath()), snapshotFile.length());
         final TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       final TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
       // before restoring a snapshot, clear all old data
@@ -1086,21 +1077,11 @@ public class PartitionInfo implements SnapshotProcessor {
         databasePartitionTables.put(database, databasePartitionTable);
       }
 
-      // restore the RegionMaintainer queue
+      // restore deletedRegionSet
       length = ReadWriteIOUtils.readInt(fileInputStream);
       for (int i = 0; i < length; i++) {
         final RegionMaintainTask task =
             RegionMaintainTask.Factory.create(fileInputStream, protocol);
-        // The RegionMaintainer queue only recreates failed region replicas now; region deletion is
-        // owned by RemoveRegionGroupProcedure. Drop any legacy DELETE task carried over from an
-        // upgraded snapshot so it cannot get stuck at the head of a region's queue and block the
-        // recreation of that region's other replicas.
-        if (RegionMaintainType.DELETE.equals(task.getType())) {
-          LOGGER.info(
-              "Dropping legacy region-delete task for {} while loading snapshot; region deletion is now handled by RemoveRegionGroupProcedure.",
-              task.getRegionId());
-          continue;
-        }
         regionMaintainTaskList.add(task);
       }
     }

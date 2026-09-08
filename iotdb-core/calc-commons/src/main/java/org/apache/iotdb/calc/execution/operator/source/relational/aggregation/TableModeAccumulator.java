@@ -106,7 +106,8 @@ public class TableModeAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of Mode should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_MODE_SHOULD_BE_BINARYCOLUMN_2BB3E0AF);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -122,7 +123,7 @@ public class TableModeAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output should be BinaryColumn");
+        CalcMessages.EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_SHOULD_BE_BINARYCOLUMN_3B5148FA);
 
     columnBuilder.writeBinary(new Binary(serializeCountMap()));
   }
@@ -218,7 +219,8 @@ public class TableModeAccumulator implements TableAccumulator {
     if (size > MAP_SIZE_THRESHOLD) {
       throw new RuntimeException(
           String.format(
-              "distinct values has exceeded the threshold %s when calculate Mode",
+              CalcMessages
+                  .EXCEPTION_DISTINCT_VALUES_HAS_EXCEEDED_THRESHOLD_ARG_CALCULATE_MODE_8CA29DC2,
               MAP_SIZE_THRESHOLD));
     }
   }

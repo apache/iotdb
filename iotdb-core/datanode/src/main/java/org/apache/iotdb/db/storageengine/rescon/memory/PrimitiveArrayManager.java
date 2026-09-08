@@ -205,7 +205,7 @@ public class PrimitiveArrayManager {
 
       if (LOGGER.isDebugEnabled() && oldLimit != newLimit) {
         LOGGER.debug(
-            "limit of {} array deque size updated: {} -> {}",
+            StorageEngineMessages.STORAGE_LOG_LIMIT_OF_ARRAY_DEQUE_SIZE_UPDATED_05DBA95E,
             TSDataType.deserialize((byte) i).name(),
             oldLimit,
             newLimit);
@@ -220,7 +220,8 @@ public class PrimitiveArrayManager {
     }
     if (LOGGER.isDebugEnabled() && oldLimitUpdateThreshold != limitUpdateThreshold) {
       LOGGER.debug(
-          "limitUpdateThreshold of PrimitiveArrayManager updated: {} -> {}",
+          StorageEngineMessages
+              .STORAGE_LOG_LIMITUPDATETHRESHOLD_OF_PRIMITIVEARRAYMANAGER_UPDATED_394801AE,
           oldLimitUpdateThreshold,
           limitUpdateThreshold);
     }

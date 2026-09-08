@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.utils.TypeServices;
@@ -77,6 +78,8 @@ public abstract class TopKOperator implements ProcessOperator {
   // the data of every childOperator is in order
   private final boolean childrenDataInOrder;
 
+  private final TopKRuntimeFilter topKRuntimeFilter;
+
   public static final int OPERATOR_BATCH_UPPER_BOUND = 100000;
 
   protected TopKOperator(
@@ -86,6 +89,24 @@ public abstract class TopKOperator implements ProcessOperator {
       Comparator<SortKey> comparator,
       int topValue,
       boolean childrenDataInOrder) {
+    this(
+        operatorContext,
+        childrenOperators,
+        dataTypes,
+        comparator,
+        topValue,
+        childrenDataInOrder,
+        null);
+  }
+
+  protected TopKOperator(
+      CommonOperatorContext operatorContext,
+      List<Operator> childrenOperators,
+      List<TSDataType> dataTypes,
+      Comparator<SortKey> comparator,
+      int topValue,
+      boolean childrenDataInOrder,
+      TopKRuntimeFilter topKRuntimeFilter) {
     this.operatorContext = operatorContext;
     this.childrenOperators = childrenOperators;
     this.dataTypes = dataTypes;
@@ -94,6 +115,7 @@ public abstract class TopKOperator implements ProcessOperator {
     this.tsBlockBuilder = new TsBlockBuilder(topValue, dataTypes);
     this.topValue = topValue;
     this.childrenDataInOrder = childrenDataInOrder;
+    this.topKRuntimeFilter = topKRuntimeFilter;
 
     initResultTsBlock();
 
@@ -201,6 +223,7 @@ public abstract class TopKOperator implements ProcessOperator {
       if (skipCurrentBatch) {
         closeOperator(i);
       }
+      updateTopKRuntimeFilter();
       canCallNext[i] = false;
 
       if (System.nanoTime() - startTime > maxRuntime) {
@@ -216,6 +239,19 @@ public abstract class TopKOperator implements ProcessOperator {
     }
 
     return null;
+  }
+
+  private void updateTopKRuntimeFilter() {
+    if (topKRuntimeFilter == null || mergeSortHeap.getHeapSize() < topValue) {
+      return;
+    }
+    MergeSortKey peek = mergeSortHeap.peek();
+    topKRuntimeFilter.updateThreshold(extractThresholdTime(peek));
+  }
+
+  /** Table model overrides to read the time field. */
+  protected long extractThresholdTime(MergeSortKey peek) {
+    return peek.tsBlock.getTimeByIndex(peek.rowIndex);
   }
 
   @Override

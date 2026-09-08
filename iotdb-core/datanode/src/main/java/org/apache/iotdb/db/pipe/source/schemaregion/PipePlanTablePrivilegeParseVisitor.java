@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -35,6 +37,17 @@ import java.util.stream.Collectors;
 
 public class PipePlanTablePrivilegeParseVisitor
     implements PlanVisitor<Optional<PlanNode>, IAuditEntity> {
+
+  private final boolean skip;
+
+  public PipePlanTablePrivilegeParseVisitor() {
+    this(true);
+  }
+
+  public PipePlanTablePrivilegeParseVisitor(final boolean skip) {
+    this.skip = skip;
+  }
+
   @Override
   public Optional<PlanNode> visitPlan(final PlanNode node, final IAuditEntity auditEntity) {
     return Optional.of(node);
@@ -77,6 +90,10 @@ public class PipePlanTablePrivilegeParseVisitor
                             new QualifiedObjectName(node.getDatabaseName(), entry.getTableName()),
                             auditEntity))
             .collect(Collectors.toList());
+    if (!skip && modEntries.size() != node.getModEntries().size()) {
+      throw new AccessDeniedException(
+          DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_EVENT + node);
+    }
     return !modEntries.isEmpty()
         ? Optional.of(
             new RelationalDeleteDataNode(node.getPlanNodeId(), modEntries, node.getDatabaseName()))

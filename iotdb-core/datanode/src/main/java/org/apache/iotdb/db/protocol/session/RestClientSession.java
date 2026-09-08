@@ -29,17 +29,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RestClientSession extends IClientSession {
 
   private final String clientID;
+  private final String clientAddress;
 
   // Map from statement name to PreparedStatementInfo
   private final Map<String, PreparedStatementInfo> preparedStatements = new ConcurrentHashMap<>();
 
-  public RestClientSession(String clientID) {
+  public RestClientSession(String clientID, String clientAddress) {
     this.clientID = clientID;
+    this.clientAddress = clientAddress;
   }
 
   @Override
   public String getClientAddress() {
-    return clientID;
+    return clientAddress;
   }
 
   @Override

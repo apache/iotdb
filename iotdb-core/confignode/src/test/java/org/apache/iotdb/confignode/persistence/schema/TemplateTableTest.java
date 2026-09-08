@@ -77,7 +77,8 @@ public class TemplateTableTest {
     }
 
     templateTable.processTakeSnapshot(snapshotDir);
-    templateTable.clear();
+    Template staleTemplate = newSchemaTemplate("stale_template");
+    templateTable.createTemplate(staleTemplate);
     templateTable.processLoadSnapshot(snapshotDir);
 
     // show nodes in schemaengine template
@@ -85,6 +86,13 @@ public class TemplateTableTest {
       String templateNameTmp = templateName + "_" + i;
       Template template = templates.get(i);
       Assert.assertEquals(template, templateTable.getTemplate(templateNameTmp));
+    }
+
+    try {
+      templateTable.getTemplate(staleTemplate.getId());
+      Assert.fail("Template created after the snapshot should be removed when loading it");
+    } catch (MetadataException expected) {
+      // expected
     }
   }
 

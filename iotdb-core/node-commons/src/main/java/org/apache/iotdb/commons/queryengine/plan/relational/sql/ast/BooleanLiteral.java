@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -43,7 +45,7 @@ public class BooleanLiteral extends Literal {
 
   public BooleanLiteral(String value) {
     super(null);
-    requireNonNull(value, "value is null");
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     checkArgument(
         value.toLowerCase(ENGLISH).equals("true") || value.toLowerCase(ENGLISH).equals("false"));
 
@@ -51,8 +53,8 @@ public class BooleanLiteral extends Literal {
   }
 
   public BooleanLiteral(NodeLocation location, String value) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(value, "value is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     checkArgument(
         value.toLowerCase(ENGLISH).equals("true") || value.toLowerCase(ENGLISH).equals("false"));
 

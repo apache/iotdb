@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.calc.execution.operator.process.function;
 
+import org.apache.iotdb.calc.execution.operator.AbstractOperator;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
-import org.apache.iotdb.calc.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionCache;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionState;
@@ -36,7 +36,6 @@ import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProc
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -57,15 +56,11 @@ import java.util.Queue;
 import static com.google.common.base.Preconditions.checkArgument;
 
 // only one input source is supported now
-public class TableFunctionOperator implements ProcessOperator {
+public class TableFunctionOperator extends AbstractOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(AggregationMergeSortOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TableFunctionOperator.class);
 
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-
-  private final CommonOperatorContext operatorContext;
   private final Operator inputOperator;
   private final TableFunctionProcessorProvider processorProvider;
   private final PartitionRecognizer partitionRecognizer;
@@ -116,11 +111,6 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   @Override
-  public CommonOperatorContext getOperatorContext() {
-    return this.operatorContext;
-  }
-
-  @Override
   public ListenableFuture<?> isBlocked() {
     if (isBlocked == null) {
       isBlocked = tryGetNextTsBlock();
@@ -148,8 +138,8 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (!resultTsBlocks.isEmpty()) {
-      return resultTsBlocks.poll();
+    if (retainedTsBlock != null || !resultTsBlocks.isEmpty()) {
+      return getNextResultTsBlock();
     }
     if (partitionState == null) {
       partitionState = partitionRecognizer.nextState();
@@ -172,7 +162,7 @@ public class TableFunctionOperator implements ProcessOperator {
         resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
         partitionCache.clear();
         consumeCurrentPartitionState();
-        return resultTsBlocks.poll();
+        return getNextResultTsBlock();
       }
       if (stateType == PartitionState.StateType.NEW_PARTITION) {
         if (processor != null) {
@@ -182,7 +172,7 @@ public class TableFunctionOperator implements ProcessOperator {
           partitionCache.clear();
           destroyProcessor(processor);
           processor = null;
-          return resultTsBlocks.poll();
+          return getNextResultTsBlock();
         } else {
           processor = processorProvider.getDataProcessor();
           processor.beforeStart(ioTDBLocal);
@@ -196,8 +186,21 @@ public class TableFunctionOperator implements ProcessOperator {
       }
       consumeCurrentPartitionState();
       resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
-      return resultTsBlocks.poll();
+      return getNextResultTsBlock();
     }
+  }
+
+  /**
+   * Applies {@link AbstractOperator}'s low-cost row-count splitting after pass-through columns have
+   * been appended. The configured byte size is a logical target rather than an exact serialized
+   * limit; in particular, a single oversized row and highly variable binary payloads may exceed it.
+   */
+  private TsBlock getNextResultTsBlock() {
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
+    }
+    resultTsBlock = resultTsBlocks.poll();
+    return resultTsBlock == null ? null : checkTsBlockSizeAndGetResult();
   }
 
   private List<ColumnBuilder> getProperColumnBuilders() {
@@ -244,7 +247,6 @@ public class TableFunctionOperator implements ProcessOperator {
         result.add(subProperBlock.appendValueColumns(passThroughColumns));
       }
     } else {
-      // split the proper block into smaller blocks
       result.add(properBlock);
     }
     properBlockBuilder.reset();
@@ -265,12 +267,15 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return !finished || !resultTsBlocks.isEmpty();
+    return !finished || retainedTsBlock != null || !resultTsBlocks.isEmpty();
   }
 
   @Override
   public void close() throws Exception {
     partitionCache.close();
+    resultTsBlocks.clear();
+    resultTsBlock = null;
+    retainedTsBlock = null;
     inputOperator.close();
     if (processor != null) {
       destroyProcessor(processor);
@@ -281,18 +286,18 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return finished;
+    return finished && retainedTsBlock == null && resultTsBlocks.isEmpty();
   }
 
   @Override
   public long calculateMaxPeekMemory() {
     return inputOperator.calculateMaxPeekMemory()
-        + Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, properBlockBuilder.getRetainedSizeInBytes());
+        + Math.max(maxReturnSize, properBlockBuilder.getRetainedSizeInBytes());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, properBlockBuilder.getRetainedSizeInBytes());
+    return maxReturnSize;
   }
 
   @Override

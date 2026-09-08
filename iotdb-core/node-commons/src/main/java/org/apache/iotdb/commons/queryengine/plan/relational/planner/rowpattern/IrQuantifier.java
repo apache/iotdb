@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -54,7 +56,7 @@ public class IrQuantifier {
 
   public IrQuantifier(int atLeast, Optional<Integer> atMost, boolean greedy) {
     this.atLeast = atLeast;
-    this.atMost = requireNonNull(atMost, "atMost is null");
+    this.atMost = requireNonNull(atMost, QueryMessages.EXCEPTION_ATMOST_IS_NULL_778B3B3A);
     this.greedy = greedy;
   }
 

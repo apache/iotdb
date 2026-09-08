@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
@@ -47,6 +48,9 @@ public interface ISubscriptionBroker {
 
   List<SubscriptionCommitContext> commit(
       String consumerId, List<SubscriptionCommitContext> commitContexts, boolean nack);
+
+  /** Returns an in-flight event to its prefetching queue without incrementing its nack count. */
+  boolean requeue(String consumerId, SubscriptionCommitContext commitContext);
 
   default List<SubscriptionCommitContext> selectAcceptedCommitContexts(
       final List<SubscriptionCommitContext> commitContexts) {
@@ -80,6 +84,10 @@ public interface ISubscriptionBroker {
   int getQueueCount();
 
   default Map<String, Long> getLagSummary() {
+    return Collections.emptyMap();
+  }
+
+  default Map<String, SubscriptionProgressSnapshot> getProgressSnapshotMap() {
     return Collections.emptyMap();
   }
 

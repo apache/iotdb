@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
@@ -112,10 +114,11 @@ public class CompactionChunkReader {
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
-          "do not have a complete page body. Expected:"
-              + compressedPageBodyLength
-              + ". Actual:"
-              + chunkBuffer.remaining());
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_DO_NOT_HAVE_A_COMPLETE_PAGE_BODY_EXPECTED_S_ACTUAL_S_3A05EF8F,
+              compressedPageBodyLength,
+              chunkBuffer.remaining()));
     }
     ByteBuffer pageBodyBuffer = chunkBuffer.slice();
     pageBodyBuffer.limit(compressedPageBodyLength);

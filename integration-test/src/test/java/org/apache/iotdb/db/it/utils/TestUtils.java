@@ -73,6 +73,7 @@ import static org.junit.Assert.fail;
 public class TestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
+  private static final int MAX_RESULT_SET_DIFF_ROWS = 20;
 
   public static final ZoneId DEFAULT_ZONE_ID = ZoneId.ofOffset("UTC", ZoneOffset.of("Z"));
 
@@ -790,7 +791,11 @@ public class TestUtils {
           System.out.println(builder);
         }
       }
-      assertEquals(expectedResult, actualRetSet);
+      if (expectedResult instanceof Set) {
+        assertStringSetEqual((Set<String>) expectedResult, (Set<String>) actualRetSet);
+      } else {
+        assertEquals(expectedResult, actualRetSet);
+      }
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
@@ -826,10 +831,55 @@ public class TestUtils {
         }
         actualRetSet.add(builder.toString());
       }
-      assertEquals(expectedRetSet, actualRetSet);
+      assertStringSetEqual(expectedRetSet, actualRetSet);
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
+    }
+  }
+
+  private static void assertStringSetEqual(
+      final Set<String> expectedResult, final Set<String> actualResult) {
+    if (expectedResult.equals(actualResult)) {
+      return;
+    }
+
+    final List<String> missingRows = new ArrayList<>(expectedResult);
+    missingRows.removeAll(actualResult);
+    Collections.sort(missingRows);
+
+    final List<String> unexpectedRows = new ArrayList<>(actualResult);
+    unexpectedRows.removeAll(expectedResult);
+    Collections.sort(unexpectedRows);
+
+    final StringBuilder diff =
+        new StringBuilder("Result set mismatch: expected ")
+            .append(expectedResult.size())
+            .append(" rows but got ")
+            .append(actualResult.size())
+            .append(" rows.");
+    appendResultSetDiff(diff, "Missing rows", missingRows);
+    appendResultSetDiff(diff, "Unexpected rows", unexpectedRows);
+    fail(diff.toString());
+  }
+
+  private static void appendResultSetDiff(
+      final StringBuilder diff, final String title, final List<String> rows) {
+    diff.append(System.lineSeparator()).append(title).append(" (").append(rows.size()).append("):");
+    if (rows.isEmpty()) {
+      diff.append(" <none>");
+      return;
+    }
+
+    final int displayedRowCount = Math.min(rows.size(), MAX_RESULT_SET_DIFF_ROWS);
+    for (int i = 0; i < displayedRowCount; i++) {
+      diff.append(System.lineSeparator()).append("  ").append(rows.get(i));
+    }
+    if (rows.size() > displayedRowCount) {
+      diff.append(System.lineSeparator())
+          .append("  ... and ")
+          .append(rows.size() - displayedRowCount)
+          .append(" more");
     }
   }
 

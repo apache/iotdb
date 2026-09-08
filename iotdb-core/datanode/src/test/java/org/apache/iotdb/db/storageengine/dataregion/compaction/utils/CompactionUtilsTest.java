@@ -85,7 +85,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     Assert.assertEquals(
         modFileSizeBefore + totalModFileSize, FileMetrics.getInstance().getModFileSize());
 
-    CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(new ArrayList<>(seqResources), true);
+    CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(new ArrayList<>(seqResources));
 
     Assert.assertEquals(modFileNumBefore, FileMetrics.getInstance().getModFileNum());
     Assert.assertEquals(modFileSizeBefore, FileMetrics.getInstance().getModFileSize());

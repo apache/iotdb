@@ -440,6 +440,11 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
+          "show paths set device template aligned_template",
+          "Paths,",
+          Collections.singleton("root.sg_aligned.device_aligned,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
           "count devices root.sg_aligned.**",
           "count(devices),",
           Collections.singleton("3,"));

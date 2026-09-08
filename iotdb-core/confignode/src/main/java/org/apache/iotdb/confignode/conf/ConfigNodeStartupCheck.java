@@ -98,9 +98,14 @@ public class ConfigNodeStartupCheck extends StartupChecks {
             || CONF.getInternalPort() != CONF.getSeedConfigNode().getPort())) {
       throw new ConfigurationException(
           IoTDBConstant.CN_SEED_CONFIG_NODE,
-          CONF.getSeedConfigNode().getIp() + ":" + CONF.getSeedConfigNode().getPort(),
-          CONF.getInternalAddress() + ":" + CONF.getInternalPort(),
-          "the config_node_consensus_protocol_class is set to" + ConsensusFactory.SIMPLE_CONSENSUS);
+          CONF.getSeedConfigNode().getIp()
+              + ConfigNodeMessages.EXCEPTION_COLON_5D70AD09
+              + CONF.getSeedConfigNode().getPort(),
+          CONF.getInternalAddress()
+              + ConfigNodeMessages.EXCEPTION_COLON_5D70AD09
+              + CONF.getInternalPort(),
+          ConfigNodeMessages.EXCEPTION_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_SET_E7A83ED6
+              + ConsensusFactory.SIMPLE_CONSENSUS);
     }
 
     // The replication factor should be positive
@@ -122,7 +127,8 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           CONF.getSchemaRegionConsensusProtocolClass(),
           ConsensusFactory.RATIS_CONSENSUS,
           ConsensusFactory.SIMPLE_CONSENSUS
-              + "available only when schema_replication_factor is set to 1");
+              + ConfigNodeMessages
+                  .EXCEPTION_AVAILABLE_ONLY_SCHEMA_REPLICATION_FACTOR_SET_1_45667207);
     }
 
     // When the data_replication_factor is greater than 1
@@ -132,9 +138,11 @@ public class ConfigNodeStartupCheck extends StartupChecks {
       throw new ConfigurationException(
           ConfigNodeMessages.DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
           CONF.getDataRegionConsensusProtocolClass(),
-          ConsensusFactory.IOT_CONSENSUS + "or" + ConsensusFactory.RATIS_CONSENSUS,
+          ConsensusFactory.IOT_CONSENSUS
+              + ConfigNodeMessages.EXCEPTION_MESSAGE_E81C4E4F
+              + ConsensusFactory.RATIS_CONSENSUS,
           ConsensusFactory.SIMPLE_CONSENSUS
-              + "available only when data_replication_factor is set to 1");
+              + ConfigNodeMessages.EXCEPTION_AVAILABLE_ONLY_DATA_REPLICATION_FACTOR_SET_1_71748D3D);
     }
 
     // When the schemaengine region consensus protocol is set to IoTConsensus,
@@ -144,8 +152,11 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           ConfigNodeMessages.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
-              "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
-          "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus");
+              ConfigNodeMessages.EXCEPTION_ARG_ARG_6E068B23,
+              ConsensusFactory.SIMPLE_CONSENSUS,
+              ConsensusFactory.RATIS_CONSENSUS),
+          ConfigNodeMessages
+              .EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUS_84350FD1);
     }
 
     // When the schemaengine region consensus protocol is set to IoTConsensusV2,
@@ -155,8 +166,11 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           ConfigNodeMessages.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
-              "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
-          "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensusV2");
+              ConfigNodeMessages.EXCEPTION_ARG_ARG_6E068B23,
+              ConsensusFactory.SIMPLE_CONSENSUS,
+              ConsensusFactory.RATIS_CONSENSUS),
+          ConfigNodeMessages
+              .EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUSV2_BA353C6D);
     }
 
     // The leader distribution policy is limited
@@ -166,8 +180,8 @@ public class ConfigNodeStartupCheck extends StartupChecks {
       throw new ConfigurationException(
           ConfigNodeMessages.LEADER_DISTRIBUTION_POLICY,
           CONF.getRoutePriorityPolicy(),
-          "GREEDY or MIN_COST_FLOW or HASH",
-          "an unrecognized leader_distribution_policy is set");
+          ConfigNodeMessages.EXCEPTION_GREEDY_MIN_COST_FLOW_HASH_C07DA2EE,
+          ConfigNodeMessages.EXCEPTION_UNRECOGNIZED_LEADER_DISTRIBUTION_POLICY_SET_F9FFB410);
     }
 
     // The route priority policy is limited
@@ -176,8 +190,8 @@ public class ConfigNodeStartupCheck extends StartupChecks {
       throw new ConfigurationException(
           ConfigNodeMessages.ROUTE_PRIORITY_POLICY,
           CONF.getRoutePriorityPolicy(),
-          "LEADER or GREEDY",
-          "an unrecognized route_priority_policy is set");
+          ConfigNodeMessages.EXCEPTION_LEADER_GREEDY_55C6B994,
+          ConfigNodeMessages.EXCEPTION_UNRECOGNIZED_ROUTE_PRIORITY_POLICY_SET_C0012AE4);
     }
 
     // The default RegionGroupNum should be positive

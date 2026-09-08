@@ -172,7 +172,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
   @Override
   public void addChild(PlanNode child) {
     throw new UnsupportedOperationException(
-        "no child is allowed for AlignedSeriesAggregationScanNode");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_NO_CHILD_IS_ALLOWED_FOR_ALIGNEDSERIESAGGREGATIONSCANNODE_41654FE2);
   }
 
   @Override

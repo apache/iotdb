@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionPerformerException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -38,7 +39,10 @@ public enum CrossCompactionPerformer {
       return FAST;
     }
     throw new IllegalCompactionPerformerException(
-        "Illegal compaction performer for cross compaction " + name);
+        String.format(
+            StorageEngineMessages
+                .STORAGE_EXCEPTION_ILLEGAL_COMPACTION_PERFORMER_FOR_CROSS_COMPACTION_S_17C6E05D,
+            name));
   }
 
   @TestOnly
@@ -50,7 +54,10 @@ public enum CrossCompactionPerformer {
         return new FastCompactionPerformer(true);
       default:
         throw new IllegalCompactionPerformerException(
-            "Illegal compaction performer for cross compaction " + this);
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_ILLEGAL_COMPACTION_PERFORMER_FOR_CROSS_COMPACTION_S_17C6E05D,
+                this));
     }
   }
 
@@ -62,7 +69,10 @@ public enum CrossCompactionPerformer {
         return new FastCompactionPerformer(true, encryptParameter);
       default:
         throw new IllegalCompactionPerformerException(
-            "Illegal compaction performer for cross compaction " + this);
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_ILLEGAL_COMPACTION_PERFORMER_FOR_CROSS_COMPACTION_S_17C6E05D,
+                this));
     }
   }
 }

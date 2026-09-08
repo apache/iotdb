@@ -657,7 +657,9 @@ public class QueryStatement extends AuthorityInformationStatement {
               && expression.getExpressions().get(0) instanceof TimeSeriesOperand
               && expression.isAggregationFunctionExpression())) {
             throw new SemanticException(
-                expression + " can't be used in group by tag. It will be supported in the future.");
+                expression
+                    + DataNodeQueryMessages
+                        .CAN_T_BE_USED_IN_GROUP_BY_TAG_IT_WILL_BE_SUPPORTED_IN_THE_FUTURE);
           }
         }
       }
@@ -674,7 +676,8 @@ public class QueryStatement extends AuthorityInformationStatement {
     } else {
       if (isGroupBy() || isGroupByLevel() || isGroupByTag()) {
         throw new SemanticException(
-            "Common queries and aggregated queries are not allowed to appear at the same time");
+            DataNodeQueryMessages
+                .COMMON_QUERIES_AND_AGGREGATED_QUERIES_ARE_NOT_ALLOWED_TO_APPEAR_AT_THE_SAME_TIME);
       }
       for (Expression expression : getExpressionSortItemList()) {
         if (hasAggregationFunction(expression)) {
@@ -701,7 +704,8 @@ public class QueryStatement extends AuthorityInformationStatement {
       }
       if (!isAggregationQuery()) {
         throw new SemanticException(
-            "Expression of HAVING clause can not be used in NonAggregationQuery");
+            DataNodeQueryMessages
+                .EXPRESSION_OF_HAVING_CLAUSE_CAN_NOT_BE_USED_IN_NONAGGREGATIONQUERY);
       }
       if (havingExpression.toString().toLowerCase().contains(COUNT_TIME)
           && (!new CountTimeAggregationAmountVisitor().process(havingExpression, null).isEmpty())) {
@@ -766,7 +770,7 @@ public class QueryStatement extends AuthorityInformationStatement {
       }
       if (isOrderByDevice()) {
         throw new SemanticException(
-            "Sorting by device is only supported in ALIGN BY DEVICE queries.");
+            DataNodeQueryMessages.SORTING_BY_DEVICE_IS_ONLY_SUPPORTED_IN_ALIGN_BY_DEVICE_QUERIES);
       }
       if (seriesLimit != 0 || seriesOffset != 0) {
         throw new SemanticException(DataNodeQueryMessages.SLIMIT_AND_SOFFSET_CAN_NOT_BE_USED_IN);
@@ -780,7 +784,7 @@ public class QueryStatement extends AuthorityInformationStatement {
       }
       if (isOrderByDevice()) {
         throw new SemanticException(
-            "Sorting by device is only supported in ALIGN BY DEVICE queries.");
+            DataNodeQueryMessages.SORTING_BY_DEVICE_IS_ONLY_SUPPORTED_IN_ALIGN_BY_DEVICE_QUERIES);
       }
     }
 

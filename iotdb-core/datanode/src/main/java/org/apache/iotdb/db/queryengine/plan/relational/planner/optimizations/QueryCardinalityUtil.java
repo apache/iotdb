@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
@@ -92,7 +93,7 @@ public final class QueryCardinalityUtil {
     private final Lookup lookup;
 
     public CardinalityExtractorPlanVisitor(Lookup lookup) {
-      this.lookup = requireNonNull(lookup, "lookup is null");
+      this.lookup = requireNonNull(lookup, DataNodeQueryMessages.EXCEPTION_LOOKUP_IS_NULL_B8FD7E65);
     }
 
     @Override
@@ -217,10 +218,10 @@ public final class QueryCardinalityUtil {
             && !node.getProjection().getMap().isEmpty()) { // also exist date_bin
           return Range.atLeast(0L);
         } else {
-          return Range.atMost((long) node.getDeviceEntries().size());
+          return Range.atMost((long) node.getDeviceEntryCount());
         }
       } else {
-        return Range.singleton((long) node.getDeviceEntries().size());
+        return Range.singleton((long) node.getDeviceEntryCount());
       }
     }
 

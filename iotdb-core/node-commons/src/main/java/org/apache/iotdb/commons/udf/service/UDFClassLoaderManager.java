@@ -76,7 +76,9 @@ public class UDFClassLoaderManager implements IService {
       }
     } catch (IOException e) {
       LOGGER.warn(
-          "Failed to close UDFClassLoader (queryId: {}), because {}", queryId, e.toString());
+          CommonMessages.LOG_FAILED_CLOSE_UDFCLASSLOADER_QUERYID_ARG_BECAUSE_ARG_8B1C3739,
+          queryId,
+          e.toString());
     }
   }
 

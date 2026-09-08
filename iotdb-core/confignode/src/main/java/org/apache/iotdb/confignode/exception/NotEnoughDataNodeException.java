@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.exception;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import java.util.List;
 
@@ -29,8 +30,9 @@ public class NotEnoughDataNodeException extends ConfigNodeException {
       List<TDataNodeConfiguration> dataNodeConfigurations, int replicationFactor) {
     super(
         String.format(
-            "DataNode is not enough, please register more. "
-                + "Current DataNodes: %s, replicationFactor: %d",
-            dataNodeConfigurations, replicationFactor));
+            ConfigNodeMessages.EXCEPTION_DATANODE_NOT_ENOUGH_PLEASE_REGISTER_MORE_9F5EEDF5
+                + ConfigNodeMessages.EXCEPTION_CURRENT_DATANODES_ARG_REPLICATIONFACTOR_ARG_5D686D2B,
+            dataNodeConfigurations,
+            replicationFactor));
   }
 }

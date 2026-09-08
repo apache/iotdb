@@ -128,7 +128,8 @@ public abstract class PipeInfo {
       case WALPipe:
       default:
         throw new UnsupportedOperationException(
-            String.format("Can not recognize PipeType %s.", pipeType.name()));
+            String.format(
+                CommonMessages.EXCEPTION_CAN_NOT_RECOGNIZE_PIPETYPE_ARG_8850A249, pipeType.name()));
     }
     return pipeInfo;
   }

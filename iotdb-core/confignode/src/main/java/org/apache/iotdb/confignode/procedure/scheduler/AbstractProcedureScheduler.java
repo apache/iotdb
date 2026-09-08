@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.scheduler;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.Procedure;
 
 import org.slf4j.Logger;
@@ -79,7 +80,9 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
   @Override
   public void addFront(final Procedure procedure) {
     if (procedure != null && procedure.isSuccess()) {
-      LOG.warn("Don't add a successful procedure back to the scheduler, it will be ignored");
+      LOG.warn(
+          ProcedureMessages
+              .LOG_DON_T_ADD_SUCCESSFUL_PROCEDURE_BACK_SCHEDULER_IT_WILL_IGNORED_E015472C);
       return;
     }
     push(procedure, true, true);
@@ -93,7 +96,9 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
   @Override
   public void addBack(final Procedure procedure) {
     if (procedure.isSuccess()) {
-      LOG.warn("Don't add a successful procedure back to the scheduler, it will be ignored");
+      LOG.warn(
+          ProcedureMessages
+              .LOG_DON_T_ADD_SUCCESSFUL_PROCEDURE_BACK_SCHEDULER_IT_WILL_IGNORED_E015472C);
       return;
     }
     push(procedure, false, true);
@@ -140,7 +145,7 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
     schedLock();
     try {
       if (!running) {
-        LOG.debug("the scheduler is not running");
+        LOG.debug(ProcedureMessages.LOG_SCHEDULER_NOT_RUNNING_6969C9FF);
         return null;
       }
 
@@ -151,7 +156,7 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
           schedWaitCond.await();
         } else {
           long leftTime = schedWaitCond.awaitNanos(nanos);
-          LOG.debug("the scheduler waiting time left {} nanos", leftTime);
+          LOG.debug(ProcedureMessages.LOG_SCHEDULER_WAITING_TIME_LEFT_ARG_NANOS_D7717019, leftTime);
         }
         if (!queueHasRunnables()) {
           return null;

@@ -62,9 +62,9 @@ public class ShowCreateViewTask extends AbstractTableTask {
       final TsTable table, final SettableFuture<ConfigTaskResult> future) {
     if (!TreeViewSchema.isTreeViewTable(table)) {
       throw new SemanticException(
-          "The table "
+          DataNodeQueryMessages.THE_TABLE
               + table.getTableName()
-              + " is a base table, does not support show create view.");
+              + DataNodeQueryMessages.IS_A_BASE_TABLE_DOES_NOT_SUPPORT_SHOW_CREATE_VIEW);
     }
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showCreateViewColumnHeaders.stream()

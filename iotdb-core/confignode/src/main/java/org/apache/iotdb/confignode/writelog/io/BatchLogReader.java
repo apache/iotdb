@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.writelog.io;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,10 @@ public class BatchLogReader implements ILogReader {
       try {
         plans.add(ConfigPhysicalPlan.Factory.create(buffer));
       } catch (IOException e) {
-        logger.error("Cannot deserialize PhysicalPlans from ByteBuffer, ignore remaining logs", e);
+        logger.error(
+            ConfigNodeMessages
+                .LOG_CANNOT_DESERIALIZE_PHYSICALPLANS_BYTEBUFFER_IGNORE_REMAINING_LOGS_06AE778F,
+            e);
         fileCorrupted = true;
         break;
       }

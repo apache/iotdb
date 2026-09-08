@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
@@ -119,6 +120,7 @@ public class CompactionScheduler {
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       LOGGER.error(StorageEngineMessages.MEET_ERROR_IN_COMPACTION_SCHEDULE, e);
     }
   }
@@ -208,7 +210,8 @@ public class CompactionScheduler {
     // check disk space
     if (!task.isDiskSpaceCheckPassed()) {
       LOGGER.info(
-          "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
+          StorageEngineMessages
+              .STORAGE_LOG_COMPACTION_TASK_START_CHECK_FAILED_BECAUSE_DISK_FREE_RATIO_9D2BE2FE);
       return false;
     }
     return true;

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -40,7 +42,7 @@ public class AggregationLabelSet {
   private final boolean running;
 
   public AggregationLabelSet(Set<IrLabel> labels, boolean running) {
-    this.labels = requireNonNull(labels, "labels is null");
+    this.labels = requireNonNull(labels, QueryMessages.EXCEPTION_LABELS_IS_NULL_F4FBBECE);
     this.running = running;
   }
 

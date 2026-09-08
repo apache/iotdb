@@ -127,10 +127,14 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
       return;
     }
 
-    super.open();
-
     // set isClosed to false before submitting workers
     isClosed.set(false);
+    try {
+      super.open();
+    } catch (final SubscriptionException e) {
+      isClosed.set(true);
+      throw e;
+    }
     emptyPollLogThrottler.reset();
 
     // submit auto poll worker
@@ -143,8 +147,8 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
       return;
     }
 
-    super.close();
     isClosed.set(true);
+    super.close();
   }
 
   @Override
@@ -234,7 +238,10 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
             }
           } catch (final Exception e) {
             LOGGER.warn(
-                "Consumer listener raised an exception while consuming message: {}", message, e);
+                SubscriptionMessages
+                    .LOG_CONSUMER_LISTENER_RAISED_EXCEPTION_CONSUMING_MESSAGE_ARG_867EE46D,
+                message,
+                e);
             messagesToNack.add(message);
           }
         }

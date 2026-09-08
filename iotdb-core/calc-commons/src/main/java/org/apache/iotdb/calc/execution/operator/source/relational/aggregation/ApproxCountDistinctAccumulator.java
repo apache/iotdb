@@ -104,7 +104,8 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of APPROX_COUNT_DISTINCT should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_APPROX_COUNT_DISTINCT_SHOULD_BE_BINARYCOLUMN_F444D3BE);
     columnBuilder.writeBinary(new Binary(state.getHyperLogLog().serialize()));
   }
 

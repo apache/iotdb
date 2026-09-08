@@ -69,7 +69,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
 
   private void scanTimePartitionFiles() throws InterruptedException {
     LOGGER.info(
-        "[RepairScheduler][{}][{}] start scan repair time partition {}",
+        StorageEngineMessages.STORAGE_LOG_REPAIRSCHEDULER_START_SCAN_REPAIR_TIME_PARTITION_1D6789DB,
         repairTimePartition.getDatabaseName(),
         repairTimePartition.getDataRegionId(),
         repairTimePartition.getTimePartitionId());
@@ -91,7 +91,8 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
     for (TsFileResource sourceFile : sourceFiles) {
       if (!timePartition.getTsFileManager().isAllowCompaction()) {
         LOGGER.info(
-            "[RepairScheduler] cannot scan source files in {} because 'allowCompaction' is false",
+            StorageEngineMessages
+                .STORAGE_LOG_REPAIRSCHEDULER_CANNOT_SCAN_SOURCE_FILES_IN_BECAUSE_ALLOWCOMPACTION_5E644A6D,
             repairTimePartition.getDataRegionId());
         return;
       }
@@ -121,7 +122,9 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
       }
       sourceFile.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
       LOGGER.info(
-          "[RepairScheduler] {} need to repair because it has internal unsorted data", sourceFile);
+          StorageEngineMessages
+              .STORAGE_LOG_REPAIRSCHEDULER_NEED_TO_REPAIR_BECAUSE_IT_HAS_INTERNAL_UNSORTED_C1596DC3,
+          sourceFile);
       TsFileManager tsFileManager = timePartition.getTsFileManager();
       RepairUnsortedFileCompactionTask task =
           new RepairUnsortedFileCompactionTask(
@@ -148,7 +151,8 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
     for (TsFileResource overlapFile : overlapFiles) {
       if (!timePartition.getTsFileManager().isAllowCompaction()) {
         LOGGER.info(
-            "[RepairScheduler] cannot scan source files in {} because 'allowCompaction' is false",
+            StorageEngineMessages
+                .STORAGE_LOG_REPAIRSCHEDULER_CANNOT_SCAN_SOURCE_FILES_IN_BECAUSE_ALLOWCOMPACTION_5E644A6D,
             repairTimePartition.getDataRegionId());
         return;
       }
@@ -164,7 +168,8 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
               true,
               tsFileManager.getNextCompactionTaskId());
       LOGGER.info(
-          "[RepairScheduler] {} need to repair because it is overlapped with other files",
+          StorageEngineMessages
+              .STORAGE_LOG_REPAIRSCHEDULER_NEED_TO_REPAIR_BECAUSE_IT_IS_OVERLAPPED_F1AC0C78,
           overlapFile);
       if (submitRepairFileTaskSafely(task)) {
         latch.await();
@@ -193,14 +198,16 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
       }
     } catch (Exception e) {
       LOGGER.error(
-          "[RepairScheduler][{}][{}] failed to record repair log for time partition {}",
+          StorageEngineMessages
+              .STORAGE_LOG_REPAIRSCHEDULER_FAILED_TO_RECORD_REPAIR_LOG_FOR_TIME_PARTITION_11251247,
           timePartition.getDatabaseName(),
           timePartition.getDataRegionId(),
           timePartition.getTimePartitionId(),
           e);
     }
     LOGGER.info(
-        "[RepairScheduler][{}][{}] time partition {} has been repaired, progress: {}/{}",
+        StorageEngineMessages
+            .STORAGE_LOG_REPAIRSCHEDULER_TIME_PARTITION_HAS_BEEN_REPAIRED_PROGRESS_697FEA22,
         timePartition.getDatabaseName(),
         timePartition.getDataRegionId(),
         timePartition.getTimePartitionId(),

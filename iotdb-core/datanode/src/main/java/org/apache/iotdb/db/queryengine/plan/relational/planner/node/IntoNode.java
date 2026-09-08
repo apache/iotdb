@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 
@@ -63,7 +64,8 @@ public class IntoNode extends SingleChildProcessNode {
     this.neededInputColumnNames = neededInputColumnNames;
     if (columns.size() != neededInputColumnNames.size()) {
       throw new IllegalArgumentException(
-          "insert into table columns's size should be same as query result");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_INSERT_INTO_TABLE_COLUMNS_S_SIZE_SHOULD_BE_SAME_AS_QUERY_E7437397);
     }
     this.rowCountSymbol = rowCountSymbol;
   }

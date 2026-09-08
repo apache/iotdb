@@ -39,6 +39,10 @@ public enum TableNodeStatus {
     this.status = status;
   }
 
+  public byte getStatus() {
+    return status;
+  }
+
   public void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(status, outputStream);
   }
@@ -57,7 +61,11 @@ public enum TableNodeStatus {
   }
 
   public static TableNodeStatus deserialize(final ByteBuffer buffer) {
-    switch (ReadWriteIOUtils.readByte(buffer)) {
+    return deserialize(ReadWriteIOUtils.readByte(buffer));
+  }
+
+  public static TableNodeStatus deserialize(final byte status) {
+    switch (status) {
       case 0:
         return PRE_CREATE;
       case 1:

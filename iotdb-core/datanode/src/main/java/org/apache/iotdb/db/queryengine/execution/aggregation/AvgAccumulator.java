@@ -72,7 +72,9 @@ public class AvgAccumulator implements Accumulator {
   // partialResult should be like: | countValue1 | sumValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 2, "partialResult of Avg should be 2");
+    checkArgument(
+        partialResult.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_AVG_SHOULD_BE_2_7A8C375E);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -86,7 +88,9 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] input) {
-    checkArgument(input.length == 2, "partialResult of Avg should be 2");
+    checkArgument(
+        input.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_AVG_SHOULD_BE_2_7A8C375E);
     if (input[0].isNull(0)) {
       return;
     }
@@ -128,7 +132,9 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 2, "partialResult of Avg should be 2");
+    checkArgument(
+        columnBuilders.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_AVG_SHOULD_BE_2_7A8C375E);
     if (!initResult) {
       columnBuilders[0].appendNull();
       columnBuilders[1].appendNull();

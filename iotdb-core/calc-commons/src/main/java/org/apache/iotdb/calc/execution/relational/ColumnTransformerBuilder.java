@@ -1490,8 +1490,9 @@ public class ColumnTransformerBuilder
     }
     throw new IllegalArgumentException(
         String.format(
-            "Unknown function %s on Node: %d.",
-            functionName, CommonDescriptor.getInstance().getConfig().getNodeId()));
+            CalcMessages.EXCEPTION_UNKNOWN_FUNCTION_ARG_NODE_ARG_927DA6A7,
+            functionName,
+            CommonDescriptor.getInstance().getConfig().getNodeId()));
   }
 
   @Override

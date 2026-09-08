@@ -47,6 +47,61 @@ import static org.junit.Assert.assertTrue;
 public class TypeServicesTest {
 
   @Test
+  public void testInsertSerializedSizesPreserveNullBinaryAndActiveRows() {
+    Binary value = new Binary(new byte[] {1, 2, 3});
+    Binary[] values = {value, null, new Binary((byte[]) null), new Binary(new byte[100])};
+    for (TSDataType dataType :
+        new TSDataType[] {TSDataType.TEXT, TSDataType.STRING, TSDataType.BLOB, TSDataType.OBJECT}) {
+      Type type = Type.fromTsDataType(dataType);
+      assertEquals(
+          7,
+          TypeServices.StorageEngine.INSERT_ROW_SERIALIZED_VALUE_SIZE_SERVICE
+              .call(type)
+              .applyAsInt(value));
+      // The spare capacity must not contribute to the serialized size.
+      assertEquals(
+          15,
+          TypeServices.StorageEngine.INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE
+              .call(type)
+              .size(values, 3));
+    }
+    assertEquals(
+        12,
+        TypeServices.StorageEngine.INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE
+            .call(Type.fromTsDataType(TSDataType.DATE))
+            .size(new int[5], 3));
+    assertEquals(
+        24,
+        TypeServices.StorageEngine.INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE
+            .call(Type.fromTsDataType(TSDataType.TIMESTAMP))
+            .size(new long[5], 3));
+  }
+
+  @Test
+  public void testPlainFastPathExcludesObject() {
+    for (TSDataType type :
+        new TSDataType[] {
+          TSDataType.BOOLEAN,
+          TSDataType.INT32,
+          TSDataType.DATE,
+          TSDataType.INT64,
+          TSDataType.TIMESTAMP,
+          TSDataType.FLOAT,
+          TSDataType.DOUBLE,
+          TSDataType.TEXT,
+          TSDataType.STRING,
+          TSDataType.BLOB
+        }) {
+      assertTrue(
+          TypeServices.StorageEngine.TABLET_PLAIN_FAST_PATH_SERVICE.call(
+              Type.fromTsDataType(type)));
+    }
+    assertFalse(
+        TypeServices.StorageEngine.TABLET_PLAIN_FAST_PATH_SERVICE.call(
+            Type.fromTsDataType(TSDataType.OBJECT)));
+  }
+
+  @Test
   public void testAlteredDataTypeNumericConversion() {
     final Column intSource =
         new IntColumn(

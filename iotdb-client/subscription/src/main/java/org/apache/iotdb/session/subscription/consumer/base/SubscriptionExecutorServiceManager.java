@@ -192,7 +192,7 @@ public final class SubscriptionExecutorServiceManager {
       }
 
       LOGGER.warn(
-          "{} has been launched, set core pool size to {} will be ignored",
+          SubscriptionMessages.LOG_ARG_HAS_BEEN_LAUNCHED_SET_CORE_POOL_SIZE_ARG_WILL_0FDECBE3,
           this.name,
           corePoolSize);
     }
@@ -234,17 +234,20 @@ public final class SubscriptionExecutorServiceManager {
                   AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
                 this.executor.shutdownNow();
                 LOGGER.warn(
-                    "Interrupt the worker, which may cause some task inconsistent. Please check the biz logs.");
+                    SubscriptionMessages
+                        .LOG_INTERRUPT_WORKER_WHICH_MAY_CAUSE_SOME_TASK_INCONSISTENT_PLEASE_CHECK_04926D9F);
                 if (!this.executor.awaitTermination(
                     AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
                   LOGGER.error(
-                      "Thread pool can't be shutdown even with interrupting worker threads, which may cause some task inconsistent. Please check the biz logs.");
+                      SubscriptionMessages
+                          .LOG_THREAD_POOL_CAN_T_SHUTDOWN_EVEN_INTERRUPTING_WORKER_THREADS_WHICH_A49166F9);
                 }
               }
             } catch (final InterruptedException e) {
               this.executor.shutdownNow();
               LOGGER.error(
-                  "The current thread is interrupted when it is trying to stop the worker threads. This may leave an inconsistent state. Please check the biz logs.");
+                  SubscriptionMessages
+                      .LOG_CURRENT_THREAD_INTERRUPTED_IT_TRYING_STOP_WORKER_THREADS_MAY_LEAVE_CF07ABA0);
               Thread.currentThread().interrupt();
             }
 

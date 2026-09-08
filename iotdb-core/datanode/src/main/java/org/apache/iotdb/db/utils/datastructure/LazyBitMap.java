@@ -55,7 +55,7 @@ public class LazyBitMap {
     ensureCapacity(blockIndex);
     BitMap block = blocks.get(blockIndex);
     if (block == null) {
-      block = new BitMap(blockSize);
+      block = BitMap.createBitMapDynamically(blockSize);
       blocks.set(blockIndex, block);
     }
     block.mark(getInnerIndex(index));

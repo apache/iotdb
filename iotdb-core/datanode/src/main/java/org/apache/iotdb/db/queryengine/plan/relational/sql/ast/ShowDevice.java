@@ -66,6 +66,17 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     super(database, tableName);
   }
 
+  private ShowDevice(final ShowDevice source) {
+    super(source);
+    this.offset = source.offset;
+    this.limit = source.limit;
+  }
+
+  @Override
+  public ShowDevice copyForAnalysis() {
+    return new ShowDevice(this);
+  }
+
   public Offset getOffset() {
     return offset;
   }

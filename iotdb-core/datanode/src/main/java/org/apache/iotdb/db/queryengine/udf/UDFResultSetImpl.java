@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Re
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.udf.api.UDFResultSet;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -109,13 +110,15 @@ public class UDFResultSetImpl implements UDFResultSet {
     try {
       queryResult.close();
     } catch (RuntimeException e) {
-      throw new UDFException("Failed to close internal query result", e);
+      throw new UDFException(
+          DataNodeQueryMessages.EXCEPTION_FAILED_TO_CLOSE_INTERNAL_QUERY_RESULT_ED86BF5E, e);
     }
   }
 
   private void ensureOpen() throws UDFException {
     if (closed) {
-      throw new UDFException("UDFResultSet is already closed");
+      throw new UDFException(
+          DataNodeQueryMessages.EXCEPTION_UDFRESULTSET_IS_ALREADY_CLOSED_E1ACABE3);
     }
   }
 

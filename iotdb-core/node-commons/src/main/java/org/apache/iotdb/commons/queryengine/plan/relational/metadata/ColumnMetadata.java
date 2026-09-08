@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.LinkedHashMap;
@@ -52,8 +54,8 @@ public class ColumnMetadata {
       String extraInfo,
       boolean hidden,
       Map<String, Object> properties) {
-    requireNonNull(type, "type is null");
-    requireNonNull(properties, "properties is null");
+    requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    requireNonNull(properties, QueryMessages.EXCEPTION_PROPERTIES_IS_NULL_57B88B49);
 
     this.name = name.toLowerCase(ENGLISH);
     this.type = type;
@@ -171,12 +173,12 @@ public class ColumnMetadata {
     }
 
     public Builder setName(String name) {
-      this.name = requireNonNull(name, "name is null");
+      this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
       return this;
     }
 
     public Builder setType(Type type) {
-      this.type = requireNonNull(type, "type is null");
+      this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
       return this;
     }
 
@@ -186,12 +188,13 @@ public class ColumnMetadata {
     }
 
     public Builder setComment(Optional<String> comment) {
-      this.comment = requireNonNull(comment, "comment is null");
+      this.comment = requireNonNull(comment, QueryMessages.EXCEPTION_COMMENT_IS_NULL_0AD46118);
       return this;
     }
 
     public Builder setExtraInfo(Optional<String> extraInfo) {
-      this.extraInfo = requireNonNull(extraInfo, "extraInfo is null");
+      this.extraInfo =
+          requireNonNull(extraInfo, QueryMessages.EXCEPTION_EXTRAINFO_IS_NULL_43AE989F);
       return this;
     }
 
@@ -201,7 +204,8 @@ public class ColumnMetadata {
     }
 
     public Builder setProperties(Map<String, Object> properties) {
-      this.properties = requireNonNull(properties, "properties is null");
+      this.properties =
+          requireNonNull(properties, QueryMessages.EXCEPTION_PROPERTIES_IS_NULL_57B88B49);
       return this;
     }
 

@@ -126,12 +126,12 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         // We must update queryRowCount here, otherwise, it may be used later to build
         // BitMaps, causing bitmap array size mismatch and possible out of bound.
         entry.setValue(alignedTvList.sort());
-        long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
         alignedTvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery =
               (FragmentInstanceContext) alignedTvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
             long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
@@ -242,10 +242,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         (int)
             Math.min(
                 MAX_NUMBER_OF_FAKE_PAGE, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE));
-    long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
-    for (int i = 0; i < pageNum; i++) {
-      long pageStartTime = chunkStartTime + i * timeInterval;
-      long pageEndTime = (i == pageNum - 1) ? chunkEndTime : (pageStartTime + timeInterval - 1);
+    for (long[] pageTimeRange :
+        MemChunkTimeRangeUtils.splitFakePageTimeRanges(chunkStartTime, chunkEndTime, pageNum)) {
+      long pageStartTime = pageTimeRange[0];
+      long pageEndTime = pageTimeRange[1];
 
       Statistics<? extends Serializable>[] pageValueStatistics = new Statistics[dataTypes.size()];
       for (int column = 0; column < dataTypes.size(); column++) {
@@ -317,12 +317,12 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       int queryLength = entry.getValue();
       if (!alignedTvList.isSorted() && queryLength > alignedTvList.seqRowCount()) {
         entry.setValue(alignedTvList.sort());
-        long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
         alignedTvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery =
               (FragmentInstanceContext) alignedTvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
             long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);

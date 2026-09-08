@@ -67,7 +67,8 @@ public class PayloadFormatManager {
 
   public static PayloadFormatter getPayloadFormat(String name) {
     PayloadFormatter formatter = mqttPayloadPluginMap.get(name);
-    Preconditions.checkArgument(formatter != null, "Unknown payload format named: " + name);
+    Preconditions.checkArgument(
+        formatter != null, MqttMessages.UNKNOWN_PAYLOAD_FORMAT_NAMED + name);
     return formatter;
   }
 

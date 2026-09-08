@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -66,7 +67,9 @@ public abstract class IntermediateLayer {
             (StateWindowAccessStrategy) strategy, memoryBudgetInMB);
       default:
         throw new IllegalStateException(
-            "Unexpected access strategy: " + strategy.getAccessStrategyType());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_ACCESS_STRATEGY_S_92EA9D64,
+                strategy.getAccessStrategyType()));
     }
   }
 

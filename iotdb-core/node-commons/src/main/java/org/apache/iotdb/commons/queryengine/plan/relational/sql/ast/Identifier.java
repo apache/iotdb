@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -55,39 +57,43 @@ public class Identifier extends Expression {
   private final boolean delimited;
 
   public Identifier(NodeLocation location, String value, boolean delimited) {
-    super(requireNonNull(location, "location is null"));
-    this.value = requireNonNull(value, "value is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     this.delimited = delimited;
 
-    checkArgument(!value.isEmpty(), "value is empty");
+    checkArgument(!value.isEmpty(), QueryMessages.EXCEPTION_VALUE_IS_EMPTY_A42300DD);
     checkArgument(
-        delimited || isValidIdentifier(value), "value contains illegal characters: %s", value);
+        delimited || isValidIdentifier(value),
+        QueryMessages.EXCEPTION_VALUE_CONTAINS_ILLEGAL_CHARACTERS_COLON_ARG_C6DBFEBA,
+        value);
   }
 
   public Identifier(NodeLocation location, String value) {
-    super(requireNonNull(location, "location is null"));
-    this.value = requireNonNull(value, "value is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     this.delimited = !isValidIdentifier(value);
 
-    checkArgument(!value.isEmpty(), "value is empty");
+    checkArgument(!value.isEmpty(), QueryMessages.EXCEPTION_VALUE_IS_EMPTY_A42300DD);
   }
 
   public Identifier(String value, boolean delimited) {
     super(null);
-    this.value = requireNonNull(value, "value is null");
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     this.delimited = delimited;
 
-    checkArgument(!value.isEmpty(), "value is empty");
+    checkArgument(!value.isEmpty(), QueryMessages.EXCEPTION_VALUE_IS_EMPTY_A42300DD);
     checkArgument(
-        delimited || isValidIdentifier(value), "value contains illegal characters: %s", value);
+        delimited || isValidIdentifier(value),
+        QueryMessages.EXCEPTION_VALUE_CONTAINS_ILLEGAL_CHARACTERS_COLON_ARG_C6DBFEBA,
+        value);
   }
 
   public Identifier(String value) {
     super(null);
-    this.value = requireNonNull(value, "value is null");
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     this.delimited = !isValidIdentifier(value);
 
-    checkArgument(!value.isEmpty(), "value is empty");
+    checkArgument(!value.isEmpty(), QueryMessages.EXCEPTION_VALUE_IS_EMPTY_A42300DD);
   }
 
   public String getValue() {
@@ -145,7 +151,9 @@ public class Identifier extends Expression {
   }
 
   private static boolean isValidIdentifier(String value) {
-    verify(!Strings.isNullOrEmpty(value), "Identifier cannot be empty or null");
+    verify(
+        !Strings.isNullOrEmpty(value),
+        QueryMessages.EXCEPTION_IDENTIFIER_CANNOT_BE_EMPTY_OR_NULL_9C70B87D);
 
     if (FIRST_CHAR_DISALLOWED_MATCHER.matches(value.charAt(0))) {
       return false;

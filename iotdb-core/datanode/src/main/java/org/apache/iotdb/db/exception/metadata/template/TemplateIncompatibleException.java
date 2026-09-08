@@ -22,6 +22,7 @@ package org.apache.iotdb.db.exception.metadata.template;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TemplateIncompatibleException extends MetadataException {
@@ -30,8 +31,10 @@ public class TemplateIncompatibleException extends MetadataException {
       String path, String templateName, PartialPath templateSetPath) {
     super(
         String.format(
-            "Cannot create timeseries [%s] since device template [%s] already set on path [%s].",
-            path, templateName, templateSetPath),
+            DataNodeSchemaMessages.CANNOT_CREATE_TIMESERIES_TEMPLATE_SET_FMT,
+            path,
+            templateName,
+            templateSetPath),
         TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode(),
         true);
   }
@@ -39,9 +42,10 @@ public class TemplateIncompatibleException extends MetadataException {
   public TemplateIncompatibleException(String templateName, PartialPath templateSetPath) {
     super(
         String.format(
-            "Cannot set device template [%s] to path [%s] "
-                + "since there's timeseries under path [%s].",
-            templateName, templateSetPath, templateSetPath),
+            DataNodeSchemaMessages.CANNOT_SET_DEVICE_TEMPLATE_TIMESERIES_UNDER_PATH_FMT,
+            templateName,
+            templateSetPath,
+            templateSetPath),
         TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode(),
         true);
   }

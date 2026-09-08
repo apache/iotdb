@@ -25,6 +25,7 @@ import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,8 +93,12 @@ public class EnvUtils {
         // ignore
       }
       // Delete the lock file if the ports can't be used or some error happens
-      if (lockFile.exists() && !lockFile.delete()) {
-        IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath);
+      try {
+        if (lockFile.exists() && !Files.deleteIfExists(lockFile.toPath())) {
+          IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath);
+        }
+      } catch (IOException e) {
+        IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath, e);
       }
     }
   }

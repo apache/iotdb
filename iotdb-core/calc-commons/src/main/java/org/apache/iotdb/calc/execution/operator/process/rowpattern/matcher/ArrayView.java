@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.Arrays;
@@ -33,14 +35,17 @@ public class ArrayView {
   private final int length;
 
   public ArrayView(int[] array, int length) {
-    this.array = requireNonNull(array, "array is null");
-    checkArgument(length >= 0, "used slots count is negative");
-    checkArgument(length <= array.length, "used slots count exceeds array size");
+    this.array = requireNonNull(array, CalcMessages.EXCEPTION_ARRAY_IS_NULL_BCF2EEB1);
+    checkArgument(length >= 0, CalcMessages.EXCEPTION_USED_SLOTS_COUNT_IS_NEGATIVE_49F017C5);
+    checkArgument(
+        length <= array.length,
+        CalcMessages.EXCEPTION_USED_SLOTS_COUNT_EXCEEDS_ARRAY_SIZE_6DCD8C7E);
     this.length = length;
   }
 
   public int get(int index) {
-    checkArgument(index >= 0 && index < length, "array index out of bounds");
+    checkArgument(
+        index >= 0 && index < length, CalcMessages.EXCEPTION_ARRAY_INDEX_OUT_OF_BOUNDS_35C8A83F);
     return array[index];
   }
 

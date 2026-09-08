@@ -664,7 +664,9 @@ public abstract class TreePattern {
           break;
         default:
           LOGGER.info(
-              "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
+              PipeMessages
+                  .LOG_UNKNOWN_PATTERN_FORMAT_ARG_USE_PREFIX_MATCHING_FORMAT_DEFAULT_E7B9EFEC,
+              patternFormat);
           patterns =
               parseMultiplePatterns(
                   pattern, p -> new PrefixTreePattern(isTreeModelDataAllowedToBeCaptured, p));

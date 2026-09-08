@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.subscription;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 
 import org.slf4j.Logger;
@@ -72,7 +73,8 @@ public class SubscriptionOwnerLeaseSyncer {
               OWNER_LEASE_HEARTBEAT_INTERVAL_SECONDS,
               OWNER_LEASE_HEARTBEAT_INTERVAL_SECONDS,
               TimeUnit.SECONDS);
-      LOGGER.info("SubscriptionOwnerLeaseSyncer is started successfully.");
+      LOGGER.info(
+          ManagerMessages.MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STARTED_SUCCESSFULLY_09CA6848);
     }
   }
 
@@ -83,7 +85,10 @@ public class SubscriptionOwnerLeaseSyncer {
           .getSubscriptionCoordinator()
           .pushTopicOwnerLeasesToDataNodes();
     } catch (final Exception e) {
-      LOGGER.warn("Failed to push subscription topic owner leases to DataNodes.", e);
+      LOGGER.warn(
+          ManagerMessages
+              .MESSAGE_FAILED_TO_PUSH_SUBSCRIPTION_TOPIC_OWNER_LEASES_TO_DATANODES_EBFBA668,
+          e);
     }
   }
 
@@ -91,7 +96,8 @@ public class SubscriptionOwnerLeaseSyncer {
     if (leaseSyncFuture != null) {
       leaseSyncFuture.cancel(false);
       leaseSyncFuture = null;
-      LOGGER.info("SubscriptionOwnerLeaseSyncer is stopped successfully.");
+      LOGGER.info(
+          ManagerMessages.MESSAGE_SUBSCRIPTIONOWNERLEASESYNCER_IS_STOPPED_SUCCESSFULLY_11442F29);
     }
   }
 }

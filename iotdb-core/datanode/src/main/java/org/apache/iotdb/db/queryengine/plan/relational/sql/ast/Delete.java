@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import com.google.common.collect.ImmutableList;
@@ -56,19 +57,19 @@ public class Delete extends Statement {
 
   public Delete(final Table table) {
     super(null);
-    this.table = requireNonNull(table, "table is null");
+    this.table = requireNonNull(table, DataNodeQueryMessages.EXCEPTION_TABLE_IS_NULL_8DDD9098);
   }
 
   public Delete(final NodeLocation location, final Table table) {
-    super(requireNonNull(location, "location is null"));
-    this.table = requireNonNull(table, "table is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.table = requireNonNull(table, DataNodeQueryMessages.EXCEPTION_TABLE_IS_NULL_8DDD9098);
     this.where = null;
   }
 
   public Delete(final NodeLocation location, final Table table, final Expression where) {
-    super(requireNonNull(location, "location is null"));
-    this.table = requireNonNull(table, "table is null");
-    this.where = requireNonNull(where, "where is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.table = requireNonNull(table, DataNodeQueryMessages.EXCEPTION_TABLE_IS_NULL_8DDD9098);
+    this.where = requireNonNull(where, DataNodeQueryMessages.EXCEPTION_WHERE_IS_NULL_A1A3FCBC);
   }
 
   public Table getTable() {

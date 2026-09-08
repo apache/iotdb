@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -56,7 +56,8 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
         || insertNode instanceof InsertRowsNode)) {
       throw new UnsupportedOperationException(
           String.format(
-              "Unknown InsertNode type %s when constructing statement from insert node.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_UNKNOWN_INSERTNODE_TYPE_S_WHEN_CONSTRUCTING_STATEMENT_FROM_4A055174,
               insertNode));
     }
 
@@ -104,13 +105,26 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(final InsertNode insertNode) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateAirGapSerializedSize(insertNode));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_INSERT_NODE.getType(), outputStream);
-      return BytesUtils.concatByteArray(
-          byteArrayOutputStream.toByteArray(), insertNode.serializeToByteBuffer().array());
+      insertNode.serialize(outputStream);
+      return byteArrayOutputStream.toByteArray();
     }
+  }
+
+  static int calculateSerializedSize(final InsertNode insertNode) {
+    return insertNode.serializeToByteBufferSize();
+  }
+
+  static int calculateAirGapSerializedSize(final InsertNode insertNode) {
+    return calculateAirGapSerializedSize(calculateSerializedSize(insertNode));
+  }
+
+  protected static int calculateAirGapSerializedSize(final int bodySize) {
+    return Byte.BYTES + Short.BYTES + bodySize;
   }
 
   /////////////////////////////// Object ///////////////////////////////

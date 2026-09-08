@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -49,7 +50,7 @@ public class OutputColumn {
   public OutputColumn(List<InputLocation> sourceLocations, boolean overlapped) {
     checkArgument(
         sourceLocations != null && !sourceLocations.isEmpty(),
-        "size of sourceLocations should be larger than 0");
+        DataNodeQueryMessages.EXCEPTION_SIZE_OF_SOURCELOCATIONS_SHOULD_BE_LARGER_THAN_0_2EC41A23);
     this.sourceLocations = sourceLocations;
     this.overlapped = overlapped;
   }
@@ -67,7 +68,9 @@ public class OutputColumn {
   }
 
   public InputLocation getSourceLocation(int index) {
-    checkArgument(index < sourceLocations.size(), "index is not valid");
+    checkArgument(
+        index < sourceLocations.size(),
+        DataNodeQueryMessages.EXCEPTION_INDEX_IS_NOT_VALID_2AB4FB3A);
     return sourceLocations.get(index);
   }
 

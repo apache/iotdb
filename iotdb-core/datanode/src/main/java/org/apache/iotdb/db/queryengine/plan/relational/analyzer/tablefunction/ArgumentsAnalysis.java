@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 
 import com.google.common.collect.ImmutableList;
@@ -36,10 +37,14 @@ public class ArgumentsAnalysis {
   public ArgumentsAnalysis(
       Map<String, Argument> passedArguments, List<TableArgumentAnalysis> tableArgumentAnalyses) {
     this.passedArguments =
-        ImmutableMap.copyOf(requireNonNull(passedArguments, "passedArguments is null"));
+        ImmutableMap.copyOf(
+            requireNonNull(
+                passedArguments, DataNodeQueryMessages.EXCEPTION_PASSEDARGUMENTS_IS_NULL_98D8CB1F));
     this.tableArgumentAnalyses =
         ImmutableList.copyOf(
-            requireNonNull(tableArgumentAnalyses, "tableArgumentAnalyses is null"));
+            requireNonNull(
+                tableArgumentAnalyses,
+                DataNodeQueryMessages.EXCEPTION_TABLEARGUMENTANALYSES_IS_NULL_C8724E40));
   }
 
   public Map<String, Argument> getPassedArguments() {

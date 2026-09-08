@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.stage;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
@@ -70,12 +71,14 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       final UnboundedBlockingPendingQueue<Event> pipeSinkOutputPendingQueue,
       final PipeProcessorSubtaskExecutor executor,
       final PipeTaskMeta pipeTaskMeta,
+      final UserEntity sourceUserEntity,
+      final String sourcePassword,
       final boolean forceTabletFormat,
       final boolean skipParsing) {
     final PipeProcessorRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskProcessorRuntimeEnvironment(
-                pipeName, creationTime, regionId, pipeTaskMeta));
+                pipeName, creationTime, regionId, pipeTaskMeta, sourceUserEntity, sourcePassword));
     final PipeProcessor pipeProcessor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
                 || PipeRuntimeMeta.isSourceExternal(regionId)

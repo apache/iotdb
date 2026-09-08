@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -138,7 +139,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
     try {
       LOGGER.debug(
-          "Selecting cross compaction task resources from {} seqFile, {} unseqFiles",
+          StorageEngineMessages
+              .STORAGE_LOG_SELECTING_CROSS_COMPACTION_TASK_RESOURCES_FROM_SEQFILE_UNSEQFILES_F4E1ABEB,
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
 
@@ -165,7 +167,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         new InsertionCrossSpaceCompactionSelector(candidate);
     try {
       LOGGER.debug(
-          "Selecting insertion cross compaction task resources from {} seqFile, {} unseqFiles",
+          StorageEngineMessages
+              .STORAGE_LOG_SELECTING_INSERTION_CROSS_COMPACTION_TASK_RESOURCES_FROM_ECB186D1,
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
       boolean delaySelection =
@@ -249,7 +252,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
       taskResource.putResources(unseqFile, targetSeqFiles, memoryCost);
       LOGGER.debug(
-          "Adding a new unseqFile {} and seqFiles {} as candidates, new cost {}, total cost {}",
+          StorageEngineMessages
+              .STORAGE_LOG_ADDING_A_NEW_UNSEQFILE_AND_SEQFILES_AS_CANDIDATES_NEW_COST_07DD0A10,
           unseqFile,
           targetSeqFiles,
           memoryCost,
@@ -268,7 +272,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         // overlapping of the new compacted files with the subsequent seq files.
         if (seqResourceCandidate.isValidCandidate) {
           LOGGER.debug(
-              "Select one valid seq file {} for nonOverlap unseq file to compact with.",
+              StorageEngineMessages
+                  .STORAGE_LOG_SELECT_ONE_VALID_SEQ_FILE_FOR_NONOVERLAP_UNSEQ_FILE_TO_COMPACT_456668F1,
               seqResourceCandidate.resource);
           return seqResourceCandidate;
         }
@@ -360,7 +365,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       boolean isInsertionTask) {
     // TODO: (xingtanzjr) need to confirm what this ttl is used for
     long startTime = System.currentTimeMillis();
-    long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+    long ttlLowerBound = CommonUtils.getTTLLowerBound(Long.MAX_VALUE);
     // we record the variable `candidate` here is used for selecting more than one
     // CrossCompactionTaskResources in this method.
     // Add read lock for candidate source files to avoid being deleted during the selection.
@@ -378,10 +383,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
           LOGGER.info(
-              "{} [{}] Total source files: {} seqFiles, {} unseqFiles. "
-                  + "Candidate source files: {} seqFiles, {} unseqFiles. "
-                  + "Cannot select any files because they do not meet the conditions "
-                  + "or may be occupied by other compaction threads.",
+              StorageEngineMessages
+                  .STORAGE_LOG_TOTAL_SOURCE_FILES_SEQFILES_UNSEQFILES_CANDIDATE_SOURCE_7511ED9E,
               isInsertionTask ? "InsertionCrossSpaceCompaction" : "CrossSpaceCompaction",
               sgDataRegionId,
               sequenceFileList.size(),
@@ -394,14 +397,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
       long timeCost = System.currentTimeMillis() - startTime;
       LOGGER.info(
-          "{} [{}] Total source files: {} seqFiles, {} unseqFiles. "
-              + "Candidate source files: {} seqFiles, {} unseqFiles. "
-              + "Selected source files: {} seqFiles, "
-              + "{} unseqFiles, estimated memory cost {} MB, "
-              + "total selected file size is {} MB, "
-              + "total selected seq file size is {} MB, "
-              + "total selected unseq file size is {} MB, "
-              + "time consumption {}ms.",
+          StorageEngineMessages
+              .STORAGE_LOG_TOTAL_SOURCE_FILES_SEQFILES_UNSEQFILES_CANDIDATE_SOURCE_B8B01FC4,
           sgDataRegionId,
           isInsertionTask ? "InsertionCrossSpaceCompaction" : "CrossSpaceCompaction",
           sequenceFileList.size(),

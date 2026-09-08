@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -56,8 +58,8 @@ public class FragmentInstanceFailureInfo implements Serializable {
       FragmentInstanceFailureInfo cause,
       List<FragmentInstanceFailureInfo> suppressed,
       List<String> stack) {
-    requireNonNull(suppressed, "suppressed is null");
-    requireNonNull(stack, "stack is null");
+    requireNonNull(suppressed, DataNodeQueryMessages.EXCEPTION_SUPPRESSED_IS_NULL_F4CD280B);
+    requireNonNull(stack, DataNodeQueryMessages.EXCEPTION_STACK_IS_NULL_6844D421);
 
     this.message = message;
     this.cause = cause;

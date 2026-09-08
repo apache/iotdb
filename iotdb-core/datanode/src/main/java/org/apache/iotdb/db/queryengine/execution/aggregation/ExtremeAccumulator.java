@@ -66,7 +66,9 @@ public class ExtremeAccumulator
   // partialResult should be like: | PartialExtremeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of ExtremeValue should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_EXTREMEVALUE_SHOULD_BE_1_A7713D8A);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -94,7 +96,9 @@ public class ExtremeAccumulator
   // columnBuilder should be single in ExtremeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of ExtremeValue should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_EXTREMEVALUE_SHOULD_BE_1_A7713D8A);
     if (!initResult) {
       columnBuilders[0].appendNull();
       return;

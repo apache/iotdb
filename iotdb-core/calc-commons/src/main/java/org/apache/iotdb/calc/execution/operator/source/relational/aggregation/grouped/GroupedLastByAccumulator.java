@@ -118,7 +118,10 @@ public class GroupedLastByAccumulator
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 3, "Length of input Column[] for LAST_BY should be 3");
+    checkArgument(
+        arguments.length == 3,
+        CalcMessages
+            .EXCEPTION_LENGTH_OF_INPUT_COLUMN_LEFT_BRACKET_RIGHT_BRACKET_FOR_LAST_BY_SHOULD_BE_3_D759D45F);
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
     inputReader.addInput(groupIds, arguments, mask, this);
@@ -130,7 +133,8 @@ public class GroupedLastByAccumulator
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of LAST_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_LAST_BY_SHOULD_BE_BINARYCOLUMN_87700792);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -155,7 +159,8 @@ public class GroupedLastByAccumulator
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of LAST_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_LAST_BY_SHOULD_BE_BINARYCOLUMN_87700792);
 
     if (inits.get(groupId) || initNullTimeValues.get(groupId)) {
       columnBuilder.writeBinary(new Binary(serializeTimeWithValue(groupId)));

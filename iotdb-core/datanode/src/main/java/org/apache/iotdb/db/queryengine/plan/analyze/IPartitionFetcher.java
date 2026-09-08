@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import javax.annotation.Nullable;
@@ -59,6 +62,9 @@ public interface IPartitionFetcher {
    */
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
+  DataPartition getDataPartition(
+      String database, DeviceEntryDataSet dataSet, List<TTimePartitionSlot> timePartitionSlots);
+
   /**
    * Get data partition, used in query scenarios which contains time filter like: time < XX or time
    * > XX
@@ -67,6 +73,13 @@ public interface IPartitionFetcher {
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+
+  DataPartition getDataPartitionWithUnclosedTimeRange(
+      String database,
+      DeviceEntryDataSet dataSet,
+      List<TTimePartitionSlot> timePartitionSlots,
+      boolean needLeftAll,
+      boolean needRightAll);
 
   /**
    * Get or create data partition, used in standalone write scenarios. if enableAutoCreateSchema is
@@ -123,6 +136,7 @@ public interface IPartitionFetcher {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
+  @TableModel
   SchemaPartition getSchemaPartition(
       final String database, final @Nullable List<IDeviceID> deviceIDs);
 }

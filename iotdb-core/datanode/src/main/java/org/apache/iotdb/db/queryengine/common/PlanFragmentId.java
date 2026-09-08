@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.common;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -43,7 +45,10 @@ public class PlanFragmentId {
   }
 
   public static PlanFragmentId valueOf(List<String> ids) {
-    checkArgument(ids.size() == 2, "Expected two ids but got: %s", ids);
+    checkArgument(
+        ids.size() == 2,
+        DataNodeQueryMessages.EXCEPTION_EXPECTED_TWO_IDS_BUT_GOT_COLON_ARG_020F9D13,
+        ids);
     return new PlanFragmentId(new QueryId(ids.get(0)), Integer.parseInt(ids.get(1)));
   }
 
@@ -52,7 +57,8 @@ public class PlanFragmentId {
   }
 
   public PlanFragmentId(QueryId queryId, int id) {
-    this.queryId = requireNonNull(queryId, "queryId is null");
+    this.queryId =
+        requireNonNull(queryId, DataNodeQueryMessages.EXCEPTION_QUERYID_IS_NULL_056E92E4);
     this.id = id;
     this.nextFragmentInstanceId = 0;
   }

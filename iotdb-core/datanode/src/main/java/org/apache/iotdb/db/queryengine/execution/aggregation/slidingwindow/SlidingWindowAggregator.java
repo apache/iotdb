@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 
@@ -53,14 +54,16 @@ public abstract class SlidingWindowAggregator extends TreeAggregator {
   public void processTsBlock(TsBlock tsBlock) {
     checkArgument(
         step.isInputPartial(),
-        "Step in SlidingWindowAggregationOperator can only process partial result");
+        DataNodeQueryMessages
+            .EXCEPTION_STEP_IN_SLIDINGWINDOWAGGREGATIONOPERATOR_CAN_ONLY_PROCESS_PARTIAL_RESULT_E221A2C5);
     Column timeColumn = tsBlock.getTimeColumn();
     Column[] valueColumn = new Column[inputLocationList.get(0).length];
     for (int i = 0; i < inputLocationList.get(0).length; i++) {
       InputLocation inputLocation = inputLocationList.get(0)[i];
       checkArgument(
           inputLocation.getTsBlockIndex() == 0,
-          "SlidingWindowAggregationOperator can only process one tsBlock input.");
+          DataNodeQueryMessages
+              .EXCEPTION_SLIDINGWINDOWAGGREGATIONOPERATOR_CAN_ONLY_PROCESS_ONE_TSBLOCK_INPUT_DOT_7B9FCAB7);
       valueColumn[i] = tsBlock.getColumn(inputLocation.getValueColumnIndex());
     }
     processPartialResult(new PartialAggregationResult(timeColumn, valueColumn));

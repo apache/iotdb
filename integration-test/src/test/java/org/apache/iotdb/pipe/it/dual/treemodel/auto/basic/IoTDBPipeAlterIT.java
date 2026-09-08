@@ -56,6 +56,15 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
     super.setUp();
   }
 
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(600);
+  }
+
   @Test
   public void testBasicAlterPipe() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -614,5 +623,44 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualTreeModelAutoIT {
         "count timeSeries root.db.**",
         "count(timeseries),",
         Collections.singleton("1,"));
+  }
+
+  @Test
+  public void testAlterPipeDoesNotResendCommittedData() {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList("insert into root.db.d1(time, s1) values (1, 1), (2, 2)", "flush"),
+        null);
+
+    TestUtils.executeNonQuery(
+        senderEnv,
+        String.format(
+            "create pipe a2b with source ('source.realtime.mode'='stream') with sink ('node-urls'='%s', 'sink.batch.enable'='false')",
+            receiverDataNode.getIpAndPortString()),
+        null);
+
+    final Set<String> oldData = new HashSet<>(Arrays.asList("1,1.0,", "2,2.0,"));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", oldData);
+
+    TestUtils.executeNonQuery(
+        receiverEnv, "delete from root.db.d1.s1 where time >= 1 and time <= 2", null);
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", Collections.emptySet());
+
+    TestUtils.executeNonQuery(
+        senderEnv, "alter pipe a2b modify sink ('sink.batch.enable'='true')", null);
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", Collections.emptySet());
+
+    TestUtils.executeNonQueries(
+        senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (3, 3)", "flush"), null);
+    final Set<String> newData = Collections.singleton("3,3.0,");
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", newData);
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv, "select * from root.db.d1", "Time,root.db.d1.s1,", newData);
   }
 }

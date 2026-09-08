@@ -33,18 +33,21 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.Lifecycle;
+import org.eclipse.milo.opcua.sdk.server.ManagedNamespaceWithLifecycle;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
-import org.eclipse.milo.opcua.sdk.server.api.DataItem;
-import org.eclipse.milo.opcua.sdk.server.api.ManagedNamespaceWithLifecycle;
-import org.eclipse.milo.opcua.sdk.server.api.MonitoredItem;
-import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
+import org.eclipse.milo.opcua.sdk.server.items.DataItem;
+import org.eclipse.milo.opcua.sdk.server.items.MonitoredItem;
+import org.eclipse.milo.opcua.sdk.server.model.objects.BaseEventTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
@@ -126,6 +129,77 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     } else {
       transferTabletForPubSubModel(tablet, isTableModel, sink);
     }
+  }
+
+  /**
+   * Transfers the last value of every measurement in a TsFile device without materializing a {@link
+   * Tablet}. The TsFile last-value reader obtains the values from metadata (and reads only the last
+   * chunk when a data type does not keep a value in statistics).
+   */
+  public void transferLastValues(
+      final IDeviceID deviceID,
+      final List<Pair<IMeasurementSchema, TimeValuePair>> lastValues,
+      final boolean isTableModel,
+      final OpcUaSink sink)
+      throws Exception {
+    transferLastValues(
+        deviceID, lastValues, isTableModel, sink, this::transferTabletRowForClientServerModel);
+  }
+
+  public static void transferLastValues(
+      final IDeviceID deviceID,
+      final List<Pair<IMeasurementSchema, TimeValuePair>> lastValues,
+      final boolean isTableModel,
+      final OpcUaSink sink,
+      final TabletRowConsumer consumer)
+      throws Exception {
+    final String[] segments;
+    if (!isTableModel) {
+      // IDeviceID may compact multiple tree nodes into one segment. Keep the same node layout as
+      // the Tablet path, which splits the complete device path.
+      segments = deviceID.toString().split("\\.");
+    } else {
+      final Object[] deviceSegments = deviceID.getSegments();
+      segments = new String[deviceSegments.length + 1];
+      segments[0] = sink.getDatabaseName();
+      for (int i = 0; i < deviceSegments.length; ++i) {
+        segments[i + 1] =
+            Objects.isNull(deviceSegments[i])
+                ? sink.getPlaceHolder4NullTag()
+                : String.valueOf(deviceSegments[i]);
+      }
+    }
+
+    final List<IMeasurementSchema> schemas = new ArrayList<>(lastValues.size());
+    final List<Long> timestamps = new ArrayList<>(lastValues.size());
+    final List<Object> values = new ArrayList<>(lastValues.size());
+    for (final Pair<IMeasurementSchema, TimeValuePair> lastValue : lastValues) {
+      if (Objects.isNull(lastValue)
+          || Objects.isNull(lastValue.getLeft())
+          || Objects.isNull(lastValue.getLeft().getMeasurementName())
+          || TsFileConstant.TIME_COLUMN_ID.equals(lastValue.getLeft().getMeasurementName())
+          || Objects.isNull(lastValue.getRight())
+          || Objects.isNull(lastValue.getRight().getValue())) {
+        continue;
+      }
+
+      final TimeValuePair timeValuePair = lastValue.getRight();
+      final TSDataType dataType = lastValue.getLeft().getType();
+      schemas.add(lastValue.getLeft());
+      timestamps.add(timeValuePair.getTimestamp());
+      values.add(getObjectValue4Opc(timeValuePair, dataType));
+    }
+
+    if (!schemas.isEmpty()) {
+      consumer.accept(segments, schemas, timestamps, values, sink);
+    }
+  }
+
+  private static Object getObjectValue4Opc(
+      final TimeValuePair timeValuePair, final TSDataType dataType) {
+    return TypeServices.Pipe.OPC_UA_LAST_VALUE_CONVERTER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(timeValuePair.getValue().getValue());
   }
 
   public static void transferTabletForClientServerModel(
@@ -260,7 +334,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                     () ->
                         new PipeRuntimeCriticalException(
                             String.format(
-                                "The folder node for %s does not exist.",
+                                DataNodePipeMessages
+                                    .PIPE_EXCEPTION_THE_FOLDER_NODE_FOR_S_DOES_NOT_EXIST_CC0776AE,
                                 Arrays.toString(segments))));
       }
     }
@@ -289,7 +364,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       if (Objects.nonNull(sink.getValueName()) && !sink.getValueName().equals(name)) {
         PipeLogger.log(
             LOGGER::warn,
-            "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
+            DataNodePipeMessages.WITH_QUALITY_MEASUREMENT_MUST_BE_VALUE_OR_QUALITY_NAME);
         continue;
       }
       final UaVariableNode measurementNode;
@@ -374,7 +449,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                   .orElseThrow(
                       () ->
                           new PipeRuntimeCriticalException(
-                              String.format("The Node %s does not exist.", nodeId)));
+                              String.format(
+                                  DataNodePipeMessages
+                                      .PIPE_EXCEPTION_THE_NODE_S_DOES_NOT_EXIST_52F98935,
+                                  nodeId)));
     }
     return measurementNode;
   }
@@ -470,7 +548,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             LocalizedText.english(valueStringifier.apply(tablet.getValue(rowIndex, columnIndex))));
 
         // Send the event
-        getServer().getEventBus().post(eventNode);
+        getServer().getEventNotifier().fire(eventNode);
       }
     }
     eventNode.delete();
@@ -618,6 +696,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   /////////////////////////////// Conflict detection ///////////////////////////////
 
   public void checkEquals(
+      final String advertisedHost,
       final String user,
       final String password,
       final String securityDir,
@@ -625,6 +704,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final Set<SecurityPolicy> securityPolicies,
       final long debounceTimeMs) {
     builder.checkEquals(
+        advertisedHost,
         user,
         password,
         Paths.get(securityDir),

@@ -257,8 +257,9 @@ public class LogicalViewSchema
         throw new RuntimeException(
             new MetadataException(
                 String.format(
-                    "View with measurementID [%s] is broken. It stores illegal path [%s].",
-                    this.measurementName, this.getSourcePathStringIfWritable())));
+                    SchemaMessages.VIEW_STORES_ILLEGAL_PATH,
+                    this.measurementName,
+                    this.getSourcePathStringIfWritable())));
       }
     }
     return null;

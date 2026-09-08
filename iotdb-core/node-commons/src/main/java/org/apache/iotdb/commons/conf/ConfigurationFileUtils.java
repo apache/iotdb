@@ -427,11 +427,7 @@ public class ConfigurationFileUtils {
       Thread.sleep(waitTimeMillsPerCheck);
     }
     logger.warn(
-        ConfigMessages.WAITING_TO_ACQUIRE_CONFIG_FILE_LOCK
-            + " There may have been an unexpected interruption in the last"
-            + " configuration file update. Ignore temporary file {}",
-        totalWaitTime / 1000,
-        file.getName());
+        ConfigMessages.WAITING_TO_ACQUIRE_CONFIG_FILE_LOCK, totalWaitTime / 1000, file.getName());
   }
 
   private static void releaseFileLock(File file) throws IOException {

@@ -126,6 +126,7 @@ REM CLASSPATH setup
 set "CLASSPATH=%IOTDB_HOME%\lib\*"
 
 REM JAVA executable
+REM set JAVA_HOME=%JAVA_HOME%
 if defined JAVA_HOME (
     if exist "%JAVA_HOME%\bin\java.exe" (
         set "JAVA=%JAVA_HOME%\bin\java.exe"

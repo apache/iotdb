@@ -78,9 +78,13 @@ public class PlanNodeDecorrelator {
 
   public PlanNodeDecorrelator(
       PlannerContext plannerContext, SymbolAllocator symbolAllocator, Lookup lookup) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
-    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-    this.lookup = requireNonNull(lookup, "lookup is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
+    this.symbolAllocator =
+        requireNonNull(
+            symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+    this.lookup = requireNonNull(lookup, DataNodeQueryMessages.EXCEPTION_LOOKUP_IS_NULL_B8FD7E65);
     this.typeCoercion = new TypeCoercion(plannerContext.getTypeManager()::getType);
   }
 
@@ -102,8 +106,10 @@ public class PlanNodeDecorrelator {
     private final List<Symbol> correlation;
 
     DecorrelatingVisitor(TypeManager typeManager, List<Symbol> correlation) {
-      this.typeManager = requireNonNull(typeManager, "typeManager is null");
-      this.correlation = requireNonNull(correlation, "correlation is null");
+      this.typeManager =
+          requireNonNull(typeManager, DataNodeQueryMessages.EXCEPTION_TYPEMANAGER_IS_NULL_12A72016);
+      this.correlation =
+          requireNonNull(correlation, DataNodeQueryMessages.EXCEPTION_CORRELATION_IS_NULL_F8327EAD);
     }
 
     @Override
@@ -205,7 +211,8 @@ public class PlanNodeDecorrelator {
         return rewriteLimitWithRowCountOne(childDecorrelationResult, node.getPlanNodeId());
       }
       throw new SemanticException(
-          "Decorrelation for LIMIT with row count greater than 1 is not supported yet");
+          DataNodeQueryMessages
+              .DECORRELATION_FOR_LIMIT_WITH_ROW_COUNT_GREATER_THAN_1_IS_NOT_SUPPORTED_YET);
       // return rewriteLimitWithRowCountGreaterThanOne(childDecorrelationResult, node);
     }
 
@@ -448,7 +455,7 @@ public class PlanNodeDecorrelator {
       Set<Symbol> groupingKeys = ImmutableSet.copyOf(node.getGroupingKeys());
       checkState(
           ImmutableSet.copyOf(decorrelatedAggregation.getGroupingKeys()).equals(groupingKeys),
-          "grouping keys were correlated");
+          DataNodeQueryMessages.EXCEPTION_GROUPING_KEYS_WERE_CORRELATED_EE1C8406);
       List<Symbol> symbolsToAdd =
           childDecorrelationResult.symbolsToPropagate.stream()
               .filter(symbol -> !groupingKeys.contains(symbol))
@@ -638,10 +645,12 @@ public class PlanNodeDecorrelator {
       this.constantSymbols = constantSymbols;
       checkState(
           constantSymbols.containsAll(correlatedSymbolsMapping.values()),
-          "Expected constant symbols to contain all correlated symbols local equivalents");
+          DataNodeQueryMessages
+              .EXCEPTION_EXPECTED_CONSTANT_SYMBOLS_TO_CONTAIN_ALL_CORRELATED_SYMBOLS_LOCAL_EQUIVALENTS_E20CB055);
       checkState(
           symbolsToPropagate.containsAll(constantSymbols),
-          "Expected symbols to propagate to contain all constant symbols");
+          DataNodeQueryMessages
+              .EXCEPTION_EXPECTED_SYMBOLS_TO_PROPAGATE_TO_CONTAIN_ALL_CONSTANT_SYMBOLS_C9D876E4);
     }
 
     SymbolMapper getCorrelatedSymbolMapper() {
@@ -682,9 +691,11 @@ public class PlanNodeDecorrelator {
     private final PlanNode node;
 
     public DecorrelatedNode(List<Expression> correlatedPredicates, PlanNode node) {
-      requireNonNull(correlatedPredicates, "correlatedPredicates is null");
+      requireNonNull(
+          correlatedPredicates,
+          DataNodeQueryMessages.EXCEPTION_CORRELATEDPREDICATES_IS_NULL_5FCB8011);
       this.correlatedPredicates = ImmutableList.copyOf(correlatedPredicates);
-      this.node = requireNonNull(node, "node is null");
+      this.node = requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
     }
 
     public Optional<Expression> getCorrelatedPredicates() {

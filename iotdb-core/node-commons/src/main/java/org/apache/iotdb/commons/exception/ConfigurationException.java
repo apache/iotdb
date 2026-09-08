@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -38,8 +39,11 @@ public class ConfigurationException extends IoTDBException {
       String parameter, String badValue, String correctValue, String reason) {
     super(
         String.format(
-            "Parameter %s can not be %s, please set to: %s. Because %s",
-            parameter, badValue, correctValue, reason),
+            CommonMessages.EXCEPTION_PARAMETER_ARG_CAN_NOT_ARG_PLEASE_SET_ARG_BECAUSE_ARG_749738D1,
+            parameter,
+            badValue,
+            correctValue,
+            reason),
         TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
     this.parameter = parameter;
     this.correctValue = correctValue;

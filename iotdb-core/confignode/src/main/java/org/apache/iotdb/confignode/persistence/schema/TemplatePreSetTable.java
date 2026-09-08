@@ -130,7 +130,8 @@ public class TemplatePreSetTable {
         return tmpFile.renameTo(snapshotFile);
       } finally {
         for (int retry = 0; retry < 5; retry++) {
-          if (!tmpFile.exists() || tmpFile.delete()) {
+          if (!tmpFile.exists()
+              || org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tmpFile)) {
             break;
           } else {
             LOGGER.warn(
@@ -149,6 +150,8 @@ public class TemplatePreSetTable {
     try {
       File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
       if (!snapshotFile.exists()) {
+        // Empty preset tables are represented by the absence of a snapshot file.
+        templatePreSetMap.clear();
         return;
       }
 

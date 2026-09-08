@@ -93,7 +93,10 @@ public class DeletionResourceManager implements AutoCloseable {
           LOGGER.warn(
               DataNodePipeMessages.UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT, storageDir);
           throw new IOException(
-              String.format("Unable to create iotConsensusV2 deletion dir at %s", storageDir));
+              String.format(
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT_S_800EE360,
+                  storageDir));
         }
       }
       try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {

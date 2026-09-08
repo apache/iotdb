@@ -21,6 +21,7 @@ package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SchemaQuotaExceededException extends MetadataException {
@@ -28,22 +29,14 @@ public class SchemaQuotaExceededException extends MetadataException {
   // used for timeseries/device limit
   public SchemaQuotaExceededException(ClusterSchemaQuotaLevel level) {
     super(
-        String.format(
-            "The current metadata capacity has exceeded the cluster quota. "
-                + "Please review your configuration on ConfigNode or delete some existing %s to comply with the quota.",
-            level),
+        String.format(DataNodeSchemaMessages.SCHEMA_QUOTA_EXCEEDED_FMT, level),
         TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
   }
 
   // used for database limit
   public SchemaQuotaExceededException(long limit) {
     super(
-        String.format(
-            "The current database number has exceeded the cluster quota. "
-                + "The maximum number of cluster databases allowed is %d, "
-                + "Please review your configuration database_limit_threshold "
-                + "or delete some existing database to comply with the quota.",
-            limit),
+        String.format(DataNodeSchemaMessages.DATABASE_QUOTA_EXCEEDED_FMT, limit),
         TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
   }
 }

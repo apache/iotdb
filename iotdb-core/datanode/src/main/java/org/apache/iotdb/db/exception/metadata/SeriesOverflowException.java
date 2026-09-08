@@ -21,15 +21,14 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SeriesOverflowException extends MetadataException {
 
   public SeriesOverflowException(long memoryUsage, long seriesNum) {
     super(
-        String.format(
-            "Too many timeseries in memory without device template(current memory: %s, series num: %s). To optimize memory, DEVICE TEMPLATE is more recommended when devices have same time series.",
-            memoryUsage, seriesNum),
+        String.format(DataNodeSchemaMessages.SERIES_OVERFLOW_FMT, memoryUsage, seriesNum),
         TSStatusCode.SERIES_OVERFLOW.getStatusCode());
   }
 }

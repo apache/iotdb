@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.udf.api.exception;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 public class UDFAttributeNotProvidedException extends UDFParameterNotValidException {
 
   public UDFAttributeNotProvidedException(String requiredAttribute) {
-    super(String.format("attribute \"%s\" is required but was not provided.", requiredAttribute));
+    super(
+        String.format(
+            UdfApiMessages.EXCEPTION_ATTRIBUTE_ARG_IS_REQUIRED_BUT_WAS_NOT_PROVIDED_867D4638,
+            requiredAttribute));
   }
 }

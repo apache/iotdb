@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Project
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrLabel;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
@@ -56,7 +57,8 @@ public class ExpressionRewriteRuleSet {
   private final ExpressionRewriter rewriter;
 
   public ExpressionRewriteRuleSet(ExpressionRewriter rewriter) {
-    this.rewriter = requireNonNull(rewriter, "rewriter is null");
+    this.rewriter =
+        requireNonNull(rewriter, DataNodeQueryMessages.EXCEPTION_REWRITER_IS_NULL_B0D8CC88);
   }
 
   public Set<Rule<?>> rules() {

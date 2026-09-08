@@ -57,7 +57,9 @@ public class UDAFInformationInferrer {
     } catch (Exception e) {
       LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_DURING_INFERRING_UDF_DATA_TYPE, e);
       throw new SemanticException(
-          String.format("Error occurred during inferring UDF data type: %s", System.lineSeparator())
+          String.format(
+                  DataNodeQueryMessages.ERROR_OCCURRED_DURING_INFERRING_UDF_DATA_TYPE_S,
+                  System.lineSeparator())
               + e);
     }
   }

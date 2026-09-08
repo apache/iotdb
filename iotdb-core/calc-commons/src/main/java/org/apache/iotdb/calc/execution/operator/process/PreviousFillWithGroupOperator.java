@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.fill.IFill;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
@@ -65,15 +66,18 @@ public class PreviousFillWithGroupOperator implements ProcessOperator {
       int helperColumnIndex,
       Comparator<SortKey> groupKeyComparator,
       List<TSDataType> dataTypes) {
-    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
+    this.operatorContext =
+        requireNonNull(operatorContext, CalcMessages.EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB);
     checkArgument(
-        fillArray != null && fillArray.length > 0, "fillArray should not be null or empty");
+        fillArray != null && fillArray.length > 0,
+        CalcMessages.EXCEPTION_FILLARRAY_SHOULD_NOT_BE_NULL_OR_EMPTY_118FB134);
     this.fillArray = fillArray;
-    this.child = requireNonNull(child, "child operator is null");
+    this.child = requireNonNull(child, CalcMessages.EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C);
     this.outputColumnCount = fillArray.length;
     checkArgument(
         helperColumnIndex >= 0,
-        "helperColumnIndex for PreviousFillWithGroupOperator should never be negative");
+        CalcMessages
+            .EXCEPTION_HELPERCOLUMNINDEX_FOR_PREVIOUSFILLWITHGROUPOPERATOR_SHOULD_NEVER_BE_NEGATIVE_ABA9C2B1);
     this.helperColumnIndex = helperColumnIndex;
     this.groupKeyComparator = groupKeyComparator;
     this.resultBuilder = new TsBlockBuilder(dataTypes);
@@ -88,7 +92,8 @@ public class PreviousFillWithGroupOperator implements ProcessOperator {
 
     checkArgument(
         outputColumnCount == block.getValueColumnCount(),
-        "outputColumnCount is not equal to value column count of child operator's TsBlock");
+        CalcMessages
+            .EXCEPTION_OUTPUTCOLUMNCOUNT_IS_NOT_EQUAL_TO_VALUE_COLUMN_COUNT_OF_CHILD_OPERATOR_QUOTE_S_T_8E30BAD8);
 
     // current TsBlock's first row is not same group as the last row of previous TsBlock
     // we need to call reset the fill

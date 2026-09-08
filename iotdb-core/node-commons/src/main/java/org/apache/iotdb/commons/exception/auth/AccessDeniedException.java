@@ -20,11 +20,12 @@
 package org.apache.iotdb.commons.exception.auth;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class AccessDeniedException extends IoTDBRuntimeException {
 
-  public static final String PREFIX = "Access Denied: ";
+  public static final String PREFIX = AuthMessages.EXCEPTION_ACCESS_DENIED_E128C1A1;
 
   public AccessDeniedException(String message) {
     super(PREFIX + message, TSStatusCode.NO_PERMISSION.getStatusCode());

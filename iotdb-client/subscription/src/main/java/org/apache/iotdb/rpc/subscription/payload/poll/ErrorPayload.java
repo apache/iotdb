@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.subscription.payload.poll;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -28,7 +30,7 @@ import java.util.Objects;
 
 public class ErrorPayload implements SubscriptionPollPayload {
 
-  private static final String OUTDATED_ERROR_MSG = "outdated subscription event";
+  private static final String OUTDATED_ERROR_MSG = SubscriptionMessages.OUTDATED_SUBSCRIPTION_EVENT;
   public static final ErrorPayload OUTDATED_ERROR_PAYLOAD =
       new ErrorPayload(OUTDATED_ERROR_MSG, false);
 

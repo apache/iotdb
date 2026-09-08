@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -31,8 +33,9 @@ public class IrQuantified extends IrRowPattern {
   private final IrQuantifier quantifier;
 
   public IrQuantified(IrRowPattern pattern, IrQuantifier quantifier) {
-    this.pattern = requireNonNull(pattern, "pattern is null");
-    this.quantifier = requireNonNull(quantifier, "quantifier is null");
+    this.pattern = requireNonNull(pattern, QueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
+    this.quantifier =
+        requireNonNull(quantifier, QueryMessages.EXCEPTION_QUANTIFIER_IS_NULL_7B81C096);
   }
 
   public IrRowPattern getPattern() {

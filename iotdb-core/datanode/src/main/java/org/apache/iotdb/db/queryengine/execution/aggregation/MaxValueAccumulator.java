@@ -61,7 +61,9 @@ public class MaxValueAccumulator implements Accumulator, ExtremeValueAccumulator
   // partialResult should be like: | partialMaxValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MaxValue should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXVALUE_SHOULD_BE_1_659B6D42);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -89,7 +91,9 @@ public class MaxValueAccumulator implements Accumulator, ExtremeValueAccumulator
   // columnBuilder should be single in countAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MaxValue should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXVALUE_SHOULD_BE_1_659B6D42);
     if (!initResult) {
       columnBuilders[0].appendNull();
       return;

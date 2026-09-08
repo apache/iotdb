@@ -145,7 +145,8 @@ public class SizeTieredCompactionSelector
         selectedFileList.add(currentFile);
         selectedFileSize += currentFile.getTsFileSize();
         LOGGER.debug(
-            "Add tsfile {}, current select file num is {}, size is {}",
+            StorageEngineMessages
+                .STORAGE_LOG_ADD_TSFILE_CURRENT_SELECT_FILE_NUM_IS_SIZE_IS_17E21BC9,
             currentFile,
             selectedFileList.size(),
             selectedFileSize);

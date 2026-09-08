@@ -63,9 +63,10 @@ public abstract class SystemPropertiesHandler {
   public void put(Object... keyOrValue) throws IOException {
     if (keyOrValue.length % 2 != 0) {
       throw new IllegalArgumentException(
-          "Length of parameters should be evenly divided by 2, but the actual length is "
+          CommonMessages
+                  .EXCEPTION_LENGTH_PARAMETERS_SHOULD_EVENLY_DIVIDED_2_BUT_ACTUAL_LENGTH_E9A792D9
               + keyOrValue.length
-              + " : "
+              + CommonMessages.EXCEPTION_COLON_3A291246
               + Arrays.toString(keyOrValue));
     }
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock())) {
@@ -160,9 +161,10 @@ public abstract class SystemPropertiesHandler {
       return;
     }
     if (formalFile.exists() && tmpFile.exists()) {
-      if (!tmpFile.delete()) {
+      if (!FileUtils.deleteFileIfExist(tmpFile)) {
         LOGGER.warn(
-            "Delete system.properties tmp file fail, you may manually delete it: {}",
+            CommonMessages
+                .LOG_DELETE_SYSTEM_PROPERTIES_TMP_FILE_FAIL_YOU_MAY_MANUALLY_DELETE_F81C4A53,
             tmpFile.getAbsoluteFile());
       }
       return;
@@ -177,9 +179,10 @@ public abstract class SystemPropertiesHandler {
   private void replaceFormalFile() throws IOException {
     if (!tmpFile.exists()) {
       throw new FileNotFoundException(
-          "Tmp system properties file must exist when call replaceFormalFile");
+          CommonMessages
+              .EXCEPTION_TMP_SYSTEM_PROPERTIES_FILE_MUST_EXIST_CALL_REPLACEFORMALFILE_FA63B976);
     }
-    if (formalFile.exists() && !formalFile.delete()) {
+    if (formalFile.exists() && !FileUtils.deleteFileIfExist(formalFile)) {
       String msg =
           String.format(
               "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
@@ -195,11 +198,12 @@ public abstract class SystemPropertiesHandler {
   }
 
   public void delete() {
-    this.formalFile.delete();
-    this.tmpFile.delete();
+    FileUtils.deleteFileIfExist(this.formalFile);
+    FileUtils.deleteFileIfExist(this.tmpFile);
     if (this.formalFile.exists() || this.tmpFile.exists()) {
       LOGGER.warn(
-          "Failed to delete system.properties file, you should manually delete them: {}, {}",
+          CommonMessages
+              .LOG_FAILED_DELETE_SYSTEM_PROPERTIES_FILE_YOU_SHOULD_MANUALLY_DELETE_THEM_77F91A98,
           this.formalFile.getAbsoluteFile(),
           this.tmpFile.getAbsolutePath());
     }

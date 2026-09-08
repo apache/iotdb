@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.match;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.match.model.DTWMatchResult;
 import org.apache.iotdb.library.match.model.PatternContext;
 import org.apache.iotdb.library.match.model.PatternResult;
@@ -143,7 +144,7 @@ public class UDAFPatternMatch implements UDAF {
 
     } catch (Exception e) {
       throw new UDFParameterNotValidException(
-          "Illegal parameter, timePattern must be long,long...");
+          LibraryUdfMessages.EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_MUST_BE_LONG_LONG_B2DEE922);
     }
     try {
       String valuePatternStr =
@@ -152,7 +153,8 @@ public class UDAFPatternMatch implements UDAF {
           Arrays.stream(valuePatternStr.split(",")).map(Double::valueOf).toArray(Double[]::new);
     } catch (Exception e) {
       throw new UDFParameterNotValidException(
-          "Illegal parameter, valuePattern must be double,double...");
+          LibraryUdfMessages
+              .EXCEPTION_ILLEGAL_PARAMETER_VALUEPATTERN_MUST_BE_DOUBLE_DOUBLE_BAD1419C);
     }
     validator
         .validateInputSeriesNumber(1)

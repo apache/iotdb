@@ -21,13 +21,14 @@
 package org.apache.iotdb.db.exception.metadata.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class RecordDuplicatedException extends MetadataException {
 
   public RecordDuplicatedException(String recordKey) {
     super(
-        String.format("Segment has duplicated record key : %s", recordKey),
+        String.format(DataNodeSchemaMessages.RECORD_DUPLICATED_FMT, recordKey),
         TSStatusCode.RECORD_DUPLICATED.getStatusCode(),
         true);
   }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -41,8 +43,8 @@ public class IfExpression extends Expression {
 
   public IfExpression(Expression condition, Expression trueValue, @Nullable Expression falseValue) {
     super(null);
-    this.condition = requireNonNull(condition, "condition is null");
-    this.trueValue = requireNonNull(trueValue, "trueValue is null");
+    this.condition = requireNonNull(condition, QueryMessages.EXCEPTION_CONDITION_IS_NULL_327EBA55);
+    this.trueValue = requireNonNull(trueValue, QueryMessages.EXCEPTION_TRUEVALUE_IS_NULL_99C09BA5);
     this.falseValue = falseValue;
   }
 
@@ -51,9 +53,9 @@ public class IfExpression extends Expression {
       Expression condition,
       Expression trueValue,
       @Nullable Expression falseValue) {
-    super(requireNonNull(location, "location is null"));
-    this.condition = requireNonNull(condition, "condition is null");
-    this.trueValue = requireNonNull(trueValue, "trueValue is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.condition = requireNonNull(condition, QueryMessages.EXCEPTION_CONDITION_IS_NULL_327EBA55);
+    this.trueValue = requireNonNull(trueValue, QueryMessages.EXCEPTION_TRUEVALUE_IS_NULL_99C09BA5);
     this.falseValue = falseValue;
   }
 

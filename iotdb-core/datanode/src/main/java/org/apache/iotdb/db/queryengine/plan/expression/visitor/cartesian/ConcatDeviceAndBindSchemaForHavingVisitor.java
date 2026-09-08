@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -66,7 +67,8 @@ public class ConcatDeviceAndBindSchemaForHavingVisitor
       Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
       if (!(replacedExpression instanceof TimeSeriesOperand)) {
         throw new SemanticException(
-            "Only writable view timeseries are supported in ALIGN BY DEVICE queries.");
+            DataNodeQueryMessages
+                .ONLY_WRITABLE_VIEW_TIMESERIES_ARE_SUPPORTED_IN_ALIGN_BY_DEVICE_QUERIES);
       }
 
       replacedExpression.setViewPath(measurementPath);

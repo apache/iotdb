@@ -22,6 +22,7 @@ package org.apache.iotdb.subscription.it.local.tablemodel;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.ISubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
@@ -34,12 +35,11 @@ import org.apache.iotdb.subscription.it.local.AbstractSubscriptionLocalIT;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static org.junit.Assert.fail;
+import java.util.Properties;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
@@ -51,26 +51,35 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
     super.setUp();
   }
 
-  @Ignore
   @Test
   public void testTopicIsolation() throws Exception {
-    final String treeTopicName = "treeTopic";
-    final String tableTopicName = "tableTopic";
+    final String topicName = "topic";
 
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
-    // create tree topic
+    final Properties treeTopicProperties = new Properties();
+    treeTopicProperties.setProperty(TopicConstant.PATH_KEY, "root.tree.**");
     try (final ISubscriptionTreeSession session =
         new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
       session.open();
-      session.createTopic(treeTopicName);
+      session.createTopic(topicName, treeTopicProperties);
+
+      final Properties alteredProperties = new Properties();
+      alteredProperties.setProperty(TopicConstant.PATH_KEY, "root.tree_altered.**");
+      session.alterTopic(topicName, alteredProperties);
     }
 
-    // create table topic
+    final Properties tableTopicProperties = new Properties();
+    tableTopicProperties.setProperty(TopicConstant.DATABASE_KEY, "table_db");
+    tableTopicProperties.setProperty(TopicConstant.TABLE_KEY, "table_name");
     try (final ISubscriptionTableSession session =
         new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
-      session.createTopic(tableTopicName);
+      session.createTopic(topicName, tableTopicProperties);
+
+      final Properties alteredProperties = new Properties();
+      alteredProperties.setProperty(TopicConstant.DATABASE_KEY, "table_db_altered");
+      session.alterTopic(topicName, alteredProperties);
     }
 
     // show topic on tree session
@@ -78,58 +87,43 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
         new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
       session.open();
       Assert.assertEquals(1, session.getTopics().size());
-      Assert.assertTrue(session.getTopic(treeTopicName).isPresent());
-      Assert.assertFalse(session.getTopic(tableTopicName).isPresent());
+      Assert.assertTrue(session.getTopic(topicName).isPresent());
+      Assert.assertTrue(
+          session.getTopic(topicName).get().getTopicAttributes().contains("root.tree_altered.**"));
+      Assert.assertFalse(
+          session.getTopic(topicName).get().getTopicAttributes().contains("table_db_altered"));
     }
 
     // show topic on table session
     try (final ISubscriptionTableSession session =
         new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
       Assert.assertEquals(1, session.getTopics().size());
-      Assert.assertTrue(session.getTopic(tableTopicName).isPresent());
-      Assert.assertFalse(session.getTopic(treeTopicName).isPresent());
+      Assert.assertTrue(session.getTopic(topicName).isPresent());
+      Assert.assertTrue(
+          session.getTopic(topicName).get().getTopicAttributes().contains("table_db_altered"));
+      Assert.assertFalse(
+          session.getTopic(topicName).get().getTopicAttributes().contains("root.tree_altered.**"));
     }
 
-    // drop table topic on tree session
+    // Dropping the tree-model topic must not affect the same-named table-model topic.
     try (final ISubscriptionTreeSession session =
         new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
       session.open();
-      try {
-        session.dropTopic(tableTopicName);
-        fail();
-      } catch (final Exception ignored) {
-      }
+      session.dropTopic(topicName);
+      Assert.assertFalse(session.getTopic(topicName).isPresent());
     }
 
-    // drop tree topic on table session
     try (final ISubscriptionTableSession session =
         new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
-      try {
-        session.dropTopic(treeTopicName);
-        fail();
-      } catch (final Exception ignored) {
-      }
-    }
-
-    // drop tree topic on tree session
-    try (final ISubscriptionTreeSession session =
-        new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
-      session.open();
-      session.dropTopic(treeTopicName);
-    }
-
-    // drop table topic on table session
-    try (final ISubscriptionTableSession session =
-        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
-      session.dropTopic(tableTopicName);
+      Assert.assertTrue(session.getTopic(topicName).isPresent());
+      session.dropTopic(topicName);
+      Assert.assertFalse(session.getTopic(topicName).isPresent());
     }
   }
 
-  @Ignore
   @Test
   public void testSubscriptionIsolation() throws Exception {
-    final String treeTopicName = "treeTopic";
-    final String tableTopicName = "tableTopic";
+    final String topicName = "topic";
 
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
@@ -138,83 +132,74 @@ public class IoTDBSubscriptionIsolationIT extends AbstractSubscriptionLocalIT {
     try (final ISubscriptionTreeSession session =
         new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
       session.open();
-      session.createTopic(treeTopicName);
+      session.createTopic(topicName);
     }
 
     // create table topic
     try (final ISubscriptionTableSession session =
         new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
-      session.createTopic(tableTopicName);
+      session.createTopic(topicName);
     }
 
-    // subscribe table topic on tree consumer
-    try (final ISubscriptionTreePullConsumer consumer =
-        new SubscriptionTreePullConsumerBuilder().host(host).port(port).build()) {
-      consumer.open();
-      try {
-        consumer.subscribe(tableTopicName);
-        fail();
-      } catch (final Exception ignored) {
-      }
-    }
-
-    // subscribe tree topic on table consumer
-    try (final ISubscriptionTablePullConsumer consumer =
-        new SubscriptionTablePullConsumerBuilder().host(host).port(port).build()) {
-      consumer.open();
-      try {
-        consumer.subscribe(treeTopicName);
-        fail();
-      } catch (final Exception ignored) {
-      }
-    }
-
-    // subscribe tree topic on tree consumer
     final ISubscriptionTreePullConsumer treeConsumer =
-        new SubscriptionTreePullConsumerBuilder().host(host).port(port).build();
+        new SubscriptionTreePullConsumerBuilder()
+            .host(host)
+            .port(port)
+            .consumerId("tree_consumer")
+            .consumerGroupId("tree_consumer_group")
+            .build();
     treeConsumer.open();
-    treeConsumer.subscribe(treeTopicName);
+    treeConsumer.subscribe(topicName);
 
-    // subscribe table topic on table consumer
     final ISubscriptionTablePullConsumer tableConsumer =
-        new SubscriptionTablePullConsumerBuilder().host(host).port(port).build();
+        new SubscriptionTablePullConsumerBuilder()
+            .host(host)
+            .port(port)
+            .consumerId("table_consumer")
+            .consumerGroupId("table_consumer_group")
+            .build();
     tableConsumer.open();
-    tableConsumer.subscribe(tableTopicName);
+    tableConsumer.subscribe(topicName);
 
     // show subscription on tree session
     try (final ISubscriptionTreeSession session =
         new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
       session.open();
       Assert.assertEquals(1, session.getSubscriptions().size());
-      Assert.assertEquals(1, session.getSubscriptions(treeTopicName).size());
-      Assert.assertEquals(0, session.getSubscriptions(tableTopicName).size());
+      Assert.assertEquals(1, session.getSubscriptions(topicName).size());
+      Assert.assertEquals(
+          "tree_consumer_group",
+          session.getSubscriptions(topicName).iterator().next().getConsumerGroupId());
     }
 
     // show subscription on table session
     try (final ISubscriptionTableSession session =
         new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
       Assert.assertEquals(1, session.getSubscriptions().size());
-      Assert.assertEquals(1, session.getSubscriptions(tableTopicName).size());
-      Assert.assertEquals(0, session.getSubscriptions(treeTopicName).size());
+      Assert.assertEquals(1, session.getSubscriptions(topicName).size());
+      Assert.assertEquals(
+          "table_consumer_group",
+          session.getSubscriptions(topicName).iterator().next().getConsumerGroupId());
     }
 
-    // unsubscribe table topic on tree consumer
-    try {
-      treeConsumer.unsubscribe(tableTopicName);
-      fail();
-    } catch (final Exception ignored) {
-
+    // Unsubscribing the tree-model topic must not affect the same-named table-model subscription.
+    treeConsumer.unsubscribe(topicName);
+    try (final ISubscriptionTreeSession session =
+        new SubscriptionTreeSessionBuilder().host(host).port(port).build()) {
+      session.open();
+      Assert.assertEquals(0, session.getSubscriptions(topicName).size());
+    }
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+      Assert.assertEquals(1, session.getSubscriptions(topicName).size());
     }
 
-    // unsubscribe tree topic on table consumer
-    try {
-      tableConsumer.unsubscribe(treeTopicName);
-      fail();
-    } catch (final Exception ignored) {
-
+    tableConsumer.unsubscribe(topicName);
+    try (final ISubscriptionTableSession session =
+        new SubscriptionTableSessionBuilder().host(host).port(port).build()) {
+      Assert.assertEquals(0, session.getSubscriptions(topicName).size());
     }
 
-    // close consumers
     treeConsumer.close();
     tableConsumer.close();
   }

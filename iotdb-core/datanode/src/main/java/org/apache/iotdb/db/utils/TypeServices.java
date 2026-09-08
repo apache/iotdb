@@ -123,6 +123,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
@@ -1748,6 +1749,93 @@ public class TypeServices {
 
   public static final class StorageEngine {
 
+    public static final TypeService<ToIntFunction<Object>>
+        INSERT_ROW_SERIALIZED_VALUE_SIZE_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN -> value -> Byte.BYTES;
+                  case INT32, DATE, FLOAT -> value -> Integer.BYTES;
+                  case INT64, TIMESTAMP, DOUBLE -> value -> Long.BYTES;
+                  case TEXT, STRING, BLOB, OBJECT ->
+                      value -> ReadWriteIOUtils.sizeToWrite((Binary) value);
+                  case ROW, UNKNOWN, VECTOR ->
+                      value -> {
+                        throw new UnSupportedDataTypeException(
+                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum());
+                      };
+                };
+
+    public static final TypeService<SerializedColumnSizeCalculator>
+        INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN -> (column, rows) -> rows * Byte.BYTES;
+                  case INT32, DATE, FLOAT -> (column, rows) -> rows * Integer.BYTES;
+                  case INT64, TIMESTAMP, DOUBLE -> (column, rows) -> rows * Long.BYTES;
+                  case TEXT, STRING, BLOB, OBJECT ->
+                      (column, rows) -> {
+                        int size = 0;
+                        Binary[] values = (Binary[]) column;
+                        // Only serialize the active rows, and retain a length prefix for null
+                        // binary values.
+                        for (int i = 0; i < rows; i++) {
+                          byte[] bytes = values[i] == null ? null : values[i].getValues();
+                          size += Integer.BYTES + (bytes == null ? 0 : bytes.length);
+                        }
+                        return size;
+                      };
+                  case ROW, UNKNOWN, VECTOR ->
+                      (column, rows) -> {
+                        throw new UnSupportedDataTypeException(
+                            String.format(
+                                DataNodeQueryMessages
+                                    .QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                                type.getTypeEnum()));
+                      };
+                };
+
+    public static final TypeService<Boolean> TABLET_PLAIN_FAST_PATH_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN, DATE, INT32, TIMESTAMP, INT64, FLOAT, DOUBLE, STRING, BLOB, TEXT ->
+                  true;
+              case ROW, VECTOR, UNKNOWN, OBJECT -> false;
+            };
+
+    public static final TypeService<AlignedTVListColumnWriter>
+        ALIGNED_TV_LIST_COLUMN_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN ->
+                      (writer, time, list, row, column, isNull) ->
+                          writer.writeByColumn(
+                              time, !isNull && list.getBooleanByValueIndex(row, column), isNull);
+                  case INT32, DATE ->
+                      (writer, time, list, row, column, isNull) ->
+                          writer.writeByColumn(
+                              time, isNull ? 0 : list.getIntByValueIndex(row, column), isNull);
+                  case INT64, TIMESTAMP ->
+                      (writer, time, list, row, column, isNull) ->
+                          writer.writeByColumn(
+                              time, isNull ? 0L : list.getLongByValueIndex(row, column), isNull);
+                  case FLOAT ->
+                      (writer, time, list, row, column, isNull) ->
+                          writer.writeByColumn(
+                              time, isNull ? 0F : list.getFloatByValueIndex(row, column), isNull);
+                  case DOUBLE ->
+                      (writer, time, list, row, column, isNull) ->
+                          writer.writeByColumn(
+                              time, isNull ? 0D : list.getDoubleByValueIndex(row, column), isNull);
+                  case TEXT, STRING, BLOB, OBJECT ->
+                      (writer, time, list, row, column, isNull) ->
+                          writer.writeByColumn(
+                              time,
+                              isNull ? null : list.getBinaryByValueIndex(row, column),
+                              isNull);
+                  // Preserve the flush path's no-op behavior for non-value types.
+                  case ROW, UNKNOWN, VECTOR -> (writer, time, list, row, column, isNull) -> {};
+                };
+
     private static final Binary EMPTY_BINARY = new Binary("", StandardCharsets.UTF_8);
 
     public static final TypeService<ChunkMetadataStatisticsConverter>
@@ -1783,6 +1871,7 @@ public class TypeServices {
                           .setChecked(true);
                 };
 
+    // Unmaterialized blocks still write zero placeholders; the bitmap carries nullness in WAL.
     public static final TypeService<WALColumnWriter> WAL_ARRAY_WRITER_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -1790,42 +1879,42 @@ public class TypeServices {
                   (column, buffer, start, end) -> {
                     int[] values = (int[]) column;
                     for (int i = start; i < end; i++) {
-                      buffer.putInt(values[i]);
+                      buffer.putInt(values == null ? 0 : values[i]);
                     }
                   };
               case INT64, TIMESTAMP ->
                   (column, buffer, start, end) -> {
                     long[] values = (long[]) column;
                     for (int i = start; i < end; i++) {
-                      buffer.putLong(values[i]);
+                      buffer.putLong(values == null ? 0L : values[i]);
                     }
                   };
               case FLOAT ->
                   (column, buffer, start, end) -> {
                     float[] values = (float[]) column;
                     for (int i = start; i < end; i++) {
-                      buffer.putFloat(values[i]);
+                      buffer.putFloat(values == null ? 0F : values[i]);
                     }
                   };
               case DOUBLE ->
                   (column, buffer, start, end) -> {
                     double[] values = (double[]) column;
                     for (int i = start; i < end; i++) {
-                      buffer.putDouble(values[i]);
+                      buffer.putDouble(values == null ? 0D : values[i]);
                     }
                   };
               case BOOLEAN ->
                   (column, buffer, start, end) -> {
                     boolean[] values = (boolean[]) column;
                     for (int i = start; i < end; i++) {
-                      buffer.put((byte) (values[i] ? 1 : 0));
+                      buffer.put((byte) (values != null && values[i] ? 1 : 0));
                     }
                   };
               case TEXT, BLOB, STRING, OBJECT ->
                   (column, buffer, start, end) -> {
                     Binary[] values = (Binary[]) column;
                     for (int i = start; i < end; i++) {
-                      if (values[i] != null && values[i].getValues() != null) {
+                      if (values != null && values[i] != null && values[i].getValues() != null) {
                         WALWriteUtils.write(values[i], buffer);
                       } else {
                         buffer.putInt(0);
@@ -1883,7 +1972,15 @@ public class TypeServices {
                         int remaining = rowCount;
                         for (Object valueArray : valueArrays) {
                           int length = Math.min(remaining, arraySize);
-                          size += type.serializedSize(valueArray, length);
+                          // WAL uses length-prefixed binaries, without TsFile array presence bytes.
+                          Binary[] binaryValues = (Binary[]) valueArray;
+                          for (int i = 0; i < length; i++) {
+                            Binary value = binaryValues == null ? null : binaryValues[i];
+                            size += Integer.BYTES;
+                            if (value != null && value.getValues() != null) {
+                              size += value.getLength();
+                            }
+                          }
                           remaining -= length;
                           if (remaining == 0) {
                             break;
@@ -2562,17 +2659,16 @@ public class TypeServices {
         RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE =
             type ->
                 switch (type.getTypeEnum()) {
-                  case BOOLEAN,
-                      INT32,
-                      INT64,
-                      TIMESTAMP,
-                      FLOAT,
-                      DOUBLE,
-                      TEXT,
-                      BLOB,
-                      STRING,
-                      OBJECT ->
-                      type::deserializeArray;
+                  case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::deserializeArray;
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      (buffer, size) -> {
+                        // Tablet RPC has no per-value presence byte; nulls use a separate bitmap.
+                        Binary[] values = new Binary[size];
+                        for (int i = 0; i < size; i++) {
+                          values[i] = ReadWriteIOUtils.readBinary(buffer);
+                        }
+                        return values;
+                      };
                   case DATE -> Type.fromTsDataType(TSDataType.INT32)::deserializeArray;
                   case ROW, UNKNOWN, VECTOR ->
                       throw new UnSupportedDataTypeException(type.getTypeEnum().name())
@@ -2583,17 +2679,16 @@ public class TypeServices {
         RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE =
             type ->
                 switch (type.getTypeEnum()) {
-                  case BOOLEAN,
-                      INT32,
-                      INT64,
-                      TIMESTAMP,
-                      FLOAT,
-                      DOUBLE,
-                      TEXT,
-                      BLOB,
-                      STRING,
-                      OBJECT ->
-                      type::deserializeArray;
+                  case BOOLEAN, INT32, INT64, TIMESTAMP, FLOAT, DOUBLE -> type::deserializeArray;
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      (stream, size) -> {
+                        // Match the ByteBuffer tablet reader, not TsFile's array wire format.
+                        Binary[] values = new Binary[size];
+                        for (int i = 0; i < size; i++) {
+                          values[i] = ReadWriteIOUtils.readBinary(stream);
+                        }
+                        return values;
+                      };
                   case DATE -> Type.fromTsDataType(TSDataType.INT32)::deserializeArray;
                   case ROW, UNKNOWN, VECTOR ->
                       throw new UnSupportedDataTypeException(type.getTypeEnum().name())
@@ -2616,6 +2711,10 @@ public class TypeServices {
 
     static {
       CHUNK_METADATA_STATISTICS_CONVERTER_SERVICE.check();
+      INSERT_ROW_SERIALIZED_VALUE_SIZE_SERVICE.check();
+      INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE.check();
+      TABLET_PLAIN_FAST_PATH_SERVICE.check();
+      ALIGNED_TV_LIST_COLUMN_WRITER_SERVICE.check();
       TV_LIST_ARRAY_WRITER_SERVICE.check();
       TV_LIST_OBJECT_WRITER_SERVICE.check();
       TV_LIST_PROVIDER_SERVICE.check();
@@ -2857,6 +2956,30 @@ public class TypeServices {
   }
 
   public static final class Pipe {
+
+    public static final TypeService<Function<Object, Object>> OPC_UA_LAST_VALUE_CONVERTER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case DATE ->
+                  value ->
+                      new DateTime(
+                          new java.util.Date(
+                              DateUtils.parseIntToDate(((Number) value).intValue()).getTime()));
+              case TIMESTAMP ->
+                  value ->
+                      new DateTime(
+                          TimestampPrecisionUtils.currPrecision.toNanos(
+                                      ((Number) value).longValue())
+                                  / 100L
+                              + 116444736000000000L);
+              case TEXT, BLOB, STRING -> String::valueOf;
+              case BOOLEAN, INT32, INT64, FLOAT, DOUBLE -> Function.identity();
+              case ROW, VECTOR, OBJECT, UNKNOWN ->
+                  value -> {
+                    throw new UnSupportedDataTypeException(
+                        DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum());
+                  };
+            };
 
     public static final TypeService<SameTypeNumericOperatorStrategy>
         SAME_TYPE_NUMERIC_OPERATOR_STRATEGY_SERVICE =
@@ -3558,6 +3681,7 @@ public class TypeServices {
       SAME_TYPE_NUMERIC_OPERATOR_STRATEGY_SERVICE.check();
       OPC_DA_TABLET_VALUE_SETTER_SERVICE.check();
       OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
+      OPC_UA_LAST_VALUE_CONVERTER_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_INT_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_LONG_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_FLOAT_SERVICE.check();
@@ -3800,6 +3924,22 @@ public class TypeServices {
         int rowIndex,
         int columnIndex,
         boolean isNull);
+  }
+
+  @FunctionalInterface
+  public interface AlignedTVListColumnWriter {
+    void write(
+        AlignedChunkWriterImpl writer,
+        long time,
+        AlignedTVList list,
+        int rowIndex,
+        int columnIndex,
+        boolean isNull);
+  }
+
+  @FunctionalInterface
+  public interface SerializedColumnSizeCalculator {
+    int size(Object column, int rowCount);
   }
 
   @FunctionalInterface

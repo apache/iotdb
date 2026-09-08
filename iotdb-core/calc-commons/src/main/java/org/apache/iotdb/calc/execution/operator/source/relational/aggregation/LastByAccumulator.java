@@ -103,7 +103,10 @@ public class LastByAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 3, "Length of input Column[] for LAST_BY should be 3");
+    checkArgument(
+        arguments.length == 3,
+        CalcMessages
+            .EXCEPTION_LENGTH_OF_INPUT_COLUMN_LEFT_BRACKET_RIGHT_BRACKET_FOR_LAST_BY_SHOULD_BE_3_D759D45F);
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
     addInput(arguments[0], arguments[1], arguments[2], mask);
@@ -115,7 +118,8 @@ public class LastByAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of LAST_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_LAST_BY_SHOULD_BE_BINARYCOLUMN_87700792);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -148,7 +152,8 @@ public class LastByAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of LAST_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_LAST_BY_SHOULD_BE_BINARYCOLUMN_87700792);
 
     if (initResult || initNullTimeValue) {
       // if the initResult is activated, the result must carry a not null time

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
@@ -147,7 +148,8 @@ public class BindSchemaForExpressionVisitor
     IMeasurementSchema measurementSchema = measurementPath.getMeasurementSchema();
     if (!measurementSchema.isLogicalView()) {
       throw new IllegalArgumentException(
-          "Can not construct expression using non view path in transformViewPath!");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_CAN_NOT_CONSTRUCT_EXPRESSION_USING_NON_VIEW_PATH_IN_TRANSFORMVIEWPATH_A9CCB5B1);
     }
 
     ViewExpression viewExpression = ((LogicalViewSchema) measurementSchema).getExpression();
@@ -163,7 +165,7 @@ public class BindSchemaForExpressionVisitor
 
     public Context(final ISchemaTree schemaTree, final MPPQueryContext queryContext) {
       this.schemaTree = schemaTree;
-      Validate.notNull(queryContext, "QueryContext is null");
+      Validate.notNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_C2344379);
       this.queryContext = queryContext;
     }
 

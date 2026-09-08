@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.utils;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -38,7 +40,9 @@ public class HeapTraversal {
   private int treeDepthToNode;
 
   public void resetWithPathTo(long targetNodeIndex) {
-    checkArgument(targetNodeIndex >= 1, "Target node index must be greater than or equal to one");
+    checkArgument(
+        targetNodeIndex >= 1,
+        CalcMessages.EXCEPTION_TARGET_NODE_INDEX_MUST_BE_GREATER_THAN_OR_EQUAL_TO_ONE_75BFB7C3);
     int leadingZeros = Long.numberOfLeadingZeros(targetNodeIndex);
     // Shift off the leading zeros PLUS the most significant one bit (which is not needed for this
     // calculation)
@@ -51,7 +55,7 @@ public class HeapTraversal {
   }
 
   public Child nextChild() {
-    checkState(!isTarget(), "Already at target");
+    checkState(!isTarget(), CalcMessages.EXCEPTION_ALREADY_AT_TARGET_32DFD57F);
     Child childToFollow = (shifted & TOP_BIT_MASK) == 0 ? Child.LEFT : Child.RIGHT;
     shifted <<= 1;
     treeDepthToNode--;

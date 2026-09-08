@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.calc.utils.TypeServices;
@@ -92,7 +93,8 @@ public class FormatColumnTransformer extends MultiColumnTransformer {
     } catch (IllegalFormatConversionException | MissingFormatArgumentException e) {
       String message = e.toString().replaceFirst("^java\\.util\\.(\\w+)Exception", "$1");
       throw new SemanticException(
-          String.format("Invalid format string: %s (%s)", pattern, message));
+          String.format(
+              CalcMessages.EXCEPTION_INVALID_FORMAT_STRING_ARG_ARG_05853138, pattern, message));
     }
   }
 

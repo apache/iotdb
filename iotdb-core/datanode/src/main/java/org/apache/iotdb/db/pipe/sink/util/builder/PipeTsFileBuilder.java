@@ -28,7 +28,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
@@ -37,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -65,7 +65,9 @@ public abstract class PipeTsFileBuilder {
       this.batchFileBaseDir = getNextBaseDir();
     } catch (final Exception e) {
       throw new PipeException(
-          String.format("Failed to create file dir for batch: %s", e.getMessage()));
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_FAILED_TO_CREATE_FILE_DIR_FOR_BATCH_S_8FCD9125,
+              e.getMessage()));
     }
   }
 
@@ -89,25 +91,32 @@ public abstract class PipeTsFileBuilder {
               .getNextWithRetry(
                   folder -> {
                     File dir = new File(folder, Long.toString(currentBatchId.get()));
-                    FileUtils.deleteQuietly(dir);
-                    if (dir.mkdirs()) {
+                    org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(dir, true);
+                    try {
+                      Files.createDirectories(dir.toPath().getParent());
+                      Files.createDirectory(dir.toPath());
                       LOGGER.info(
                           DataNodePipeMessages.BATCH_ID_CREATE_BATCH_DIR_SUCCESSFULLY_BATCH,
                           currentBatchId.get(),
                           dir.getPath());
                       return dir;
+                    } catch (final IOException e) {
+                      LOGGER.warn(
+                          DataNodePipeMessages.BATCH_ID_FAILED_TO_CREATE_BATCH_FILE,
+                          currentBatchId.get(),
+                          dir.getPath(),
+                          e);
                     }
-                    LOGGER.warn(
-                        DataNodePipeMessages.BATCH_ID_FAILED_TO_CREATE_BATCH_FILE,
-                        currentBatchId.get(),
-                        dir.getPath());
                     return null;
                   });
       if (baseDir != null) {
         return baseDir;
       }
       throw new PipeException(
-          String.format("Failed to create batch file dir. (Batch id = %s)", currentBatchId.get()));
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FAILED_TO_CREATE_BATCH_FILE_DIR_BATCH_ID_S_EA8BE86C,
+              currentBatchId.get()));
     }
   }
 
@@ -138,7 +147,7 @@ public abstract class PipeTsFileBuilder {
       }
 
       try {
-        FileUtils.delete(fileWriter.getIOWriter().getFile());
+        Files.deleteIfExists(fileWriter.getIOWriter().getFile().toPath());
       } catch (final Exception e) {
         LOGGER.info(
             DataNodePipeMessages.BATCH_ID_FAILED_TO_DELETE_THE_TSFILE,

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.TypeServices.Aggregation.EventWindowManagerProvider;
@@ -51,8 +52,10 @@ public class WindowManagerFactory {
         return new CountWindowManager((CountWindowParameter) windowParameter);
       default:
         throw new IllegalArgumentException(
-            "Not support this type of aggregation window :"
-                + windowParameter.getWindowType().name());
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_NOT_SUPPORT_THIS_TYPE_OF_AGGREGATION_WINDOW_S_604F93D0,
+                windowParameter.getWindowType().name()));
     }
   }
 

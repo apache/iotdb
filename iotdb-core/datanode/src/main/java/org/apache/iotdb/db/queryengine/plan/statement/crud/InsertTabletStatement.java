@@ -240,7 +240,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= upperBoundOfTimePartition) {
+      if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+          times[i], timePartitionSlot.getStartTime(), upperBoundOfTimePartition)) {
         result.add(timePartitionSlot);
         // next init
         upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
@@ -361,8 +362,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     if (measurements.length != columns.length) {
       throw new SemanticException(
           String.format(
-              "the measurementList's size %d is not consistent with the columnList's size %d",
-              measurements.length, columns.length));
+              DataNodeQueryMessages
+                  .THE_MEASUREMENTLIST_S_SIZE_D_IS_NOT_CONSISTENT_WITH_THE_COLUMNLIST_S_SIZE_D,
+              measurements.length,
+              columns.length));
     }
   }
 
@@ -842,7 +845,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         timestamps = Arrays.copyOf(times, rowSize);
       } else {
         LOGGER.warn(
-            "Times array is null or too small. times.length={}, rowSize={}, deviceId={}",
+            DataNodeQueryMessages
+                .TIMES_ARRAY_IS_NULL_OR_TOO_SMALL_TIMES_LENGTH_ARG_ROWSIZE_ARG_DEVICEID_ARG,
             times != null ? times.length : 0,
             rowSize,
             deviceIdOrTableName);

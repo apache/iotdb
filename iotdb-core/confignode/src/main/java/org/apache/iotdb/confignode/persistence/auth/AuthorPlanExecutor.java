@@ -202,7 +202,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         default:
           throw new AuthException(
               TSStatusCode.UNSUPPORTED_AUTH_OPERATION,
-              "unknown type: " + authorPlan.getAuthorType());
+              ConfigNodeMessages.EXCEPTION_UNKNOWN_TYPE_7618F8F4 + authorPlan.getAuthorType());
       }
     } catch (AuthException e) {
       return RpcUtils.getStatus(e.getCode(), e.getMessage());
@@ -713,7 +713,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     User user = authorizer.getUser(username);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
+          TSStatusCode.USER_NOT_EXIST,
+          String.format(ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_ARG_D11B1046, username));
     }
     result = getUserPermissionInfo(username, ModelType.ALL);
     if (user.getRoleSet().contains(roleName)) {
@@ -730,7 +731,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     User user = authorizer.getUser(username);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
+          TSStatusCode.USER_NOT_EXIST,
+          String.format(ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_ARG_D11B1046, username));
     }
     result = getUserPermissionInfo(username, ModelType.ALL);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -742,7 +744,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     User user = authorizer.getUser(userId);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("No such user id: " + userId));
+          TSStatusCode.USER_NOT_EXIST,
+          String.format(ConfigNodeMessages.EXCEPTION_NO_SUCH_USER_ID_99CA691B + userId));
     }
     return user.getName();
   }

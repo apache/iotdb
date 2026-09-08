@@ -70,7 +70,9 @@ public class FirstValueAccumulator
   // partialResult should be like: | FirstValue | MinTime |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 2, "partialResult of FirstValue should be 2");
+    checkArgument(
+        partialResult.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_FIRSTVALUE_SHOULD_BE_2_3FB20C54);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -98,7 +100,9 @@ public class FirstValueAccumulator
   // columnBuilder should be double in FirstValueAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 2, "partialResult of FirstValue should be 2");
+    checkArgument(
+        columnBuilders.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_FIRSTVALUE_SHOULD_BE_2_3FB20C54);
     if (!hasCandidateResult) {
       columnBuilders[0].appendNull();
       columnBuilders[1].appendNull();

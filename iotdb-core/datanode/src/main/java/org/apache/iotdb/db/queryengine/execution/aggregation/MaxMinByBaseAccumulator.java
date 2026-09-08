@@ -87,7 +87,9 @@ public abstract class MaxMinByBaseAccumulator
   // partialResult should be like: | partialMaxByBinary |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MaxBy/MinBy should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXBY_SLASH_MINBY_SHOULD_BE_1_BF0078F4);
     // Return if y is null.
     if (partialResult[0].isNull(0)) {
       return;
@@ -114,7 +116,9 @@ public abstract class MaxMinByBaseAccumulator
   // columnBuilders should be like | TextIntermediateColumnBuilder |
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MaxValue should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXVALUE_SHOULD_BE_1_659B6D42);
     if (!initResult) {
       columnBuilders[0].appendNull();
       return;
@@ -244,7 +248,9 @@ public abstract class MaxMinByBaseAccumulator
       }
     } catch (IOException e) {
       throw new UnsupportedOperationException(
-          "Failed to serialize intermediate result for MaxByAccumulator.", e);
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_FAILED_TO_SERIALIZE_INTERMEDIATE_RESULT_FOR_MAXBYACCUMULATOR_2F18B6E7,
+          e);
     }
     return byteArrayOutputStream.toByteArray();
   }

@@ -354,7 +354,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported expression type %s", expressionType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_7C6F99A9,
+                expressionType));
     }
   }
 
@@ -373,7 +375,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported expression type %s", expressionType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_7C6F99A9,
+                expressionType));
     }
   }
 
@@ -391,7 +395,9 @@ public class ConvertPredicateToFilterVisitor
 
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported expression type %s", expressionType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_7C6F99A9,
+                expressionType));
     }
   }
 
@@ -416,7 +422,9 @@ public class ConvertPredicateToFilterVisitor
         return ValueFilterApi.ltEq(measurementIndex, value, dataType);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported expression type %s", expressionType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_7C6F99A9,
+                expressionType));
     }
   }
 
@@ -525,7 +533,9 @@ public class ConvertPredicateToFilterVisitor
       int measurementIndex = allMeasurements.indexOf(measurement);
       if (measurementIndex == -1) {
         throw new IllegalArgumentException(
-            String.format("Measurement %s does not exist", measurement));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_MEASUREMENT_S_DOES_NOT_EXIST_23D2B5BE,
+                measurement));
       }
       return measurementIndex;
     }

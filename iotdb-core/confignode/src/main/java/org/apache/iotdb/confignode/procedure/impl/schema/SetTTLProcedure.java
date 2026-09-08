@@ -212,9 +212,9 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(
           new MetadataException(
-              "Rollback ConfigNode ttl failed for "
-                  + String.join(".", pathPattern)
-                  + ": "
+              ProcedureMessages.EXCEPTION_ROLLBACK_CONFIGNODE_TTL_FAILED_6D4FB59A
+                  + String.join(ConfigNodeMessages.EXCEPTION_DOT_9D9B854A, pathPattern)
+                  + ConfigNodeMessages.MESSAGE_COLON_CEFF3F4D
                   + status.getMessage()));
     }
   }
@@ -246,7 +246,8 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     if (hasFailedDataNode(clientHandler)) {
       throw new ProcedureException(
           new MetadataException(
-              "Rollback dataNode ttl cache failed for " + String.join(".", pathPattern)));
+              ProcedureMessages.EXCEPTION_ROLLBACK_DATANODE_TTL_CACHE_FAILED_AF9C7102
+                  + String.join(ConfigNodeMessages.EXCEPTION_DOT_9D9B854A, pathPattern)));
     }
   }
 
@@ -263,13 +264,13 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     try {
       rollbackConfigNodeTTL(env);
     } catch (ProcedureException e) {
-      LOGGER.error("Failed to rollback ConfigNode ttl state.", e);
+      LOGGER.error(ProcedureMessages.LOG_FAILED_ROLLBACK_CONFIGNODE_TTL_STATE_9666EF54, e);
       rollbackFailure = e;
     }
     try {
       rollbackDataNodeTTL(env);
     } catch (ProcedureException e) {
-      LOGGER.error("Failed to rollback DataNode ttl cache.", e);
+      LOGGER.error(ProcedureMessages.LOG_FAILED_ROLLBACK_DATANODE_TTL_CACHE_436C008A, e);
       if (rollbackFailure == null) {
         rollbackFailure = e;
       } else {

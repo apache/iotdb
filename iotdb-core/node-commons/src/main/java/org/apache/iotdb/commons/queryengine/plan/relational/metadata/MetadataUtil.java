@@ -59,14 +59,18 @@ public class MetadataUtil {
     if (value == null) {
       throw new NullPointerException(format(SchemaMessages.S_IS_NULL, name));
     }
-    checkArgument(value.equals(value.toLowerCase(ENGLISH)), "%s is not lowercase: %s", name, value);
+    checkArgument(
+        value.equals(value.toLowerCase(ENGLISH)),
+        SchemaMessages.EXCEPTION_ARG_IS_NOT_LOWERCASE_COLON_ARG_D78298F6,
+        name,
+        value);
     return value;
   }
 
   public static QualifiedObjectName createQualifiedObjectName(
       final SessionInfo session, final QualifiedName name) {
-    requireNonNull(session, "session is null");
-    requireNonNull(name, "name is null");
+    requireNonNull(session, SchemaMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
+    requireNonNull(name, SchemaMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     if (name.getParts().size() > 2) {
       throw new SemanticException(String.format(SchemaMessages.TOO_MANY_DOTS_IN_TABLE_NAME, name));
     }
@@ -81,7 +85,8 @@ public class MetadataUtil {
                 .orElseThrow(
                     () ->
                         new SemanticException(
-                            "Database must be specified when session database is not set"));
+                            SchemaMessages
+                                .EXCEPTION_DATABASE_MUST_SPECIFIED_SESSION_DATABASE_NOT_SET_CBF6F21F));
 
     return new QualifiedObjectName(databaseName, objectName);
   }

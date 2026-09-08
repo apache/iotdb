@@ -54,6 +54,7 @@ public class QueryDataSetUtilsTest {
 
   @Test
   public void testReadTabletValues() throws IOException {
+    // Exercise the RPC length-prefixed binary format in both readers, including empty binaries.
     TSDataType[] dataTypes = {
       TSDataType.BOOLEAN,
       TSDataType.INT32,
@@ -79,7 +80,7 @@ public class QueryDataSetUtilsTest {
         new Binary("text-1", TSFileConfig.STRING_CHARSET),
         new Binary("text-2", TSFileConfig.STRING_CHARSET)
       },
-      new Binary[] {new Binary(new byte[] {1}), new Binary(new byte[] {2})},
+      new Binary[] {Binary.EMPTY_VALUE, new Binary(new byte[] {2})},
       new Binary[] {
         new Binary("string-1", TSFileConfig.STRING_CHARSET),
         new Binary("string-2", TSFileConfig.STRING_CHARSET)
@@ -93,22 +94,36 @@ public class QueryDataSetUtilsTest {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     try (DataOutputStream stream = new DataOutputStream(byteArrayOutputStream)) {
       for (int i = 0; i < dataTypes.length; i++) {
-        Type.fromTsDataType(dataTypes[i]).serializeArray(expected[i], 2, stream);
+        if (expected[i] instanceof Binary[] binaries) {
+          for (Binary binary : binaries) {
+            stream.writeInt(binary.getLength());
+            stream.write(binary.getValues());
+          }
+        } else if (expected[i] instanceof int[] integers) {
+          // DATE is an integer in tablet RPC, not the LocalDate[] used by the Type API.
+          for (int value : integers) {
+            stream.writeInt(value);
+          }
+        } else {
+          Type.fromTsDataType(dataTypes[i]).serializeArray(expected[i], 2, stream);
+        }
       }
     }
     byte[] serializedValues = byteArrayOutputStream.toByteArray();
 
+    ByteBuffer buffer = ByteBuffer.wrap(serializedValues);
     assertTrue(
         Arrays.deepEquals(
             expected,
-            QueryDataSetUtils.readTabletValuesFromBuffer(
-                ByteBuffer.wrap(serializedValues), dataTypes, dataTypes.length, 2)));
+            QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, dataTypes.length, 2)));
+    assertFalse(buffer.hasRemaining());
     try (DataInputStream stream = new DataInputStream(new ByteArrayInputStream(serializedValues))) {
       assertTrue(
           Arrays.deepEquals(
               expected,
               QueryDataSetUtils.readTabletValuesFromStream(
                   stream, dataTypes, dataTypes.length, 2)));
+      assertEquals(-1, stream.read());
     }
   }
 
