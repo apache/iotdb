@@ -18,33 +18,29 @@
 # =============================================================================
 # FetchOpenSSL.cmake  (only included when WITH_SSL=ON)
 #
-# Apache Thrift 0.24 (bundled by this client) builds against OpenSSL 1.x and 3.x,
-# so any system OpenSSL is used as-is, whatever its version.
+# Apache Thrift 0.24 (bundled by this client) builds against OpenSSL 3.x.
 #
-# Resolution order:
-#   1. find_package(OpenSSL) - any system / vendor install is taken as-is.
-#   2. On Linux/macOS, when no system OpenSSL is present:
-#         use tarball ${IOTDB_OS_DEPS_DIR}/openssl-${OPENSSL_FALLBACK_VERSION}.tar.gz
-#         or download from openssl.org when not in offline mode, then
-#         ./config && make && make install_sw into ${CMAKE_BINARY_DIR}/_deps/openssl.
-#   3. On Windows: emit a FATAL_ERROR asking for a prebuilt OpenSSL; building
-#      OpenSSL from source on MSVC is out of scope.
+# By default, a fixed OpenSSL source release is downloaded, checksum-verified,
+# built as shared libraries, and installed under ${CMAKE_BINARY_DIR}/_deps.
+# Set IOTDB_OPENSSL_FROM_SOURCE=OFF to opt into a compatible system OpenSSL.
 #
 # Side effects:
 #   Defines imported targets OpenSSL::SSL / OpenSSL::Crypto via find_package
 #   so callers can just link against them.
 # =============================================================================
 
-# Version built from source when no system OpenSSL is found. Named distinctly
+# Version built from source by default. Named distinctly
 # from find_package's OPENSSL_VERSION output variable to avoid collisions.
-set(OPENSSL_FALLBACK_VERSION "3.5.0"
+set(OPENSSL_FALLBACK_VERSION "3.5.8"
     CACHE STRING "OpenSSL version built from source when no system OpenSSL is found")
+set(OPENSSL_FALLBACK_SHA256
+    "a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2"
+    CACHE STRING "SHA-256 checksum of the pinned OpenSSL source archive")
 
-# Build OpenSSL from source even if a system one exists. Used by the Linux
-# packaging build, whose AlmaLinux 8 baseline ships OpenSSL 1.1.1 (EOL, not
-# Apache-2.0, must not be redistributed) - we build 3.x there instead.
+# Build OpenSSL from source even if a system one exists, making release
+# packages independent of the build host's OpenSSL installation.
 option(IOTDB_OPENSSL_FROM_SOURCE
-        "Ignore any system OpenSSL and build OpenSSL ${OPENSSL_FALLBACK_VERSION} from source" OFF)
+        "Ignore any system OpenSSL and build OpenSSL ${OPENSSL_FALLBACK_VERSION} from source" ON)
 
 if(NOT IOTDB_OPENSSL_FROM_SOURCE)
     find_package(OpenSSL QUIET)
@@ -54,27 +50,36 @@ if(NOT IOTDB_OPENSSL_FROM_SOURCE)
     endif()
 endif()
 
-if(WIN32)
-    message(FATAL_ERROR
-            "[OpenSSL] WITH_SSL=ON but no OpenSSL was found on Windows. "
-            "Please install a prebuilt OpenSSL (e.g. 'choco install openssl'), "
-            "then re-run the configure step with -DOPENSSL_ROOT_DIR=<install_path>. "
-            "Pass -DWITH_SSL=OFF to build without SSL.")
-endif()
-
-# --- Linux / macOS: build OpenSSL ${OPENSSL_FALLBACK_VERSION} from source -
+# --- Build the pinned OpenSSL source release ---------------------------------
 set(_ossl_tarname "openssl-${OPENSSL_FALLBACK_VERSION}.tar.gz")
 set(_ossl_tarball "${IOTDB_OS_DEPS_DIR}/${_ossl_tarname}")
 
-if(NOT EXISTS "${_ossl_tarball}")
+set(_ossl_download_required ON)
+if(EXISTS "${_ossl_tarball}")
+    file(SHA256 "${_ossl_tarball}" _ossl_existing_sha256)
+    if(_ossl_existing_sha256 STREQUAL "${OPENSSL_FALLBACK_SHA256}")
+        set(_ossl_download_required OFF)
+    elseif(IOTDB_OFFLINE)
+        message(FATAL_ERROR
+                "[OpenSSL] checksum mismatch for offline archive ${_ossl_tarball}: "
+                "expected ${OPENSSL_FALLBACK_SHA256}, got ${_ossl_existing_sha256}")
+    else()
+        message(STATUS "[OpenSSL] replacing archive with an invalid checksum")
+        file(REMOVE "${_ossl_tarball}")
+    endif()
+endif()
+
+if(_ossl_download_required)
     if(IOTDB_OFFLINE)
         message(FATAL_ERROR
                 "[OpenSSL] IOTDB_OFFLINE=ON but ${_ossl_tarname} is missing in ${IOTDB_OS_DEPS_DIR}.")
     endif()
-    set(_ossl_url "https://www.openssl.org/source/${_ossl_tarname}")
+    set(_ossl_url
+        "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_FALLBACK_VERSION}/${_ossl_tarname}")
     message(STATUS "[OpenSSL] downloading ${_ossl_url}")
     file(DOWNLOAD "${_ossl_url}" "${_ossl_tarball}"
-            SHOW_PROGRESS TLS_VERIFY ON STATUS _st)
+            SHOW_PROGRESS TLS_VERIFY ON
+            EXPECTED_HASH "SHA256=${OPENSSL_FALLBACK_SHA256}" STATUS _st)
     list(GET _st 0 _code)
     if(NOT _code EQUAL 0)
         list(GET _st 1 _msg)
@@ -94,39 +99,76 @@ if(NOT EXISTS "${_ossl_stamp}")
     message(STATUS "[OpenSSL] extracting ${_ossl_tarball}")
     file(ARCHIVE_EXTRACT INPUT "${_ossl_tarball}" DESTINATION "${_ossl_root}/src")
 
-    include(ProcessorCount)
-    ProcessorCount(_jobs)
-    if(_jobs LESS 1)
-        set(_jobs 1)
-    endif()
-
     message(STATUS "[OpenSSL] configuring -> ${_ossl_inst}")
-    # ./config auto-detects the platform target. Build SHARED libraries
-    # (libssl.so.3 / libcrypto.so.3) so they can be bundled next to
-    # libiotdb_session and shipped as the SDK's OpenSSL runtime.
-    execute_process(
-            COMMAND ./config --prefix=${_ossl_inst} --openssldir=${_ossl_inst}/ssl shared
-            WORKING_DIRECTORY "${_ossl_src}"
-            RESULT_VARIABLE _rc)
-    if(NOT _rc EQUAL 0)
-        message(FATAL_ERROR "[OpenSSL] config failed (rc=${_rc})")
-    endif()
-
-    message(STATUS "[OpenSSL] building (-j${_jobs})")
-    execute_process(
-            COMMAND make -j${_jobs}
-            WORKING_DIRECTORY "${_ossl_src}"
-            RESULT_VARIABLE _rc)
-    if(NOT _rc EQUAL 0)
-        message(FATAL_ERROR "[OpenSSL] make failed (rc=${_rc})")
-    endif()
-
-    execute_process(
-            COMMAND make install_sw
-            WORKING_DIRECTORY "${_ossl_src}"
-            RESULT_VARIABLE _rc)
-    if(NOT _rc EQUAL 0)
-        message(FATAL_ERROR "[OpenSSL] make install_sw failed (rc=${_rc})")
+    if(WIN32)
+        find_program(_ossl_perl NAMES perl REQUIRED)
+        set(_vswhere "$ENV{ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe")
+        if(NOT EXISTS "${_vswhere}")
+            message(FATAL_ERROR "[OpenSSL] vswhere.exe was not found")
+        endif()
+        if(CMAKE_GENERATOR MATCHES "Visual Studio ([0-9]+)")
+            set(_vs_major "${CMAKE_MATCH_1}")
+            math(EXPR _vs_next_major "${_vs_major} + 1")
+            set(_vs_range "[${_vs_major}.0,${_vs_next_major}.0)")
+        else()
+            set(_vs_range "[15.0,19.0)")
+        endif()
+        execute_process(
+                COMMAND "${_vswhere}" -latest -products * -version "${_vs_range}"
+                        -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64
+                        -property installationPath
+                OUTPUT_VARIABLE _vs_install OUTPUT_STRIP_TRAILING_WHITESPACE
+                RESULT_VARIABLE _rc)
+        if(NOT _rc EQUAL 0 OR NOT _vs_install)
+            message(FATAL_ERROR "[OpenSSL] a matching Visual Studio C++ toolchain was not found")
+        endif()
+        file(TO_NATIVE_PATH "${_vs_install}/VC/Auxiliary/Build/vcvars64.bat" _vcvars)
+        file(TO_NATIVE_PATH "${_ossl_inst}" _ossl_inst_native)
+        file(TO_NATIVE_PATH "${_ossl_src}" _ossl_src_native)
+        file(TO_NATIVE_PATH "${_ossl_perl}" _ossl_perl_native)
+        set(_ossl_build_script "${_ossl_root}/build-openssl.cmd")
+        file(WRITE "${_ossl_build_script}"
+                "@echo on\r\n"
+                "call \"${_vcvars}\"\r\n"
+                "if errorlevel 1 exit /b %errorlevel%\r\n"
+                "cd /d \"${_ossl_src_native}\"\r\n"
+                "\"${_ossl_perl_native}\" Configure VC-WIN64A --prefix=\"${_ossl_inst_native}\" --openssldir=\"${_ossl_inst_native}\\ssl\" shared no-tests\r\n"
+                "if errorlevel 1 exit /b %errorlevel%\r\n"
+                "nmake\r\n"
+                "if errorlevel 1 exit /b %errorlevel%\r\n"
+                "nmake install_sw\r\n")
+        execute_process(COMMAND cmd /d /c "${_ossl_build_script}" RESULT_VARIABLE _rc)
+        if(NOT _rc EQUAL 0)
+            message(FATAL_ERROR "[OpenSSL] Windows source build failed (rc=${_rc})")
+        endif()
+    else()
+        include(ProcessorCount)
+        ProcessorCount(_jobs)
+        if(_jobs LESS 1)
+            set(_jobs 1)
+        endif()
+        execute_process(
+                COMMAND ./config --prefix=${_ossl_inst} --openssldir=${_ossl_inst}/ssl shared no-tests
+                WORKING_DIRECTORY "${_ossl_src}"
+                RESULT_VARIABLE _rc)
+        if(NOT _rc EQUAL 0)
+            message(FATAL_ERROR "[OpenSSL] config failed (rc=${_rc})")
+        endif()
+        message(STATUS "[OpenSSL] building (-j${_jobs})")
+        execute_process(
+                COMMAND make -j${_jobs}
+                WORKING_DIRECTORY "${_ossl_src}"
+                RESULT_VARIABLE _rc)
+        if(NOT _rc EQUAL 0)
+            message(FATAL_ERROR "[OpenSSL] make failed (rc=${_rc})")
+        endif()
+        execute_process(
+                COMMAND make install_sw
+                WORKING_DIRECTORY "${_ossl_src}"
+                RESULT_VARIABLE _rc)
+        if(NOT _rc EQUAL 0)
+            message(FATAL_ERROR "[OpenSSL] make install_sw failed (rc=${_rc})")
+        endif()
     endif()
     file(TOUCH "${_ossl_stamp}")
 endif()

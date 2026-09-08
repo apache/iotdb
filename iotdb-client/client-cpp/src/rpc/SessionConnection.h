@@ -53,7 +53,7 @@ public:
 
   const TEndPoint& getEndPoint();
 
-  void init(const TEndPoint& endpoint, bool useSSL, const std::string& trustCertFilePath);
+  void init(const TEndPoint& endpoint, const SslConfig& sslConfig);
 
   void insertStringRecord(const TSInsertStringRecordReq& request);
 

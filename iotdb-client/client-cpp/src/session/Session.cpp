@@ -632,8 +632,7 @@ Session::Session(AbstractSessionBuilder* builder) : impl_(new Impl()) {
   impl_->enableRedirection_ = builder->enableRedirections;
   impl_->connectTimeoutMs_ = builder->connectTimeoutMs;
   impl_->nodeUrls_ = builder->nodeUrls;
-  impl_->useSSL_ = builder->useSSL;
-  impl_->trustCertFilePath_ = builder->trustCertFilePath;
+  impl_->sslConfig_ = builder->getSslConfig();
   impl_->initZoneId();
   impl_->initNodesSupplier(impl_->nodeUrls_);
 }
@@ -644,6 +643,14 @@ void Session::setSqlDialect(const std::string& dialect) {
 
 void Session::setDatabase(const std::string& database) {
   impl_->database_ = database;
+}
+
+void Session::setSslConfig(const SslConfig& sslConfig) {
+  if (!impl_->isClosed_) {
+    throw IoTDBException("SSL configuration cannot be changed after the Session is opened");
+  }
+  sslConfig.validate();
+  impl_->sslConfig_ = sslConfig;
 }
 
 std::string Session::getDatabase() {
@@ -961,8 +968,7 @@ void Session::Impl::initNodesSupplier(const std::vector<std::string>& nodeUrls) 
   }
 
   if (enableAutoFetch_) {
-    nodesSupplier_ =
-        NodesSupplier::create(endPoints, username_, password_, useSSL_, trustCertFilePath_);
+    nodesSupplier_ = NodesSupplier::create(endPoints, username_, password_, sslConfig_);
   } else {
     nodesSupplier_ = make_shared<StaticNodesSupplier>(endPoints);
   }

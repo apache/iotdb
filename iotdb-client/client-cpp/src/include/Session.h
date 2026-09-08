@@ -606,6 +606,7 @@ public:
 
   void setSqlDialect(const std::string& dialect);
   void setDatabase(const std::string& database);
+  void setSslConfig(const SslConfig& sslConfig);
   std::string getDatabase();
   void changeDatabase(const std::string& database);
 

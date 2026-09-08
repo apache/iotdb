@@ -188,6 +188,8 @@ public:
   SessionPool& setWaitToGetSessionTimeoutMs(int64_t timeoutMs);
   SessionPool& setUseSSL(bool useSSL);
   SessionPool& setTrustCertFilePath(std::string path);
+  SessionPool& setClientCertificateFilePath(std::string path);
+  SessionPool& setClientPrivateKeyFilePath(std::string path);
 
   // Borrow a Session. Blocks until one is free or a new one can be created,
   // up to timeoutMs (<= 0 means use the pool default). Throws IoTDBException on
@@ -247,8 +249,7 @@ private:
   bool enableAutoFetch_ = AbstractSessionBuilder::DEFAULT_ENABLE_AUTO_FETCH;
   bool enableRPCCompression_ = AbstractSessionBuilder::DEFAULT_ENABLE_RPC_COMPRESSION;
   int connectTimeoutMs_ = AbstractSessionBuilder::DEFAULT_CONNECT_TIMEOUT_MS;
-  bool useSSL_ = false;
-  std::string trustCertFilePath_;
+  SslConfig sslConfig_;
 
   // pool sizing / waiting policy
   size_t maxSize_;
@@ -333,10 +334,20 @@ public:
   }
   SessionPoolBuilder* useSSL(bool v) {
     AbstractSessionBuilder::useSSL = v;
+    AbstractSessionBuilder::sslConfig.useSsl = v;
     return this;
   }
   SessionPoolBuilder* trustCertFilePath(const std::string& v) {
     AbstractSessionBuilder::trustCertFilePath = v;
+    AbstractSessionBuilder::sslConfig.trustCertFilePath = v;
+    return this;
+  }
+  SessionPoolBuilder* clientCertificateFilePath(const std::string& v) {
+    AbstractSessionBuilder::sslConfig.clientCertificateFilePath = v;
+    return this;
+  }
+  SessionPoolBuilder* clientPrivateKeyFilePath(const std::string& v) {
+    AbstractSessionBuilder::sslConfig.clientPrivateKeyFilePath = v;
     return this;
   }
   SessionPoolBuilder* maxSize(size_t v) {
@@ -379,8 +390,10 @@ public:
         .setEnableRPCCompression(AbstractSessionBuilder::enableRPCCompression)
         .setConnectTimeoutMs(AbstractSessionBuilder::connectTimeoutMs)
         .setWaitToGetSessionTimeoutMs(waitTimeoutMs_)
-        .setUseSSL(AbstractSessionBuilder::useSSL)
-        .setTrustCertFilePath(AbstractSessionBuilder::trustCertFilePath);
+        .setUseSSL(AbstractSessionBuilder::getSslConfig().useSsl)
+        .setTrustCertFilePath(AbstractSessionBuilder::getSslConfig().trustCertFilePath)
+        .setClientCertificateFilePath(AbstractSessionBuilder::sslConfig.clientCertificateFilePath)
+        .setClientPrivateKeyFilePath(AbstractSessionBuilder::sslConfig.clientPrivateKeyFilePath);
     return pool;
   }
 
