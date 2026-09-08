@@ -84,6 +84,11 @@ public class FragmentInstanceStatisticsDrawer {
             context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
     addLine(
         planHeader,
+        0,
+        String.format(
+            "Coordinator FE Peak Memory: %d bytes", context.getPeakFrontEndMemoryBytes()));
+    addLine(
+        planHeader,
         1,
         String.format(
             "Disk IO Size: %d bytes", context.getDiskIOSizeForDeviceEntryDuringDistributionPlan()));

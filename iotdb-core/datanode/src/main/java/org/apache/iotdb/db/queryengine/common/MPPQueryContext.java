@@ -155,6 +155,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean reservingMemoryForSchemaTree = false;
 
+  private long frontEndMemoryBytes = 0;
+  private long peakFrontEndMemoryBytes = 0;
+
   private boolean resultSetColumnMemoryTrackingEnabled = false;
   private boolean alignByDeviceForResultSetColumnTracking = false;
   private long seriesLimitForResultSetColumnTracking = 0;
@@ -271,6 +274,7 @@ public class MPPQueryContext implements IAuditEntity {
       return;
     }
     this.memoryReservationManager.releaseMemoryCumulatively(reservedMemoryCostForSchemaTree);
+    frontEndMemoryBytes -= reservedMemoryCostForSchemaTree;
     reservedMemoryCostForSchemaTree = 0;
   }
 
@@ -653,6 +657,8 @@ public class MPPQueryContext implements IAuditEntity {
   public void reserveMemoryForFrontEnd(final long bytes) {
     try {
       this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+      frontEndMemoryBytes += bytes;
+      peakFrontEndMemoryBytes = Math.max(peakFrontEndMemoryBytes, frontEndMemoryBytes);
     } catch (MemoryNotEnoughException e) {
       if (reservingMemoryForSchemaTree) {
         throw e;
@@ -674,10 +680,17 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void releaseAllMemoryReservedForFrontEnd() {
     this.memoryReservationManager.releaseAllReservedMemory();
+    frontEndMemoryBytes = 0;
+    reservedMemoryCostForSchemaTree = 0;
   }
 
   public void releaseMemoryReservedForFrontEnd(final long bytes) {
     this.memoryReservationManager.releaseMemoryCumulatively(bytes);
+    frontEndMemoryBytes -= bytes;
+  }
+
+  public long getPeakFrontEndMemoryBytes() {
+    return peakFrontEndMemoryBytes;
   }
 
   public void initResultSetColumnMemoryTracking(
