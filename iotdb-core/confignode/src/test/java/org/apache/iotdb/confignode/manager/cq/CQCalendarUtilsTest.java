@@ -19,6 +19,8 @@ package org.apache.iotdb.confignode.manager.cq;
 
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 
 import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Test;
@@ -80,6 +82,88 @@ public class CQCalendarUtilsTest {
     assertEquals(epochTimestamp(2024, 2, 29, 0, 0, UTC), start);
     assertEquals(epochTimestamp(2024, 3, 31, 0, 0, UTC), end);
     assertEquals(end, CQCalendarUtils.occurrence(boundary, every, 2, UTC));
+  }
+
+  @Test
+  public void testFixedCadenceRangeUsesCurrentCalendarMonth() {
+    long day = TimestampPrecisionUtils.currPrecision.convert(1, TimeUnit.DAYS);
+    long boundary = epochTimestamp(2024, 1, 1, 0, 0, UTC);
+    long execution = epochTimestamp(2024, 4, 1, 0, 0, UTC);
+    TimeDuration start = new TimeDuration(1, day);
+    TimeDuration end = new TimeDuration(1, 0);
+    CQScheduleTask task =
+        calendarTask(boundary, execution, new TimeDuration(0, day), start, end, UTC);
+
+    // EVERY 1d RANGE 1mo1d, 1mo passes the component-wise duration validation. Its two
+    // offsets must use March's calendar boundary, rather than January's 31-day length.
+    assertEquals(
+        epochTimestamp(2024, 2, 29, 0, 0, UTC), task.calculateCalendarRangeEndpoint(start, 91));
+    assertEquals(
+        epochTimestamp(2024, 3, 1, 0, 0, UTC), task.calculateCalendarRangeEndpoint(end, 91));
+  }
+
+  @Test
+  public void testFixedCadenceRangePreservesMonthClampingAndDst() {
+    long day = TimestampPrecisionUtils.currPrecision.convert(1, TimeUnit.DAYS);
+    TimeDuration every = new TimeDuration(0, day);
+    TimeDuration start = new TimeDuration(1, day);
+    TimeDuration end = new TimeDuration(0, 0);
+    long boundary = epochTimestamp(2024, 1, 1, 0, 0, UTC);
+    long execution = epochTimestamp(2024, 3, 31, 0, 0, UTC);
+    CQScheduleTask task = calendarTask(boundary, execution, every, start, end, UTC);
+    assertEquals(
+        epochTimestamp(2024, 2, 28, 0, 0, UTC), task.calculateCalendarRangeEndpoint(start, 90));
+    assertEquals(execution, task.calculateCalendarRangeEndpoint(end, 90));
+
+    ZoneId newYork = ZoneId.of("America/New_York");
+    boundary = epochTimestamp(2024, 1, 1, 11, 0, newYork);
+    execution = epochTimestamp(2024, 4, 10, 12, 0, newYork);
+    task = calendarTask(boundary, execution, every, start, end, newYork);
+    // Subtracting one calendar month reaches March 10 at noon; subtracting another 24 hours
+    // crosses the spring DST transition and reaches March 9 at 11:00.
+    assertEquals(
+        epochTimestamp(2024, 3, 9, 11, 0, newYork),
+        task.calculateCalendarRangeEndpoint(start, 100));
+  }
+
+  @Test
+  public void testCalendarCadenceRangeRetainsOriginalMonthEndAnchor() {
+    long boundary = epochTimestamp(2024, 1, 31, 0, 0, UTC);
+    long execution = epochTimestamp(2024, 4, 30, 0, 0, UTC);
+    TimeDuration month = new TimeDuration(1, 0);
+    TimeDuration zero = new TimeDuration(0, 0);
+    CQScheduleTask task = calendarTask(boundary, execution, month, month, zero, UTC);
+
+    assertEquals(
+        epochTimestamp(2024, 3, 31, 0, 0, UTC), task.calculateCalendarRangeEndpoint(month, 3));
+    assertEquals(execution, task.calculateCalendarRangeEndpoint(zero, 3));
+  }
+
+  private static CQScheduleTask calendarTask(
+      long boundary,
+      long execution,
+      TimeDuration every,
+      TimeDuration start,
+      TimeDuration end,
+      ZoneId zone) {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "rangeCq",
+            0,
+            boundary,
+            0,
+            0,
+            TimeoutPolicy.BLOCKED.getType(),
+            "select s1 into root.backup.d1.s1 from root.sg.d1",
+            "create cq rangeCq",
+            zone.getId(),
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(every.monthDuration, every.nonMonthDuration));
+    req.setStartOffsetDuration(new TCQDuration(start.monthDuration, start.nonMonthDuration));
+    req.setEndOffsetDuration(new TCQDuration(end.monthDuration, end.nonMonthDuration));
+    req.setBoundaryExplicit(true);
+    return new CQScheduleTask(req, execution, "token", null, null);
   }
 
   @Test

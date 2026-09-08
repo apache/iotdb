@@ -290,26 +290,8 @@ public class CQScheduleTask implements Runnable {
           != executionTime) {
         currentOccurrenceIndex = Math.max(0, currentOccurrenceIndex - 1);
       }
-      startTime =
-          CQCalendarUtils.applyVector(
-              boundaryTime,
-              Math.subtractExact(
-                  Math.multiplyExact((long) everyDuration.monthDuration, currentOccurrenceIndex),
-                  startDuration.monthDuration),
-              Math.subtractExact(
-                  Math.multiplyExact(everyDuration.nonMonthDuration, currentOccurrenceIndex),
-                  startDuration.nonMonthDuration),
-              scheduleZone);
-      endTime =
-          CQCalendarUtils.applyVector(
-              boundaryTime,
-              Math.subtractExact(
-                  Math.multiplyExact((long) everyDuration.monthDuration, currentOccurrenceIndex),
-                  endDuration.monthDuration),
-              Math.subtractExact(
-                  Math.multiplyExact(everyDuration.nonMonthDuration, currentOccurrenceIndex),
-                  endDuration.nonMonthDuration),
-              scheduleZone);
+      startTime = calculateCalendarRangeEndpoint(startDuration, currentOccurrenceIndex);
+      endTime = calculateCalendarRangeEndpoint(endDuration, currentOccurrenceIndex);
       // A RANGE with an omitted end offset defaults to the current occurrence. Guard against
       // malformed/legacy requests that deserialize both offsets identically; GroupByMonthFilter
       // cannot initialize an empty range and would otherwise throw an array bounds exception.
@@ -366,6 +348,23 @@ public class CQScheduleTask implements Runnable {
         }
       }
     }
+  }
+
+  long calculateCalendarRangeEndpoint(TimeDuration offset, long currentOccurrenceIndex) {
+    if (!scheduleCalendarAware) {
+      // A fixed cadence has no calendar anchor. Subtract RANGE from the actual occurrence so
+      // month lengths and zone transitions are evaluated at the time the query runs.
+      return CQCalendarUtils.apply(executionTime, offset, -1, scheduleZone);
+    }
+    return CQCalendarUtils.applyVector(
+        boundaryTime,
+        Math.subtractExact(
+            Math.multiplyExact((long) everyDuration.monthDuration, currentOccurrenceIndex),
+            offset.monthDuration),
+        Math.subtractExact(
+            Math.multiplyExact(everyDuration.nonMonthDuration, currentOccurrenceIndex),
+            offset.nonMonthDuration),
+        scheduleZone);
   }
 
   private static long toTimeoutMillis(long deltaTicks) {
