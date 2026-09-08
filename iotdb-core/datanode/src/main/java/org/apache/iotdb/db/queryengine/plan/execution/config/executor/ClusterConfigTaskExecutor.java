@@ -4159,6 +4159,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     createContinuousQueryStatement.semanticCheck();
 
     final String queryBody = createContinuousQueryStatement.getQueryBody();
+    // CQ body group-by bounds are populated only when the CQ executes. Month-aware filters
+    // cannot initialize an empty [0, 0) range during this validation pass, so provide a minimal
+    // non-empty placeholder; the execution RPC replaces these bounds with the real window.
+    if (createContinuousQueryStatement.getQueryBodyStatement().getGroupByTimeComponent() != null
+        && createContinuousQueryStatement
+            .getQueryBodyStatement()
+            .getGroupByTimeComponent()
+            .getInterval()
+            .containsMonth()) {
+      createContinuousQueryStatement
+          .getQueryBodyStatement()
+          .getGroupByTimeComponent()
+          .setStartTime(0);
+      createContinuousQueryStatement
+          .getQueryBodyStatement()
+          .getGroupByTimeComponent()
+          .setEndTime(1);
+    }
     // TODO Do not modify Statement in Analyzer
     Analyzer.analyze(createContinuousQueryStatement.getQueryBodyStatement(), context);
 
