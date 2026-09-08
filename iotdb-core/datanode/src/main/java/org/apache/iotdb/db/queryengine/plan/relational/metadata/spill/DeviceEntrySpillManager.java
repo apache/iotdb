@@ -165,6 +165,10 @@ public final class DeviceEntrySpillManager {
   }
 
   private void deleteDirectoryIfExists(Path directory) throws IOException {
+    if (!Files.exists(directory)) {
+      return;
+    }
+
     Files.walkFileTree(
         directory,
         new SimpleFileVisitor<>() {
