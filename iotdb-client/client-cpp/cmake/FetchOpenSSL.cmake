@@ -28,7 +28,10 @@
 
 # --- Default provider: build Tongsuo ${TONGSUO_GIT_REF} from source ---
 if(IOTDB_NTLS_PROVIDER STREQUAL "TONGSUO")
-if(TONGSUO_GIT_REF MATCHES "^[0-9a-fA-F]{7,40}$")
+string(LENGTH "${TONGSUO_GIT_REF}" _tongsuo_git_ref_length)
+if(TONGSUO_GIT_REF MATCHES "^[0-9a-fA-F]+$"
+        AND _tongsuo_git_ref_length GREATER_EQUAL 7
+        AND _tongsuo_git_ref_length LESS_EQUAL 40)
     set(_tongsuo_extracted_dir "Tongsuo-${TONGSUO_GIT_REF}")
     set(_tongsuo_url "https://github.com/Tongsuo-Project/Tongsuo/archive/${TONGSUO_GIT_REF}.tar.gz")
 else()
@@ -40,6 +43,25 @@ endif()
 set(_tongsuo_tarname "tongsuo-${TONGSUO_GIT_REF}.tar.gz")
 set(_tongsuo_tarball "${IOTDB_OS_DEPS_DIR}/${_tongsuo_tarname}")
 
+string(LENGTH "${TONGSUO_SHA256}" _tongsuo_sha256_length)
+if(NOT TONGSUO_SHA256 MATCHES "^[0-9a-fA-F]+$" OR NOT _tongsuo_sha256_length EQUAL 64)
+    message(FATAL_ERROR
+            "[Tongsuo] TONGSUO_SHA256 must be the 64-character SHA-256 of ${_tongsuo_tarname}")
+endif()
+
+if(EXISTS "${_tongsuo_tarball}")
+    file(SHA256 "${_tongsuo_tarball}" _tongsuo_cached_sha256)
+    if(NOT "${_tongsuo_cached_sha256}" STREQUAL "${TONGSUO_SHA256}")
+        if(IOTDB_OFFLINE)
+            message(FATAL_ERROR
+                    "[Tongsuo] cached ${_tongsuo_tarname} has SHA-256 ${_tongsuo_cached_sha256}; "
+                    "expected ${TONGSUO_SHA256}")
+        endif()
+        message(STATUS "[Tongsuo] removing cached archive with mismatched SHA-256")
+        file(REMOVE "${_tongsuo_tarball}")
+    endif()
+endif()
+
 if(NOT EXISTS "${_tongsuo_tarball}")
     if(IOTDB_OFFLINE)
         message(FATAL_ERROR
@@ -49,6 +71,7 @@ if(NOT EXISTS "${_tongsuo_tarball}")
     file(DOWNLOAD "${_tongsuo_url}" "${_tongsuo_tarball}"
             SHOW_PROGRESS TLS_VERIFY ON
             TIMEOUT 600
+            EXPECTED_HASH "SHA256=${TONGSUO_SHA256}"
             STATUS _st)
     list(GET _st 0 _code)
     if(NOT _code EQUAL 0)
@@ -61,7 +84,7 @@ endif()
 set(_tongsuo_root  "${CMAKE_BINARY_DIR}/_deps/tongsuo")
 set(_tongsuo_src   "${_tongsuo_root}/src/${_tongsuo_extracted_dir}")
 set(_tongsuo_inst  "${_tongsuo_root}/install")
-set(_tongsuo_stamp "${_tongsuo_root}/.built-${TONGSUO_GIT_REF}")
+set(_tongsuo_stamp "${_tongsuo_root}/.built-${TONGSUO_GIT_REF}-${TONGSUO_SHA256}")
 
 if(NOT EXISTS "${_tongsuo_stamp}")
     file(REMOVE_RECURSE "${_tongsuo_root}/src")

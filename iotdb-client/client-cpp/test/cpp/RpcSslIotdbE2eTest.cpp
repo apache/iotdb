@@ -48,7 +48,8 @@ TEST_CASE("TLS tree Session connects to IoTDB and runs SQL", "[rpc][ssl][iotdb][
   }
 
   session->setStorageGroup(database);
-  session->createTimeseries(timeseries, TSDataType::INT32, TSEncoding::PLAIN, CompressionType::UNCOMPRESSED);
+  session->createTimeseries(timeseries, TSDataType::INT32, TSEncoding::PLAIN,
+                            CompressionType::UNCOMPRESSED);
   session->insertRecord(database + ".d1", 1, {"s1"}, {"1"});
 
   std::unique_ptr<SessionDataSet> dataSet(
@@ -76,7 +77,8 @@ TEST_CASE("TLS table Session connects to IoTDB and runs SQL", "[rpc][ssl][iotdb]
   session->executeNonQueryStatement("USE cpp_ssl_it_table");
   session->executeNonQueryStatement(
       "CREATE TABLE IF NOT EXISTS ssl_it_table (tag1 STRING TAG, value INT32 FIELD)");
-  session->executeNonQueryStatement("INSERT INTO ssl_it_table(time, tag1, value) VALUES (1, 't1', 42)");
+  session->executeNonQueryStatement(
+      "INSERT INTO ssl_it_table(time, tag1, value) VALUES (1, 't1', 42)");
 
   std::unique_ptr<SessionDataSet> dataSet(
       session->executeQueryStatement("SELECT time, value FROM ssl_it_table WHERE tag1 = 't1'"));
@@ -112,11 +114,12 @@ TEST_CASE("TLS C tree Session connects to IoTDB", "[rpc][ssl][iotdb][e2e]") {
                                        TS_COMPRESSION_UNCOMPRESSED) == TS_OK);
   const char* measurements[] = {"s1"};
   const char* values[] = {"1"};
-  REQUIRE(ts_session_insert_record_str(session, "root.cpp_ssl_it_c.d1", 1, 1, measurements, values) ==
-          TS_OK);
+  REQUIRE(ts_session_insert_record_str(session, "root.cpp_ssl_it_c.d1", 1, 1, measurements,
+                                       values) == TS_OK);
 
   CSessionDataSet* dataSet = nullptr;
-  REQUIRE(ts_session_execute_query(session, "SELECT s1 FROM root.cpp_ssl_it_c.d1", &dataSet) == TS_OK);
+  REQUIRE(ts_session_execute_query(session, "SELECT s1 FROM root.cpp_ssl_it_c.d1", &dataSet) ==
+          TS_OK);
   REQUIRE(dataSet != nullptr);
   REQUIRE(ts_dataset_has_next(dataSet));
   CRowRecord* record = ts_dataset_next(dataSet);
@@ -140,18 +143,21 @@ TEST_CASE("TLS C table Session connects to IoTDB", "[rpc][ssl][iotdb][e2e]") {
   it_ssl_configure_table_session(session);
   REQUIRE(ts_table_session_open(session) == TS_OK);
 
-  REQUIRE(ts_table_session_execute_non_query(session, "CREATE DATABASE IF NOT EXISTS cpp_ssl_it_c_table") ==
-          TS_OK);
+  REQUIRE(ts_table_session_execute_non_query(
+              session, "CREATE DATABASE IF NOT EXISTS cpp_ssl_it_c_table") == TS_OK);
   REQUIRE(ts_table_session_execute_non_query(session, "USE cpp_ssl_it_c_table") == TS_OK);
   REQUIRE(ts_table_session_execute_non_query(
               session,
-              "CREATE TABLE IF NOT EXISTS ssl_it_c_table (tag1 STRING TAG, value INT32 FIELD)") == TS_OK);
+              "CREATE TABLE IF NOT EXISTS ssl_it_c_table (tag1 STRING TAG, value INT32 FIELD)") ==
+          TS_OK);
   REQUIRE(ts_table_session_execute_non_query(
-              session, "INSERT INTO ssl_it_c_table(time, tag1, value) VALUES (1, 't1', 42)") == TS_OK);
+              session, "INSERT INTO ssl_it_c_table(time, tag1, value) VALUES (1, 't1', 42)") ==
+          TS_OK);
 
   CSessionDataSet* dataSet = nullptr;
-  REQUIRE(ts_table_session_execute_query(
-              session, "SELECT time, value FROM ssl_it_c_table WHERE tag1 = 't1'", &dataSet) == TS_OK);
+  REQUIRE(ts_table_session_execute_query(session,
+                                         "SELECT time, value FROM ssl_it_c_table WHERE tag1 = 't1'",
+                                         &dataSet) == TS_OK);
   REQUIRE(dataSet != nullptr);
   REQUIRE(ts_dataset_has_next(dataSet));
   CRowRecord* record = ts_dataset_next(dataSet);
@@ -162,7 +168,8 @@ TEST_CASE("TLS C table Session connects to IoTDB", "[rpc][ssl][iotdb][e2e]") {
   ts_row_record_destroy(record);
   ts_dataset_destroy(dataSet);
 
-  REQUIRE(ts_table_session_execute_non_query(session, "DROP DATABASE IF EXISTS cpp_ssl_it_c_table") == TS_OK);
+  REQUIRE(ts_table_session_execute_non_query(
+              session, "DROP DATABASE IF EXISTS cpp_ssl_it_c_table") == TS_OK);
   REQUIRE(ts_table_session_close(session) == TS_OK);
   ts_table_session_destroy(session);
 }

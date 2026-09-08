@@ -34,7 +34,8 @@ bool fixtureExists(const std::string& path) {
 
 } // namespace
 
-TEST_CASE("TLS mutual auth creates client SSL_CTX with trust and key stores", "[rpc][ssl][mutual]") {
+TEST_CASE("TLS mutual auth creates client SSL_CTX with trust and key stores",
+          "[rpc][ssl][mutual]") {
 #if WITH_SSL
   const std::string trustStore = ssltest::tlsFixture("tls-trust.p12");
   const std::string keyStore = ssltest::tlsFixture("tls-client.p12");
@@ -71,10 +72,14 @@ TEST_CASE("TLS mutual auth handshake with openssl s_server", "[rpc][ssl][mutual]
   ssltest::OpenSslServerProcess server;
   const bool started = server.start({
       "-tls1_2",
-      "-Verify", "1",
-      "-CAfile", caFile,
-      "-cert", serverCert,
-      "-key", serverKey,
+      "-Verify",
+      "1",
+      "-CAfile",
+      caFile,
+      "-cert",
+      serverCert,
+      "-key",
+      serverKey,
       "-www",
   });
   REQUIRE(started);
@@ -94,7 +99,43 @@ TEST_CASE("TLS mutual auth handshake with openssl s_server", "[rpc][ssl][mutual]
 #endif
 }
 
-TEST_CASE("TLS one-way auth fails when server requires client certificate", "[rpc][ssl][mutual][e2e]") {
+TEST_CASE("TLS Thrift socket rejects a server outside the configured trust store",
+          "[rpc][ssl][verify][e2e]") {
+#if WITH_SSL
+  const std::string serverCert = ssltest::tlsFixture("server.crt");
+  const std::string serverKey = ssltest::tlsFixture("server.key");
+  REQUIRE(fixtureExists(serverCert));
+  REQUIRE(fixtureExists(serverKey));
+
+  ssltest::OpenSslServerProcess server;
+  REQUIRE(server.start({
+      "-tls1_2",
+      "-cert",
+      serverCert,
+      "-key",
+      serverKey,
+      "-www",
+  }));
+
+  SslConfig config;
+  config.useSsl = true;
+  config.sslProtocol = "TLS";
+  config.trustStore = ssltest::tlcpFixture("tlcp-trust.p12");
+  config.trustStorePwd = ssltest::kStorePassword;
+
+  auto factory = RpcSslUtils::createSslSocketFactory(config);
+  auto socket = factory->createSocket("127.0.0.1", server.port());
+  socket->setConnTimeout(2000);
+  REQUIRE_NOTHROW(socket->open());
+  const uint8_t requestByte = 0;
+  REQUIRE_THROWS(socket->write(&requestByte, 1));
+  socket->close();
+  server.stop();
+#endif
+}
+
+TEST_CASE("TLS one-way auth fails when server requires client certificate",
+          "[rpc][ssl][mutual][e2e]") {
 #if WITH_SSL
   const std::string caFile = ssltest::tlsFixture("ca.crt");
   const std::string serverCert = ssltest::tlsFixture("server.crt");
@@ -104,10 +145,14 @@ TEST_CASE("TLS one-way auth fails when server requires client certificate", "[rp
   ssltest::OpenSslServerProcess server;
   const bool started = server.start({
       "-tls1_2",
-      "-Verify", "1",
-      "-CAfile", caFile,
-      "-cert", serverCert,
-      "-key", serverKey,
+      "-Verify",
+      "1",
+      "-CAfile",
+      caFile,
+      "-cert",
+      serverCert,
+      "-key",
+      serverKey,
       "-www",
   });
   REQUIRE(started);

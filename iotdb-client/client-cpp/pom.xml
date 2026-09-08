@@ -52,7 +52,8 @@
         <with.ssl>ON</with.ssl>
         <thrift.version>0.24.0</thrift.version>
         <ntls.provider>TONGSUO</ntls.provider>
-        <tongsuo.git.ref>8.4-stable</tongsuo.git.ref>
+        <tongsuo.git.ref>0aed892c5f48c9a52d1f5667667ae45156b9cdf4</tongsuo.git.ref>
+        <tongsuo.sha256>4bb302df8ff73a89b3483873d10e7b6a4eeb041310b8eabd2be309004a88f8b6</tongsuo.sha256>
         <gmssl.root.dir/>
         <iotdb.cxx11.abi/>
         <!-- Switched to OFF by the .skipTests profile below. -->
@@ -120,6 +121,7 @@
                                 <option>-DTHRIFT_VERSION=${thrift.version}</option>
                                 <option>-DIOTDB_NTLS_PROVIDER=${ntls.provider}</option>
                                 <option>-DTONGSUO_GIT_REF=${tongsuo.git.ref}</option>
+                                <option>-DTONGSUO_SHA256=${tongsuo.sha256}</option>
                                 <option>-DIOTDB_GMSSL_ROOT_DIR=${gmssl.root.dir}</option>
                                 <option>-DIOTDB_OFFLINE=${iotdb.offline}</option>
                                 <option>-DIOTDB_DEPS_DIR=${iotdb.deps.dir}</option>

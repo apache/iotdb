@@ -949,11 +949,7 @@ TEST_CASE("Numeric column widening getters align with Java TsFile", "[column]") 
 TEST_CASE("SessionPool basic borrow/insert/query via RAII lease", "[sessionPool]") {
   CaseReporter cr("SessionPool basic");
   SessionPoolBuilder poolBuilder;
-  poolBuilder.host("127.0.0.1")
-      ->rpcPort(6667)
-      ->username("root")
-      ->password("root")
-      ->maxSize(3);
+  poolBuilder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->maxSize(3);
   auto pool = poolBuilder.build();
 
   {
@@ -991,11 +987,7 @@ TEST_CASE("SessionPool basic borrow/insert/query via RAII lease", "[sessionPool]
 TEST_CASE("SessionPool is safe under concurrent writers", "[sessionPool]") {
   CaseReporter cr("SessionPool concurrency");
   SessionPoolBuilder poolBuilder;
-  poolBuilder.host("127.0.0.1")
-      ->rpcPort(6667)
-      ->username("root")
-      ->password("root")
-      ->maxSize(4);
+  poolBuilder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->maxSize(4);
   auto pool = poolBuilder.build();
 
   {

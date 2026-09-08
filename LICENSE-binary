@@ -262,7 +262,7 @@ org.osgi:org.osgi.core:7.0.0
 org.osgi:osgi.cmpn:7.0.0
 org.ops4j.pax.jdbc:pax-jdbc-common:1.5.6
 org.xerial.snappy:snappy-java:1.1.10.5
-Tongsuo:Tongsuo:8.4-stable (default C++ NTLS provider)
+Tongsuo:Tongsuo:8.4-stable commit 0aed892c (default C++ NTLS provider)
 io.airlift.airline:0.9
 
 

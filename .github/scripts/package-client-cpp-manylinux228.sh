@@ -73,7 +73,7 @@ java -version
 
 # manylinux_2_28 is AlmaLinux 8, whose system OpenSSL is 1.1.1 (EOL and not
 # Apache-2.0 - must not be bundled/redistributed in an ASF convenience binary).
-# Tongsuo 8.4-stable is always built from source (WITH_SSL=ON), which keeps the
+# A pinned Tongsuo 8.4-stable commit is always built from source (WITH_SSL=ON), which keeps the
 # glibc 2.28 baseline. Tongsuo's Configure needs perl plus a
 # few modules (IPC::Cmd, Data::Dumper) that are not on the minimal image -
 # install them even when perl itself is already present.

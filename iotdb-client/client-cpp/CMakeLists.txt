@@ -106,8 +106,10 @@ string(TOUPPER "${IOTDB_NTLS_PROVIDER}" IOTDB_NTLS_PROVIDER)
 if(NOT IOTDB_NTLS_PROVIDER MATCHES "^(TONGSUO|GMSSL)$")
     message(FATAL_ERROR "IOTDB_NTLS_PROVIDER must be TONGSUO or GMSSL")
 endif()
-set(TONGSUO_GIT_REF "8.4-stable"
-    CACHE STRING "Tongsuo git ref used when building SSL/TLS from source")
+set(TONGSUO_GIT_REF "0aed892c5f48c9a52d1f5667667ae45156b9cdf4"
+    CACHE STRING "Pinned Tongsuo git commit used when building SSL/TLS from source")
+set(TONGSUO_SHA256 "4bb302df8ff73a89b3483873d10e7b6a4eeb041310b8eabd2be309004a88f8b6"
+    CACHE STRING "SHA-256 of the pinned Tongsuo source archive")
 set(IOTDB_GMSSL_ROOT_DIR ""
     CACHE PATH "Preinstalled GmSSL 3.2 root (required for the GMSSL provider)")
 
@@ -234,6 +236,7 @@ include(GNUInstallDirs)
 set(IOTDB_PUBLIC_HEADERS
         Export.h
         SessionConfig.h
+        SslConfig.h
         Session.h
         Common.h
         Optional.h
@@ -314,6 +317,8 @@ file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         "cmake.build.type=${CMAKE_BUILD_TYPE}\n"
         "with.ssl=${WITH_SSL}\n"
         "ntls.provider=${IOTDB_NTLS_PROVIDER}\n"
+        "tongsuo.git.ref=${TONGSUO_GIT_REF}\n"
+        "tongsuo.sha256=${TONGSUO_SHA256}\n"
         "iotdb.offline=${IOTDB_OFFLINE}\n"
         "iotdb.use.cxx11.abi=${IOTDB_USE_CXX11_ABI}\n"
         "iotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}\n")

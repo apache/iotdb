@@ -388,7 +388,8 @@ etc. directly.
 | `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
 | `THRIFT_VERSION`      | `0.24.0`                         | Apache Thrift version to build from source.                                                              |
 | `IOTDB_NTLS_PROVIDER` | `TONGSUO`                        | NTLS provider: `TONGSUO` or `GMSSL`.                                                                     |
-| `TONGSUO_GIT_REF`     | `8.4-stable`                     | Tongsuo git ref built from source when `WITH_SSL=ON`.                                                    |
+| `TONGSUO_GIT_REF`     | commit `0aed892c`                | Pinned Tongsuo 8.4-stable commit built from source when `WITH_SSL=ON`.                                  |
+| `TONGSUO_SHA256`      | pinned archive hash              | SHA-256 used to verify the Tongsuo source archive and offline cache.                                    |
 | `IOTDB_GMSSL_ROOT_DIR` | (unset)                         | Preinstalled GmSSL 3 root required by the `GMSSL` provider.                                             |
 | `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
 | `CMAKE_INSTALL_PREFIX`| `<build>/install`                | Install location.                                                                                        |
@@ -431,8 +432,8 @@ cmake --build build --config Release --target install
 
    | Platform   | Required files                                                                                                                                                       |
    |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-   | `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `tongsuo-8.4-stable.tar.gz` |
-   | `mac/`     | `thrift-0.24.0.tar.gz`, `boost_1_84_0.tar.gz`, `tongsuo-8.4-stable.tar.gz` (Apple ships m4/flex/bison) |
+   | `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `tongsuo-0aed892c5f48c9a52d1f5667667ae45156b9cdf4.tar.gz` |
+   | `mac/`     | `thrift-0.24.0.tar.gz`, `boost_1_84_0.tar.gz`, `tongsuo-0aed892c5f48c9a52d1f5667667ae45156b9cdf4.tar.gz` (Apple ships m4/flex/bison) |
    | `windows/` | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz` (Boost headers only - no `b2` build required for `iotdb_session`)                                                      |
 
    Reference URLs (the configure step uses the same):
@@ -441,7 +442,7 @@ cmake --build build --config Release --target install
    - GNU m4 1.4.19:       <https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz>
    - GNU flex 2.6.4:      <https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz>
    - GNU bison 3.8:       <https://ftp.gnu.org/gnu/bison/bison-3.8.tar.gz>
-   - Tongsuo 8.4-stable: <https://github.com/Tongsuo-Project/Tongsuo/archive/refs/heads/8.4-stable.tar.gz>
+   - Tongsuo 8.4-stable commit `0aed892c`: <https://github.com/Tongsuo-Project/Tongsuo/archive/0aed892c5f48c9a52d1f5667667ae45156b9cdf4.tar.gz>
 
 2. Run the build with offline mode enabled:
 
@@ -497,7 +498,7 @@ Prerequisites:
    and rename `win_flex.exe`→`flex.exe`, `win_bison.exe`→`bison.exe` on
    `PATH`.
 3. **Perl** (for building Tongsuo when `WITH_SSL=ON`).
-4. **Tongsuo / SSL** *(`WITH_SSL=ON` is the default)*: Tongsuo 8.4-stable is
+4. **Tongsuo / SSL** *(`WITH_SSL=ON` is the default)*: a pinned Tongsuo 8.4-stable commit is
    always built from source (requires Perl and `nmake` from the VS Developer
    Command Prompt). Pass `-DWITH_SSL=OFF` to build without SSL.
 
@@ -514,7 +515,7 @@ the GNU autotools tarballs assume a POSIX shell environment.
 
 `iotdb_session` builds with SSL/TLS by default. Supported NTLS providers:
 
-- `TONGSUO` (default): Tongsuo 8.4-stable, built from source; TLS/TLCP and
+- `TONGSUO` (default): pinned Tongsuo 8.4-stable commit `0aed892c`, built from source; TLS/TLCP and
   PKCS12 or PEM credentials.
 - `GMSSL`: preinstalled GmSSL 3.2 using its native TLCP API; TLCP with PEM
   credentials. OCL is not used because it does not implement

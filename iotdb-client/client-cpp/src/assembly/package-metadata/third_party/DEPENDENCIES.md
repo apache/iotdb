@@ -33,7 +33,7 @@ the [`NOTICE`](NOTICE) file in this directory; non-Apache license texts are unde
 | --- | --- | --- | --- |
 | Apache Thrift | 0.24.0 | statically linked | Apache License 2.0 |
 | Boost | 1.60.0 on Linux/Windows, 1.84.0 on macOS by default | statically linked (header-only) | Boost Software License 1.0 |
-| Tongsuo | 8.4-stable (default NTLS provider) | bundled shared libs in `lib/` | Apache License 2.0 |
+| Tongsuo | 8.4-stable commit `0aed892c` (default NTLS provider) | bundled shared libs in `lib/` | Apache License 2.0 |
 | GmSSL | 3.2.x (optional NTLS provider) | bundled shared library in `lib/` | Apache License 2.0 |
 
 ## Build-time only (not redistributed)

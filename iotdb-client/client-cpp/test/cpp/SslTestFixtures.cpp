@@ -157,7 +157,7 @@ void addLocalKeyId(PKCS12_SAFEBAG* bag, X509* cert) {
   }
 }
 
-void addCertAndKeyBags(STACK_OF(PKCS12_SAFEBAG)* bags, X509* cert, EVP_PKEY* key,
+void addCertAndKeyBags(STACK_OF(PKCS12_SAFEBAG) * bags, X509* cert, EVP_PKEY* key,
                        const char* friendlyName, const std::string& password) {
   PKCS12_SAFEBAG* certbag = PKCS12_SAFEBAG_create_cert(cert);
   PKCS12_add_friendlyname_utf8(certbag, friendlyName, -1);
@@ -224,7 +224,7 @@ void forEachPkcs12Bag(PKCS12* p12, const std::string& password,
   sk_PKCS7_pop_free(safes, PKCS7_free);
 }
 
-void appendPkcs12Bags(STACK_OF(PKCS12_SAFEBAG)* target, PKCS12* source,
+void appendPkcs12Bags(STACK_OF(PKCS12_SAFEBAG) * target, PKCS12* source,
                       const std::string& password) {
   forEachPkcs12Bag(source, password, [&](PKCS12_SAFEBAG* bag) {
     const int bagType = PKCS12_SAFEBAG_get_nid(bag);
@@ -244,8 +244,8 @@ void appendPkcs12Bags(STACK_OF(PKCS12_SAFEBAG)* target, PKCS12* source,
     } else if (bagType == NID_pkcs8ShroudedKeyBag || bagType == NID_keyBag) {
       EVP_PKEY* key = nullptr;
       if (bagType == NID_pkcs8ShroudedKeyBag) {
-        PKCS8_PRIV_KEY_INFO* p8 = PKCS12_decrypt_skey(bag, password.c_str(),
-                                                      static_cast<int>(password.size()));
+        PKCS8_PRIV_KEY_INFO* p8 =
+            PKCS12_decrypt_skey(bag, password.c_str(), static_cast<int>(password.size()));
         if (p8 != nullptr) {
           key = EVP_PKCS82PKEY(p8);
           PKCS8_PRIV_KEY_INFO_free(p8);
@@ -261,8 +261,7 @@ void appendPkcs12Bags(STACK_OF(PKCS12_SAFEBAG)* target, PKCS12* source,
         EVP_PKEY_free(key);
         if (p8 != nullptr) {
           PKCS12_SAFEBAG* newBag = PKCS12_SAFEBAG_create_pkcs8_encrypt(
-              NID_pbes2, password.c_str(), static_cast<int>(password.size()), nullptr, 0, 2048,
-              p8);
+              NID_pbes2, password.c_str(), static_cast<int>(password.size()), nullptr, 0, 2048, p8);
           PKCS8_PRIV_KEY_INFO_free(p8);
           if (newBag != nullptr) {
             if (friendlyName != nullptr) {
@@ -484,7 +483,7 @@ int findFreeTcpPort() {
 #endif
     return 0;
   }
-  sockaddr_in addr {};
+  sockaddr_in addr{};
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   addr.sin_port = 0;
@@ -559,11 +558,11 @@ bool OpenSslServerProcess::start(const std::vector<std::string>& args) {
   std::vector<char> mutableCmdline(cmdline.begin(), cmdline.end());
   mutableCmdline.push_back('\0');
 
-  STARTUPINFOA si {};
+  STARTUPINFOA si{};
   si.cb = sizeof(si);
   si.dwFlags = STARTF_USESHOWWINDOW;
   si.wShowWindow = SW_HIDE;
-  PROCESS_INFORMATION pi {};
+  PROCESS_INFORMATION pi{};
   if (!CreateProcessA(nullptr, mutableCmdline.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
                       nullptr, nullptr, &si, &pi)) {
     return false;

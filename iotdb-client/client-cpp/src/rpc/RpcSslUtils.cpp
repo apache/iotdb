@@ -580,23 +580,24 @@ void applyTlsProtocolVersion(SSL_CTX* ctx, const std::string& protocol) {
 
 SSL_CTX* createTlsClientContext(const SslConfig& config) {
   const std::string protocol = RpcSslUtils::resolveProtocol(config.sslProtocol);
-  SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+  std::unique_ptr<SSL_CTX, decltype(&SSL_CTX_free)> ctx(SSL_CTX_new(TLS_client_method()),
+                                                        SSL_CTX_free);
   if (ctx == nullptr) {
     throwSslError("Failed to create TLS client context");
   }
-  applyTlsProtocolVersion(ctx, protocol);
+  applyTlsProtocolVersion(ctx.get(), protocol);
 
   const std::string trustStore = config.effectiveTrustStore();
   if (hasText(trustStore)) {
-    loadTrustStore(ctx, trustStore, config.trustStorePwd);
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
+    loadTrustStore(ctx.get(), trustStore, config.trustStorePwd);
+    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_PEER, nullptr);
   } else {
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, nullptr);
+    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_NONE, nullptr);
   }
   if (hasText(config.keyStore)) {
-    loadTlsKeyStore(ctx, config.keyStore, config.keyStorePwd);
+    loadTlsKeyStore(ctx.get(), config.keyStore, config.keyStorePwd);
   }
-  return ctx;
+  return ctx.release();
 }
 
 SSL_CTX* createTlcpClientContext(const SslConfig& config) {
@@ -824,7 +825,6 @@ RpcSslUtils::createSslSocketFactory(const SslConfig& config) {
         SSL_CTX* ctx = createClientSslContext(*sslConfig);
         return std::make_shared<apache::thrift::transport::SSLContext>(ctx);
       });
-  factory->authenticate(false);
   return factory;
 }
 #elif defined(IOTDB_NTLS_PROVIDER_GMSSL)

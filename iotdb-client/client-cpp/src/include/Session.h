@@ -19,8 +19,6 @@
 #ifndef IOTDB_SESSION_H
 #define IOTDB_SESSION_H
 
-struct SslConfig;
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -40,6 +38,7 @@ struct SslConfig;
 #include "Date.h"
 #include "DeviceID.h"
 #include "SessionDataSet.h"
+#include "SslConfig.h"
 
 //== For compatible with Windows OS ==
 #ifndef LONG_LONG_MIN

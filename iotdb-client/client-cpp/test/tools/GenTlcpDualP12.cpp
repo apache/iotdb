@@ -76,7 +76,7 @@ void addLocalKeyId(PKCS12_SAFEBAG* bag, X509* cert) {
   }
 }
 
-void addCertAndKeyBags(STACK_OF(PKCS12_SAFEBAG)* bags, X509* cert, EVP_PKEY* key,
+void addCertAndKeyBags(STACK_OF(PKCS12_SAFEBAG) * bags, X509* cert, EVP_PKEY* key,
                        const char* friendlyName, const std::string& password) {
   PKCS12_SAFEBAG* certbag = PKCS12_SAFEBAG_create_cert(cert);
   PKCS12_add_friendlyname_utf8(certbag, friendlyName, -1);
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
 
   BIO* bio = BIO_new_file(outPath.c_str(), "wb");
   if (bio == nullptr || i2d_PKCS12_bio(bio, p12) != 1) {
-  std::cerr << "failed to write " << outPath << "\n";
+    std::cerr << "failed to write " << outPath << "\n";
     BIO_free(bio);
     PKCS12_free(p12);
     return 5;

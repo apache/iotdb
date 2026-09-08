@@ -238,6 +238,8 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 |------------|------------|
 | `WITH_SSL` | `with.ssl`（默认 `ON`，关闭用 `-Dwith.ssl=OFF`） |
 | `IOTDB_NTLS_PROVIDER` | `ntls.provider`（`TONGSUO` 或 `GMSSL`） |
+| `TONGSUO_GIT_REF` | `tongsuo.git.ref`（默认固定到 commit `0aed892c`） |
+| `TONGSUO_SHA256` | `tongsuo.sha256`（Tongsuo 源码归档校验值） |
 | `IOTDB_GMSSL_ROOT_DIR` | `gmssl.root.dir` |
 | `IOTDB_OFFLINE` | `iotdb.offline` |
 | `BUILD_TESTING` | `build.tests` |
@@ -247,7 +249,7 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 
 SSL 默认开启（`WITH_SSL=ON`）。支持的 NTLS Provider：
 
-- `TONGSUO`（默认）：源码构建 Tongsuo 8.4-stable，支持 TLS/TLCP 及
+- `TONGSUO`（默认）：源码构建固定到 commit `0aed892c` 的 Tongsuo 8.4-stable，支持 TLS/TLCP 及
   PKCS12、PEM 凭据。
 - `GMSSL`：使用预安装的 GmSSL 3.2 原生 TLCP API，支持 TLCP 及 PEM 凭据。
   OCL 未实现 Thrift 所需的完整 OpenSSL API，因此不使用 OCL。

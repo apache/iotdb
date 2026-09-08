@@ -23,6 +23,8 @@
 #include <memory>
 #include <string>
 
+#include "SslConfig.h"
+
 #if WITH_SSL
 #if defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 #include <openssl/ssl.h>
@@ -31,24 +33,6 @@
 #include <gmssl/tls.h>
 #endif
 #endif
-
-struct SslConfig {
-  bool useSsl = false;
-  std::string sslProtocol = "TLS";
-  std::string trustStore;
-  std::string trustStorePwd;
-  std::string keyStore;
-  std::string keyStorePwd;
-  /** TLCP PEM client certificate chain; provider-specific ordering is documented in README. */
-  std::string tlcpCertChainFile;
-  /** TLCP PEM client private key bundle; provider-specific contents are documented in README. */
-  std::string tlcpPrivateKeyFile;
-  std::string tlcpPrivateKeyPwd;
-  /** Legacy PEM trust certificate path; used when trustStore is empty. */
-  std::string trustCertFilePath;
-
-  std::string effectiveTrustStore() const;
-};
 
 class RpcSslUtils {
 public:

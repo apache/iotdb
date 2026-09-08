@@ -24,8 +24,6 @@
 
 #include "Session.h"
 
-struct SslConfig;
-
 class TableSession {
 private:
   std::shared_ptr<Session> session_;
