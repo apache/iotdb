@@ -369,6 +369,22 @@ jobs:
           unzip -q -o "${PKG_TARBALL}" -d "${PKG_UNPACK}"
           PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
           test -n "${PKG_ROOT}"
+          OPENSSL_BUILD_INSTALL="${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target/build/_deps/openssl/install"
+          test -d "${OPENSSL_BUILD_INSTALL}"
+          rm -rf "${RUNNER_TEMP}/openssl-build-install-hidden"
+          mv "${OPENSSL_BUILD_INSTALL}" "${RUNNER_TEMP}/openssl-build-install-hidden"
+          SSL_DYLIB=$(find "${PKG_ROOT}/lib" -type f -name 'libssl*.dylib' -print -quit)
+          CRYPTO_DYLIB=$(find "${PKG_ROOT}/lib" -type f -name 'libcrypto*.dylib' -print -quit)
+          test -n "${SSL_DYLIB}"
+          test -n "${CRYPTO_DYLIB}"
+          otool -D "${SSL_DYLIB}" | grep -F "@rpath/$(basename "${SSL_DYLIB}")"
+          otool -D "${CRYPTO_DYLIB}" | grep -F "@rpath/$(basename "${CRYPTO_DYLIB}")"
+          otool -L "${SSL_DYLIB}" | grep -F "@rpath/$(basename "${CRYPTO_DYLIB}")"
+          if otool -L "${PKG_ROOT}/lib/libiotdb_session.dylib" "${SSL_DYLIB}" "${CRYPTO_DYLIB}" \
+              | grep -F "${GITHUB_WORKSPACE}"; then
+            echo "Packaged dylibs still reference the build workspace"
+            exit 1
+          fi
           EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
           cmake -S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" \
             -DCMAKE_BUILD_TYPE=Release \

@@ -19,10 +19,12 @@
 
 #include <catch.hpp>
 
+#include <algorithm>
 #include <cstdlib>
 #include <memory>
 #include <string>
 
+#include "NodesSupplier.h"
 #include "Session.h"
 #include "SessionBuilder.h"
 #include "SessionC.h"
@@ -47,6 +49,17 @@ template <typename Builder> void configureTls(Builder& builder) {
     builder.clientCertificateFilePath(fixture("client.crt"))
         ->clientPrivateKeyFilePath(fixture("client.key"));
   }
+}
+
+SslConfig sslConfig() {
+  SslConfig config;
+  config.useSsl = true;
+  config.trustCertFilePath = fixture("ca.crt");
+  if (mutualTlsEnabled()) {
+    config.clientCertificateFilePath = fixture("client.crt");
+    config.clientPrivateKeyFilePath = fixture("client.key");
+  }
+  return config;
 }
 
 void requireDataSet(std::unique_ptr<SessionDataSet> dataSet) {
@@ -116,6 +129,33 @@ TEST_CASE("C APIs communicate with a TLS-enabled IoTDB", "[tls]") {
   requireCDataSet(tableDataSet);
   REQUIRE(ts_table_session_close(tableSession) == TS_OK);
   ts_table_session_destroy(tableSession);
+}
+
+TEST_CASE("TLS node discovery uses the final SSL configuration and supports failover", "[tls]") {
+  Session session("127.0.0.1", 6667, "root", "root");
+  session.setSslConfig(sslConfig());
+  session.open();
+  requireDataSet(session.executeQueryStatement("SHOW VERSION"));
+  session.close();
+
+  TEndPoint unreachable;
+  unreachable.__set_ip("127.0.0.1");
+  unreachable.__set_port(1);
+  TEndPoint bootstrap;
+  bootstrap.__set_ip("127.0.0.1");
+  bootstrap.__set_port(6667);
+  auto supplier = NodesSupplier::create({unreachable, bootstrap}, "root", "root", sslConfig());
+  auto discovered = supplier->getEndPointList();
+  auto discoveredEndpoint =
+      std::find_if(discovered.begin(), discovered.end(), [](const TEndPoint& node) {
+        return node.ip == "localhost" && node.port == 6667;
+      });
+  REQUIRE(discoveredEndpoint != discovered.end());
+
+  ThriftConnection discoveredConnection(*discoveredEndpoint);
+  discoveredConnection.init("root", "root", false, sslConfig());
+  requireDataSet(discoveredConnection.executeQueryStatement("SHOW VERSION"));
+  discoveredConnection.close();
 }
 
 TEST_CASE("mTLS server rejects a client without a certificate", "[mtls]") {

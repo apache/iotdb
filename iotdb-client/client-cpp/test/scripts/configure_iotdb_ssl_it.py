@@ -42,6 +42,7 @@ def configure(dist_root: Path, fixtures_root: Path, mode: str) -> None:
     if mode == "plain":
         text = properties.read_text(encoding="utf-8")
         for key, value in {
+            "dn_rpc_address": "127.0.0.1",
             "enable_thrift_ssl": "false",
             "thrift_ssl_client_auth": "false",
             "key_store_path": "",
@@ -87,6 +88,7 @@ def configure(dist_root: Path, fixtures_root: Path, mode: str) -> None:
 
     text = properties.read_text(encoding="utf-8")
     settings = {
+        "dn_rpc_address": "localhost",
         "enable_thrift_ssl": "true",
         "thrift_ssl_client_auth": str(mutual_tls).lower(),
         "key_store_path": server_store.as_posix(),

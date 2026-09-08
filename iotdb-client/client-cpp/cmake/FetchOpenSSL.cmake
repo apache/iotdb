@@ -180,6 +180,58 @@ if(NOT EXISTS "${_ossl_stamp}")
     file(TOUCH "${_ossl_stamp}")
 endif()
 
+if(APPLE)
+    # OpenSSL's Darwin build records its absolute installation prefix in each dylib. Rewrite the
+    # IDs before iotdb_session links against them so both the client and libssl resolve the bundled
+    # libraries relative to the package's lib/ directory.
+    find_program(_install_name_tool NAMES install_name_tool REQUIRED)
+    find_program(_otool NAMES otool REQUIRED)
+    find_library(_ossl_ssl_dylib NAMES ssl
+            PATHS "${_ossl_inst}/lib" "${_ossl_inst}/lib64" NO_DEFAULT_PATH)
+    find_library(_ossl_crypto_dylib NAMES crypto
+            PATHS "${_ossl_inst}/lib" "${_ossl_inst}/lib64" NO_DEFAULT_PATH)
+    if(NOT _ossl_ssl_dylib OR NOT _ossl_crypto_dylib)
+        message(FATAL_ERROR "[OpenSSL] built Darwin dylibs were not found")
+    endif()
+    get_filename_component(_ossl_ssl_real "${_ossl_ssl_dylib}" REALPATH)
+    get_filename_component(_ossl_crypto_real "${_ossl_crypto_dylib}" REALPATH)
+    get_filename_component(_ossl_ssl_name "${_ossl_ssl_real}" NAME)
+    get_filename_component(_ossl_crypto_name "${_ossl_crypto_real}" NAME)
+
+    execute_process(
+            COMMAND "${_install_name_tool}" -id "@rpath/${_ossl_ssl_name}" "${_ossl_ssl_real}"
+            RESULT_VARIABLE _rc)
+    if(NOT _rc EQUAL 0)
+        message(FATAL_ERROR "[OpenSSL] failed to make the libssl install name relocatable")
+    endif()
+    execute_process(
+            COMMAND "${_install_name_tool}" -id "@rpath/${_ossl_crypto_name}" "${_ossl_crypto_real}"
+            RESULT_VARIABLE _rc)
+    if(NOT _rc EQUAL 0)
+        message(FATAL_ERROR "[OpenSSL] failed to make the libcrypto install name relocatable")
+    endif()
+
+    execute_process(COMMAND "${_otool}" -L "${_ossl_ssl_real}"
+            OUTPUT_VARIABLE _ossl_ssl_dependencies RESULT_VARIABLE _rc)
+    if(NOT _rc EQUAL 0)
+        message(FATAL_ERROR "[OpenSSL] failed to inspect libssl dependencies")
+    endif()
+    string(REGEX MATCH "[^\n\t ]*libcrypto[^\n\t ]*\\.dylib"
+            _ossl_crypto_dependency "${_ossl_ssl_dependencies}")
+    if(NOT _ossl_crypto_dependency)
+        message(FATAL_ERROR "[OpenSSL] libssl does not reference the expected libcrypto dylib")
+    endif()
+    if(NOT _ossl_crypto_dependency STREQUAL "@rpath/${_ossl_crypto_name}")
+        execute_process(
+                COMMAND "${_install_name_tool}" -change "${_ossl_crypto_dependency}"
+                        "@rpath/${_ossl_crypto_name}" "${_ossl_ssl_real}"
+                RESULT_VARIABLE _rc)
+        if(NOT _rc EQUAL 0)
+            message(FATAL_ERROR "[OpenSSL] failed to make the libssl dependency relocatable")
+        endif()
+    endif()
+endif()
+
 set(OPENSSL_ROOT_DIR "${_ossl_inst}" CACHE PATH "OpenSSL root" FORCE)
 set(OPENSSL_USE_STATIC_LIBS OFF)
 find_package(OpenSSL REQUIRED)
