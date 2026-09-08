@@ -233,10 +233,23 @@ set(OPENSSL_ROOT_DIR "${_tongsuo_inst}" CACHE PATH "Tongsuo install root" FORCE)
 set(OPENSSL_USE_STATIC_LIBS OFF)
 # Do not reuse paths cached by an earlier configure that resolved the system
 # OpenSSL. WITH_SSL requires Tongsuo because RpcSslUtils uses its TLCP APIs.
-unset(OPENSSL_INCLUDE_DIR CACHE)
+#
+# OPENSSL_ROOT_DIR alone is not sufficient on macOS: Homebrew's /usr/local/include
+# can still win FindOpenSSL's header search even while the libraries are resolved
+# from OPENSSL_ROOT_DIR. That produces an unusable system-header/Tongsuo-library
+# combination, so pin the headers to the Tongsuo installation as well.
+set(OPENSSL_INCLUDE_DIR "${_tongsuo_inst}/include"
+        CACHE PATH "Tongsuo include directory" FORCE)
 unset(OPENSSL_SSL_LIBRARY CACHE)
 unset(OPENSSL_CRYPTO_LIBRARY CACHE)
 find_package(OpenSSL REQUIRED)
+get_filename_component(_tongsuo_expected_include "${_tongsuo_inst}/include" REALPATH)
+get_filename_component(_tongsuo_resolved_include "${OPENSSL_INCLUDE_DIR}" REALPATH)
+if(NOT _tongsuo_resolved_include STREQUAL _tongsuo_expected_include)
+    message(FATAL_ERROR
+            "[Tongsuo] FindOpenSSL selected headers from ${OPENSSL_INCLUDE_DIR}; "
+            "expected ${_tongsuo_inst}/include")
+endif()
 set(IOTDB_NTLS_RUNTIME_LIBRARIES
         "${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY}"
         CACHE INTERNAL "NTLS provider runtime libraries" FORCE)
