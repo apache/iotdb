@@ -73,7 +73,7 @@ public class RowImpl implements Row {
     if (columnIndex >= size()) {
       throw new IndexOutOfBoundsException(UdfApiMessages.INDEX_OUT_OF_BOUND);
     }
-    return (double) rowRecord[columnIndex];
+    return ((Number) rowRecord[columnIndex]).doubleValue();
   }
 
   @Override
