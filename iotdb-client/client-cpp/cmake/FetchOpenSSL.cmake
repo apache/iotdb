@@ -102,8 +102,10 @@ if(NOT EXISTS "${_ossl_stamp}")
     message(STATUS "[OpenSSL] configuring -> ${_ossl_inst}")
     if(WIN32)
         find_program(_ossl_perl NAMES perl REQUIRED)
-        set(_vswhere "$ENV{ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe")
-        if(NOT EXISTS "${_vswhere}")
+        find_program(_vswhere NAMES vswhere.exe
+                PATHS "$ENV{ProgramFiles}/Microsoft Visual Studio/Installer"
+                      "C:/Program Files (x86)/Microsoft Visual Studio/Installer")
+        if(NOT _vswhere)
             message(FATAL_ERROR "[OpenSSL] vswhere.exe was not found")
         endif()
         if(CMAKE_GENERATOR MATCHES "Visual Studio ([0-9]+)")
