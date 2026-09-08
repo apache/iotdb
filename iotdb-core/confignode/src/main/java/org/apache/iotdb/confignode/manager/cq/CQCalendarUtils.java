@@ -22,6 +22,7 @@ import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import org.apache.tsfile.utils.TimeDuration;
 
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -37,15 +38,20 @@ public final class CQCalendarUtils {
   }
 
   public static long applyVector(long base, long months, long fixed, ZoneId zone) {
-    Instant instant = toInstant(base);
-    if (months != 0) {
-      ZonedDateTime local = instant.atZone(zone);
-      instant = local.toLocalDateTime().plusMonths(months).atZone(zone).toInstant();
+    try {
+      Instant instant = toInstant(base);
+      if (months != 0) {
+        ZonedDateTime local = instant.atZone(zone);
+        instant = local.toLocalDateTime().plusMonths(months).atZone(zone).toInstant();
+      }
+      if (fixed != 0) {
+        instant = instant.plusNanos(toNanos(fixed));
+      }
+      return fromInstant(instant);
+    } catch (ArithmeticException | DateTimeException e) {
+      throw new IllegalArgumentException(
+          ManagerMessages.EXCEPTION_CQ_TIMESTAMP_OVERFLOWS_CONFIGURED_PRECISION_F5FB230C, e);
     }
-    if (fixed != 0) {
-      instant = instant.plusNanos(toNanos(fixed));
-    }
-    return fromInstant(instant);
   }
 
   public static long occurrence(long boundary, TimeDuration every, long index, ZoneId zone) {
