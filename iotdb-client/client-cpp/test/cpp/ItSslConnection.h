@@ -36,7 +36,7 @@
 extern "C" {
 #endif
 
-/** Apply one-way TLS settings for integration tests against a TLS-enabled IoTDB. */
+/** Apply TLS settings for integration tests, including a client key store in mutual TLS mode. */
 void it_ssl_configure_tree_session(CSession* session);
 void it_ssl_configure_table_session(CTableSession* session);
 

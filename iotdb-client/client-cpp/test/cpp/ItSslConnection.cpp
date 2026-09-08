@@ -21,6 +21,7 @@
 
 #if defined(WITH_SSL) && defined(IOTDB_RPC_SSL_IT)
 
+#include <cstdlib>
 #include <fstream>
 #include <string>
 
@@ -104,6 +105,16 @@ std::string tlsTrustStorePath() {
   return path;
 }
 
+std::string tlsKeyStorePath() {
+  static const std::string path = joinPath(joinPath(fixturesRoot(), "tls"), "tls-client.p12");
+  return path;
+}
+
+bool mutualTlsEnabled() {
+  const char* value = std::getenv("IOTDB_CPP_SSL_MUTUAL_AUTH");
+  return value != nullptr && std::string(value) == "1";
+}
+
 } // namespace
 
 void it_ssl_configure_tree_session(CSession* session) {
@@ -113,6 +124,9 @@ void it_ssl_configure_tree_session(CSession* session) {
   ts_session_set_use_ssl(session, true);
   ts_session_set_ssl_protocol(session, "TLS");
   ts_session_set_trust_store(session, tlsTrustStorePath().c_str(), kStorePassword);
+  if (mutualTlsEnabled()) {
+    ts_session_set_key_store(session, tlsKeyStorePath().c_str(), kStorePassword);
+  }
 }
 
 void it_ssl_configure_table_session(CTableSession* session) {
@@ -122,6 +136,9 @@ void it_ssl_configure_table_session(CTableSession* session) {
   ts_table_session_set_use_ssl(session, true);
   ts_table_session_set_ssl_protocol(session, "TLS");
   ts_table_session_set_trust_store(session, tlsTrustStorePath().c_str(), kStorePassword);
+  if (mutualTlsEnabled()) {
+    ts_table_session_set_key_store(session, tlsKeyStorePath().c_str(), kStorePassword);
+  }
 }
 
 namespace itssl {
@@ -131,6 +148,9 @@ void configureSessionBuilder(SessionBuilder& builder) {
       ->sslProtocol("TLS")
       ->trustStore(tlsTrustStorePath())
       ->trustStorePwd(kStorePassword);
+  if (mutualTlsEnabled()) {
+    builder.keyStore(tlsKeyStorePath())->keyStorePwd(kStorePassword);
+  }
 }
 
 void configureTableSessionBuilder(TableSessionBuilder& builder) {
@@ -138,6 +158,9 @@ void configureTableSessionBuilder(TableSessionBuilder& builder) {
       ->sslProtocol("TLS")
       ->trustStore(tlsTrustStorePath())
       ->trustStorePwd(kStorePassword);
+  if (mutualTlsEnabled()) {
+    builder.keyStore(tlsKeyStorePath())->keyStorePwd(kStorePassword);
+  }
 }
 
 void configureSessionPoolBuilder(SessionPoolBuilder& builder) {
@@ -145,6 +168,9 @@ void configureSessionPoolBuilder(SessionPoolBuilder& builder) {
       ->sslProtocol("TLS")
       ->trustStore(tlsTrustStorePath())
       ->trustStorePwd(kStorePassword);
+  if (mutualTlsEnabled()) {
+    builder.keyStore(tlsKeyStorePath())->keyStorePwd(kStorePassword);
+  }
 }
 
 std::shared_ptr<Session> newOpenedTreeSession() {

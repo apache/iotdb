@@ -148,7 +148,7 @@
                         </configuration>
                     </execution>
                     <!-- Run ctest against the test binaries built in cmake-compile -->
-                    <!-- CTest is driven by run-cpp-it-phases (plain then TLS IoTDB). -->
+                    <!-- CTest is driven by run-cpp-it-phases (plain, TLS, then mutual TLS IoTDB). -->
                     <execution>
                         <id>cmake-run-test</id>
                         <goals>

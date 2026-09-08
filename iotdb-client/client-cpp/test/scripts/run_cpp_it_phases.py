@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-"""Run C++ client integration tests in two IoTDB modes: plain then TLS."""
+"""Run C++ client integration tests against plain, TLS, and mutual TLS IoTDB."""
 
 from __future__ import annotations
 
@@ -107,7 +107,18 @@ def main() -> int:
     finally:
         stop_iotdb(dist_root)
 
-    print("=== Phase 2b: NTLS (no IoTDB; openssl s_server) ===")
+    print("=== Phase 3: restart IoTDB with mutual TLS ===")
+    run(
+        [sys.executable, str(configure), str(dist_root), str(fixtures_root), "mutual"],
+        cwd=scripts_root,
+    )
+    try:
+        start_iotdb(dist_root, start_script, args.wait_seconds)
+        run(ctest_base + ["-L", "mtls"], build_dir)
+    finally:
+        stop_iotdb(dist_root)
+
+    print("=== Phase 4: NTLS (no IoTDB; openssl s_server) ===")
     run(ctest_base + ["-L", "ntls"], build_dir)
 
     print("All C++ integration test phases passed.")

@@ -29,6 +29,7 @@ from pathlib import Path
 
 STORE_PASSWORD = "thrift"
 SERVER_PKCS12 = "tls-server.p12"
+SERVER_TRUSTSTORE = "tls-server-trust.p12"
 
 
 def replace_property(text: str, key: str, value: str) -> str:
@@ -71,7 +72,7 @@ def configure_plain(dist_root: Path) -> int:
     return 0
 
 
-def configure_tls(dist_root: Path, fixtures_root: Path) -> int:
+def configure_tls(dist_root: Path, fixtures_root: Path, require_client_auth: bool) -> int:
     props_path = dist_root / "conf" / "iotdb-system.properties"
     if not props_path.is_file():
         print(f"iotdb-system.properties not found: {props_path}", file=sys.stderr)
@@ -86,24 +87,61 @@ def configure_tls(dist_root: Path, fixtures_root: Path) -> int:
     shutil.copy2(source, ssl_dir / SERVER_PKCS12)
 
     key_store = (ssl_dir / SERVER_PKCS12).as_posix()
+    trust_store = ""
+    if require_client_auth:
+        ca_cert = fixtures_root / "tls" / "ca.crt"
+        if not ca_cert.is_file():
+            print(f"fixture missing: {ca_cert}", file=sys.stderr)
+            return 1
+        keytool = shutil.which("keytool")
+        if keytool is None:
+            print("keytool not found; a JDK is required for the mutual TLS IT", file=sys.stderr)
+            return 1
+        trust_store_path = ssl_dir / SERVER_TRUSTSTORE
+        trust_store_path.unlink(missing_ok=True)
+        subprocess.run(
+            [
+                keytool,
+                "-importcert",
+                "-noprompt",
+                "-alias",
+                "cpp-ssl-it-ca",
+                "-file",
+                str(ca_cert),
+                "-keystore",
+                str(trust_store_path),
+                "-storetype",
+                "PKCS12",
+                "-storepass",
+                STORE_PASSWORD,
+            ],
+            check=True,
+        )
+        trust_store = trust_store_path.as_posix()
 
     text = props_path.read_text(encoding="utf-8")
     text = replace_property(text, "enable_thrift_ssl", "true")
-    text = replace_property(text, "thrift_ssl_client_auth", "false")
+    text = replace_property(
+        text, "thrift_ssl_client_auth", str(require_client_auth).lower()
+    )
     text = replace_property(text, "key_store_path", key_store)
     text = replace_property(text, "key_store_pwd", STORE_PASSWORD)
-    text = replace_property(text, "trust_store_path", "")
-    text = replace_property(text, "trust_store_pwd", "")
+    text = replace_property(text, "trust_store_path", trust_store)
+    text = replace_property(
+        text, "trust_store_pwd", STORE_PASSWORD if require_client_auth else ""
+    )
     text = replace_property(text, "ssl_protocol", "TLS")
     props_path.write_text(text, encoding="utf-8", newline="\n")
-    print(f"Configured TLS IT server properties in {props_path}")
+    mode = "mutual TLS" if require_client_auth else "TLS"
+    print(f"Configured {mode} IT server properties in {props_path}")
     return 0
 
 
 def main() -> int:
     if len(sys.argv) < 3:
         print(
-            "usage: configure_iotdb_ssl_it.py <iotdb-dist-root> <fixtures-root> [enable|disable]",
+            "usage: configure_iotdb_ssl_it.py <iotdb-dist-root> <fixtures-root> "
+            "[enable|mutual|disable]",
             file=sys.stderr,
         )
         return 2
@@ -118,7 +156,11 @@ def main() -> int:
 
     if mode in ("enable", "tls", "on"):
         stop_iotdb(dist_root)
-        return configure_tls(dist_root, fixtures_root)
+        return configure_tls(dist_root, fixtures_root, False)
+
+    if mode in ("mutual", "mtls"):
+        stop_iotdb(dist_root)
+        return configure_tls(dist_root, fixtures_root, True)
 
     print(f"unknown mode: {mode}", file=sys.stderr)
     return 2

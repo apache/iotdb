@@ -179,4 +179,18 @@ TEST_CASE("Plain client cannot connect to TLS-enabled IoTDB", "[rpc][ssl][iotdb]
   REQUIRE_THROWS_AS(session.open(false), IoTDBException);
 }
 
+TEST_CASE("TLS client without a key store cannot connect to mutual TLS IoTDB",
+          "[.][rpc][ssl][iotdb][mutual][e2e]") {
+  SessionBuilder builder;
+  builder.host("127.0.0.1")
+      ->rpcPort(6667)
+      ->username("root")
+      ->password("root")
+      ->useSSL(true)
+      ->sslProtocol("TLS")
+      ->trustStore(ssltest::tlsFixture("tls-trust.p12"))
+      ->trustStorePwd(ssltest::kStorePassword);
+  REQUIRE_THROWS(builder.build());
+}
+
 #endif // WITH_SSL && IOTDB_RPC_SSL_IT

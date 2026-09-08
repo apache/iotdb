@@ -31,6 +31,7 @@ if(CATCH2_INCLUDE_DIR)
 else()
     set(_catch2_include_dir "${CMAKE_CURRENT_BINARY_DIR}/catch2")
 endif()
+
 set(_catch2_header "${_catch2_include_dir}/catch.hpp")
 if(NOT EXISTS "${_catch2_header}")
     file(MAKE_DIRECTORY "${_catch2_include_dir}")
@@ -220,6 +221,17 @@ else()
     endforeach()
 endif()
 
+if(WITH_SSL AND IOTDB_NTLS_PROVIDER STREQUAL "TONGSUO")
+    if(MSVC)
+        add_test(NAME rpcSslMutualIotdbTest CONFIGURATIONS Release
+                COMMAND rpc_ssl_utils_tests "[iotdb][e2e]")
+    else()
+        add_test(NAME rpcSslMutualIotdbTest COMMAND rpc_ssl_utils_tests "[iotdb][e2e]")
+    endif()
+    set_tests_properties(rpcSslMutualIotdbTest PROPERTIES
+            ENVIRONMENT "IOTDB_CPP_SSL_MUTUAL_AUTH=1")
+endif()
+
 # Run sequentially: parallel ctest overloads the single local IoTDB instance.
 # sessionUtilsTest is a pure unit test and can run anytime.
 set_tests_properties(
@@ -231,3 +243,8 @@ set_tests_properties(
 set_tests_properties(
         rpcNtlsUtilsTest
         PROPERTIES LABELS "ntls" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
+if(TEST rpcSslMutualIotdbTest)
+    set_tests_properties(
+            rpcSslMutualIotdbTest
+            PROPERTIES LABELS "mtls" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
+endif()
