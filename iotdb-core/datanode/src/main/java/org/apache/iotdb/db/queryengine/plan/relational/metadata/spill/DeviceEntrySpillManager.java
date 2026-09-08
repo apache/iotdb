@@ -80,11 +80,7 @@ public final class DeviceEntrySpillManager {
 
   public void deregisterQuery(String queryId) throws IOException {
     queryDirectories.remove(queryId);
-    Path directory = resolveQueryDirectory(queryId);
-    if (!Files.exists(directory)) {
-      return;
-    }
-    deleteDirectoryIfExists(directory);
+    deleteDirectoryIfExists(resolveQueryDirectory(queryId));
   }
 
   public byte[] readSegment(String queryId, String planNodeId, int segmentId) throws IOException {
