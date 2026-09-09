@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.event.common.statement;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -92,17 +91,8 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
-    final long targetSize = statement.ramBytesUsed() + INSTANCE_SIZE;
-    if (!PipeDataNodeResourceManager.memory().tryResize(allocatedMemoryBlock, targetSize)) {
-      throw new PipeRuntimeOutOfMemoryCriticalException(
-          String.format(
-              DataNodePipeMessages
-                  .PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC,
-              0,
-              PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes(),
-              PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
-              targetSize - allocatedMemoryBlock.getMemoryUsageInBytes()));
-    }
+    PipeDataNodeResourceManager.memory()
+        .forceResize(allocatedMemoryBlock, statement.ramBytesUsed() + INSTANCE_SIZE);
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeSinglePipeMetrics.getInstance()
           .increaseRawTabletEventCount(pipeName, creationTime);

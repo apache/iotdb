@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeSinkWithSchedulingDelay;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -416,7 +417,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       final List<Pair<String, File>> dbTsFilePairs, final int transferredFileCount) {
     for (int i = transferredFileCount; i < dbTsFilePairs.size(); i++) {
       final Pair<String, File> untransferredFile = dbTsFilePairs.get(i);
-      if (!org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(untransferredFile.right)) {
+      if (!FileUtils.deleteFileIfExist(untransferredFile.right)) {
         LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, untransferredFile);
       }
     }

@@ -200,16 +200,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     if (readBuffer == null) {
       memoryBlock =
           PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
-      try {
-        readBuffer = new byte[readFileBufferSize];
-      } catch (final RuntimeException | Error e) {
-        try {
-          releaseReadBufferMemoryBlock();
-        } catch (final RuntimeException releaseException) {
-          e.addSuppressed(releaseException);
-        }
-        throw e;
-      }
+      readBuffer = new byte[readFileBufferSize];
     }
 
     if (reader == null) {

@@ -245,27 +245,37 @@ public class PipeTransferTrackableHandlerTest {
   }
 
   @Test
-  public void testWholeRequestCallbackIsHandledOnlyOnce() throws Exception {
+  public void testCompletionFailureReachesErrorCallback() throws Exception {
     commonConfig.setPipeSinkRequestSliceThresholdBytes(1024);
     final IoTDBDataRegionAsyncSink sink = Mockito.mock(IoTDBDataRegionAsyncSink.class);
     final AsyncPipeDataTransferServiceClient client =
         Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    final TEndPoint endPoint = new TEndPoint("127.0.0.1", 6667);
+    final PipeException exception = new PipeException("recording receiver status failed");
+    Mockito.when(client.getEndPoint()).thenReturn(endPoint);
+    Mockito.doThrow(exception)
+        .when(sink)
+        .recordReceiverStatus(Mockito.eq(endPoint), Mockito.any(TSStatus.class));
     Mockito.doAnswer(
             invocation -> {
               final AsyncMethodCallback<TPipeTransferResp> callback = invocation.getArgument(1);
-              callback.onComplete(successResp());
-              callback.onComplete(successResp());
+              // TAsyncMethodCall reports exceptions from onComplete through onError.
+              try {
+                callback.onComplete(successResp());
+              } catch (final Exception e) {
+                callback.onError(e);
+              }
               return null;
             })
         .when(client)
         .pipeTransfer(Mockito.any(TPipeTransferReq.class), Mockito.any());
 
-    final TestPipeTransferTrackableHandler handler =
-        new TestPipeTransferTrackableHandler(sink, false);
+    final TestPipeTransferTrackableHandler handler = new TestPipeTransferTrackableHandler(sink);
     handler.transfer(client, createReq(1));
 
-    Assert.assertEquals(1, handler.completeCount);
-    Mockito.verify(sink, Mockito.never()).eliminateHandler(handler, false);
+    Assert.assertEquals(0, handler.completeCount);
+    Assert.assertEquals(1, handler.errorCount);
+    Mockito.verify(sink).eliminateHandler(handler, false);
   }
 
   @Test
@@ -407,16 +417,9 @@ public class PipeTransferTrackableHandlerTest {
 
     private int completeCount;
     private int errorCount;
-    private final boolean completeOnResponse;
 
     private TestPipeTransferTrackableHandler(final IoTDBDataRegionAsyncSink sink) {
-      this(sink, true);
-    }
-
-    private TestPipeTransferTrackableHandler(
-        final IoTDBDataRegionAsyncSink sink, final boolean completeOnResponse) {
       super(sink);
-      this.completeOnResponse = completeOnResponse;
     }
 
     private void transfer(
@@ -428,7 +431,7 @@ public class PipeTransferTrackableHandlerTest {
     @Override
     protected boolean onCompleteInternal(final TPipeTransferResp response) {
       completeCount++;
-      return completeOnResponse;
+      return true;
     }
 
     @Override
