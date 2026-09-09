@@ -237,7 +237,6 @@ public enum Metric {
   LOAD_TIME_COST("load_time_cost"),
   LOAD_POINT_COUNT("load_point_count"),
   MEMTABLE_POINT_COUNT("memtable_point_count"),
-  BINARY_ALLOCATOR("binary_allocator"),
   // memory related
   MEMORY_THRESHOLD_SIZE("memory_threshold_size"),
   MEMORY_ACTUAL_SIZE("memory_actual_size"),

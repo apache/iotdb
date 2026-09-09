@@ -107,6 +107,8 @@ public final class CommonMessages {
   public static final String BASE_VALUE_SHOULD_NOT_BE_NULL =
       "When comparing, base value should never be null";
   public static final String SIZE_MUST_BE_POSITIVE = "Size must be greater than 0";
+  public static final String EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B =
+      "Thread count must be greater than or equal to 0";
 
   // --- sync ---
   public static final String UNEXPECTED_SERIALIZATION_ERROR =
@@ -116,18 +118,6 @@ public final class CommonMessages {
   public static final String ENCRYPT_PASSWORD_ERROR = "meet error while encrypting password.";
   public static final String CLASSLOADER_NOT_DETERMINED =
       "A ClassLoader to load the class could not be determined.";
-
-  // --- binaryallocator ---
-  public static final String BINARY_ALLOCATOR_RUNNING_GC_EVICTION =
-      "Binary allocator running GC eviction";
-  public static final String BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC =
-      "Binary allocator is shutting down because of high GC time percentage {}%.";
-  public static final String AUTO_RELEASER_EXIT_INTERRUPTED =
-      "{} exits due to interruptedException.";
-  public static final String STOPPING_COMPONENT = "Stopping {}";
-  public static final String UNABLE_TO_STOP_AUTO_RELEASER =
-      "unable to stop auto releaser after {} ms";
-  public static final String UNABLE_TO_STOP_EVICTOR = "unable to stop evictor after {} ms";
 
   // --- startcheck / system.properties ---
   public static final String IOTDB_VERSION_TOO_OLD = "IoTDB version is too old";
