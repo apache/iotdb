@@ -70,14 +70,21 @@ public class DeviceEntryMaterializerTest {
   @Test
   public void testKeepSmallDataSetInline() throws Exception {
     List<DeviceEntry> expected = createEntries(3);
+    MPPQueryContext queryContext = new MPPQueryContext(new QueryId("20260909_023029_00001"));
     try (DeviceEntryMaterializer materializer =
-        new DeviceEntryMaterializer("q-inline", new PlanNodeId("scan-0"), Long.MAX_VALUE, true)) {
+        new DeviceEntryMaterializer(
+            "20260909_023029_00001",
+            new PlanNodeId("scan-0"),
+            Long.MAX_VALUE,
+            true,
+            queryContext)) {
       for (DeviceEntry entry : expected) {
         materializer.append(entry);
       }
       try (DeviceEntryDataSet dataSet = materializer.finish()) {
         assertFalse(dataSet.isSpilled());
         assertEquals(expected, dataSet.getInlineEntries());
+        assertFalse(queryContext.isDeviceEntrySpilled());
       }
     }
   }
@@ -85,9 +92,11 @@ public class DeviceEntryMaterializerTest {
   @Test
   public void testSpillAndReadMultipleSegments() throws Exception {
     List<DeviceEntry> expected = createEntries(20);
+    MPPQueryContext queryContext = new MPPQueryContext(new QueryId("20260909_023029_00001"));
     DeviceEntryDataSet dataSet;
     try (DeviceEntryMaterializer materializer =
-        new DeviceEntryMaterializer("q-spill", new PlanNodeId("scan-0"), 128, true)) {
+        new DeviceEntryMaterializer(
+            "20260909_023029_00001", new PlanNodeId("scan-0"), 128, true, queryContext)) {
       for (DeviceEntry entry : expected) {
         materializer.append(entry);
       }
@@ -96,6 +105,7 @@ public class DeviceEntryMaterializerTest {
     }
 
     assertTrue(dataSet.isSpilled());
+    assertTrue(queryContext.isDeviceEntrySpilled());
     assertEquals(expected.size(), dataSet.getEntryCount());
     List<DeviceEntry> actual = new ArrayList<>();
     try (DeviceEntryReader reader = dataSet.openReader()) {

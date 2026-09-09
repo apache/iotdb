@@ -165,6 +165,7 @@ public final class DeviceEntrySpillManager {
   }
 
   private void deleteDirectoryIfExists(Path directory) throws IOException {
+    // Avoid most concurrent conflicts when query with device entry spilled fails
     if (!Files.exists(directory)) {
       return;
     }
