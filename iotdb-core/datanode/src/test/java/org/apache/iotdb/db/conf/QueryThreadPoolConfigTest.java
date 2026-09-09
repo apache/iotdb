@@ -32,6 +32,15 @@ public class QueryThreadPoolConfigTest {
   public void testDefaultsAndPositiveSizes() throws Exception {
     IoTDBConfig config = new IoTDBConfig();
     assertSizes(config, 20, 10, 4);
+    assertAdditionalSizes(config, 0, 0);
+    assertEquals(
+        "0",
+        ConfigurationFileUtils.getConfigurationDefaultValue(
+            "driver_task_scheduler_notification_thread_count"));
+    assertEquals(
+        "0",
+        ConfigurationFileUtils.getConfigurationDefaultValue(
+            "fragment_instance_dispatch_thread_count"));
     assertEquals(
         "20",
         ConfigurationFileUtils.getConfigurationDefaultValue("coordinator_read_executor_size"));
@@ -54,6 +63,15 @@ public class QueryThreadPoolConfigTest {
           () -> config.setFragmentInstanceNotificationThreadCount(invalid));
     }
     assertSizes(config, 20, 10, 4);
+    for (int invalid : new int[] {-1, Integer.MIN_VALUE}) {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> config.setDriverTaskSchedulerNotificationThreadCount(invalid));
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> config.setFragmentInstanceDispatchThreadCount(invalid));
+    }
+    assertAdditionalSizes(config, 0, 0);
   }
 
   @Test
@@ -63,14 +81,25 @@ public class QueryThreadPoolConfigTest {
     properties.setProperty("coordinator_read_executor_size", "3");
     properties.setProperty("coordinator_scheduled_executor_size", "2");
     properties.setProperty("fragment_instance_notification_thread_count", "1");
+    properties.setProperty("driver_task_scheduler_notification_thread_count", "1");
+    properties.setProperty("fragment_instance_dispatch_thread_count", "2");
     descriptor.loadProperties(properties);
     assertSizes(descriptor.getConfig(), 3, 2, 1);
+    assertAdditionalSizes(descriptor.getConfig(), 1, 2);
 
     properties.setProperty("coordinator_read_executor_size", "6");
     properties.setProperty("coordinator_scheduled_executor_size", "5");
     properties.setProperty("fragment_instance_notification_thread_count", "4");
+    properties.setProperty("driver_task_scheduler_notification_thread_count", "4");
+    properties.setProperty("fragment_instance_dispatch_thread_count", "5");
     descriptor.loadHotModifiedProps(properties);
     assertSizes(descriptor.getConfig(), 3, 2, 1);
+    assertAdditionalSizes(descriptor.getConfig(), 1, 2);
+  }
+
+  private static void assertAdditionalSizes(IoTDBConfig config, int notification, int dispatch) {
+    assertEquals(notification, config.getDriverTaskSchedulerNotificationThreadCount());
+    assertEquals(dispatch, config.getFragmentInstanceDispatchThreadCount());
   }
 
   private static void assertSizes(IoTDBConfig config, int read, int scheduled, int notification) {

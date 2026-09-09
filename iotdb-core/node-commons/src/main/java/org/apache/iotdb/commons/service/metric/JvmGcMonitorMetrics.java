@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.service.metric;
 
-import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -121,9 +120,6 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     if (alertHandler != null && curData.getGcTimePercentage() > MAX_GC_TIME_PERCENTAGE) {
       alertHandler.alert(curData.clone());
     }
-
-    // Run GC eviction
-    BinaryAllocator.getInstance().runGcEviction(curData.getGcTimePercentage());
   }
 
   private long getTotalGCTime() {

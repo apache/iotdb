@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
@@ -33,6 +34,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
@@ -54,10 +56,13 @@ public class DriverTaskThread extends AbstractDriverThread {
                       (level + 1) * DRIVER_TASK_EXECUTION_TIME_SLICE_IN_MS, TimeUnit.MILLISECONDS))
           .toArray(Duration[]::new);
 
-  // We manage thread pool size directly, so create an unlimited pool
-  private static final Executor listeningExecutor =
-      IoTDBThreadPoolFactory.newCachedThreadPool(
-          ThreadName.DRIVER_TASK_SCHEDULER_NOTIFICATION.getName());
+  private static final Executor NOTIFICATION_EXECUTOR =
+      createNotificationExecutor(
+          IoTDBDescriptor.getInstance()
+              .getConfig()
+              .getDriverTaskSchedulerNotificationThreadCount());
+
+  private final Executor listeningExecutor;
 
   private final Ticker ticker;
 
@@ -67,8 +72,30 @@ public class DriverTaskThread extends AbstractDriverThread {
       IndexedBlockingQueue<DriverTask> queue,
       ITaskScheduler scheduler,
       ThreadProducer producer) {
+    this(workerId, tg, queue, scheduler, producer, NOTIFICATION_EXECUTOR);
+  }
+
+  DriverTaskThread(
+      String workerId,
+      ThreadGroup tg,
+      IndexedBlockingQueue<DriverTask> queue,
+      ITaskScheduler scheduler,
+      ThreadProducer producer,
+      Executor listeningExecutor) {
     super(workerId, tg, queue, scheduler, producer);
+    this.listeningExecutor = listeningExecutor;
     this.ticker = Ticker.systemTicker();
+  }
+
+  static ExecutorService createNotificationExecutor(int threadCount) {
+    String poolName = ThreadName.DRIVER_TASK_SCHEDULER_NOTIFICATION.getName();
+    if (threadCount == 0) {
+      return IoTDBThreadPoolFactory.newCachedThreadPool(poolName);
+    }
+    // Queue notifications instead of running them on threads completing driver futures, which
+    // may hold locks. Idle workers can exit after the query workload ends.
+    return IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
+        threadCount, 60, TimeUnit.SECONDS, poolName);
   }
 
   @Override
