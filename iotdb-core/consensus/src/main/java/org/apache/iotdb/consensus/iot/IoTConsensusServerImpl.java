@@ -116,7 +116,7 @@ public class IoTConsensusServerImpl {
   private final TreeSet<Peer> configuration;
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
-  private volatile IoTConsensusConfig config;
+  private IoTConsensusConfig config;
   private final ConsensusReqReader consensusReqReader;
   private volatile boolean active;
   private String newSnapshotDirName;
@@ -911,7 +911,6 @@ public class IoTConsensusServerImpl {
   /** This method is used for hot reload of IoTConsensusConfig. */
   public void reloadConsensusConfig(IoTConsensusConfig config) {
     this.config = config;
-    logDispatcher.reloadConfig(config);
   }
 
   /**
