@@ -166,6 +166,38 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
+  public void testCopyToRejectsAllowedExportDirectoryItself()
+      throws IoTDBConnectionException, IOException {
+    File exportDirectory = Files.createTempDirectory("iotdb-copy-to-directory").toFile();
+    File targetDirectory = new File(exportDirectory, "export");
+    String targetPath = targetDirectory.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+    String exportDirectoryPath =
+        targetDirectory.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      session.executeNonQueryStatement(
+          "set configuration \"copy_to_allowed_export_dirs\"='" + exportDirectoryPath + "'");
+      try {
+        try {
+          session.executeQueryStatement(
+              "copy table1 to '" + targetPath + "' (memory_threshold 1000000)");
+          Assert.fail("COPY TO should reject the allowed export directory itself");
+        } catch (StatementExecutionException e) {
+          Assert.assertTrue(
+              e.getMessage(), e.getMessage().contains("COPY TO target path is outside"));
+        }
+        Assert.assertFalse(targetDirectory.exists());
+      } finally {
+        session.executeNonQueryStatement("set configuration \"copy_to_allowed_export_dirs\"=''");
+      }
+    } finally {
+      Files.deleteIfExists(targetDirectory.toPath());
+      Files.deleteIfExists(exportDirectory.toPath());
+    }
+  }
+
+  @Test
   public void testCopyToUsesHotReloadedAllowedExportDirectory()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     File targetDirectory = Files.createTempDirectory("iotdb-copy-to-allowed").toFile();

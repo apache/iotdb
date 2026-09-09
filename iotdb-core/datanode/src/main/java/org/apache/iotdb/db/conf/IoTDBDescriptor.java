@@ -2784,7 +2784,8 @@ public class IoTDBDescriptor {
                 properties
                     .getProperty(
                         "copy_to_allowed_export_dirs",
-                        String.join(",", conf.getCopyToAllowedExportDirs()))
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "copy_to_allowed_export_dirs"))
                     .trim()
                     .split(","))
             .map(String::trim)
