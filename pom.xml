@@ -1846,11 +1846,11 @@
                         <groupId>org.codehaus.gmaven</groupId>
                         <artifactId>groovy-maven-plugin</artifactId>
                         <version>2.1.1</version>
-                        <!-- Only run this in the root module of the project -->
-                        <inherited>false</inherited>
                         <executions>
                             <execution>
                                 <id>compare-with-reference-list</id>
+                                <!-- Keep this check root-only without disabling inherited FMPP generation. -->
+                                <inherited>false</inherited>
                                 <phase>verify</phase>
                                 <goals>
                                     <goal>execute</goal>
