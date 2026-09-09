@@ -203,7 +203,9 @@ public final class DeviceEntrySortedMaterializer extends AbstractDeviceEntryMate
       return dataSet;
     } catch (IOException | RuntimeException e) {
       try {
-        cleanupOwnerDirectory();
+        if (isSpilled()) {
+          cleanupOwnerDirectory();
+        }
       } catch (IOException cleanupException) {
         e.addSuppressed(cleanupException);
       }
