@@ -90,6 +90,9 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    if (!isValidColumnForTypeConversion(columnIndex, dataType)) {
+      return false;
+    }
     if (LOGGER.isInfoEnabled()) {
       PipeLogger.log(
           LOGGER::info,
@@ -101,6 +104,28 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
         ArrayConverter.convert(dataTypes[columnIndex], dataType, columns[columnIndex]);
     dataTypes[columnIndex] = dataType;
     return true;
+  }
+
+  /**
+   * Returns whether a tablet column has all state required for type conversion.
+   *
+   * <p>Partial insert processing can leave a measurement slot without a data type or value column
+   * (and deserialized statements can contain arrays of different lengths). In that case the column
+   * must be treated as failed instead of being indexed by the conversion path.
+   */
+  protected boolean isValidColumnForTypeConversion(
+      final int columnIndex, final TSDataType dataType) {
+    return dataType != null
+        && dataTypes != null
+        && columns != null
+        && measurements != null
+        && columnIndex >= 0
+        && columnIndex < measurements.length
+        && columnIndex < dataTypes.length
+        && columnIndex < columns.length
+        && measurements[columnIndex] != null
+        && dataTypes[columnIndex] != null
+        && columns[columnIndex] != null;
   }
 
   protected boolean originalCheckAndCastDataType(int columnIndex, TSDataType dataType) {
