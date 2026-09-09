@@ -106,8 +106,7 @@ public class CQCalendarUtilsTest {
     long marchFirst = epochTimestamp(2024, 3, 1, 0, 0, UTC);
     task = calendarTask(boundary, marchFirst, new TimeDuration(0, day), start, end, UTC);
     assertEquals(
-        epochTimestamp(2024, 1, 29, 0, 0, UTC),
-        task.calculateCalendarRangeEndpoint(start, 60));
+        epochTimestamp(2024, 1, 29, 0, 0, UTC), task.calculateCalendarRangeEndpoint(start, 60));
   }
 
   @Test
