@@ -396,7 +396,14 @@ public class InferenceOperator implements ProcessOperator {
 
   static long calculateGeneratedTime(long maxTimestamp, long interval, long currentRowIndex) {
     try {
-      return Math.addExact(maxTimestamp, Math.multiplyExact(interval, currentRowIndex));
+      BigInteger generatedTime =
+          BigInteger.valueOf(maxTimestamp)
+              .add(BigInteger.valueOf(interval).multiply(BigInteger.valueOf(currentRowIndex)));
+      if (generatedTime.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0
+          || generatedTime.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+        throw new ArithmeticException();
+      }
+      return generatedTime.longValue();
     } catch (ArithmeticException e) {
       throw new ModelInferenceProcessException(GENERATED_TIME_COLUMN_OUT_OF_RANGE_MESSAGE);
     }

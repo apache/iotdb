@@ -611,14 +611,13 @@ public class DateTimeUtils {
             temp = Math.multiplyExact(temp, 12);
             unit = "mo";
           }
+          long componentCurrentTime =
+              isMonthUnit(unit) ? (currentTime == -1 ? -1 : Math.addExact(currentTime, total)) : -1;
           total =
               Math.addExact(
                   total,
                   DateTimeUtils.convertDurationStrToLong(
-                      currentTime == -1 ? -1 : Math.addExact(currentTime, total),
-                      temp,
-                      unit,
-                      timestampPrecision));
+                      componentCurrentTime, temp, unit, timestampPrecision));
           temp = 0;
         }
       }
@@ -626,6 +625,10 @@ public class DateTimeUtils {
     } catch (ArithmeticException e) {
       throw new SemanticException("Time duration is out of range.");
     }
+  }
+
+  private static boolean isMonthUnit(String unit) {
+    return "mo".equals(unit) || "month".equals(unit);
   }
 
   @TestOnly
