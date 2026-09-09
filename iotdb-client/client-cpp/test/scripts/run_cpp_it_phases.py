@@ -45,10 +45,11 @@ def server_script(dist_root: Path, action: str) -> Path:
     return dist_root / "sbin" / f"{action}-standalone.sh"
 
 
-def stop_server(dist_root: Path) -> None:
+def stop_server(dist_root: Path, env: dict[str, str]) -> None:
     subprocess.run(
         [str(server_script(dist_root, "stop"))],
         cwd=dist_root,
+        env=env,
         shell=sys.platform == "win32",
         check=False,
     )
@@ -70,10 +71,11 @@ def wait_for_rpc_port(timeout_seconds: int) -> None:
     raise TimeoutError(f"IoTDB RPC port did not become ready within {timeout_seconds} seconds")
 
 
-def start_server(dist_root: Path, wait_seconds: int) -> None:
+def start_server(dist_root: Path, wait_seconds: int, env: dict[str, str]) -> None:
     run(
         [str(server_script(dist_root, "start"))],
         dist_root,
+        env=env,
         shell=sys.platform == "win32",
     )
     wait_for_rpc_port(wait_seconds)
@@ -99,22 +101,28 @@ def main() -> int:
     fixtures_root = args.fixtures_root.resolve()
     configure_script = Path(__file__).with_name("configure_iotdb_ssl_it.py")
     ctest = ["ctest", "--output-on-failure", "-C", args.config]
+    server_env = os.environ.copy()
+    if sys.platform == "win32":
+        # Node scripts pause after the Java process exits so an interactive console
+        # stays open. In CI those paused cmd.exe children keep the job's standard
+        # handles open after the tests finish, preventing Maven from returning.
+        server_env["IOTDB_NO_PAUSE"] = "1"
 
     for mode in args.modes:
-        stop_server(dist_root)
+        stop_server(dist_root, server_env)
         run(
             [sys.executable, str(configure_script), str(dist_root), str(fixtures_root), mode],
             configure_script.parent,
         )
         try:
-            start_server(dist_root, args.wait_seconds)
-            env = os.environ.copy()
+            start_server(dist_root, args.wait_seconds, server_env)
+            env = server_env.copy()
             if mode == "mtls":
                 env["IOTDB_CPP_SSL_MUTUAL_AUTH"] = "1"
             label = {"plain": "plain", "tls": "tls-only", "mtls": "mutual-auth"}[mode]
             run(ctest + ["-L", label], build_dir, env)
         finally:
-            stop_server(dist_root)
+            stop_server(dist_root, server_env)
     return 0
 
 

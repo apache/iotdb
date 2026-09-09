@@ -582,12 +582,14 @@ private:
 
 class SessionConnection;
 class TableSession;
+class SessionTestAccessor;
 
 class Session {
   struct Impl;
   std::unique_ptr<Impl> impl_;
   friend class SessionConnection;
   friend class TableSession;
+  friend class SessionTestAccessor;
 
 public:
   Session(const std::string& host, int rpcPort);

@@ -198,13 +198,10 @@ jobs:
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
           if [[ "${{ matrix.os }}" == "windows-2025-vs2026" ]]; then
-            # The Windows standalone server scripts do not terminate reliably on hosted runners.
-            # Keep the Windows compile/link/package validation here; TLS/mTLS server ITs run on Unix.
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Diotdb.openssl.from.source=OFF -Dcmake.generator="Visual Studio 18 2026"
-          elif [[ "${{ runner.os }}" == "Windows" ]]; then
-            # The Windows standalone server scripts do not terminate reliably on hosted runners.
-            # Keep the Windows compile/link/package validation here; TLS/mTLS server ITs run on Unix.
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Diotdb.openssl.from.source=OFF
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -Diotdb.openssl.from.source=OFF -Dcmake.generator="Visual Studio 18 2026"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            # Exercise the default source build, including bundled dylib relocation, on pull requests.
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
           else
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -Diotdb.openssl.from.source=OFF
           fi

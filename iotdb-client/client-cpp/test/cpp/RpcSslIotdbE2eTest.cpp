@@ -19,6 +19,7 @@
 
 #include <catch.hpp>
 
+#include <algorithm>
 #include <cstdlib>
 #include <memory>
 #include <string>
@@ -27,8 +28,24 @@
 #include "SessionBuilder.h"
 #include "SessionC.h"
 #include "SessionDataSet.h"
+#include "SessionImpl.h"
 #include "SessionPool.h"
 #include "TableSessionBuilder.h"
+
+class SessionTestAccessor {
+public:
+  static std::vector<TEndPoint> availableNodes(Session& session) {
+    return session.impl_->nodesSupplier_->getEndPointList();
+  }
+
+  static void makeInitialConnectionUnavailable(Session& session,
+                                               const TEndPoint& bootstrapEndpoint) {
+    auto initialConnection = session.impl_->defaultSessionConnection_;
+    initialConnection->close();
+    session.impl_->endPointToSessionConnection.clear();
+    session.impl_->endPointToSessionConnection.emplace(bootstrapEndpoint, initialConnection);
+  }
+};
 
 namespace {
 
@@ -119,8 +136,8 @@ TEST_CASE("C APIs communicate with a TLS-enabled IoTDB", "[tls]") {
   REQUIRE(ts_session_close(treeSession) == TS_OK);
   ts_session_destroy(treeSession);
 
-  CTableSession* tableSession = ts_table_session_new_with_ssl(
-      "127.0.0.1", 6667, "root", "root", "", fixture("ca.crt").c_str(), cert, key);
+  CTableSession* tableSession = ts_table_session_new_with_ssl("127.0.0.1", 6667, "root", "root", "",
+                                                              fixture("ca.crt").c_str(), cert, key);
   REQUIRE(tableSession != nullptr);
   CSessionDataSet* tableDataSet = nullptr;
   REQUIRE(ts_table_session_execute_query(tableSession, "SHOW VERSION", &tableDataSet) == TS_OK);
@@ -130,10 +147,30 @@ TEST_CASE("C APIs communicate with a TLS-enabled IoTDB", "[tls]") {
 }
 
 TEST_CASE("TLS node discovery uses the final SSL configuration and supports failover", "[tls]") {
-  std::vector<std::string> bootstrapNodes = {"127.0.0.1:1", "127.0.0.1:6667"};
+  std::vector<std::string> bootstrapNodes = {"127.0.0.1:6667"};
   Session session(bootstrapNodes, "root", "root");
   session.setSslConfig(sslConfig());
   session.open();
+
+  auto discoveredNodes = SessionTestAccessor::availableNodes(session);
+  auto discovered =
+      std::find_if(discoveredNodes.begin(), discoveredNodes.end(), [](const TEndPoint& node) {
+        return node.ip == "127.0.0.1" && node.port == 6667;
+      });
+  REQUIRE(discovered != discoveredNodes.end());
+
+  TEndPoint unavailableBootstrap;
+  unavailableBootstrap.ip = "127.0.0.1";
+  unavailableBootstrap.port = 1;
+  REQUIRE(std::none_of(discoveredNodes.begin(), discoveredNodes.end(),
+                       [&unavailableBootstrap](const TEndPoint& node) {
+                         return node.ip == unavailableBootstrap.ip &&
+                                node.port == unavailableBootstrap.port;
+                       }));
+
+  // Model an unavailable initial bootstrap after discovery. The query must
+  // establish a new TLS connection to the endpoint learned from the server.
+  SessionTestAccessor::makeInitialConnectionUnavailable(session, unavailableBootstrap);
   requireDataSet(session.executeQueryStatement("SHOW VERSION"));
   session.close();
 }

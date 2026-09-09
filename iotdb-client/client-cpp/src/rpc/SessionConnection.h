@@ -123,6 +123,7 @@ public:
   }
 
   friend class Session;
+  friend class SessionTestAccessor;
 
 private:
   void close();
