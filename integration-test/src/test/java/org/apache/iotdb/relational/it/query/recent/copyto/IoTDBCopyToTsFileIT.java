@@ -167,7 +167,7 @@ public class IoTDBCopyToTsFileIT {
 
   @Test
   public void testCopyToRejectsAllowedExportDirectoryItself()
-      throws IoTDBConnectionException, IOException {
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     File exportDirectory = Files.createTempDirectory("iotdb-copy-to-directory").toFile();
     File targetDirectory = new File(exportDirectory, "export");
     String targetPath = targetDirectory.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
