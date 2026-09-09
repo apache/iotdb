@@ -2331,7 +2331,7 @@ public class TypeServices {
                         position ->
                             updater.updateInt(
                                 groupIds[position],
-                                type.getInt(arguments[1], position),
+                                arguments[1].getInt(position),
                                 arguments[0],
                                 position));
             case INT64, TIMESTAMP ->
@@ -2342,7 +2342,7 @@ public class TypeServices {
                         position ->
                             updater.updateLong(
                                 groupIds[position],
-                                type.getLong(arguments[1], position),
+                                arguments[1].getLong(position),
                                 arguments[0],
                                 position));
             case FLOAT ->
@@ -2353,7 +2353,7 @@ public class TypeServices {
                         position ->
                             updater.updateFloat(
                                 groupIds[position],
-                                type.getFloat(arguments[1], position),
+                                arguments[1].getFloat(position),
                                 arguments[0],
                                 position));
             case DOUBLE ->
@@ -2364,7 +2364,7 @@ public class TypeServices {
                         position ->
                             updater.updateDouble(
                                 groupIds[position],
-                                type.getDouble(arguments[1], position),
+                                arguments[1].getDouble(position),
                                 arguments[0],
                                 position));
             case TEXT, STRING, BLOB, OBJECT ->
@@ -2375,7 +2375,7 @@ public class TypeServices {
                         position ->
                             updater.updateBinary(
                                 groupIds[position],
-                                type.getBinary(arguments[1], position),
+                                arguments[1].getBinary(position),
                                 arguments[0],
                                 position));
             case BOOLEAN ->
@@ -2386,7 +2386,7 @@ public class TypeServices {
                         position ->
                             updater.updateBoolean(
                                 groupIds[position],
-                                type.getBoolean(arguments[1], position),
+                                arguments[1].getBoolean(position),
                                 arguments[0],
                                 position));
             case ROW, UNKNOWN, VECTOR ->
