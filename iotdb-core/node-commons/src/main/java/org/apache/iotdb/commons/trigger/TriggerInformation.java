@@ -157,6 +157,7 @@ public class TriggerInformation {
     TriggerInformation that = (TriggerInformation) o;
     return Objects.equals(triggerName, that.triggerName)
         && Objects.equals(pathPattern, that.pathPattern)
+        && isUsingURI == that.isUsingURI
         && isStateful == that.isStateful
         && Objects.equals(className, that.className)
         && Objects.equals(jarName, that.jarName)
@@ -164,12 +165,25 @@ public class TriggerInformation {
         && event == that.event
         && triggerState == that.triggerState
         && (!isStateful() || Objects.equals(dataNodeLocation, that.dataNodeLocation))
+        && failureStrategy == that.failureStrategy
         && Objects.equals(jarFileMD5, that.jarFileMD5);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(triggerName);
+    return Objects.hash(
+        triggerName,
+        pathPattern,
+        isUsingURI,
+        isStateful,
+        className,
+        jarName,
+        attributes,
+        event,
+        triggerState,
+        isStateful ? dataNodeLocation : null,
+        failureStrategy,
+        jarFileMD5);
   }
 
   public PartialPath getPathPattern() {
