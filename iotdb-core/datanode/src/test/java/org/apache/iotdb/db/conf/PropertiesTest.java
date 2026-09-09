@@ -156,6 +156,25 @@ public class PropertiesTest {
   }
 
   @Test
+  public void testHotReloadCopyToAllowedExportDirsRestoresDefaultWhenMissing() throws Exception {
+    final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    final String[] originalDirs = descriptor.getConfig().getCopyToAllowedExportDirs().clone();
+    final TrimProperties properties = new TrimProperties();
+
+    try {
+      properties.setProperty("copy_to_allowed_export_dirs", "copy-to-allowed");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(1, descriptor.getConfig().getCopyToAllowedExportDirs().length);
+
+      properties.remove("copy_to_allowed_export_dirs");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(0, descriptor.getConfig().getCopyToAllowedExportDirs().length);
+    } finally {
+      descriptor.getConfig().setCopyToAllowedExportDirs(originalDirs);
+    }
+  }
+
+  @Test
   public void testHotReloadTsFileParserInFlightLimits() throws Exception {
     final IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
