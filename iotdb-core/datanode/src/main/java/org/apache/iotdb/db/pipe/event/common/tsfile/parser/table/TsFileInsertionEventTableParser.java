@@ -119,20 +119,19 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          memoryManager.forceAllocateForTabletWithRetry(
+          allocateTabletMemory(
               TsFileInsertionEventTableParser.class.getSimpleName() + "#modifications",
               currentModifications.ramBytesUsed());
       this.allocatedMemoryBlockForChunk =
-          memoryManager.forceAllocateForTabletWithRetry(
-              TsFileInsertionEventTableParser.class.getSimpleName() + "#chunk", 0);
+          allocateTabletMemory(TsFileInsertionEventTableParser.class.getSimpleName() + "#chunk", 0);
       this.allocatedMemoryBlockForBatchData =
-          memoryManager.forceAllocateForTabletWithRetry(
+          allocateTabletMemory(
               TsFileInsertionEventTableParser.class.getSimpleName() + "#batchData", 0);
       this.allocatedMemoryBlockForChunkMeta =
-          memoryManager.forceAllocateForTabletWithRetry(
+          allocateTabletMemory(
               TsFileInsertionEventTableParser.class.getSimpleName() + "#chunkMetadata", 0);
       this.allocatedMemoryBlockForTableSchemas =
-          memoryManager.forceAllocateForTabletWithRetry(
+          allocateTabletMemory(
               TsFileInsertionEventTableParser.class.getSimpleName() + "#tableSchemas", 0);
 
       this.startTime = startTime;

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -63,7 +64,11 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     this.maxBatchSizeInBytes = requestMaxBatchSizeInBytes;
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
-            .forceAllocate(PipeTabletEventBatch.class.getSimpleName(), 0);
+            .forceAllocate(
+                PipeTabletEventBatch.class.getSimpleName(),
+                0,
+                PipeMemoryBlockCategory.BATCH,
+                PipeTabletEventBatch.class.getSimpleName());
     if (recordMetric != null) {
       this.recordMetric = recordMetric;
     } else {

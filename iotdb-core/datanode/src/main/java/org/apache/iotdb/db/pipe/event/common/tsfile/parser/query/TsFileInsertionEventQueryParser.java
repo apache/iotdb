@@ -221,7 +221,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          memoryManager.forceAllocateForTabletWithRetry(
+          allocateTabletMemory(
               TsFileInsertionEventQueryParser.class.getSimpleName() + "#modifications",
               currentModifications.ramBytesUsed());
 
@@ -285,7 +285,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
       allocatedMemoryBlock =
-          memoryManager.forceAllocate(
+          allocateGenericMemory(
               TsFileInsertionEventQueryParser.class.getSimpleName() + "#metadata",
               memoryRequiredInBytes);
 

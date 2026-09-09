@@ -244,10 +244,31 @@ public class InformationSchema {
 
     final TsTable pipeMemoryTable = new TsTable(PIPE_MEMORY);
     pipeMemoryTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.BLOCK_ID_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
         new TagColumnSchema(ColumnHeaderConstant.NAME_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.CATEGORY_TABLE_MODEL, TSDataType.STRING));
     pipeMemoryTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.MEMORY_USAGE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_MEMORY_SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ALLOCATION_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.ASSIGNER_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.PARENT_BLOCK_ID_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.HIERARCHY_LEVEL_TABLE_MODEL, TSDataType.INT32));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ACCOUNTED_MEMORY_USAGE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
     schemaTables.put(PIPE_MEMORY, pipeMemoryTable);
 
     final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);

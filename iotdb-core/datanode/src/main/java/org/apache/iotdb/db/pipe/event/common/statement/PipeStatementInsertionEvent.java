@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -87,7 +88,13 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(PipeStatementInsertionEvent.class.getSimpleName(), 0);
+            .forceAllocateForTabletWithRetry(
+                PipeStatementInsertionEvent.class.getSimpleName(),
+                0,
+                PipeMemoryBlockCategory.EVENT,
+                this,
+                null);
+    this.allocatedMemoryBlock.setAssigner(this);
   }
 
   @Override
@@ -169,6 +176,11 @@ public class PipeStatementInsertionEvent extends PipeInsertionEvent
 
   public Statement getStatement() {
     return statement;
+  }
+
+  @Override
+  public PipeTabletMemoryBlock getEventMemoryBlock() {
+    return allocatedMemoryBlock;
   }
 
   /////////////////////////// Object ///////////////////////////

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.Disruptor;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.EventHandler;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.RingBuffer;
@@ -67,7 +68,10 @@ public class DisruptorQueue {
             .tryAllocate(
                 DisruptorQueue.class.getSimpleName(),
                 ringBufferSize * ringBufferEntrySizeInBytes,
-                currentSize -> currentSize / 2);
+                currentSize -> currentSize / 2,
+                PipeMemoryBlockCategory.EVENT,
+                DisruptorQueue.class.getSimpleName(),
+                null);
 
     disruptor =
         new Disruptor<>(

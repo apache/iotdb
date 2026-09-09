@@ -45,6 +45,19 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
     this.allocationStrategy = allocationStrategy;
   }
 
+  PipeModelFixedMemoryBlock(
+      final PipeMemoryManager pipeMemoryManager,
+      final String name,
+      final long memoryUsageInBytes,
+      final DynamicMemoryAllocationStrategy allocationStrategy,
+      final PipeMemoryBlockCategory category,
+      final String assigner,
+      final PipeMemoryBlock parent) {
+    super(pipeMemoryManager, name, memoryUsageInBytes, category, assigner, parent);
+    this.memoryAllocatedInBytes = 0;
+    this.allocationStrategy = allocationStrategy;
+  }
+
   public synchronized PipeDynamicMemoryBlock registerPipeBatchMemoryBlock(
       final long memorySizeInBytes) {
     final PipeDynamicMemoryBlock memoryBlock = new PipeDynamicMemoryBlock(this, 0);

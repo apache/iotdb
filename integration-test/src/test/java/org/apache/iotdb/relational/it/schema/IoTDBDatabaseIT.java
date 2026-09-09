@@ -621,7 +621,17 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("desc pipe_memory"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
-              Arrays.asList("name,STRING,TAG,", "memory_usage_in_bytes,INT64,ATTRIBUTE,")));
+              Arrays.asList(
+                  "block_id,INT64,TAG,",
+                  "name,STRING,TAG,",
+                  "category,STRING,TAG,",
+                  "memory_usage_in_bytes,INT64,ATTRIBUTE,",
+                  "max_memory_size_in_bytes,INT64,ATTRIBUTE,",
+                  "allocation_time,TIMESTAMP,ATTRIBUTE,",
+                  "assigner,STRING,ATTRIBUTE,",
+                  "parent_block_id,INT64,ATTRIBUTE,",
+                  "hierarchy_level,INT32,ATTRIBUTE,",
+                  "accounted_memory_usage_in_bytes,INT64,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipe_plugins"),
           "ColumnName,DataType,Category,",
@@ -776,13 +786,21 @@ public class IoTDBDatabaseIT {
 
       try (final ResultSet resultSet = statement.executeQuery("SHOW PIPE MEMORY")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(2, metaData.getColumnCount());
-        assertEquals("name", metaData.getColumnName(1));
-        assertEquals("memory_usage_in_bytes", metaData.getColumnName(2));
+        assertEquals(10, metaData.getColumnCount());
+        assertEquals("block_id", metaData.getColumnName(1));
+        assertEquals("name", metaData.getColumnName(2));
+        assertEquals("category", metaData.getColumnName(3));
+        assertEquals("memory_usage_in_bytes", metaData.getColumnName(4));
+        assertEquals("max_memory_size_in_bytes", metaData.getColumnName(5));
+        assertEquals("allocation_time", metaData.getColumnName(6));
+        assertEquals("assigner", metaData.getColumnName(7));
+        assertEquals("parent_block_id", metaData.getColumnName(8));
+        assertEquals("hierarchy_level", metaData.getColumnName(9));
+        assertEquals("accounted_memory_usage_in_bytes", metaData.getColumnName(10));
         boolean hasFloatingMemory = false;
         while (resultSet.next()) {
-          if ("FloatingMemory".equals(resultSet.getString(1))) {
-            assertTrue(resultSet.getLong(2) >= 0);
+          if ("FloatingMemory".equals(resultSet.getString(2))) {
+            assertTrue(resultSet.getLong(4) >= 0);
             hasFloatingMemory = true;
           }
         }
@@ -792,8 +810,8 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("select * from information_schema.pipe_memory")) {
         boolean hasFloatingMemory = false;
         while (resultSet.next()) {
-          if ("FloatingMemory".equals(resultSet.getString(1))) {
-            assertTrue(resultSet.getLong(2) >= 0);
+          if ("FloatingMemory".equals(resultSet.getString(2))) {
+            assertTrue(resultSet.getLong(4) >= 0);
             hasFloatingMemory = true;
           }
         }

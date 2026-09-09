@@ -296,7 +296,16 @@ public class ColumnHeaderConstant {
   public static final String IS_DEGRADED_TABLE_MODEL = "is_degraded";
   public static final String RECENT_FAILURES_TABLE_MODEL = "recent_failures";
   public static final String NAME_TABLE_MODEL = "name";
+  public static final String BLOCK_ID_TABLE_MODEL = "block_id";
+  public static final String CATEGORY_TABLE_MODEL = "category";
   public static final String MEMORY_USAGE_IN_BYTES_TABLE_MODEL = "memory_usage_in_bytes";
+  public static final String MAX_MEMORY_SIZE_IN_BYTES_TABLE_MODEL = "max_memory_size_in_bytes";
+  public static final String ALLOCATION_TIME_TABLE_MODEL = "allocation_time";
+  public static final String ASSIGNER_TABLE_MODEL = "assigner";
+  public static final String PARENT_BLOCK_ID_TABLE_MODEL = "parent_block_id";
+  public static final String HIERARCHY_LEVEL_TABLE_MODEL = "hierarchy_level";
+  public static final String ACCOUNTED_MEMORY_USAGE_IN_BYTES_TABLE_MODEL =
+      "accounted_memory_usage_in_bytes";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";

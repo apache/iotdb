@@ -27,6 +27,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
@@ -115,7 +116,10 @@ public class PipeSchemaRegionWritePlanEventBatch implements AutoCloseable {
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocate(
-                PipeSchemaRegionWritePlanEventBatch.class.getSimpleName(), maxBatchSizeInBytes);
+                PipeSchemaRegionWritePlanEventBatch.class.getSimpleName(),
+                maxBatchSizeInBytes,
+                PipeMemoryBlockCategory.BATCH,
+                PipeSchemaRegionWritePlanEventBatch.class.getSimpleName());
   }
 
   public synchronized boolean onEvent(final PipeSchemaRegionWritePlanEvent event) {

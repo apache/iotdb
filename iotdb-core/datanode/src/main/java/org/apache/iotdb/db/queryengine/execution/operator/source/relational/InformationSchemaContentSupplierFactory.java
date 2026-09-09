@@ -745,8 +745,24 @@ public class InformationSchemaContentSupplierFactory {
     @Override
     protected void constructLine() {
       final PipeMemoryBlockInfo memoryBlockInfo = iterator.next();
-      columnBuilders[0].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getName()));
-      columnBuilders[1].writeLong(memoryBlockInfo.getMemoryUsageInBytes());
+      columnBuilders[0].writeLong(memoryBlockInfo.getBlockId());
+      columnBuilders[1].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getName()));
+      columnBuilders[2].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getCategory()));
+      columnBuilders[3].writeLong(memoryBlockInfo.getMemoryUsageInBytes());
+      columnBuilders[4].writeLong(memoryBlockInfo.getMaxMemorySizeInBytes());
+      columnBuilders[5].writeLong(memoryBlockInfo.getAllocationTime());
+      if (memoryBlockInfo.getAssigner() == null) {
+        columnBuilders[6].appendNull();
+      } else {
+        columnBuilders[6].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getAssigner()));
+      }
+      if (memoryBlockInfo.getParentBlockId() == null) {
+        columnBuilders[7].appendNull();
+      } else {
+        columnBuilders[7].writeLong(memoryBlockInfo.getParentBlockId());
+      }
+      columnBuilders[8].writeInt(memoryBlockInfo.getHierarchyLevel());
+      columnBuilders[9].writeLong(memoryBlockInfo.getAccountedMemoryUsageInBytes());
       resultBuilder.declarePosition();
     }
 

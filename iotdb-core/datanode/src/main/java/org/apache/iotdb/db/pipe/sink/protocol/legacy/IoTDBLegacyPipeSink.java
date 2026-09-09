@@ -38,6 +38,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -528,7 +529,10 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     try (final PipeTsFileMemoryBlock ignored =
             PipeDataNodeResourceManager.memory()
                 .forceAllocateForTsFileWithRetry(
-                    IoTDBLegacyPipeSink.class.getSimpleName(), readFileBufferSize);
+                    IoTDBLegacyPipeSink.class.getSimpleName(),
+                    readFileBufferSize,
+                    PipeMemoryBlockCategory.SINK,
+                    IoTDBLegacyPipeSink.class.getSimpleName());
         final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
       final byte[] buffer = new byte[readFileBufferSize];
       while (true) {

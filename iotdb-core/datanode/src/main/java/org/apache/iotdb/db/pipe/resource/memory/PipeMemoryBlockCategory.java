@@ -19,19 +19,43 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
-public class PipeTsFileMemoryBlock extends PipeFixedMemoryBlock {
+/**
+ * The diagnostic category of a Pipe memory block.
+ *
+ * <p>The category is intentionally independent from {@link PipeMemoryBlockType}. The latter
+ * controls allocation policy, while this enum describes the owner visible to operators.
+ */
+public enum PipeMemoryBlockCategory {
+  GLOBAL,
+  EVENT,
+  EVENT_CHILD,
+  PARSER,
+  TABLET,
+  TS_FILE,
+  BATCH,
+  WAL,
+  CACHE,
+  RECEIVER,
+  SINK,
+  SUBSCRIPTION,
+  FLOATING,
+  OTHER;
 
-  public PipeTsFileMemoryBlock(final String name, final long memoryUsageInBytes) {
-    super(name, memoryUsageInBytes);
-  }
-
-  PipeTsFileMemoryBlock(
-      final PipeMemoryManager pipeMemoryManager,
-      final String name,
-      final long memoryUsageInBytes,
-      final PipeMemoryBlockCategory category,
-      final String assigner,
-      final PipeMemoryBlock parent) {
-    super(pipeMemoryManager, name, memoryUsageInBytes, category, assigner, parent);
+  public static PipeMemoryBlockCategory fromType(final PipeMemoryBlockType type) {
+    if (type == null) {
+      return OTHER;
+    }
+    switch (type) {
+      case TABLET:
+        return TABLET;
+      case TS_FILE:
+        return TS_FILE;
+      case BATCH:
+        return BATCH;
+      case WAL:
+        return WAL;
+      default:
+        return OTHER;
+    }
   }
 }

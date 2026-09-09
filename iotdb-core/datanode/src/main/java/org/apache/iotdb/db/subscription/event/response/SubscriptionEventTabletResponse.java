@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -280,7 +281,10 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       final PipeTabletMemoryBlock memoryBlock =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(
-                  SubscriptionEventTabletResponse.class.getSimpleName(), currentBufferSize);
+                  SubscriptionEventTabletResponse.class.getSimpleName(),
+                  currentBufferSize,
+                  PipeMemoryBlockCategory.SUBSCRIPTION,
+                  SubscriptionEventTabletResponse.class.getSimpleName());
       response.setMemoryBlock(memoryBlock);
     }
 

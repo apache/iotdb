@@ -44,6 +44,8 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventT
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -93,6 +95,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           + RamUsageEstimator.shallowSizeOf(Boolean.class);
 
   private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
+  private final PipeMemoryBlock eventMemoryBlock;
   private volatile List<Tablet> tablets;
   // Calculated together with tablets so downstream batching does not rescan Tablet internals.
   private volatile long tabletsMemoryUsageInBytes;
@@ -159,6 +162,14 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     this.insertNode = insertNode;
     this.progressIndex = insertNode.getProgressIndex();
 
+    this.eventMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocate(
+                PipeInsertNodeTabletInsertionEvent.class.getSimpleName(),
+                0,
+                PipeMemoryBlockCategory.EVENT,
+                this,
+                null);
     this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
@@ -500,7 +511,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(
                   PipeInsertNodeTabletInsertionEvent.class.getSimpleName(),
-                  tabletMemoryUsageInBytes));
+                  tabletMemoryUsageInBytes,
+                  PipeMemoryBlockCategory.TABLET,
+                  this,
+                  eventMemoryBlock));
     }
     return tablets;
   }
@@ -508,6 +522,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public long getTabletsMemoryUsageInBytes() {
     convertToTablets();
     return tabletsMemoryUsageInBytes;
+  }
+
+  @Override
+  public PipeMemoryBlock getEventMemoryBlock() {
+    return eventMemoryBlock;
   }
 
   /////////////////////////// event parser ///////////////////////////
@@ -655,7 +674,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeInsertNodeTabletInsertionEventResource(
-        this.isReleased, this.referenceCount, this.allocatedMemoryBlock);
+        this.isReleased, this.referenceCount, this.allocatedMemoryBlock, this.eventMemoryBlock);
   }
 
   // Notes:
@@ -679,13 +698,16 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
 
     private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
+    private final PipeMemoryBlock eventMemoryBlock;
 
     private PipeInsertNodeTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
-        final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock) {
+        final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock,
+        final PipeMemoryBlock eventMemoryBlock) {
       super(isReleased, referenceCount);
       this.allocatedMemoryBlock = allocatedMemoryBlock;
+      this.eventMemoryBlock = eventMemoryBlock;
     }
 
     @Override
@@ -698,6 +720,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
               }
               return null;
             });
+        eventMemoryBlock.close();
       } catch (final Exception e) {
         LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_ERROR, e);
       }
@@ -715,6 +738,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           }
           return null;
         });
+    eventMemoryBlock.close();
     tablets = null;
   }
 }

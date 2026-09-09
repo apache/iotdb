@@ -24,6 +24,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -116,7 +117,10 @@ public class SubscriptionPollResponseCache {
     final PipeMemoryBlock allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .tryAllocate(
-                SubscriptionPollResponseCache.class.getSimpleName(), initMemorySizeInBytes);
+                SubscriptionPollResponseCache.class.getSimpleName(),
+                initMemorySizeInBytes,
+                PipeMemoryBlockCategory.SUBSCRIPTION,
+                SubscriptionPollResponseCache.class.getSimpleName());
 
     this.cache =
         Caffeine.newBuilder()

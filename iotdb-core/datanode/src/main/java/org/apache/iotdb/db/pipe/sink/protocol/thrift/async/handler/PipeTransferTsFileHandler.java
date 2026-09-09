@@ -31,6 +31,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
@@ -201,7 +202,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       memoryBlock =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTsFileWithRetry(
-                  PipeTransferTsFileHandler.class.getSimpleName(), readFileBufferSize);
+                  PipeTransferTsFileHandler.class.getSimpleName(),
+                  readFileBufferSize,
+                  PipeMemoryBlockCategory.SINK,
+                  PipeTransferTsFileHandler.class.getSimpleName());
       readBuffer = new byte[readFileBufferSize];
     }
 

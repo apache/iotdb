@@ -45,6 +45,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -104,7 +105,9 @@ public class PipeDataNodeRuntimeAgent implements IService {
           PipeDataNodeResourceManager.memory()
               .tryAllocate(
                   PipeDataNodeRuntimeAgent.class.getSimpleName() + "#logger",
-                  PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes());
+                  PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes(),
+                  PipeMemoryBlockCategory.CACHE,
+                  PipeDataNodeRuntimeAgent.class.getSimpleName());
     }
 
     LoggerPeriodicalLogReducer.setMemoryResizeFunction(

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -119,7 +120,10 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
             .forceAllocateIfSufficient(
                 PipeTsFilePublicResource.class.getSimpleName() + "#sequenceReader",
                 PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes(),
-                MEMORY_SUFFICIENT_THRESHOLD);
+                MEMORY_SUFFICIENT_THRESHOLD,
+                PipeMemoryBlockCategory.TS_FILE,
+                PipeTsFilePublicResource.class.getSimpleName(),
+                null);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.FAILED_TO_CACHEDEVICEISALIGNEDMAPIFABSENT_FOR_TSFILE_BECAUSE_MEMORY,
@@ -149,7 +153,10 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
             .forceAllocateIfSufficient(
                 PipeTsFilePublicResource.class.getSimpleName() + "#metadata",
                 memoryRequiredInBytes,
-                MEMORY_SUFFICIENT_THRESHOLD);
+                MEMORY_SUFFICIENT_THRESHOLD,
+                PipeMemoryBlockCategory.CACHE,
+                PipeTsFilePublicResource.class.getSimpleName(),
+                null);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.PIPETSFILERESOURCE_FAILED_TO_CACHE_OBJECTS_FOR_TSFILE,
@@ -183,7 +190,10 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
             .forceAllocateIfSufficient(
                 PipeTsFilePublicResource.class.getSimpleName() + "#sequenceReader",
                 PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes(),
-                MEMORY_SUFFICIENT_THRESHOLD);
+                MEMORY_SUFFICIENT_THRESHOLD,
+                PipeMemoryBlockCategory.TS_FILE,
+                PipeTsFilePublicResource.class.getSimpleName(),
+                null);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.FAILED_TO_CACHEOBJECTSIFABSENT_FOR_TSFILE_BECAUSE_MEMORY,
@@ -222,7 +232,10 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
             .forceAllocateIfSufficient(
                 PipeTsFilePublicResource.class.getSimpleName() + "#metadata",
                 memoryRequiredInBytes,
-                MEMORY_SUFFICIENT_THRESHOLD);
+                MEMORY_SUFFICIENT_THRESHOLD,
+                PipeMemoryBlockCategory.CACHE,
+                PipeTsFilePublicResource.class.getSimpleName(),
+                null);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.PIPETSFILERESOURCE_FAILED_TO_CACHE_OBJECTS_FOR_TSFILE,

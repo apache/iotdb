@@ -182,11 +182,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
     this.allocatedMemoryBlockForBatchData =
-        memoryManager.forceAllocateForTabletWithRetry(
+        allocateTabletMemory(
             TsFileInsertionEventScanParser.class.getSimpleName() + "#batchData", 0);
     this.allocatedMemoryBlockForChunk =
-        memoryManager.forceAllocateForTabletWithRetry(
-            TsFileInsertionEventScanParser.class.getSimpleName() + "#chunk", 0);
+        allocateTabletMemory(TsFileInsertionEventScanParser.class.getSimpleName() + "#chunk", 0);
 
     try {
       currentModifications =
@@ -194,7 +193,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          memoryManager.forceAllocateForTabletWithRetry(
+          allocateTabletMemory(
               TsFileInsertionEventScanParser.class.getSimpleName() + "#modifications",
               currentModifications.ramBytesUsed());
 
@@ -263,7 +262,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     allocatedMemoryBlockForTsFileInput =
-        memoryManager.forceAllocateForTabletWithRetry(
+        allocateTabletMemory(
             TsFileInsertionEventScanParser.class.getSimpleName() + "#tsFileInput",
             TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES);
     return new TsFileSequenceReader(
