@@ -211,6 +211,9 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
     if (ownerDirectory == null) {
       ownerDirectory = DeviceEntrySpillManager.getInstance().register(queryId, planNodeId);
       ownerRegistered = true;
+      if (queryContext != null) {
+        queryContext.setDeviceEntrySpilled();
+      }
     }
     return ownerDirectory;
   }
@@ -244,7 +247,7 @@ public abstract class AbstractDeviceEntryMaterializer implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    if (!finished) {
+    if (isSpilled() && !finished) {
       cleanupOwnerDirectory();
     }
   }
