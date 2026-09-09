@@ -20,7 +20,6 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.utils.TypeServices;
-import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -1014,6 +1013,16 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "fragment_instance_notification_thread_count",
                 Integer.toString(conf.getFragmentInstanceNotificationThreadCount()))));
+    conf.setDriverTaskSchedulerNotificationThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "driver_task_scheduler_notification_thread_count",
+                Integer.toString(conf.getDriverTaskSchedulerNotificationThreadCount()))));
+    conf.setFragmentInstanceDispatchThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "fragment_instance_dispatch_thread_count",
+                Integer.toString(conf.getFragmentInstanceDispatchThreadCount()))));
     conf.setDataNodeTableSchemaCacheSize(
         Long.parseLong(
             properties.getProperty(
@@ -2309,21 +2318,6 @@ public class IoTDBDescriptor {
 
       // update retry config
       commonDescriptor.loadRetryProperties(properties);
-
-      // update binary allocator
-      commonDescriptor
-          .getConfig()
-          .setEnableBinaryAllocator(
-              Boolean.parseBoolean(
-                  properties.getProperty(
-                      "enable_binary_allocator",
-                      ConfigurationFileUtils.getConfigurationDefaultValue(
-                          "enable_binary_allocator"))));
-      if (commonDescriptor.getConfig().isEnableBinaryAllocator()) {
-        BinaryAllocator.getInstance().start();
-      } else {
-        BinaryAllocator.getInstance().close(true);
-      }
 
       // update disk_space_warning_threshold; also refresh the static copy in JVMCommonUtils that
       // the ReadOnly disk guard reads, otherwise the new threshold would not take effect until
