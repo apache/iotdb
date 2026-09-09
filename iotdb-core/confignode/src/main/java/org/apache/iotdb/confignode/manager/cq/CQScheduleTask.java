@@ -351,11 +351,9 @@ public class CQScheduleTask implements Runnable {
   }
 
   long calculateCalendarRangeEndpoint(TimeDuration offset, long currentOccurrenceIndex) {
-    if (!scheduleCalendarAware) {
-      // A fixed cadence has no calendar anchor. Subtract RANGE from the actual occurrence so
-      // month lengths and zone transitions are evaluated at the time the query runs.
-      return CQCalendarUtils.apply(executionTime, offset, -1, scheduleZone);
-    }
+    // Derive every RANGE endpoint from the original boundary. Subtracting a calendar offset from
+    // an already materialized occurrence is not reversible at month ends and produces gaps or
+    // overlaps for fixed EVERY intervals combined with calendar RANGE offsets.
     return CQCalendarUtils.applyVector(
         boundaryTime,
         Math.subtractExact(

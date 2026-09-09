@@ -100,6 +100,14 @@ public class CQCalendarUtilsTest {
         epochTimestamp(2024, 2, 29, 0, 0, UTC), task.calculateCalendarRangeEndpoint(start, 91));
     assertEquals(
         epochTimestamp(2024, 3, 1, 0, 0, UTC), task.calculateCalendarRangeEndpoint(end, 91));
+
+    // The calculation must remain anchored to the original boundary even when the fixed cadence
+    // has not reached a month boundary. Subtracting RANGE from the occurrence would yield Jan 29.
+    long marchFirst = epochTimestamp(2024, 3, 1, 0, 0, UTC);
+    task = calendarTask(boundary, marchFirst, new TimeDuration(0, day), start, end, UTC);
+    assertEquals(
+        epochTimestamp(2024, 1, 29, 0, 0, UTC),
+        task.calculateCalendarRangeEndpoint(start, 60));
   }
 
   @Test
