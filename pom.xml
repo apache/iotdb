@@ -923,9 +923,9 @@
                     <version>3.6.0</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.apache.thrift</groupId>
-                    <artifactId>thrift-maven-plugin</artifactId>
-                    <version>0.10.0</version>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-antrun-plugin</artifactId>
+                    <version>3.2.0</version>
                 </plugin>
                 <plugin>
                     <groupId>com.bazaarvoice.maven.plugins</groupId>
@@ -1531,12 +1531,8 @@
         </profile>
         <!--
       Self activating profile, that activates itself as soon as a "src/main/thrift" directory is found.
-      The different plugins here download the thrift executable matching the current os, make that
-      executable (on mac and unix/linux) and run the code generation.
-
-      Note to the Download: The download-maven-plugin checks if a resource is previously downloaded
-      and only downloads each file once. It caches downloaded files in:
-      {maven local repo}/.cache/download-maven-plugin
+      The plugins unpack the Thrift compiler matching the current OS, generate sources and
+      package the local IDL files as resources.
     -->
         <profile>
             <id>.thrift-generation</id>
@@ -1577,58 +1573,67 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>org.apache.thrift</groupId>
-                        <artifactId>thrift-maven-plugin</artifactId>
-                        <configuration>
-                            <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                            <thriftSourceRoot>${project.basedir}/src/main/thrift</thriftSourceRoot>
-                        </configuration>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>generate-thrift-sources-java</id>
-                                <goals>
-                                    <goal>compile</goal>
-                                </goals>
+                                <id>generate-thrift-sources</id>
                                 <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
                                 <configuration>
-                                    <generator>java:generated_annotations=suppress</generator>
+                                    <target>
+                                        <!-- Apply runs once per matching IDL without requiring a platform-specific shell. -->
+                                        <macrodef name="generate-thrift">
+                                            <attribute name="generator"/>
+                                            <attribute name="includes" default="**/*.thrift"/>
+                                            <attribute name="output"/>
+                                            <sequential>
+                                                <mkdir dir="@{output}"/>
+                                                <apply executable="${thrift.exec.absolute.path}" failonerror="true" skipemptyfilesets="true">
+                                                    <arg value="--gen"/>
+                                                    <arg value="@{generator}"/>
+                                                    <arg value="-I"/>
+                                                    <arg file="${project.basedir}/src/main/thrift"/>
+                                                    <arg value="-I"/>
+                                                    <!-- Read shared IDL from source so clean reactor builds do not need packaged dependency JARs. -->
+                                                    <arg file="${project.basedir}/../thrift-commons/src/main/thrift"/>
+                                                    <arg value="-out"/>
+                                                    <arg file="@{output}"/>
+                                                    <fileset dir="${project.basedir}/src/main/thrift" includes="@{includes}"/>
+                                                </apply>
+                                            </sequential>
+                                        </macrodef>
+                                        <generate-thrift generator="java:generated_annotations=suppress" output="${project.build.directory}/generated-sources/thrift"/>
+                                        <generate-thrift generator="py" includes="**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/ainode.thrift" output="${project.build.directory}/generated-sources-python"/>
+                                        <generate-thrift generator="go:package_prefix=github.com/apache/iotdb-client-go/v2/" includes="**/common.thrift,**/client.thrift" output="${project.build.directory}/generated-sources-go"/>
+                                        <!-- Keep the shared output directory used when copying the C# client sources. -->
+                                        <generate-thrift generator="netstd:no_deepcopy" includes="**/common.thrift,**/client.thrift" output="${project.basedir}/../target/generated-sources-csharp"/>
+                                    </target>
                                 </configuration>
                             </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
                             <execution>
-                                <id>generate-thrift-sources-python</id>
-                                <goals>
-                                    <goal>compile</goal>
-                                </goals>
+                                <id>add-thrift-resources</id>
                                 <phase>generate-sources</phase>
-                                <configuration>
-                                    <generator>py</generator>
-                                    <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/ainode.thrift</includes>
-                                    <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>generate-thrift-sources-go</id>
                                 <goals>
-                                    <goal>compile</goal>
+                                    <goal>add-resource</goal>
                                 </goals>
-                                <phase>generate-sources</phase>
                                 <configuration>
-                                    <generator>go:package_prefix=github.com/apache/iotdb-client-go/v2/</generator>
-                                    <includes>**/common.thrift,**/client.thrift</includes>
-                                    <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>generate-thrift-sources-csharp</id>
-                                <goals>
-                                    <goal>compile</goal>
-                                </goals>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <generator>netstd:no_deepcopy</generator>
-                                    <includes>**/common.thrift,**/client.thrift</includes>
-                                    <!-- The output directory is set to the parent of the generated sources for copying-->
-                                    <outputDirectory>${project.parent.build.directory}/generated-sources-csharp</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/src/main/thrift</directory>
+                                            <includes>
+                                                <include>**/*.thrift</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
                                 </configuration>
                             </execution>
                         </executions>
