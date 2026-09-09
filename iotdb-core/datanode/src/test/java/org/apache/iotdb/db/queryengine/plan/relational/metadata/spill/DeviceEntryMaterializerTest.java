@@ -116,7 +116,7 @@ public class DeviceEntryMaterializerTest {
     assertEquals(expected, actual);
 
     dataSet.close();
-    assertFalse(Files.exists(queryDirectory.resolve("device-entry/q-spill/scan-0")));
+    assertFalse(Files.exists(queryDirectory.resolve("device-entry/20260909_023029_00001/scan-0")));
   }
 
   @Test
