@@ -33,6 +33,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -45,6 +46,24 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class TypeServicesTest {
+
+  @Test
+  public void testMaxMinByReadsXWithoutModifyingInput() {
+    // A selected timestamp must replace the result, including on reuse, without changing the input.
+    for (TSDataType dataType : new TSDataType[] {TSDataType.INT64, TSDataType.TIMESTAMP}) {
+      Type type = Type.fromTsDataType(dataType);
+      Column input = new LongColumn(2, Optional.empty(), new long[] {2499, 8499});
+      TsPrimitiveType result = type.getTsPrimitiveType();
+      TypeServices.Aggregation.MaxMinByAccumulatorStrategy strategy =
+          TypeServices.Aggregation.MAX_MIN_BY_ACCUMULATOR_STRATEGY_SERVICE.call(type);
+      strategy.setXResult(result, input, 1);
+      assertEquals(8499, result.getLong());
+      strategy.setXResult(result, input, 0);
+      assertEquals(2499, result.getLong());
+      assertEquals(2499, input.getLong(0));
+      assertEquals(8499, input.getLong(1));
+    }
+  }
 
   @Test
   public void testInsertSerializedSizesPreserveNullBinaryAndActiveRows() {

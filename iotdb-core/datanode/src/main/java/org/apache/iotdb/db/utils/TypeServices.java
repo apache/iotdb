@@ -37,6 +37,7 @@ import org.apache.iotdb.calc.execution.operator.process.fill.constant.LongConsta
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.calc.transformation.dag.util.CastFunctionUtils;
+import org.apache.iotdb.calc.utils.TypeServices.PrimitiveColumnValueSetter;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -1253,6 +1254,7 @@ public class TypeServices {
 
     public static final class MaxMinByAccumulatorStrategy {
       private final Type type;
+      private final PrimitiveColumnValueSetter xValueSetter;
       private final boolean xSupported;
       private final MaxMinByYColumnUpdater yColumnUpdater;
       private final MaxMinByYBytesUpdater yBytesUpdater;
@@ -1263,6 +1265,9 @@ public class TypeServices {
           final MaxMinByYColumnUpdater yColumnUpdater,
           final MaxMinByYBytesUpdater yBytesUpdater) {
         this.type = type;
+        this.xValueSetter =
+            org.apache.iotdb.calc.utils.TypeServices.PRIMITIVE_COLUMN_VALUE_SETTER_SERVICE.call(
+                type);
         this.xSupported = xSupported;
         this.yColumnUpdater = yColumnUpdater;
         this.yBytesUpdater = yBytesUpdater;
@@ -1294,7 +1299,8 @@ public class TypeServices {
       }
 
       public void setXResult(final TsPrimitiveType result, final Column column, final int index) {
-        type.setTo(result, column, index);
+        // Type.setTo copies the primitive into the column; aggregation must read the input instead.
+        xValueSetter.set(result, column, index);
       }
 
       public void writeXResult(final ColumnBuilder builder, final TsPrimitiveType result) {
