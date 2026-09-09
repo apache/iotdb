@@ -1319,6 +1319,9 @@ public class IoTDBConfig {
   /** Threads for migration tasks */
   private int migrateThreadCount = 1;
 
+  /** Maximum number of shared object GC threads */
+  private int objectGcThreadCount = 1;
+
   /** The limit of object storage upload can reach per second */
   private long[] tieredStorageMigrateSpeedLimitBytesPerSec = {
     DEFAULT_TIERED_STORAGE_MIGRATE_SPEED_LIMIT_BYTES_PER_SEC
@@ -4837,6 +4840,19 @@ public class IoTDBConfig {
 
   public void setMigrateThreadCount(int migrateThreadCount) {
     this.migrateThreadCount = migrateThreadCount;
+  }
+
+  public int getObjectGcThreadCount() {
+    return objectGcThreadCount;
+  }
+
+  public void setObjectGcThreadCount(int objectGcThreadCount) {
+    if (objectGcThreadCount <= 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeMiscMessages.OBJECT_GC_THREAD_COUNT_MUST_BE_POSITIVE, objectGcThreadCount));
+    }
+    this.objectGcThreadCount = objectGcThreadCount;
   }
 
   public int getTieredStorageMigrationCheckIntervalInSeconds() {

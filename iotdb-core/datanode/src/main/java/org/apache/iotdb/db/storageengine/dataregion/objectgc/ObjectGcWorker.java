@@ -25,34 +25,44 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 
-/** Per-DataRegion worker that replays the object-GC journal off the write lock. */
+/** Per-DataRegion task that replays the object-GC journal off the write lock. */
 public class ObjectGcWorker implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ObjectGcWorker.class);
-  private static final long IDLE_WAIT_MS = 200L;
 
   private final String databaseName;
   private final String dataRegionId;
   private final ObjectGcJournal journal;
-  private final Object wakeMonitor = new Object();
+  private final Executor executor;
+  private final AtomicInteger workInProgress = new AtomicInteger();
   private volatile boolean stopped;
 
-  public ObjectGcWorker(String databaseName, String dataRegionId, ObjectGcJournal journal) {
+  public ObjectGcWorker(
+      String databaseName, String dataRegionId, ObjectGcJournal journal, Executor executor) {
     this.databaseName = databaseName;
     this.dataRegionId = dataRegionId;
     this.journal = journal;
+    this.executor = executor;
   }
 
   public void signal() {
-    synchronized (wakeMonitor) {
-      wakeMonitor.notifyAll();
+    if (stopped || workInProgress.getAndIncrement() != 0) {
+      return;
+    }
+    try {
+      executor.execute(this);
+    } catch (RejectedExecutionException e) {
+      workInProgress.decrementAndGet();
+      throw e;
     }
   }
 
   public void stop() {
     stopped = true;
-    signal();
   }
 
   @Override
@@ -62,18 +72,12 @@ public class ObjectGcWorker implements Runnable {
         databaseName,
         dataRegionId);
     try {
-      drain();
+      int missed = 1;
       while (!stopped) {
-        synchronized (wakeMonitor) {
-          try {
-            wakeMonitor.wait(IDLE_WAIT_MS);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            break;
-          }
-        }
-        if (!stopped) {
-          drain();
+        drain();
+        missed = workInProgress.addAndGet(-missed);
+        if (missed == 0) {
+          return;
         }
       }
     } catch (Throwable t) {
@@ -85,6 +89,7 @@ public class ObjectGcWorker implements Runnable {
           dataRegionId,
           t);
     } finally {
+      workInProgress.set(0);
       LOGGER.info(
           StorageEngineMessages.LOG_STOP_OBJECT_GC_WORKER_FOR_DATA_REGION_ARG_ARG_EFE4BDF6,
           databaseName,

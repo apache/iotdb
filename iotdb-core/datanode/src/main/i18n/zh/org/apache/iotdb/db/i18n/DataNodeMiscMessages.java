@@ -1356,6 +1356,8 @@ public final class DataNodeMiscMessages {
       "非法的 defaultDatabaseLevel：%d，应 >= 1";
   public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
       "loadTsFileSpiltPartitionMaxSize 应大于或等于 0";
+  public static final String OBJECT_GC_THREAD_COUNT_MUST_BE_POSITIVE =
+      "object_gc_thread_count 必须大于 0，但实际为 %d";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId：%s 在会话 %s 中不存在";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =

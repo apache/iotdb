@@ -1588,6 +1588,11 @@ public class IoTDBDescriptor {
     }
     conf.setMigrateThreadCount(migrationThreadCount);
 
+    conf.setObjectGcThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "object_gc_thread_count", String.valueOf(conf.getObjectGcThreadCount()))));
+
     int migrationCheckIntervalInSeconds =
         Integer.parseInt(
             Optional.ofNullable(

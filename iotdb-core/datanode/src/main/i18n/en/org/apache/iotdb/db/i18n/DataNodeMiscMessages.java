@@ -1386,6 +1386,8 @@ public final class DataNodeMiscMessages {
       "Illegal defaultDatabaseLevel: %d, should >= 1";
   public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
       "loadTsFileSpiltPartitionMaxSize should be greater than or equal to 0";
+  public static final String OBJECT_GC_THREAD_COUNT_MUST_BE_POSITIVE =
+      "object_gc_thread_count must be greater than 0, but was %d";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId: %sdoesn't exist in this session %s";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =

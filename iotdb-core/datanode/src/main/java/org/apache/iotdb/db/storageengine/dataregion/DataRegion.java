@@ -28,7 +28,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -408,7 +407,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   private ObjectGcJournal objectGcJournal;
   private ObjectGcWorker objectGcWorker;
-  private ExecutorService objectGcExecutor;
   private final AtomicLong objectGcTaskId = new AtomicLong();
 
   /** Delay analyzer for tracking data arrival delays and calculating safe watermarks */
@@ -504,7 +502,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     this.metrics = new DataRegionMetrics(this);
     MetricService.getInstance().addMetricSet(metrics);
-    startObjectGc();
+    recoverObjectGc();
   }
 
   @TestOnly
@@ -3292,6 +3290,13 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
 
+      if (!initializeObjectGc()) {
+        throw new IOException(
+            String.format(
+                StorageEngineMessages.EXCEPTION_CANNOT_CREATE_OBJECT_GC_DIR_ARG_055D7364,
+                dataRegionSysDir));
+      }
+
       List<File> dropTableDirs = new ArrayList<>();
       for (TableDeletionEntry entry : modEntries) {
         if (entry.isDroppingTable()) {
@@ -3303,7 +3308,7 @@ public class DataRegion implements IDataRegionForQuery {
       // Move live table object dirs off the recreateable path before releasing the write lock so
       // async GC cannot delete a same-name table recreated after DROP.
       List<File> dropTableTombstoneDirs = new ArrayList<>();
-      if (!dropTableDirs.isEmpty() && objectGcJournal != null) {
+      if (!dropTableDirs.isEmpty()) {
         long tombstoneTaskId = objectGcTaskId.incrementAndGet();
         for (File liveDir : dropTableDirs) {
           File tombstone = ObjectDirectoryScanner.renameTableDirForDrop(liveDir, tombstoneTaskId);
@@ -3670,40 +3675,53 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void startObjectGc() {
+  private void recoverObjectGc() {
     if (dataRegionSysDir == null) {
       return;
     }
+    File journalDir = new File(dataRegionSysDir, ObjectGcJournal.JOURNAL_DIR_NAME);
+    if (!journalDir.exists() || !initializeObjectGc()) {
+      return;
+    }
+    objectGcWorker.signal();
+    logger.info(
+        StorageEngineMessages
+            .LOG_OBJECT_GC_JOURNAL_RECOVERED_FROM_CHECKPOINT_SEQ_ARG_OFFSET_ARG_FOR_DATA_REGION_ARG_ARG_F4C0858F,
+        objectGcJournal.getCheckpointSeq(),
+        objectGcJournal.getCheckpointOffset(),
+        databaseName,
+        dataRegionIdString);
+  }
+
+  private boolean initializeObjectGc() {
+    if (dataRegionSysDir == null) {
+      return false;
+    }
+    if (objectGcJournal != null) {
+      return true;
+    }
     try {
       objectGcJournal = new ObjectGcJournal(dataRegionSysDir);
-      objectGcWorker = new ObjectGcWorker(databaseName, dataRegionIdString, objectGcJournal);
-      objectGcExecutor =
-          IoTDBThreadPoolFactory.newSingleThreadExecutor(
-              ThreadName.OBJECT_GC.getName() + "-" + databaseName + "-" + dataRegionIdString);
-      objectGcExecutor.execute(objectGcWorker);
-      logger.info(
-          StorageEngineMessages
-              .LOG_OBJECT_GC_JOURNAL_RECOVERED_FROM_CHECKPOINT_SEQ_ARG_OFFSET_ARG_FOR_DATA_REGION_ARG_ARG_F4C0858F,
-          objectGcJournal.getCheckpointSeq(),
-          objectGcJournal.getCheckpointOffset(),
-          databaseName,
-          dataRegionIdString);
+      objectGcWorker =
+          new ObjectGcWorker(
+              databaseName,
+              dataRegionIdString,
+              objectGcJournal,
+              StorageEngine.getInstance()::submitObjectGcTask);
+      return true;
     } catch (IOException e) {
       logger.warn(
           StorageEngineMessages.LOG_FAILED_TO_START_OBJECT_GC_FOR_DATA_REGION_ARG_ARG_A0F04176,
           databaseName,
           dataRegionIdString,
           e);
+      return false;
     }
   }
 
-  private void stopObjectGc() {
+  public void stopObjectGc() {
     if (objectGcWorker != null) {
       objectGcWorker.stop();
-    }
-    if (objectGcExecutor != null) {
-      objectGcExecutor.shutdownNow();
-      objectGcExecutor = null;
     }
     if (objectGcJournal != null) {
       try {

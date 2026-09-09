@@ -169,6 +169,9 @@ public class StorageEngine implements IService {
   /** used to do short-lived asynchronous tasks */
   private ExecutorService cachedThreadPool;
 
+  /** shared by all DataRegions and created lazily when object GC is first used */
+  private volatile ExecutorService objectGcExecutor;
+
   // add customized listeners here for flush and close events
   private final List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private final List<FlushListener> customFlushListeners = new ArrayList<>();
@@ -182,6 +185,30 @@ public class StorageEngine implements IService {
 
   public static StorageEngine getInstance() {
     return InstanceHolder.INSTANCE;
+  }
+
+  public void submitObjectGcTask(Runnable task) {
+    getOrCreateObjectGcExecutor().execute(task);
+  }
+
+  private ExecutorService getOrCreateObjectGcExecutor() {
+    ExecutorService executor = objectGcExecutor;
+    if (executor != null && !executor.isShutdown()) {
+      return executor;
+    }
+    synchronized (this) {
+      executor = objectGcExecutor;
+      if (executor == null || executor.isShutdown()) {
+        objectGcExecutor =
+            executor =
+                IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
+                    CONFIG.getObjectGcThreadCount(),
+                    60,
+                    TimeUnit.SECONDS,
+                    ThreadName.OBJECT_GC.getName());
+      }
+      return executor;
+    }
   }
 
   private static void initTimePartition() {
@@ -448,6 +475,7 @@ public class StorageEngine implements IService {
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
         CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
+        dataRegion.stopObjectGc();
       }
     }
     syncCloseAllProcessor();
@@ -458,6 +486,7 @@ public class StorageEngine implements IService {
     if (cachedThreadPool != null) {
       cachedThreadPool.shutdownNow();
     }
+    stopObjectGcExecutor();
     dataRegionMap.clear();
     if (CONFIG.isEnableObjectStorage()) {
       ObjectStorageConnector.closeAll();
@@ -471,6 +500,7 @@ public class StorageEngine implements IService {
       for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
           CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
+          dataRegion.stopObjectGc();
         }
       }
       forceCloseAllProcessor();
@@ -480,7 +510,15 @@ public class StorageEngine implements IService {
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
     cachedThreadPool.shutdownNow();
+    stopObjectGcExecutor();
     dataRegionMap.clear();
+  }
+
+  private synchronized void stopObjectGcExecutor() {
+    if (objectGcExecutor != null) {
+      objectGcExecutor.shutdownNow();
+      objectGcExecutor = null;
+    }
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {

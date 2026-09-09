@@ -715,6 +715,12 @@ dn_tier_full_policy=NULL
 # Datatype: int
 migrate_thread_count=1
 
+# Maximum number of shared Object GC threads. The threads are created on demand and time out when
+# idle. This setting is only used when tiered storage is enabled.
+# effectiveMode: restart
+# Datatype: int
+object_gc_thread_count=1
+
 # The migrate speed limit of different tiers can reach per second
 # The actual migrate speed is affected by the hardware, network and many other factors, this param is used to slow down the migrate speed.
 # values less than or equal to 0 means no limit
