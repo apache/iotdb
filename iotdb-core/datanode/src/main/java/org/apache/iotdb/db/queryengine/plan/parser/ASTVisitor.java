@@ -1240,10 +1240,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                 .CQ_AT_LEAST_ONE_OF_THE_PARAMETERS_EVERY_INTERVAL_AND_GROUP_BY_INTERVAL_NEEDS_TO_BE);
       }
 
-      long interval =
-          queryStatement.getGroupByTimeComponent().getInterval().getTotalDuration(currPrecision);
-      statement.setEveryInterval(interval);
-      statement.setStartTimeOffset(interval);
+      org.apache.tsfile.utils.TimeDuration interval =
+          queryStatement.getGroupByTimeComponent().getInterval();
+      statement.setEveryDuration(interval);
+      statement.setStartTimeOffsetDuration(interval);
     }
 
     if (ctx.timeoutPolicyClause() != null) {
@@ -1256,8 +1256,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseResampleClause(
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryStatement statement) {
     if (ctx.EVERY() != null) {
-      statement.setEveryInterval(
-          DataNodeDateTimeUtils.convertDurationStrToLong(ctx.everyInterval.getText()));
+      statement.setEveryDuration(
+          DataNodeDateTimeUtils.constructTimeDurationForCQ(ctx.everyInterval.getText()));
     } else {
       QueryStatement queryStatement = statement.getQueryBodyStatement();
       if (!queryStatement.isGroupByTime()) {
@@ -1265,24 +1265,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             DataNodeQueryMessages
                 .CQ_AT_LEAST_ONE_OF_THE_PARAMETERS_EVERY_INTERVAL_AND_GROUP_BY_INTERVAL_NEEDS_TO_BE);
       }
-      statement.setEveryInterval(
-          queryStatement.getGroupByTimeComponent().getInterval().getTotalDuration(currPrecision));
+      statement.setEveryDuration(queryStatement.getGroupByTimeComponent().getInterval());
     }
 
     if (ctx.BOUNDARY() != null) {
+      statement.setBoundaryExplicit(true);
       statement.setBoundaryTime(
           parseTimeValue(ctx.boundaryTime, CommonDateTimeUtils.currentTime()));
     }
 
     if (ctx.RANGE() != null) {
-      statement.setStartTimeOffset(
-          DataNodeDateTimeUtils.convertDurationStrToLong(ctx.startTimeOffset.getText()));
+      statement.setStartTimeOffsetDuration(
+          DataNodeDateTimeUtils.constructTimeDurationForCQ(ctx.startTimeOffset.getText()));
       if (ctx.endTimeOffset != null) {
-        statement.setEndTimeOffset(
-            DataNodeDateTimeUtils.convertDurationStrToLong(ctx.endTimeOffset.getText()));
+        statement.setEndTimeOffsetDuration(
+            DataNodeDateTimeUtils.constructTimeDurationForCQ(ctx.endTimeOffset.getText()));
       }
     } else {
-      statement.setStartTimeOffset(statement.getEveryInterval());
+      statement.setStartTimeOffsetDuration(statement.getEveryDuration());
     }
   }
 
