@@ -210,6 +210,13 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
     return resource;
   }
 
+  private static TsFileResource createTsFileResource(final File tempDir, final String fileName)
+      throws Exception {
+    final File file = new File(tempDir, fileName);
+    Assert.assertTrue(file.createNewFile());
+    return new TsFileResource(file);
+  }
+
   private static TsFileResource createClosedTsFileResourceWithDevices(
       final File tempDir, final String fileName, final String... devices) throws Exception {
     final TsFileResource resource =
