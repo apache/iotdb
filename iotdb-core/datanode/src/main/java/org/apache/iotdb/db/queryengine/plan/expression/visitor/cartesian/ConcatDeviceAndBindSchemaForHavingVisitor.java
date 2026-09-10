@@ -46,8 +46,8 @@ public class ConcatDeviceAndBindSchemaForHavingVisitor
     List<MeasurementPath> actualPaths =
         context.getSchemaTree().searchMeasurementPaths(concatPath).left;
     if (actualPaths.isEmpty()) {
-      return Collections.singletonList(
-          new TimeSeriesOperand(new MeasurementPath(concatPath, TSDataType.UNKNOWN)));
+      // Keep the predicate intact without creating a physical schema for an unknown type.
+      return Collections.singletonList(new TimeSeriesOperand(concatPath, TSDataType.UNKNOWN));
     }
 
     List<MeasurementPath> nonViewActualPaths = new ArrayList<>();
