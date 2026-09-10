@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.cli.fs.command;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
+
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class FilesystemCommandParserTest {
 
@@ -368,6 +369,218 @@ public class FilesystemCommandParserTest {
     FilesystemCommand command = FilesystemCommandParser.parse("tree -L bad /root");
 
     assertEquals(FilesystemCommand.Type.INVALID, command.getType());
-    assertTrue(command.getErrorMessage().contains("depth"));
+    assertEquals(
+        String.format(CliMessages.EXCEPTION_INVALID_TREE_DEPTH_ARG_EF544DD4, "bad"),
+        command.getErrorMessage());
+  }
+
+  @Test
+  public void parseQuotedAndEscapedOperands() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse(
+            "cat '/db a/table.csv' \"/db b/table.csv\" /db\\ c/table.csv");
+
+    assertEquals(FilesystemCommand.Type.CAT, command.getType());
+    assertEquals("/db a/table.csv", command.getPaths().get(0));
+    assertEquals("/db b/table.csv", command.getPaths().get(1));
+    assertEquals("/db c/table.csv", command.getPaths().get(2));
+    assertEquals(
+        "device 1", FilesystemCommandParser.parse("grep 'device 1' '/db a/t.csv'").getPattern());
+    assertEquals("", FilesystemCommandParser.parse("grep '' /db1/t.csv").getPattern());
+  }
+
+  @Test
+  public void rejectUnclosedQuotesAndEscapes() {
+    assertInvalid("cat '/db a/table.csv", "cat \"/db a/table.csv", "cat /db1/table.csv\\");
+  }
+
+  @Test
+  public void operandDelimiterProtectsOptionLikePathsAndPatterns() {
+    FilesystemCommand head = FilesystemCommandParser.parse("head -n 2 -- -table.csv");
+    assertEquals(FilesystemCommand.Type.HEAD, head.getType());
+    assertEquals("-table.csv", head.getPath());
+    assertEquals(2, head.getLimit());
+    FilesystemCommand grep = FilesystemCommandParser.parse("grep -- --help -table.csv");
+    assertEquals(FilesystemCommand.Type.GREP, grep.getType());
+    assertEquals("--help", grep.getPattern());
+    assertEquals("-table.csv", grep.getPath());
+    FilesystemCommand cat = FilesystemCommandParser.parse("cat -- --help --");
+    assertEquals(2, cat.getPaths().size());
+    assertEquals("--help", cat.getPaths().get(0));
+    assertEquals("--", cat.getPaths().get(1));
+    assertInvalid("cat --", "ls --", "head -n -- file", "head -- file -n 2");
+  }
+
+  @Test
+  public void preserveOptionsAfterPaths() {
+    assertEquals(3, FilesystemCommandParser.parse("head /db1/t.csv -n 3").getLimit());
+    assertEquals(2, FilesystemCommandParser.parse("tail /db1/t.csv -2").getLimit());
+    assertEquals("-r", FilesystemCommandParser.parse("rm /db1 -r").getOption());
+    assertEquals("-a", FilesystemCommandParser.parse("tee /db1/t.csv -a").getOption());
+    assertEquals("t.csv", FilesystemCommandParser.parse("find /db1 -name t.csv").getPattern());
+    assertEquals("1-2", FilesystemCommandParser.parse("cut /db1/t.csv -d, -f1-2").getPattern());
+    assertEquals(
+        "2,1", FilesystemCommandParser.parse("join /db1/a.csv -1 2 /db1/b.csv -t,").getPattern());
+  }
+
+  @Test
+  public void rejectUnexpectedOperandsInsteadOfIgnoringThem() {
+    assertInvalid(
+        "pwd /db1",
+        "exit now",
+        "quit now",
+        "ls a b",
+        "ll a b",
+        "cd a b",
+        "stat a b",
+        "head a b",
+        "tail a b",
+        "wc a b",
+        "grep pattern a b",
+        "find a b",
+        "less a b",
+        "more a b",
+        "file a b",
+        "du a b",
+        "mkdir a b",
+        "rmdir a b",
+        "rm a b",
+        "rm -r a b",
+        "mv a b c",
+        "cp a b c",
+        "cut -f1 a b",
+        "tee -a a b",
+        "tree a b");
+  }
+
+  @Test
+  public void rejectUnsupportedOptionsAndDuplicateSingletons() {
+    assertInvalid(
+        "ls -x",
+        "cd -x",
+        "stat -x",
+        "cat -x",
+        "head -x",
+        "tail -x",
+        "wc -c",
+        "grep -i pattern path",
+        "find -x",
+        "less -x",
+        "more -x",
+        "file -x",
+        "du -x",
+        "mkdir -p path",
+        "rmdir -p path",
+        "rm -f path",
+        "mv -f a b",
+        "cp -r a b",
+        "cut -x -f1 path",
+        "paste -d, a b",
+        "join -x a b",
+        "tee -p path",
+        "tree -x",
+        "ls -ll",
+        "ls -a -a",
+        "head -n 1 -2 path",
+        "tail -2 -n 1 path",
+        "wc -l -l",
+        "find -name a -name b",
+        "tree -L 1 -L 2",
+        "rm -r -r path",
+        "tee -a -a path",
+        "cut -d, -d: -f1 path",
+        "cut -f1 -f2 path",
+        "join -t, -t: a b",
+        "join -1 1 -1 2 a b",
+        "join -2 1 -2 2 a b");
+  }
+
+  @Test
+  public void rejectSignedNonAsciiLeadingZeroAndOverflowNumbers() {
+    for (String number :
+        new String[] {
+          "+1", "-1", "01", "1x", "1.0", "\u0661", "2147483648", "999999999999999999999"
+        }) {
+      assertInvalid(
+          "head -n " + number + " path",
+          "tail -n " + number + " path",
+          "tree -L " + number,
+          "join -1 " + number + " a b",
+          "join -2 " + number + " a b");
+    }
+    assertEquals(0, FilesystemCommandParser.parse("head -n 0 path").getLimit());
+    assertEquals(0, FilesystemCommandParser.parse("tree -L 0").getDepth());
+    assertEquals(
+        Integer.MAX_VALUE, FilesystemCommandParser.parse("tail -n 2147483647 path").getLimit());
+    assertInvalid("join -1 0 a b", "join -2 0 a b");
+  }
+
+  @Test
+  public void validateCutFieldListsBeforeExecution() {
+    for (String fields :
+        new String[] {
+          "0",
+          "+1",
+          "01",
+          "\u0661",
+          "2147483648",
+          "1,",
+          ",1",
+          "1,,2",
+          "-2",
+          "2-",
+          "3-1",
+          "1-2-3",
+          "1,0",
+          "1-2147483648"
+        }) {
+      assertInvalid("cut -f" + fields + " path");
+    }
+    assertEquals(
+        "1,3-5,2147483647",
+        FilesystemCommandParser.parse("cut -f1,3-5,2147483647 path").getPattern());
+    assertInvalid("cut -f '' path", "cut -d '' -f1 path", "cut -d:: -f1 path", "join -t '' a b");
+  }
+
+  @Test
+  public void parseStandaloneAndPerCommandHelp() {
+    assertEquals(FilesystemCommand.Type.HELP, FilesystemCommandParser.parse("--help").getType());
+    for (String command :
+        new String[] {
+          "pwd", "ls", "ll", "cd", "stat", "cat", "head", "tail", "wc", "grep", "find", "less",
+          "more", "file", "du", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join", "tee",
+          "tree", "sql", "help", "exit", "quit"
+        }) {
+      FilesystemCommand help = FilesystemCommandParser.parse(command + " --help");
+      assertEquals(command, FilesystemCommand.Type.HELP, help.getType());
+      assertEquals(command, command, help.getPath());
+      assertEquals(command, FilesystemCommandParser.parse("help " + command).getPath());
+    }
+    assertEquals("head", FilesystemCommandParser.parse("HELP HeAd").getPath());
+    assertInvalid(
+        "--help head",
+        "unknown --help",
+        "help unknown",
+        "head --help path",
+        "head path --help",
+        "help head path",
+        "sql --help SELECT 1");
+  }
+
+  @Test
+  public void preserveSqlQuotingAndWhitespaceAfterCommand() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse("sql\tSELECT 'a b', '--help', '\\\\' FROM t");
+    assertEquals(FilesystemCommand.Type.SQL, command.getType());
+    assertEquals("SELECT 'a b', '--help', '\\\\' FROM t", command.getStatement());
+    assertInvalid("sql", "sql   ");
+  }
+
+  private static void assertInvalid(String... inputs) {
+    for (String input : inputs) {
+      FilesystemCommand command = FilesystemCommandParser.parse(input);
+      assertEquals(input, FilesystemCommand.Type.INVALID, command.getType());
+      assertFalse(input, command.getErrorMessage().isEmpty());
+    }
   }
 }

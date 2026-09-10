@@ -42,6 +42,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.thrift.TException;
@@ -90,11 +91,20 @@ public class Cli extends AbstractCli {
       ctx.exit(CODE_ERROR);
     }
     init();
+    hasExecuteSQL = false;
     String[] newArgs = removePasswordArgs(args);
     String[] newArgs2 = processExecuteArgs(newArgs);
     boolean continues = parseCommandLine(ctx, options, newArgs2, hf);
     if (!continues) {
       ctx.exit(CODE_ERROR);
+    }
+
+    if (ACCESS_MODE_FILESYSTEM.equals(accessMode) && hasExecuteSQL) {
+      Integer offlineStatus = FilesystemShell.runOffline(ctx, execute);
+      if (offlineStatus != null) {
+        ctx.exit(offlineStatus);
+        return;
+      }
     }
 
     try {
@@ -115,6 +125,28 @@ public class Cli extends AbstractCli {
     }
     ctx.setLineReader(lineReader);
     serve(ctx);
+  }
+
+  private static CommandLine parseStartupOptions(Options options, String[] args)
+      throws ParseException {
+    CommandLineParser parser = new DefaultParser();
+    if (hasExecuteSQL) {
+      // Validate all startup options before handling local filesystem help or syntax errors.
+      // Defer only the username requirement; resource commands still require it before login.
+      Options localOptions = new Options();
+      for (Option option : options.getOptions()) {
+        Option copy = (Option) option.clone();
+        if (USERNAME_ARGS.equals(copy.getOpt())) {
+          copy.setRequired(false);
+        }
+        localOptions.addOption(copy);
+      }
+      CommandLine local = parser.parse(localOptions, args);
+      if (ACCESS_MODE_FILESYSTEM.equalsIgnoreCase(local.getOptionValue(ACCESS_MODE_ARGS))) {
+        return local;
+      }
+    }
+    return parser.parse(options, args);
   }
 
   private static void constructProperties() {
@@ -140,8 +172,7 @@ public class Cli extends AbstractCli {
   private static boolean parseCommandLine(
       CliContext ctx, Options options, String[] newArgs, HelpFormatter hf) {
     try {
-      CommandLineParser parser = new DefaultParser();
-      commandLine = parser.parse(options, newArgs);
+      commandLine = parseStartupOptions(options, newArgs);
       if (commandLine.hasOption(HELP_ARGS)) {
         hf.printHelp(SCRIPT_HINT, options, true);
         return false;
@@ -183,6 +214,7 @@ public class Cli extends AbstractCli {
   }
 
   private static void serve(CliContext ctx) {
+    Integer filesystemStatus = null;
     try {
       useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
       sslProtocol = commandLine.getOptionValue(SSL_PROTOCOL_ARGS);
@@ -211,15 +243,29 @@ public class Cli extends AbstractCli {
       if (hasExecuteSQL && password != null) {
         ctx.getLineReader().getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
         if (ACCESS_MODE_FILESYSTEM.equals(accessMode)) {
-          executeFilesystemCommand(ctx);
+          filesystemStatus = executeFilesystemCommand(ctx);
         } else {
           executeSql(ctx);
         }
       }
-      receiveCommands(ctx);
+      if (filesystemStatus == null) {
+        receiveCommands(ctx);
+      }
     } catch (Exception e) {
-      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
-      ctx.exit(CODE_ERROR);
+      if (ACCESS_MODE_FILESYSTEM.equals(accessMode)) {
+        ctx.getErr()
+            .println(
+                String.format(
+                    CliMessages.MESSAGE_CANNOT_EXECUTE_FILESYSTEM_COMMAND_ARG_C61FAE4B,
+                    e.getMessage()));
+        ctx.exit(FilesystemShell.RUNTIME_ERROR);
+      } else {
+        ctx.getPrinter().println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
+        ctx.exit(CODE_ERROR);
+      }
+    }
+    if (filesystemStatus != null) {
+      ctx.exit(filesystemStatus);
     }
   }
 
@@ -238,25 +284,23 @@ public class Cli extends AbstractCli {
     }
   }
 
-  private static void executeFilesystemCommand(CliContext ctx) {
+  private static int executeFilesystemCommand(CliContext ctx) {
+    int status = FilesystemShell.INPUT_ERROR;
     try (IoTDBConnection connection =
         (IoTDBConnection) DriverManager.getConnection(buildJdbcUrl(host, port), info)) {
+      status = FilesystemShell.RUNTIME_ERROR;
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
-      createFilesystemShell(ctx, connection).executeNonInteractive(execute);
-      ctx.exit(CODE_OK);
-    } catch (SQLException e) {
-      ctx.getPrinter()
+      status = createFilesystemShell(ctx, connection).runNonInteractive(execute);
+    } catch (SQLException | TException e) {
+      ctx.getErr()
           .println(
-              IOTDB_ERROR_PREFIX + ": Can't execute filesystem command because " + e.getMessage());
-      ctx.exit(CODE_ERROR);
-    } catch (TException e) {
-      ctx.getPrinter()
-          .println(
-              IOTDB_ERROR_PREFIX + ": Can't execute filesystem command because " + e.getMessage());
-      ctx.exit(CODE_ERROR);
+              String.format(
+                  CliMessages.MESSAGE_CANNOT_EXECUTE_FILESYSTEM_COMMAND_ARG_C61FAE4B,
+                  e.getMessage()));
     }
+    return status;
   }
 
   private static void receiveCommands(CliContext ctx) throws TException {
@@ -345,7 +389,7 @@ public class Cli extends AbstractCli {
       s = ctx.getLineReader().readLine(cliPrefix + ":fs> ", null);
       return !shell.execute(s);
     } catch (SQLException e) {
-      ctx.getPrinter().println(filesystemCommandName(s) + ": " + e.getMessage());
+      ctx.getErr().println(filesystemCommandName(s) + ": " + e.getMessage());
     } catch (UserInterruptException e) {
       readLine(ctx);
     } catch (EndOfFileException e) {

@@ -37,7 +37,11 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,12 +55,14 @@ public class CliFilesystemModeTest {
 
   private CliContext ctx;
   private ByteArrayOutputStream out;
+  private ByteArrayOutputStream err;
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
     out = new ByteArrayOutputStream();
-    ctx = new CliContext(System.in, new PrintStream(out), System.err, ExitType.EXCEPTION);
+    err = new ByteArrayOutputStream();
+    ctx = new CliContext(System.in, new PrintStream(out), new PrintStream(err), ExitType.EXCEPTION);
   }
 
   @Test
@@ -95,7 +101,7 @@ public class CliFilesystemModeTest {
     FilesystemShell shell = Cli.createFilesystemShell(ctx, connection);
     shell.execute("mkdir /db1");
 
-    org.junit.Assert.assertTrue(out.toString().contains("Read-only file system"));
+    org.junit.Assert.assertTrue(err.toString().contains("Read-only file system"));
   }
 
   @Test
@@ -121,7 +127,51 @@ public class CliFilesystemModeTest {
 
     assertFalse(shouldStop);
     verify(shell).execute("cat time");
-    org.junit.Assert.assertTrue(out.toString().contains("cat: 550: Table does not exist"));
+    org.junit.Assert.assertTrue(err.toString().contains("cat: 550: Table does not exist"));
+  }
+
+  @Test
+  public void filesystemHelpRunsBeforeUsernamePasswordAndConnection() throws Exception {
+    assertOfflineExit("head --help", FilesystemShell.SUCCESS);
+    assertTrue(out.toString().contains("head"));
+    assertEquals("", err.toString());
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
+  public void filesystemUsageErrorRunsBeforeUsernamePasswordAndConnection() throws Exception {
+    assertOfflineExit("unknown", FilesystemShell.USAGE_ERROR);
+    assertEquals("", out.toString());
+    assertTrue(err.toString().contains("unknown"));
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
+  public void filesystemHelpDoesNotIgnoreInvalidStartupOptions() throws Exception {
+    try {
+      Cli.runCli(
+          ctx, new String[] {"--access_mode", "filesystem", "--invalid", "-e", "head --help"});
+      fail("Expected CLI exit");
+    } catch (RuntimeException e) {
+      assertEquals("Exiting with code 1", e.getMessage());
+    } finally {
+      AbstractCli.hasExecuteSQL = false;
+      AbstractCli.setAccessMode(AbstractCli.ACCESS_MODE_SQL);
+    }
+    assertNull(ctx.getLineReader());
+    assertFalse(out.toString().contains("head -n 5 /db1/table1.csv"));
+  }
+
+  private void assertOfflineExit(String command, int status) throws Exception {
+    try {
+      Cli.runCli(ctx, new String[] {"--access_mode", "filesystem", "-e", command});
+      fail("Expected CLI exit");
+    } catch (RuntimeException e) {
+      assertEquals("Exiting with code " + status, e.getMessage());
+    } finally {
+      AbstractCli.hasExecuteSQL = false;
+      AbstractCli.setAccessMode(AbstractCli.ACCESS_MODE_SQL);
+    }
   }
 
   private void mockSingleColumnQuery(String sql, String column, String value) throws Exception {

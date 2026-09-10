@@ -20,6 +20,7 @@
 package org.apache.iotdb.cli.fs;
 
 import org.apache.iotdb.cli.fs.command.FilesystemCommand;
+import org.apache.iotdb.cli.fs.command.FilesystemCommandHelp;
 import org.apache.iotdb.cli.fs.command.FilesystemCommandParser;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
@@ -28,6 +29,7 @@ import org.apache.iotdb.cli.fs.provider.FilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.provider.UnsupportedFilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.CliContext;
 
 import org.jline.reader.Candidate;
@@ -50,6 +52,11 @@ import java.util.regex.Pattern;
 
 public class FilesystemShell {
 
+  public static final int SUCCESS = 0;
+  public static final int USAGE_ERROR = 1;
+  public static final int INPUT_ERROR = 2;
+  public static final int RUNTIME_ERROR = 3;
+
   private static final int DEFAULT_READ_LIMIT = 20;
   private static final List<String> COMMANDS =
       Arrays.asList(
@@ -61,6 +68,7 @@ public class FilesystemShell {
   private final FilesystemSchemaProvider provider;
   private final FilesystemMutationProvider mutationProvider;
   private final boolean writeEnabled;
+  private int lastStatus = SUCCESS;
   private FsPath currentPath = FsPath.absolute("/");
 
   public FilesystemShell(CliContext ctx, FilesystemSchemaProvider provider) {
@@ -79,7 +87,11 @@ public class FilesystemShell {
   }
 
   public boolean execute(String input) throws SQLException {
-    FilesystemCommand command = FilesystemCommandParser.parse(input);
+    return execute(FilesystemCommandParser.parse(input), false);
+  }
+
+  private boolean execute(FilesystemCommand command, boolean nonInteractive) throws SQLException {
+    lastStatus = SUCCESS;
     switch (command.getType()) {
       case PWD:
         ctx.getPrinter().println(currentPath.toString());
@@ -94,7 +106,10 @@ public class FilesystemShell {
         changeDirectory(command.getPath());
         return true;
       case STAT:
-        printNode(provider.describe(resolve(command.getPath())));
+        FsNode node = provider.describe(resolve(command.getPath()));
+        if (checkExists("stat", node)) {
+          printNode(node);
+        }
         return true;
       case CAT:
         printSequentialReads(command.getPaths(), DEFAULT_READ_LIMIT);
@@ -149,10 +164,10 @@ public class FilesystemShell {
         printJoin(command.getPaths(), command.getOption(), command.getPattern());
         return true;
       case TEE:
-        append(command.getPath(), false);
+        append(command.getPath(), nonInteractive);
         return true;
       case HELP:
-        printHelp();
+        FilesystemCommandHelp.print(ctx.getOut(), command.getPath());
         return true;
       case EXIT:
         return false;
@@ -160,22 +175,70 @@ public class FilesystemShell {
         printTree(resolve(command.getPath()), command.getDepth());
         return true;
       case INVALID:
-        ctx.getPrinter().println(command.getErrorMessage());
+        reportError(USAGE_ERROR, command.getErrorMessage());
         return true;
       case SQL:
       default:
-        ctx.getPrinter().println("Unsupported filesystem command: " + command.getType());
+        reportError(
+            USAGE_ERROR,
+            String.format(
+                CliMessages.MESSAGE_UNSUPPORTED_FILESYSTEM_COMMAND_ARG_428768D0,
+                command.getType()));
         return true;
     }
   }
 
   public boolean executeNonInteractive(String input) throws SQLException {
+    return execute(FilesystemCommandParser.parse(input), true);
+  }
+
+  /** Execute a command with separate result and diagnostic streams and a script exit status. */
+  public int runNonInteractive(String input) {
+    try {
+      executeNonInteractive(input);
+    } catch (SQLException | IllegalArgumentException e) {
+      reportError(
+          RUNTIME_ERROR,
+          String.format(
+              CliMessages.MESSAGE_CANNOT_EXECUTE_FILESYSTEM_COMMAND_ARG_C61FAE4B, e.getMessage()));
+    }
+    if (ctx.getOut().checkError()) {
+      reportError(RUNTIME_ERROR, CliMessages.MESSAGE_FAILED_TO_WRITE_STANDARD_OUTPUT_C1A5CCF7);
+    }
+    return lastStatus;
+  }
+
+  /** Returns null when a command needs a connection; handles help and usage before login. */
+  public static Integer runOffline(CliContext ctx, String input) {
     FilesystemCommand command = FilesystemCommandParser.parse(input);
-    if (command.getType() == FilesystemCommand.Type.TEE) {
-      append(command.getPath(), true);
+    switch (command.getType()) {
+      case HELP:
+      case INVALID:
+      case SQL:
+      case EXIT:
+      case PWD:
+        return new FilesystemShell(ctx, null).runNonInteractive(input);
+      default:
+        return null;
+    }
+  }
+
+  private void reportError(int status, String message) {
+    lastStatus = status;
+    ctx.getErr().println(message);
+  }
+
+  private boolean checkExists(String command, FsNode node) {
+    if (node.getType() != FsNodeType.UNKNOWN) {
       return true;
     }
-    return execute(input);
+    reportError(
+        INPUT_ERROR,
+        String.format(
+            CliMessages.MESSAGE_ARG_ARG_NO_SUCH_FILE_OR_DIRECTORY_ABDC5A9C,
+            command,
+            node.getPath()));
+    return false;
   }
 
   public Completer createCompleter() {
@@ -184,8 +247,7 @@ public class FilesystemShell {
 
   private void printTree(FsPath path, int depth) throws SQLException {
     FsNode node = provider.describe(path);
-    if (node.getType() == FsNodeType.UNKNOWN) {
-      ctx.getPrinter().println("tree: " + path + ": No such file or directory");
+    if (!checkExists("tree", node)) {
       return;
     }
     if (!isDirectory(node.getType())) {
@@ -218,10 +280,15 @@ public class FilesystemShell {
   private void changeDirectory(String path) throws SQLException {
     FsPath target = resolve(path);
     FsNode node = provider.describe(target);
+    if (!checkExists("cd", node)) {
+      return;
+    }
     if (isDirectory(node.getType())) {
       currentPath = target;
     } else {
-      ctx.getPrinter().println("cd: " + target + ": Not a directory");
+      reportError(
+          INPUT_ERROR,
+          String.format(CliMessages.MESSAGE_ARG_ARG_NOT_A_DIRECTORY_CF18DCA5, "cd", target));
     }
   }
 
@@ -240,8 +307,7 @@ public class FilesystemShell {
   private void printList(String path, boolean all, boolean longListing) throws SQLException {
     FsPath resolvedPath = resolve(path);
     FsNode node = provider.describe(resolvedPath);
-    if (node.getType() == FsNodeType.UNKNOWN) {
-      ctx.getPrinter().println("ls: " + resolvedPath + ": No such file or directory");
+    if (!checkExists("ls", node)) {
       return;
     }
     if (!isDirectory(node.getType())) {
@@ -404,6 +470,9 @@ public class FilesystemShell {
 
   private void printFind(FsPath path, String pattern) throws SQLException {
     FsNode node = provider.describe(path);
+    if (!checkExists("find", node)) {
+      return;
+    }
     if (matchesFind(node, pattern)) {
       ctx.getPrinter().println(path.toString());
     }
@@ -421,8 +490,10 @@ public class FilesystemShell {
 
   private void printFile(String path) throws SQLException {
     FsPath resolvedPath = resolve(path);
-    ctx.getPrinter()
-        .println(resolvedPath + ": " + unixType(provider.describe(resolvedPath).getType()));
+    FsNode node = provider.describe(resolvedPath);
+    if (checkExists("file", node)) {
+      ctx.getPrinter().println(resolvedPath + ": " + unixType(node.getType()));
+    }
   }
 
   private void printDiskUsage(String path) throws SQLException {
@@ -499,7 +570,7 @@ public class FilesystemShell {
       }
       return lines;
     } catch (IOException e) {
-      throw new SQLException("Failed to read standard input", e);
+      throw new SQLException(CliMessages.MESSAGE_FAILED_TO_READ_STANDARD_INPUT_3CB0AD1E, e);
     }
   }
 
@@ -511,7 +582,9 @@ public class FilesystemShell {
         line = ctx.getLineReader().readLine("tee> ", null);
       } catch (EndOfFileException e) {
         if (!lines.isEmpty()) {
-          ctx.getPrinter().println("tee: use :wq to write or :q! to quit without writing");
+          ctx.getErr()
+              .println(
+                  CliMessages.MESSAGE_TEE_USE_WQ_TO_WRITE_OR_Q_TO_QUIT_WITHOUT_WRITING_C46EFD2C);
         }
         return;
       }
@@ -520,7 +593,7 @@ public class FilesystemShell {
           mutationProvider.append(path, lines);
           return;
         } catch (SQLException e) {
-          ctx.getPrinter().println("tee: " + e.getMessage());
+          ctx.getErr().println("tee: " + e.getMessage());
           continue;
         }
       }
@@ -531,7 +604,8 @@ public class FilesystemShell {
         if (lines.isEmpty()) {
           return;
         }
-        ctx.getPrinter().println("tee: use :wq to write or :q! to quit without writing");
+        ctx.getErr()
+            .println(CliMessages.MESSAGE_TEE_USE_WQ_TO_WRITE_OR_Q_TO_QUIT_WITHOUT_WRITING_C46EFD2C);
         continue;
       }
       lines.add(line);
@@ -542,7 +616,9 @@ public class FilesystemShell {
     if (writeEnabled) {
       return true;
     }
-    ctx.getPrinter().println(command + ": " + path + ": Read-only file system");
+    reportError(
+        RUNTIME_ERROR,
+        String.format(CliMessages.MESSAGE_ARG_ARG_READ_ONLY_FILE_SYSTEM_A86EB99C, command, path));
     return false;
   }
 
@@ -557,35 +633,6 @@ public class FilesystemShell {
       }
     }
     return builder.toString();
-  }
-
-  private void printHelp() {
-    ctx.getPrinter().println("pwd");
-    ctx.getPrinter().println("ls [path]");
-    ctx.getPrinter().println("ll [path]");
-    ctx.getPrinter().println("cd <path>");
-    ctx.getPrinter().println("stat [path]");
-    ctx.getPrinter().println("cat <path>...");
-    ctx.getPrinter().println("head [-n lines] <path>");
-    ctx.getPrinter().println("tail [-n lines] <path>");
-    ctx.getPrinter().println("wc -l <path>");
-    ctx.getPrinter().println("grep <pattern> <path>");
-    ctx.getPrinter().println("find [path] [-name pattern]");
-    ctx.getPrinter().println("less <path>");
-    ctx.getPrinter().println("more <path>");
-    ctx.getPrinter().println("file <path>");
-    ctx.getPrinter().println("du <path>");
-    ctx.getPrinter().println("mkdir <path>");
-    ctx.getPrinter().println("rmdir <path>");
-    ctx.getPrinter().println("rm <path>");
-    ctx.getPrinter().println("mv <source> <target>");
-    ctx.getPrinter().println("cp <source> <target>");
-    ctx.getPrinter().println("cut -d<delimiter> -f<fields> <path>");
-    ctx.getPrinter().println("paste <path>...");
-    ctx.getPrinter().println("join [-t delimiter] [-1 field] [-2 field] <path1> <path2>");
-    ctx.getPrinter().println("tee -a <path>");
-    ctx.getPrinter().println("tree [-L depth] [path]");
-    ctx.getPrinter().println("exit");
   }
 
   private static boolean isDirectory(FsNodeType type) {

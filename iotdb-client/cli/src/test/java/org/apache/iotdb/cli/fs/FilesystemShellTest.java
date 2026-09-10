@@ -40,6 +40,8 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -62,19 +64,91 @@ public class FilesystemShellTest {
   @Mock private LineReader lineReader;
 
   private ByteArrayOutputStream out;
+  private ByteArrayOutputStream err;
   private FilesystemShell shell;
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
     out = new ByteArrayOutputStream();
+    err = new ByteArrayOutputStream();
     CliContext ctx =
         new CliContext(
             new ByteArrayInputStream(new byte[0]),
             new PrintStream(out),
-            System.err,
+            new PrintStream(err),
             ExitType.EXCEPTION);
     shell = new FilesystemShell(ctx, provider);
+  }
+
+  @Test
+  public void invalidBatchCommandFailsWithoutAccessingProvider() {
+    assertEquals(FilesystemShell.USAGE_ERROR, shell.runNonInteractive("unknown"));
+    assertTrue(err.toString().contains("unknown"));
+    assertEquals("", out.toString());
+    verifyZeroInteractions(provider, mutationProvider);
+  }
+
+  @Test
+  public void batchStatusIsResetForEachCommand() {
+    assertEquals(FilesystemShell.USAGE_ERROR, shell.runNonInteractive("unknown"));
+    assertEquals(FilesystemShell.SUCCESS, shell.runNonInteractive("pwd"));
+    assertEquals("/" + System.lineSeparator(), out.toString());
+  }
+
+  @Test
+  public void batchReadonlyMutationFailsWithoutWriting() {
+    assertEquals(FilesystemShell.RUNTIME_ERROR, shell.runNonInteractive("mkdir /db1"));
+    assertEquals("", out.toString());
+    assertTrue(err.toString().contains("Read-only file system"));
+    verifyZeroInteractions(provider, mutationProvider);
+  }
+
+  @Test
+  public void batchMissingPathFailsForMetadataCommands() throws SQLException {
+    FsPath missing = FsPath.absolute("/missing");
+    when(provider.describe(missing)).thenReturn(new FsNode("missing", missing, FsNodeType.UNKNOWN));
+    for (String command : Arrays.asList("ls", "tree", "stat", "find", "file", "cd")) {
+      assertEquals(
+          command, FilesystemShell.INPUT_ERROR, shell.runNonInteractive(command + " /missing"));
+    }
+    assertEquals("", out.toString());
+    assertEquals(FilesystemShell.SUCCESS, shell.runNonInteractive("pwd"));
+    assertEquals("/" + System.lineSeparator(), out.toString());
+  }
+
+  @Test
+  public void batchQueryFailureUsesDiagnosticsAndRuntimeStatus() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
+        .thenThrow(new SQLException("query failed"));
+    assertEquals(FilesystemShell.RUNTIME_ERROR, shell.runNonInteractive("cat /db1/table1.csv"));
+    assertEquals("", out.toString());
+    assertTrue(err.toString().contains("query failed"));
+  }
+
+  @Test
+  public void batchDetectsOutputFailure() {
+    PrintStream broken =
+        new PrintStream(
+            new OutputStream() {
+              @Override
+              public void write(int value) throws IOException {
+                throw new IOException("broken pipe");
+              }
+            });
+    shell =
+        new FilesystemShell(
+            new CliContext(System.in, broken, new PrintStream(err), ExitType.EXCEPTION), provider);
+    assertEquals(FilesystemShell.RUNTIME_ERROR, shell.runNonInteractive("pwd"));
+    assertTrue(err.toString().contains("standard output"));
+  }
+
+  @Test
+  public void batchHelpDoesNotAccessProvider() {
+    assertEquals(FilesystemShell.SUCCESS, shell.runNonInteractive("head --help"));
+    assertTrue(out.toString().contains("head"));
+    assertEquals("", err.toString());
+    verifyZeroInteractions(provider, mutationProvider);
   }
 
   @Test
@@ -204,7 +278,7 @@ public class FilesystemShellTest {
     assertTrue(shell.execute("ls /db1/table1"));
 
     assertEquals(
-        "ls: /db1/table1: No such file or directory" + System.lineSeparator(), out.toString());
+        "ls: /db1/table1: No such file or directory" + System.lineSeparator(), err.toString());
     verify(provider).describe(FsPath.absolute("/db1/table1"));
     verify(provider, times(0)).list(FsPath.absolute("/db1/table1"));
   }
@@ -229,7 +303,7 @@ public class FilesystemShellTest {
   public void executeWriteCommandRejectsReadOnlyMode() throws SQLException {
     assertTrue(shell.execute("mkdir /db1"));
 
-    assertTrue(out.toString().contains("mkdir: /db1: Read-only file system"));
+    assertTrue(err.toString().contains("mkdir: /db1: Read-only file system"));
     verifyZeroInteractions(mutationProvider);
   }
 
@@ -265,7 +339,7 @@ public class FilesystemShellTest {
   public void executeRecursiveRemoveRejectsReadOnlyMode() throws SQLException {
     assertTrue(shell.execute("rm -r /db1"));
 
-    assertTrue(out.toString().contains("rm: /db1: Read-only file system"));
+    assertTrue(err.toString().contains("rm: /db1: Read-only file system"));
     verifyZeroInteractions(mutationProvider);
   }
 
@@ -273,7 +347,7 @@ public class FilesystemShellTest {
   public void executeTeeRejectsReadOnlyMode() throws SQLException {
     assertTrue(shell.execute("tee -a /db1/table1.csv"));
 
-    assertTrue(out.toString().contains("tee: /db1/table1.csv: Read-only file system"));
+    assertTrue(err.toString().contains("tee: /db1/table1.csv: Read-only file system"));
     verifyZeroInteractions(mutationProvider);
   }
 
@@ -300,7 +374,7 @@ public class FilesystemShellTest {
 
     assertTrue(shell.execute("tee -a /db1/table1.csv"));
 
-    assertTrue(out.toString().contains("tee: use :wq to write or :q! to quit without writing"));
+    assertTrue(err.toString().contains("tee: use :wq to write or :q! to quit without writing"));
     verifyZeroInteractions(mutationProvider);
   }
 
@@ -310,7 +384,7 @@ public class FilesystemShellTest {
         new CliContext(
             new ByteArrayInputStream("time,key,value\n1,spricoder,2.0\n".getBytes()),
             new PrintStream(out),
-            System.err,
+            new PrintStream(err),
             ExitType.EXCEPTION);
     shell = new FilesystemShell(ctx, provider, mutationProvider, true);
 
@@ -373,7 +447,7 @@ public class FilesystemShellTest {
     assertTrue(shell.execute("tree /db1/table1"));
 
     assertEquals(
-        "tree: /db1/table1: No such file or directory" + System.lineSeparator(), out.toString());
+        "tree: /db1/table1: No such file or directory" + System.lineSeparator(), err.toString());
     verify(provider).describe(FsPath.absolute("/db1/table1"));
     verify(provider, times(0)).list(FsPath.absolute("/db1/table1"));
   }
@@ -585,7 +659,8 @@ public class FilesystemShellTest {
 
     assertTrue(shell.execute("file /db1/table1"));
 
-    assertTrue(out.toString().contains("/db1/table1: unknown"));
+    assertEquals("", out.toString());
+    assertTrue(err.toString().contains("file: /db1/table1: No such file or directory"));
     verify(provider).describe(FsPath.absolute("/db1/table1"));
   }
 
@@ -775,7 +850,7 @@ public class FilesystemShellTest {
     return new CliContext(
         new ByteArrayInputStream(new byte[0]),
         new PrintStream(out),
-        System.err,
+        new PrintStream(err),
         ExitType.EXCEPTION);
   }
 }

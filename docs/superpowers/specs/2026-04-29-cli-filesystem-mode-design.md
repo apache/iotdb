@@ -64,6 +64,149 @@ Backward compatibility is a hard requirement.
 - In filesystem mode, `-e` executes a filesystem command such as `ls /`, not a SQL statement. This
   distinction must be documented in help output.
 
+## TsFile CLI Alignment
+
+The implementation reference is the C++ `tsfile-cli` under the sibling TsFile repository's
+`cpp/tools/`, not the Java import/export tools. Its source and executable tests define the
+reference behavior:
+
+| Concern | TsFile implementation | Reference tests |
+| --- | --- | --- |
+| Entry point, validation before opening input, help, dispatch | `tools_main.cc`, `cli/run_cli.cc` | `cpp/test/tools/cli_args_test.cc`, `cpp/test/tools/cli_requirements_test.cc` |
+| Typed arguments, option applicability, duplicate rejection | `cli/cli_args.h`, `cli/cli_args.cc`, `cli/run_cli.cc` | `cpp/test/tools/cli_args_test.cc`, `cpp/test/tools/cli_requirements_test.cc` |
+| Command execution over a reader | `commands/commands.h`, `commands/row_query.cc`, `commands/cmd_*.cc` | `cpp/test/tools/command_e2e_test.cc` |
+| Typed rows and common output writers | `format/result_set_format.cc`, `format/output_format.cc` | `cpp/test/tools/output_format_test.cc`, `cpp/test/tools/model_format_e2e_test.cc`, `cpp/test/tools/golden/` |
+| Process result classification | `cli/exit_codes.h`, `cli/run_cli.cc` | `cpp/test/tools/cli_args_test.cc`, `cpp/test/tools/command_e2e_test.cc` |
+
+Implementation paths in the table are relative to `cpp/tools/`; test paths are relative to the
+TsFile repository root. Follow these responsibilities and contracts in Java using the existing CLI
+dependencies. The IoTDB adaptation replaces a local `TsFileReader` with the JDBC-backed filesystem
+providers and preserves the existing slash-path commands, table sidecars, and SQL default.
+
+### Target Execution Layers
+
+1. **Runner:** `Cli` selects SQL or filesystem mode. Filesystem execution accepts explicit input,
+   result, and diagnostic streams and returns a command status. Only the process entry point turns
+   that status into a process exit; the interactive loop continues after command failures.
+2. **Parser:** `FilesystemCommandParser` tokenizes a command line and builds a typed
+   `FilesystemCommand`. It owns command grammar, argument counts, option values, and local
+   applicability checks. Parsing must not issue SQL or open a connection.
+3. **Command:** filesystem dispatch resolves the command against the current directory, invokes
+   providers, and selects the appropriate output writer. Command handlers must not embed SQL or
+   infer database types from rendered text.
+4. **Provider:** tree/table providers own path resolution, dialect-specific SQL, and mutation
+   boundaries. The target read contract exposes ordered column names, IoTDB types, explicit null
+   state, and rows through a closeable cursor. JDBC statements and results close on success,
+   cancellation, or failure; a command failure must not automatically close the shell connection.
+5. **Formatter:** a shared writer consumes the typed result contract, keeping serialization out of
+   providers and command handlers. Plain filesystem names and text operations retain their Unix
+   output. Structured results use the format contract below.
+
+TsFile has no JDBC provider interface; the provider layer is the IoTDB-specific boundary replacing
+direct reader access. Likewise, TsFile receives already-tokenized process arguments, whereas IoTDB
+must also tokenize the string supplied to `-e` or the interactive prompt. These adaptations must
+preserve the same rule: validate the complete request before accessing its resource.
+
+### Strict Parsing And Help
+
+- Reject unknown commands/options, missing values, unsupported command/option combinations,
+  unexpected positional arguments, and duplicate singleton options. Never silently discard an
+  extra path or allow the last singleton value to overwrite the first. Repeated operands are valid
+  only for commands whose grammar explicitly allows them, such as `paste`.
+- Tokenization respects single and double quotes, quoted whitespace, and supported escapes;
+  rejects unterminated quotes or escapes; and preserves quoted empty tokens for argument
+  validation. It does not expand variables, globs, pipes, redirection, or command substitution.
+- Numeric arguments require complete decimal values and range checks. TsFile's canonical
+  nonnegative grammar is `0|[1-9][0-9]*`; signed int64 additionally permits a leading `-` on nonzero
+  values. Whitespace, `+`, leading zeros, suffixes, and overflow are rejected. IoTDB's existing
+  command-specific bounds still apply: line counts may be zero, but field indices begin at one.
+- Support `help`, `help <command>`, and `<command> --help` in filesystem mode. Command help includes
+  syntax, accepted options, defaults, output semantics, and an example. A help request with extra
+  operands or options is a usage error; it must not hide malformed input. Top-level `-h` remains
+  the existing IoTDB host option.
+- For filesystem `-e`, parse and validate syntax, and handle help, before prompting for a password
+  or opening JDBC. Resource-dependent checks, such as whether a path exists, necessarily happen
+  after connection. A malformed `pwd /extra` or a valid `ls --help` must work independently of
+  server availability.
+- Preserve established IoTDB command forms such as `tree / -L 2`. TsFile's single final positional
+  file rule is specific to its command grammar; it must not remove supported IoTDB option order
+  or multi-path filesystem commands.
+
+### Streams And Exit Status
+
+Result data and explicitly requested help go to stdout. Diagnostics and usage printed because of
+an error go to stderr, with a filesystem command prefix where a command is known. Non-interactive
+filesystem results must not contain prompts, banners, timing summaries, or stack traces. All new
+user-facing text uses the CLI's existing English/Chinese message catalogs.
+
+Use TsFile's four numeric status categories, with resource failures adapted to IoTDB:
+
+| Status | TsFile category | IoTDB filesystem target mapping |
+| --- | --- | --- |
+| `0` | Complete success | Command or help completed successfully. |
+| `1` | Usage/parameter error | Invalid syntax, arguments, options, or locally invalid operation. |
+| `2` | Input/resource error | Connection/authentication failure, an unavailable or unreadable source path, or malformed append CSV input. |
+| `3` | Runtime/target error | Query or mutation execution failure after resource access, rejected write target, or output write/flush failure. |
+
+Use typed failures or JDBC/server status information for classification; do not inspect localized
+exception messages. Until providers expose reliable distinctions, provider SQL exceptions may use
+runtime status `3`; the design must not imply that every missing-path or CSV-input failure is
+already classified as `2`. Interactive commands report failures and return to the prompt;
+non-interactive `-e` propagates the command status to the process. For streamed output, nonzero
+status means any previously emitted rows are incomplete. This does not promise atomic database
+writes or rollback of already committed append chunks.
+
+### Target Structured Output Contract
+
+The structured format vocabulary is exactly `table`, `csv`, and `ndjson`, matching TsFile's
+`FormatVocabularyIsTableNdjsonCsvOnly` test. Do not add `json`, `tsv`, or automatic format changes
+when stdout is redirected. Newly introduced structured result surfaces default to `table`, as in
+`ResolveFormatTest.AutoAlwaysUsesTable`.
+
+This is a future formatter contract, not a new option accepted by the current filesystem parser.
+Existing `ls`/`tree` name output, CSV sidecar content, read limits, and text `cut`/`paste`/`join`
+behavior remain compatible. In particular, `cat /db/table.csv` continues to produce file content;
+it does not acquire TsFile's default table format or unlimited read behavior. A future structured
+command or explicit format option must document its scope and defaults before it is exposed.
+
+- Carry ordered names, types, values, and null flags from JDBC to the writer. Do not rebuild types
+  from `SqlRow` string values or infer null from an empty string.
+- CSV writes a header, RFC 4180 field escaping, `\N` for null, and `""` for a non-null empty string.
+  INT64/TIMESTAMP values remain exact decimal text. The literal string `\N` needs an explicit
+  round-trip policy before claiming lossless export/import: the TsFile writer itself does not
+  establish a separate representation for that literal. Existing IoTDB append semantics are not
+  changed by this target formatter contract.
+- NDJSON writes one object per row without a surrounding array. INT64 and TIMESTAMP values are
+  quoted decimal strings, including values beyond JavaScript's exact integer range. BOOLEAN,
+  INT32, and finite FLOAT/DOUBLE values are native JSON values; null is JSON `null`, and empty
+  text is `""`. Match TsFile's non-finite FLOAT/DOUBLE mapping to JSON `null`, DATE text
+  `YYYY-MM-DD`, and BLOB text as lowercase hexadecimal prefixed with `0x`.
+- Table output has a header and aligned columns; TsFile renders null and empty text as blank cells
+  in this human-readable format. Do not claim that table output preserves their distinction.
+- Empty results preserve the known schema: CSV/table emit their header and NDJSON emits no rows.
+  CSV/NDJSON should stream without collecting the complete result. Table alignment may spool
+  rows to temporary storage, as TsFile's `RowWriter` does, with cleanup and output failures
+  propagated. Output write and final flush failures must never be reported as success.
+
+### Implementation Boundary And Acceptance
+
+The current branch already separates path, parsed command, shell, JDBC executor, and tree/table
+providers. Reads still return materialized `List<SqlRow>`/`List<String>` values, `SqlRow` stores
+strings, and providers currently render sidecar CSV. A common typed streaming formatter is not
+implemented.
+
+The immediate alignment increment is strict filesystem parsing, quote-aware tokenization,
+per-command help, pre-connection validation/help for `-e`, stderr diagnostics, and nonzero command
+statuses. It does not claim completion of the provider cursor, structured format selection,
+lossless serialization, or exhaustive resource-error classification targets above.
+
+Acceptance tests for this increment must assert exact stdout/stderr separation and exit status,
+reject malformed commands without provider calls, allow help without credentials or a server,
+continue the interactive prompt after failures, and preserve default SQL dispatch and existing
+valid filesystem commands. Future formatter work must add typed null/empty/int64 boundary cases,
+empty-result fixtures, escaping cases, and output write/flush failure tests, following TsFile's
+formatter tests and tree/table golden-result matrix.
+
 ## Agentic Collaboration Policy
 
 All follow-up work on this feature may use subagents to accelerate analysis, implementation, and
@@ -98,8 +241,8 @@ was edited, and running the focused verification commands.
 Add a new access mode to the existing `Cli` entry point:
 
 - `--access_mode sql`: default. Runs the current SQL CLI path.
-- `--access_mode filesystem`: runs the new filesystem shell after the existing authentication and
-  JDBC connection setup.
+- `--access_mode filesystem`: validates `-e` syntax and serves help before authentication; commands
+  that access IoTDB run after the existing JDBC connection setup.
 - `--fs_write_mode disabled`: default. Filesystem write commands return read-only errors.
 - `--fs_write_mode enabled`: enables the table-mode mutation provider. Tree-mode writes still use
   the unsupported mutation provider.
@@ -508,11 +651,11 @@ tree/table metadata identifiers.
 
 ## Error Semantics
 
-- A missing path returns `No such path`.
+- A missing path reports a localized `No such file or directory` diagnostic on stderr.
 - Running directory-only commands on leaf nodes returns `Not a directory`.
 - Running leaf-only commands on directories returns `Is a directory`.
 - `cd` updates the current directory only after successful resolution.
-- `tree` uses a default depth limit to avoid accidentally scanning large schemas.
+- `tree` preserves its unlimited default depth; use `-L` to bound traversal.
 - Command errors do not close the JDBC connection or exit the shell.
 
 ## Parallel Work Guidance

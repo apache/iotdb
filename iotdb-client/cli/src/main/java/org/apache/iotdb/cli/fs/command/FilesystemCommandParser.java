@@ -19,15 +19,21 @@
 
 package org.apache.iotdb.cli.fs.command;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
+
+import org.jline.reader.Parser;
+import org.jline.reader.SyntaxError;
+import org.jline.reader.impl.DefaultParser;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class FilesystemCommandParser {
 
   private static final String DEFAULT_PATH = ".";
-  private static final String DEFAULT_CUT_DELIMITER = "\t";
-  private static final String DEFAULT_JOIN_DELIMITER = "";
   private static final int DEFAULT_TREE_DEPTH = Integer.MAX_VALUE;
   private static final int DEFAULT_HEAD_LIMIT = 10;
 
@@ -36,432 +42,393 @@ public class FilesystemCommandParser {
   public static FilesystemCommand parse(String input) {
     String line = input == null ? "" : input.trim();
     if (line.isEmpty()) {
-      return FilesystemCommand.invalid("Empty command");
+      return FilesystemCommand.invalid(CliMessages.MESSAGE_EMPTY_COMMAND_943E8DA9);
     }
-
-    String lowerLine = line.toLowerCase(Locale.ROOT);
-    if (lowerLine.equals("pwd")) {
-      return FilesystemCommand.simple(FilesystemCommand.Type.PWD);
+    // SQL has its own quoting and escaping rules; pass its body through unchanged.
+    int commandEnd = 0;
+    while (commandEnd < line.length() && !Character.isWhitespace(line.charAt(commandEnd))) {
+      commandEnd++;
     }
-    if (lowerLine.equals("help")) {
-      return FilesystemCommand.simple(FilesystemCommand.Type.HELP);
-    }
-    if (lowerLine.equals("exit") || lowerLine.equals("quit")) {
-      return FilesystemCommand.simple(FilesystemCommand.Type.EXIT);
-    }
-    if (lowerLine.startsWith("sql ")) {
-      return parseSql(line);
-    }
-
-    String[] tokens = line.split("\\s+");
-    String command = tokens[0].toLowerCase(Locale.ROOT);
-    if ("ls".equals(command)) {
-      return parseList(tokens, false);
-    }
-    if ("ll".equals(command)) {
-      return parseList(tokens, true);
-    }
-    if ("cd".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.CD, pathArgument(tokens));
-    }
-    if ("stat".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.STAT, pathArgument(tokens));
-    }
-    if ("cat".equals(command)) {
-      return parseCat(tokens);
-    }
-    if ("head".equals(command)) {
-      return parseHead(tokens);
-    }
-    if ("tail".equals(command)) {
-      return parseTail(tokens);
-    }
-    if ("wc".equals(command)) {
-      return parseWc(tokens);
-    }
-    if ("grep".equals(command)) {
-      return parseGrep(tokens);
-    }
-    if ("find".equals(command)) {
-      return parseFind(tokens);
-    }
-    if ("less".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.LESS, pathArgument(tokens));
-    }
-    if ("more".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.MORE, pathArgument(tokens));
-    }
-    if ("file".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.FILE, pathArgument(tokens));
-    }
-    if ("du".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.DU, pathArgument(tokens));
-    }
-    if ("mkdir".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.MKDIR, pathArgument(tokens));
-    }
-    if ("rmdir".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.RMDIR, pathArgument(tokens));
-    }
-    if ("rm".equals(command)) {
-      return parseRm(tokens);
-    }
-    if ("mv".equals(command)) {
-      return parseMv(tokens);
-    }
-    if ("cp".equals(command)) {
-      return parseCp(tokens);
-    }
-    if ("cut".equals(command)) {
-      return parseCut(tokens);
-    }
-    if ("paste".equals(command)) {
-      return parsePaste(tokens);
-    }
-    if ("join".equals(command)) {
-      return parseJoin(tokens);
-    }
-    if ("tee".equals(command)) {
-      return parseTee(tokens);
-    }
-    if ("tree".equals(command)) {
-      return parseTree(tokens);
-    }
-    return FilesystemCommand.invalid("Unknown command: " + tokens[0]);
-  }
-
-  private static FilesystemCommand parseSql(String line) {
-    String statement = line.substring(3).trim();
-    if (statement.isEmpty()) {
-      return FilesystemCommand.invalid("SQL statement is empty");
-    }
-    return FilesystemCommand.sql(statement);
-  }
-
-  private static FilesystemCommand parsePaste(String[] tokens) {
-    if (tokens.length < 2) {
-      return FilesystemCommand.invalid("Missing paste path");
-    }
-    List<String> paths = new ArrayList<>();
-    for (int i = 1; i < tokens.length; i++) {
-      paths.add(tokens[i]);
-    }
-    return FilesystemCommand.paths(FilesystemCommand.Type.PASTE, paths);
-  }
-
-  private static FilesystemCommand parseJoin(String[] tokens) {
-    String delimiter = DEFAULT_JOIN_DELIMITER;
-    int leftField = 1;
-    int rightField = 1;
-    List<String> paths = new ArrayList<>();
-
-    for (int i = 1; i < tokens.length; i++) {
-      String token = tokens[i];
-      if ("-t".equals(token)) {
-        if (i + 1 >= tokens.length) {
-          return invalidJoinUsage();
-        }
-        delimiter = tokens[++i];
-      } else if (token.startsWith("-t") && token.length() > 2) {
-        delimiter = token.substring(2);
-      } else if ("-1".equals(token)) {
-        if (i + 1 >= tokens.length) {
-          return invalidJoinUsage();
-        }
-        leftField = parseJoinField(tokens[++i]);
-      } else if ("-2".equals(token)) {
-        if (i + 1 >= tokens.length) {
-          return invalidJoinUsage();
-        }
-        rightField = parseJoinField(tokens[++i]);
-      } else if (token.startsWith("-")) {
-        return FilesystemCommand.invalid("Unsupported join option: " + token);
-      } else {
-        paths.add(token);
+    if ("sql".equalsIgnoreCase(line.substring(0, commandEnd))) {
+      String statement = line.substring(commandEnd).trim();
+      if (statement.isEmpty()) {
+        return FilesystemCommand.invalid(CliMessages.MESSAGE_SQL_STATEMENT_IS_EMPTY_676FCD59);
       }
+      if ("--help".equals(statement)) {
+        return FilesystemCommand.path(FilesystemCommand.Type.HELP, "sql");
+      }
+      if (statement.startsWith("--help")
+          && Character.isWhitespace(statement.charAt("--help".length()))) {
+        return FilesystemCommand.invalid(
+            CliMessages.MESSAGE_USE_HELP_COMMAND_OR_COMMAND_HELP_WITHOUT_OTHER_ARGUMENTS_3EED45E5);
+      }
+      return FilesystemCommand.sql(statement);
     }
 
-    if (delimiter.length() > 1) {
-      return FilesystemCommand.invalid("Join delimiter must be a single character");
-    }
-    if (leftField <= 0 || rightField <= 0) {
-      return FilesystemCommand.invalid("Invalid join field");
-    }
-    if (paths.size() != 2) {
-      return invalidJoinUsage();
-    }
-    return FilesystemCommand.join(delimiter, leftField + "," + rightField, paths);
-  }
-
-  private static int parseJoinField(String value) {
+    List<String> tokens;
     try {
-      return Integer.parseInt(value);
-    } catch (NumberFormatException e) {
-      return -1;
+      tokens =
+          new DefaultParser()
+              .eofOnUnclosedQuote(true)
+              .eofOnEscapedNewLine(true)
+              .parse(line, line.length(), Parser.ParseContext.ACCEPT_LINE)
+              .words();
+    } catch (SyntaxError e) {
+      return FilesystemCommand.invalid(
+          CliMessages.MESSAGE_UNCLOSED_QUOTE_OR_ESCAPE_IN_FILESYSTEM_COMMAND_42C74084);
     }
-  }
-
-  private static FilesystemCommand invalidJoinUsage() {
-    return FilesystemCommand.invalid(
-        "Usage: join [-t delimiter] [-1 field] [-2 field] <path1> <path2>");
-  }
-
-  private static FilesystemCommand parseTee(String[] tokens) {
-    if (tokens.length != 3) {
-      return FilesystemCommand.invalid("Usage: tee -a <path>");
-    }
-    if (!"-a".equals(tokens[1])) {
-      return FilesystemCommand.invalid("Unsupported tee option: " + tokens[1]);
-    }
-    return FilesystemCommand.option(FilesystemCommand.Type.TEE, "-a", tokens[2]);
-  }
-
-  private static FilesystemCommand parseCut(String[] tokens) {
-    String delimiter = DEFAULT_CUT_DELIMITER;
-    String fields = "";
-    String path = "";
-
-    for (int i = 1; i < tokens.length; i++) {
-      String token = tokens[i];
-      if ("-d".equals(token)) {
-        if (i + 1 >= tokens.length) {
-          return FilesystemCommand.invalid("Missing cut delimiter");
-        }
-        delimiter = tokens[++i];
-      } else if (token.startsWith("-d") && token.length() > 2) {
-        delimiter = token.substring(2);
-      } else if ("-f".equals(token)) {
-        if (i + 1 >= tokens.length) {
-          return FilesystemCommand.invalid("Missing cut fields");
-        }
-        fields = tokens[++i];
-      } else if (token.startsWith("-f") && token.length() > 2) {
-        fields = token.substring(2);
-      } else if (token.startsWith("-")) {
-        return FilesystemCommand.invalid("Unsupported cut option: " + token);
-      } else {
-        path = token;
+    String command = tokens.get(0).toLowerCase(Locale.ROOT);
+    if ("help".equals(command) || "--help".equals(command)) {
+      if (tokens.size() == 1) {
+        return FilesystemCommand.simple(FilesystemCommand.Type.HELP);
       }
-    }
-
-    if (delimiter.length() != 1) {
-      return FilesystemCommand.invalid("Cut delimiter must be a single character");
-    }
-    if (fields.isEmpty()) {
-      return FilesystemCommand.invalid("Missing cut fields");
-    }
-    if (path.isEmpty()) {
-      return FilesystemCommand.invalid("Missing cut path");
-    }
-    return FilesystemCommand.cut(delimiter, fields, path);
-  }
-
-  private static FilesystemCommand parseRm(String[] tokens) {
-    if (tokens.length < 2) {
-      return FilesystemCommand.invalid("Missing rm path");
-    }
-    if (tokens[1].startsWith("-")) {
-      if ("-r".equals(tokens[1]) && tokens.length >= 3) {
-        return FilesystemCommand.option(FilesystemCommand.Type.RM, "-r", tokens[2]);
+      if ("help".equals(command) && tokens.size() == 2 && "--help".equals(tokens.get(1))) {
+        return FilesystemCommand.path(FilesystemCommand.Type.HELP, "help");
       }
-      return FilesystemCommand.invalid("Unsupported rm option: " + tokens[1]);
+      if ("help".equals(command) && tokens.size() == 2 && isKnownCommand(tokens.get(1))) {
+        return FilesystemCommand.path(
+            FilesystemCommand.Type.HELP, tokens.get(1).toLowerCase(Locale.ROOT));
+      }
+      return FilesystemCommand.invalid(
+          CliMessages.MESSAGE_USE_HELP_COMMAND_OR_COMMAND_HELP_WITHOUT_OTHER_ARGUMENTS_3EED45E5);
     }
-    return FilesystemCommand.path(FilesystemCommand.Type.RM, tokens[1]);
+    if (!isKnownCommand(command)) {
+      return FilesystemCommand.invalid(
+          String.format(CliMessages.MESSAGE_UNKNOWN_COMMAND_ARG_00157142, tokens.get(0)));
+    }
+    if (tokens.size() == 2 && "--help".equals(tokens.get(1))) {
+      return FilesystemCommand.path(FilesystemCommand.Type.HELP, command);
+    }
+    try {
+      return parseCommand(command, new Arguments(command, tokens));
+    } catch (IllegalArgumentException e) {
+      return FilesystemCommand.invalid(e.getMessage());
+    }
   }
 
-  private static FilesystemCommand parseMv(String[] tokens) {
-    if (tokens.length < 3) {
-      return FilesystemCommand.invalid("Usage: mv <source> <target>");
+  static boolean isKnownCommand(String command) {
+    try {
+      FilesystemCommand.Type type = commandType(command.toLowerCase(Locale.ROOT));
+      return type != FilesystemCommand.Type.INVALID;
+    } catch (IllegalArgumentException e) {
+      return false;
     }
-    List<String> paths = new ArrayList<>();
-    paths.add(tokens[1]);
-    paths.add(tokens[2]);
-    return FilesystemCommand.paths(FilesystemCommand.Type.MV, paths);
   }
 
-  private static FilesystemCommand parseCp(String[] tokens) {
-    if (tokens.length < 3) {
-      return FilesystemCommand.invalid("Usage: cp <source> <target>");
-    }
-    List<String> paths = new ArrayList<>();
-    paths.add(tokens[1]);
-    paths.add(tokens[2]);
-    return FilesystemCommand.paths(FilesystemCommand.Type.CP, paths);
+  private static FilesystemCommand.Type commandType(String command) {
+    return "quit".equals(command)
+        ? FilesystemCommand.Type.EXIT
+        : FilesystemCommand.Type.valueOf(command.toUpperCase(Locale.ROOT));
   }
 
-  private static FilesystemCommand parseList(String[] tokens, boolean longMode) {
-    FilesystemCommand.Type type = longMode ? FilesystemCommand.Type.LL : FilesystemCommand.Type.LS;
-    String path = DEFAULT_PATH;
-    boolean all = false;
-    boolean recursive = false;
-
-    for (int i = 1; i < tokens.length; i++) {
-      String token = tokens[i];
-      if (token.startsWith("-")) {
-        for (int j = 1; j < token.length(); j++) {
-          char option = token.charAt(j);
-          if (option == 'l') {
-            type = FilesystemCommand.Type.LL;
-          } else if (option == 'a') {
-            all = true;
-          } else if (option == 'R') {
-            recursive = true;
-          } else {
-            return FilesystemCommand.invalid("Unsupported ls option: -" + option);
+  private static FilesystemCommand parseCommand(String command, Arguments args) {
+    FilesystemCommand.Type type = commandType(command);
+    switch (type) {
+      case SQL:
+        return FilesystemCommand.invalid(CliMessages.MESSAGE_SQL_STATEMENT_IS_EMPTY_676FCD59);
+      case PWD:
+      case EXIT:
+        args.paths(0, 0);
+        return FilesystemCommand.simple(type);
+      case LS:
+      case LL:
+        String listPath = args.path(false);
+        if (args.has("-R")) {
+          return FilesystemCommand.tree(listPath, DEFAULT_TREE_DEPTH);
+        }
+        return FilesystemCommand.option(
+            args.has("-l") ? FilesystemCommand.Type.LL : type,
+            args.has("-a") ? "-a" : "",
+            listPath);
+      case CAT:
+        List<String> catPaths = args.paths(0, Integer.MAX_VALUE);
+        return catPaths.isEmpty()
+            ? FilesystemCommand.path(type, DEFAULT_PATH)
+            : FilesystemCommand.paths(type, catPaths);
+      case PASTE:
+        return FilesystemCommand.paths(type, args.paths(1, Integer.MAX_VALUE));
+      case MV:
+      case CP:
+        return FilesystemCommand.paths(type, args.paths(2, 2));
+      case HEAD:
+      case TAIL:
+        int limit =
+            args.has("-n")
+                ? unsignedInteger(command, "-n", args.value("-n"), false)
+                : DEFAULT_HEAD_LIMIT;
+        String readPath = args.path(false);
+        return type == FilesystemCommand.Type.HEAD
+            ? FilesystemCommand.head(readPath, limit)
+            : FilesystemCommand.tail(readPath, limit);
+      case WC:
+        return FilesystemCommand.option(type, "-l", args.path(false));
+      case GREP:
+        // The first operand is a literal pattern and may be empty.
+        args.paths(2, 2, true);
+        return FilesystemCommand.pattern(type, args.operands.get(0), args.operands.get(1));
+      case FIND:
+        return FilesystemCommand.pattern(type, args.valueOrDefault("-name", ""), args.path(false));
+      case TREE:
+        int depth = DEFAULT_TREE_DEPTH;
+        if (args.has("-L")) {
+          try {
+            depth = unsignedInteger(command, "-L", args.value("-L"), false);
+          } catch (IllegalArgumentException e) {
+            throw invalid(CliMessages.EXCEPTION_INVALID_TREE_DEPTH_ARG_EF544DD4, args.value("-L"));
           }
         }
-      } else {
-        path = token;
+        return FilesystemCommand.tree(args.path(false), depth);
+      case RM:
+        return FilesystemCommand.option(type, args.has("-r") ? "-r" : "", args.path(true));
+      case TEE:
+        if (!args.has("-a")) {
+          throw invalid(CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, "-a");
+        }
+        return FilesystemCommand.option(type, "-a", args.path(true));
+      case CUT:
+        if (!args.has("-f")) {
+          throw invalid(CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, "-f");
+        }
+        String cutDelimiter = args.valueOrDefault("-d", "\t");
+        validateDelimiter(command, cutDelimiter);
+        String fields = args.value("-f");
+        validateCutFields(fields);
+        return FilesystemCommand.cut(cutDelimiter, fields, args.path(true));
+      case JOIN:
+        String joinDelimiter = args.valueOrDefault("-t", "");
+        if (args.has("-t")) {
+          validateDelimiter(command, joinDelimiter);
+        }
+        int left = args.has("-1") ? unsignedInteger(command, "-1", args.value("-1"), true) : 1;
+        int right = args.has("-2") ? unsignedInteger(command, "-2", args.value("-2"), true) : 1;
+        return FilesystemCommand.join(joinDelimiter, left + "," + right, args.paths(2, 2));
+      default:
+        return FilesystemCommand.path(type, args.path(false));
+    }
+  }
+
+  private static void validateDelimiter(String command, String delimiter) {
+    if (delimiter.length() != 1) {
+      throw invalid(
+          CliMessages.EXCEPTION_ARG_DELIMITER_MUST_BE_A_SINGLE_CHARACTER_23C3CA5E, command);
+    }
+  }
+
+  private static int unsignedInteger(
+      String command, String option, String value, boolean positive) {
+    if (value.isEmpty() || (value.length() > 1 && value.charAt(0) == '0')) {
+      throw invalid(
+          CliMessages.EXCEPTION_ARG_INVALID_UNSIGNED_INTEGER_FOR_ARG_ARG_D3792B04,
+          command,
+          option,
+          value);
+    }
+    for (int i = 0; i < value.length(); i++) {
+      if (value.charAt(i) < '0' || value.charAt(i) > '9') {
+        throw invalid(
+            CliMessages.EXCEPTION_ARG_INVALID_UNSIGNED_INTEGER_FOR_ARG_ARG_D3792B04,
+            command,
+            option,
+            value);
       }
     }
-    if (recursive) {
-      return FilesystemCommand.tree(path, DEFAULT_TREE_DEPTH);
+    try {
+      int result = Integer.parseInt(value);
+      if (positive && result == 0) {
+        throw invalid(
+            CliMessages.EXCEPTION_ARG_INVALID_UNSIGNED_INTEGER_FOR_ARG_ARG_D3792B04,
+            command,
+            option,
+            value);
+      }
+      return result;
+    } catch (NumberFormatException e) {
+      throw invalid(
+          CliMessages.EXCEPTION_ARG_INVALID_UNSIGNED_INTEGER_FOR_ARG_ARG_D3792B04,
+          command,
+          option,
+          value);
     }
-    return FilesystemCommand.option(type, all ? "-a" : "", path);
   }
 
-  private static FilesystemCommand parseCat(String[] tokens) {
-    if (tokens.length < 2) {
-      return FilesystemCommand.path(FilesystemCommand.Type.CAT, DEFAULT_PATH);
+  private static void validateCutFields(String fields) {
+    try {
+      for (String field : fields.split(",", -1)) {
+        int dash = field.indexOf('-');
+        if (dash < 0) {
+          unsignedInteger("cut", "-f", field, true);
+        } else {
+          int start = unsignedInteger("cut", "-f", field.substring(0, dash), true);
+          int end = unsignedInteger("cut", "-f", field.substring(dash + 1), true);
+          if (start > end) {
+            throw invalid(
+                CliMessages
+                    .EXCEPTION_INVALID_CUT_FIELDS_ARG_USE_POSITIVE_FIELD_NUMBERS_OR_ASCENDING_RANGES_95F4C873,
+                fields);
+          }
+        }
+      }
+    } catch (IllegalArgumentException e) {
+      throw invalid(
+          CliMessages
+              .EXCEPTION_INVALID_CUT_FIELDS_ARG_USE_POSITIVE_FIELD_NUMBERS_OR_ASCENDING_RANGES_95F4C873,
+          fields);
     }
-    List<String> paths = new ArrayList<>();
-    for (int i = 1; i < tokens.length; i++) {
-      paths.add(tokens[i]);
-    }
-    return FilesystemCommand.paths(FilesystemCommand.Type.CAT, paths);
   }
 
-  private static FilesystemCommand parseHead(String[] tokens) {
-    String path = DEFAULT_PATH;
-    int limit = DEFAULT_HEAD_LIMIT;
+  private static IllegalArgumentException invalid(String template, Object... values) {
+    return new IllegalArgumentException(String.format(template, values));
+  }
 
-    for (int i = 1; i < tokens.length; i++) {
-      String token = tokens[i];
-      if ("-n".equals(token)) {
-        if (i + 1 >= tokens.length) {
-          return FilesystemCommand.invalid("Missing head line count");
+  /** Shared token consumption keeps options, duplicate checks and operand counts consistent. */
+  private static class Arguments {
+    private final String command;
+    private final Map<String, String> options = new HashMap<>();
+    private final List<String> operands = new ArrayList<>();
+
+    private Arguments(String command, List<String> tokens) {
+      this.command = command;
+      boolean optionsEnded = false;
+      for (int i = 1; i < tokens.size(); i++) {
+        String token = tokens.get(i);
+        if (!optionsEnded && "--".equals(token)) {
+          if (i + 1 == tokens.size()) {
+            throw invalid(CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, "--");
+          }
+          optionsEnded = true;
+        } else if (!optionsEnded && token.startsWith("-") && token.length() > 1) {
+          if ("--help".equals(token)) {
+            throw new IllegalArgumentException(
+                CliMessages
+                    .MESSAGE_USE_HELP_COMMAND_OR_COMMAND_HELP_WITHOUT_OTHER_ARGUMENTS_3EED45E5);
+          }
+          if ("ls".equals(command) || "ll".equals(command)) {
+            for (int j = 1; j < token.length(); j++) {
+              String flag = "-" + token.charAt(j);
+              if (!"-l".equals(flag) && !"-a".equals(flag) && !"-R".equals(flag)) {
+                throw invalid(
+                    CliMessages.EXCEPTION_ARG_UNSUPPORTED_OPTION_ARG_33DE669D, command, flag);
+              }
+              put(flag, "");
+            }
+            continue;
+          }
+          if (("head".equals(command) || "tail".equals(command))
+              && token.charAt(1) >= '0'
+              && token.charAt(1) <= '9') {
+            put("-n", token.substring(1));
+            continue;
+          }
+          String flag = token;
+          String attached = null;
+          if (("cut".equals(command) && (token.startsWith("-d") || token.startsWith("-f")))
+              || ("join".equals(command) && token.startsWith("-t"))) {
+            flag = token.substring(0, 2);
+            if (token.length() > 2) {
+              attached = token.substring(2);
+            }
+          }
+          if (isFlag(flag)) {
+            put(flag, "");
+          } else if (takesValue(flag)) {
+            if (attached != null) {
+              put(flag, attached);
+            } else if (i + 1 < tokens.size() && !"--".equals(tokens.get(i + 1))) {
+              String value = tokens.get(++i);
+              if ("--help".equals(value)) {
+                throw new IllegalArgumentException(
+                    CliMessages
+                        .MESSAGE_USE_HELP_COMMAND_OR_COMMAND_HELP_WITHOUT_OTHER_ARGUMENTS_3EED45E5);
+              }
+              put(flag, value);
+            } else {
+              throw invalid(
+                  CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, flag);
+            }
+          } else {
+            throw invalid(
+                CliMessages.EXCEPTION_ARG_UNSUPPORTED_OPTION_ARG_33DE669D, command, token);
+          }
+        } else {
+          operands.add(token);
         }
-        try {
-          limit = Integer.parseInt(tokens[++i]);
-        } catch (NumberFormatException e) {
-          return FilesystemCommand.invalid("Invalid head line count: " + tokens[i]);
-        }
-      } else if (token.startsWith("-") && token.length() > 1) {
-        try {
-          limit = Integer.parseInt(token.substring(1));
-        } catch (NumberFormatException e) {
-          return FilesystemCommand.invalid("Unsupported head option: " + token);
-        }
-      } else {
-        path = token;
       }
     }
 
-    if (limit < 0) {
-      return FilesystemCommand.invalid("Invalid head line count: " + limit);
+    private boolean isFlag(String flag) {
+      return ("wc".equals(command) && "-l".equals(flag))
+          || ("rm".equals(command) && "-r".equals(flag))
+          || ("tee".equals(command) && "-a".equals(flag));
     }
-    return FilesystemCommand.head(path, limit);
-  }
 
-  private static FilesystemCommand parseTail(String[] tokens) {
-    String path = DEFAULT_PATH;
-    int limit = DEFAULT_HEAD_LIMIT;
-
-    for (int i = 1; i < tokens.length; i++) {
-      String token = tokens[i];
-      if ("-n".equals(token)) {
-        if (i + 1 >= tokens.length) {
-          return FilesystemCommand.invalid("Missing tail line count");
-        }
-        try {
-          limit = Integer.parseInt(tokens[++i]);
-        } catch (NumberFormatException e) {
-          return FilesystemCommand.invalid("Invalid tail line count: " + tokens[i]);
-        }
-      } else if (token.startsWith("-") && token.length() > 1) {
-        try {
-          limit = Integer.parseInt(token.substring(1));
-        } catch (NumberFormatException e) {
-          return FilesystemCommand.invalid("Unsupported tail option: " + token);
-        }
-      } else {
-        path = token;
+    private boolean takesValue(String flag) {
+      switch (command) {
+        case "head":
+        case "tail":
+          return "-n".equals(flag);
+        case "tree":
+          return "-L".equals(flag);
+        case "find":
+          return "-name".equals(flag);
+        case "cut":
+          return "-d".equals(flag) || "-f".equals(flag);
+        case "join":
+          return "-t".equals(flag) || "-1".equals(flag) || "-2".equals(flag);
+        default:
+          return false;
       }
     }
 
-    if (limit < 0) {
-      return FilesystemCommand.invalid("Invalid tail line count: " + limit);
-    }
-    return FilesystemCommand.tail(path, limit);
-  }
-
-  private static FilesystemCommand parseWc(String[] tokens) {
-    String option = "-l";
-    String path = DEFAULT_PATH;
-
-    for (int i = 1; i < tokens.length; i++) {
-      String token = tokens[i];
-      if (token.startsWith("-")) {
-        if (!"-l".equals(token)) {
-          return FilesystemCommand.invalid("Unsupported wc option: " + token);
-        }
-        option = token;
-      } else {
-        path = token;
+    private void put(String option, String value) {
+      if (options.containsKey(option)) {
+        throw invalid(
+            CliMessages.EXCEPTION_ARG_OPTION_SPECIFIED_MORE_THAN_ONCE_ARG_CEB275DB,
+            command,
+            option);
       }
+      options.put(option, value);
     }
-    return FilesystemCommand.option(FilesystemCommand.Type.WC, option, path);
-  }
 
-  private static FilesystemCommand parseGrep(String[] tokens) {
-    if (tokens.length < 3) {
-      return FilesystemCommand.invalid("Usage: grep <pattern> <path>");
+    private boolean has(String option) {
+      return options.containsKey(option);
     }
-    return FilesystemCommand.pattern(FilesystemCommand.Type.GREP, tokens[1], tokens[2]);
-  }
 
-  private static FilesystemCommand parseFind(String[] tokens) {
-    String path = tokens.length > 1 ? tokens[1] : DEFAULT_PATH;
-    String pattern = "";
+    private String value(String option) {
+      return options.get(option);
+    }
 
-    for (int i = 2; i < tokens.length; i++) {
-      if ("-name".equals(tokens[i])) {
-        if (i + 1 >= tokens.length) {
-          return FilesystemCommand.invalid("Missing find name pattern");
-        }
-        pattern = tokens[++i];
-      } else {
-        return FilesystemCommand.invalid("Unsupported find option: " + tokens[i]);
+    private String valueOrDefault(String option, String defaultValue) {
+      return options.getOrDefault(option, defaultValue);
+    }
+
+    private String path(boolean required) {
+      paths(required ? 1 : 0, 1);
+      return operands.isEmpty() ? DEFAULT_PATH : operands.get(0);
+    }
+
+    private List<String> paths(int minimum, int maximum) {
+      return paths(minimum, maximum, false);
+    }
+
+    private List<String> paths(int minimum, int maximum, boolean patternFirst) {
+      if (operands.size() < minimum) {
+        throw invalid(
+            CliMessages.EXCEPTION_ARG_EXPECTED_AT_LEAST_ARG_PATH_ARGUMENT_S_2040D496,
+            command,
+            minimum);
       }
-    }
-    return FilesystemCommand.pattern(FilesystemCommand.Type.FIND, pattern, path);
-  }
-
-  private static FilesystemCommand parseTree(String[] tokens) {
-    String path = DEFAULT_PATH;
-    int depth = DEFAULT_TREE_DEPTH;
-
-    for (int i = 1; i < tokens.length; i++) {
-      if ("-L".equals(tokens[i])) {
-        if (i + 1 >= tokens.length) {
-          return FilesystemCommand.invalid("Missing tree depth");
-        }
-        try {
-          depth = Integer.parseInt(tokens[++i]);
-        } catch (NumberFormatException e) {
-          return FilesystemCommand.invalid("Invalid tree depth: " + tokens[i]);
-        }
-        if (depth < 0) {
-          return FilesystemCommand.invalid("Invalid tree depth: " + depth);
-        }
-      } else {
-        path = tokens[i];
+      if (operands.size() > maximum) {
+        throw invalid(
+            CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F,
+            command,
+            operands.get(maximum));
       }
+      for (int i = patternFirst ? 1 : 0; i < operands.size(); i++) {
+        if (operands.get(i).isEmpty()) {
+          throw invalid(CliMessages.EXCEPTION_ARG_PATH_MUST_NOT_BE_EMPTY_FEC583BE, command);
+        }
+      }
+      return operands;
     }
-    return FilesystemCommand.tree(path, depth);
-  }
-
-  private static String pathArgument(String[] tokens) {
-    return tokens.length > 1 ? tokens[1] : DEFAULT_PATH;
   }
 }
