@@ -150,6 +150,9 @@ public abstract class AlignedTVList extends TVList {
   // constructed after deletion
   BitMap timeColDeletedMap;
 
+  // A marked bit means sorting changed at least one value index in the corresponding segment.
+  private BitMap segmentMovedMap;
+
   protected int timeDeletedCnt = 0;
 
   private final AlignedTVList outer = this;
@@ -231,6 +234,7 @@ public abstract class AlignedTVList extends TVList {
     AlignedTVList alignedTvList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypeList));
     alignedTvList.timestamps = this.timestamps;
     alignedTvList.indices = this.indices;
+    alignedTvList.segmentMovedMap = cloneSegmentMovedMap();
     alignedTvList.values = values;
     alignedTvList.bitMaps = bitMaps;
     alignedTvList.rowCount = this.rowCount;
@@ -260,6 +264,7 @@ public abstract class AlignedTVList extends TVList {
     cloneList.values = this.values;
     cloneList.bitMaps = this.bitMaps;
     cloneList.timeColDeletedMap = this.timeColDeletedMap;
+    cloneList.segmentMovedMap = cloneSegmentMovedMap();
     cloneList.materializedValueArrayCounts =
         Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
     cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
@@ -272,6 +277,7 @@ public abstract class AlignedTVList extends TVList {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     cloneAs(cloneList);
     cloneColumnDataTo(cloneList, null);
+    cloneList.segmentMovedMap = cloneSegmentMovedMap();
     cloneList.materializedValueArrayCounts =
         Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
     cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
@@ -298,6 +304,7 @@ public abstract class AlignedTVList extends TVList {
     }
     cloneAs(cloneList);
     cloneColumnDataTo(cloneList, retainedColumns);
+    cloneList.segmentMovedMap = cloneSegmentMovedMap();
     return prepareMovePlan(cloneList, retainedColumns);
   }
 
@@ -486,6 +493,7 @@ public abstract class AlignedTVList extends TVList {
     if (sorted) {
       if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
         sorted = false;
+        segmentMovedMap = null;
       } else {
         seqRowCount++;
       }
@@ -774,6 +782,37 @@ public abstract class AlignedTVList extends TVList {
     return values;
   }
 
+  public BitMap getSegmentMovedMap() {
+    return segmentMovedMap;
+  }
+
+  protected void updateSegmentMovedMap() {
+    segmentMovedMap = null;
+    if (indices == null) {
+      return;
+    }
+
+    int segmentCount = (rowCount + ARRAY_SIZE - 1) / ARRAY_SIZE;
+    for (int segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++) {
+      int segmentStart = segmentIndex * ARRAY_SIZE;
+      int segmentEnd = Math.min(segmentStart + ARRAY_SIZE, rowCount);
+      int[] indexArray = indices.get(segmentIndex);
+      for (int rowIndex = segmentStart; rowIndex < segmentEnd; rowIndex++) {
+        if (indexArray[rowIndex - segmentStart] != rowIndex) {
+          if (segmentMovedMap == null) {
+            segmentMovedMap = BitMap.createBitMapDynamically(segmentCount);
+          }
+          segmentMovedMap.mark(segmentIndex);
+          break;
+        }
+      }
+    }
+  }
+
+  private BitMap cloneSegmentMovedMap() {
+    return segmentMovedMap == null ? null : segmentMovedMap.clone();
+  }
+
   public List<TSDataType> getTsDataTypes() {
     return dataTypes;
   }
@@ -1020,12 +1059,16 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     materializedBitmapMemoryCost = 0;
+    segmentMovedMap = null;
   }
 
   @Override
   protected void expandValues() {
     if (indices != null) {
       indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    }
+    if (segmentMovedMap != null) {
+      segmentMovedMap.extend(segmentMovedMap.getSize() + 1);
     }
     for (int i = 0; i < dataTypes.size(); i++) {
       List<Object> columnValues = values.get(i);
@@ -1098,6 +1141,9 @@ public abstract class AlignedTVList extends TVList {
     int idx = start;
 
     updateMinMaxTimeAndSorted(time, start, end);
+    if (!sorted) {
+      segmentMovedMap = null;
+    }
 
     while (idx < end) {
       int inputRemaining = end - idx;
@@ -1421,6 +1467,9 @@ public abstract class AlignedTVList extends TVList {
           size += listRamCostWithoutReferences(columnBitMaps);
         }
       }
+    }
+    if (segmentMovedMap != null) {
+      size += segmentMovedMap.ramBytesUsed();
     }
     return size;
   }

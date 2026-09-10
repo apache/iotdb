@@ -17,33 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.datastructure;
+package org.apache.iotdb.db.exception.load;
 
-import org.apache.tsfile.enums.TSDataType;
+/** An invalid tree path cannot be repaired by converting the TsFile to tablets. */
+public class LoadAnalyzeInvalidPathException extends LoadAnalyzeException {
 
-import java.util.List;
-
-public class BackAlignedTVList extends QuickAlignedTVList {
-  private final BackwardSort policy;
-
-  BackAlignedTVList(List<TSDataType> types) {
-    this(types, true);
-  }
-
-  BackAlignedTVList(List<TSDataType> types, boolean initializeValueColumns) {
-    super(types, initializeValueColumns);
-    policy = new BackwardSort(this);
-  }
-
-  @Override
-  public synchronized int sort() {
-    if (!sorted) {
-      policy.backwardSort(timestamps, rowCount);
-      policy.clearTmp();
-      updateSegmentMovedMap();
-    }
-    sorted = true;
-    seqRowCount = rowCount;
-    return rowCount;
+  public LoadAnalyzeInvalidPathException(String message) {
+    super(message);
   }
 }

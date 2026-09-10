@@ -130,6 +130,38 @@ public class AlignedTVListTest {
   }
 
   @Test
+  public void testSegmentMovedMapOnlyMarksMovedSegments() {
+    AlignedTVList tvList = AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64));
+    int rowCount = ARRAY_SIZE + 3;
+    for (int i = 0; i < rowCount; i++) {
+      // Keep the first segment ordered and introduce an inversion only in the second segment.
+      long time =
+          i < ARRAY_SIZE
+              ? i
+              : (i == ARRAY_SIZE
+                  ? ARRAY_SIZE + 1L
+                  : i == ARRAY_SIZE + 1 ? ARRAY_SIZE + 2L : ARRAY_SIZE);
+      tvList.putAlignedValue(time, new Object[] {(long) i});
+    }
+
+    tvList.sort();
+
+    Assert.assertNotNull(tvList.getSegmentMovedMap());
+    Assert.assertTrue(tvList.getSegmentMovedMap().isMarked(1));
+    for (int segmentIndex = 0; segmentIndex < 2; segmentIndex++) {
+      boolean moved = false;
+      int segmentStart = segmentIndex * ARRAY_SIZE;
+      int segmentEnd = Math.min(segmentStart + ARRAY_SIZE, rowCount);
+      for (int rowIndex = segmentStart; rowIndex < segmentEnd; rowIndex++) {
+        moved |= tvList.getValueIndex(rowIndex) != rowIndex;
+      }
+      Assert.assertEquals(moved, tvList.getSegmentMovedMap().isMarked(segmentIndex));
+    }
+    Assert.assertEquals(0, tvList.getValueIndex(0));
+    Assert.assertEquals(ARRAY_SIZE + 2, tvList.getValueIndex(ARRAY_SIZE));
+  }
+
+  @Test
   public void testAlignedTVLists() {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
