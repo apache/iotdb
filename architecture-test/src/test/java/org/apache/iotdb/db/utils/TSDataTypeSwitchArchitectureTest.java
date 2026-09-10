@@ -26,14 +26,13 @@ import org.junit.Test;
 public class TSDataTypeSwitchArchitectureTest {
 
   @Test
-  public void datanodeProductionCodeMustUseTypeService() {
-    // This module-level check covers every DataNode production class in the datanode artifact.
-    // Do not freeze violations or swallow failures: existing violations must fail this test too.
+  public void repositoryProductionCodeMustUseTypeService() {
+    // This aggregate module depends on every Java production module, so the scan is
+    // repository-wide.
     TSDataTypeSwitchRule.RULE.check(
         new ClassFileImporter()
             .withImportOption(new ImportOption.DoNotIncludeTests())
-            // Avoid building the entire server dependency graph: only switch owners need checking.
             .withImportOption(location -> TSDataTypeSwitchRule.hasSwitch(location.asURI()))
-            .importPackages("org.apache.iotdb.db"));
+            .importPackages("org.apache.iotdb"));
   }
 }

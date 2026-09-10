@@ -303,7 +303,9 @@ public class ExactOrderStatistics {
                 case BOOLEAN, TEXT, ROW, UNKNOWN, TIMESTAMP, DATE, BLOB, STRING, OBJECT, VECTOR ->
                     target -> {
                       throw new IllegalArgumentException(
-                          String.format(LibraryUdfMessages.UNSUPPORTED_DATA_TYPE, type));
+                          String.format(
+                              LibraryUdfMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E,
+                              type));
                     };
               };
 

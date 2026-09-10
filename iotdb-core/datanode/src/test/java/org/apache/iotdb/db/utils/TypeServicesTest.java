@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -36,16 +37,99 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class TypeServicesTest {
+
+  @Test
+  public void testTabletBinarySerializationMatchesLegacyFormat() throws IOException {
+    Binary[] values = {
+      new Binary(new byte[] {1, 2, 3}),
+      null,
+      new Binary((byte[]) null),
+      new Binary(new byte[0]),
+      new Binary(new byte[100])
+    };
+    // Four active rows: length + payload, then three zero-length placeholders. No presence bytes.
+    byte[] expected =
+        ByteBuffer.allocate(19)
+            .putInt(3)
+            .put(new byte[] {1, 2, 3})
+            .putInt(0)
+            .putInt(0)
+            .putInt(0)
+            .array();
+    for (TSDataType dataType :
+        new TSDataType[] {TSDataType.TEXT, TSDataType.STRING, TSDataType.BLOB, TSDataType.OBJECT}) {
+      Type type = Type.fromTsDataType(dataType);
+      int size =
+          TypeServices.StorageEngine.INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE
+              .call(type)
+              .size(values, 4);
+      assertEquals(expected.length, size);
+      ByteBuffer buffer = ByteBuffer.allocate(size);
+      TypeServices.StorageEngine.RAW_ARRAY_BYTE_BUFFER_SERIALIZER_SERVICE
+          .call(type)
+          .serialize(values, 4, buffer);
+      assertEquals(size, buffer.position());
+      assertArrayEquals(expected, buffer.array());
+
+      ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+      try (DataOutputStream stream = new DataOutputStream(bytes)) {
+        TypeServices.StorageEngine.RAW_ARRAY_OUTPUT_STREAM_SERIALIZER_SERVICE
+            .call(type)
+            .serialize(values, 4, stream);
+      }
+      assertArrayEquals(expected, bytes.toByteArray());
+    }
+  }
+
+  @Test
+  public void testWalBinaryRangeSizeMatchesWrittenBytes() {
+    Binary[] values = {
+      new Binary(new byte[100]),
+      new Binary(new byte[] {1, 2, 3}),
+      null,
+      new Binary((byte[]) null),
+      new Binary(new byte[0]),
+      new Binary(new byte[100])
+    };
+    for (TSDataType dataType :
+        new TSDataType[] {TSDataType.TEXT, TSDataType.STRING, TSDataType.BLOB, TSDataType.OBJECT}) {
+      Type type = Type.fromTsDataType(dataType);
+      int size =
+          TypeServices.StorageEngine.INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE
+              .call(type)
+              .size(values, 1, 5);
+      assertEquals(19, size);
+      ByteBuffer buffer = ByteBuffer.allocate(size);
+      TypeServices.StorageEngine.WAL_ARRAY_WRITER_SERVICE
+          .call(type)
+          .write(values, new WALByteBufferForTest(buffer), 1, 5);
+      assertEquals(size, buffer.position());
+      buffer.flip();
+      assertEquals(3, buffer.getInt());
+      byte[] payload = new byte[3];
+      buffer.get(payload);
+      assertArrayEquals(new byte[] {1, 2, 3}, payload);
+      assertEquals(0, buffer.getInt());
+      assertEquals(0, buffer.getInt());
+      assertEquals(0, buffer.getInt());
+      assertFalse(buffer.hasRemaining());
+    }
+  }
 
   @Test
   public void testMaxMinByReadsXWithoutModifyingInput() {

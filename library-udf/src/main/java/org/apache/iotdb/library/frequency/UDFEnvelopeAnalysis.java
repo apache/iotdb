@@ -63,11 +63,12 @@ public class UDFEnvelopeAnalysis implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
             x -> (double) x > 0,
-            LibraryUdfMessages.FREQUENCY_MUST_BE_POSITIVE,
+            LibraryUdfMessages.EXCEPTION_THE_PARAM_FREQUENCY_MUST_BE_GREATER_THAN_0_45820CF9,
             validator.getParameters().getDoubleOrDefault(FREQUENCY, Double.MAX_VALUE))
         .validate(
             x -> (int) x >= 1,
-            LibraryUdfMessages.AMPLIFICATION_MUST_BE_AT_LEAST_1,
+            LibraryUdfMessages
+                .EXCEPTION_THE_PARAM_AMPLIFICATION_MUST_BE_GREATER_THAN_OR_EQUAL_TO_1_D64050EB,
             validator.getParameters().getIntOrDefault(AMPLIFICATION, 1));
   }
 

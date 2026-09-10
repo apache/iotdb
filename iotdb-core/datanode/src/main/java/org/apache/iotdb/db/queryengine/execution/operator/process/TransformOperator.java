@@ -337,7 +337,8 @@ public class TransformOperator implements ProcessOperator {
         type = Type.fromTsDataType(dataType);
       } catch (final UnsupportedOperationException ignored) {
         throw new UnSupportedDataTypeException(
-            String.format(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, dataType));
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348, dataType));
       }
       TypeServices.Transformation.TRANSFORM_COLUMN_VALUE_WRITER_SERVICE
           .call(type)

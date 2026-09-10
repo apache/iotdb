@@ -496,7 +496,9 @@ public class ConvertPredicateToFilterVisitor
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException(
           String.format(
-              DataNodeQueryMessages.VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT, valueString, dataType));
+              DataNodeQueryMessages.EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC,
+              valueString,
+              dataType));
     }
   }
 

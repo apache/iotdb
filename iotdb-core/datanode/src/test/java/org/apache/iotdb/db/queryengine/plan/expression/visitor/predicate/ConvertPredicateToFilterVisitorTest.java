@@ -73,7 +73,7 @@ public class ConvertPredicateToFilterVisitorTest {
             () -> ConvertPredicateToFilterVisitor.getValue("invalid", TSDataType.INT32));
     Assert.assertEquals(
         String.format(
-            DataNodeQueryMessages.VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT,
+            DataNodeQueryMessages.EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC,
             "invalid",
             TSDataType.INT32),
         numberException.getMessage());
@@ -84,7 +84,7 @@ public class ConvertPredicateToFilterVisitorTest {
             () -> ConvertPredicateToFilterVisitor.getValue("invalid", TSDataType.BOOLEAN));
     Assert.assertEquals(
         String.format(
-            DataNodeQueryMessages.VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT,
+            DataNodeQueryMessages.EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC,
             "invalid",
             TSDataType.BOOLEAN),
         booleanException.getMessage());
@@ -97,7 +97,8 @@ public class ConvertPredicateToFilterVisitorTest {
             UnsupportedOperationException.class,
             () -> ConvertPredicateToFilterVisitor.getValue("value", TSDataType.VECTOR));
     Assert.assertEquals(
-        String.format(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, TSDataType.VECTOR),
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348, TSDataType.VECTOR),
         exception.getMessage());
   }
 }

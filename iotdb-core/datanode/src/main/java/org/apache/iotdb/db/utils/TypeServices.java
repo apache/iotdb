@@ -253,7 +253,8 @@ public class TypeServices {
               case ROW, UNKNOWN, VECTOR ->
                   throw new UnSupportedDataTypeException(
                           String.format(
-                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()))
+                              DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348,
+                              type.getTypeEnum()))
                       .setChecked(true);
             };
 
@@ -291,7 +292,8 @@ public class TypeServices {
                   (builder, column, index) -> {
                     throw new UnSupportedDataTypeException(
                         String.format(
-                            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
+                            DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348,
+                            type.getTypeEnum()));
                   };
             };
 
@@ -456,7 +458,8 @@ public class TypeServices {
               case DATE, TIMESTAMP, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
                   (valueRecorder, delta, values, index) -> {
                     throw new UnsupportedOperationException(
-                        DataNodeQueryMessages.INVALID_DATA_TYPE_FOR_STATE_WINDOW_STRATEGY);
+                        DataNodeQueryMessages
+                            .EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_61F4E273);
                   };
             };
 
@@ -1344,7 +1347,8 @@ public class TypeServices {
         if (equalFactory == null) {
           throw new UnSupportedDataTypeException(
               String.format(
-                  DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_FMT,
+                  DataNodeQueryMessages
+                      .EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_ARG_77E085EB,
                   parameter.getDataType()));
         }
         return equalFactory.create(parameter, ascending);
@@ -1355,7 +1359,8 @@ public class TypeServices {
         if (variationFactory == null) {
           throw new UnSupportedDataTypeException(
               String.format(
-                  DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_FMT,
+                  DataNodeQueryMessages
+                      .EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_ARG_3D0F0388,
                   parameter.getDataType()));
         }
         return variationFactory.create(parameter, ascending);
@@ -1616,7 +1621,8 @@ public class TypeServices {
                     } catch (final Throwable e) {
                       throw new NumberFormatException(
                           String.format(
-                              DataNodeMiscMessages.DATA_TYPE_NOT_CONSISTENT_WITH_CAUSE_FMT,
+                              DataNodeMiscMessages
+                                  .EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_BECAUSE_ARG_C8637858,
                               value,
                               type.getTypeEnum(),
                               e.getMessage()));
@@ -1732,7 +1738,10 @@ public class TypeServices {
         final String value, final Type type) {
       return new NumberFormatException(
           String.format(
-              DataNodeMiscMessages.DATA_TYPE_NOT_CONSISTENT_FMT, value, type.getTypeEnum()));
+              DataNodeMiscMessages
+                  .EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_ARG_REGISTERED_ARG_0EF32FD3,
+              value,
+              type.getTypeEnum()));
     }
 
     private static String stripQuotesIfPresent(final String value) {
@@ -1775,29 +1784,77 @@ public class TypeServices {
         INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE =
             type ->
                 switch (type.getTypeEnum()) {
-                  case BOOLEAN -> (column, rows) -> rows * Byte.BYTES;
-                  case INT32, DATE, FLOAT -> (column, rows) -> rows * Integer.BYTES;
-                  case INT64, TIMESTAMP, DOUBLE -> (column, rows) -> rows * Long.BYTES;
+                  case BOOLEAN -> (column, start, end) -> (end - start) * Byte.BYTES;
+                  case INT32, DATE, FLOAT -> (column, start, end) -> (end - start) * Integer.BYTES;
+                  case INT64, TIMESTAMP, DOUBLE ->
+                      (column, start, end) -> (end - start) * Long.BYTES;
                   case TEXT, STRING, BLOB, OBJECT ->
-                      (column, rows) -> {
+                      (column, start, end) -> {
                         int size = 0;
                         Binary[] values = (Binary[]) column;
-                        // Only serialize the active rows, and retain a length prefix for null
-                        // binary values.
-                        for (int i = 0; i < rows; i++) {
-                          byte[] bytes = values[i] == null ? null : values[i].getValues();
+                        // Tablet and WAL use a length prefix without TsFile's presence byte.
+                        // Count only the selected range, including placeholders for null values.
+                        for (int i = start; i < end; i++) {
+                          byte[] bytes =
+                              values == null || values[i] == null ? null : values[i].getValues();
                           size += Integer.BYTES + (bytes == null ? 0 : bytes.length);
                         }
                         return size;
                       };
                   case ROW, UNKNOWN, VECTOR ->
-                      (column, rows) -> {
+                      (column, start, end) -> {
                         throw new UnSupportedDataTypeException(
                             String.format(
                                 DataNodeQueryMessages
                                     .QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
                                 type.getTypeEnum()));
                       };
+                };
+
+    public static final TypeService<RawArrayByteBufferSerializer>
+        RAW_ARRAY_BYTE_BUFFER_SERIALIZER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE ->
+                      type::serializeArray;
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      (column, rows, buffer) -> {
+                        Binary[] values = (Binary[]) column;
+                        // Preserve the Tablet wire format: nullness lives in the separate bitmap.
+                        for (int i = 0; i < rows; i++) {
+                          if (values[i] != null && values[i].getValues() != null) {
+                            ReadWriteIOUtils.write(values[i], buffer);
+                          } else {
+                            buffer.putInt(0);
+                          }
+                        }
+                      };
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                          .setChecked(true);
+                };
+
+    public static final TypeService<RawArrayOutputStreamSerializer>
+        RAW_ARRAY_OUTPUT_STREAM_SERIALIZER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN, INT32, DATE, INT64, TIMESTAMP, FLOAT, DOUBLE ->
+                      type::serializeArray;
+                  case TEXT, BLOB, STRING, OBJECT ->
+                      (column, rows, stream) -> {
+                        Binary[] values = (Binary[]) column;
+                        // Match the ByteBuffer writer, including zero-length null placeholders.
+                        for (int i = 0; i < rows; i++) {
+                          if (values[i] != null && values[i].getValues() != null) {
+                            ReadWriteIOUtils.write(values[i], stream);
+                          } else {
+                            stream.writeInt(0);
+                          }
+                        }
+                      };
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(type.getTypeEnum().name())
+                          .setChecked(true);
                 };
 
     public static final TypeService<Boolean> TABLET_PLAIN_FAST_PATH_SERVICE =
@@ -2719,6 +2776,8 @@ public class TypeServices {
       CHUNK_METADATA_STATISTICS_CONVERTER_SERVICE.check();
       INSERT_ROW_SERIALIZED_VALUE_SIZE_SERVICE.check();
       INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE.check();
+      RAW_ARRAY_BYTE_BUFFER_SERIALIZER_SERVICE.check();
+      RAW_ARRAY_OUTPUT_STREAM_SERIALIZER_SERVICE.check();
       TABLET_PLAIN_FAST_PATH_SERVICE.check();
       ALIGNED_TV_LIST_COLUMN_WRITER_SERVICE.check();
       TV_LIST_ARRAY_WRITER_SERVICE.check();
@@ -2896,7 +2955,7 @@ public class TypeServices {
                         }
                         throw new IllegalArgumentException(
                             String.format(
-                                DataNodeQueryMessages.VALUE_CANNOT_BE_CAST_TO_DATA_TYPE_FMT,
+                                DataNodeQueryMessages.EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC,
                                 valueString,
                                 type.getTypeEnum()));
                       };
@@ -2907,7 +2966,8 @@ public class TypeServices {
                   case OBJECT, ROW, UNKNOWN, VECTOR ->
                       throw new UnsupportedOperationException(
                           String.format(
-                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
+                              DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348,
+                              type.getTypeEnum()));
                 };
 
     public static final TypeService<Function<Literal, Comparable<?>>>
@@ -2929,7 +2989,8 @@ public class TypeServices {
                   case OBJECT, ROW, UNKNOWN, VECTOR ->
                       throw new UnsupportedOperationException(
                           String.format(
-                              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, type.getTypeEnum()));
+                              DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348,
+                              type.getTypeEnum()));
                 };
 
     public static final TypeService<Function<Column, Literal>>
@@ -2952,7 +3013,7 @@ public class TypeServices {
                       throw new IllegalArgumentException(
                           String.format(
                               DataNodeQueryMessages
-                                  .UNSUPPORTED_SCALAR_SUBQUERY_RESULT_DATA_TYPE_FMT,
+                                  .EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_ARG_D58CBB00,
                               type.getTypeEnum()));
                 };
 
@@ -3474,7 +3535,8 @@ public class TypeServices {
                   (row, columnIndex) -> {
                     throw new UnsupportedOperationException(
                         String.format(
-                            DataNodePipeMessages.UNSUPPORTED_DATA_TYPE_FOR_COLUMN_FMT,
+                            DataNodePipeMessages
+                                .EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_FOR_COLUMN_ARG_4C4CCA6D,
                             row.getDataType(columnIndex),
                             row.getColumnName(columnIndex)));
                   };
@@ -3511,7 +3573,8 @@ public class TypeServices {
                   (state, timestamp, row, columnIndex, reportInterval) -> {
                     throw new UnsupportedOperationException(
                         String.format(
-                            DataNodePipeMessages.UNSUPPORTED_DATA_TYPE_FOR_COLUMN_FMT,
+                            DataNodePipeMessages
+                                .EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_FOR_COLUMN_ARG_4C4CCA6D,
                             row.getDataType(columnIndex),
                             row.getColumnName(columnIndex)));
                   };
@@ -3832,7 +3895,8 @@ public class TypeServices {
     }
     throw new SemanticException(
         String.format(
-            DataNodeQueryMessages.TIMESTAMP_IN_LIST_LITERAL_TYPE_ERROR_FMT,
+            DataNodeQueryMessages
+                .EXCEPTION_TIMESTAMP_IN_LIST_LITERAL_CAN_ONLY_BE_LONGLITERAL_DOUBLELITERAL_OR_GENERICLITERAL_ACTUAL_TYPE_ARG_D751BE79,
             value.getClass().getSimpleName()));
   }
 
@@ -3945,7 +4009,21 @@ public class TypeServices {
 
   @FunctionalInterface
   public interface SerializedColumnSizeCalculator {
-    int size(Object column, int rowCount);
+    int size(Object column, int start, int end);
+
+    default int size(Object column, int rowCount) {
+      return size(column, 0, rowCount);
+    }
+  }
+
+  @FunctionalInterface
+  public interface RawArrayByteBufferSerializer {
+    void serialize(Object column, int rowCount, ByteBuffer buffer);
+  }
+
+  @FunctionalInterface
+  public interface RawArrayOutputStreamSerializer {
+    void serialize(Object column, int rowCount, DataOutputStream stream) throws IOException;
   }
 
   @FunctionalInterface

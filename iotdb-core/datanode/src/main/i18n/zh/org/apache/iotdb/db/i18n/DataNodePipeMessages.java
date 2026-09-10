@@ -1443,7 +1443,7 @@ public final class DataNodePipeMessages {
   // ---------------------------------------------------------------------------
   // pipe – PipeRow
   // ---------------------------------------------------------------------------
-  public static final String UNSUPPORTED_DATA_TYPE_FOR_COLUMN_FMT =
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_FOR_COLUMN_ARG_4C4CCA6D =
       "不支持的数据类型 %s，列名为 %s";
 
   // ---------------------------------------------------------------------------

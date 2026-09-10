@@ -48,6 +48,7 @@
         <module>example</module>
         <module>library-udf</module>
         <module>external-service-impl</module>
+        <module>architecture-test</module>
     </modules>
     <properties>
         <airlift-units.version>1.7</airlift-units.version>

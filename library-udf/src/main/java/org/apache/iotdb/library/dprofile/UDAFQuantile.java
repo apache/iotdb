@@ -87,7 +87,8 @@ public class UDAFQuantile implements UDTF {
   private static final QuantileOperations UNSUPPORTED_OPERATIONS =
       new QuantileOperations() {
         public long encode(Row row) {
-          throw new IllegalArgumentException(LibraryUdfMessages.UNSUPPORTED_DATA_TYPE_IN_QUANTILE);
+          throw new IllegalArgumentException(
+              LibraryUdfMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_A8CA7BE7);
         }
 
         public void write(long result, PointCollector collector) {}
@@ -100,11 +101,12 @@ public class UDAFQuantile implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             k -> (int) k >= 100,
-            LibraryUdfMessages.QUANTILE_K_MUST_BE_AT_LEAST_100,
+            LibraryUdfMessages.EXCEPTION_SIZE_K_HAS_TO_BE_GREATER_THAN_OR_EQUAL_TO_100_C514D1C3,
             validator.getParameters().getIntOrDefault("K", 800))
         .validate(
             rank -> (double) rank > 0 && (double) rank <= 1,
-            LibraryUdfMessages.QUANTILE_RANK_MUST_BE_IN_RANGE,
+            LibraryUdfMessages
+                .EXCEPTION_RANK_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1_0F16AF94,
             validator.getParameters().getDoubleOrDefault("rank", 0.5));
   }
 

@@ -18,6 +18,7 @@
 
 package org.apache.iotdb.isession;
 
+import org.apache.iotdb.isession.i18n.ISessionMessages;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
@@ -46,7 +47,9 @@ final class TypeServices {
             case ROW, UNKNOWN, VECTOR ->
                 (dataSet, columnIndex, field) -> {
                   throw new UnSupportedDataTypeException(
-                      String.format("Data type %s is not supported.", type.getTypeEnum()));
+                      String.format(
+                          ISessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160,
+                          type.getTypeEnum()));
                 };
           };
 

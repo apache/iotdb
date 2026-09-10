@@ -210,7 +210,8 @@ public class LastValueAccumulator
   private void ensureSupported() {
     if (!strategy.isSupported()) {
       throw new UnSupportedDataTypeException(
-          String.format(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_FMT, seriesDataType));
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348, seriesDataType));
     }
   }
 }

@@ -749,12 +749,16 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void serializeColumn(TSDataType dataType, Object column, ByteBuffer buffer) {
-    Type.fromTsDataType(dataType).serializeArray(column, rowCount, buffer);
+    TypeServices.StorageEngine.RAW_ARRAY_BYTE_BUFFER_SERIALIZER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .serialize(column, rowCount, buffer);
   }
 
   private void serializeColumn(TSDataType dataType, Object column, DataOutputStream stream)
       throws IOException {
-    Type.fromTsDataType(dataType).serializeArray(column, rowCount, stream);
+    TypeServices.StorageEngine.RAW_ARRAY_OUTPUT_STREAM_SERIALIZER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .serialize(column, rowCount, stream);
   }
 
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
@@ -893,7 +897,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private int getColumnSize(TSDataType dataType, Object column, int start, int end) {
-    return Type.fromTsDataType(dataType).serializedSize(column, start, end);
+    return TypeServices.StorageEngine.INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .size(column, start, end);
   }
 
   /**

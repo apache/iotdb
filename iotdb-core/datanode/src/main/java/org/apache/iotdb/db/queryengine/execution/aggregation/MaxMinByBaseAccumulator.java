@@ -285,7 +285,8 @@ public abstract class MaxMinByBaseAccumulator
       final TSDataType unsupportedType = xStrategy.isXSupported() ? yDataType : xDataType;
       throw new UnSupportedDataTypeException(
           String.format(
-              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_MIN_BY_FMT, unsupportedType));
+              DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXBY_MINBY_ARG_DD30FAB1,
+              unsupportedType));
     }
   }
 
