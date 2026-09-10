@@ -903,35 +903,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       Object valueArray,
       int elementIndex,
       boolean isNull) {
-    switch (dataType) {
-      case BOOLEAN ->
-          valueChunkWriter.write(
-              time,
-              !isNull && valueArray != null && ((boolean[]) valueArray)[elementIndex],
-              isNull);
-      case INT32, DATE ->
-          valueChunkWriter.write(
-              time, isNull || valueArray == null ? 0 : ((int[]) valueArray)[elementIndex], isNull);
-      case INT64, TIMESTAMP ->
-          valueChunkWriter.write(
-              time, isNull || valueArray == null ? 0 : ((long[]) valueArray)[elementIndex], isNull);
-      case FLOAT ->
-          valueChunkWriter.write(
-              time,
-              isNull || valueArray == null ? 0 : ((float[]) valueArray)[elementIndex],
-              isNull);
-      case DOUBLE ->
-          valueChunkWriter.write(
-              time,
-              isNull || valueArray == null ? 0 : ((double[]) valueArray)[elementIndex],
-              isNull);
-      case TEXT, STRING, BLOB, OBJECT ->
-          valueChunkWriter.write(
-              time,
-              isNull || valueArray == null ? null : ((Binary[]) valueArray)[elementIndex],
-              isNull);
-      case VECTOR, UNKNOWN -> throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
-    }
+    TypeServices.StorageEngine.VALUE_CHUNK_ARRAY_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(valueChunkWriter, time, valueArray, elementIndex, isNull);
   }
 
   private void writeValuesFromArray(
@@ -942,27 +916,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       boolean[] nulls,
       int arrayOffset,
       int pointsInSegment) {
-    switch (dataType) {
-      case BOOLEAN ->
-          valueChunkWriter.write(
-              timestamps, (boolean[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case INT32, DATE ->
-          valueChunkWriter.write(
-              timestamps, (int[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case INT64, TIMESTAMP ->
-          valueChunkWriter.write(
-              timestamps, (long[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case FLOAT ->
-          valueChunkWriter.write(
-              timestamps, (float[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case DOUBLE ->
-          valueChunkWriter.write(
-              timestamps, (double[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case TEXT, STRING, BLOB, OBJECT ->
-          valueChunkWriter.write(
-              timestamps, (Binary[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case VECTOR, UNKNOWN -> throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
-    }
+    TypeServices.StorageEngine.VALUE_CHUNK_ARRAY_BATCH_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(valueChunkWriter, timestamps, valueArray, nulls, arrayOffset, pointsInSegment);
   }
 
   private void writeValuesFromArray(
@@ -973,71 +929,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       BitMap bitMap,
       int arrayOffset,
       int pointsInSegment) {
-    // Keep null detection in the bitmap so the page writer can skip encoding and statistics
-    // updates without materializing a temporary boolean array.
-    switch (dataType) {
-      case BOOLEAN ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (boolean[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case INT32, DATE ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (int[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case INT64, TIMESTAMP ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (long[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case FLOAT ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (float[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case DOUBLE ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (double[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case TEXT, STRING, BLOB, OBJECT ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (Binary[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case VECTOR, UNKNOWN -> throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
-    }
+    TypeServices.StorageEngine.VALUE_CHUNK_ARRAY_BITMAP_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(valueChunkWriter, timestamps, valueArray, bitMap, arrayOffset, pointsInSegment);
   }
 
   private void handleEncodingWithDeletedMeasurements(

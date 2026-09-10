@@ -2610,6 +2610,110 @@ public class TypeServices {
                       .setChecked(true);
             };
 
+    public static final TypeService<ValueChunkArrayWriter> VALUE_CHUNK_ARRAY_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case BOOLEAN ->
+                  (writer, time, values, index, isNull) ->
+                      writer.write(
+                          time, !isNull && values != null && ((boolean[]) values)[index], isNull);
+              case INT32, DATE ->
+                  (writer, time, values, index, isNull) ->
+                      writer.write(
+                          time, isNull || values == null ? 0 : ((int[]) values)[index], isNull);
+              case INT64, TIMESTAMP ->
+                  (writer, time, values, index, isNull) ->
+                      writer.write(
+                          time, isNull || values == null ? 0L : ((long[]) values)[index], isNull);
+              case FLOAT ->
+                  (writer, time, values, index, isNull) ->
+                      writer.write(
+                          time, isNull || values == null ? 0F : ((float[]) values)[index], isNull);
+              case DOUBLE ->
+                  (writer, time, values, index, isNull) ->
+                      writer.write(
+                          time, isNull || values == null ? 0D : ((double[]) values)[index], isNull);
+              case TEXT, STRING, BLOB, OBJECT ->
+                  (writer, time, values, index, isNull) ->
+                      writer.write(
+                          time,
+                          isNull || values == null ? null : ((Binary[]) values)[index],
+                          isNull);
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
+    public static final TypeService<ValueChunkArrayBatchWriter>
+        VALUE_CHUNK_ARRAY_BATCH_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN ->
+                      (writer, times, values, nulls, offset, count) ->
+                          writer.write(times, (boolean[]) values, nulls, count, offset);
+                  case INT32, DATE ->
+                      (writer, times, values, nulls, offset, count) ->
+                          writer.write(times, (int[]) values, nulls, count, offset);
+                  case INT64, TIMESTAMP ->
+                      (writer, times, values, nulls, offset, count) ->
+                          writer.write(times, (long[]) values, nulls, count, offset);
+                  case FLOAT ->
+                      (writer, times, values, nulls, offset, count) ->
+                          writer.write(times, (float[]) values, nulls, count, offset);
+                  case DOUBLE ->
+                      (writer, times, values, nulls, offset, count) ->
+                          writer.write(times, (double[]) values, nulls, count, offset);
+                  case TEXT, STRING, BLOB, OBJECT ->
+                      (writer, times, values, nulls, offset, count) ->
+                          writer.write(times, (Binary[]) values, nulls, count, offset);
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(
+                              DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                          .setChecked(true);
+                };
+
+    // Preserve the bitmap path so nulls do not require a temporary boolean array or value encoding.
+    public static final TypeService<ValueChunkArrayBitmapWriter>
+        VALUE_CHUNK_ARRAY_BITMAP_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN ->
+                      (writer, times, values, bitMap, offset, count) ->
+                          writer
+                              .getPageWriter()
+                              .write(times, (boolean[]) values, bitMap, offset, count, offset);
+                  case INT32, DATE ->
+                      (writer, times, values, bitMap, offset, count) ->
+                          writer
+                              .getPageWriter()
+                              .write(times, (int[]) values, bitMap, offset, count, offset);
+                  case INT64, TIMESTAMP ->
+                      (writer, times, values, bitMap, offset, count) ->
+                          writer
+                              .getPageWriter()
+                              .write(times, (long[]) values, bitMap, offset, count, offset);
+                  case FLOAT ->
+                      (writer, times, values, bitMap, offset, count) ->
+                          writer
+                              .getPageWriter()
+                              .write(times, (float[]) values, bitMap, offset, count, offset);
+                  case DOUBLE ->
+                      (writer, times, values, bitMap, offset, count) ->
+                          writer
+                              .getPageWriter()
+                              .write(times, (double[]) values, bitMap, offset, count, offset);
+                  case TEXT, STRING, BLOB, OBJECT ->
+                      (writer, times, values, bitMap, offset, count) ->
+                          writer
+                              .getPageWriter()
+                              .write(times, (Binary[]) values, bitMap, offset, count, offset);
+                  case ROW, UNKNOWN, VECTOR ->
+                      throw new UnSupportedDataTypeException(
+                              DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum())
+                          .setChecked(true);
+                };
+
     public static final TypeService<IntFunction<Object>> PRIMITIVE_ARRAY_ALLOCATOR_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -2786,6 +2890,9 @@ public class TypeServices {
       TV_LIST_CHUNK_WRITER_SERVICE.check();
       TV_LIST_BATCH_WRITER_SERVICE.check();
       ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.check();
+      VALUE_CHUNK_ARRAY_WRITER_SERVICE.check();
+      VALUE_CHUNK_ARRAY_BATCH_WRITER_SERVICE.check();
+      VALUE_CHUNK_ARRAY_BITMAP_WRITER_SERVICE.check();
       PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
       TABLET_COLUMN_ALLOCATOR_SERVICE.check();
       EMPTY_TABLET_COLUMN_FACTORY_SERVICE.check();
@@ -3994,6 +4101,33 @@ public class TypeServices {
         int rowIndex,
         int columnIndex,
         boolean isNull);
+  }
+
+  @FunctionalInterface
+  public interface ValueChunkArrayWriter {
+    void write(ValueChunkWriter writer, long time, Object values, int index, boolean isNull);
+  }
+
+  @FunctionalInterface
+  public interface ValueChunkArrayBatchWriter {
+    void write(
+        ValueChunkWriter writer,
+        long[] timestamps,
+        Object values,
+        boolean[] nulls,
+        int arrayOffset,
+        int pointsInSegment);
+  }
+
+  @FunctionalInterface
+  public interface ValueChunkArrayBitmapWriter {
+    void write(
+        ValueChunkWriter writer,
+        long[] timestamps,
+        Object values,
+        BitMap bitMap,
+        int arrayOffset,
+        int pointsInSegment);
   }
 
   @FunctionalInterface
