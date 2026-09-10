@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
@@ -28,6 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALTestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
@@ -39,12 +42,15 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.tools.ImportWAL.ReplayResult;
+import org.apache.iotdb.db.tools.ImportWAL.WALReplayer.ReplayDecision;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -251,6 +257,90 @@ public class ImportWALTest {
     assertFalse(secondWALFile.exists());
   }
 
+  /** Serial replay must retain tree/table deletes skipped with SKIP and delete complete WALs. */
+  @Test
+  public void testReplayRetainsSourceFilesWithSkippedDataEntries() throws Exception {
+    assertReplayRetainsSkippedSourceFiles(ReplayDecision.SKIP, false);
+  }
+
+  /** SKIP_ALL must preserve the same source files as SKIP during serial replay. */
+  @Test
+  public void testReplayRetainsSourceFilesWithSkipAllDataEntries() throws Exception {
+    assertReplayRetainsSkippedSourceFiles(ReplayDecision.SKIP_ALL, false);
+  }
+
+  /** Parallel workers must retain skipped data without preventing deletion of complete WALs. */
+  @Test
+  public void testParallelReplayRetainsSourceFilesWithSkippedDataEntries() throws Exception {
+    assertReplayRetainsSkippedSourceFiles(ReplayDecision.SKIP, true);
+  }
+
+  /** SKIP_ALL must preserve data skipped by either worker during directory-level replay. */
+  @Test
+  public void testParallelReplayRetainsSourceFilesWithSkipAllDataEntries() throws Exception {
+    assertReplayRetainsSkippedSourceFiles(ReplayDecision.SKIP_ALL, true);
+  }
+
+  private void assertReplayRetainsSkippedSourceFiles(
+      final ReplayDecision decision, final boolean parallel) throws Exception {
+    final Path source = temporaryFolder.newFolder("skip-wal-root").toPath();
+    final Path nodeA = Files.createDirectory(source.resolve("node-a"));
+    final Path nodeB = Files.createDirectory(source.resolve("node-b"));
+    final Path treeDeleteWAL = createWALFile(nodeA, 0);
+    final Path completeWAL = createWALFile(nodeA, 1);
+    final Path tableDeleteWAL = createWALFile(nodeB, 0);
+    final DeleteDataNode treeDelete =
+        new DeleteDataNode(
+            new PlanNodeId(""), List.of(new MeasurementPath("root.sg.d1.s1")), 10, 20);
+    final RelationalDeleteDataNode tableDelete =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""),
+            new TableDeletionEntry(new DeletionPredicate("table1"), new TimeRange(10, 20)),
+            "db");
+    final WALInfoEntry insert = new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.d1", 1));
+    // A later successful insert must not hide an earlier skip in the same file, and skips must
+    // not prevent deletion of a fully replayed file in the same directory.
+    writeWAL(treeDeleteWAL.toFile(), new WALInfoEntry(1, treeDelete), insert);
+    writeWAL(tableDeleteWAL.toFile(), insert, new WALInfoEntry(1, tableDelete));
+    // Signals, separators, and empty snapshots carry no pending data and remain deletable.
+    writeWAL(
+        completeWAL.toFile(),
+        insert,
+        new WALSignalEntry(WALEntryType.CLOSE_SIGNAL),
+        new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL),
+        new WALInfoEntry(1, new ContinuousSameSearchIndexSeparatorNode()),
+        new WALInfoEntry(1, new PrimitiveMemTable()));
+    final byte[] treeDeleteBytes = Files.readAllBytes(treeDeleteWAL);
+    final byte[] tableDeleteBytes = Files.readAllBytes(tableDeleteWAL);
+    final Session session = mock(Session.class);
+    final List<Path> walFiles = ImportWAL.collectWALFiles(source);
+    final ImportWAL.ReplayStatistics statistics =
+        parallel
+            ? ImportWAL.replayWALDirectories(
+                walFiles,
+                2,
+                () ->
+                    new ImportWAL.WALReplayer(session, null, null, (entry, treeModel) -> decision),
+                null,
+                true)
+            : ImportWAL.replayWALFiles(
+                walFiles,
+                new ImportWAL.WALReplayer(session, null, null, (entry, treeModel) -> decision),
+                null,
+                true);
+
+    assertTrue(Files.exists(treeDeleteWAL));
+    assertTrue(Files.exists(tableDeleteWAL));
+    assertArrayEquals(treeDeleteBytes, Files.readAllBytes(treeDeleteWAL));
+    assertArrayEquals(tableDeleteBytes, Files.readAllBytes(tableDeleteWAL));
+    assertFalse(Files.exists(completeWAL));
+    assertEquals(3, statistics.getReplayedOperationCount());
+    assertEquals(6, statistics.getSkippedEntryCount());
+    assertEquals(3, statistics.getCompletedFileCount());
+    verify(session, times(3)).insertTablet(any(Tablet.class));
+    verify(session, never()).deleteData(any(), anyLong(), anyLong());
+  }
+
   /** Covers all-or-nothing replay gating: a later failure must retain every source WAL file. */
   @Test
   public void testReplayRetainsAllSourceFilesWhenAnyFileFails() throws Exception {
@@ -425,6 +515,7 @@ public class ImportWALTest {
         .deleteData(eq(Arrays.asList("root.sg.d1.s1", "root.sg.d2.*")), eq(10L), eq(20L));
   }
 
+  /** A skipped tree delete must be distinguished from a control entry that needs no replay. */
   @Test
   public void testReplayTreeDeleteSkipsAfterConfirmation() throws Exception {
     final DeleteDataNode deleteNode =
@@ -432,7 +523,7 @@ public class ImportWALTest {
             new PlanNodeId(""), List.of(new MeasurementPath("root.sg.d1.s1")), 10, 20);
     final Session treeSession = mock(Session.class);
 
-    final boolean replayed =
+    final ReplayResult result =
         new ImportWAL.WALReplayer(
                 treeSession,
                 null,
@@ -440,10 +531,11 @@ public class ImportWALTest {
                 (entry, treeDelete) -> ImportWAL.WALReplayer.ReplayDecision.SKIP)
             .replay(new WALInfoEntry(1, deleteNode));
 
-    assertFalse(replayed);
+    assertEquals(ReplayResult.SKIPPED, result);
     verify(treeSession, never()).deleteData(any(), anyLong(), anyLong());
   }
 
+  /** Execute-all replays deletes; skip-all reports skipped data for each affected worker. */
   @Test
   public void testReplayTreeDeleteExecuteAllAndSkipAllDecisions() throws Exception {
     final DeleteDataNode deleteNode =
@@ -461,8 +553,10 @@ public class ImportWALTest {
     final ImportWAL.WALReplayer secondExecuteAllReplayer =
         new ImportWAL.WALReplayer(treeSession, null, null, executeAllPrompt);
 
-    assertTrue(firstExecuteAllReplayer.replay(new WALInfoEntry(1, deleteNode)));
-    assertTrue(secondExecuteAllReplayer.replay(new WALInfoEntry(2, deleteNode)));
+    assertEquals(
+        ReplayResult.REPLAYED, firstExecuteAllReplayer.replay(new WALInfoEntry(1, deleteNode)));
+    assertEquals(
+        ReplayResult.REPLAYED, secondExecuteAllReplayer.replay(new WALInfoEntry(2, deleteNode)));
     assertEquals(2, executeAllPromptCount.get());
     verify(treeSession, times(2)).deleteData(any(), eq(10L), eq(20L));
 
@@ -478,8 +572,10 @@ public class ImportWALTest {
     final ImportWAL.WALReplayer secondSkipAllReplayer =
         new ImportWAL.WALReplayer(skippedTreeSession, null, null, skipAllPrompt);
 
-    assertFalse(firstSkipAllReplayer.replay(new WALInfoEntry(1, deleteNode)));
-    assertFalse(secondSkipAllReplayer.replay(new WALInfoEntry(2, deleteNode)));
+    assertEquals(
+        ReplayResult.SKIPPED, firstSkipAllReplayer.replay(new WALInfoEntry(1, deleteNode)));
+    assertEquals(
+        ReplayResult.SKIPPED, secondSkipAllReplayer.replay(new WALInfoEntry(2, deleteNode)));
     assertEquals(2, skipAllPromptCount.get());
     verify(skippedTreeSession, never()).deleteData(any(), anyLong(), anyLong());
   }
@@ -506,7 +602,7 @@ public class ImportWALTest {
   public void testReplayUnsupportedEntrySkipsAfterConfirmation() throws Exception {
     final WALEntry entry = mockUnsupportedEntry();
 
-    final boolean replayed =
+    final ReplayResult result =
         new ImportWAL.WALReplayer(
                 mock(Session.class),
                 null,
@@ -514,9 +610,10 @@ public class ImportWALTest {
                 (ignored, treeDelete) -> ImportWAL.WALReplayer.ReplayDecision.SKIP)
             .replay(entry);
 
-    assertFalse(replayed);
+    assertEquals(ReplayResult.SKIPPED, result);
   }
 
+  /** Table deletes and ObjectNode entries skipped with SKIP_ALL must both retain their WALs. */
   @Test
   public void testReplayUnsupportedEntriesSkipAllAfterConfirmation() throws Exception {
     final AtomicInteger promptCount = new AtomicInteger();
@@ -528,15 +625,15 @@ public class ImportWALTest {
     final ImportWAL.WALReplayer relationalDeleteReplayer =
         new ImportWAL.WALReplayer(mock(Session.class), null, null, skipAllPrompt);
 
-    assertFalse(relationalDeleteReplayer.replay(mockUnsupportedEntry()));
-    assertFalse(relationalDeleteReplayer.replay(mockUnsupportedEntry()));
+    assertEquals(ReplayResult.SKIPPED, relationalDeleteReplayer.replay(mockUnsupportedEntry()));
+    assertEquals(ReplayResult.SKIPPED, relationalDeleteReplayer.replay(mockUnsupportedEntry()));
 
     final WALEntry objectEntry = mock(WALEntry.class);
     when(objectEntry.getType()).thenReturn(WALEntryType.OBJECT_FILE_NODE);
     when(objectEntry.getValue()).thenReturn(mock(ObjectNode.class));
     final ImportWAL.WALReplayer objectNodeReplayer =
         new ImportWAL.WALReplayer(mock(Session.class), null, null, skipAllPrompt);
-    assertFalse(objectNodeReplayer.replay(objectEntry));
+    assertEquals(ReplayResult.SKIPPED, objectNodeReplayer.replay(objectEntry));
     assertEquals(3, promptCount.get());
   }
 
@@ -696,18 +793,18 @@ public class ImportWALTest {
     assertEquals(1, tabletCaptor.getAllValues().get(1).getRowSize());
   }
 
-  /** Covers a signal snapshot, which carries no user data and must be skipped. */
+  /** A signal snapshot carries no user data and must not prevent deletion of its source WAL. */
   @Test
   public void testReplaySignalMemTableSnapshotIsSkipped() throws Exception {
     final IMemTable signalMemTable = mock(IMemTable.class);
     when(signalMemTable.isSignalMemTable()).thenReturn(true);
     final Session treeSession = mock(Session.class);
 
-    final boolean replayed =
+    final ReplayResult result =
         new ImportWAL.WALReplayer(treeSession, null, null)
             .replay(new WALInfoEntry(1, signalMemTable));
 
-    assertFalse(replayed);
+    assertEquals(ReplayResult.IGNORED, result);
     verify(treeSession, never()).insertTablet(any(Tablet.class));
     verify(treeSession, never()).insertAlignedTablet(any(Tablet.class));
   }

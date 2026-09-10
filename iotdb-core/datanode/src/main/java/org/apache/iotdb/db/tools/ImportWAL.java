@@ -467,7 +467,7 @@ public class ImportWAL {
           progressStream);
     }
     if (deleteSource) {
-      deleteSourceWALFiles(walFiles);
+      deleteSourceWALFiles(statistics.fullyReplayedFiles);
     }
     return statistics;
   }
@@ -552,7 +552,7 @@ public class ImportWAL {
     statistics.elapsedNanos = System.nanoTime() - startNanos;
     rethrowReplayFailure(replayFailure.get());
     if (deleteSource) {
-      deleteSourceWALFiles(walFiles);
+      deleteSourceWALFiles(statistics.fullyReplayedFiles);
     }
     return statistics;
   }
@@ -581,15 +581,19 @@ public class ImportWAL {
   private static ReplayStatistics replayWALFile(final Path walFile, final WALReplayWorker replayer)
       throws IOException {
     final ReplayStatistics statistics = new ReplayStatistics();
+    boolean fullyReplayed = true;
     try (WALReader reader = new WALReader(walFile.toFile())) {
       long offset = reader.getWALCurrentReadOffset();
       while (reader.hasNext()) {
         final WALEntry entry = reader.next();
         try {
-          if (replayer.replay(entry)) {
-            statistics.replayedOperationCount++;
-          } else {
-            statistics.skippedEntryCount++;
+          switch (replayer.replay(entry)) {
+            case REPLAYED -> statistics.replayedOperationCount++;
+            case SKIPPED -> {
+              statistics.skippedEntryCount++;
+              fullyReplayed = false;
+            }
+            case IGNORED -> statistics.skippedEntryCount++;
           }
         } catch (final IoTDBConnectionException | StatementExecutionException e) {
           throw new WALReplayException(
@@ -615,6 +619,11 @@ public class ImportWAL {
       }
       statistics.completedFileCount++;
       statistics.processedBytes += Files.size(walFile);
+      // Ignored control entries carry no data to replay. A user-skipped operation, however,
+      // must keep its source WAL available even when every worker finishes without an exception.
+      if (fullyReplayed) {
+        statistics.fullyReplayedFiles.add(walFile);
+      }
       return statistics;
     } catch (final IOException e) {
       if (e instanceof WALReplayException walReplayException) {
@@ -694,10 +703,19 @@ public class ImportWAL {
 
   interface WALReplayWorker extends AutoCloseable {
 
-    boolean replay(WALEntry entry) throws IoTDBConnectionException, StatementExecutionException;
+    ReplayResult replay(WALEntry entry)
+        throws IoTDBConnectionException, StatementExecutionException;
 
     @Override
     default void close() {}
+  }
+
+  enum ReplayResult {
+    REPLAYED,
+    // The user skipped a data operation, so its source WAL must be retained.
+    SKIPPED,
+    // Control entries and empty snapshots require no replay and do not prevent source deletion.
+    IGNORED
   }
 
   private static class SessionWALReplayer extends WALReplayer {
@@ -753,39 +771,41 @@ public class ImportWAL {
     }
 
     @Override
-    public boolean replay(final WALEntry entry)
+    public ReplayResult replay(final WALEntry entry)
         throws IoTDBConnectionException, StatementExecutionException {
       if (entry.getType() == WALEntryType.MEMORY_TABLE_SNAPSHOT
           || entry.getType() == WALEntryType.OLD_MEMORY_TABLE_SNAPSHOT) {
-        return replayMemTableSnapshot((IMemTable) entry.getValue());
+        return replayMemTableSnapshot((IMemTable) entry.getValue())
+            ? ReplayResult.REPLAYED
+            : ReplayResult.IGNORED;
       }
       if (entry.getValue() instanceof InsertNode insertNode) {
         replayInsert(insertNode);
-        return true;
+        return ReplayResult.REPLAYED;
       }
       if (entry.getValue() instanceof DeleteDataNode deleteDataNode) {
         final ReplayDecision decision = replayDecisionPrompt.decide(entry, true);
         if (decision == ReplayDecision.SKIP || decision == ReplayDecision.SKIP_ALL) {
-          return false;
+          return ReplayResult.SKIPPED;
         }
         if (decision == ReplayDecision.TERMINATE) {
           throw replayTerminatedByUser();
         }
         replayTreeDelete(deleteDataNode);
-        return true;
+        return ReplayResult.REPLAYED;
       }
       if (entry.getValue() instanceof RelationalDeleteDataNode
           || entry.getValue() instanceof ObjectNode) {
         final ReplayDecision decision = replayDecisionPrompt.decide(entry, false);
         if (decision == ReplayDecision.SKIP || decision == ReplayDecision.SKIP_ALL) {
-          return false;
+          return ReplayResult.SKIPPED;
         }
         if (decision == ReplayDecision.TERMINATE) {
           throw replayTerminatedByUser();
         }
         throw unsupportedOperation(entry);
       }
-      return false;
+      return ReplayResult.IGNORED;
     }
 
     enum ReplayDecision {
@@ -1284,6 +1304,7 @@ public class ImportWAL {
   }
 
   static class ReplayStatistics {
+    private final List<Path> fullyReplayedFiles = new ArrayList<>();
     private long replayedOperationCount;
     private long skippedEntryCount;
     private long totalBytes;
@@ -1292,6 +1313,7 @@ public class ImportWAL {
     private long elapsedNanos;
 
     private void add(final ReplayStatistics statistics) {
+      fullyReplayedFiles.addAll(statistics.fullyReplayedFiles);
       replayedOperationCount += statistics.replayedOperationCount;
       skippedEntryCount += statistics.skippedEntryCount;
       processedBytes += statistics.processedBytes;
