@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PipeMemoryManagerResizeTest {
 
   private static final long TOTAL_MEMORY_SIZE_IN_BYTES = 2000;
+  private static final long TABLET_MEMORY_SIZE_IN_BYTES = 901;
   private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private boolean originalMemoryManagementEnabled;
@@ -139,13 +140,7 @@ public class PipeMemoryManagerResizeTest {
 
   @Test
   public void testTryResizeRejectsImmediatelyWithoutChangingAccounting() {
-    final PipeMemoryManager manager =
-        new PipeMemoryManager(
-            new AtomicLongMemoryBlock(
-                "PipeMemoryManagerResizeTest",
-                null,
-                TOTAL_MEMORY_SIZE_IN_BYTES,
-                MemoryBlockType.DYNAMIC));
+    final PipeMemoryManager manager = new PipeMemoryManager(TOTAL_MEMORY_SIZE_IN_BYTES, () -> 0);
     final PipeTabletMemoryBlock retainedTablet =
         manager.forceAllocateForTabletWithRetry(TABLET_MEMORY_SIZE_IN_BYTES);
     final PipeTabletMemoryBlock pendingTablet = manager.forceAllocateForTabletWithRetry(0);
@@ -170,13 +165,7 @@ public class PipeMemoryManagerResizeTest {
 
   @Test
   public void testTryResizeRejectsNegativeTargetWithoutChangingAccounting() {
-    final PipeMemoryManager manager =
-        new PipeMemoryManager(
-            new AtomicLongMemoryBlock(
-                "PipeMemoryManagerResizeTest",
-                null,
-                TOTAL_MEMORY_SIZE_IN_BYTES,
-                MemoryBlockType.DYNAMIC));
+    final PipeMemoryManager manager = new PipeMemoryManager(TOTAL_MEMORY_SIZE_IN_BYTES, () -> 0);
     final PipeTabletMemoryBlock tablet = manager.forceAllocateForTabletWithRetry(10);
 
     try {

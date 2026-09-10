@@ -26,9 +26,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -97,13 +97,12 @@ public class PipeTransferBatchReqBuilderTest {
   private static PipeRawTabletInsertionEvent createEvent(final int value) {
     final Tablet tablet =
         new Tablet(
-            IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.device"),
-            Collections.singletonList("s1"),
-            Collections.singletonList(TSDataType.INT32),
+            "root.test.device",
+            Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)),
             1);
     tablet.addTimestamp(0, value);
     tablet.addValue("s1", 0, value);
-    tablet.setRowSize(1);
+    tablet.rowSize = 1;
     return new PipeRawTabletInsertionEvent(
         false, "root.test", null, "root.test", tablet, false, null, 0, null, null, false);
   }
