@@ -607,7 +607,7 @@ public class PipeMemoryManager {
         PipeTabletMemoryBlock.class.getSimpleName(), tabletSizeInBytes);
   }
 
-  public synchronized PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
       final String name,
       final long tabletSizeInBytes,
       final PipeMemoryBlockCategory category,
@@ -661,7 +661,7 @@ public class PipeMemoryManager {
   }
 
   /** Convenience overload for a root tablet block with explicit diagnostic metadata. */
-  public synchronized PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
       final String name,
       final long tabletSizeInBytes,
       final PipeMemoryBlockCategory category,
@@ -671,7 +671,7 @@ public class PipeMemoryManager {
   }
 
   /** Allocate a tablet/parser child block using the supplied event block as its parent. */
-  public synchronized PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
       final String name,
       final long tabletSizeInBytes,
       final PipeMemoryBlock parent,
@@ -685,7 +685,7 @@ public class PipeMemoryManager {
         parent);
   }
 
-  public synchronized PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
       final PipeMemoryBlock parent, final String name, final long tabletSizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     return forceAllocateForTabletWithRetry(
@@ -707,7 +707,7 @@ public class PipeMemoryManager {
         PipeTsFileMemoryBlock.class.getSimpleName(), tsFileSizeInBytes);
   }
 
-  public synchronized PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
       final String name,
       final long tsFileSizeInBytes,
       final PipeMemoryBlockCategory category,
@@ -760,7 +760,7 @@ public class PipeMemoryManager {
   }
 
   /** Convenience overload for a root TsFile block with explicit diagnostic metadata. */
-  public synchronized PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
       final String name,
       final long tsFileSizeInBytes,
       final PipeMemoryBlockCategory category,
@@ -770,7 +770,7 @@ public class PipeMemoryManager {
   }
 
   /** Allocate a TsFile/parser child block using the supplied event block as its parent. */
-  public synchronized PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
       final String name,
       final long tsFileSizeInBytes,
       final PipeMemoryBlock parent,
@@ -784,7 +784,7 @@ public class PipeMemoryManager {
         parent);
   }
 
-  public synchronized PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
       final PipeMemoryBlock parent, final String name, final long tsFileSizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     return forceAllocateForTsFileWithRetry(

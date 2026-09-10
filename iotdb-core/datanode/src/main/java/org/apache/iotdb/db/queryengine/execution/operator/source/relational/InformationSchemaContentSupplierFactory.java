@@ -750,7 +750,9 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[2].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getCategory()));
       columnBuilders[3].writeLong(memoryBlockInfo.getMemoryUsageInBytes());
       columnBuilders[4].writeLong(memoryBlockInfo.getMaxMemorySizeInBytes());
-      columnBuilders[5].writeLong(memoryBlockInfo.getAllocationTime());
+      columnBuilders[5].writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(
+              memoryBlockInfo.getAllocationTime(), TimeUnit.MILLISECONDS));
       if (memoryBlockInfo.getAssigner() == null) {
         columnBuilders[6].appendNull();
       } else {
