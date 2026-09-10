@@ -139,10 +139,53 @@ public class CliFilesystemModeTest {
   }
 
   @Test
+  public void filesystemPwdRunsBeforeUsernamePasswordAndConnection() throws Exception {
+    assertOfflineExit("pwd", FilesystemShell.SUCCESS);
+    assertEquals("/" + System.lineSeparator(), out.toString());
+    assertEquals("", err.toString());
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
+  public void filesystemExitRunsBeforeUsernamePasswordAndConnection() throws Exception {
+    assertOfflineExit("exit", FilesystemShell.SUCCESS);
+    assertEquals("", out.toString());
+    assertEquals("", err.toString());
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
+  public void filesystemSqlPassthroughIsRejectedBeforeUsernamePasswordAndConnection()
+      throws Exception {
+    assertOfflineExit("sql SELECT * FROM root.sg.d1", FilesystemShell.USAGE_ERROR);
+    assertEquals("", out.toString());
+    assertTrue(err.toString().contains("Unsupported filesystem command"));
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
+  public void filesystemCommandHelpRunsBeforeUsernamePasswordAndConnection() throws Exception {
+    assertOfflineExit("help ls", FilesystemShell.SUCCESS);
+    assertTrue(out.toString().contains("Usage: ls"));
+    assertTrue(out.toString().contains("Examples:"));
+    assertEquals("", err.toString());
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
   public void filesystemUsageErrorRunsBeforeUsernamePasswordAndConnection() throws Exception {
     assertOfflineExit("unknown", FilesystemShell.USAGE_ERROR);
     assertEquals("", out.toString());
     assertTrue(err.toString().contains("unknown"));
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
+  public void filesystemMalformedArgumentsRunBeforeUsernamePasswordAndConnection()
+      throws Exception {
+    assertOfflineExit("pwd /extra", FilesystemShell.USAGE_ERROR);
+    assertEquals("", out.toString());
+    assertTrue(err.toString().contains("pwd"));
     assertNull(ctx.getLineReader());
   }
 
