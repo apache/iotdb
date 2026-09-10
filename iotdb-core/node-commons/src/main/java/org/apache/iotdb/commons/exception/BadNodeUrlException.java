@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.commons.i18n.UtilMessages;
+
 public class BadNodeUrlException extends Exception {
   public BadNodeUrlException(String nodeUrl) {
-    super(String.format("Bad node url: %s", nodeUrl));
+    super(String.format(UtilMessages.BAD_NODE_URL, nodeUrl));
   }
 }

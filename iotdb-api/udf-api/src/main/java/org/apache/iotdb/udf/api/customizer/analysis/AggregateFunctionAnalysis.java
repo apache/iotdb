@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.customizer.analysis;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 public class AggregateFunctionAnalysis implements FunctionAnalysis {
@@ -54,7 +55,8 @@ public class AggregateFunctionAnalysis implements FunctionAnalysis {
 
     public AggregateFunctionAnalysis build() throws IllegalArgumentException {
       if (outputDataType == null) {
-        throw new IllegalArgumentException("AggregateFunctionAnalysis outputDataType is not set.");
+        throw new IllegalArgumentException(
+            UdfApiMessages.AGGREGATE_FUNCTION_ANALYSIS_OUTPUT_DATA_TYPE_NOT_SET);
       }
       return new AggregateFunctionAnalysis(outputDataType, removable);
     }

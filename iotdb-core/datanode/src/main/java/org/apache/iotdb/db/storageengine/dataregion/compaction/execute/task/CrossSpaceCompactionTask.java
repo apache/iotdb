@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -148,18 +149,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
     if (selectedSequenceFiles.isEmpty() || selectedUnsequenceFiles.isEmpty()) {
       LOGGER.info(
-          "{}-{} [Compaction] Cross space compaction file list is empty, end it",
+          StorageEngineMessages
+              .STORAGE_LOG_COMPACTION_CROSS_SPACE_COMPACTION_FILE_LIST_IS_EMPTY_END_B8044743,
           storageGroupName,
           dataRegionId);
       return true;
     }
     LOGGER.info(
-        "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files "
-            + "and {} unsequence files. "
-            + "Sequence files : {}, unsequence files : {} . "
-            + "Sequence files size is {} MB, "
-            + "unsequence file size is {} MB, "
-            + "total size is {} MB",
+        StorageEngineMessages
+            .STORAGE_LOG_COMPACTION_CROSSSPACECOMPACTION_TASK_STARTS_WITH_SEQ_FILES_8CDCBE0F,
         storageGroupName,
         dataRegionId,
         selectedSequenceFiles.size(),
@@ -245,9 +243,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
 
         LOGGER.info(
-            "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, "
-                + "time cost is {} s, "
-                + "compaction speed is {} MB/s, {}",
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTION_CROSSSPACECOMPACTION_TASK_FINISHES_SUCCESSFULLY_D7F1B1FD,
             storageGroupName,
             dataRegionId,
             String.format("%.2f", costTime),
@@ -327,7 +324,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     deleteCompactionModsFile(selectedUnsequenceFiles);
     // delete target file
     if (targetTsfileResourceList != null && !deleteTsFilesOnDisk(targetTsfileResourceList)) {
-      throw new CompactionRecoverException("failed to delete target file %s");
+      throw new CompactionRecoverException(StorageEngineMessages.FAILED_TO_DELETE_TARGET_FILE);
     }
   }
 
@@ -337,13 +334,18 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         // it means the target file is empty after compaction
         if (!target.remove()) {
           throw new CompactionRecoverException(
-              String.format("failed to delete empty target file %s", target));
+              String.format(
+                  StorageEngineMessages
+                      .STORAGE_EXCEPTION_FAILED_TO_DELETE_EMPTY_TARGET_FILE_S_324EF900,
+                  target));
         }
       } else {
         File targetFile = target.getTsFile();
         if (targetFile == null || !TsFileUtils.isTsFileComplete(target.getTsFile())) {
           throw new CompactionRecoverException(
-              String.format("Target file is not completed. %s", targetFile));
+              String.format(
+                  StorageEngineMessages.STORAGE_EXCEPTION_TARGET_FILE_IS_NOT_COMPLETED_S_E65150DB,
+                  targetFile));
         }
         if (recoverMemoryStatus) {
           target.setStatus(TsFileResourceStatus.NORMAL);
@@ -352,11 +354,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     if (!deleteTsFilesOnDisk(selectedSequenceFiles)
         || !deleteTsFilesOnDisk(selectedUnsequenceFiles)) {
-      throw new CompactionRecoverException("source files cannot be deleted successfully");
+      throw new CompactionRecoverException(StorageEngineMessages.SOURCE_FILES_CANNOT_BE_DELETED);
     }
     if (recoverMemoryStatus) {
-      FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);
-      FileMetrics.getInstance().deleteTsFile(false, selectedUnsequenceFiles);
+      FileMetrics.getInstance().deleteTsFile(selectedSequenceFiles);
+      FileMetrics.getInstance().deleteTsFile(selectedUnsequenceFiles);
     }
   }
 

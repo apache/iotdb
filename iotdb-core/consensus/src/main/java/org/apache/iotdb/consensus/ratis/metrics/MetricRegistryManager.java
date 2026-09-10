@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.ratis.metrics;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.consensus.i18n.RatisMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 
 import org.apache.ratis.metrics.MetricRegistries;
@@ -81,19 +82,18 @@ public class MetricRegistryManager extends MetricRegistries {
   public void addReporterRegistration(
       Consumer<RatisMetricRegistry> reporterRegistration,
       Consumer<RatisMetricRegistry> stopReporter) {
-    throw new UnsupportedOperationException("Reporter is disabled from RatisMetricRegistries");
+    throw new UnsupportedOperationException(RatisMessages.REPORTER_DISABLED);
   }
 
   @Override
   public void enableJmxReporter() {
     // We shall disable the JMX reporter since we already have one in MetricService
-    throw new UnsupportedOperationException("JMX Reporter is disabled from RatisMetricRegistries");
+    throw new UnsupportedOperationException(RatisMessages.JMX_REPORTER_DISABLED);
   }
 
   @Override
   public void enableConsoleReporter(TimeDuration timeDuration) {
     // We shall disable the Console reporter since we already have one in MetricService
-    throw new UnsupportedOperationException(
-        "Console Reporter is disabled from RatisMetricRegistries");
+    throw new UnsupportedOperationException(RatisMessages.CONSOLE_REPORTER_DISABLED);
   }
 }

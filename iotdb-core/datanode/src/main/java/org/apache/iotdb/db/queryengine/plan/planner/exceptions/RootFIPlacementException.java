@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.exceptions;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collection;
@@ -33,7 +34,8 @@ import java.util.Collection;
 public class RootFIPlacementException extends IoTDBRuntimeException {
   public RootFIPlacementException(Collection<TRegionReplicaSet> replicaSets) {
     super(
-        "Root FragmentInstance placement error: " + replicaSets.toString(),
+        String.format(
+            DataNodeQueryMessages.ROOT_FRAGMENT_INSTANCE_PLACEMENT_ERROR_FMT, replicaSets),
         TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 }

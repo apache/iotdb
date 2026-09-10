@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.commons.exception.RpcThrottlingException;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -146,9 +147,9 @@ public class DataNodeThrottleQuotaManager {
           setThrottleQuota(req);
         }
       }
-      LOGGER.info("Throttle quota limit restored successfully. " + throttleQuota);
+      LOGGER.info(StorageEngineMessages.THROTTLE_QUOTA_RESTORED_SUCCESSFULLY + throttleQuota);
     } else {
-      LOGGER.info("Throttle quota limit restored failed. " + throttleQuota);
+      LOGGER.info(StorageEngineMessages.THROTTLE_QUOTA_RESTORED_FAILED + throttleQuota);
     }
   }
 }

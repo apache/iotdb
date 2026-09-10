@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 
 import com.google.common.base.CharMatcher;
@@ -48,32 +49,32 @@ public class BinaryLiteral extends Literal {
 
   public BinaryLiteral(String value) {
     super(null);
-    requireNonNull(value, "value is null");
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     String hexString = WHITESPACE_MATCHER.removeFrom(value).toUpperCase(ENGLISH);
     if (!HEX_DIGIT_MATCHER.matchesAllOf(hexString)) {
-      throw new ParsingException("Binary literal can only contain hexadecimal digits");
+      throw new ParsingException(QueryMessages.BINARY_LITERAL_HEX_ONLY);
     }
     if (hexString.length() % 2 != 0) {
-      throw new ParsingException("Binary literal must contain an even number of digits");
+      throw new ParsingException(QueryMessages.BINARY_LITERAL_EVEN_DIGITS);
     }
     this.value = BaseEncoding.base16().decode(hexString);
   }
 
   public BinaryLiteral(byte[] value) {
     super(null);
-    requireNonNull(value, "value is null");
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     this.value = value;
   }
 
   public BinaryLiteral(NodeLocation location, String value) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(value, "value is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     String hexString = WHITESPACE_MATCHER.removeFrom(value).toUpperCase(ENGLISH);
     if (!HEX_DIGIT_MATCHER.matchesAllOf(hexString)) {
-      throw new ParsingException("Binary literal can only contain hexadecimal digits", location);
+      throw new ParsingException(QueryMessages.BINARY_LITERAL_HEX_ONLY, location);
     }
     if (hexString.length() % 2 != 0) {
-      throw new ParsingException("Binary literal must contain an even number of digits", location);
+      throw new ParsingException(QueryMessages.BINARY_LITERAL_EVEN_DIGITS, location);
     }
     this.value = BaseEncoding.base16().decode(hexString);
   }

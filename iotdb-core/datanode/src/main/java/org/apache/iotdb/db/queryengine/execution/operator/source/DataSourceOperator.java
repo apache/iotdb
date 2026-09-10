@@ -24,4 +24,14 @@ import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 public interface DataSourceOperator extends SourceOperator {
 
   void initQueryDataSource(IQueryDataSource dataSource);
+
+  /**
+   * Whether this operator initializes a query data source for each device batch by itself.
+   *
+   * <p>Batch operators receive an empty data source from {@code DataDriver} as a placeholder and
+   * acquire their actual data source through a batch lease.
+   */
+  default boolean isBatchQueryDataSource() {
+    return false;
+  }
 }

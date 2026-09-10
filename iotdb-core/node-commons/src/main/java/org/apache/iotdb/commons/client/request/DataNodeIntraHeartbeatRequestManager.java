@@ -29,12 +29,17 @@ public abstract class DataNodeIntraHeartbeatRequestManager<RequestType>
     extends AsyncRequestManager<
         RequestType, TDataNodeLocation, AsyncDataNodeInternalServiceClient> {
 
+  protected DataNodeIntraHeartbeatRequestManager(int selectorNumOfAsyncClientManager) {
+    super(selectorNumOfAsyncClientManager);
+  }
+
   @Override
-  protected void initClientManager() {
+  protected void initClientManager(int selectorNumOfAsyncClientManager) {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.AsyncDataNodeHeartbeatServiceClientPoolFactory());
+                new ClientPoolFactory.AsyncDataNodeHeartbeatServiceClientPoolFactory(
+                    selectorNumOfAsyncClientManager));
   }
 
   @Override

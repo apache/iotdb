@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.exception;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /** the exception when writing to a read-only system */
 public class StorageEngineReadonlyException extends StorageEngineException {
 
-  public static final String ERROR_MESSAGE =
-      "Database is read-only, and does not accept non-query operation now";
+  public static final String ERROR_MESSAGE = DataNodeMiscMessages.DATABASE_READ_ONLY_NON_QUERY;
 
   public StorageEngineReadonlyException() {
     super(ERROR_MESSAGE, TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());

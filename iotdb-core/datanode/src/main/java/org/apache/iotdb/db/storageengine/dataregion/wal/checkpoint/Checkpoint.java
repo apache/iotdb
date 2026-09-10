@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
@@ -73,7 +74,7 @@ public class Checkpoint implements WALEntryValue {
     byte typeNum = stream.readByte();
     CheckpointType type = CheckpointType.valueOf(typeNum);
     if (type == null) {
-      throw new IOException("unrecognized checkpoint type " + typeNum);
+      throw new IOException(StorageEngineMessages.UNRECOGNIZED_CHECKPOINT_TYPE + typeNum);
     }
     int cnt = stream.readInt();
     List<MemTableInfo> memTableInfos = new ArrayList<>(cnt);

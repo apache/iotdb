@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 
@@ -70,7 +71,7 @@ public abstract class TwoChildProcessNode extends ProcessNode {
     } else if (rightChild == null) {
       rightChild = child;
     } else {
-      throw new UnsupportedOperationException("This node doesn't support more than two children");
+      throw new UnsupportedOperationException(QueryMessages.TWO_CHILD_NODE_EXCEEDS_LIMIT);
     }
   }
 

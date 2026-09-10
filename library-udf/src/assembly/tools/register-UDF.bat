@@ -88,6 +88,7 @@ call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "creat
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function dwt as 'org.apache.iotdb.library.frequency.UDTFDWT'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function idwt as 'org.apache.iotdb.library.frequency.UDTFIDWT'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function ifft as 'org.apache.iotdb.library.frequency.UDTFIFFT'"
+call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function envelope as 'org.apache.iotdb.library.frequency.UDFEnvelopeAnalysis'"
 
 
 @REM Series Discovery

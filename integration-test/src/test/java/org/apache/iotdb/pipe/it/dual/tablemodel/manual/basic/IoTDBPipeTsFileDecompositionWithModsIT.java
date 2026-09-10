@@ -21,8 +21,10 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 
@@ -129,16 +131,78 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
 
     executeNonQueryWithRetry(senderEnv, "FLUSH");
 
-    executeNonQueryWithRetry(
-        senderEnv,
-        String.format(
-            "CREATE PIPE test_pipe WITH SOURCE ('mods.enable'='true', 'capture.table'='true') WITH CONNECTOR('ip'='%s', 'port'='%s', 'username'='root', 'format'='tablet')",
-            receiverEnv.getDataNodeWrapperList().get(0).getIp(),
-            receiverEnv.getDataNodeWrapperList().get(0).getPort()));
-
     HashSet<String> expectedResults = new HashSet<>();
     expectedResults.add(
         "t1,t1,t1,t1,1,1.0,1,1970-01-01T00:00:00.001Z,1,1.0,1970-01-01,1,1970-01-01T00:00:00.001Z,");
+
+    TestUtils.assertDataEventuallyOnEnv(
+        senderEnv,
+        TableModelUtils.getQuerySql("table1"),
+        TableModelUtils.generateHeaderResults(),
+        expectedResults,
+        "sg1");
+
+    TestUtils.assertDataEventuallyOnEnv(
+        senderEnv,
+        "SELECT s4 FROM table1 WHERE time >= 2 AND time <= 4",
+        "s4,",
+        Collections.emptySet(),
+        "sg1");
+
+    // Wait until the deletion mods are visible through every sender endpoint before creating the
+    // pipe. Historical extraction may otherwise read a source TsFile from a stale region leader.
+    for (DataNodeWrapper dataNode : senderEnv.getDataNodeWrapperList()) {
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t10' AND s1='t10' AND s2='t10' AND s3='t10'",
+          "count,",
+          Collections.singleton("1000,"),
+          "sg2");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t11' AND s1='t11' AND s2='t11' AND s3='t11'",
+          "count,",
+          Collections.singleton("0,"),
+          "sg2");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t12' AND s1='t12' AND s2='t12' AND s3='t12'",
+          "count,",
+          Collections.singleton("5900,"),
+          "sg2");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t13' AND s1='t13' AND s2='t13' AND s3='t13'",
+          "count,",
+          Collections.singleton("1000,"),
+          "sg2");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t14' AND s1='t14' AND s2='t14' AND s3='t14'",
+          "count,",
+          Collections.singleton("10000,"),
+          "sg2");
+    }
+
+    executeNonQueryWithRetry(
+        senderEnv,
+        String.format(
+            "CREATE PIPE test_pipe WITH SOURCE ('mods.enable'='true', 'capture.table'='true', 'inclusion'='data.insert,data.delete') WITH CONNECTOR('ip'='%s', 'port'='%s', 'username'='root', 'format'='tablet')",
+            receiverEnv.getDataNodeWrapperList().get(0).getIp(),
+            receiverEnv.getDataNodeWrapperList().get(0).getPort()),
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        null,
+        BaseEnv.TABLE_SQL_DIALECT);
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,

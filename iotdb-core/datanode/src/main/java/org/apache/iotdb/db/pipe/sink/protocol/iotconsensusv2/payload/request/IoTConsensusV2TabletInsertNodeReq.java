@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTCons
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -71,7 +72,7 @@ public class IoTConsensusV2TabletInsertNodeReq extends TIoTConsensusV2TransferRe
       req.progressIndex =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-      LOGGER.warn("Failed to serialize progress index {}", progressIndex, e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_SERIALIZE_PROGRESS_INDEX, progressIndex, e);
     }
 
     return req;
@@ -94,6 +95,7 @@ public class IoTConsensusV2TabletInsertNodeReq extends TIoTConsensusV2TransferRe
     req.dataNodeId = thisDataNodeId;
     req.version = IoTConsensusV2RequestVersion.VERSION_1.getVersion();
     req.type = IoTConsensusV2RequestType.TRANSFER_TABLET_INSERT_NODE.getType();
+    // InsertNode preallocates this buffer with its manually calculated Pipe serialization size.
     req.body = insertNode.serializeToByteBuffer();
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -102,10 +104,15 @@ public class IoTConsensusV2TabletInsertNodeReq extends TIoTConsensusV2TransferRe
       req.progressIndex =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-      LOGGER.warn("Failed to serialize progress index {}", progressIndex, e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_SERIALIZE_PROGRESS_INDEX, progressIndex, e);
     }
 
     return req;
+  }
+
+  /** Returns the exact serialized size of an InsertNode request body. */
+  public static int calculateSerializedSize(final InsertNode insertNode) {
+    return insertNode.serializeToByteBufferSize();
   }
 
   public static IoTConsensusV2TabletInsertNodeReq fromTIoTConsensusV2TransferReq(

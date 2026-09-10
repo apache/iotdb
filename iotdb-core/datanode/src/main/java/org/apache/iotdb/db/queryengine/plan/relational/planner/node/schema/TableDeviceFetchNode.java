@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
@@ -79,7 +80,8 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
   @Override
   public PlanNode clone() {
     throw new UnsupportedOperationException(
-        "The TableDeviceFetchNode's clone() method shall not be called.");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_THE_TABLEDEVICEFETCHNODE_S_CLONE_METHOD_SHALL_NOT_BE_CALLED_977C41FD);
   }
 
   public PlanNode cloneForDistribution() {

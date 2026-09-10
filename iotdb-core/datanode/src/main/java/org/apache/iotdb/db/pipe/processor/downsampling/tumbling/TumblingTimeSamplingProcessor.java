@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.downsampling.tumbling;
 
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -40,6 +41,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY;
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceGreaterThanOrEqualTo;
 
 @TreeModel
 public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
@@ -76,7 +78,7 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
     super.customize(parameters, configuration);
 
     LOGGER.info(
-        "TumblingTimeSamplingProcessor in {} is initialized with {}: {}s, {}: {}, {}: {}.",
+        DataNodePipeMessages.TUMBLINGTIMESAMPLINGPROCESSOR_IN_IS_INITIALIZED_WITH_S,
         dataBaseNameWithPathSeparator,
         PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
         intervalInCurrentPrecision,
@@ -115,7 +117,8 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
       final Long lastSampleTime = pathLastObjectCache.getPartialPathLastObject(timeSeriesSuffix);
 
       if (lastSampleTime == null
-          || Math.abs(currentRowTime - lastSampleTime) >= intervalInCurrentPrecision) {
+          || isTimeDistanceGreaterThanOrEqualTo(
+              currentRowTime, lastSampleTime, intervalInCurrentPrecision)) {
         try {
           rowCollector.collectRow(row);
 

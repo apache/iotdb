@@ -123,7 +123,9 @@ public class SimpleConsensusTest {
     }
 
     @Override
-    public void loadSnapshot(File latestSnapshotRootDir) {}
+    public boolean loadSnapshot(File latestSnapshotRootDir) {
+      return true;
+    }
   }
 
   @Before

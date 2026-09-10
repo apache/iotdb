@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema.template;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.builder.HashCodeBuilder;
@@ -76,7 +77,7 @@ public class Template implements Serializable, Accountable {
     this.name = name;
     for (int i = 0; i < measurements.size(); i++) {
       if (schemaMap.containsKey(measurements.get(i))) {
-        throw new IllegalPathException("Path duplicated: " + measurements.get(i));
+        throw new IllegalPathException(SchemaMessages.PATH_DUPLICATED + measurements.get(i));
       }
       IMeasurementSchema schema =
           new MeasurementSchema(
@@ -141,7 +142,7 @@ public class Template implements Serializable, Accountable {
     // check exists
     for (String measurement : measurements) {
       if (schemaMap.containsKey(measurement)) {
-        throw new IllegalPathException(measurement, "path already exists");
+        throw new IllegalPathException(measurement, SchemaMessages.PATH_ALREADY_EXISTS);
       }
     }
     // construct

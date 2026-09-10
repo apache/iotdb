@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -39,19 +40,42 @@ public class Explain extends Statement {
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Explain.class);
 
   private final Statement statement;
+  private final ExplainOutputFormat outputFormat;
 
   public Explain(Statement statement) {
     super(null);
-    this.statement = requireNonNull(statement, "statement is null");
+    this.statement =
+        requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
+    this.outputFormat = ExplainOutputFormat.GRAPHVIZ;
+  }
+
+  public Explain(Statement statement, ExplainOutputFormat outputFormat) {
+    super(null);
+    this.statement =
+        requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
+    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
   }
 
   public Explain(NodeLocation location, Statement statement) {
-    super(requireNonNull(location, "location is null"));
-    this.statement = requireNonNull(statement, "statement is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.statement =
+        requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
+    this.outputFormat = ExplainOutputFormat.GRAPHVIZ;
+  }
+
+  public Explain(NodeLocation location, Statement statement, ExplainOutputFormat outputFormat) {
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.statement =
+        requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
+    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
   }
 
   public Statement getStatement() {
     return statement;
+  }
+
+  public ExplainOutputFormat getOutputFormat() {
+    return outputFormat;
   }
 
   @Override
@@ -66,7 +90,7 @@ public class Explain extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(statement);
+    return Objects.hash(statement, outputFormat);
   }
 
   @Override
@@ -78,12 +102,15 @@ public class Explain extends Statement {
       return false;
     }
     Explain o = (Explain) obj;
-    return Objects.equals(statement, o.statement);
+    return Objects.equals(statement, o.statement) && outputFormat == o.outputFormat;
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("statement", statement).toString();
+    return toStringHelper(this)
+        .add("statement", statement)
+        .add("outputFormat", outputFormat)
+        .toString();
   }
 
   @Override

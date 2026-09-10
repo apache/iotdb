@@ -44,6 +44,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RangeQuantif
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -61,7 +62,8 @@ public class RowPatternToIrRewriter implements AstVisitor<IrRowPattern, Void> {
   private final Analysis analysis;
 
   public RowPatternToIrRewriter(Analysis analysis) {
-    this.analysis = requireNonNull(analysis, "analysis is null");
+    this.analysis =
+        requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
   }
 
   public static IrRowPattern rewrite(RowPattern node, Analysis analysis) {
@@ -111,7 +113,9 @@ public class RowPatternToIrRewriter implements AstVisitor<IrRowPattern, Void> {
     }
 
     throw new IllegalStateException(
-        "unsupported pattern quantifier type: " + quantifier.getClass().getSimpleName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_PATTERN_QUANTIFIER_TYPE_S_4ED427E9,
+            quantifier.getClass().getSimpleName()));
   }
 
   @Override
@@ -125,7 +129,7 @@ public class RowPatternToIrRewriter implements AstVisitor<IrRowPattern, Void> {
         type = IrAnchor.Type.PARTITION_END;
         break;
       default:
-        throw new IllegalArgumentException("Unexpected value: " + node.getType());
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + node.getType());
     }
 
     return new IrAnchor(type);

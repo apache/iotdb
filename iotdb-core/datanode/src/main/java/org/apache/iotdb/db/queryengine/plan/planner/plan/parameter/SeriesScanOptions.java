@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
+import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeNonAlignedDeviceViewAggregationScanOperator;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
@@ -55,6 +56,7 @@ public class SeriesScanOptions implements Accountable {
   private PaginationController paginationController;
   private boolean isTableViewForTreeModel;
   private long ttlForTableView = Long.MAX_VALUE;
+  private final TopKRuntimeFilter topKRuntimeFilter;
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(
           TreeNonAlignedDeviceViewAggregationScanOperator.class);
@@ -66,7 +68,8 @@ public class SeriesScanOptions implements Accountable {
       long pushDownOffset,
       Set<String> allSensors,
       boolean pushLimitToEachDevice,
-      boolean isTableViewForTreeModel) {
+      boolean isTableViewForTreeModel,
+      TopKRuntimeFilter topKRuntimeFilter) {
     this.globalTimeFilter = globalTimeFilter;
     this.originalTimeFilter = globalTimeFilter;
     this.pushDownFilter = pushDownFilter;
@@ -75,6 +78,7 @@ public class SeriesScanOptions implements Accountable {
     this.allSensors = allSensors;
     this.pushLimitToEachDevice = pushLimitToEachDevice;
     this.isTableViewForTreeModel = isTableViewForTreeModel;
+    this.topKRuntimeFilter = topKRuntimeFilter;
   }
 
   public static SeriesScanOptions getDefaultSeriesScanOptions(IFullPath seriesPath) {
@@ -156,12 +160,11 @@ public class SeriesScanOptions implements Accountable {
    */
   public static Filter updateFilterUsingTTL(Filter filter, long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
+      long ttlLowerBound = CommonUtils.getTTLLowerBound(dataTTL);
       if (filter != null) {
-        filter =
-            FilterFactory.and(
-                filter, TimeFilterApi.gtEq(CommonDateTimeUtils.currentTime() - dataTTL));
+        filter = FilterFactory.and(filter, TimeFilterApi.gtEq(ttlLowerBound));
       } else {
-        filter = TimeFilterApi.gtEq(CommonDateTimeUtils.currentTime() - dataTTL);
+        filter = TimeFilterApi.gtEq(ttlLowerBound);
       }
     }
     return filter;
@@ -186,6 +189,10 @@ public class SeriesScanOptions implements Accountable {
         && (paginationController != null && !paginationController.hasCurLimit());
   }
 
+  public TopKRuntimeFilter getTopKRuntimeFilter() {
+    return topKRuntimeFilter;
+  }
+
   public static class Builder {
 
     private Filter globalTimeFilter = null;
@@ -197,6 +204,7 @@ public class SeriesScanOptions implements Accountable {
 
     private boolean pushLimitToEachDevice = true;
     private boolean isTableViewForTreeModel = false;
+    private TopKRuntimeFilter topKRuntimeFilter;
 
     public Builder withGlobalTimeFilter(Filter globalTimeFilter) {
       this.globalTimeFilter = globalTimeFilter;
@@ -228,6 +236,11 @@ public class SeriesScanOptions implements Accountable {
       return this;
     }
 
+    public Builder withTopKRuntimeFilter(TopKRuntimeFilter topKRuntimeFilter) {
+      this.topKRuntimeFilter = topKRuntimeFilter;
+      return this;
+    }
+
     public void withAllSensors(Set<String> allSensors) {
       this.allSensors = allSensors;
     }
@@ -240,7 +253,8 @@ public class SeriesScanOptions implements Accountable {
           pushDownOffset,
           allSensors,
           pushLimitToEachDevice,
-          isTableViewForTreeModel);
+          isTableViewForTreeModel,
+          topKRuntimeFilter);
     }
   }
 }

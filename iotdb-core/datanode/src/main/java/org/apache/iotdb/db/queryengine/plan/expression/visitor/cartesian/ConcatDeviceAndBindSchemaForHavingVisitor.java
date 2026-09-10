@@ -22,11 +22,15 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,8 +49,17 @@ public class ConcatDeviceAndBindSchemaForHavingVisitor
     List<MeasurementPath> actualPaths =
         context.getSchemaTree().searchMeasurementPaths(concatPath).left;
     if (actualPaths.isEmpty()) {
+      // Preserve UNKNOWN for missing-measurement analysis. This schema is never written, so use
+      // explicit placeholders instead of asking TsFile for UNKNOWN's unsupported defaults.
       return Collections.singletonList(
-          new TimeSeriesOperand(new MeasurementPath(concatPath, TSDataType.UNKNOWN)));
+          new TimeSeriesOperand(
+              new MeasurementPath(
+                  concatPath,
+                  new MeasurementSchema(
+                      concatPath.getMeasurement(),
+                      TSDataType.UNKNOWN,
+                      TSEncoding.PLAIN,
+                      CompressionType.UNCOMPRESSED))));
     }
 
     List<MeasurementPath> nonViewActualPaths = new ArrayList<>();
@@ -66,7 +79,8 @@ public class ConcatDeviceAndBindSchemaForHavingVisitor
       Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
       if (!(replacedExpression instanceof TimeSeriesOperand)) {
         throw new SemanticException(
-            "Only writable view timeseries are supported in ALIGN BY DEVICE queries.");
+            DataNodeQueryMessages
+                .ONLY_WRITABLE_VIEW_TIMESERIES_ARE_SUPPORTED_IN_ALIGN_BY_DEVICE_QUERIES);
       }
 
       replacedExpression.setViewPath(measurementPath);

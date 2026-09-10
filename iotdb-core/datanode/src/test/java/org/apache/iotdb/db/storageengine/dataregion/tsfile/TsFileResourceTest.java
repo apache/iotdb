@@ -93,7 +93,7 @@ public class TsFileResourceTest {
     if (file.exists()) {
       FileUtils.delete(file);
     }
-    File resourceFile = new File(file.getName() + TsFileResource.RESOURCE_SUFFIX);
+    File resourceFile = new File(file.getPath() + TsFileResource.RESOURCE_SUFFIX);
     if (resourceFile.exists()) {
       FileUtils.delete(resourceFile);
     }
@@ -108,7 +108,52 @@ public class TsFileResourceTest {
   }
 
   @Test
-  public void testDegradeAndFileTimeIndex() {
+  public void testCheckAndCompareFileNameWithLongBoundary() throws IOException {
+    String minTimeFile = TsFileNameGenerator.generateNewTsFileName(Long.MIN_VALUE, 0, 0, 0);
+    String maxTimeFile = TsFileNameGenerator.generateNewTsFileName(Long.MAX_VALUE, 0, 0, 0);
+
+    Assert.assertTrue(TsFileResource.checkAndCompareFileName(minTimeFile, maxTimeFile) < 0);
+    Assert.assertTrue(TsFileResource.checkAndCompareFileName(maxTimeFile, minTimeFile) > 0);
+
+    String minVersionFile = TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE - 1, 0, 0);
+    String maxVersionFile = TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE, 0, 0);
+
+    Assert.assertTrue(TsFileResource.checkAndCompareFileName(minVersionFile, maxVersionFile) < 0);
+    Assert.assertTrue(TsFileResource.checkAndCompareFileName(maxVersionFile, minVersionFile) > 0);
+  }
+
+  @Test
+  public void testCompareFileCreationOrderByDescWithLongBoundaryVersion() {
+    TsFileResource minVersionResource =
+        new TsFileResource(
+            new File(TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE - 1, 0, 0)));
+    TsFileResource maxVersionResource =
+        new TsFileResource(
+            new File(TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE, 0, 0)));
+
+    Assert.assertTrue(
+        TsFileResource.compareFileCreationOrderByDesc(maxVersionResource, minVersionResource) < 0);
+    Assert.assertTrue(
+        TsFileResource.compareFileCreationOrderByDesc(minVersionResource, maxVersionResource) > 0);
+  }
+
+  @Test
+  public void testSerializeDegradedTimeIndex() throws IOException {
+    tsFileResource.serialize();
+    tsFileResource.degradeTimeIndex();
+
+    tsFileResource.serialize();
+
+    TsFileResource derTsFileResource = new TsFileResource(file);
+    derTsFileResource.deserialize();
+    Assert.assertEquals(
+        ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, derTsFileResource.getTimeIndexType());
+    Assert.assertEquals(deviceToIndex.keySet(), derTsFileResource.getDevices());
+  }
+
+  @Test
+  public void testDegradeAndFileTimeIndex() throws IOException {
+    tsFileResource.serialize();
     Assert.assertEquals(ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
     tsFileResource.degradeTimeIndex();
     Assert.assertEquals(ITimeIndex.FILE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());

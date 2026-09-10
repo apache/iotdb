@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.plugin.meta;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.ConfigNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -57,5 +58,21 @@ public class PipePluginMetaTest {
     Assert.assertEquals(
         BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginClass(),
         keeper.getBuiltinPluginClass(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
+  }
+
+  @Test
+  public void testRejectPathTraversalInPluginMetadata() {
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> new PipePluginMeta("../plugin", "test.Plugin", false, "test.jar", "md5"));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> new PipePluginMeta("plugin", "test.Plugin", false, "../test.jar", "md5"));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> new PipePluginMeta("plugin", "test.Plugin", false, "..\\test.jar", "md5"));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> new PipePluginMeta("plugin\0", "test.Plugin", false, "test.jar", "md5"));
   }
 }

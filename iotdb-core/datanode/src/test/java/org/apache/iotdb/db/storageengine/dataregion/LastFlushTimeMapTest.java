@@ -38,9 +38,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Optional;
 
 public class LastFlushTimeMapTest {
 
@@ -137,6 +141,35 @@ public class LastFlushTimeMapTest {
         dataRegion
             .getLastFlushTimeMap()
             .getFlushedTime(0, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d1")));
+  }
+
+  @Test
+  public void testClearFlushedTimeClearsMemoryCost() {
+    HashLastFlushTimeMap lastFlushTimeMap = new HashLastFlushTimeMap();
+    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0");
+
+    lastFlushTimeMap.updateMultiDeviceFlushedTime(0, Collections.singletonMap(device, 100L));
+    Assert.assertTrue(lastFlushTimeMap.getMemSize(0) > 0);
+    lastFlushTimeMap.clearFlushedTime();
+    Assert.assertEquals(0, lastFlushTimeMap.getMemSize(0));
+  }
+
+  @Test
+  public void testUpgradeDeviceFlushTimeUsesMaximumAcrossResources() {
+    final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0");
+    final TsFileResource newerEndTimeResource = Mockito.mock(TsFileResource.class);
+    final TsFileResource olderEndTimeResource = Mockito.mock(TsFileResource.class);
+    Mockito.when(newerEndTimeResource.getDevices()).thenReturn(Collections.singleton(device));
+    Mockito.when(newerEndTimeResource.getEndTime(device)).thenReturn(Optional.of(100L));
+    Mockito.when(olderEndTimeResource.getDevices()).thenReturn(Collections.singleton(device));
+    Mockito.when(olderEndTimeResource.getEndTime(device)).thenReturn(Optional.of(50L));
+
+    dataRegion.getLastFlushTimeMap().clearFlushedTime();
+    dataRegion.getLastFlushTimeMap().checkAndCreateFlushedTimePartition(0, true);
+    dataRegion.upgradeAndUpdateDeviceLastFlushTime(
+        0, Arrays.asList(newerEndTimeResource, olderEndTimeResource));
+
+    Assert.assertEquals(100L, dataRegion.getLastFlushTimeMap().getFlushedTime(0, device));
   }
 
   @Test

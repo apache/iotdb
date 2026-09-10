@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 
@@ -43,7 +44,8 @@ public class SubStringFunctionTransformer extends UnaryTransformer {
     this.beginPosition = beginPosition > 0 ? beginPosition - 1 : 0;
 
     if (layerReaderDataType != TSDataType.TEXT && layerReaderDataType != TSDataType.STRING) {
-      throw new UnSupportedDataTypeException("Unsupported data type: " + layerReaderDataType);
+      throw new UnSupportedDataTypeException(
+          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + layerReaderDataType);
     }
   }
 

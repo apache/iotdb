@@ -33,9 +33,15 @@ public class MultiEnvFactory {
   private static final List<BaseEnv> envList = new ArrayList<>();
   private static final Logger logger = IoTDBTestLogger.logger;
   private static String currentMethodName;
+  private static String currentClassName;
 
   private MultiEnvFactory() {
     // Empty constructor
+  }
+
+  public static void setTestClassName(final String testClassName) {
+    currentClassName = testClassName;
+    envList.forEach(baseEnv -> baseEnv.setTestClassName(testClassName));
   }
 
   public static void setTestMethodName(final String testMethodName) {
@@ -51,11 +57,12 @@ public class MultiEnvFactory {
   /** Create several environments according to the specific number. */
   public static void createEnv(final int num) {
     // Not judge EnvType for individual test convenience
+    envList.clear();
     final long startTime = System.currentTimeMillis();
     for (int i = 0; i < num; ++i) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        envList.add(new MultiClusterEnv(startTime, i, currentMethodName));
+        envList.add(new MultiClusterEnv(startTime, i, currentClassName, currentMethodName));
       } catch (final ClassNotFoundException e) {
         logger.error("Create env error", e);
         System.exit(-1);

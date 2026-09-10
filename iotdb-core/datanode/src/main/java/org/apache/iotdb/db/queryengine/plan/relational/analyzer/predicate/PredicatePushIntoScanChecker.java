@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpres
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.List;
 
@@ -51,7 +52,8 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
 
   @Override
   public Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
-    throw new IllegalArgumentException("IS NULL Expression can't be pushed down");
+    throw new IllegalArgumentException(
+        DataNodeQueryMessages.IS_NULL_EXPRESSION_CAN_T_BE_PUSHED_DOWN);
   }
 
   @Override
@@ -79,7 +81,7 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
 
   @Override
   public Boolean visitNotExpression(NotExpression node, Void context) {
-    throw new IllegalArgumentException("Not Expression can't be pushed down");
+    throw new IllegalArgumentException(DataNodeQueryMessages.NOT_EXPRESSION_CAN_T_BE_PUSHED_DOWN);
   }
 
   @Override

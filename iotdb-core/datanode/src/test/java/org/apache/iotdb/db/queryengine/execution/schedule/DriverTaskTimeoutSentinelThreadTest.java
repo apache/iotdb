@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.L2PriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;

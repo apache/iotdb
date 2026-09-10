@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -45,6 +46,7 @@ import org.apache.tsfile.write.writer.TsFileIOWriter;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -212,11 +214,7 @@ public class AlignedChunkData implements ChunkData {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     satisfiedLengthQueue.offer(satisfiedLength);
     final long startTime = timePartitionSlot.getStartTime();
-    // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
-    if (endTime <= startTime) {
-      endTime = Long.MAX_VALUE;
-    }
+    final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
     // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
@@ -236,11 +234,7 @@ public class AlignedChunkData implements ChunkData {
       throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
-    // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
-    if (endTime <= startTime) {
-      endTime = Long.MAX_VALUE;
-    }
+    final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
     final int satisfiedLength = satisfiedLengthQueue.poll();
     // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);
@@ -281,7 +275,9 @@ public class AlignedChunkData implements ChunkData {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", dataType));
+                  String.format(
+                      StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                      dataType));
           }
         }
       }
@@ -289,6 +285,7 @@ public class AlignedChunkData implements ChunkData {
   }
 
   protected void writeTsFileData(TsFileIOWriter writer) throws IOException, PageException {
+    ensureDataReadyForWriting();
     final InputStream stream = new LoadTsFilePieceNode.ByteBufferInputStream(chunkData);
     if (needDecodeChunk) {
       writeChunkToWriter(stream, writer);
@@ -297,15 +294,21 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
+  private void ensureDataReadyForWriting() throws IOException {
+    if (chunkData != null) {
+      chunkData.rewind();
+      return;
+    }
+    chunkData = ByteBuffer.wrap(byteStream.getBuf(), 0, byteStream.size());
+  }
+
   protected void deserializeTsFileDataByte(final InputStream stream) throws IOException {
     final int size = ReadWriteIOUtils.readInt(stream);
     if (stream instanceof LoadTsFilePieceNode.ByteBufferInputStream) {
       this.chunkData = ((LoadTsFilePieceNode.ByteBufferInputStream) stream).read(size);
     } else {
       byte[] data = new byte[size];
-      if (size != stream.read(data)) {
-        throw new IOException("TsFileData byte array read error, size mismatch.");
-      }
+      new DataInputStream(stream).readFully(data);
       this.chunkData = ByteBuffer.wrap(data);
     }
   }
@@ -414,7 +417,10 @@ public class AlignedChunkData implements ChunkData {
                 break;
               default:
                 throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                    String.format(
+                        StorageEngineMessages
+                            .STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                        chunkHeader.getDataType()));
             }
           }
         }

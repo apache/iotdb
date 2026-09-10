@@ -20,6 +20,7 @@ import org.apache.iotdb.commons.external.collections4.BidiMap;
 import org.apache.iotdb.commons.external.collections4.collection.AbstractCollectionDecorator;
 import org.apache.iotdb.commons.external.collections4.iterators.AbstractIteratorDecorator;
 import org.apache.iotdb.commons.external.collections4.keyvalue.AbstractMapEntryDecorator;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.apache.tsfile.external.commons.collections4.MapIterator;
 import org.apache.tsfile.external.commons.collections4.ResettableIterator;
@@ -492,7 +493,7 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     @Override
     public void remove() {
       if (canRemove == false) {
-        throw new IllegalStateException("Iterator remove() can only be called once after next()");
+        throw new IllegalStateException(CommonMessages.ITERATOR_REMOVE_ONLY_AFTER_NEXT);
       }
       final Object value = parent.normalMap.get(lastKey);
       super.remove();
@@ -574,7 +575,7 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     @Override
     public void remove() {
       if (canRemove == false) {
-        throw new IllegalStateException("Iterator remove() can only be called once after next()");
+        throw new IllegalStateException(CommonMessages.ITERATOR_REMOVE_ONLY_AFTER_NEXT);
       }
       super.remove(); // removes from maps[0]
       parent.reverseMap.remove(lastValue);
@@ -658,7 +659,7 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     @Override
     public void remove() {
       if (canRemove == false) {
-        throw new IllegalStateException("Iterator remove() can only be called once after next()");
+        throw new IllegalStateException(CommonMessages.ITERATOR_REMOVE_ONLY_AFTER_NEXT);
       }
       // store value as remove may change the entry in the decorator (eg.TreeMap)
       final Object value = last.getValue();
@@ -691,7 +692,7 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
       final K key = MapEntry.this.getKey();
       if (parent.reverseMap.containsKey(value) && parent.reverseMap.get(value) != key) {
         throw new IllegalArgumentException(
-            "Cannot use setValue() when the object being set is already in the map");
+            CommonMessages.EXCEPTION_CANNOT_USE_SETVALUE_OBJECT_BEING_SET_ALREADY_MAP_676ED3BF);
       }
       parent.put(key, value);
       return super.setValue(value);
@@ -739,7 +740,7 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     @Override
     public void remove() {
       if (canRemove == false) {
-        throw new IllegalStateException("Iterator remove() can only be called once after next()");
+        throw new IllegalStateException(CommonMessages.ITERATOR_REMOVE_ONLY_AFTER_NEXT);
       }
       // store value as remove may change the entry in the decorator (eg.TreeMap)
       final V value = last.getValue();
@@ -753,7 +754,8 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     public K getKey() {
       if (last == null) {
         throw new IllegalStateException(
-            "Iterator getKey() can only be called after next() and before remove()");
+            CommonMessages
+                .EXCEPTION_ITERATOR_GETKEY_CAN_ONLY_CALLED_AFTER_NEXT_BEFORE_REMOVE_009C456B);
       }
       return last.getKey();
     }
@@ -762,7 +764,8 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     public V getValue() {
       if (last == null) {
         throw new IllegalStateException(
-            "Iterator getValue() can only be called after next() and before remove()");
+            CommonMessages
+                .EXCEPTION_ITERATOR_GETVALUE_CAN_ONLY_CALLED_AFTER_NEXT_BEFORE_REMOVE_927A88A2);
       }
       return last.getValue();
     }
@@ -771,11 +774,12 @@ public abstract class AbstractDualBidiMap<K, V> implements BidiMap<K, V> {
     public V setValue(final V value) {
       if (last == null) {
         throw new IllegalStateException(
-            "Iterator setValue() can only be called after next() and before remove()");
+            CommonMessages
+                .EXCEPTION_ITERATOR_SETVALUE_CAN_ONLY_CALLED_AFTER_NEXT_BEFORE_REMOVE_51505AD1);
       }
       if (parent.reverseMap.containsKey(value) && parent.reverseMap.get(value) != last.getKey()) {
         throw new IllegalArgumentException(
-            "Cannot use setValue() when the object being set is already in the map");
+            CommonMessages.EXCEPTION_CANNOT_USE_SETVALUE_OBJECT_BEING_SET_ALREADY_MAP_676ED3BF);
       }
       return parent.put(last.getKey(), value);
     }

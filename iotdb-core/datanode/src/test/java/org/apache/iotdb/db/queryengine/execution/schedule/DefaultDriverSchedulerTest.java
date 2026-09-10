@@ -198,6 +198,47 @@ public class DefaultDriverSchedulerTest {
   }
 
   @Test
+  public void testAbortReadyTaskAfterPollReleasesReadyQueueReservation() throws Exception {
+    IMPPDataExchangeManager mockMPPDataExchangeManager =
+        Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(mockMPPDataExchangeManager);
+    ITaskScheduler defaultScheduler = manager.getScheduler();
+    IDriver mockDriver = Mockito.mock(IDriver.class);
+    DriverTaskHandle driverTaskHandle =
+        new DriverTaskHandle(
+            1,
+            (MultilevelPriorityQueue) manager.getReadyQueue(),
+            OptionalInt.of(Integer.MAX_VALUE));
+
+    QueryId queryId = new QueryId("test");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
+    DriverTaskId driverTaskID = new DriverTaskId(instanceId, 0);
+    Mockito.when(mockDriver.getDriverTaskId()).thenReturn(driverTaskID);
+    DriverTask testTask =
+        new DriverTask(mockDriver, 100L, DriverTaskStatus.READY, driverTaskHandle, 0, false);
+
+    try {
+      manager.registerTaskToQueryMap(queryId, testTask);
+      manager.submitTaskToReadyQueue(testTask);
+
+      DriverTask polledTask = manager.getReadyQueue().poll();
+      Assert.assertSame(testTask, polledTask);
+      Assert.assertEquals(1, manager.getReadyQueueReservedTaskCount());
+
+      manager.abortFragmentInstance(instanceId, new RuntimeException("test abort"));
+
+      Assert.assertEquals(DriverTaskStatus.ABORTED, testTask.getStatus());
+      Assert.assertEquals(0, manager.getReadyQueue().size());
+      Assert.assertEquals(0, manager.getReadyQueueReservedTaskCount());
+      Assert.assertFalse(defaultScheduler.readyToRunning(polledTask));
+      Assert.assertEquals(0, manager.getReadyQueueReservedTaskCount());
+    } finally {
+      clear();
+    }
+  }
+
+  @Test
   public void testRunningToReady() {
     IMPPDataExchangeManager mockMPPDataExchangeManager =
         Mockito.mock(IMPPDataExchangeManager.class);

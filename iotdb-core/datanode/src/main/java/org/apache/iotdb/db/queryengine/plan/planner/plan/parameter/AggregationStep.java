@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -103,7 +105,8 @@ public enum AggregationStep {
       case 4:
         return AggregationStep.STATIC;
       default:
-        throw new IllegalArgumentException("Invalid AggregationStep type: " + type);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.INVALID_AGGREGATIONSTEP_TYPE + type);
     }
   }
 }

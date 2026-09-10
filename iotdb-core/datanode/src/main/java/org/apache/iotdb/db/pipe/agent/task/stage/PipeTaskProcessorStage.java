@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.stage;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.EventSupplier;
@@ -56,8 +57,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    * @param creationTime pipe creation time
    * @param pipeProcessorParameters used to create {@link PipeProcessor}
    * @param regionId {@link DataRegion} id
-   * @param pipeExtractorInputEventSupplier used to input {@link Event}s from {@link PipeExtractor}
-   * @param pipeConnectorOutputPendingQueue used to output {@link Event}s to {@link PipeConnector}
+   * @param pipeSourceInputEventSupplier used to input {@link Event}s from {@link PipeExtractor}
+   * @param pipeSinkOutputPendingQueue used to output {@link Event}s to {@link PipeConnector}
    * @throws PipeException if failed to {@link PipeProcessor#validate(PipeParameterValidator)} or
    *     {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)}}
    */
@@ -66,16 +67,18 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       final long creationTime,
       final PipeParameters pipeProcessorParameters,
       final int regionId,
-      final EventSupplier pipeExtractorInputEventSupplier,
-      final UnboundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
+      final EventSupplier pipeSourceInputEventSupplier,
+      final UnboundedBlockingPendingQueue<Event> pipeSinkOutputPendingQueue,
       final PipeProcessorSubtaskExecutor executor,
       final PipeTaskMeta pipeTaskMeta,
+      final UserEntity sourceUserEntity,
+      final String sourcePassword,
       final boolean forceTabletFormat,
       final boolean skipParsing) {
     final PipeProcessorRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskProcessorRuntimeEnvironment(
-                pipeName, creationTime, regionId, pipeTaskMeta));
+                pipeName, creationTime, regionId, pipeTaskMeta, sourceUserEntity, sourcePassword));
     final PipeProcessor pipeProcessor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
                 || PipeRuntimeMeta.isSourceExternal(regionId)
@@ -103,9 +106,9 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // old one, so we need creationTime to make their hash code different in the map.
     final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final boolean isUsedForConsensusPipe = pipeName.contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX);
-    final PipeEventCollector pipeConnectorOutputEventCollector =
+    final PipeEventCollector pipeSinkOutputEventCollector =
         new PipeEventCollector(
-            pipeConnectorOutputPendingQueue,
+            pipeSinkOutputPendingQueue,
             creationTime,
             regionId,
             forceTabletFormat,
@@ -117,9 +120,9 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeName,
             creationTime,
             regionId,
-            pipeExtractorInputEventSupplier,
+            pipeSourceInputEventSupplier,
             pipeProcessor,
-            pipeConnectorOutputEventCollector);
+            pipeSinkOutputEventCollector);
 
     this.executor = executor;
   }

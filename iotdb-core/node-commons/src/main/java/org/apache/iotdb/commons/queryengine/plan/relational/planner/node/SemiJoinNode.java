@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -51,21 +52,25 @@ public class SemiJoinNode extends TwoChildProcessNode {
       Symbol filteringSourceJoinSymbol,
       Symbol semiJoinOutput) {
     super(id, source, filteringSource);
-    this.sourceJoinSymbol = requireNonNull(sourceJoinSymbol, "sourceJoinSymbol is null");
+    this.sourceJoinSymbol =
+        requireNonNull(sourceJoinSymbol, QueryMessages.EXCEPTION_SOURCEJOINSYMBOL_IS_NULL_A88AEC85);
     this.filteringSourceJoinSymbol =
-        requireNonNull(filteringSourceJoinSymbol, "filteringSourceJoinSymbol is null");
-    this.semiJoinOutput = requireNonNull(semiJoinOutput, "semiJoinOutput is null");
+        requireNonNull(
+            filteringSourceJoinSymbol,
+            QueryMessages.EXCEPTION_FILTERINGSOURCEJOINSYMBOL_IS_NULL_502C5BD5);
+    this.semiJoinOutput =
+        requireNonNull(semiJoinOutput, QueryMessages.EXCEPTION_SEMIJOINOUTPUT_IS_NULL_D961A39B);
 
     if (source != null) {
       checkArgument(
           source.getOutputSymbols().contains(sourceJoinSymbol),
-          "Source does not contain join symbol");
+          QueryMessages.EXCEPTION_SOURCE_DOES_NOT_CONTAIN_JOIN_SYMBOL_FA572FD2);
     }
 
     if (filteringSource != null) {
       checkArgument(
           filteringSource.getOutputSymbols().contains(filteringSourceJoinSymbol),
-          "Filtering source does not contain filtering join symbol");
+          QueryMessages.EXCEPTION_FILTERING_SOURCE_DOES_NOT_CONTAIN_FILTERING_JOIN_SYMBOL_0C7B1BE3);
     }
   }
 
@@ -104,7 +109,9 @@ public class SemiJoinNode extends TwoChildProcessNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(newChildren.size() == 2, "expected newChildren to contain 2 nodes");
+    checkArgument(
+        newChildren.size() == 2,
+        QueryMessages.EXCEPTION_EXPECTED_NEWCHILDREN_TO_CONTAIN_2_NODES_25FE7927);
     return new SemiJoinNode(
         getPlanNodeId(),
         newChildren.get(0),

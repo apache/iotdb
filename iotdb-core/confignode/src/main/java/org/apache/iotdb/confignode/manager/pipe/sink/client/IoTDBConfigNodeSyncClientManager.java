@@ -39,6 +39,8 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
+      String keyStorePath,
+      String keyStorePwd,
       /* The following parameters are used locally. */
       String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
@@ -54,6 +56,8 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
         useSSL,
         trustStorePath,
         trustStorePwd,
+        keyStorePath,
+        keyStorePwd,
         false,
         loadBalanceStrategy,
         userEntity,

@@ -27,6 +27,7 @@ import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.F
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.FakedMemoryReservationManager;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -101,7 +102,9 @@ public class FunctionTestUtils {
     // inputExpressions and inputAttributes are not used in this method
     TableAccumulator accumulator =
         AccumulatorFactory.createBuiltinAccumulator(
-            aggregationType, Collections.singletonList(inputDataType));
+            aggregationType,
+            Collections.singletonList(inputDataType),
+            new FakedMemoryReservationManager());
     WindowAggregator aggregator =
         new WindowAggregator(accumulator, outputDataType, Collections.singletonList(0));
     return new AggregationWindowFunction(aggregator);

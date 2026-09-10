@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -26,11 +27,13 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
@@ -56,9 +59,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSche
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetResult;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.InMemoryDeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -112,6 +117,7 @@ public class TestMetadata implements Metadata {
   public static final String DB1 = "testdb";
   public static final String TREE_DB1 = "root.test";
   public static final String TABLE1 = "table1";
+  public static final String TABLE_WITH_X = "table_with_x";
   public static final String TIME = "time";
   private static final String TAG1 = "tag1";
   private static final String TAG2 = "tag2";
@@ -121,6 +127,7 @@ public class TestMetadata implements Metadata {
   private static final String S1 = "s1";
   private static final String S2 = "s2";
   private static final String S3 = "s3";
+  private static final String X = "x";
   private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, TIMESTAMP);
   private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, StringType.STRING);
   private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, StringType.STRING);
@@ -130,6 +137,7 @@ public class TestMetadata implements Metadata {
   private static final ColumnMetadata S1_CM = new ColumnMetadata(S1, INT64);
   private static final ColumnMetadata S2_CM = new ColumnMetadata(S2, INT64);
   private static final ColumnMetadata S3_CM = new ColumnMetadata(S3, DOUBLE);
+  private static final ColumnMetadata X_CM = new ColumnMetadata(X, INT64);
 
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
@@ -144,6 +152,7 @@ public class TestMetadata implements Metadata {
   public boolean tableExists(final QualifiedObjectName name) {
     return name.getDatabaseName().equalsIgnoreCase(DB1)
         && (name.getObjectName().equalsIgnoreCase(TABLE1)
+            || name.getObjectName().equalsIgnoreCase(TABLE_WITH_X)
             || name.getObjectName().equalsIgnoreCase(TABLE2)
             || name.getObjectName().equalsIgnoreCase(TABLE3));
   }
@@ -214,6 +223,15 @@ public class TestMetadata implements Metadata {
               ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
 
       return Optional.of(new TableSchema(TABLE1, columnSchemas));
+    } else if (name.getObjectName().equalsIgnoreCase(TABLE_WITH_X)) {
+      final List<ColumnSchema> columnSchemas =
+          Arrays.asList(
+              ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
+              ColumnSchema.builder(X_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S1_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
+              ColumnSchema.builder(S2_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
+
+      return Optional.of(new TableSchema(TABLE_WITH_X, columnSchemas));
     } else {
       List<ColumnSchema> columnSchemas =
           Arrays.asList(
@@ -319,7 +337,23 @@ public class TestMetadata implements Metadata {
   }
 
   @Override
-  public Map<String, List<DeviceEntry>> indexScan(
+  public DeviceEntryDataSetResult indexScan(
+      final QualifiedObjectName tableName,
+      final List<Expression> expressionList,
+      final List<String> attributeColumns,
+      final MPPQueryContext context,
+      final PlanNodeId planNodeId) {
+    final Map<String, List<DeviceEntry>> deviceEntries =
+        indexScanEntries(tableName, expressionList, attributeColumns, context);
+    final String database = deviceEntries.keySet().iterator().next();
+    final List<DeviceEntry> entries = deviceEntries.get(database);
+    return new DeviceEntryDataSetResult(
+        database,
+        new InMemoryDeviceEntryDataSet(entries),
+        entries.stream().anyMatch(NonAlignedDeviceEntry.class::isInstance));
+  }
+
+  private Map<String, List<DeviceEntry>> indexScanEntries(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
@@ -529,8 +563,26 @@ public class TestMetadata implements Metadata {
   }
 
   @Override
+  public DataPartition getDataPartition(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots) {
+    return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+  }
+
+  @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      final String database,
+      final DeviceEntryDataSet dataSet,
+      final List<TTimePartitionSlot> timePartitionSlots,
+      final boolean needLeftAll,
+      final boolean needRightAll) {
     return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
@@ -594,11 +646,29 @@ public class TestMetadata implements Metadata {
       }
 
       @Override
+      public DataPartition getDataPartition(
+          String database,
+          DeviceEntryDataSet dataSet,
+          List<TTimePartitionSlot> timePartitionSlots) {
+        return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+      }
+
+      @Override
       public DataPartition getDataPartitionWithUnclosedTimeRange(
           Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
         return !sgNameToQueryParamsMap.isEmpty() && sgNameToQueryParamsMap.get(TREE_VIEW_DB) != null
             ? TREE_VIEW_DATA_PARTITION
             : TABLE_DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getDataPartitionWithUnclosedTimeRange(
+          String database,
+          DeviceEntryDataSet dataSet,
+          List<TTimePartitionSlot> timePartitionSlots,
+          boolean needLeftAll,
+          boolean needRightAll) {
+        return TREE_VIEW_DB.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
       }
 
       @Override

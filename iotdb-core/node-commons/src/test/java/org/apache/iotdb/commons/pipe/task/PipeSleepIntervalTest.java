@@ -25,13 +25,48 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
+
 public class PipeSleepIntervalTest {
+  private static class TestSinkSubtask extends PipeAbstractSinkSubtask {
+
+    TestSinkSubtask() {
+      super(null, 0, null);
+    }
+
+    @Override
+    protected String getRootCause(Throwable throwable) {
+      return null;
+    }
+
+    @Override
+    protected void report(EnrichedEvent event, PipeRuntimeException exception) {}
+
+    @Override
+    protected boolean executeOnce() {
+      return false;
+    }
+
+    long getSleepInterval(final Throwable throwable) {
+      return getSleepIntervalBasedOnThrowable(throwable);
+    }
+
+    boolean isAuthenticationFailureException(final Throwable throwable) {
+      return isAuthenticationFailure(throwable);
+    }
+
+    void sleepWithoutHighPriorityTask(final long sleepMillis) throws InterruptedException {
+      sleepIfNoHighPriorityTask(sleepMillis);
+    }
+  }
+
   private long oldPipeSinkSubtaskSleepIntervalInitMs;
   private long oldPipeSinkSubtaskSleepIntervalMaxMs;
 
@@ -53,21 +88,7 @@ public class PipeSleepIntervalTest {
 
   @Test
   public void test() {
-    try (final PipeAbstractSinkSubtask subtask =
-        new PipeAbstractSinkSubtask(null, 0, null) {
-          @Override
-          protected String getRootCause(Throwable throwable) {
-            return null;
-          }
-
-          @Override
-          protected void report(EnrichedEvent event, PipeRuntimeException exception) {}
-
-          @Override
-          protected boolean executeOnce() {
-            return false;
-          }
-        }) {
+    try (final TestSinkSubtask subtask = new TestSinkSubtask()) {
       long startTime = System.currentTimeMillis();
       subtask.sleep4NonReportException();
       Assert.assertTrue(
@@ -78,6 +99,41 @@ public class PipeSleepIntervalTest {
       Assert.assertTrue(
           System.currentTimeMillis() - startTime
               >= PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs());
+    }
+  }
+
+  @Test
+  public void testAuthenticationFailureRetryInterval() {
+    try (final TestSinkSubtask subtask = new TestSinkSubtask()) {
+      Assert.assertTrue(
+          subtask.isAuthenticationFailureException(
+              new PipeConnectionException(
+                  "Handshake error with receiver 127.0.0.1:6667, code: 801, message: Authentication failed.")));
+      Assert.assertTrue(
+          subtask.isAuthenticationFailureException(
+              new PipeConnectionException("801: Failed to check password for pipe a2b.")));
+      Assert.assertTrue(
+          subtask.isAuthenticationFailureException(
+              new PipeConnectionException("status code: 822, message: Account is blocked.")));
+      Assert.assertFalse(
+          subtask.isAuthenticationFailureException(
+              new PipeConnectionException("Network error 801 bytes sent.")));
+
+      final long authenticationFailureRetryInterval =
+          subtask.getSleepInterval(new PipeConnectionException("code: 801"));
+      Assert.assertTrue(authenticationFailureRetryInterval > TimeUnit.MINUTES.toMillis(3));
+      Assert.assertTrue(authenticationFailureRetryInterval * 3 > TimeUnit.MINUTES.toMillis(10));
+      Assert.assertTrue(
+          subtask.getSleepInterval(new PipeConnectionException("network error")) <= 10000);
+    }
+  }
+
+  @Test
+  public void testSleepIfNoHighPriorityTaskWaits() throws Exception {
+    try (final TestSinkSubtask subtask = new TestSinkSubtask()) {
+      final long startTime = System.currentTimeMillis();
+      subtask.sleepWithoutHighPriorityTask(20L);
+      Assert.assertTrue(System.currentTimeMillis() - startTime >= 15L);
     }
   }
 }

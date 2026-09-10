@@ -19,15 +19,21 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ClassifyTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.PatternMatchTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.HighPassTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.LowPassTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.XCorrTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
@@ -42,9 +48,14 @@ public enum TableBuiltinTableFunction {
   SESSION("session"),
   VARIATION("variation"),
   CAPACITY("capacity"),
+  M4("m4"),
+  FFT("fft"),
   FORECAST("forecast"),
   PATTERN_MATCH("pattern_match"),
-  CLASSIFY("classify");
+  CLASSIFY("classify"),
+  LOWPASS("lowpass"),
+  HIGHPASS("highpass"),
+  XCORR("xcorr");
 
   private final String functionName;
 
@@ -86,12 +97,23 @@ public enum TableBuiltinTableFunction {
         return new PatternMatchTableFunction();
       case "capacity":
         return new CapacityTableFunction();
+      case "m4":
+        return new M4TableFunction();
+      case "fft":
+        return new FFTTableFunction();
       case "forecast":
         return new ForecastTableFunction();
       case "classify":
         return new ClassifyTableFunction();
+      case "lowpass":
+        return new LowPassTableFunction();
+      case "highpass":
+        return new HighPassTableFunction();
+      case "xcorr":
+        return new XCorrTableFunction();
       default:
-        throw new UnsupportedOperationException("Unsupported table function: " + functionName);
+        throw new UnsupportedOperationException(
+            String.format(QueryMessages.UNSUPPORTED_TABLE_FUNCTION, functionName));
     }
   }
 }

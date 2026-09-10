@@ -21,7 +21,8 @@ package org.apache.iotdb.metrics.utils;
 
 public enum NodeType {
   CONFIGNODE,
-  DATANODE;
+  DATANODE,
+  STREAMNODE;
 
   @Override
   public String toString() {

@@ -82,6 +82,7 @@ public class RecoverReadTest {
   @Before
   public void setUp() throws Exception {
     logger.info("[RECOVER TEST] start setting up the test env");
+    TestUtils.prepareJvmForRatisTest();
     final TestUtils.MiniClusterFactory factory = new TestUtils.MiniClusterFactory();
     miniCluster =
         factory
@@ -117,8 +118,12 @@ public class RecoverReadTest {
   @After
   public void tearUp() throws Exception {
     logger.info("[RECOVER TEST] start tearing down the test env");
-    miniCluster.cleanUp();
-    logger.info("[RECOVER TEST] end tearing down the test env");
+    try {
+      miniCluster.cleanUp();
+    } finally {
+      TestUtils.assertNoUnexpectedRatisExit();
+      logger.info("[RECOVER TEST] end tearing down the test env");
+    }
   }
 
   /* mimics the situation before this patch */

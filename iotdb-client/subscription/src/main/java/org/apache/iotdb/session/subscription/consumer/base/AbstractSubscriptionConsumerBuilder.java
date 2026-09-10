@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.apache.thrift.annotation.Nullable;
@@ -40,6 +41,8 @@ public class AbstractSubscriptionConsumerBuilder {
 
   protected String consumerId;
   protected String consumerGroupId;
+  protected String ownerId;
+  protected Long ownerEpoch;
 
   protected long heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
   protected long endpointsSyncIntervalMs =
@@ -76,7 +79,8 @@ public class AbstractSubscriptionConsumerBuilder {
     if (!Objects.equals(password, SessionConfig.DEFAULT_PASSWORD)
         && Objects.nonNull(this.encryptedPassword)) {
       throw new IllegalStateException(
-          "password and encryptedPassword are mutually exclusive; encryptedPassword is already set");
+          SubscriptionMessages
+              .EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_ENCRYPTEDPASSWORD_ALREADY_SET_E4548A43);
     }
     this.password = password;
     return this;
@@ -88,7 +92,8 @@ public class AbstractSubscriptionConsumerBuilder {
     }
     if (!Objects.equals(this.password, SessionConfig.DEFAULT_PASSWORD)) {
       throw new IllegalStateException(
-          "password and encryptedPassword are mutually exclusive; password is already set");
+          SubscriptionMessages
+              .EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_PASSWORD_ALREADY_SET_BB20AD1E);
     }
     this.encryptedPassword = encryptedPassword;
     return this;
@@ -108,6 +113,27 @@ public class AbstractSubscriptionConsumerBuilder {
       return this;
     }
     this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder ownerId(@Nullable final String ownerId) {
+    if (Objects.isNull(ownerId)) {
+      return this;
+    }
+    this.ownerId = ownerId;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder ownerEpoch(final long ownerEpoch) {
+    this.ownerEpoch = ownerEpoch;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder ownerEpoch(@Nullable final Long ownerEpoch) {
+    if (Objects.isNull(ownerEpoch)) {
+      return this;
+    }
+    this.ownerEpoch = ownerEpoch;
     return this;
   }
 

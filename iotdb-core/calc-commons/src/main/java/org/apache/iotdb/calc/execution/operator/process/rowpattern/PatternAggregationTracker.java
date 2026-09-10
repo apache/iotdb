@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process.rowpattern;
 
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher.ArrayView;
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher.IntList;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import java.util.Set;
 
@@ -66,7 +67,7 @@ public class PatternAggregationTracker {
   private final IntList allPositions;
 
   public PatternAggregationTracker(Set<Integer> labels, boolean running) {
-    this.labels = requireNonNull(labels, "labels is null");
+    this.labels = requireNonNull(labels, CalcMessages.EXCEPTION_LABELS_IS_NULL_F4FBBECE);
     this.running = running;
     this.allPositions = new IntList(DEFAULT_CAPACITY);
   }
@@ -102,10 +103,10 @@ public class PatternAggregationTracker {
       int currentRow, ArrayView matchedLabels, int partitionStart, int patternStart) {
     checkArgument(
         currentRow >= patternStart && currentRow < patternStart + matchedLabels.length(),
-        "current row is out of bounds of the match");
+        CalcMessages.EXCEPTION_CURRENT_ROW_IS_OUT_OF_BOUNDS_OF_THE_MATCH_D8D8B611);
     checkState(
         aggregated <= evaluated && evaluated <= matchedLabels.length(),
-        "PatternAggregationTracker in inconsistent state");
+        CalcMessages.EXCEPTION_PATTERNAGGREGATIONTRACKER_IN_INCONSISTENT_STATE_C6FF5294);
 
     IntList positions = new IntList(DEFAULT_CAPACITY);
     int last = running ? currentRow - patternStart : matchedLabels.length() - 1;
@@ -129,7 +130,9 @@ public class PatternAggregationTracker {
   // for ThreadEquivalence
   // return all positions to aggregate in `labels` starting from 0
   public ArrayView getAllPositions(ArrayView labels) {
-    checkState(evaluated <= labels.length(), "SetEvaluator in inconsistent state");
+    checkState(
+        evaluated <= labels.length(),
+        CalcMessages.EXCEPTION_SETEVALUATOR_IN_INCONSISTENT_STATE_D5FAA900);
 
     for (int position = evaluated; position < labels.length(); position++) {
       if (appliesToLabel(labels.get(position))) {

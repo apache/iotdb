@@ -16,6 +16,8 @@
  */
 package org.apache.iotdb.commons.external.collections4.collection;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Iterator;
@@ -74,7 +76,7 @@ public abstract class AbstractCollectionDecorator<E> implements Collection<E>, S
    */
   protected AbstractCollectionDecorator(final Collection<E> coll) {
     if (coll == null) {
-      throw new NullPointerException("Collection must not be null.");
+      throw new NullPointerException(CommonMessages.COLLECTION_MUST_NOT_BE_NULL);
     }
     this.collection = coll;
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.calc.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
@@ -305,7 +306,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
       sortReaders = null;
       diskSpiller.reset();
     } catch (Exception e) {
-      LOGGER.warn("Fail to close fileChannel", e);
+      LOGGER.warn(CalcMessages.FAIL_TO_CLOSE_FILE_CHANNEL, e);
     }
   }
 
@@ -361,7 +362,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
         new SortBufferManager(
             sortBufferManager.getMaxTsBlockSizeInBytes(), sortBufferManager.getSortBufferSize());
     if (mergeSortHeap != null && !mergeSortHeap.isEmpty()) {
-      throw new IllegalStateException("mergeSortHeap should be empty!");
+      throw new IllegalStateException(CalcMessages.MERGE_SORT_HEAP_SHOULD_BE_EMPTY);
     }
     mergeSortHeap = null;
     noMoreData = null;

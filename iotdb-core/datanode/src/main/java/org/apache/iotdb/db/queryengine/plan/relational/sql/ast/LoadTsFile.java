@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
@@ -59,6 +61,7 @@ public class LoadTsFile extends Statement {
   private long tabletConversionThresholdBytes;
   private boolean autoCreateDatabase;
   private boolean verify;
+  private boolean autoCreateSchema;
   private boolean isAsyncLoad = false;
 
   private boolean isGeneratedByPipe = false;
@@ -72,8 +75,28 @@ public class LoadTsFile extends Statement {
   private boolean needDecode4TimeColumn;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    this(location, filePath, loadAttributes, true, true);
+  }
+
+  public static LoadTsFile createUnchecked(
+      NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    return new LoadTsFile(location, filePath, loadAttributes, false, true);
+  }
+
+  public static LoadTsFile createForPipe(
+      NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    return new LoadTsFile(location, filePath, loadAttributes, false, false);
+  }
+
+  private LoadTsFile(
+      NodeLocation location,
+      String filePath,
+      Map<String, String> loadAttributes,
+      boolean validateSourcePath,
+      boolean validateInternalDataDir) {
     super(location);
-    this.filePath = requireNonNull(filePath, "filePath is null");
+    this.filePath =
+        requireNonNull(filePath, DataNodeQueryMessages.EXCEPTION_FILEPATH_IS_NULL_84CE8A66);
 
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.deleteAfterLoad = false;
@@ -82,14 +105,17 @@ public class LoadTsFile extends Statement {
         IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThresholdBytes();
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.verify = true;
+    this.autoCreateSchema = true;
 
     this.loadAttributes = loadAttributes == null ? Collections.emptyMap() : loadAttributes;
     initAttributes();
 
     try {
+      LoadTsFileStatement.validateLoadTsFilePath(filePath);
       this.tsFiles =
-          org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
-              new File(filePath));
+          validateInternalDataDir
+              ? LoadTsFileStatement.processTsFile(new File(filePath), validateSourcePath)
+              : LoadTsFileStatement.processTsFileForPipe(new File(filePath));
       this.resources = new ArrayList<>();
       this.writePointCountList = new ArrayList<>();
       this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));
@@ -138,6 +164,10 @@ public class LoadTsFile extends Statement {
 
   public boolean isVerifySchema() {
     return verify;
+  }
+
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
   }
 
   public int getDatabaseLevel() {
@@ -210,6 +240,8 @@ public class LoadTsFile extends Statement {
     this.tabletConversionThresholdBytes =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+    this.autoCreateSchema =
+        LoadTsFileConfigurator.parseOrGetDefaultAutoCreateSchema(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
   }
 
@@ -283,12 +315,15 @@ public class LoadTsFile extends Statement {
       final Map<String, String> properties = this.loadAttributes;
 
       final LoadTsFile subStatement =
-          new LoadTsFile(getLocation().orElse(null), filePath, properties);
+          isGeneratedByPipe
+              ? LoadTsFile.createForPipe(getLocation().orElse(null), filePath, properties)
+              : LoadTsFile.createUnchecked(getLocation().orElse(null), filePath, properties);
 
       // Copy all configuration properties
       subStatement.databaseLevel = this.databaseLevel;
       subStatement.database = this.database;
       subStatement.verify = this.verify;
+      subStatement.autoCreateSchema = this.autoCreateSchema;
       subStatement.deleteAfterLoad = this.deleteAfterLoad;
       subStatement.convertOnTypeMismatch = this.convertOnTypeMismatch;
       subStatement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;

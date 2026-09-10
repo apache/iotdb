@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.exception.metadata.view;
 
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+
 public class ViewContainsAggregationException extends UnsupportedViewException {
 
   private static final String VIEW_CONTAINS_AGGREGATION_FUNCTION =
-      "This view contains aggregation function(s) named [%s]";
+      DataNodeSchemaMessages.VIEW_CONTAINS_AGGREGATION_FUNCTION_FMT;
 
   public ViewContainsAggregationException(String namesOfAggregationFunctions) {
     super(String.format(VIEW_CONTAINS_AGGREGATION_FUNCTION, namesOfAggregationFunctions), true);

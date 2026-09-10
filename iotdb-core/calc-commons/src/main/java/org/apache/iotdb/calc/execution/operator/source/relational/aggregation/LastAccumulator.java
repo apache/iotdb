@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -104,7 +106,8 @@ public class LastAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_LAST_ARG_37F52124, seriesDataType));
     }
   }
 
@@ -114,7 +117,8 @@ public class LastAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of LAST should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_LAST_SHOULD_BE_BINARYCOLUMN_24E654CD);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -184,7 +188,9 @@ public class LastAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
+              String.format(
+                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_LAST_AGGREGATION_ARG_2FCF5ADA,
+                  seriesDataType));
       }
     }
   }
@@ -193,7 +199,8 @@ public class LastAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of LAST should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_LAST_SHOULD_BE_BINARYCOLUMN_24E654CD);
 
     if (initResult || initNullTimeValue) {
       // if the initResult is activated, the result must carry a not null time
@@ -241,7 +248,9 @@ public class LastAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_LAST_AGGREGATION_ARG_B3F2EE42,
+                seriesDataType));
     }
   }
 
@@ -301,7 +310,9 @@ public class LastAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_LAST_AGGREGATION_ARG_2FCF5ADA,
+                seriesDataType));
     }
   }
 

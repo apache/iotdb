@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterTableColumnDataTypeState;
@@ -79,34 +80,41 @@ public class AlterTableColumnDataTypeProcedure
       switch (state) {
         case CHECK_AND_INVALIDATE_COLUMN:
           LOGGER.info(
-              "Check and invalidate column {} in {}.{} when altering column data type",
+              ProcedureMessages.CHECK_AND_INVALIDATE_COLUMN_IN_WHEN_ALTERING_COLUMN_DATA_TYPE,
               columnName,
               database,
               tableName);
           checkAndPreAlterColumn(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre-release info of table {}.{} when altering column", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.PRE_RELEASE_INFO_OF_TABLE_WHEN_ALTERING_COLUMN,
+              database,
+              tableName);
           preRelease(env);
           break;
         case ALTER_TABLE_COLUMN_DATA_TYPE:
-          LOGGER.info("Altering column {} in {}.{} on configNode", columnName, database, tableName);
+          LOGGER.info(
+              ProcedureMessages.ALTERING_COLUMN_IN_ON_CONFIGNODE, columnName, database, tableName);
           alterColumnDataType(env);
           break;
         case COMMIT_RELEASE:
           LOGGER.info(
-              "Commit release info of table {}.{} when altering column", database, tableName);
+              ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_ALTERING_COLUMN,
+              database,
+              tableName);
           commitRelease(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(
-              new ProcedureException("Unrecognized AlterTableColumnDataTypeProcedure " + state));
+              new ProcedureException(
+                  ProcedureMessages.UNRECOGNIZED_ALTERTABLECOLUMNDATATYPEPROCEDURE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "AlterTableColumnDataType-{}.{}-{} costs {}ms",
+          ProcedureMessages.ALTERTABLECOLUMNDATATYPE_COSTS_MS,
           database,
           tableName,
           state,

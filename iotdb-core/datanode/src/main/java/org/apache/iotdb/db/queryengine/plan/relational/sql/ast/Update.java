@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -48,7 +49,8 @@ public class Update extends AbstractTraverseDevice {
       final List<UpdateAssignment> assignments,
       final Expression where) {
     super(location, table, where);
-    this.assignments = requireNonNull(assignments, "assignments is null");
+    this.assignments =
+        requireNonNull(assignments, DataNodeQueryMessages.EXCEPTION_ASSIGNMENTS_IS_NULL_1FD6142D);
   }
 
   public List<UpdateAssignment> getAssignments() {

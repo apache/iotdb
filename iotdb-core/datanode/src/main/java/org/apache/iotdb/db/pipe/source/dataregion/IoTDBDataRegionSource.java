@@ -23,14 +23,11 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
-import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
@@ -54,7 +51,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -77,6 +73,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE;
@@ -84,12 +81,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODE_STRICT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_MODS_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_KEY;
@@ -103,6 +97,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_QUERY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_TSFILE_PARSER_SCAN_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_DATABASE_KEY;
@@ -112,22 +109,21 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.S
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_SNAPSHOT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_STREAMING_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODE_STRICT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_MODS_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_TSFILE_PARSER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant._EXTRACTOR_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant._SOURCE_WATERMARK_INTERVAL_KEY;
@@ -150,73 +146,6 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
-    final boolean isTreeDialect =
-        validator
-            .getParameters()
-            .getStringOrDefault(
-                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
-    // Validate whether the pipe needs to extract table model data or tree model data
-    final boolean isCaptureTree =
-        validator
-            .getParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(
-                    PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-                    PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY),
-                isTreeDialect);
-    final boolean isCaptureTable =
-        validator
-            .getParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(
-                    PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-                    PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY),
-                !isTreeDialect);
-    if (!isCaptureTree && !isCaptureTable) {
-      throw new PipeParameterNotValidException(
-          "capture.tree and capture.table can not both be specified as false");
-    }
-
-    final boolean isDoubleLiving =
-        validator
-            .getParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(
-                    PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                    PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
-    final boolean isTreeModelDataAllowedToBeCaptured = isDoubleLiving || isCaptureTree;
-    final boolean isTableModelDataAllowedToBeCaptured = isDoubleLiving || isCaptureTable;
-    if (!isTreeModelDataAllowedToBeCaptured
-        && validator
-            .getParameters()
-            .hasAnyAttributes(
-                EXTRACTOR_PATH_KEY,
-                SOURCE_PATH_KEY,
-                EXTRACTOR_PATTERN_KEY,
-                SOURCE_PATTERN_KEY,
-                EXTRACTOR_PATTERN_INCLUSION_KEY,
-                SOURCE_PATTERN_INCLUSION_KEY)) {
-      throw new PipeException(
-          "The pipe cannot extract tree model data when sql dialect is set to table.");
-    }
-    if (!isTableModelDataAllowedToBeCaptured
-        && validator
-            .getParameters()
-            .hasAnyAttributes(
-                EXTRACTOR_DATABASE_NAME_KEY,
-                SOURCE_DATABASE_NAME_KEY,
-                EXTRACTOR_TABLE_NAME_KEY,
-                SOURCE_TABLE_NAME_KEY,
-                EXTRACTOR_DATABASE_KEY,
-                SOURCE_DATABASE_KEY,
-                EXTRACTOR_TABLE_KEY,
-                SOURCE_TABLE_KEY)) {
-      throw new PipeException(
-          "The pipe cannot extract table model data when sql dialect is set to tree.");
-    }
-
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
             validator.getParameters());
@@ -226,15 +155,6 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     }
     hasNoExtractionNeed = false;
     shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
-
-    if (insertionDeletionListeningOptionPair.getLeft().equals(true)
-        && IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      throw new PipeException(
-          "The pipe cannot transfer data when data region is using ratis consensus.");
-    }
 
     // Validate source.pattern.format is within valid range
     validator
@@ -249,6 +169,19 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
 
+    // If unset, the parser is selected automatically.
+    validator
+        .validateAttributeValueRange(
+            EXTRACTOR_TSFILE_PARSER_KEY,
+            true,
+            EXTRACTOR_TSFILE_PARSER_QUERY_VALUE,
+            EXTRACTOR_TSFILE_PARSER_SCAN_VALUE)
+        .validateAttributeValueRange(
+            SOURCE_TSFILE_PARSER_KEY,
+            true,
+            EXTRACTOR_TSFILE_PARSER_QUERY_VALUE,
+            EXTRACTOR_TSFILE_PARSER_SCAN_VALUE);
+
     // Validate tree pattern and table pattern
     validatePattern(TreePattern.parsePipePatternFromSourceParameters(validator.getParameters()));
 
@@ -262,6 +195,16 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             SOURCE_HISTORY_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
         .validateAttributeValueRange(
             SOURCE_REALTIME_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
+        .validateAttributeValueRange(
+            EXTRACTOR_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY,
+            true,
+            Boolean.TRUE.toString(),
+            Boolean.FALSE.toString())
+        .validateAttributeValueRange(
+            SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY,
+            true,
+            Boolean.TRUE.toString(),
+            Boolean.FALSE.toString())
         .validate(
             args -> (boolean) args[0] || (boolean) args[1],
             "Should not set both history.enable and realtime.enable to false.",
@@ -313,7 +256,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   private void validatePattern(final TreePattern treePattern) {
     if (!treePattern.isLegal()) {
-      throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", treePattern));
+      throw new IllegalArgumentException(
+          String.format(DataNodePipeMessages.ILLEGAL_TREE_PATTERN_FMT, treePattern));
     }
 
     if (shouldExtractDeletion
@@ -321,7 +265,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             && (((IoTDBTreePatternOperations) treePattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
-              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_PATH_PATTERN_S_IS_NOT_VALID_FOR_THE_SOURCE_ONLY_PREFIX_139F93D6,
               treePattern));
     }
   }
@@ -329,27 +274,23 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   private void checkInvalidParameters(final PipeParameterValidator validator) {
     final PipeParameters parameters = validator.getParameters();
 
-    // Enable history and realtime if specifying start-time or end-time
+    // A global time range takes precedence over a history-specific time range.
     if (parameters.hasAnyAttributes(
             SOURCE_START_TIME_KEY,
             EXTRACTOR_START_TIME_KEY,
             SOURCE_END_TIME_KEY,
             EXTRACTOR_END_TIME_KEY)
         && parameters.hasAnyAttributes(
-            EXTRACTOR_HISTORY_ENABLE_KEY,
-            SOURCE_HISTORY_ENABLE_KEY,
             SOURCE_HISTORY_START_TIME_KEY,
             EXTRACTOR_HISTORY_START_TIME_KEY,
             SOURCE_HISTORY_END_TIME_KEY,
             EXTRACTOR_HISTORY_END_TIME_KEY)) {
       LOGGER.warn(
-          "When {}, {}, {} or {} is specified, specifying {}, {}, {}, {}, {} and {} is invalid.",
+          DataNodePipeMessages.WHEN_OR_IS_SPECIFIED_SPECIFYING_OR_IS_INVALID,
           SOURCE_START_TIME_KEY,
           EXTRACTOR_START_TIME_KEY,
           SOURCE_END_TIME_KEY,
           EXTRACTOR_END_TIME_KEY,
-          SOURCE_HISTORY_ENABLE_KEY,
-          EXTRACTOR_HISTORY_ENABLE_KEY,
           SOURCE_HISTORY_START_TIME_KEY,
           EXTRACTOR_HISTORY_START_TIME_KEY,
           SOURCE_HISTORY_END_TIME_KEY,
@@ -408,7 +349,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
       if (parameters.hasAnyAttributes(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
         LOGGER.warn(
-            "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
+            DataNodePipeMessages.WHEN_IS_SET_TO_FALSE_SPECIFYING_AND,
             EXTRACTOR_REALTIME_ENABLE_KEY,
             SOURCE_REALTIME_ENABLE_KEY,
             EXTRACTOR_REALTIME_MODE_KEY,
@@ -416,7 +357,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
       }
       if (parameters.hasAnyAttributes(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY)) {
         LOGGER.warn(
-            "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
+            DataNodePipeMessages.WHEN_IS_SET_TO_FALSE_SPECIFYING_AND,
             EXTRACTOR_REALTIME_ENABLE_KEY,
             SOURCE_REALTIME_ENABLE_KEY,
             EXTRACTOR_MODE_STREAMING_KEY,
@@ -429,7 +370,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
           EXTRACTOR_MODE_KEY,
           SOURCE_MODE_KEY)) {
         LOGGER.warn(
-            "When '{}' ('{}', '{}', '{}') is set to true, specifying {} and {} is invalid.",
+            DataNodePipeMessages.WHEN_IS_SET_TO_TRUE_SPECIFYING_AND,
             EXTRACTOR_MODE_SNAPSHOT_KEY,
             SOURCE_MODE_SNAPSHOT_KEY,
             EXTRACTOR_MODE_KEY,
@@ -451,7 +392,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
       realtimeSource = new PipeRealtimeDataRegionHeartbeatSource();
       LOGGER.info(
-          "Pipe: '{}' ('{}') is set to false, use heartbeat realtime source.",
+          DataNodePipeMessages.PIPE_IS_SET_TO_FALSE_USE_HEARTBEAT,
           EXTRACTOR_REALTIME_ENABLE_KEY,
           SOURCE_REALTIME_ENABLE_KEY);
       return;
@@ -460,7 +401,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     // Use heartbeat only source if enable snapshot mode
     if (PipeTaskAgent.isSnapshotMode(parameters)) {
       realtimeSource = new PipeRealtimeDataRegionHeartbeatSource();
-      LOGGER.info("Pipe: snapshot mode is enabled, use heartbeat realtime source.");
+      LOGGER.info(DataNodePipeMessages.PIPE_SNAPSHOT_MODE_IS_ENABLED_USE_HEARTBEAT);
       return;
     }
 
@@ -469,7 +410,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         && !parameters.hasAnyAttributes(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
       realtimeSource = new PipeRealtimeDataRegionHybridSource();
       LOGGER.info(
-          "Pipe: '{}' ('{}') and '{}' ('{}') is not set, use hybrid mode by default.",
+          DataNodePipeMessages.PIPE_AND_IS_NOT_SET_USE_HYBRID,
           EXTRACTOR_MODE_STREAMING_KEY,
           SOURCE_MODE_STREAMING_KEY,
           EXTRACTOR_REALTIME_MODE_KEY,
@@ -507,7 +448,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         realtimeSource = new PipeRealtimeDataRegionHybridSource();
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(
-              "Pipe: Unsupported source realtime mode: {}, create a hybrid source.",
+              DataNodePipeMessages.PIPE_UNSUPPORTED_SOURCE_REALTIME_MODE_CREATE_A,
               parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY));
         }
     }
@@ -544,7 +485,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     if (watermarkIntervalInMs > 0) {
       watermarkInjector = new DataRegionWatermarkInjector(regionId, watermarkIntervalInMs);
       LOGGER.info(
-          "Pipe {}@{}: Set watermark injector with interval {} ms.",
+          DataNodePipeMessages.PIPE_SET_WATERMARK_INJECTOR_WITH_INTERVAL_MS,
           pipeName,
           regionId,
           watermarkInjector.getInjectionIntervalInMs());
@@ -574,7 +515,9 @@ public class IoTDBDataRegionSource extends IoTDBSource {
               .getCode()
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new PipePasswordCheckException(
-            String.format("Failed to check password for pipe %s.", pipeName));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_FAILED_TO_CHECK_PASSWORD_FOR_PIPE_S_0B1A5C73,
+                pipeName));
       }
     }
   }
@@ -587,7 +530,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
     final long startTime = System.currentTimeMillis();
     LOGGER.info(
-        "Pipe {}@{}: Starting historical source {} and realtime source {}.",
+        DataNodePipeMessages.PIPE_STARTING_HISTORICAL_SOURCE_AND_REALTIME_SOURCE,
         pipeName,
         regionId,
         historicalSource.getClass().getSimpleName(),
@@ -621,7 +564,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         rethrowExceptionIfAny(exceptionHolder);
 
         LOGGER.info(
-            "Pipe {}@{}: Started historical source {} and realtime source {} successfully within {} ms.",
+            DataNodePipeMessages.PIPE_STARTED_HISTORICAL_SOURCE_AND_REALTIME_SOURCE,
             pipeName,
             regionId,
             historicalSource.getClass().getSimpleName(),
@@ -646,7 +589,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     } catch (final Exception e) {
       exceptionHolder.set(e);
       LOGGER.warn(
-          "Pipe {}@{}: Start historical source {} and realtime source {} error.",
+          DataNodePipeMessages.PIPE_START_HISTORICAL_SOURCE_AND_REALTIME_SOURCE,
           pipeName,
           regionId,
           historicalSource.getClass().getSimpleName(),
@@ -657,7 +600,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   private void rethrowExceptionIfAny(final AtomicReference<Exception> exceptionHolder) {
     if (exceptionHolder.get() != null) {
-      throw new PipeException("failed to start sources.", exceptionHolder.get());
+      throw new PipeException(DataNodePipeMessages.FAILED_TO_START_SOURCES, exceptionHolder.get());
     }
   }
 

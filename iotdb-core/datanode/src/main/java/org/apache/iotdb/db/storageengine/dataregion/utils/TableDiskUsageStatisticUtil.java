@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -143,7 +145,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
       return Optional.of(calculateTableSizeMap(reader, null, null));
     } catch (Exception e) {
-      logger.error("Failed to calculate tsfile table sizes", e);
+      logger.error(StorageEngineMessages.FAILED_TO_CALC_TSFILE_TABLE_SIZES, e);
       return Optional.empty();
     }
   }
@@ -248,6 +250,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
                 timeSeriesMetadataCountRecorder,
                 timeSeriesMetadataIoSizeRecorder);
           } catch (IOException e) {
+            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
             throw new RuntimeException(e);
           }
         });

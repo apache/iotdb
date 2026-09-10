@@ -20,7 +20,9 @@
 package org.apache.iotdb.commons.executable;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.trigger.exception.TriggerJarTooLargeException;
+import org.apache.iotdb.commons.utils.IOUtils;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -28,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -126,7 +127,8 @@ public class ExecutableManager {
   }
 
   private void removeFromTemporaryLibRoot(long requestId) {
-    FileUtils.deleteQuietly(getDirUnderTempRootByRequestId(requestId));
+    org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(
+        getDirUnderTempRootByRequestId(requestId), true);
   }
 
   public void saveTextAsFileUnderTemporaryRoot(String text, String fileName) throws IOException {
@@ -196,15 +198,19 @@ public class ExecutableManager {
       if (size > Integer.MAX_VALUE) {
         // Max length of Thrift Binary is Integer.MAX_VALUE bytes.
         throw new TriggerJarTooLargeException(
-            String.format("Size of file exceed %d bytes", Integer.MAX_VALUE));
+            String.format(
+                CommonMessages.EXCEPTION_SIZE_FILE_EXCEED_ARG_BYTES_C60F1149, Integer.MAX_VALUE));
       }
       ByteBuffer byteBuffer = ByteBuffer.allocate((int) size);
-      fileChannel.read(byteBuffer);
+      IOUtils.readFully(fileChannel, byteBuffer);
       byteBuffer.flip();
       return byteBuffer;
     } catch (Exception e) {
       LOGGER.warn(
-          "Error occurred during transferring file{} to ByteBuffer, the cause is {}", filePath, e);
+          CommonMessages
+              .LOG_ERROR_OCCURRED_DURING_TRANSFERRING_FILE_ARG_BYTEBUFFER_CAUSE_ARG_FEDC38A3,
+          filePath,
+          e);
       throw e;
     }
   }
@@ -222,16 +228,16 @@ public class ExecutableManager {
         }
         Files.createFile(path);
       }
-      // FileOutPutStream is not in append mode by default, so the file will be
-      // overridden if it
-      // already exists.
-      try (FileOutputStream outputStream = new FileOutputStream(destination)) {
-        outputStream.getChannel().write(byteBuffer);
-        outputStream.getFD().sync();
+      try (FileChannel channel =
+          FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+        channel.write(byteBuffer);
+        channel.force(true);
       }
     } catch (IOException e) {
       LOGGER.warn(
-          "Error occurred during writing bytebuffer to {} , the cause is {}", destination, e);
+          CommonMessages.LOG_ERROR_OCCURRED_DURING_WRITING_BYTEBUFFER_ARG_CAUSE_ARG_F3AD2DA0,
+          destination,
+          e);
       throw e;
     }
   }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.RecognitionException;
@@ -60,6 +62,11 @@ public class SqlParseError extends BaseErrorListener {
       }
     }
 
-    throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
+    throw new ParseCancellationException(
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_LINE_S_S_S_7CA5F0E1,
+            line,
+            charPositionInLine,
+            msg));
   }
 }

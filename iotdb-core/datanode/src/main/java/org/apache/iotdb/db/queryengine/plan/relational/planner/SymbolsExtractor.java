@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
@@ -170,7 +171,9 @@ public final class SymbolsExtractor {
 
     private QualifiedNameBuilderVisitor(
         Set<NodeRef<Expression>> columnReferences, boolean recurseIntoSubqueries) {
-      this.columnReferences = requireNonNull(columnReferences, "columnReferences is null");
+      this.columnReferences =
+          requireNonNull(
+              columnReferences, DataNodeQueryMessages.EXCEPTION_COLUMNREFERENCES_IS_NULL_124955C5);
       this.recurseIntoSubqueries = recurseIntoSubqueries;
     }
 

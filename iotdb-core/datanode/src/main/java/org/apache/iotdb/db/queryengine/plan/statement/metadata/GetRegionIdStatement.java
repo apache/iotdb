@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -115,7 +116,7 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
     try {
       return Collections.singletonList(new PartialPath(database));
     } catch (IllegalPathException e) {
-      LOGGER.warn("illegal path: {}", database);
+      LOGGER.warn(DataNodeQueryMessages.ILLEGAL_PATH, database);
       return new ArrayList<>();
     }
   }

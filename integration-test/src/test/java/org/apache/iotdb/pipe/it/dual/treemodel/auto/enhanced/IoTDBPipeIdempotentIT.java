@@ -62,9 +62,12 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
         // of the tested idempotent sql.
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
+        .setSchemaRegionGroupExtensionPolicy("CUSTOM")
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
@@ -75,6 +78,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        .setSchemaRegionGroupExtensionPolicy("CUSTOM")
+        .setDataRegionGroupExtensionPolicy("CUSTOM")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
@@ -289,7 +295,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
   public void testAlterDatabaseIdempotent() throws Exception {
     testIdempotent(
         Collections.singletonList("create database root.sg1"),
-        "ALTER DATABASE root.sg1 WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3;",
+        "ALTER DATABASE root.sg1 WITH MAX_SCHEMA_REGION_GROUP_NUM=2, MAX_DATA_REGION_GROUP_NUM=3;",
         "create database root.sg2",
         "count databases",
         "count,",

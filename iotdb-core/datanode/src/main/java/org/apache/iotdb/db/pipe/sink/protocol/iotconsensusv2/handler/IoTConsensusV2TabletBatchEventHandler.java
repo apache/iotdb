@@ -22,9 +22,11 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2BatchTransferReq;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2BatchTransferResp;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferResp;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.builder.IoTConsensusV2AsyncBatchReqBuilder;
@@ -50,6 +52,7 @@ public class IoTConsensusV2TabletBatchEventHandler
   private final TIoTConsensusV2BatchTransferReq req;
   private final IoTConsensusV2AsyncSink connector;
   private final IoTConsensusV2SinkMetrics iotConsensusV2SinkMetrics;
+  private boolean transferAuditRecorded;
 
   public IoTConsensusV2TabletBatchEventHandler(
       final IoTConsensusV2AsyncBatchReqBuilder batchBuilder,
@@ -73,7 +76,7 @@ public class IoTConsensusV2TabletBatchEventHandler
   public void onComplete(final TIoTConsensusV2BatchTransferResp response) {
     // Just in case
     if (response == null) {
-      onError(new PipeException("TIoTConsensusV2BatchTransferResp is null"));
+      onError(new PipeException(DataNodePipeMessages.TIOTCONSENSUSV2BATCHTRANSFERRESP_IS_NULL));
       return;
     }
 
@@ -82,6 +85,7 @@ public class IoTConsensusV2TabletBatchEventHandler
           response.getBatchResps().stream()
               .map(TIoTConsensusV2TransferResp::getStatus)
               .collect(Collectors.toList());
+      transferAuditRecorded = connector.recordUserDataTransferAudit(status);
 
       if (status.stream()
           .anyMatch(
@@ -116,17 +120,32 @@ public class IoTConsensusV2TabletBatchEventHandler
 
   @Override
   public void onError(final Exception exception) {
-    LOGGER.warn(
-        "IoTConsensusV2: Failed to transfer TabletInsertionEvent batch. Total failed events: {}, related pipe names: {}",
-        events.size(),
+    // A retry is sent through a new handler and produces its own audit event. This guard only
+    // prevents a post-response processing exception from recording the same attempt twice.
+    if (!transferAuditRecorded) {
+      connector.recordUserDataTransferAudit(false, null, exception);
+      transferAuditRecorded = true;
+    }
+    final Object pipeNames =
         events.stream()
             .map(
                 event ->
                     event instanceof EnrichedEvent
                         ? ((EnrichedEvent) event).getPipeName()
                         : "UNKNOWN")
-            .collect(Collectors.toSet()),
-        exception);
+            .collect(Collectors.toSet());
+    PipeLogger.log(
+        ignored ->
+            LOGGER.warn(
+                DataNodePipeMessages
+                    .IOTCONSENSUSV2_FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_BATCH_TOTAL,
+                events.size(),
+                pipeNames,
+                exception),
+        exception,
+        DataNodePipeMessages.IOTCONSENSUSV2_FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_BATCH_TOTAL,
+        events.size(),
+        pipeNames);
 
     connector.addFailureEventsToRetryQueue(events);
   }

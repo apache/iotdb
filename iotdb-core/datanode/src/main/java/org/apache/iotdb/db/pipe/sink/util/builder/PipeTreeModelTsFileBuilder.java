@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.sink.util.builder;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BitMap;
@@ -64,7 +66,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
   @Override
   public void bufferTableModelTablet(final String dataBase, final Tablet tablet) {
     throw new UnsupportedOperationException(
-        "PipeTreeModelTsFileBuilder does not support table model tablet to build TSFile");
+        DataNodePipeMessages.PIPETREEMODELTSFILEBUILDER_DOES_NOT_SUPPORT_TABLE_MODEL_TABLET);
   }
 
   @Override
@@ -85,6 +87,21 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
+  public Object createCheckpoint() {
+    return new BatchState(tabletList.size(), isTabletAlignedList.size());
+  }
+
+  @Override
+  public void rollbackToCheckpoint(final Object checkpoint) {
+    if (!(checkpoint instanceof BatchState)) {
+      return;
+    }
+    final BatchState batchState = (BatchState) checkpoint;
+    truncate(tabletList, batchState.tabletListSize);
+    truncate(isTabletAlignedList, batchState.isTabletAlignedListSize);
+  }
+
+  @Override
   public void onSuccess() {
     super.onSuccess();
     tabletList.clear();
@@ -96,6 +113,22 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     super.close();
     tabletList.clear();
     isTabletAlignedList.clear();
+  }
+
+  private static <T> void truncate(final List<T> list, final int size) {
+    if (list.size() > size) {
+      list.subList(size, list.size()).clear();
+    }
+  }
+
+  private static final class BatchState {
+    private final int tabletListSize;
+    private final int isTabletAlignedListSize;
+
+    private BatchState(final int tabletListSize, final int isTabletAlignedListSize) {
+      this.tabletListSize = tabletListSize;
+      this.isTabletAlignedListSize = isTabletAlignedListSize;
+    }
   }
 
   private List<Pair<String, File>> writeTabletsToTsFiles()
@@ -144,13 +177,19 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     // Try making the tsfile size as large as possible
     while (!device2TabletsLinkedList.isEmpty()) {
       if (Objects.isNull(fileWriter)) {
-        fileWriter = new TsFileWriter(createFile());
+        final File file = createFile();
+        try {
+          fileWriter = new TsFileWriter(file);
+        } catch (final IOException | RuntimeException e) {
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
+          throw e;
+        }
       }
       try {
         tryBestToWriteTabletsIntoOneFile(device2TabletsLinkedList, device2Aligned);
       } catch (final Exception e) {
         LOGGER.warn(
-            "Batch id = {}: Failed to write tablets into tsfile, because {}",
+            DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
             currentBatchId.get(),
             e.getMessage(),
             e);
@@ -160,7 +199,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
           fileWriter.close();
         } catch (final Exception closeException) {
           LOGGER.warn(
-              "Batch id = {}: Failed to close the tsfile {} after failed to write tablets into, because {}",
+              DataNodePipeMessages.BATCH_ID_FAILED_TO_CLOSE_THE_TSFILE,
               currentBatchId.get(),
               file.getPath(),
               closeException.getMessage(),
@@ -171,14 +210,18 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         }
 
         for (final Pair<String, File> sealedFile : sealedFiles) {
-          final boolean deleteSuccess = FileUtils.deleteQuietly(sealedFile.right);
+          final boolean deleteSuccess =
+              org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(sealedFile.right);
           LOGGER.warn(
-              "Batch id = {}: {} delete the tsfile {} after failed to write tablets into {}. {}",
+              DataNodePipeMessages.BATCH_ID_DELETE_THE_TSFILE_AFTER_FAILED,
               currentBatchId.get(),
               deleteSuccess ? "Successfully" : "Failed to",
               sealedFile.right.getPath(),
               file.getPath(),
-              deleteSuccess ? "" : "Maybe the tsfile needs to be deleted manually.");
+              deleteSuccess
+                  ? ""
+                  : DataNodePipeMessages
+                      .MESSAGE_MAYBE_THE_TSFILE_NEEDS_TO_BE_DELETED_MANUALLY_342E28E2);
         }
         sealedFiles.clear();
 
@@ -191,7 +234,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
       fileWriter.close();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Batch id = {}: Seal tsfile {} successfully.",
+            DataNodePipeMessages.BATCH_ID_SEAL_TSFILE_SUCCESSFULLY,
             currentBatchId.get(),
             sealedFile.getPath());
       }
@@ -228,7 +271,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         // Aggregate the current tablet's data
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedValues.addAll(Arrays.asList(tablet.getValues()));
-        aggregatedBitMaps.addAll(Arrays.asList(tablet.getBitMaps()));
+        aggregatedBitMaps.addAll(Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
         // Remove the aggregated tablet
         tablets.pollFirst();
       } else {

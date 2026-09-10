@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -41,7 +43,8 @@ public class NoChannelGroupByHash implements GroupByHash {
 
   @Override
   public void appendValuesTo(int groupId, TsBlockBuilder pageBuilder) {
-    throw new UnsupportedOperationException("NoChannelGroupByHash does not support appendValuesTo");
+    throw new UnsupportedOperationException(
+        QueryMessages.NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_APPEND);
   }
 
   @Override
@@ -56,7 +59,8 @@ public class NoChannelGroupByHash implements GroupByHash {
 
   @Override
   public long getRawHash(int groupId) {
-    throw new UnsupportedOperationException("NoChannelGroupByHash does not support getRawHash");
+    throw new UnsupportedOperationException(
+        QueryMessages.NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_RAW_HASH);
   }
 
   @Override

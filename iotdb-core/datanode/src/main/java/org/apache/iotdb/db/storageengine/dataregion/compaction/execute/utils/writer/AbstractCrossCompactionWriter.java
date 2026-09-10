@@ -150,8 +150,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
-    writeDataPoint(timestamp, value, chunkWriters[subTaskId]);
-    chunkPointNumArray[subTaskId]++;
+    writeDataPoint(timestamp, value, chunkWriters[subTaskId], subTaskId);
     checkChunkSizeAndMayOpenANewChunk(
         targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
     isDeviceExistedInTargetFiles[fileIndex] = true;

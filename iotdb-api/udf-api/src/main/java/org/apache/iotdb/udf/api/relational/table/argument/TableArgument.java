@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table.argument;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.DataOutputStream;
@@ -46,7 +47,7 @@ public class TableArgument implements Argument {
     this.fieldNames = requireNonNull(fieldNames, "fieldNames is null");
     this.fieldTypes = requireNonNull(fieldTypes, "fieldTypes is null");
     if (fieldNames.size() != fieldTypes.size()) {
-      throw new IllegalArgumentException("fieldNames and fieldTypes must have the same size");
+      throw new IllegalArgumentException(UdfApiMessages.FIELD_NAMES_AND_TYPES_MUST_HAVE_SAME_SIZE);
     }
     this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
     this.orderBy = requireNonNull(orderBy, "orderBy is null");

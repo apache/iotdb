@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -47,24 +49,31 @@ public class SimpleCaseExpression extends Expression {
 
   public SimpleCaseExpression(Expression operand, List<WhenClause> whenClauses) {
     super(null);
-    this.operand = requireNonNull(operand, "operand is null");
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
+    this.operand = requireNonNull(operand, QueryMessages.EXCEPTION_OPERAND_IS_NULL_D0182140);
+    this.whenClauses =
+        ImmutableList.copyOf(
+            requireNonNull(whenClauses, QueryMessages.EXCEPTION_WHENCLAUSES_IS_NULL_140535CF));
     this.defaultValue = null;
   }
 
   public SimpleCaseExpression(
       Expression operand, List<WhenClause> whenClauses, Expression defaultValue) {
     super(null);
-    this.operand = requireNonNull(operand, "operand is null");
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
-    this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
+    this.operand = requireNonNull(operand, QueryMessages.EXCEPTION_OPERAND_IS_NULL_D0182140);
+    this.whenClauses =
+        ImmutableList.copyOf(
+            requireNonNull(whenClauses, QueryMessages.EXCEPTION_WHENCLAUSES_IS_NULL_140535CF));
+    this.defaultValue =
+        requireNonNull(defaultValue, QueryMessages.EXCEPTION_DEFAULTVALUE_IS_NULL_B1C8490D);
   }
 
   public SimpleCaseExpression(
       NodeLocation location, Expression operand, List<WhenClause> whenClauses) {
-    super(requireNonNull(location, "location is null"));
-    this.operand = requireNonNull(operand, "operand is null");
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.operand = requireNonNull(operand, QueryMessages.EXCEPTION_OPERAND_IS_NULL_D0182140);
+    this.whenClauses =
+        ImmutableList.copyOf(
+            requireNonNull(whenClauses, QueryMessages.EXCEPTION_WHENCLAUSES_IS_NULL_140535CF));
     this.defaultValue = null;
   }
 
@@ -73,17 +82,22 @@ public class SimpleCaseExpression extends Expression {
       Expression operand,
       List<WhenClause> whenClauses,
       Expression defaultValue) {
-    super(requireNonNull(location, "location is null"));
-    this.operand = requireNonNull(operand, "operand is null");
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
-    this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.operand = requireNonNull(operand, QueryMessages.EXCEPTION_OPERAND_IS_NULL_D0182140);
+    this.whenClauses =
+        ImmutableList.copyOf(
+            requireNonNull(whenClauses, QueryMessages.EXCEPTION_WHENCLAUSES_IS_NULL_140535CF));
+    this.defaultValue =
+        requireNonNull(defaultValue, QueryMessages.EXCEPTION_DEFAULTVALUE_IS_NULL_B1C8490D);
   }
 
   public SimpleCaseExpression(ByteBuffer byteBuffer) {
     super(null);
     int len = ReadWriteIOUtils.readInt(byteBuffer);
     Validate.isTrue(
-        len > 0, "the length of SimpleCaseExpression's whenClauses must greater than 0");
+        len > 0,
+        QueryMessages
+            .EXCEPTION_THE_LENGTH_OF_SIMPLECASEEXPRESSION_QUOTE_S_WHENCLAUSES_MUST_GREATER_THAN_0_5D2963B9);
     this.operand = Expression.deserialize(byteBuffer);
     this.whenClauses = new ArrayList<>();
     for (int i = 0; i < len; i++) {

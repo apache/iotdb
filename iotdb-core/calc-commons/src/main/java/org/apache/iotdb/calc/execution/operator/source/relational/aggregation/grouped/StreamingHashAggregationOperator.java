@@ -24,6 +24,7 @@ import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.builder.HashAggregationBuilder;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.builder.InMemoryHashAggregationBuilder;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
@@ -115,7 +116,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
         this.preGroupedIndexInResult.length
             + this.unPreGroupedIndexInResult.length
             + aggregators.size();
-    checkArgument(!spillEnabled, "spill is not supported");
+    checkArgument(!spillEnabled, CalcMessages.EXCEPTION_SPILL_IS_NOT_SUPPORTED_E6E35549);
     aggregationBuilder =
         new InMemoryHashAggregationBuilder(
             aggregators,
@@ -179,7 +180,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   }
 
   private void processInput(TsBlock page) {
-    requireNonNull(page, "page is null");
+    requireNonNull(page, CalcMessages.EXCEPTION_PAGE_IS_NULL_4AA19E1C);
 
     if (currentGroup != null) {
       if (groupKeyComparator.compare(currentGroup, new SortKey(page, 0)) != 0) {

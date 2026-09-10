@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
@@ -32,9 +33,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Project
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
@@ -115,12 +116,13 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     this.aggregations = transformCountStar(aggregations, assignments);
     aggregations.values().forEach(aggregation -> aggregation.verifyArguments(step));
 
-    requireNonNull(groupingSets, "groupingSets is null");
+    requireNonNull(groupingSets, DataNodeQueryMessages.EXCEPTION_GROUPINGSETS_IS_NULL_8EE6D9BF);
     groupIdSymbol.ifPresent(
         symbol ->
             checkArgument(
                 groupingSets.getGroupingKeys().contains(symbol),
-                "Grouping columns does not contain groupId column"));
+                DataNodeQueryMessages
+                    .EXCEPTION_GROUPING_COLUMNS_DOES_NOT_CONTAIN_GROUPID_COLUMN_83976C83));
     this.groupingSets = groupingSets;
 
     this.groupIdSymbol = requireNonNull(groupIdSymbol);
@@ -131,7 +133,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
             .noneMatch(Optional::isPresent);
     checkArgument(
         noOrderBy || step == AggregationNode.Step.SINGLE,
-        "ORDER BY does not support distributed aggregation");
+        DataNodeQueryMessages.EXCEPTION_ORDER_BY_DOES_NOT_SUPPORT_DISTRIBUTED_AGGREGATION_05109B26);
 
     this.step = step;
 
@@ -139,13 +141,17 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     for (int i = 0; i < groupingKeys.size(); i++) {
       if (groupingKeys.get(i).getName().startsWith(DATE_BIN_PREFIX)) {
         checkArgument(
-            i == groupingKeys.size() - 1, "date_bin function must be the last GroupingKey");
+            i == groupingKeys.size() - 1,
+            DataNodeQueryMessages
+                .EXCEPTION_DATE_BIN_FUNCTION_MUST_BE_THE_LAST_GROUPINGKEY_EE955FF5);
       }
     }
-    requireNonNull(preGroupedSymbols, "preGroupedSymbols is null");
+    requireNonNull(
+        preGroupedSymbols, DataNodeQueryMessages.EXCEPTION_PREGROUPEDSYMBOLS_IS_NULL_DC24FF7B);
     checkArgument(
         preGroupedSymbols.isEmpty() || groupingKeys.containsAll(preGroupedSymbols),
-        "Pre-grouped symbols must be a subset of the grouping keys");
+        DataNodeQueryMessages
+            .EXCEPTION_PRE_MINUS_GROUPED_SYMBOLS_MUST_BE_A_SUBSET_OF_THE_GROUPING_KEYS_AFC6C33D);
     this.preGroupedSymbols = ImmutableList.copyOf(preGroupedSymbols);
 
     this.setOutputSymbols(constructOutputSymbols(groupingSets, aggregations));
@@ -262,26 +268,27 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
   @Override
   public AggregationTableScanNode clone() {
-    return new AggregationTableScanNode(
-        id,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice,
-        projection,
-        aggregations,
-        groupingSets,
-        preGroupedSymbols,
-        step,
-        groupIdSymbol);
+    return copyDeviceEntryDataSetTo(
+        new AggregationTableScanNode(
+            id,
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice,
+            projection,
+            aggregations,
+            groupingSets,
+            preGroupedSymbols,
+            step,
+            groupIdSymbol));
   }
 
   @Override
@@ -294,52 +301,82 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       AggregationNode aggregationNode,
       ProjectNode projectNode,
       DeviceTableScanNode tableScanNode) {
+    if (tableScanNode instanceof ExternalTsFileScanNode) {
+      ExternalTsFileScanNode externalTsFileScanNode = (ExternalTsFileScanNode) tableScanNode;
+      ExternalTsFileAggregationScanNode scanNode =
+          new ExternalTsFileAggregationScanNode(
+              id,
+              tableScanNode.getQualifiedObjectName(),
+              tableScanNode.getOutputSymbols(),
+              tableScanNode.getAssignments(),
+              tableScanNode.getTagAndAttributeIndexMap(),
+              tableScanNode.getScanOrder(),
+              tableScanNode.getTimePredicate().orElse(null),
+              tableScanNode.getPushDownPredicate(),
+              tableScanNode.getPushDownLimit(),
+              tableScanNode.getPushDownOffset(),
+              tableScanNode.isPushLimitToEachDevice(),
+              tableScanNode.containsNonAlignedDevice(),
+              projectNode == null ? null : projectNode.getAssignments(),
+              aggregationNode.getAggregations(),
+              aggregationNode.getGroupingSets(),
+              aggregationNode.getPreGroupedSymbols(),
+              aggregationNode.getStep(),
+              aggregationNode.getGroupIdSymbol(),
+              externalTsFileScanNode.getExternalTsFileQueryResource(),
+              externalTsFileScanNode.getDeviceEntryIndexes(),
+              externalTsFileScanNode.getDeviceTaskPartitionIndex(),
+              externalTsFileScanNode.getSchemaFilter());
+      return scanNode;
+    }
     if (tableScanNode instanceof TreeDeviceViewScanNode) {
       TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
-      return new AggregationTreeDeviceViewScanNode(
-          id,
-          tableScanNode.getQualifiedObjectName(),
-          tableScanNode.getOutputSymbols(),
-          tableScanNode.getAssignments(),
-          tableScanNode.getDeviceEntries(),
-          tableScanNode.getTagAndAttributeIndexMap(),
-          tableScanNode.getScanOrder(),
-          tableScanNode.getTimePredicate().orElse(null),
-          tableScanNode.getPushDownPredicate(),
-          tableScanNode.getPushDownLimit(),
-          tableScanNode.getPushDownOffset(),
-          tableScanNode.isPushLimitToEachDevice(),
-          tableScanNode.containsNonAlignedDevice(),
-          projectNode == null ? null : projectNode.getAssignments(),
-          aggregationNode.getAggregations(),
-          aggregationNode.getGroupingSets(),
-          aggregationNode.getPreGroupedSymbols(),
-          aggregationNode.getStep(),
-          aggregationNode.getGroupIdSymbol(),
-          treeDeviceViewScanNode.getTreeDBName(),
-          treeDeviceViewScanNode.getMeasurementColumnNameMap());
+      return tableScanNode.copyDeviceEntryDataSetTo(
+          new AggregationTreeDeviceViewScanNode(
+              id,
+              tableScanNode.getQualifiedObjectName(),
+              tableScanNode.getOutputSymbols(),
+              tableScanNode.getAssignments(),
+              tableScanNode.getDeviceEntries(),
+              tableScanNode.getTagAndAttributeIndexMap(),
+              tableScanNode.getScanOrder(),
+              tableScanNode.getTimePredicate().orElse(null),
+              tableScanNode.getPushDownPredicate(),
+              tableScanNode.getPushDownLimit(),
+              tableScanNode.getPushDownOffset(),
+              tableScanNode.isPushLimitToEachDevice(),
+              tableScanNode.containsNonAlignedDevice(),
+              projectNode == null ? null : projectNode.getAssignments(),
+              aggregationNode.getAggregations(),
+              aggregationNode.getGroupingSets(),
+              aggregationNode.getPreGroupedSymbols(),
+              aggregationNode.getStep(),
+              aggregationNode.getGroupIdSymbol(),
+              treeDeviceViewScanNode.getTreeDBName(),
+              treeDeviceViewScanNode.getMeasurementColumnNameMap()));
     }
 
-    return new AggregationTableScanNode(
-        id,
-        tableScanNode.getQualifiedObjectName(),
-        tableScanNode.getOutputSymbols(),
-        tableScanNode.getAssignments(),
-        tableScanNode.getDeviceEntries(),
-        tableScanNode.getTagAndAttributeIndexMap(),
-        tableScanNode.getScanOrder(),
-        tableScanNode.getTimePredicate().orElse(null),
-        tableScanNode.getPushDownPredicate(),
-        tableScanNode.getPushDownLimit(),
-        tableScanNode.getPushDownOffset(),
-        tableScanNode.isPushLimitToEachDevice(),
-        tableScanNode.containsNonAlignedDevice(),
-        projectNode == null ? null : projectNode.getAssignments(),
-        aggregationNode.getAggregations(),
-        aggregationNode.getGroupingSets(),
-        aggregationNode.getPreGroupedSymbols(),
-        aggregationNode.getStep(),
-        aggregationNode.getGroupIdSymbol());
+    return tableScanNode.copyDeviceEntryDataSetTo(
+        new AggregationTableScanNode(
+            id,
+            tableScanNode.getQualifiedObjectName(),
+            tableScanNode.getOutputSymbols(),
+            tableScanNode.getAssignments(),
+            tableScanNode.getDeviceEntries(),
+            tableScanNode.getTagAndAttributeIndexMap(),
+            tableScanNode.getScanOrder(),
+            tableScanNode.getTimePredicate().orElse(null),
+            tableScanNode.getPushDownPredicate(),
+            tableScanNode.getPushDownLimit(),
+            tableScanNode.getPushDownOffset(),
+            tableScanNode.isPushLimitToEachDevice(),
+            tableScanNode.containsNonAlignedDevice(),
+            projectNode == null ? null : projectNode.getAssignments(),
+            aggregationNode.getAggregations(),
+            aggregationNode.getGroupingSets(),
+            aggregationNode.getPreGroupedSymbols(),
+            aggregationNode.getStep(),
+            aggregationNode.getGroupIdSymbol()));
   }
 
   public static AggregationTableScanNode combineAggregationAndTableScan(
@@ -348,14 +385,13 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       ProjectNode projectNode,
       DeviceTableScanNode tableScanNode,
       AggregationNode.Step step) {
-    if (tableScanNode instanceof TreeDeviceViewScanNode) {
-      TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
-      return new AggregationTreeDeviceViewScanNode(
+    if (tableScanNode instanceof ExternalTsFileScanNode) {
+      ExternalTsFileScanNode externalTsFileScanNode = (ExternalTsFileScanNode) tableScanNode;
+      return new ExternalTsFileAggregationScanNode(
           id,
           tableScanNode.getQualifiedObjectName(),
           tableScanNode.getOutputSymbols(),
           tableScanNode.getAssignments(),
-          tableScanNode.getDeviceEntries(),
           tableScanNode.getTagAndAttributeIndexMap(),
           tableScanNode.getScanOrder(),
           tableScanNode.getTimePredicate().orElse(null),
@@ -370,30 +406,59 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
           aggregationNode.getPreGroupedSymbols(),
           step,
           aggregationNode.getGroupIdSymbol(),
-          treeDeviceViewScanNode.getTreeDBName(),
-          treeDeviceViewScanNode.getMeasurementColumnNameMap());
+          externalTsFileScanNode.getExternalTsFileQueryResource(),
+          externalTsFileScanNode.getDeviceEntryIndexes(),
+          externalTsFileScanNode.getDeviceTaskPartitionIndex(),
+          externalTsFileScanNode.getSchemaFilter());
+    }
+    if (tableScanNode instanceof TreeDeviceViewScanNode) {
+      TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
+      return tableScanNode.copyDeviceEntryDataSetTo(
+          new AggregationTreeDeviceViewScanNode(
+              id,
+              tableScanNode.getQualifiedObjectName(),
+              tableScanNode.getOutputSymbols(),
+              tableScanNode.getAssignments(),
+              tableScanNode.getDeviceEntries(),
+              tableScanNode.getTagAndAttributeIndexMap(),
+              tableScanNode.getScanOrder(),
+              tableScanNode.getTimePredicate().orElse(null),
+              tableScanNode.getPushDownPredicate(),
+              tableScanNode.getPushDownLimit(),
+              tableScanNode.getPushDownOffset(),
+              tableScanNode.isPushLimitToEachDevice(),
+              tableScanNode.containsNonAlignedDevice(),
+              projectNode == null ? null : projectNode.getAssignments(),
+              aggregationNode.getAggregations(),
+              aggregationNode.getGroupingSets(),
+              aggregationNode.getPreGroupedSymbols(),
+              step,
+              aggregationNode.getGroupIdSymbol(),
+              treeDeviceViewScanNode.getTreeDBName(),
+              treeDeviceViewScanNode.getMeasurementColumnNameMap()));
     }
 
-    return new AggregationTableScanNode(
-        id,
-        tableScanNode.getQualifiedObjectName(),
-        tableScanNode.getOutputSymbols(),
-        tableScanNode.getAssignments(),
-        tableScanNode.getDeviceEntries(),
-        tableScanNode.getTagAndAttributeIndexMap(),
-        tableScanNode.getScanOrder(),
-        tableScanNode.getTimePredicate().orElse(null),
-        tableScanNode.getPushDownPredicate(),
-        tableScanNode.getPushDownLimit(),
-        tableScanNode.getPushDownOffset(),
-        tableScanNode.isPushLimitToEachDevice(),
-        tableScanNode.containsNonAlignedDevice(),
-        projectNode == null ? null : projectNode.getAssignments(),
-        aggregationNode.getAggregations(),
-        aggregationNode.getGroupingSets(),
-        aggregationNode.getPreGroupedSymbols(),
-        step,
-        aggregationNode.getGroupIdSymbol());
+    return tableScanNode.copyDeviceEntryDataSetTo(
+        new AggregationTableScanNode(
+            id,
+            tableScanNode.getQualifiedObjectName(),
+            tableScanNode.getOutputSymbols(),
+            tableScanNode.getAssignments(),
+            tableScanNode.getDeviceEntries(),
+            tableScanNode.getTagAndAttributeIndexMap(),
+            tableScanNode.getScanOrder(),
+            tableScanNode.getTimePredicate().orElse(null),
+            tableScanNode.getPushDownPredicate(),
+            tableScanNode.getPushDownLimit(),
+            tableScanNode.getPushDownOffset(),
+            tableScanNode.isPushLimitToEachDevice(),
+            tableScanNode.containsNonAlignedDevice(),
+            projectNode == null ? null : projectNode.getAssignments(),
+            aggregationNode.getAggregations(),
+            aggregationNode.getGroupingSets(),
+            aggregationNode.getPreGroupedSymbols(),
+            step,
+            aggregationNode.getGroupIdSymbol()));
   }
 
   public boolean mayUseLastCache() {
@@ -629,11 +694,13 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
   @Override
   public void setPushDownLimit(long pushDownLimit) {
-    throw new IllegalStateException("Should never push down limit to AggregationTableScanNode.");
+    throw new IllegalStateException(
+        DataNodeQueryMessages.SHOULD_NEVER_PUSH_DOWN_LIMIT_TO_AGGREGATIONTABLESCANNODE);
   }
 
   @Override
   public void setPushDownOffset(long pushDownOffset) {
-    throw new IllegalStateException("Should never push down offset to AggregationTableScanNode.");
+    throw new IllegalStateException(
+        DataNodeQueryMessages.SHOULD_NEVER_PUSH_DOWN_OFFSET_TO_AGGREGATIONTABLESCANNODE);
   }
 }

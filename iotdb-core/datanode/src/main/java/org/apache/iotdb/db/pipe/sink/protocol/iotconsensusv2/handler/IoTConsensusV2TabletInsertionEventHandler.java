@@ -22,9 +22,11 @@ package org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferResp;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler.PipeTransferTabletInsertionEventHandler;
@@ -52,6 +54,7 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
   protected final IoTConsensusV2SinkMetrics metric;
 
   private final long createTime;
+  private boolean transferAuditRecorded;
 
   protected IoTConsensusV2TabletInsertionEventHandler(
       TabletInsertionEvent event,
@@ -76,11 +79,17 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
   public void onComplete(TIoTConsensusV2TransferResp response) {
     // Just in case
     if (response == null) {
-      onError(new PipeException("TIoTConsensusV2TransferResp is null"));
+      onError(new PipeException(DataNodePipeMessages.TIOTCONSENSUSV2TRANSFERRESP_IS_NULL));
       return;
     }
 
     final TSStatus status = response.getStatus();
+    final boolean success =
+        status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+    connector.recordUserDataTransferAudit(
+        success, success ? null : String.valueOf(status.getCode()), null);
+    transferAuditRecorded = true;
     try {
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -94,7 +103,7 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
-            "InsertNodeTransfer: no.{} event successfully processed!",
+            DataNodePipeMessages.INSERTNODETRANSFER_NO_EVENT_SUCCESSFULLY_PROCESSED,
             ((EnrichedEvent) event).getReplicateIndexForIoTV2());
       }
 
@@ -111,13 +120,25 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
 
   @Override
   public void onError(Exception exception) {
+    if (!transferAuditRecorded) {
+      connector.recordUserDataTransferAudit(false, null, exception);
+      transferAuditRecorded = true;
+    }
     EnrichedEvent event = (EnrichedEvent) this.event;
-    LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent {} (committer key={}, replicate index={}).",
+    PipeLogger.log(
+        ignored ->
+            LOGGER.warn(
+                DataNodePipeMessages
+                    .FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_COMMITTER_KEY_REPLICATE,
+                event.coreReportMessage(),
+                event.getCommitterKey(),
+                event.getReplicateIndexForIoTV2(),
+                exception),
+        exception,
+        DataNodePipeMessages.FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_COMMITTER_KEY_REPLICATE,
         event.coreReportMessage(),
         event.getCommitterKey(),
-        event.getReplicateIndexForIoTV2(),
-        exception);
+        event.getReplicateIndexForIoTV2());
 
     if (RetryUtils.needRetryWithIncreasingInterval(exception)) {
       // just in case for overflow

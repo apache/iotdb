@@ -68,6 +68,16 @@ public class ConsumerConfig extends PipeParameters {
     return getString(ConsumerConstant.CONSUMER_GROUP_ID_KEY);
   }
 
+  public String getOwnerId() {
+    return getString(ConsumerConstant.OWNER_ID_KEY);
+  }
+
+  public Long getOwnerEpoch() {
+    return hasAttribute(ConsumerConstant.OWNER_EPOCH_KEY)
+        ? getLong(ConsumerConstant.OWNER_EPOCH_KEY)
+        : null;
+  }
+
   public String getUsername() {
     return getString(ConsumerConstant.USERNAME_KEY);
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.service.metrics.file;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -102,7 +103,7 @@ public class SystemRelatedFileMetrics implements IMetricSet {
         return success ? handleCount.getValue() : 0L;
       }
     } catch (IOException e) {
-      LOGGER.warn("Failed to get open file number, because ", e);
+      LOGGER.warn(DataNodeMiscMessages.FAILED_GET_OPEN_FILE_NUMBER, e);
     }
     return fdCount;
   }

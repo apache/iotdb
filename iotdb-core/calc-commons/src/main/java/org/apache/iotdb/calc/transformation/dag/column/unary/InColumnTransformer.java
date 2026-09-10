@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.commons.exception.SemanticException;
 
@@ -106,7 +107,8 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBoolean(columnBuilder, satisfy.of(column.getBinary(i)));
         break;
       default:
-        throw new UnsupportedOperationException("unsupported data type: " + childType);
+        throw new UnsupportedOperationException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE_LOWER + childType);
     }
   }
 
@@ -173,7 +175,8 @@ public class InColumnTransformer extends UnaryColumnTransformer {
       case BLOB:
       case DATE:
       default:
-        throw new UnsupportedOperationException("unsupported data type: " + childType);
+        throw new UnsupportedOperationException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE_LOWER + childType);
     }
   }
 
@@ -183,7 +186,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     } else if ("false".equalsIgnoreCase(s)) {
       return false;
     }
-    throw new SemanticException(String.format("\"%s\" cannot be cast to [BOOLEAN]", s));
+    throw new SemanticException(String.format(CalcMessages.CANNOT_CAST_TO_BOOLEAN, s));
   }
 
   private interface Satisfy {

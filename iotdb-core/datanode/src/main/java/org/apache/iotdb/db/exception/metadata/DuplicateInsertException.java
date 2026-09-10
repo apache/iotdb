@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class DuplicateInsertException extends MetadataException {
 
   private static final String DUPLICATE_INSERTION_WRONG_MESSAGE =
-      "Insertion is illegal because measurement [%s] under device [%s] is duplicate.";
+      DataNodeSchemaMessages.DUPLICATE_INSERTION_WRONG_MESSAGE;
 
   public DuplicateInsertException(String device, String measurement) {
     super(

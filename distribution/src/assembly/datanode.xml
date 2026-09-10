@@ -41,6 +41,9 @@
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../iotdb-core/node-commons/src/assembly/resources/conf</directory>
+            <excludes>
+                <exclude>edge/**</exclude>
+            </excludes>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/../scripts/conf</directory>
@@ -70,6 +73,7 @@
                 <exclude>**/*confignode.*</exclude>
                 <exclude>**/*all.*</exclude>
                 <exclude>**/*ainode.*</exclude>
+                <exclude>**/*edge.*</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>

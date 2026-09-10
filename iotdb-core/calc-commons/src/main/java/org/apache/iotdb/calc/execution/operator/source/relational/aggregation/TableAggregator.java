@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
-import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 
@@ -36,12 +36,8 @@ import java.util.OptionalInt;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
 
 public class TableAggregator {
-
-  public static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
-      QueryExecutionMetricSet.getInstance();
 
   private final TableAccumulator accumulator;
   private final AggregationNode.Step step;
@@ -55,14 +51,19 @@ public class TableAggregator {
       TSDataType outputType,
       List<Integer> inputChannels,
       OptionalInt maskChannel) {
-    this.accumulator = requireNonNull(accumulator, "accumulator is null");
-    this.step = requireNonNull(step, "step is null");
-    this.outputType = requireNonNull(outputType, "intermediateType is null");
-    this.inputChannels = Ints.toArray(requireNonNull(inputChannels, "inputChannels is null"));
-    this.maskChannel = requireNonNull(maskChannel, "maskChannel is null");
+    this.accumulator =
+        requireNonNull(accumulator, CalcMessages.EXCEPTION_ACCUMULATOR_IS_NULL_EF0C1DFF);
+    this.step = requireNonNull(step, CalcMessages.EXCEPTION_STEP_IS_NULL_F83262DA);
+    this.outputType =
+        requireNonNull(outputType, CalcMessages.EXCEPTION_INTERMEDIATETYPE_IS_NULL_D0D9B957);
+    this.inputChannels =
+        Ints.toArray(
+            requireNonNull(inputChannels, CalcMessages.EXCEPTION_INPUTCHANNELS_IS_NULL_647DA393));
+    this.maskChannel =
+        requireNonNull(maskChannel, CalcMessages.EXCEPTION_MASKCHANNEL_IS_NULL_571AD53D);
     checkArgument(
         step.isInputRaw() || inputChannels.size() == 1,
-        "expected 1 input channel for intermediate aggregation");
+        CalcMessages.EXCEPTION_EXPECTED_1_INPUT_CHANNEL_FOR_INTERMEDIATE_AGGREGATION_3190C507);
   }
 
   public TSDataType getType() {
@@ -70,34 +71,28 @@ public class TableAggregator {
   }
 
   public void processBlock(TsBlock block) {
-    long startTime = System.nanoTime();
-    try {
-      Column[] arguments = block.getColumns(inputChannels);
+    Column[] arguments = block.getColumns(inputChannels);
 
-      // process count(*)
-      if (arguments.length == 0) {
-        arguments =
-            new Column[] {
-              new RunLengthEncodedColumn(
-                  CommonOperatorUtils.TIME_COLUMN_TEMPLATE, block.getPositionCount())
-            };
+    // process count(*)
+    if (arguments.length == 0) {
+      arguments =
+          new Column[] {
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, block.getPositionCount())
+          };
+    }
+
+    if (step.isInputRaw()) {
+      // Use select-all AggregationMask here because filter of Agg-Function is not supported now
+      AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
+
+      if (maskChannel.isPresent()) {
+        mask.applyMaskBlock(block.getColumn(maskChannel.getAsInt()));
       }
 
-      if (step.isInputRaw()) {
-        // Use select-all AggregationMask here because filter of Agg-Function is not supported now
-        AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
-
-        if (maskChannel.isPresent()) {
-          mask.applyMaskBlock(block.getColumn(maskChannel.getAsInt()));
-        }
-
-        accumulator.addInput(arguments, mask);
-      } else {
-        accumulator.addIntermediate(arguments[0]);
-      }
-    } finally {
-      QUERY_EXECUTION_METRICS.recordExecutionCost(
-          AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
+      accumulator.addInput(arguments, mask);
+    } else {
+      accumulator.addIntermediate(arguments[0]);
     }
   }
 

@@ -17,6 +17,8 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
+
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,7 +94,7 @@ public class IoTDBDataSource implements DataSource {
     try {
       return new IoTDBConnection(url, properties);
     } catch (TTransportException e) {
-      LOGGER.error("get connection error:", e);
+      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
     }
     return null;
   }
@@ -105,7 +107,7 @@ public class IoTDBDataSource implements DataSource {
       newProp.setProperty(PWD_STR, password);
       return new IoTDBConnection(url, newProp);
     } catch (Exception e) {
-      LOGGER.error("get connection error:", e);
+      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
     }
     return null;
   }

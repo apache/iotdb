@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.exception.load;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class LoadReadOnlyException extends IoTDBException {
 
-  public static final String MESSAGE =
-      "Current system mode is read only, does not support load file";
+  public static final String MESSAGE = DataNodeQueryMessages.LOAD_READ_ONLY_MESSAGE;
 
   public LoadReadOnlyException() {
     super(MESSAGE, TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());

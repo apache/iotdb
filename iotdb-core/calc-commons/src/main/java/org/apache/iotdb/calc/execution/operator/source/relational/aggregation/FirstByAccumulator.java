@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -86,7 +88,10 @@ public class FirstByAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 3, "Length of input Column[] for FIRST_BY should be 3");
+    checkArgument(
+        arguments.length == 3,
+        CalcMessages
+            .EXCEPTION_LENGTH_OF_INPUT_COLUMN_LEFT_BRACKET_RIGHT_BRACKET_FOR_FIRST_BY_SHOULD_BE_3_BE623E5E);
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
     switch (xDataType) {
@@ -115,7 +120,9 @@ public class FirstByAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", yDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                yDataType));
     }
   }
 
@@ -125,7 +132,8 @@ public class FirstByAccumulator implements TableAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of FIRST_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_FIRST_BY_SHOULD_BE_BINARYCOLUMN_F0D867AB);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -211,7 +219,9 @@ public class FirstByAccumulator implements TableAccumulator {
 
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in FIRST_BY Aggregation: %s", yDataType));
+              String.format(
+                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                  yDataType));
       }
     }
   }
@@ -220,7 +230,8 @@ public class FirstByAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of FIRST_BY should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_FIRST_BY_SHOULD_BE_BINARYCOLUMN_F0D867AB);
 
     if (initResult || initNullTimeValue) {
       // if the initResult is activated, the result must carry a not null time
@@ -268,7 +279,9 @@ public class FirstByAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in FIRST_BY Aggregation: %s", xDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                xDataType));
     }
   }
 
@@ -334,7 +347,9 @@ public class FirstByAccumulator implements TableAccumulator {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Unsupported data type in FIRST_BY Aggregation: %s", yDataType));
+                  String.format(
+                      CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
+                      yDataType));
           }
         }
       }

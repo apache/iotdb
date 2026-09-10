@@ -209,10 +209,11 @@ class InferenceManager:
                 logger.error("[Inference] Unsupported pipeline type.")
             outputs = inference_pipeline.postprocess(outputs, **inference_attrs)
 
-        # convert tensor into tsblock for the output in each batch
+        # DataNode currently exposes inference outputs as DOUBLE, so serialize the
+        # physical TsBlock column as double even when model tensors are float32.
         resp_list = []
-        for batch_idx, output in enumerate(outputs):
-            resp = convert_tensor_to_tsblock(output)
+        for output in outputs:
+            resp = convert_tensor_to_tsblock(output.to(dtype=torch.float64))
             resp_list.append(resp)
         return resp_list
 

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -179,7 +180,8 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("Clone of CreateTimeSeriesNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_CREATETIMESERIESNODE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -209,7 +211,8 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     try {
       path = new MeasurementPath(new String(bytes, TSFileConfig.STRING_CHARSET));
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize CreateTimeSeriesNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_CREATETIMESERIESNODE, e);
     }
     dataType = TSDataType.values()[byteBuffer.get()];
     encoding = TSEncoding.values()[byteBuffer.get()];

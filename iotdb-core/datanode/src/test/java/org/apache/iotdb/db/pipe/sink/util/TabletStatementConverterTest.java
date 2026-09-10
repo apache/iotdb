@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.pipe.sink.util;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -170,6 +172,68 @@ public class TabletStatementConverterTest {
 
     // Verify round trip: original Tablet should equal converted Tablet
     assertTabletsEqual(originalTablet, convertedTablet);
+  }
+
+  @Test
+  public void testDeserializeStatementFromTabletFormatWithNullSchemaAndNullColumn()
+      throws IOException, MetadataException {
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    ReadWriteIOUtils.write("root.sg.device", outputStream);
+    ReadWriteIOUtils.write(1, outputStream);
+
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(true), outputStream);
+    ReadWriteIOUtils.write(1, outputStream);
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(false), outputStream);
+
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(true), outputStream);
+    ReadWriteIOUtils.write(1L, outputStream);
+
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(false), outputStream);
+
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(true), outputStream);
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(false), outputStream);
+
+    ReadWriteIOUtils.write(true, outputStream);
+
+    final ByteBuffer buffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+    final InsertTabletStatement statement =
+        TabletStatementConverter.deserializeStatementFromTabletFormat(buffer);
+
+    Assert.assertArrayEquals(new String[] {null}, statement.getMeasurements());
+    Assert.assertArrayEquals(new TSDataType[] {null}, statement.getDataTypes());
+    Assert.assertNull(statement.getColumns()[0]);
+    Assert.assertTrue(statement.isAligned());
+  }
+
+  @Test
+  public void testConvertStatementToTabletSkipsNullColumn() throws Exception {
+    final InsertTabletStatement statement = new InsertTabletStatement();
+    statement.setDevicePath(new PartialPath("root.sg.device"));
+    statement.setTimes(new long[] {1L, 2L});
+    statement.setRowCount(2);
+    statement.setMeasurements(new String[] {"s1", "s2", "s3"});
+    statement.setDataTypes(
+        new TSDataType[] {TSDataType.INT32, TSDataType.INT64, TSDataType.DOUBLE});
+    statement.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.DOUBLE)
+        });
+    statement.setColumns(new Object[] {new int[] {1, 2}, null, new double[] {1.0, 2.0}});
+
+    final Tablet convertedTablet = statement.convertToTablet();
+
+    Assert.assertEquals(2, convertedTablet.getSchemas().size());
+    Assert.assertEquals("s1", convertedTablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("s3", convertedTablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertArrayEquals(new int[] {1, 2}, (int[]) convertedTablet.getValues()[0]);
+    Assert.assertArrayEquals(
+        new double[] {1.0, 2.0}, (double[]) convertedTablet.getValues()[1], 0.0);
   }
 
   /**

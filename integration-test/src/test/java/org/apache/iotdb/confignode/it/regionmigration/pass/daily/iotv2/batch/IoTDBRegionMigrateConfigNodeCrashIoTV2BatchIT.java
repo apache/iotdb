@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv2.batch;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.KillPoint.RegionMaintainKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
@@ -66,8 +67,7 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2BatchIT
         KillNode.CONFIG_NODE);
   }
 
-  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
-  //  @Test
+  @Test
   public void testCnCrashDuringDoAddPeer() throws Exception {
     successTest(
         1,
@@ -76,6 +76,31 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2BatchIT
         2,
         buildSet(AddRegionPeerState.DO_ADD_REGION_PEER),
         noKillPoints(),
+        KillNode.CONFIG_NODE);
+  }
+
+  /**
+   * Gracefully restart (not forcibly kill) the ConfigNode leader while AddRegionPeer is blocked in
+   * waitTaskFinish() polling the coordinator. The kill point fires from inside waitTaskFinish()
+   * (after the first poll confirms the task is still running), so the graceful shutdown
+   * deterministically interrupts that wait and waitTaskFinish() returns PROCESSING. The migration
+   * must still finish correctly after a leader switch: previously the AddRegionPeerProcedure
+   * silently ended on PROCESSING, letting the parent procedure remove the source replica before the
+   * destination replica was actually Running. Uses 3 ConfigNodes so a real leader switch happens.
+   * The framework requires the WAIT_TASK_FINISH_POLLING kill point to fire, which can only happen
+   * once the worker is blocked inside waitTaskFinish(), so the PROCESSING branch is guaranteed to
+   * be exercised.
+   */
+  @Test
+  public void cnLeaderSwitchDuringDoAddPeerTest() throws Exception {
+    successTestWithAction(
+        1,
+        1,
+        3,
+        2,
+        buildSet(RegionMaintainKillPoints.WAIT_TASK_FINISH_POLLING),
+        noKillPoints(),
+        actionOfGracefullyRestartConfigNode,
         KillNode.CONFIG_NODE);
   }
 
@@ -127,8 +152,7 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2BatchIT
         KillNode.CONFIG_NODE);
   }
 
-  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
-  //  @Test
+  @Test
   public void cnCrashDuringRemoveRegionLocationCacheTest() throws Exception {
     successTest(
         1,
@@ -140,8 +164,7 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2BatchIT
         KillNode.CONFIG_NODE);
   }
 
-  // TODO: @Yongzao Dan, reopen this CI after discussion with @HxpSerein
-  //  @Test
+  @Test
   public void cnCrashTest() throws Exception {
     ConcurrentHashMap.KeySetView<String, Boolean> killConfigNodeKeywords = noKillPoints();
     killConfigNodeKeywords.addAll(

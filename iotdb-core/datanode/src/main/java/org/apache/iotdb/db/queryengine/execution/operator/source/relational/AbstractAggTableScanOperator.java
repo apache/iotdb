@@ -26,7 +26,9 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryDataSourceLease;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
@@ -36,6 +38,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.BatchDeviceEntrySource;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -79,8 +82,13 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   protected final int groupingKeySize;
   protected final int dateBinSize;
 
-  protected final List<DeviceEntry> deviceEntries;
-  protected final int deviceCount;
+  protected List<DeviceEntry> deviceEntries;
+  protected int deviceCount;
+  protected final BatchDeviceEntrySource deviceEntrySource;
+  protected final boolean batchQueryDataSource;
+  protected QueryDataSourceLease currentLease;
+  protected boolean currentBatchInitialized;
+  protected boolean batchLeasePending;
   protected int currentDeviceIndex;
   protected List<String> measurementColumnNames;
   protected Set<String> allSensors;
@@ -95,7 +103,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   protected SeriesScanOptions seriesScanOptions;
   private final boolean ascending;
-  private final Ordering scanOrder;
+  protected final Ordering scanOrder;
   // Some special data types(like BLOB) cannot use statistics
   protected final boolean canUseStatistics;
   private final long cachedRawDataSize;
@@ -122,9 +130,13 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         parameter.groupingKeySchemas == null ? 0 : parameter.groupingKeySchemas.size();
     this.aggColumnSchemas = parameter.aggColumnSchemas;
     this.aggColumnsIndexArray = parameter.aggColumnsIndexArray;
-    this.deviceEntries = parameter.deviceEntries;
-    this.deviceCount = parameter.deviceCount;
-    this.operatorContext.recordSpecifiedInfo(DEVICE_NUMBER, Integer.toString(this.deviceCount));
+    this.deviceEntrySource = parameter.deviceEntrySource;
+    this.batchQueryDataSource = parameter.batchQueryDataSource;
+    this.deviceEntries =
+        parameter.batchQueryDataSource ? new ArrayList<>() : parameter.deviceEntries;
+    this.deviceCount = parameter.batchQueryDataSource ? 0 : parameter.deviceCount;
+    this.operatorContext.recordSpecifiedInfo(
+        DEVICE_NUMBER, Integer.toString(parameter.deviceCount));
     this.ascending = parameter.ascending;
     this.scanOrder = parameter.ascending ? Ordering.ASC : Ordering.DESC;
     this.seriesScanOptions = parameter.seriesScanOptions;
@@ -148,16 +160,35 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.DATE_BIN_TIME_ITERATOR
             ? 1
             : 0;
-
-    constructAlignedSeriesScanUtil();
+    if (!batchQueryDataSource) {
+      constructAlignedSeriesScanUtil();
+    }
   }
 
   @Override
   public boolean isFinished() throws Exception {
+    if (retainedTsBlock != null) {
+      return false;
+    }
+    if (!batchQueryDataSource) {
+      return !hasNextWithTimer();
+    }
+    if (batchLeasePending) {
+      return false;
+    }
+    if (!currentBatchInitialized) {
+      finished = deviceEntries.isEmpty() && !deviceEntrySource.hasNextBatch();
+      return finished;
+    }
     if (!finished) {
       finished = !hasNextWithTimer();
     }
     return finished;
+  }
+
+  @Override
+  public boolean isBatchQueryDataSource() {
+    return batchQueryDataSource;
   }
 
   protected abstract void updateResultTsBlock();
@@ -173,11 +204,11 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   protected void constructAlignedSeriesScanUtil() {
     DeviceEntry deviceEntry;
 
-    if (this.deviceEntries.isEmpty() || this.deviceEntries.get(this.currentDeviceIndex) == null) {
+    if (getCurrentDeviceEntry() == null) {
       // for device which is not exist
       deviceEntry = new AlignedDeviceEntry(SeriesScanUtil.EMPTY_DEVICE_ID, new Binary[0]);
     } else {
-      deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
+      deviceEntry = getCurrentDeviceEntry();
     }
 
     AlignedFullPath alignedPath =
@@ -250,24 +281,15 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       // all data of current device has been consumed
       updateResultTsBlock();
       timeIterator.resetCurTimeRange();
-      nextDevice();
-
-      if (currentDeviceIndex < deviceCount) {
-        // construct AlignedSeriesScanUtil for next device
-        constructAlignedSeriesScanUtil();
-        queryDataSource.reset();
-        this.seriesScanUtil.initQueryDataSource(queryDataSource);
-      }
+      moveToNextDevice();
 
       if (currentDeviceIndex >= deviceCount) {
-        // all devices have been consumed
-        timeIterator.setFinished();
         return Optional.of(true);
       } else {
         return Optional.of(false);
       }
     } catch (IOException e) {
-      throw new RuntimeException("Error while scanning the file", e);
+      throw new RuntimeException(DataNodeQueryMessages.ERROR_WHILE_SCANNING_THE_FILE, e);
     }
   }
 
@@ -293,28 +315,33 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       return new Pair<>(false, inputTsBlock);
     }
 
-    updateCurTimeRange(inputTsBlock.getStartTime());
+    long startTime = System.nanoTime();
+    try {
+      updateCurTimeRange(inputTsBlock.getStartTime());
 
-    TimeRange curTimeRange = timeIterator.getCurTimeRange();
-    // check if the tsBlock does not contain points in current interval
-    if (satisfiedTimeRange(inputTsBlock, curTimeRange, ascending)) {
-      // skip points that cannot be calculated
-      if ((ascending && inputTsBlock.getStartTime() < curTimeRange.getMin())
-          || (!ascending && inputTsBlock.getStartTime() > curTimeRange.getMax())) {
-        inputTsBlock = skipPointsOutOfTimeRange(inputTsBlock, curTimeRange, ascending);
+      TimeRange curTimeRange = timeIterator.getCurTimeRange();
+      // check if the tsBlock does not contain points in current interval
+      if (satisfiedTimeRange(inputTsBlock, curTimeRange, ascending)) {
+        // skip points that cannot be calculated
+        if ((ascending && inputTsBlock.getStartTime() < curTimeRange.getMin())
+            || (!ascending && inputTsBlock.getStartTime() > curTimeRange.getMax())) {
+          inputTsBlock = skipPointsOutOfTimeRange(inputTsBlock, curTimeRange, ascending);
+        }
+
+        inputTsBlock = process(inputTsBlock, curTimeRange);
       }
 
-      inputTsBlock = process(inputTsBlock, curTimeRange);
+      // judge whether the calculation finished
+      boolean isTsBlockOutOfBound =
+          inputTsBlock != null
+              && (ascending
+                  ? inputTsBlock.getEndTime() > curTimeRange.getMax()
+                  : inputTsBlock.getEndTime() < curTimeRange.getMin());
+      return new Pair<>(
+          isAllAggregatorsHasFinalResult(tableAggregators) || isTsBlockOutOfBound, inputTsBlock);
+    } finally {
+      operatorContext.recordScanAggregationFromRawDataCost(System.nanoTime() - startTime);
     }
-
-    // judge whether the calculation finished
-    boolean isTsBlockOutOfBound =
-        inputTsBlock != null
-            && (ascending
-                ? inputTsBlock.getEndTime() > curTimeRange.getMax()
-                : inputTsBlock.getEndTime() < curTimeRange.getMin());
-    return new Pair<>(
-        isAllAggregatorsHasFinalResult(tableAggregators) || isTsBlockOutOfBound, inputTsBlock);
   }
 
   private TsBlock process(TsBlock inputTsBlock, TimeRange curTimeRange) {
@@ -369,21 +396,19 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       case TIME:
         return inputRegion.getTimeColumn();
       case TAG:
-        String id =
-            getNthIdColumnValue(
-                deviceEntries.get(currentDeviceIndex), aggColumnsIndexArray[columnIdx]);
+        String id = getNthIdColumnValue(getCurrentDeviceEntry(), aggColumnsIndexArray[columnIdx]);
         return getIdOrAttrColumn(
             inputRegion.getTimeColumn().getPositionCount(),
             id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
         Binary attr =
-            deviceEntries.get(currentDeviceIndex)
-                .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
+            getCurrentDeviceEntry().getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
         return getIdOrAttrColumn(inputRegion.getTimeColumn().getPositionCount(), attr);
       case FIELD:
         return inputRegion.getColumn(aggColumnsIndexArray[columnIdx]);
       default:
-        throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
+        throw new IllegalStateException(
+            DataNodeQueryMessages.UNSUPPORTED_COLUMN_TYPE + columnSchemaCategory);
     }
   }
 
@@ -401,28 +426,32 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
     int idx = -1;
+    long startTime = System.nanoTime();
+    try {
+      for (TableAggregator aggregator : tableAggregators) {
+        if (aggregator.hasFinalResult()) {
+          idx += aggregator.getChannelCount();
+          continue;
+        }
 
-    for (TableAggregator aggregator : tableAggregators) {
-      if (aggregator.hasFinalResult()) {
-        idx += aggregator.getChannelCount();
-        continue;
+        Statistics[] statisticsArray = new Statistics[aggregator.getChannelCount()];
+        for (int i = 0; i < aggregator.getChannelCount(); i++) {
+          idx++;
+
+          TsTableColumnCategory columnSchemaCategory =
+              aggColumnSchemas.get(aggregatorInputChannels.get(idx)).getColumnCategory();
+          statisticsArray[i] =
+              buildStatistics(
+                  columnSchemaCategory,
+                  timeStatistics,
+                  valueStatistics,
+                  aggregatorInputChannels.get(idx));
+        }
+
+        aggregator.processStatistics(statisticsArray);
       }
-
-      Statistics[] statisticsArray = new Statistics[aggregator.getChannelCount()];
-      for (int i = 0; i < aggregator.getChannelCount(); i++) {
-        idx++;
-
-        TsTableColumnCategory columnSchemaCategory =
-            aggColumnSchemas.get(aggregatorInputChannels.get(idx)).getColumnCategory();
-        statisticsArray[i] =
-            buildStatistics(
-                columnSchemaCategory,
-                timeStatistics,
-                valueStatistics,
-                aggregatorInputChannels.get(idx));
-      }
-
-      aggregator.processStatistics(statisticsArray);
+    } finally {
+      operatorContext.recordScanAggregationFromStatisticsCost(System.nanoTime() - startTime);
     }
   }
 
@@ -435,20 +464,18 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       case TIME:
         return timeStatistics;
       case TAG:
-        String id =
-            getNthIdColumnValue(
-                deviceEntries.get(currentDeviceIndex), aggColumnsIndexArray[columnIdx]);
+        String id = getNthIdColumnValue(getCurrentDeviceEntry(), aggColumnsIndexArray[columnIdx]);
         return getStatistics(
             timeStatistics, id == null ? null : new Binary(id, TSFileConfig.STRING_CHARSET));
       case ATTRIBUTE:
         Binary attr =
-            deviceEntries.get(currentDeviceIndex)
-                .getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
+            getCurrentDeviceEntry().getAttributeColumnValues()[aggColumnsIndexArray[columnIdx]];
         return getStatistics(timeStatistics, attr);
       case FIELD:
         return valueStatistics[aggColumnsIndexArray[columnIdx]];
       default:
-        throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
+        throw new IllegalStateException(
+            DataNodeQueryMessages.UNSUPPORTED_COLUMN_TYPE + columnSchemaCategory);
     }
   }
 
@@ -712,22 +739,87 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     if (allAggregatorsHasFinalResult
         && (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR
             || tableAggregators.isEmpty())) {
-      nextDevice();
-      inputTsBlock = null;
-
-      if (currentDeviceIndex < deviceCount) {
-        // construct AlignedSeriesScanUtil for next device
-        constructAlignedSeriesScanUtil();
-        queryDataSource.reset();
-        this.seriesScanUtil.initQueryDataSource(queryDataSource);
-      }
-
-      if (currentDeviceIndex >= deviceCount) {
-        // all devices have been consumed
-        timeIterator.setFinished();
-      }
-
+      moveToNextDevice();
       allAggregatorsHasFinalResult = false;
+    }
+  }
+
+  protected void moveToNextDevice() throws Exception {
+    nextDevice();
+    inputTsBlock = null;
+
+    if (currentDeviceIndex < deviceCount) {
+      // construct AlignedSeriesScanUtil for next device
+      constructAlignedSeriesScanUtil();
+      queryDataSource.reset();
+      this.seriesScanUtil.initQueryDataSource(queryDataSource);
+      return;
+    }
+
+    if (!batchQueryDataSource) {
+      timeIterator.setFinished();
+      return;
+    }
+
+    boolean nextBatchReady = false;
+    if (currentDeviceIndex >= deviceCount) {
+      releaseCurrentBatch();
+      nextBatchReady = prepareNextDeviceBatch();
+    }
+
+    if (!nextBatchReady && deviceEntries.isEmpty() && !deviceEntrySource.hasNextBatch()) {
+      // all devices have been consumed
+      timeIterator.setFinished();
+    }
+  }
+
+  protected boolean prepareNextDeviceBatch() throws Exception {
+    if (currentBatchInitialized) {
+      return currentDeviceIndex < deviceCount;
+    }
+    while (deviceEntries.isEmpty()) {
+      if (!deviceEntrySource.hasNextBatch()) {
+        return false;
+      }
+      deviceEntries = deviceEntrySource.nextBatch();
+    }
+    deviceCount = deviceEntries.size();
+    currentDeviceIndex = 0;
+    if (batchQueryDataSource) {
+      List<org.apache.iotdb.commons.path.IFullPath> paths = new ArrayList<>(deviceCount);
+      for (DeviceEntry deviceEntry : deviceEntries) {
+        if (deviceEntry == null) {
+          continue;
+        }
+        paths.add(
+            constructAlignedPath(
+                deviceEntry, measurementColumnNames, measurementSchemas, allSensors));
+      }
+      currentLease =
+          ((OperatorContext) operatorContext).getInstanceContext().initBatchQueryDataSource(paths);
+      if (currentLease == null) {
+        batchLeasePending = true;
+        return false;
+      }
+      batchLeasePending = false;
+      queryDataSource = currentLease.getDataSource();
+    }
+    constructAlignedSeriesScanUtil();
+    seriesScanUtil.initQueryDataSource(queryDataSource);
+    currentBatchInitialized = true;
+    return true;
+  }
+
+  protected void releaseCurrentBatch() throws Exception {
+    currentBatchInitialized = false;
+    deviceEntries = new ArrayList<>();
+    deviceCount = 0;
+    currentDeviceIndex = 0;
+    queryDataSource = batchQueryDataSource ? null : queryDataSource;
+    seriesScanUtil = null;
+    if (currentLease != null) {
+      currentLease.close();
+      currentLease = null;
     }
   }
 
@@ -763,8 +855,12 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
-    this.queryDataSource = (QueryDataSource) dataSource;
-    this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    if (!batchQueryDataSource) {
+      this.queryDataSource = (QueryDataSource) dataSource;
+      if (this.seriesScanUtil != null) {
+        this.seriesScanUtil.initQueryDataSource(this.queryDataSource);
+      }
+    }
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
   }
 
@@ -787,11 +883,21 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   @Override
   public void close() throws Exception {
+    releaseCurrentBatch();
+    if (batchQueryDataSource) {
+      deviceEntrySource.close();
+    }
     super.close();
     tableAggregators.forEach(TableAggregator::close);
   }
 
   abstract String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex);
+
+  protected DeviceEntry getCurrentDeviceEntry() {
+    return deviceEntries.isEmpty() || currentDeviceIndex >= deviceEntries.size()
+        ? null
+        : deviceEntries.get(currentDeviceIndex);
+  }
 
   public static class AbstractAggTableScanOperatorParameter {
     private final String timeColumnName;
@@ -813,6 +919,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
     protected List<DeviceEntry> deviceEntries;
     protected int deviceCount;
+    protected final BatchDeviceEntrySource deviceEntrySource;
+    protected boolean batchQueryDataSource;
 
     private List<Symbol> outputSymbols;
 
@@ -823,6 +931,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         int[] aggColumnsIndexArray,
         List<DeviceEntry> deviceEntries,
         int deviceCount,
+        BatchDeviceEntrySource deviceEntrySource,
+        boolean batchQueryDataSource,
         SeriesScanOptions seriesScanOptions,
         List<String> measurementColumnNames,
         Set<String> allSensors,
@@ -842,6 +952,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       this.aggColumnsIndexArray = aggColumnsIndexArray;
       this.deviceEntries = deviceEntries;
       this.deviceCount = deviceCount;
+      this.deviceEntrySource = deviceEntrySource;
+      this.batchQueryDataSource = batchQueryDataSource;
       this.seriesScanOptions = seriesScanOptions;
       this.measurementColumnNames = measurementColumnNames;
       this.allSensors = allSensors;
@@ -892,6 +1004,10 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
       this.deviceEntries = deviceEntries;
       this.deviceCount = deviceEntries.size();
+    }
+
+    public void useSharedQueryDataSource() {
+      this.batchQueryDataSource = false;
     }
   }
 }

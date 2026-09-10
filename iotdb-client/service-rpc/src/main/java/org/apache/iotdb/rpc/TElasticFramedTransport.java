@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -30,6 +32,7 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 
 import java.io.EOFException;
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -72,7 +75,7 @@ public class TElasticFramedTransport extends TTransport {
     }
 
     @Override
-    public TTransport getTransport(TTransport trans) {
+    public TTransport getTransport(TTransport trans) throws TTransportException {
       return new TElasticFramedTransport(
           trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
     }
@@ -82,13 +85,19 @@ public class TElasticFramedTransport extends TTransport {
       TTransport underlying,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean copyBinary) {
+      boolean copyBinary)
+      throws TTransportException {
     this.underlying = underlying;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.copyBinary = copyBinary;
-    readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
-    writeBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+    try {
+      readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+      writeBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+    } catch (IOException e) {
+      closeAllocatedBuffers();
+      throw new TTransportException(e);
+    }
   }
 
   protected final int thriftDefaultBufferSize;
@@ -112,7 +121,20 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void close() {
-    underlying.close();
+    try {
+      underlying.close();
+    } finally {
+      closeAllocatedBuffers();
+    }
+  }
+
+  protected void closeAllocatedBuffers() {
+    if (readBuffer != null) {
+      readBuffer.close();
+    }
+    if (writeBuffer != null) {
+      writeBuffer.close();
+    }
   }
 
   @Override
@@ -161,10 +183,10 @@ public class TElasticFramedTransport extends TTransport {
         throw new TTransportException(
             TTransportException.CORRUPTED_DATA,
             String.format(
-                "You may be sending non-SSL requests"
-                    + "%s to the SSL-enabled Thrift-RPC port, please confirm that you are "
-                    + "using the right configuration",
-                remoteAddress == null ? "" : " from " + remoteAddress));
+                RpcMessages.NON_SSL_TO_SSL_PORT,
+                remoteAddress == null
+                    ? RpcMessages.EMPTY_MESSAGE
+                    : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress));
       }
       throw e;
     }
@@ -209,22 +231,21 @@ public class TElasticFramedTransport extends TTransport {
     if (underlying instanceof TSocket) {
       remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
     }
-    String remoteInfo = (remoteAddress == null) ? "" : " from " + remoteAddress;
+    String remoteInfo =
+        (remoteAddress == null)
+            ? RpcMessages.EMPTY_MESSAGE
+            : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
     close();
 
     error.throwException(size, remoteInfo, thriftMaxFrameSize);
   }
 
   private enum FrameError {
-    HTTP_REQUEST(
-        "Singular frame size (%d) detected, you may be sending HTTP GET/POST%s "
-            + "requests to the Thrift-RPC port, please confirm that you are using the right port"),
-    TLS_REQUEST(
-        "Singular frame size (%d) detected, you may be sending TLS ClientHello "
-            + "requests%s to the Non-SSL Thrift-RPC port, please confirm that you are using "
-            + "the right configuration"),
-    NEGATIVE_FRAME_SIZE("Read a negative frame size (%d)%s!"),
-    FRAME_SIZE_EXCEEDED("Frame size (%d) larger than protect max size (%d)%s!");
+    HTTP_REQUEST(RpcMessages.FRAME_ERROR_HTTP_REQUEST),
+    TLS_REQUEST(RpcMessages.FRAME_ERROR_TLS_REQUEST),
+    NEGATIVE_FRAME_SIZE(RpcMessages.FRAME_ERROR_NEGATIVE_FRAME_SIZE),
+    FRAME_SIZE_EXCEEDED(RpcMessages.FRAME_ERROR_FRAME_SIZE_EXCEEDED),
+    STRING_LENGTH_EXCEEDED(RpcMessages.FRAME_ERROR_STRING_LENGTH_EXCEEDED);
 
     private final String messageFormat;
 
@@ -232,9 +253,9 @@ public class TElasticFramedTransport extends TTransport {
       this.messageFormat = messageFormat;
     }
 
-    void throwException(int size, String remoteInfo, int maxSize) throws TTransportException {
+    void throwException(long size, String remoteInfo, int maxSize) throws TTransportException {
       String message =
-          (this == FRAME_SIZE_EXCEEDED)
+          (this == FRAME_SIZE_EXCEEDED || this == STRING_LENGTH_EXCEEDED)
               ? String.format(messageFormat, size, maxSize, remoteInfo)
               : String.format(messageFormat, size, remoteInfo);
       throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
@@ -266,7 +287,11 @@ public class TElasticFramedTransport extends TTransport {
     underlying.write(writeBuffer.getBuffer(), 0, length);
     writeBuffer.reset();
     if (length > thriftDefaultBufferSize) {
-      writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
+      try {
+        writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
+      } catch (IOException e) {
+        throw new TTransportException(e);
+      }
     }
     underlying.flush();
   }
@@ -283,12 +308,22 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void checkReadBytesAvailable(long numBytes) throws TTransportException {
-    // do nothing now.
-    // here we can do some checkm, e.g., see whether the memory is enough.
+    if (numBytes >= thriftMaxFrameSize) {
+      SocketAddress remoteAddress = null;
+      if (underlying instanceof TSocket) {
+        remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+      }
+      String remoteInfo =
+          (remoteAddress == null)
+              ? RpcMessages.EMPTY_MESSAGE
+              : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
+      close();
+      FrameError.STRING_LENGTH_EXCEEDED.throwException(numBytes, remoteInfo, thriftMaxFrameSize);
+    }
   }
 
   @Override
-  public void write(byte[] buf, int off, int len) {
+  public void write(byte[] buf, int off, int len) throws TTransportException {
     writeBuffer.write(buf, off, len);
   }
 

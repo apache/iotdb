@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -77,15 +78,17 @@ public class UDTFM4 implements UDTF {
         && !validator.getParameters().hasAttribute(TIME_INTERVAL_KEY)) {
       throw new UDFParameterNotValidException(
           String.format(
-              "attribute \"%s\"/\"%s\" is required but was not provided.",
-              WINDOW_SIZE_KEY, TIME_INTERVAL_KEY));
+              CommonMessages.EXCEPTION_ATTRIBUTE_ARG_ARG_REQUIRED_BUT_WAS_NOT_PROVIDED_CD090883,
+              WINDOW_SIZE_KEY,
+              TIME_INTERVAL_KEY));
     }
     if (validator.getParameters().hasAttribute(WINDOW_SIZE_KEY)
         && validator.getParameters().hasAttribute(TIME_INTERVAL_KEY)) {
       throw new UDFParameterNotValidException(
           String.format(
-              "use attribute \"%s\" or \"%s\" only one at a time.",
-              WINDOW_SIZE_KEY, TIME_INTERVAL_KEY));
+              CommonMessages.EXCEPTION_USE_ATTRIBUTE_ARG_ARG_ONLY_ONE_AT_TIME_B431468C,
+              WINDOW_SIZE_KEY,
+              TIME_INTERVAL_KEY));
     }
     if (validator.getParameters().hasAttribute(WINDOW_SIZE_KEY)) {
       accessStrategy = AccessStrategy.SIZE_WINDOW;

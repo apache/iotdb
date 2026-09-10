@@ -232,11 +232,16 @@ public class AINodeTestUtils {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < 5760; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.AI(timestamp,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
                 i, (float) i, (double) i, i, i));
+        if ((i + 1) % 500 == 0) {
+          statement.executeBatch();
+          statement.clearBatch();
+        }
       }
+      statement.executeBatch();
     }
   }
 
@@ -248,11 +253,16 @@ public class AINodeTestUtils {
       statement.execute(
           "CREATE TABLE db.AI (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD)");
       for (int i = 0; i < 5760; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO db.AI(time,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
                 i, (float) i, (double) i, i, i));
+        if ((i + 1) % 500 == 0) {
+          statement.executeBatch();
+          statement.clearBatch();
+        }
       }
+      statement.executeBatch();
     }
   }
 
@@ -264,7 +274,7 @@ public class AINodeTestUtils {
       statement.execute(
           "CREATE TABLE db.AI2 (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 INT32 FIELD, s7 INT64 FIELD, s8 FLOAT FIELD, s9 DOUBLE FIELD)");
       for (int i = 0; i < 2880; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO db.AI2(time,s0,s1,s2,s3,s4,s5,s6,s7,s8,s9) VALUES(%d,%f,%f,%d,%d,%f,%f,%d,%d,%f,%f)",
                 i,
@@ -278,7 +288,12 @@ public class AINodeTestUtils {
                 i * 2,
                 (float) (i * 3),
                 (double) (i * 3)));
+        if ((i + 1) % 500 == 0) {
+          statement.executeBatch();
+          statement.clearBatch();
+        }
       }
+      statement.executeBatch();
     }
   }
 

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKee
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -75,22 +76,23 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
     // TODO: validate visibility for schema region and config region
     final Visibility pipeVisibility =
         VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(sourceAttributes));
-    final Visibility extractorVisibility =
+    final Visibility sourceVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
     final Visibility processorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryProcessor.getClass());
     final Visibility connectorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryConnector.getClass());
     if (!VisibilityUtils.isCompatible(
-        pipeVisibility, extractorVisibility, processorVisibility, connectorVisibility)) {
+        pipeVisibility, sourceVisibility, processorVisibility, connectorVisibility)) {
       throw new PipeParameterNotValidException(
           String.format(
-              "The visibility of the pipe (%s, %s) is not compatible with the visibility of the extractor (%s, %s, %s), processor (%s, %s, %s), and connector (%s, %s, %s).",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_VISIBILITY_OF_THE_PIPE_S_S_IS_NOT_COMPATIBLE_WITH_THE_30B8BF0A,
               pipeName,
               pipeVisibility,
               sourceAttributes,
               temporaryExtractor.getClass().getName(),
-              extractorVisibility,
+              sourceVisibility,
               processorAttributes,
               temporaryProcessor.getClass().getName(),
               processorVisibility,

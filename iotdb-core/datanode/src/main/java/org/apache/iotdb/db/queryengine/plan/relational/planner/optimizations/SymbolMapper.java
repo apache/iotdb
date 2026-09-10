@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.S
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ValuePointer;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
@@ -67,7 +68,9 @@ public class SymbolMapper {
   private final Function<Symbol, Symbol> mappingFunction;
 
   public SymbolMapper(Function<Symbol, Symbol> mappingFunction) {
-    this.mappingFunction = requireNonNull(mappingFunction, "mappingFunction is null");
+    this.mappingFunction =
+        requireNonNull(
+            mappingFunction, DataNodeQueryMessages.EXCEPTION_MAPPINGFUNCTION_IS_NULL_212D6109);
   }
 
   public static SymbolMapper symbolMapper(Map<Symbol, Symbol> mapping) {
@@ -119,7 +122,7 @@ public class SymbolMapper {
           map(comparison.getValue()),
           map(comparison.getReference()));
     } else {
-      throw new IllegalArgumentException("Unexpected value: " + expression);
+      throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + expression);
     }
   }
 
@@ -408,7 +411,9 @@ public class SymbolMapper {
                 pointer.getMatchNumberSymbol());
       } else {
         throw new IllegalArgumentException(
-            "Unsupported ValuePointer type: " + assignment.getValuePointer().getClass().getName());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_VALUEPOINTER_TYPE_S_4147FFFB,
+                assignment.getValuePointer().getClass().getName()));
       }
 
       newAssignments.add(

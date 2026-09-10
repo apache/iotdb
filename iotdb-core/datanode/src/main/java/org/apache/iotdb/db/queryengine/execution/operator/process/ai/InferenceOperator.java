@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.an.AINodeClient;
 import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -45,6 +46,7 @@ import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -155,7 +157,7 @@ public class InferenceOperator implements ProcessOperator {
     Column timeColumn = tsBlock.getTimeColumn();
     long[] time = timeColumn.getLongs();
     for (int i = 0; i < time.length; i++) {
-      time[i] = maxTimestamp + interval * currentRowIndex;
+      time[i] = calculateGeneratedTime(maxTimestamp, interval, currentRowIndex);
       currentRowIndex++;
     }
   }
@@ -186,7 +188,8 @@ public class InferenceOperator implements ProcessOperator {
       try {
         if (!inferenceExecutionFuture.isDone()) {
           throw new IllegalStateException(
-              "The operator cannot continue until the forecast execution is done.");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THE_OPERATOR_CANNOT_CONTINUE_UNTIL_THE_FORECAST_EXECUTION_AF8A3145);
         }
 
         TInferenceResp inferenceResp = inferenceExecutionFuture.get();
@@ -229,7 +232,8 @@ public class InferenceOperator implements ProcessOperator {
       if (inputTsBlock.getValueColumnCount() > 1) {
         throw new SemanticException(
             String.format(
-                "Call inference function should not contain more than one input column, found [%d] input columns.",
+                DataNodeQueryMessages
+                    .CALL_INFERENCE_FUNCTION_SHOULD_NOT_CONTAIN_MORE_THAN_ONE_INPUT_COLUMN_FOUND_D_INPUT,
                 inputTsBlock.getValueColumnCount()));
       }
       for (int columnIndex = 0; columnIndex < inputTsBlock.getValueColumnCount(); columnIndex++) {
@@ -242,7 +246,7 @@ public class InferenceOperator implements ProcessOperator {
   private void submitInferenceTask() {
 
     if (generateTimeColumn) {
-      interval = (maxTimestamp - minTimestamp) / totalRow;
+      interval = calculateGeneratedTimeInterval(minTimestamp, maxTimestamp, totalRow);
     }
 
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
@@ -299,5 +303,30 @@ public class InferenceOperator implements ProcessOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + inputTsBlockBuilder.getRetainedSizeInBytes()
         + (long) columnIndexes.length * Integer.BYTES;
+  }
+
+  static long calculateGeneratedTimeInterval(long minTimestamp, long maxTimestamp, long totalRow) {
+    try {
+      BigInteger interval =
+          BigInteger.valueOf(maxTimestamp)
+              .subtract(BigInteger.valueOf(minTimestamp))
+              .divide(BigInteger.valueOf(totalRow));
+      if (interval.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+        throw new ArithmeticException();
+      }
+      return interval.longValue();
+    } catch (ArithmeticException e) {
+      throw new ModelInferenceProcessException(
+          DataNodeQueryMessages.EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A);
+    }
+  }
+
+  static long calculateGeneratedTime(long maxTimestamp, long interval, long currentRowIndex) {
+    try {
+      return Math.addExact(maxTimestamp, Math.multiplyExact(interval, currentRowIndex));
+    } catch (ArithmeticException e) {
+      throw new ModelInferenceProcessException(
+          DataNodeQueryMessages.EXCEPTION_GENERATED_TIME_COLUMN_IS_OUT_OF_RANGE_43AB0C2A);
+    }
   }
 }

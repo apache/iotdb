@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -40,18 +42,18 @@ public class Limit extends Node {
         rowCount instanceof AllRows
             || rowCount instanceof LongLiteral
             || rowCount instanceof Parameter,
-        "unexpected rowCount class: %s",
+        QueryMessages.EXCEPTION_UNEXPECTED_ROWCOUNT_CLASS_COLON_ARG_170FC7CD,
         rowCount.getClass().getSimpleName());
     this.rowCount = rowCount;
   }
 
   public Limit(NodeLocation location, Expression rowCount) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     checkArgument(
         rowCount instanceof AllRows
             || rowCount instanceof LongLiteral
             || rowCount instanceof Parameter,
-        "unexpected rowCount class: %s",
+        QueryMessages.EXCEPTION_UNEXPECTED_ROWCOUNT_CLASS_COLON_ARG_170FC7CD,
         rowCount.getClass().getSimpleName());
     this.rowCount = rowCount;
   }

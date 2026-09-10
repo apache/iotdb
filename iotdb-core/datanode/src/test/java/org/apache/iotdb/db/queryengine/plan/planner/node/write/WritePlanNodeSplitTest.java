@@ -44,9 +44,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,6 +56,7 @@ import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -61,6 +64,7 @@ import java.util.Map;
 
 public class WritePlanNodeSplitTest {
 
+  long prevTimePartitionOrigin;
   long prevTimePartitionInterval;
 
   Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -76,9 +80,12 @@ public class WritePlanNodeSplitTest {
 
   @Before
   public void setUp() {
+    prevTimePartitionOrigin = CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
     prevTimePartitionInterval =
         CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(0);
     CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(100);
+    TimePartitionUtils.setTimePartitionOrigin(0);
     TimePartitionUtils.setTimePartitionInterval(100);
 
     executorClassName = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
@@ -205,6 +212,9 @@ public class WritePlanNodeSplitTest {
     insertTabletNode.setColumns(
         new Object[] {new int[] {-20, -10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
     insertTabletNode.setRowCount(insertTabletNode.getTimes().length);
+    final BitMap[] bitMaps = new BitMap[] {new BitMap(insertTabletNode.getRowCount())};
+    bitMaps[0].mark(2);
+    insertTabletNode.setBitMaps(bitMaps);
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDeviceID(
@@ -224,6 +234,12 @@ public class WritePlanNodeSplitTest {
       Assert.assertEquals(tabletNode.getTimes().length, 2);
       TConsensusGroupId regionId = tabletNode.getDataRegionReplicaSet().getRegionId();
       Assert.assertEquals(getRegionIdByTime(tabletNode.getMinTime()), regionId.getId());
+      if (tabletNode.getTimes()[0] == 1) {
+        Assert.assertNotNull(tabletNode.getBitMaps());
+        Assert.assertTrue(tabletNode.getBitMaps()[0].isMarked(0));
+      } else {
+        Assert.assertNull(tabletNode.getBitMaps());
+      }
     }
 
     insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 2"));
@@ -251,6 +267,88 @@ public class WritePlanNodeSplitTest {
   }
 
   @Test
+  public void testInsertTabletDoesNotSplitAtLongMaxValueWithinLastPartition()
+      throws IllegalPathException {
+    final long lastPartitionStartTime =
+        TimePartitionUtils.getTimePartitionSlot(Long.MAX_VALUE).getStartTime();
+    final List<TTimePartitionSlot> expectedTimePartitionSlots =
+        Collections.singletonList(new TTimePartitionSlot(lastPartitionStartTime));
+
+    InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node boundary"));
+    insertTabletNode.setTargetPath(new PartialPath("root.sg1.d1"));
+    insertTabletNode.setTimes(new long[] {lastPartitionStartTime, Long.MAX_VALUE});
+
+    Assert.assertEquals(expectedTimePartitionSlots, insertTabletNode.getTimePartitionSlots());
+
+    InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
+    insertTabletStatement.setTimes(new long[] {lastPartitionStartTime, Long.MAX_VALUE});
+
+    Assert.assertEquals(expectedTimePartitionSlots, insertTabletStatement.getTimePartitionSlots());
+  }
+
+  @Test
+  public void testInsertTabletSplitsAtExactLongMaxValueUpperBound() throws IllegalPathException {
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(1);
+    TimePartitionUtils.setTimePartitionInterval(1);
+    final List<TTimePartitionSlot> expectedTimePartitionSlots =
+        Arrays.asList(
+            new TTimePartitionSlot(Long.MAX_VALUE - 1), new TTimePartitionSlot(Long.MAX_VALUE));
+
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(new PlanNodeId("plan node exact boundary"));
+    insertTabletNode.setTargetPath(new PartialPath("root.sg1.d1"));
+    insertTabletNode.setTimes(new long[] {Long.MAX_VALUE - 1, Long.MAX_VALUE});
+
+    Assert.assertEquals(expectedTimePartitionSlots, insertTabletNode.getTimePartitionSlots());
+
+    InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
+    insertTabletStatement.setTimes(new long[] {Long.MAX_VALUE - 1, Long.MAX_VALUE});
+
+    Assert.assertEquals(expectedTimePartitionSlots, insertTabletStatement.getTimePartitionSlots());
+  }
+
+  @Test
+  public void testSplitInsertTabletSkipsClearedMeasurementWithRetainedColumn()
+      throws IllegalPathException {
+    InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 1"));
+
+    insertTabletNode.setTargetPath(new PartialPath("root.sg1.d1"));
+    insertTabletNode.setMeasurements(new String[] {"s0", null});
+    insertTabletNode.setTimes(
+        new long[] {-200, -101, 1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
+    insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32, TSDataType.INT32});
+    insertTabletNode.setColumns(
+        new Object[] {
+          new int[] {-20, -10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+          new int[] {-2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+        });
+    insertTabletNode.setRowCount(insertTabletNode.getTimes().length);
+    final BitMap[] bitMaps = new BitMap[] {null, new BitMap(insertTabletNode.getRowCount())};
+    bitMaps[1].mark(2);
+    insertTabletNode.setBitMaps(bitMaps);
+
+    DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+    dataPartitionQueryParam.setDeviceID(
+        insertTabletNode.getTargetPath().getIDeviceIDAsFullDevice());
+    dataPartitionQueryParam.setTimePartitionSlotList(insertTabletNode.getTimePartitionSlots());
+
+    DataPartition dataPartition =
+        getDataPartition(Collections.singletonList(dataPartitionQueryParam));
+    Analysis analysis = new Analysis();
+    analysis.setDataPartitionInfo(dataPartition);
+
+    List<WritePlanNode> insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
+
+    Assert.assertEquals(6, insertTabletNodeList.size());
+    for (WritePlanNode insertNode : insertTabletNodeList) {
+      InsertTabletNode tabletNode = (InsertTabletNode) insertNode;
+      Assert.assertNotNull(tabletNode.getColumns()[0]);
+      Assert.assertNull(tabletNode.getColumns()[1]);
+      Assert.assertNull(tabletNode.getBitMaps());
+    }
+  }
+
+  @Test
   public void testSplitRelationalInsertTablet() throws IllegalPathException {
     RelationalInsertTabletNode relationalInsertTabletNode =
         new RelationalInsertTabletNode(new PlanNodeId("plan node 1"));
@@ -271,6 +369,9 @@ public class WritePlanNodeSplitTest {
     relationalInsertTabletNode.setColumnCategories(
         new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
     relationalInsertTabletNode.setRowCount(12);
+    final BitMap[] bitMaps = new BitMap[] {new BitMap(12), new BitMap(12)};
+    bitMaps[1].mark(2);
+    relationalInsertTabletNode.setBitMaps(bitMaps);
 
     List<DataPartitionQueryParam> dataPartitionQueryParamList = new ArrayList<>();
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
@@ -300,6 +401,13 @@ public class WritePlanNodeSplitTest {
       Assert.assertTrue(tabletNode.getTimes()[0] < tabletNode.getTimes()[1]);
       TConsensusGroupId regionId = tabletNode.getDataRegionReplicaSet().getRegionId();
       Assert.assertEquals(getRegionIdByTime(tabletNode.getMinTime()), regionId.getId());
+      if (tabletNode.getTimes()[0] == 1) {
+        Assert.assertNotNull(tabletNode.getBitMaps());
+        Assert.assertNull(tabletNode.getBitMaps()[0]);
+        Assert.assertTrue(tabletNode.getBitMaps()[1].isMarked(0));
+      } else {
+        Assert.assertNull(tabletNode.getBitMaps());
+      }
     }
   }
 
@@ -463,6 +571,8 @@ public class WritePlanNodeSplitTest {
   @After
   public void tearDown() {
     TimePartitionUtils.setTimePartitionInterval(prevTimePartitionInterval);
+    TimePartitionUtils.setTimePartitionOrigin(prevTimePartitionOrigin);
     CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(prevTimePartitionInterval);
+    CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(prevTimePartitionOrigin);
   }
 }

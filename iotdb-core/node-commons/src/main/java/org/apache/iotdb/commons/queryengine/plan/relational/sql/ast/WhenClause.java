@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -40,14 +42,14 @@ public class WhenClause extends Expression {
 
   public WhenClause(Expression operand, Expression result) {
     super(null);
-    this.operand = requireNonNull(operand, "operand is null");
-    this.result = requireNonNull(result, "result is null");
+    this.operand = requireNonNull(operand, QueryMessages.EXCEPTION_OPERAND_IS_NULL_D0182140);
+    this.result = requireNonNull(result, QueryMessages.EXCEPTION_RESULT_IS_NULL_031E2F89);
   }
 
   public WhenClause(NodeLocation location, Expression operand, Expression result) {
-    super(requireNonNull(location, "location is null"));
-    this.operand = requireNonNull(operand, "operand is null");
-    this.result = requireNonNull(result, "result is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.operand = requireNonNull(operand, QueryMessages.EXCEPTION_OPERAND_IS_NULL_D0182140);
+    this.result = requireNonNull(result, QueryMessages.EXCEPTION_RESULT_IS_NULL_031E2F89);
   }
 
   public WhenClause(ByteBuffer byteBuffer) {

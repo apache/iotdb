@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.library.match.utils;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 public class LinearScale<T extends Number> {
   private final double domainStart;
   private final double domainEnd;
@@ -30,7 +32,8 @@ public class LinearScale<T extends Number> {
     this.domainEnd = domainEnd.doubleValue();
 
     if (this.domainStart >= this.domainEnd) {
-      throw new IllegalArgumentException("domainStart must be less than domainEnd");
+      throw new IllegalArgumentException(
+          LibraryUdfMessages.DOMAIN_START_MUST_BE_LESS_THAN_DOMAIN_END);
     }
     this.rangeStart = rangeStart;
     this.rangeEnd = rangeEnd;
@@ -39,7 +42,7 @@ public class LinearScale<T extends Number> {
   public double scale(T value) {
     double val = value.doubleValue();
     if (val < domainStart || val > domainEnd) {
-      throw new IllegalArgumentException("Value out of domain range");
+      throw new IllegalArgumentException(LibraryUdfMessages.VALUE_OUT_OF_DOMAIN_RANGE);
     }
     return rangeStart + (rangeEnd - rangeStart) * (val - domainStart) / (domainEnd - domainStart);
   }

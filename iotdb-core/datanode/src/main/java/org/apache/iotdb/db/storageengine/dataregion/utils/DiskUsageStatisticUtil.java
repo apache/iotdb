@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -140,7 +141,10 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
                   timeSeriesMetadataIoSizeRecorder);
       calculateNextFile(tsFileResource, reader);
     } catch (Exception e) {
-      logger.error("Failed to scan file {}", tsFileResource.getTsFile().getAbsolutePath(), e);
+      logger.error(
+          StorageEngineMessages.FAILED_TO_SCAN_FILE,
+          tsFileResource.getTsFile().getAbsolutePath(),
+          e);
     } finally {
       // this operation including readUnlock
       FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, true);
@@ -217,7 +221,8 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
       LongConsumer timeSeriesMetadataIoSizeRecorder)
       throws IOException {
     if (measurementNode.isDeviceLevel()) {
-      throw new IllegalArgumentException("device level metadata index node is not supported");
+      throw new IllegalArgumentException(
+          StorageEngineMessages.DEVICE_LEVEL_METADATA_INDEX_NOT_SUPPORTED);
     }
     List<IMetadataIndexEntry> children = measurementNode.getChildren();
     long startOffset = children.get(0).getOffset();

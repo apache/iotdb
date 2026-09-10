@@ -46,6 +46,15 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
     super(location, table, rawExpression);
   }
 
+  private CountDevice(final CountDevice source) {
+    super(source);
+  }
+
+  @Override
+  public CountDevice copyForAnalysis() {
+    return new CountDevice(this);
+  }
+
   @Override
   public DatasetHeader getDataSetHeader() {
     return new DatasetHeader(

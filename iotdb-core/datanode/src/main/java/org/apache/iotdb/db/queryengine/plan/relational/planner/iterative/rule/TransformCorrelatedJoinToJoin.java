@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanNodeDecorrelator;
@@ -54,7 +55,9 @@ public class TransformCorrelatedJoinToJoin implements Rule<CorrelatedJoinNode> {
   private final PlannerContext plannerContext;
 
   public TransformCorrelatedJoinToJoin(PlannerContext plannerContext) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
   }
 
   @Override
@@ -66,7 +69,7 @@ public class TransformCorrelatedJoinToJoin implements Rule<CorrelatedJoinNode> {
   public Result apply(CorrelatedJoinNode correlatedJoinNode, Captures captures, Context context) {
     checkArgument(
         correlatedJoinNode.getJoinType() == INNER || correlatedJoinNode.getJoinType() == LEFT,
-        "correlation in %s JOIN",
+        DataNodeQueryMessages.EXCEPTION_CORRELATION_IN_ARG_JOIN_2F78ACC3,
         correlatedJoinNode.getJoinType().name());
     PlanNode subquery = correlatedJoinNode.getSubquery();
 

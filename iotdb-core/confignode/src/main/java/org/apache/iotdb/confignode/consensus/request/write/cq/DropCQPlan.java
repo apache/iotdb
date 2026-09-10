@@ -37,7 +37,7 @@ public class DropCQPlan extends ConfigPhysicalPlan {
   private String cqId;
 
   // may be null in user call of drop CQ
-  private String md5;
+  private String cqToken;
 
   public DropCQPlan() {
     super(DROP_CQ);
@@ -49,33 +49,33 @@ public class DropCQPlan extends ConfigPhysicalPlan {
     this.cqId = cqId;
   }
 
-  public DropCQPlan(String cqId, String md5) {
+  public DropCQPlan(String cqId, String cqToken) {
     super(DROP_CQ);
     Validate.notNull(cqId);
-    Validate.notNull(md5);
+    Validate.notNull(cqToken);
     this.cqId = cqId;
-    this.md5 = md5;
+    this.cqToken = cqToken;
   }
 
   public String getCqId() {
     return cqId;
   }
 
-  public Optional<String> getMd5() {
-    return Optional.ofNullable(md5);
+  public Optional<String> getCqToken() {
+    return Optional.ofNullable(cqToken);
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(cqId, stream);
-    ReadWriteIOUtils.write(md5, stream);
+    ReadWriteIOUtils.write(cqToken, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     cqId = ReadWriteIOUtils.readString(buffer);
-    md5 = ReadWriteIOUtils.readString(buffer);
+    cqToken = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -90,11 +90,11 @@ public class DropCQPlan extends ConfigPhysicalPlan {
       return false;
     }
     DropCQPlan that = (DropCQPlan) o;
-    return cqId.equals(that.cqId) && Objects.equals(md5, that.md5);
+    return cqId.equals(that.cqId) && Objects.equals(cqToken, that.cqToken);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), cqId, md5);
+    return Objects.hash(super.hashCode(), cqId, cqToken);
   }
 }

@@ -97,11 +97,17 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
   public IConsensusRequest deserializeRequest(IConsensusRequest request) {
     if (request instanceof BatchIndexedConsensusRequest) {
       BatchIndexedConsensusRequest consensusRequest = (BatchIndexedConsensusRequest) request;
+      final IndexedConsensusRequest lastIndexedRequest =
+          consensusRequest.getRequests().isEmpty()
+              ? null
+              : consensusRequest.getRequests().get(consensusRequest.getRequests().size() - 1);
       DeserializedBatchIndexedConsensusRequest result =
           new DeserializedBatchIndexedConsensusRequest(
               consensusRequest.getStartSyncIndex(),
               consensusRequest.getEndSyncIndex(),
-              consensusRequest.getRequests().size());
+              consensusRequest.getRequests().size(),
+              consensusRequest.getSourcePeerId(),
+              lastIndexedRequest != null ? lastIndexedRequest.getPhysicalTime() : 0L);
       for (IndexedConsensusRequest r : consensusRequest.getRequests()) {
         result.add(r);
       }
@@ -136,5 +142,7 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {}
+  public boolean loadSnapshot(File latestSnapshotRootDir) {
+    return true;
+  }
 }

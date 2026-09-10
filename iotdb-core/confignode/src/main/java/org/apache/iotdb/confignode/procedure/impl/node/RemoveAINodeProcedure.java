@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.client.sync.CnToAnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncAINodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.RemoveAINodeState;
@@ -73,11 +74,12 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
                           null,
                           CnToAnSyncRequestType.STOP_AI_NODE);
           if (resp != null && resp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            LOGGER.info("Successfully stopped AINode {}", removedAINode.getInternalEndPoint());
+            LOGGER.info(
+                ProcedureMessages.SUCCESSFULLY_STOPPED_AINODE, removedAINode.getInternalEndPoint());
           } else {
             if (resp != null) {
               LOGGER.warn(
-                  "Failed to stop AINode {} because {}, but the remove process will continue.",
+                  ProcedureMessages.FAILED_TO_STOP_AINODE_BECAUSE_BUT_THE_REMOVE_PROCESS_WILL,
                   resp.getMessage(),
                   removedAINode.getInternalEndPoint());
             }
@@ -92,26 +94,33 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
           if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new ProcedureException(
                 String.format(
-                    "Fail to remove [%s] AINode on Config Nodes [%s]",
-                    removedAINode, response.getMessage()));
+                    ProcedureMessages.FAIL_TO_REMOVE_AINODE_ON_CONFIG_NODES,
+                    removedAINode,
+                    response.getMessage()));
           }
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(
-              String.format("Unknown state during executing removeAINodeProcedure, %s", state));
+              String.format(
+                  ProcedureMessages.UNKNOWN_STATE_DURING_EXECUTING_REMOVEAINODEPROCEDURE, state));
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOGGER.error(
-            "Retrievable error trying to remove AINode [{}], state [{}]", removedAINode, state, e);
+            ProcedureMessages.RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE,
+            removedAINode,
+            state,
+            e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
                   String.format(
-                      "Fail to remove AINode [%s] at STATE [%s], %s",
-                      removedAINode, state, e.getMessage())));
+                      ProcedureMessages.FAIL_TO_REMOVE_AINODE_AT_STATE,
+                      removedAINode,
+                      state,
+                      e.getMessage())));
         }
       }
     }

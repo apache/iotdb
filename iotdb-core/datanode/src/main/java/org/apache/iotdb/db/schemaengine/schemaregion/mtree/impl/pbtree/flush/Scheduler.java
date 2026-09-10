@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
@@ -76,7 +77,8 @@ public class Scheduler {
     this.releaseFlushStrategy = releaseFlushStrategy;
   }
 
-  private void executeFlush(CachedMTreeStore store, int regionId, AtomicInteger remainToFlush) {
+  private void executeFlush(
+      CachedMTreeStore store, int regionId, AtomicInteger remainToFlush, boolean propagateFailure) {
     IMemoryManager memoryManager = store.getMemoryManager();
     ISchemaFile file = store.getSchemaFile();
     LockManager lockManager = store.getLockManager();
@@ -93,16 +95,19 @@ public class Scheduler {
       flushExecutor.flushVolatileNodes(flushNodeNum, flushMemSize);
     } catch (MetadataException e) {
       LOGGER.warn(
-          "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
+          DataNodeSchemaMessages.ERROR_DURING_MTREE_FLUSH_SCHEMA_REGION_BECAUSE,
           regionId,
           e.getMessage(),
           e);
+      if (propagateFailure) {
+        throw new RuntimeException(e);
+      }
     } finally {
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {
-        LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
+        LOGGER.info(DataNodeSchemaMessages.MTREE_FLUSH_COST, time, regionId);
       } else {
-        LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
+        LOGGER.debug(DataNodeSchemaMessages.MTREE_FLUSH_COST, time, regionId);
       }
       store.recordFlushMetrics(time, flushNodeNum.get(), flushMemSize.get());
       flushingRegionSet.remove(regionId);
@@ -145,22 +150,26 @@ public class Scheduler {
                     CompletableFuture.runAsync(
                         () -> {
                           int regionId = entry.getKey();
-                          CachedMTreeStore store = entry.getValue();
-                          if (store == null) {
-                            // store has been closed
-                            return;
-                          }
-                          LockManager lockManager = store.getLockManager();
-                          lockManager.globalReadLock();
-                          if (!regionToStore.containsKey(regionId)) {
-                            // double check store have not been closed
-                            return;
-                          }
                           try {
-                            executeFlush(store, regionId, null);
-                            executeRelease(store, false);
+                            CachedMTreeStore store = entry.getValue();
+                            if (store == null) {
+                              // store has been closed
+                              return;
+                            }
+                            LockManager lockManager = store.getLockManager();
+                            lockManager.globalReadLock();
+                            try {
+                              if (!regionToStore.containsKey(regionId)) {
+                                // double check store have not been closed
+                                return;
+                              }
+                              executeFlush(store, regionId, null, true);
+                              executeRelease(store, false);
+                            } finally {
+                              lockManager.globalReadUnlock();
+                            }
                           } finally {
-                            lockManager.globalReadUnlock();
+                            flushingRegionSet.remove(regionId);
                           }
                         },
                         workerPool))
@@ -221,22 +230,25 @@ public class Scheduler {
       flushingRegionSet.add(regionId);
       workerPool.submit(
           () -> {
-            CachedMTreeStore store = regionToStore.get(regionId);
-            if (store == null) {
-              // store has been closed
-              return;
-            }
-            LockManager lockManager = store.getLockManager();
-            lockManager.globalReadLock();
-            if (!regionToStore.containsKey(regionId)) {
-              // double check store have not been closed
-              return;
-            }
             try {
-
-              executeFlush(store, regionId, remainToFlush);
+              CachedMTreeStore store = regionToStore.get(regionId);
+              if (store == null) {
+                // store has been closed
+                return;
+              }
+              LockManager lockManager = store.getLockManager();
+              lockManager.globalReadLock();
+              try {
+                if (!regionToStore.containsKey(regionId)) {
+                  // double check store have not been closed
+                  return;
+                }
+                executeFlush(store, regionId, remainToFlush, false);
+              } finally {
+                lockManager.globalReadUnlock();
+              }
             } finally {
-              lockManager.globalReadUnlock();
+              flushingRegionSet.remove(regionId);
             }
           });
       if (remainToFlush.get() <= 0) {

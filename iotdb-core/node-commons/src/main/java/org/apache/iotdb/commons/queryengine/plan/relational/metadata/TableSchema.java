@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -100,7 +101,7 @@ public class TableSchema {
       return null;
     } else if (columnScheme.size() > 1) {
       throw new SemanticException(
-          String.format("Columns in table shall not share the same name %s.", columnName));
+          String.format(QueryMessages.TABLE_COLUMN_NAME_DUPLICATED, columnName));
     }
     return columnScheme.get(0);
   }
@@ -201,10 +202,7 @@ public class TableSchema {
       return new TableSchema(tableName, columns);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Cannot convert tsfile table schema to iotdb table schema, table name: {}, tsfile table schema: {}",
-          tableName,
-          tsFileTableSchema,
-          e);
+          QueryMessages.TSFILE_TABLE_SCHEMA_CONVERT_FAILED, tableName, tsFileTableSchema, e);
       throw e;
     }
   }

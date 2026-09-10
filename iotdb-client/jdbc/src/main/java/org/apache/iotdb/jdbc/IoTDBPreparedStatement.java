@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 
 import org.apache.thrift.TException;
@@ -68,7 +69,7 @@ import java.util.Map;
 public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedStatement {
 
   private String sql;
-  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
   private static final Logger logger = LoggerFactory.getLogger(IoTDBPreparedStatement.class);
 
   /** save the SQL parameters as (paramLoc,paramValue) pairs. */
@@ -417,8 +418,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       // Can't infer a type.
       throw new SQLException(
           String.format(
-              "Can''t infer the SQL type to use for an instance of %s. Use setObject() with"
-                  + " an explicit Types value to specify the type to use.",
+              JdbcMessages.EXCEPTION_CAN_T_INFER_SQL_TYPE_USE_INSTANCE_ARG_USE_SETOBJECT_A5B1C1BD
+                  + JdbcMessages.EXCEPTION_EXPLICIT_TYPES_VALUE_SPECIFY_TYPE_USE_CD046EDA,
               x.getClass().getName()));
     }
   }
@@ -458,7 +459,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                 setBoolean(parameterIndex, false);
               } else {
                 throw new SQLException(
-                    "No conversion from " + parameterObj + " to Types.BOOLEAN possible.");
+                    JdbcMessages.EXCEPTION_NO_CONVERSION_3F7E3A35
+                        + parameterObj
+                        + JdbcMessages.EXCEPTION_TYPES_BOOLEAN_POSSIBLE_54D316E6);
               }
               break;
             } else if (parameterObj instanceof Number) {
@@ -469,7 +472,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
               break;
             } else {
               throw new SQLException(
-                  "No conversion from " + parameterObj + " to Types.BOOLEAN possible.");
+                  JdbcMessages.EXCEPTION_NO_CONVERSION_3F7E3A35
+                      + parameterObj
+                      + JdbcMessages.EXCEPTION_TYPES_BOOLEAN_POSSIBLE_54D316E6);
             }
 
           case Types.BIT:
@@ -544,7 +549,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
                 break;
               default:
-                logger.error("No type was matched");
+                logger.error(JdbcMessages.NO_TYPE_MATCHED);
                 break;
             }
 
@@ -865,11 +870,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                   ((java.math.BigDecimal) parameterAsNum).setScale(scale, BigDecimal.ROUND_HALF_UP);
             } catch (ArithmeticException arEx) {
               throw new SQLException(
-                  "Can't set scale of '"
+                  JdbcMessages.EXCEPTION_CAN_T_SET_SCALE_5559DE62
                       + scale
-                      + "' for DECIMAL argument '"
+                      + JdbcMessages.EXCEPTION_DECIMAL_ARGUMENT_504BC102
                       + parameterAsNum
-                      + "'");
+                      + JdbcMessages.SINGLE_QUOTE);
             }
           }
 
@@ -941,7 +946,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setLong(parameterIndex, time);
     } catch (TException e) {
       logger.error(
-          String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
+          String.format(
+              JdbcMessages.LOG_SET_TIME_ERROR_IOTDB_PREPARED_STATEMENT_ARG_AAAACB25,
+              e.getMessage()));
     }
   }
 
@@ -974,7 +981,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
           parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     } catch (TException e) {
       logger.error(
-          String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
+          String.format(
+              JdbcMessages.LOG_SET_TIME_ERROR_IOTDB_PREPARED_STATEMENT_ARG_AAAACB25,
+              e.getMessage()));
     }
   }
 
@@ -1017,11 +1026,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
       if (logger.isDebugEnabled()) {
-        logger.debug("SQL {}", sql);
-        logger.debug("parameters {}", parameters.size());
+        logger.debug(JdbcMessages.SQL_DEBUG, sql);
+        logger.debug(JdbcMessages.PARAMETERS_DEBUG, parameters.size());
       }
       if (!parameters.containsKey(i)) {
-        throw new SQLException("Parameter #" + i + " is unset");
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
       newSql.append(parameters.get(i));
       newSql.append(parts.get(i));

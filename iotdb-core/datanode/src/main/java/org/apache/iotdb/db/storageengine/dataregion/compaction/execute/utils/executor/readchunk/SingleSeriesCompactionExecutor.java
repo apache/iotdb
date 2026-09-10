@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
@@ -361,7 +362,8 @@ public class SingleSeriesCompactionExecutor {
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
         break;
       default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
+        throw new UnsupportedOperationException(
+            StorageEngineMessages.UNKNOWN_DATA_TYPE + chunkWriter.getDataType());
     }
   }
 

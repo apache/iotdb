@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -332,7 +333,7 @@ public class FastCompactionPerformer
         } else if (cause instanceof ChunkTypeInconsistentException) {
           throw (ChunkTypeInconsistentException) cause;
         }
-        throw new IOException("[Compaction] SubCompactionTask meet errors ", e);
+        throw new IOException(StorageEngineMessages.SUB_COMPACTION_TASK_MEET_ERRORS, e);
       } catch (InterruptedException e) {
         abortAllSubTasks(futures);
         throw e;
@@ -361,8 +362,8 @@ public class FastCompactionPerformer
   public void setSummary(CompactionTaskSummary summary) {
     if (!(summary instanceof FastCompactionTaskSummary)) {
       throw new IllegalCompactionTaskSummaryException(
-          "CompactionTaskSummary for FastCompactionPerformer "
-              + "should be FastCompactionTaskSummary");
+          StorageEngineMessages
+              .STORAGE_EXCEPTION_COMPACTIONTASKSUMMARY_FOR_FASTCOMPACTIONPERFORMER_SHOULD_F5710AA8);
     }
     this.subTaskSummary = (FastCompactionTaskSummary) summary;
   }
@@ -377,7 +378,9 @@ public class FastCompactionPerformer
     if (Thread.interrupted() || subTaskSummary.isCancel()) {
       throw new InterruptedException(
           String.format(
-              "[Compaction] compaction for target file %s abort", targetFiles.toString()));
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_COMPACTION_COMPACTION_FOR_TARGET_FILE_S_ABORT_46ECFF41,
+              targetFiles.toString()));
     }
   }
 

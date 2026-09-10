@@ -33,7 +33,7 @@ import java.util.function.Supplier;
 public class PipeSubtaskExecutorManager {
   private final PipeProcessorSubtaskExecutor processorExecutor;
   private final Supplier<PipeSinkSubtaskExecutor> connectorExecutorSupplier;
-  private final SubscriptionSubtaskExecutor subscriptionExecutor;
+  private volatile SubscriptionSubtaskExecutor subscriptionExecutor;
 
   public PipeProcessorSubtaskExecutor getProcessorExecutor() {
     return processorExecutor;
@@ -49,6 +49,7 @@ public class PipeSubtaskExecutorManager {
   }
 
   public SubscriptionSubtaskExecutor getSubscriptionExecutor() {
+    ensureSubscriptionExecutors();
     return subscriptionExecutor;
   }
 
@@ -57,13 +58,26 @@ public class PipeSubtaskExecutorManager {
   private PipeSubtaskExecutorManager() {
     processorExecutor = new PipeProcessorSubtaskExecutor();
     connectorExecutorSupplier = PipeSinkSubtaskExecutor::new;
-    subscriptionExecutor =
-        SubscriptionConfig.getInstance().getSubscriptionEnabled()
-            ? new SubscriptionSubtaskExecutor()
-            : null;
+    ensureSubscriptionExecutors();
     // IoTV2 uses global singleton executor pool.
     IoTV2GlobalComponentContainer.getInstance()
         .setConsensusExecutor(new IoTConsensusV2SubtaskExecutor());
+  }
+
+  public synchronized void ensureSubscriptionExecutors() {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+    if (subscriptionExecutor == null || subscriptionExecutor.isShutdown()) {
+      subscriptionExecutor = new SubscriptionSubtaskExecutor();
+    }
+  }
+
+  public synchronized void shutdownSubscriptionExecutors() {
+    if (subscriptionExecutor != null) {
+      subscriptionExecutor.shutdown();
+      subscriptionExecutor = null;
+    }
   }
 
   private static class PipeTaskExecutorHolder {

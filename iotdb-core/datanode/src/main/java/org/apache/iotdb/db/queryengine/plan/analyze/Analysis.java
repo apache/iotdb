@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
@@ -475,7 +476,10 @@ public class Analysis implements IAnalysis {
     }
 
     final TSDataType type = expressionTypes.get(NodeRef.of(expression));
-    checkArgument(type != null, "Expression is not analyzed: %s", expression);
+    checkArgument(
+        type != null,
+        DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NOT_ANALYZED_COLON_ARG_7D34C49A,
+        expression);
     return type;
   }
 

@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.allocation.ElasticStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.wal.allocation.FirstCreateStrategy;
@@ -163,15 +164,16 @@ public class WALManager implements IService {
       return;
     }
 
-    logger.info("Start rebooting wal delete thread.");
+    logger.info(StorageEngineMessages.START_REBOOTING_WAL_DELETE_THREAD);
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
       walDeleteThread = null;
     }
-    logger.info("Stop wal delete thread successfully, and now restart it.");
+    logger.info(StorageEngineMessages.STOP_WAL_DELETE_THREAD_AND_RESTART);
     registerScheduleTask(0, config.getDeleteWalFilesPeriodInMs());
     logger.info(
-        "Reboot wal delete thread successfully, current period is {} ms",
+        StorageEngineMessages
+            .STORAGE_LOG_REBOOT_WAL_DELETE_THREAD_SUCCESSFULLY_CURRENT_PERIOD_IS_44B69C7A,
         config.getDeleteWalFilesPeriodInMs());
   }
 
@@ -184,13 +186,14 @@ public class WALManager implements IService {
       deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
         logger.warn(
-            "WAL disk usage {} is larger than the wal_throttle_threshold_in_byte * 0.8 {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
+            StorageEngineMessages
+                .STORAGE_LOG_WAL_DISK_USAGE_IS_LARGER_THAN_THE_WAL_THROTTLE_THRESHOLD_2396FFCC,
             getTotalDiskUsage(),
             getThrottleThreshold());
       }
       firstLoop = false;
       if (Thread.interrupted()) {
-        logger.info("Timed wal delete thread is interrupted.");
+        logger.info(StorageEngineMessages.TIMED_WAL_DELETE_THREAD_INTERRUPTED);
         return;
       }
     }
@@ -223,7 +226,7 @@ public class WALManager implements IService {
         try {
           Thread.sleep(50);
         } catch (InterruptedException e) {
-          logger.error("Interrupted when waiting for all write-ahead logs flushed.");
+          logger.error(StorageEngineMessages.INTERRUPTED_WAITING_WAL_FLUSHED);
           Thread.currentThread().interrupt();
         }
       }
@@ -271,25 +274,25 @@ public class WALManager implements IService {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;
     }
-    logger.info("Stopping WALManager");
+    logger.info(StorageEngineMessages.STOPPING_WAL_MANAGER);
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
       walDeleteThread = null;
     }
-    logger.info("Deleting outdated files before exiting");
+    logger.info(StorageEngineMessages.DELETING_OUTDATED_FILES_BEFORE_EXIT);
     deleteOutdatedFilesInWALNodes();
     clear();
-    logger.info("WALManager stopped");
+    logger.info(StorageEngineMessages.WAL_MANAGER_STOPPED);
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {
     thread.shutdownNow();
     try {
       if (!thread.awaitTermination(30, TimeUnit.SECONDS)) {
-        logger.warn("Waiting thread {} to be terminated is timeout", threadName.getName());
+        logger.warn(StorageEngineMessages.WAITING_THREAD_TERMINATED_TIMEOUT, threadName.getName());
       }
     } catch (InterruptedException e) {
-      logger.warn("Thread {} still doesn't exit after 30s", threadName.getName());
+      logger.warn(StorageEngineMessages.THREAD_NOT_EXIT_AFTER_30S, threadName.getName());
       Thread.currentThread().interrupt();
     }
   }
@@ -309,10 +312,12 @@ public class WALManager implements IService {
     try {
       future.get();
     } catch (ExecutionException e) {
-      throw new StorageEngineFailureException("Failed to delete outdated wal file", e);
+      throw new StorageEngineFailureException(
+          StorageEngineMessages.FAILED_TO_DELETE_OUTDATED_WAL_FILE, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new StorageEngineFailureException("Failed to delete outdated wal file", e);
+      throw new StorageEngineFailureException(
+          StorageEngineMessages.FAILED_TO_DELETE_OUTDATED_WAL_FILE, e);
     }
   }
 

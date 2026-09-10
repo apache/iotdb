@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.util;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
@@ -41,7 +42,7 @@ public class CommonTransformUtils {
     if (escape.length() == 1) {
       return Optional.of(escape.charAt(0));
     } else {
-      throw new SemanticException("Escape string must be a single character");
+      throw new SemanticException(CalcMessages.ESCAPE_STRING_MUST_BE_A_SINGLE_CHARACTER);
     }
   }
 

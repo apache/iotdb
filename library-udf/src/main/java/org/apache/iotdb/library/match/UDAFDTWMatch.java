@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.match;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.match.model.DTWMatchResult;
 import org.apache.iotdb.library.match.model.DTWState;
 import org.apache.iotdb.udf.api.State;
@@ -107,7 +108,8 @@ public class UDAFDTWMatch implements UDAF {
       case BOOLEAN:
         return column.getBoolean(i) ? 1.0D : 0.0D;
       default:
-        throw new RuntimeException(String.format("Unsupported datatype %s", column.getDataType()));
+        throw new RuntimeException(
+            String.format(LibraryUdfMessages.UNSUPPORTED_DATATYPE, column.getDataType()));
     }
   }
 

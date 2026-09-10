@@ -100,6 +100,10 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
    */
   private ListenableFuture<?> tryGetNext() {
     ISchemaRegion schemaRegion = getSchemaRegion();
+    if (schemaSource.shouldSkipSchemaRegion(schemaRegion)) {
+      next = constructTsBlock(0);
+      return NOT_BLOCKED;
+    }
     if (schemaSource.hasSchemaStatistic(schemaRegion)) {
       long statisticCount = schemaSource.getSchemaStatistic(schemaRegion);
       // Check if database path itself is counted as a device (bug fix)

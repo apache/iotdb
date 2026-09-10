@@ -22,8 +22,10 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.ClientRunner;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.IoTDBOpcUaClient;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
@@ -38,14 +40,24 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.reader.TsFileLastReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
-import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
-import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
-import org.eclipse.milo.opcua.sdk.client.api.identity.UsernameProvider;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.eclipse.milo.opcua.sdk.client.identity.AnonymousProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.IdentityProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.UsernameProvider;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
@@ -55,7 +67,11 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -69,6 +85,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ADVERTISED_HOST_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE;
@@ -111,6 +130,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ADVERTISED_HOST_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEBOUNCE_TIME_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEFAULT_QUALITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY;
@@ -189,7 +210,8 @@ public class OpcUaSink implements PipeConnector {
       validator.validate(
           CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE::equals,
           String.format(
-              "When the OPC UA sink points to an outer server or sets 'with-quality' to true, the %s or %s must be %s.",
+              DataNodePipeMessages
+                  .OPC_UA_SINK_MODEL_MUST_BE_CLIENT_SERVER_WHEN_OUTER_OR_WITH_QUALITY,
               CONNECTOR_OPC_UA_MODEL_KEY,
               SINK_OPC_UA_MODEL_KEY,
               CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
@@ -243,8 +265,7 @@ public class OpcUaSink implements PipeConnector {
     databaseName = Objects.nonNull(region) ? region.getDatabaseName() : "root.__temp_db";
 
     if (withQuality && PathUtils.isTableModelDatabase(databaseName)) {
-      throw new PipeException(
-          "When the OPC UA sink sets 'with-quality' to true, the table model data is not supported.");
+      throw new PipeException(DataNodePipeMessages.WHEN_THE_OPC_UA_SINK_SETS_WITH);
     }
 
     nodeUrl = parameters.getStringByKeys(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY);
@@ -252,8 +273,7 @@ public class OpcUaSink implements PipeConnector {
       customizeServer(parameters);
     } else {
       if (PathUtils.isTableModelDatabase(databaseName)) {
-        throw new PipeException(
-            "When the OPC UA sink points to an outer server, the table model data is not supported.");
+        throw new PipeException(DataNodePipeMessages.WHEN_THE_OPC_UA_SINK_POINTS_TO);
       }
       customizeClient(parameters);
     }
@@ -268,6 +288,9 @@ public class OpcUaSink implements PipeConnector {
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY, SINK_OPC_UA_HTTPS_BIND_PORT_KEY),
             CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE);
+    final String advertisedHost =
+        parameters.getStringByKeys(
+            CONNECTOR_OPC_UA_ADVERTISED_HOST_KEY, SINK_OPC_UA_ADVERTISED_HOST_KEY);
 
     final String user =
         parameters.getStringOrDefault(
@@ -309,7 +332,7 @@ public class OpcUaSink implements PipeConnector {
             .map(this::getSecurityPolicy)
             .collect(Collectors.toSet());
     if (securityPolicies.isEmpty()) {
-      throw new PipeException("The security policy cannot be empty.");
+      throw new PipeException(DataNodePipeMessages.THE_SECURITY_POLICY_CANNOT_BE_EMPTY);
     }
     final long debounceTimeMs =
         parameters.getLongOrDefault(
@@ -330,6 +353,7 @@ public class OpcUaSink implements PipeConnector {
                             new OpcUaServerBuilder()
                                 .setTcpBindPort(tcpBindPort)
                                 .setHttpsBindPort(httpsBindPort)
+                                .setAdvertisedHost(advertisedHost)
                                 .setUser(user)
                                 .setPassword(password)
                                 .setSecurityDir(securityDir)
@@ -345,6 +369,7 @@ public class OpcUaSink implements PipeConnector {
                         oldValue
                             .getRight()
                             .checkEquals(
+                                advertisedHost,
                                 user,
                                 password,
                                 securityDir,
@@ -356,7 +381,8 @@ public class OpcUaSink implements PipeConnector {
                     } catch (final PipeException e) {
                       throw e;
                     } catch (final Exception e) {
-                      throw new PipeException("Failed to build and startup OpcUaServer", e);
+                      throw new PipeException(
+                          DataNodePipeMessages.FAILED_TO_BUILD_AND_STARTUP_OPCUASERVER, e);
                     }
                   })
               .getRight();
@@ -398,6 +424,12 @@ public class OpcUaSink implements PipeConnector {
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_TIMEOUT_SECONDS_KEY, SINK_OPC_UA_TIMEOUT_SECONDS_KEY),
             CONNECTOR_OPC_UA_TIMEOUT_SECONDS_DEFAULT_VALUE);
+    final boolean allowEndpointRedirect =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY,
+                SINK_OPC_UA_ALLOW_ENDPOINT_REDIRECT_KEY),
+            CONNECTOR_OPC_UA_ALLOW_ENDPOINT_REDIRECT_DEFAULT_VALUE);
 
     synchronized (CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP) {
       client =
@@ -417,11 +449,20 @@ public class OpcUaSink implements PipeConnector {
                                       SINK_OPC_UA_HISTORIZING_KEY),
                                   CONNECTOR_OPC_UA_HISTORIZING_DEFAULT_VALUE));
                       final ClientRunner runner =
-                          new ClientRunner(result, securityDir, password, userName, timeoutSeconds);
+                          new ClientRunner(
+                              result,
+                              securityDir,
+                              password,
+                              userName,
+                              timeoutSeconds,
+                              allowEndpointRedirect);
                       runner.run();
                       return new Pair<>(new AtomicInteger(0), result);
                     }
-                    oldValue.getRight().checkEquals(userName, password, securityDir, policy);
+                    oldValue
+                        .getRight()
+                        .checkEquals(
+                            userName, password, securityDir, policy, allowEndpointRedirect);
                     return oldValue;
                   })
               .getRight();
@@ -444,8 +485,7 @@ public class OpcUaSink implements PipeConnector {
       case CONNECTOR_OPC_UA_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE:
         return SecurityPolicy.Aes256_Sha256_RsaPss;
       default:
-        throw new PipeException(
-            "The security policy can only be 'None', 'Basic128Rsa15', 'Basic256', 'Basic256Sha256', 'Aes128_Sha256_RsaOaep' or 'Aes256_Sha256_RsaPss'.");
+        throw new PipeException(DataNodePipeMessages.THE_SECURITY_POLICY_CAN_ONLY_BE_NONE);
     }
   }
 
@@ -458,7 +498,7 @@ public class OpcUaSink implements PipeConnector {
       case CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE:
         return StatusCode.UNCERTAIN;
       default:
-        throw new PipeException("The default quality can only be 'GOOD', 'BAD' or 'UNCERTAIN'.");
+        throw new PipeException(DataNodePipeMessages.THE_DEFAULT_QUALITY_CAN_ONLY_BE_GOOD);
     }
   }
 
@@ -470,6 +510,156 @@ public class OpcUaSink implements PipeConnector {
   @Override
   public void heartbeat() throws Exception {
     // Server side, do nothing
+  }
+
+  @Override
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    if (!shouldTransferTsFileByMetadata(tsFileInsertionEvent)) {
+      PipeConnector.super.transfer(tsFileInsertionEvent);
+      return;
+    }
+
+    final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+        (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+    boolean delegatedToTabletTransfer = false;
+    try {
+      if (transferTsFileByMetadata(pipeTsFileInsertionEvent)
+          == TsFileTransferResult.FALLBACK_TO_TABLETS) {
+        delegatedToTabletTransfer = true;
+        PipeConnector.super.transfer(tsFileInsertionEvent);
+      }
+    } finally {
+      // PipeConnector.transfer(TsFileInsertionEvent) closes the event itself when it is used as a
+      // fallback. Keep the ownership here for the metadata fast path and exceptional exits.
+      if (!delegatedToTabletTransfer) {
+        tsFileInsertionEvent.close();
+      }
+    }
+  }
+
+  private boolean shouldTransferTsFileByMetadata(final TsFileInsertionEvent tsFileInsertionEvent) {
+    if (!isClientServerModel || !(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      return false;
+    }
+
+    final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+        (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+    // Metadata contains the unfiltered last value. Deletions, path/time filters, and privilege
+    // filtering must use the normal parser so that the sink observes exactly the event payload.
+    return !pipeTsFileInsertionEvent.isWithMod()
+        && !pipeTsFileInsertionEvent.shouldParseTimeOrPattern()
+        && !pipeTsFileInsertionEvent.shouldParse4Privilege();
+  }
+
+  private TsFileTransferResult transferTsFileByMetadata(
+      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent) throws Exception {
+    if (!pipeTsFileInsertionEvent.increaseReferenceCount(OpcUaSink.class.getName())) {
+      return TsFileTransferResult.SKIPPED;
+    }
+
+    try {
+      if (!pipeTsFileInsertionEvent.waitForTsFileClose()) {
+        return TsFileTransferResult.SKIPPED;
+      }
+
+      final Map<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> deviceLastValues;
+      try {
+        deviceLastValues = readLastValues(pipeTsFileInsertionEvent.getTsFile());
+      } catch (final Exception e) {
+        // Keep the parser as a compatibility fallback when the TsFile metadata cannot be read.
+        return TsFileTransferResult.FALLBACK_TO_TABLETS;
+      }
+      if (Objects.isNull(deviceLastValues)) {
+        return TsFileTransferResult.FALLBACK_TO_TABLETS;
+      }
+
+      final boolean isTableModel = pipeTsFileInsertionEvent.isTableModelEvent();
+      if (Objects.nonNull(nameSpace)) {
+        for (final Map.Entry<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> entry :
+            deviceLastValues.entrySet()) {
+          nameSpace.transferLastValues(entry.getKey(), entry.getValue(), isTableModel, this);
+        }
+      } else if (Objects.nonNull(client)) {
+        // Batch all devices into the same OPC UA write so that many-device TsFiles do not incur one
+        // network round trip per device.
+        client.transferLastValues(deviceLastValues, isTableModel, this);
+      } else {
+        throw new PipeException(DataNodePipeMessages.NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED);
+      }
+      return TsFileTransferResult.TRANSFERRED;
+    } finally {
+      pipeTsFileInsertionEvent.decreaseReferenceCount(OpcUaSink.class.getName(), false);
+    }
+  }
+
+  static @Nullable Map<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> readLastValues(
+      final File tsFile) throws Exception {
+    final Map<IDeviceID, Map<String, TSDataType>> deviceToTimeseriesDataTypes =
+        readTimeseriesDataTypes(tsFile);
+    final long expectedTimeseriesCount =
+        deviceToTimeseriesDataTypes.values().stream().mapToLong(Map::size).sum();
+    long actualTimeseriesCount = 0;
+    final Map<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> deviceLastValues =
+        new LinkedHashMap<>();
+    // Disable asynchronous IO here. The sink already runs in a pipe worker and a synchronous
+    // reader avoids leaving a background task behind when the event is cancelled or falls back to
+    // tablet parsing.
+    try (final TsFileLastReader lastReader = new TsFileLastReader(tsFile.getPath(), false, false)) {
+      while (lastReader.hasNext()) {
+        final Pair<IDeviceID, List<Pair<String, TimeValuePair>>> deviceLastValue =
+            lastReader.next();
+        final Map<String, TSDataType> timeseriesDataTypes =
+            deviceToTimeseriesDataTypes.get(deviceLastValue.getLeft());
+        if (Objects.isNull(timeseriesDataTypes)) {
+          return null;
+        }
+
+        final List<Pair<IMeasurementSchema, TimeValuePair>> typedLastValues =
+            deviceLastValues.computeIfAbsent(deviceLastValue.getLeft(), key -> new ArrayList<>());
+        for (final Pair<String, TimeValuePair> lastValue : deviceLastValue.getRight()) {
+          ++actualTimeseriesCount;
+          final TSDataType dataType = timeseriesDataTypes.get(lastValue.getLeft());
+          if (Objects.isNull(dataType)) {
+            return null;
+          }
+          if (!TsFileConstant.TIME_COLUMN_ID.equals(lastValue.getLeft())) {
+            typedLastValues.add(
+                new Pair<>(
+                    new MeasurementSchema(lastValue.getLeft(), dataType), lastValue.getRight()));
+          }
+        }
+      }
+    }
+
+    // TsFileLastReader logs and suppresses IOExceptions from Iterator#hasNext. Comparing against an
+    // independently read metadata count prevents a truncated result from being treated as EOF.
+    if (actualTimeseriesCount != expectedTimeseriesCount) {
+      return null;
+    }
+    return deviceLastValues;
+  }
+
+  private static Map<IDeviceID, Map<String, TSDataType>> readTimeseriesDataTypes(final File tsFile)
+      throws IOException {
+    try (final TsFileSequenceReader sequenceReader = new TsFileSequenceReader(tsFile.getPath())) {
+      final Map<IDeviceID, Map<String, TSDataType>> deviceToTimeseriesDataTypes =
+          new LinkedHashMap<>();
+      for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+          sequenceReader.getAllTimeseriesMetadata(false).entrySet()) {
+        final Map<String, TSDataType> timeseriesDataTypes = new LinkedHashMap<>();
+        for (final TimeseriesMetadata metadata : entry.getValue()) {
+          timeseriesDataTypes.put(metadata.getMeasurementId(), metadata.getTsDataType());
+        }
+        deviceToTimeseriesDataTypes.put(entry.getKey(), timeseriesDataTypes);
+      }
+      return deviceToTimeseriesDataTypes;
+    }
+  }
+
+  private enum TsFileTransferResult {
+    TRANSFERRED,
+    SKIPPED,
+    FALLBACK_TO_TABLETS
   }
 
   @Override
@@ -488,8 +678,7 @@ public class OpcUaSink implements PipeConnector {
           } else if (Objects.nonNull(client)) {
             client.transfer(tablet, this);
           } else {
-            throw new PipeException(
-                "No OPC client or server is specified when transferring tablet");
+            throw new PipeException(DataNodePipeMessages.NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED);
           }
         });
   }
@@ -503,9 +692,8 @@ public class OpcUaSink implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       logger.warn(
-          "This Connector only support "
-              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Ignore {}.",
+          DataNodePipeMessages
+              .THIS_CONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLET,
           tabletInsertionEvent);
       return;
     }

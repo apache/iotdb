@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.i18n.RatisMessages;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.ratis.protocol.RaftGroupId;
@@ -95,7 +96,7 @@ class DiskGuardian {
         this.logFiles = latest;
       } catch (IOException e) {
         // keep the files unchanged
-        logger.warn("{}: Error caught when listing files for {} at {}:", this, gid, e);
+        logger.warn(RatisMessages.ERROR_LISTING_FILES, this, gid, e);
       }
     }
 
@@ -184,14 +185,11 @@ class DiskGuardian {
                 .triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(groupId), false);
             final boolean flagCleared = snapshotFlag.get(groupId).compareAndSet(true, false);
             if (!flagCleared) {
-              logger.info(
-                  "{}: clear snapshot flag failed for group {}, please check the related implementation",
-                  this,
-                  groupId);
+              logger.info(RatisMessages.CLEAR_SNAPSHOT_FLAG_FAILED, this, groupId);
             }
           } catch (ConsensusException e) {
             logger.info(
-                "{} take snapshot failed for group {} due to {}. Disk file status {}",
+                RatisMessages.TAKE_SNAPSHOT_FAILED,
                 this,
                 groupId,
                 e,

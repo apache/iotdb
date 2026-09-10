@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -39,7 +41,9 @@ public class FunctionNullability {
   public FunctionNullability(boolean returnNullable, List<Boolean> argumentNullable) {
     this.returnNullable = returnNullable;
     this.argumentNullable =
-        new ArrayList<>(requireNonNull(argumentNullable, "argumentNullable is null"));
+        new ArrayList<>(
+            requireNonNull(
+                argumentNullable, QueryMessages.EXCEPTION_ARGUMENTNULLABLE_IS_NULL_0CC221D3));
   }
 
   public static FunctionNullability getAggregationFunctionNullability(int argumentsNumber) {

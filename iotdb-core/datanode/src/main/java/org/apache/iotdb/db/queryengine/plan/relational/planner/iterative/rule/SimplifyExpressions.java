@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LiteralEncoder;
@@ -49,8 +50,8 @@ public class SimplifyExpressions extends ExpressionRewriteRuleSet {
       SymbolAllocator symbolAllocator,
       PlannerContext plannerContext,
       IrTypeAnalyzer typeAnalyzer) {
-    requireNonNull(plannerContext, "plannerContext is null");
-    requireNonNull(typeAnalyzer, "typeAnalyzer is null");
+    requireNonNull(plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
+    requireNonNull(typeAnalyzer, DataNodeQueryMessages.EXCEPTION_TYPEANALYZER_IS_NULL_3106B188);
     if (expression instanceof SymbolReference) {
       return expression;
     }
@@ -87,8 +88,8 @@ public class SimplifyExpressions extends ExpressionRewriteRuleSet {
 
   private static ExpressionRewriter createRewrite(
       PlannerContext plannerContext, IrTypeAnalyzer typeAnalyzer) {
-    requireNonNull(plannerContext, "plannerContext is null");
-    requireNonNull(typeAnalyzer, "typeAnalyzer is null");
+    requireNonNull(plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
+    requireNonNull(typeAnalyzer, DataNodeQueryMessages.EXCEPTION_TYPEANALYZER_IS_NULL_3106B188);
 
     return (expression, context) ->
         rewrite(

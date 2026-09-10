@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -71,14 +72,7 @@ public abstract class SubscriptionPipeEventBatch {
   protected synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer)
       throws Exception {
     if (shouldEmit() && !enrichedEvents.isEmpty()) {
-      if (Objects.isNull(events)) {
-        events = generateSubscriptionEvents();
-      }
-      if (Objects.nonNull(events)) {
-        events.forEach(consumer);
-        return true;
-      }
-      return false;
+      return emit(consumer);
     }
     return false;
   }
@@ -96,9 +90,26 @@ public abstract class SubscriptionPipeEventBatch {
       enrichedEvents.add(event);
     } else {
       LOGGER.warn(
-          "SubscriptionPipeEventBatch {} ignore EnrichedEvent {} when batching.", this, event);
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONPIPEEVENTBATCH_IGNORE_ENRICHEDEVENT_WHEN_BATCHING_E69BE90D,
+          this,
+          event);
     }
     return onEvent(consumer);
+  }
+
+  protected synchronized boolean emit(final Consumer<SubscriptionEvent> consumer) throws Exception {
+    if (enrichedEvents.isEmpty()) {
+      return false;
+    }
+    if (Objects.isNull(events)) {
+      events = generateSubscriptionEvents();
+    }
+    if (Objects.nonNull(events)) {
+      events.forEach(consumer);
+      return true;
+    }
+    return false;
   }
 
   /////////////////////////////// utility ///////////////////////////////

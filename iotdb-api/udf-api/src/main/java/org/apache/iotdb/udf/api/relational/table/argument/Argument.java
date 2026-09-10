@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.udf.api.relational.table.argument;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,7 +39,7 @@ public interface Argument {
       case SCALAR_ARGUMENT:
         return ScalarArgument.deserialize(buffer);
       default:
-        throw new IllegalArgumentException("Unknown argument type: " + type);
+        throw new IllegalArgumentException(UdfApiMessages.UNKNOWN_ARGUMENT_TYPE + type);
     }
   }
 

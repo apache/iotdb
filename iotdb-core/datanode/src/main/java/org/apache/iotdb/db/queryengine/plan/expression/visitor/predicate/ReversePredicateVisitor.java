@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
@@ -143,6 +144,6 @@ public class ReversePredicateVisitor extends PredicateVisitor<Expression, Void> 
   @Override
   public Expression visitGroupByTimeExpression(
       GroupByTimeExpression groupByTimeExpression, Void context) {
-    throw new UnsupportedOperationException("GROUP BY TIME cannot be reversed");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.GROUP_BY_TIME_CANNOT_BE_REVERSED);
   }
 }

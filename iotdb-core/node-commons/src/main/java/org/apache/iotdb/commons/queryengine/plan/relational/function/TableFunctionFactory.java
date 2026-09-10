@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
@@ -33,7 +34,7 @@ public class TableFunctionFactory {
     } else if (TableUDFUtils.isTableFunction(functionName)) {
       return TableUDFUtils.getTableFunction(functionName);
     } else {
-      throw new SemanticException("Unknown function: " + functionName);
+      throw new SemanticException(String.format(QueryMessages.UNKNOWN_FUNCTION, functionName));
     }
   }
 }

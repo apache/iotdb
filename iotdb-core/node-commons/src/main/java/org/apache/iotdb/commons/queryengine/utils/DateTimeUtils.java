@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.queryengine.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.TimeDuration;
@@ -70,9 +71,7 @@ public class DateTimeUtils {
       }
     } catch (ArithmeticException e) {
       throw new IoTDBRuntimeException(
-          String.format(
-              "Timestamp overflow, Millisecond: %s , Timestamp precision: %s",
-              millis, timestampPrecision),
+          String.format(QueryMessages.TIMESTAMP_OVERFLOW, millis, timestampPrecision),
           NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
           true);
     }
@@ -112,21 +111,21 @@ public class DateTimeUtils {
 
   public static Function<Long, Long> getExtractTimestampMsPartFunction() {
     if (extractTimestampMsPart == null) {
-      throw new IllegalArgumentException("ExtractTimestampMsPart is null");
+      throw new IllegalArgumentException(QueryMessages.EXTRACT_TIMESTAMP_MS_PART_NULL);
     }
     return extractTimestampMsPart;
   }
 
   public static Function<Long, Long> getExtractTimestampUsPartFunction() {
     if (extractTimestampUsPart == null) {
-      throw new IllegalArgumentException("ExtractTimestampUsPart is null");
+      throw new IllegalArgumentException(QueryMessages.EXTRACT_TIMESTAMP_US_PART_NULL);
     }
     return extractTimestampUsPart;
   }
 
   public static Function<Long, Long> getExtractTimestampNsPartFunction() {
     if (extractTimestampNsPart == null) {
-      throw new IllegalArgumentException("ExtractTimestampNsPart is null");
+      throw new IllegalArgumentException(QueryMessages.EXTRACT_TIMESTAMP_NS_PART_NULL);
     }
     return extractTimestampNsPart;
   }
@@ -586,10 +585,7 @@ public class DateTimeUtils {
       String str, ZoneOffset offset, int depth, String timestampPrecision) {
     if (depth >= 2) {
       throw new DateTimeException(
-          String.format(
-              "Failed to convert %s to millisecond, zone offset is %s, "
-                  + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00",
-              str, offset));
+          String.format(QueryMessages.DATETIME_CONVERT_FAILED, str, offset));
     }
     if (str.contains("Z")) {
       return convertDatetimeStrToLong(
@@ -601,10 +597,7 @@ public class DateTimeUtils {
       return convertDatetimeStrToLong(str + offset, offset, depth + 1, timestampPrecision);
     } else if (str.contains("[") || str.contains("]")) {
       throw new DateTimeException(
-          String.format(
-              "%s with [time-region] at end is not supported now, "
-                  + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00",
-              str));
+          String.format(QueryMessages.DATETIME_TIME_REGION_NOT_SUPPORTED, str));
     }
     return getInstantWithPrecision(str, timestampPrecision);
   }
@@ -714,7 +707,7 @@ public class DateTimeUtils {
       case "nanosecond":
         return TimeUnit.NANOSECONDS;
       default:
-        throw new IllegalArgumentException("time precision must be one of: h,m,s,ms,u,n");
+        throw new IllegalArgumentException(QueryMessages.TIME_PRECISION_MUST_BE_ONE_OF);
     }
   }
 

@@ -31,6 +31,8 @@ import java.util.Objects;
 public class DropPipePlanV2 extends ConfigPhysicalPlan {
 
   private String pipeName;
+  private boolean isTableModel;
+  private boolean isTableModelSet;
 
   public DropPipePlanV2() {
     super(ConfigPhysicalPlanType.DropPipeV2);
@@ -41,19 +43,51 @@ public class DropPipePlanV2 extends ConfigPhysicalPlan {
     this.pipeName = pipeName;
   }
 
+  public DropPipePlanV2(String pipeName, boolean isTableModel) {
+    super(ConfigPhysicalPlanType.DropPipeV2);
+    this.pipeName = pipeName;
+    this.isTableModel = isTableModel;
+    this.isTableModelSet = true;
+  }
+
   public String getPipeName() {
     return pipeName;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public boolean isTableModelSet() {
+    return isTableModelSet;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     BasicStructureSerDeUtil.write(pipeName, stream);
+    if (isTableModelSet) {
+      stream.writeBoolean(isTableModel);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeName = BasicStructureSerDeUtil.readString(buffer);
+    deserializeIsTableModel(buffer.hasRemaining(), buffer);
+  }
+
+  void deserializeImpl(final ByteBuffer buffer, final boolean isLastSubPlan) throws IOException {
+    pipeName = BasicStructureSerDeUtil.readString(buffer);
+    deserializeIsTableModel(
+        OperateMultiplePipesPlanV2.hasTrailingFieldInSubPlan(buffer, isLastSubPlan), buffer);
+  }
+
+  private void deserializeIsTableModel(final boolean hasIsTableModel, final ByteBuffer buffer) {
+    isTableModelSet = hasIsTableModel;
+    if (hasIsTableModel) {
+      isTableModel = buffer.get() != 0;
+    }
   }
 
   @Override
@@ -65,16 +99,18 @@ public class DropPipePlanV2 extends ConfigPhysicalPlan {
       return false;
     }
     DropPipePlanV2 that = (DropPipePlanV2) obj;
-    return pipeName.equals(that.pipeName);
+    return isTableModel == that.isTableModel
+        && isTableModelSet == that.isTableModelSet
+        && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName);
+    return Objects.hash(pipeName, isTableModel, isTableModelSet);
   }
 
   @Override
   public String toString() {
-    return "DropPipePlanV2{" + "pipeName='" + pipeName + "'}";
+    return "DropPipePlanV2{" + "pipeName='" + pipeName + "', isTableModel=" + isTableModel + "'}";
   }
 }

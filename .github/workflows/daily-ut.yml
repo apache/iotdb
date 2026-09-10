@@ -13,6 +13,7 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
   MAVEN_ARGS: --batch-mode --no-transfer-progress
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+  JDK_VERSION: 17
 
 jobs:
   unit-test:
@@ -20,25 +21,17 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [8]
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         it_task: ["others", "datanode"]
-        include:
-          - java: 17
-            os: macos-latest
-            it_task: "datanode"
-          - java: 17
-            os: macos-latest
-            it_task: "others"
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v5
-      - name: Set up JDK ${{ matrix.java }}
+      - name: Set up JDK ${{ env.JDK_VERSION }}
         uses: actions/setup-java@v5
         with:
           distribution: corretto
-          java-version: ${{ matrix.java }}
+          java-version: ${{ env.JDK_VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages

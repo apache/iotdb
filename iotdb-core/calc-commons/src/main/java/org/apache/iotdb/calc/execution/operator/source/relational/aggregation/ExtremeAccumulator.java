@@ -247,13 +247,9 @@ public class ExtremeAccumulator implements TableAccumulator {
   }
 
   private void updateIntResult(int val) {
-    int absExtVal = Math.abs(val);
     int candidateResult = extremeResult.getInt();
-    int absCandidateResult = Math.abs(extremeResult.getInt());
 
-    if (!initResult
-        || (absExtVal > absCandidateResult)
-        || (absExtVal == absCandidateResult) && val > candidateResult) {
+    if (!initResult || compareExtreme(val, candidateResult) > 0) {
       initResult = true;
       extremeResult.setInt(val);
     }
@@ -281,13 +277,9 @@ public class ExtremeAccumulator implements TableAccumulator {
   }
 
   private void updateLongResult(long val) {
-    long absExtVal = Math.abs(val);
     long candidateResult = extremeResult.getLong();
-    long absCandidateResult = Math.abs(extremeResult.getLong());
 
-    if (!initResult
-        || (absExtVal > absCandidateResult)
-        || (absExtVal == absCandidateResult) && val > candidateResult) {
+    if (!initResult || compareExtreme(val, candidateResult) > 0) {
       initResult = true;
       extremeResult.setLong(val);
     }
@@ -359,5 +351,25 @@ public class ExtremeAccumulator implements TableAccumulator {
       initResult = true;
       extremeResult.setDouble(val);
     }
+  }
+
+  private int compareExtreme(int left, int right) {
+    int absComparison = Long.compare(Math.abs((long) left), Math.abs((long) right));
+    return absComparison == 0 ? Integer.compare(left, right) : absComparison;
+  }
+
+  private int compareExtreme(long left, long right) {
+    int absComparison = compareAbs(left, right);
+    return absComparison == 0 ? Long.compare(left, right) : absComparison;
+  }
+
+  private int compareAbs(long left, long right) {
+    if (left == Long.MIN_VALUE) {
+      return right == Long.MIN_VALUE ? 0 : 1;
+    }
+    if (right == Long.MIN_VALUE) {
+      return -1;
+    }
+    return Long.compare(Math.abs(left), Math.abs(right));
   }
 }

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -59,7 +61,8 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
         || insertNode instanceof InsertRowsNode)) {
       throw new UnsupportedOperationException(
           String.format(
-              "Unknown InsertNode type %s when constructing statement from insert node.",
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_UNKNOWN_INSERTNODE_TYPE_S_WHEN_CONSTRUCTING_STATEMENT_FROM_4A055174,
               insertNode));
     }
 
@@ -72,14 +75,18 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
       return statement;
     }
 
-    // Table model
-    statement.setWriteToTable(true);
+    final boolean isTableModel = PathUtils.isTableModelDatabase(dataBaseName);
+    if (isTableModel) {
+      statement.setWriteToTable(true);
+    }
     if (statement instanceof InsertRowsStatement) {
       List<InsertRowStatement> rowStatements =
           ((InsertRowsStatement) statement).getInsertRowStatementList();
       if (rowStatements != null && !rowStatements.isEmpty()) {
         for (InsertRowStatement insertRowStatement : rowStatements) {
-          insertRowStatement.setWriteToTable(true);
+          if (isTableModel) {
+            insertRowStatement.setWriteToTable(true);
+          }
           insertRowStatement.setDatabaseName(dataBaseName);
         }
       }
@@ -113,7 +120,8 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
 
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_INSERT_NODE_V2.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateSerializedSize(insertNode, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       insertNode.serialize(outputStream);
       ReadWriteIOUtils.write(req.dataBaseName, outputStream);
@@ -143,7 +151,8 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
 
   public static byte[] toTPipeTransferBytes(final InsertNode insertNode, final String dataBaseName)
       throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateAirGapSerializedSize(insertNode, dataBaseName));
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(
@@ -152,6 +161,16 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
       ReadWriteIOUtils.write(dataBaseName, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
+  }
+
+  static int calculateSerializedSize(final InsertNode insertNode, final String dataBaseName) {
+    return PipeTransferTabletInsertNodeReq.calculateSerializedSize(insertNode)
+        + ReadWriteIOUtils.sizeToWrite(dataBaseName);
+  }
+
+  static int calculateAirGapSerializedSize(final InsertNode insertNode, final String dataBaseName) {
+    return PipeTransferTabletInsertNodeReq.calculateAirGapSerializedSize(
+        calculateSerializedSize(insertNode, dataBaseName));
   }
 
   /////////////////////////////// Object ///////////////////////////////

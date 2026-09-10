@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind;
@@ -46,11 +47,15 @@ public class ResolvedFunction {
       FunctionKind functionKind,
       boolean deterministic,
       FunctionNullability functionNullability) {
-    this.signature = requireNonNull(signature, "signature is null");
-    this.functionId = requireNonNull(functionId, "functionId is null");
-    this.functionKind = requireNonNull(functionKind, "functionKind is null");
+    this.signature = requireNonNull(signature, QueryMessages.EXCEPTION_SIGNATURE_IS_NULL_CA3D8772);
+    this.functionId =
+        requireNonNull(functionId, QueryMessages.EXCEPTION_FUNCTIONID_IS_NULL_F91F8E89);
+    this.functionKind =
+        requireNonNull(functionKind, QueryMessages.EXCEPTION_FUNCTIONKIND_IS_NULL_EDF86E36);
     this.deterministic = deterministic;
-    this.functionNullability = requireNonNull(functionNullability, "functionNullability is null");
+    this.functionNullability =
+        requireNonNull(
+            functionNullability, QueryMessages.EXCEPTION_FUNCTIONNULLABILITY_IS_NULL_6EF52FB4);
   }
 
   public BoundSignature getSignature() {

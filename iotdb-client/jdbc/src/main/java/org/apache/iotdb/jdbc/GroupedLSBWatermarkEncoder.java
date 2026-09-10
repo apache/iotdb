@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
+
 import org.apache.thrift.EncodingUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
@@ -52,7 +54,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     try {
       md = MessageDigest.getInstance("MD5");
     } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("ERROR: Cannot find MD5 algorithm!");
+      throw new RuntimeException(JdbcMessages.CANNOT_FIND_MD5);
     }
     md.update(val.getBytes());
     BigInteger resultInteger = new BigInteger(1, md.digest());
@@ -69,7 +71,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
 
   private int getBitPosition(long timestamp) {
     if (maxBitPosition <= minBitPosition) {
-      throw new RuntimeException("Error: minBitPosition is bigger than maxBitPosition");
+      throw new RuntimeException(JdbcMessages.MIN_BIT_BIGGER_THAN_MAX);
     }
     int range = maxBitPosition - minBitPosition;
     return minBitPosition

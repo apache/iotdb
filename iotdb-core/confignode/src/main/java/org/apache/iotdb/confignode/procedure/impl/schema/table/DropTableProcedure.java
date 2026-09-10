@@ -25,13 +25,17 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
@@ -66,10 +70,9 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     super(database, tableName, queryId, isGeneratedByPipe);
   }
 
-  // Not used
   @Override
   protected String getActionMessage() {
-    return null;
+    return "drop table";
   }
 
   @Override
@@ -79,34 +82,47 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     try {
       switch (state) {
         case CHECK_AND_INVALIDATE_TABLE:
-          LOGGER.info("Check and invalidate table {}.{} when dropping table", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.CHECK_AND_INVALIDATE_TABLE_WHEN_DROPPING_TABLE,
+              database,
+              tableName);
           checkAndPreDeleteTable(env);
           break;
-        case INVALIDATE_CACHE:
+        case PRE_DELETE:
           LOGGER.info(
-              "Invalidating cache for table {}.{} when dropping table", database, tableName);
-          invalidateCache(env);
+              ProcedureMessages.PRE_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE, database, tableName);
+          preDelete(env);
           break;
         case DELETE_DATA:
-          LOGGER.info("Deleting data for table {}.{}", database, tableName);
+          LOGGER.info(ProcedureMessages.DELETING_DATA_FOR_TABLE, database, tableName);
           deleteData(env);
           break;
         case DELETE_DEVICES:
-          LOGGER.info("Deleting devices for table {}.{} when dropping table", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.DELETING_DEVICES_FOR_TABLE_WHEN_DROPPING_TABLE,
+              database,
+              tableName);
           deleteSchema(env);
           break;
         case DROP_TABLE:
-          LOGGER.info("Dropping table {}.{} on configNode", database, tableName);
+          LOGGER.info(ProcedureMessages.DROPPING_TABLE_ON_CONFIGNODE, database, tableName);
           dropTable(env);
+          break;
+        case COMMIT_DELETE:
+          LOGGER.info(
+              ProcedureMessages.COMMIT_RELEASE_DELETE_TABLE_WHEN_DROPPING_TABLE,
+              database,
+              tableName);
+          commitRelease(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized DropTableState " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_DROPTABLESTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DropTable-{}.{}-{} costs {}ms",
+          ProcedureMessages.DROPTABLE_COSTS_MS,
           database,
           tableName,
           state,
@@ -123,34 +139,41 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
             env,
             LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setNextState(DropTableState.INVALIDATE_CACHE);
+      setNextState(DropTableState.PRE_DELETE);
+      table = new PreDeleteTsTable(tableName);
     } else {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
-  private void invalidateCache(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateTableCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_TABLE_CACHE,
-            new TInvalidateTableCacheReq(database, tableName),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
-      // All dataNodes must clear the related schemaEngine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaEngine cache of table {}.{}", database, tableName);
-        setFailure(
-            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
-        return;
-      }
-    }
+  private void preDelete(final ConfigNodeProcedureEnv env) {
+    TInvalidateTableCacheReq req = new TInvalidateTableCacheReq(database, tableName);
+    final boolean proceeded =
+        new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
+            .propagate(targets -> broadCastInvalidateCache(req, targets));
 
+    if (!proceeded) {
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE, database, tableName);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
+      return;
+    }
     setNextState(
         this instanceof DropViewProcedure ? DropTableState.DROP_TABLE : DropTableState.DELETE_DATA);
+  }
+
+  private Map<Integer, TSStatus> broadCastInvalidateCache(
+      final TInvalidateTableCacheReq req, final Map<Integer, TDataNodeLocation> targets) {
+    final DataNodeAsyncRequestContext<TInvalidateTableCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.PRE_DELETE_TABLE, req, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(
+            clientHandler,
+            ClusterCachePropagator.BROADCAST_RPC_RETRY,
+            ClusterCachePropagator.BROADCAST_RPC_TIMEOUT_MS);
+    return clientHandler.getResponseMap();
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
@@ -202,19 +225,29 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
+    } else {
+      setNextState(DropTableState.COMMIT_DELETE);
     }
   }
 
   @Override
   protected boolean isRollbackSupported(final DropTableState state) {
-    return false;
+    return state == DropTableState.CHECK_AND_INVALIDATE_TABLE || state == DropTableState.PRE_DELETE;
   }
 
   @Override
-  protected void rollbackState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv, final DropTableState dropTableState)
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final DropTableState state)
       throws IOException, InterruptedException, ProcedureException {
-    // Do nothing
+    if (state == DropTableState.PRE_DELETE) {
+      final TSStatus status =
+          SchemaUtils.executeInConsensusLayer(
+              new RollbackPreDeleteTablePlan(database, tableName), env, LOGGER);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new ProcedureException(
+            String.format(ProcedureMessages.ROLLBACK_PRE_DELETE_TABLE_FAILED, database, tableName));
+      }
+    }
+    // CHECK_AND_INVALIDATE_TABLE: consensus plan failed so no state changed, nothing to revert
   }
 
   @Override

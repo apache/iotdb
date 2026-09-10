@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -85,7 +86,9 @@ public class CountIfAccumulator implements Accumulator {
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of count_if should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_COUNT_IF_SHOULD_BE_1_70D01652);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -108,7 +111,9 @@ public class CountIfAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of count_if should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_COUNT_IF_SHOULD_BE_1_70D01652);
     // judge whether the last data point segment need to count
     if (lastPointIsSatisfy && keepEvaluator.apply(keep)) {
       countValue++;

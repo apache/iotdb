@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +45,7 @@ public abstract class StoppableThread extends Thread {
         }
       }
     } catch (InterruptedException e) {
-      LOG.warn("{} join wait got interrupted", getName(), e);
+      LOG.warn(ProcedureMessages.LOG_ARG_JOIN_WAIT_GOT_INTERRUPTED_316B5E9F, getName(), e);
       Thread.currentThread().interrupt();
     }
   }

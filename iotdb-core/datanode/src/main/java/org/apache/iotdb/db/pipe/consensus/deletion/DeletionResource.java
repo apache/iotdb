@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteNodeType;
@@ -76,7 +77,7 @@ public class DeletionResource implements PersistentResource {
   }
 
   public void removeSelf() {
-    LOGGER.info("DeletionResource {} has been released, trigger a remove of DAL...", this);
+    LOGGER.info(DataNodePipeMessages.DELETIONRESOURCE_HAS_BEEN_RELEASED_TRIGGER_A_REMOVE, this);
     removeHook.accept(this);
   }
 
@@ -103,7 +104,7 @@ public class DeletionResource implements PersistentResource {
       try {
         this.wait();
       } catch (InterruptedException e) {
-        LOGGER.warn("Interrupted when waiting for result.", e);
+        LOGGER.warn(DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_RESULT, e);
         Thread.currentThread().interrupt();
         currentStatus = Status.FAILURE;
         break;

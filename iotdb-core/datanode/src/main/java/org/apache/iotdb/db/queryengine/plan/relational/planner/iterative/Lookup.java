@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -64,7 +65,7 @@ public interface Lookup {
     return node -> {
       checkArgument(
           node instanceof GroupReference,
-          "Node '%s' is not a GroupReference",
+          DataNodeQueryMessages.EXCEPTION_NODE_QUOTE_ARG_QUOTE_IS_NOT_A_GROUPREFERENCE_73C8C127,
           node.getClass().getSimpleName());
       return resolver.apply((GroupReference) node);
     };

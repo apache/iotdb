@@ -20,16 +20,20 @@
 package org.apache.iotdb.db.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.junit.After;
@@ -38,6 +42,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -73,10 +78,10 @@ public class PipeDataNodePluginAgentTest {
       String pluginPath =
           PipePluginExecutableManager.getInstance()
               .getPluginsDirPath(PIPE_PLUGIN_META.getPluginName());
-      Files.deleteIfExists(Paths.get(pluginPath));
-      Files.deleteIfExists(Paths.get(PipePluginExecutableManager.getInstance().getInstallDir()));
-      Files.deleteIfExists(Paths.get(TMP_TEMP_LIB_ROOT_DIR));
-      Files.deleteIfExists(Paths.get(TMP_LIB_ROOT_DIR));
+      EnvironmentUtils.cleanDir(pluginPath);
+      EnvironmentUtils.cleanDir(PipePluginExecutableManager.getInstance().getInstallDir());
+      EnvironmentUtils.cleanDir(TMP_TEMP_LIB_ROOT_DIR);
+      EnvironmentUtils.cleanDir(TMP_LIB_ROOT_DIR);
     } catch (IOException e) {
       Assert.fail();
     }
@@ -149,6 +154,21 @@ public class PipeDataNodePluginAgentTest {
                     }))
             .getClass());
     Assert.assertEquals(
+        IoTDBDataRegionAsyncSink.class,
+        agent.dataRegion().reflectSink(new PipeParameters(new HashMap<>())).getClass());
+    Assert.assertEquals(
+        IoTDBDataRegionSyncSink.class,
+        agent
+            .dataRegion()
+            .reflectSink(
+                new PipeParameters(
+                    new HashMap<String, String>() {
+                      {
+                        put(PipeSinkConstant.CONNECTOR_SERIALIZE_BY_REGION_KEY, "true");
+                      }
+                    }))
+            .getClass());
+    Assert.assertEquals(
         IoTConsensusV2AsyncSink.class,
         agent
             .dataRegion()
@@ -162,5 +182,26 @@ public class PipeDataNodePluginAgentTest {
                       }
                     }))
             .getClass());
+  }
+
+  @Test
+  public void testPluginLoadFailureIsRecordedForShowPipePlugins() throws Exception {
+    final PipeDataNodePluginAgent agent = new PipeDataNodePluginAgent();
+    final PipePluginMeta plugin =
+        new PipePluginMeta("failed", "test.class", false, "failed.jar", "test-md5");
+
+    agent.markPluginLoadFailure(plugin, new IOException("missing jar"));
+
+    final Field metaKeeperField =
+        PipeDataNodePluginAgent.class.getDeclaredField("pipePluginMetaKeeper");
+    metaKeeperField.setAccessible(true);
+    final DataNodePipePluginMetaKeeper metaKeeper =
+        (DataNodePipePluginMetaKeeper) metaKeeperField.get(agent);
+    final PipePluginMeta recordedPlugin = metaKeeper.getPipePluginMeta("FAILED");
+
+    Assert.assertEquals(
+        "IOException: missing jar", recordedPlugin.getPluginLoadingExceptionMessage());
+    Assert.assertEquals(
+        Visibility.BOTH, metaKeeper.getPipePluginNameToVisibilityMap().get("FAILED"));
   }
 }

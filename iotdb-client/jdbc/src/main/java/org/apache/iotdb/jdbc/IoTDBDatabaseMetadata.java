@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -239,7 +240,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
       sqlKeywordsThatArentSQL92 = keywordBuf.toString();
 
     } catch (Exception e) {
-      LOGGER.error("Error when initializing SQL keywords: ", e);
+      LOGGER.error(JdbcMessages.INIT_SQL_KEYWORDS_ERROR, e);
       throw new RuntimeException(e);
     }
   }
@@ -294,7 +295,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
         }
         sql = sql + "." + tableNamePattern;
       }
-      LOGGER.info("Get tables: sql: {}", sql);
+      LOGGER.info(JdbcMessages.GET_TABLES_SQL, sql);
       try (ResultSet rs = stmt.executeQuery(sql)) {
         Field[] fields = new Field[10];
         fields[0] = new Field("", TABLE_CAT, "TEXT");
@@ -618,7 +619,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
     try {
       tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
-      LOGGER.error("Get primary keys error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_PRIMARY_KEYS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -664,7 +665,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
     try {
       return getMetadataInJsonFunc();
     } catch (IoTDBSQLException e) {
-      LOGGER.error("Failed to fetch metadata in json because: ", e);
+      LOGGER.error(JdbcMessages.FAILED_TO_FETCH_METADATA_JSON, e);
     } catch (TException e) {
       boolean flag = connection.reconnect();
       this.client = connection.getClient();
@@ -673,17 +674,17 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
           return getMetadataInJsonFunc();
         } catch (TException e2) {
           LOGGER.error(
-              "Fail to get all timeseries "
-                  + "info after reconnecting."
-                  + " please check server status",
+              JdbcMessages.LOG_FAIL_GET_ALL_TIMESERIES_2A802516
+                  + JdbcMessages.LOG_INFO_AFTER_RECONNECTING_7E70A784
+                  + JdbcMessages.LOG_PLEASE_CHECK_SERVER_STATUS_2049BB22,
               e2);
         } catch (IoTDBSQLException e1) {
           // ignored
         }
       } else {
         LOGGER.error(
-            "Fail to reconnect to server "
-                + "when getting all timeseries info. please check server status");
+            JdbcMessages.LOG_FAIL_RECONNECT_SERVER_AC4C86AB
+                + JdbcMessages.LOG_GETTING_ALL_TIMESERIES_INFO_PLEASE_CHECK_SERVER_STATUS_009B5EFE);
       }
     }
     return "";
@@ -703,13 +704,14 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
           return getMetadataInJsonFunc();
         } catch (TException e2) {
           throw new SQLException(
-              "Failed to fetch all metadata in json "
-                  + "after reconnecting. Please check the server status.");
+              JdbcMessages.EXCEPTION_FAILED_FETCH_ALL_METADATA_JSON_5FB95E70
+                  + JdbcMessages.EXCEPTION_AFTER_RECONNECTING_PLEASE_CHECK_SERVER_STATUS_DE1D65AC);
         }
       } else {
         throw new SQLException(
-            "Failed to reconnect to the server "
-                + "when fetching all metadata in json. Please check the server status.");
+            JdbcMessages.EXCEPTION_FAILED_RECONNECT_SERVER_632A4B76
+                + JdbcMessages
+                    .EXCEPTION_FETCHING_ALL_METADATA_JSON_PLEASE_CHECK_SERVER_STATUS_1A0813B2);
       }
     }
   }

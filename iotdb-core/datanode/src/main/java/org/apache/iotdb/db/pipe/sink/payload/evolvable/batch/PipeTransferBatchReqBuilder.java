@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeCacheLeaderClientManager;
@@ -38,10 +40,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_FORMAT_KEY;
@@ -65,6 +67,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferBatchReqBuilder.class);
 
+  private final boolean usingTsFileBatch;
   private final boolean useLeaderCache;
 
   private final int requestMaxDelayInMs;
@@ -79,15 +82,14 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   // If the leader cache is disabled (or unable to find the endpoint of event in the leader cache),
   // the event will be stored in the default batch.
-  private final PipeTabletEventBatch defaultBatch;
+  private PipeTabletEventBatch defaultBatch;
   // If the leader cache is enabled, the batch will be divided by the leader endpoint,
   // each endpoint has a batch.
   // This is only used in plain batch since tsfile does not return redirection info.
-  private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch =
-      new ConcurrentHashMap<>();
+  private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch = new HashMap<>();
 
   public PipeTransferBatchReqBuilder(final PipeParameters parameters) {
-    final boolean usingTsFileBatch =
+    usingTsFileBatch =
         parameters
             .getStringOrDefault(
                 Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY), CONNECTOR_FORMAT_HYBRID_VALUE)
@@ -120,12 +122,20 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
             usingTsFileBatch
                 ? CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE
                 : CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE);
-    this.defaultBatch =
-        usingTsFileBatch
-            ? new PipeTabletEventTsFileBatch(
-                requestMaxDelayInMs, requestMaxBatchSizeInBytes, this::recordTsFileMetric)
-            : new PipeTabletEventPlainBatch(
-                requestMaxDelayInMs, requestMaxBatchSizeInBytes, this::recordTabletMetric);
+    this.defaultBatch = createDefaultBatch();
+  }
+
+  private PipeTabletEventBatch createDefaultBatch() {
+    return usingTsFileBatch
+        ? new PipeTabletEventTsFileBatch(
+            requestMaxDelayInMs, requestMaxBatchSizeInBytes, this::recordTsFileMetric)
+        : new PipeTabletEventPlainBatch(
+            requestMaxDelayInMs, requestMaxBatchSizeInBytes, this::recordTabletMetric);
+  }
+
+  private PipeTabletEventPlainBatch createLeaderCacheBatch() {
+    return new PipeTabletEventPlainBatch(
+        requestMaxDelayInMs, requestMaxBatchSizeInBytes, this::recordTabletMetric);
   }
 
   /**
@@ -138,7 +148,9 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
       throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       LOGGER.warn(
-          "Unsupported event {} type {} when building transfer request", event, event.getClass());
+          DataNodePipeMessages.UNSUPPORTED_EVENT_TYPE_WHEN_BUILDING_TRANSFER_REQUEST,
+          event,
+          event.getClass());
       return;
     }
 
@@ -178,38 +190,121 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>>
       getAllNonEmptyAndShouldEmitBatches() {
     final List<Pair<TEndPoint, PipeTabletEventBatch>> nonEmptyAndShouldEmitBatches =
-        new ArrayList<>();
+        new ArrayList<>(endPointToBatch.size() + 1);
     if (!defaultBatch.isEmpty() && defaultBatch.shouldEmit()) {
       nonEmptyAndShouldEmitBatches.add(new Pair<>(null, defaultBatch));
     }
-    endPointToBatch.forEach(
-        (endPoint, batch) -> {
-          if (!batch.isEmpty() && batch.shouldEmit()) {
-            nonEmptyAndShouldEmitBatches.add(new Pair<>(endPoint, batch));
-          }
-        });
+    for (final Map.Entry<TEndPoint, PipeTabletEventPlainBatch> entry : endPointToBatch.entrySet()) {
+      final PipeTabletEventPlainBatch batch = entry.getValue();
+      if (!batch.isEmpty() && batch.shouldEmit()) {
+        nonEmptyAndShouldEmitBatches.add(new Pair<>(entry.getKey(), batch));
+      }
+    }
     return nonEmptyAndShouldEmitBatches;
   }
 
-  public boolean isEmpty() {
-    return defaultBatch.isEmpty()
-        && endPointToBatch.values().stream().allMatch(PipeTabletEventPlainBatch::isEmpty);
-  }
+  /**
+   * Atomically detaches every batch that is ready to emit.
+   *
+   * <p>The detached batches are immutable from the builder's point of view: subsequent events are
+   * appended to fresh batches. This is required for asynchronous sinks, whose completion callback
+   * may clear a batch after another sink thread has already appended a new event to it.
+   */
+  public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>>
+      getAllNonEmptyAndShouldEmitBatchesAndDetach() {
+    final List<Pair<TEndPoint, PipeTabletEventBatch>> batches =
+        new ArrayList<>(endPointToBatch.size() + 1);
+    if (!defaultBatch.isEmpty() && defaultBatch.shouldEmit()) {
+      batches.add(new Pair<>(null, defaultBatch));
+    }
 
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
-    defaultBatch.discardEventsOfPipe(pipeNameToDrop, regionId);
-    endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(pipeNameToDrop, regionId));
-  }
+    for (final Map.Entry<TEndPoint, PipeTabletEventPlainBatch> entry : endPointToBatch.entrySet()) {
+      final PipeTabletEventPlainBatch batch = entry.getValue();
+      if (!batch.isEmpty() && batch.shouldEmit()) {
+        batches.add(new Pair<>(entry.getKey(), batch));
+      }
+    }
 
-  public int size() {
+    // Construct all replacement batches before changing the builder mappings. If construction of
+    // one replacement fails (for example while creating a TsFile batch directory), the old
+    // batches remain owned by this builder and can still be retried or closed by the caller.
+    final List<PipeTabletEventBatch> replacements = new ArrayList<>(batches.size());
     try {
-      return defaultBatch.events.size()
-          + endPointToBatch.values().stream()
-              .map(batch -> batch.events.size())
-              .reduce(0, Integer::sum);
+      for (final Pair<TEndPoint, PipeTabletEventBatch> batch : batches) {
+        replacements.add(batch.getLeft() == null ? createDefaultBatch() : createLeaderCacheBatch());
+      }
+    } catch (final RuntimeException | Error e) {
+      replacements.forEach(
+          replacement -> {
+            try {
+              replacement.close();
+            } catch (final RuntimeException | Error closeException) {
+              e.addSuppressed(closeException);
+            }
+          });
+      throw e;
+    }
+
+    for (int i = 0; i < batches.size(); ++i) {
+      final Pair<TEndPoint, PipeTabletEventBatch> batch = batches.get(i);
+      if (batch.getLeft() == null) {
+        defaultBatch = replacements.get(i);
+      } else {
+        endPointToBatch.put(batch.getLeft(), (PipeTabletEventPlainBatch) replacements.get(i));
+      }
+    }
+    return batches;
+  }
+
+  public synchronized boolean isEmpty() {
+    if (!defaultBatch.isEmpty()) {
+      return false;
+    }
+    for (final PipeTabletEventPlainBatch batch : endPointToBatch.values()) {
+      if (!batch.isEmpty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Returns whether a specific event is still retained by one of the current batches. */
+  public synchronized boolean containsEvent(final Event event) {
+    for (final EnrichedEvent batchedEvent : defaultBatch.events) {
+      if (batchedEvent == event) {
+        return true;
+      }
+    }
+    for (final PipeTabletEventPlainBatch batch : endPointToBatch.values()) {
+      for (final EnrichedEvent batchedEvent : batch.events) {
+        if (batchedEvent == event) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    defaultBatch.discardEventsOfPipe(committerKey);
+    endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(committerKey));
+  }
+
+  public synchronized int size() {
+    try {
+      int size = defaultBatch.events.size();
+      for (final PipeTabletEventPlainBatch batch : endPointToBatch.values()) {
+        size += batch.events.size();
+      }
+      return size;
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to get the size of PipeTransferBatchReqBuilder, return 0. Exception: {}",
+          DataNodePipeMessages.FAILED_TO_GET_THE_SIZE_OF_PIPETRANSFERBATCHREQBUILDER,
           e.getMessage(),
           e);
       return 0;

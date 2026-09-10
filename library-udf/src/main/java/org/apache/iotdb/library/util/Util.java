@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
@@ -37,7 +38,7 @@ public class Util {
   public static final String MS_PRECISION = "ms";
 
   private Util() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(LibraryUdfMessages.UTILITY_CLASS);
   }
 
   /**
@@ -74,7 +75,7 @@ public class Util {
           throw new NoNumberException();
       }
     } catch (IOException e) {
-      throw new IOException("Fail to get data type in row " + row.getTime(), e);
+      throw new IOException(LibraryUdfMessages.FAIL_TO_GET_DATA_TYPE_IN_ROW + row.getTime(), e);
     }
     return ans;
   }
@@ -313,7 +314,8 @@ public class Util {
     if (timestampPrecision.equals("ms")) {
       if (s.endsWith("ns") || s.endsWith("us")) {
         throw new IllegalArgumentException(
-            "The provided time precision is higher than the system's time precision (ms). Please check your input.");
+            LibraryUdfMessages
+                .EXCEPTION_THE_PROVIDED_TIME_PRECISION_IS_HIGHER_THAN_THE_SYSTEM_S_TIME_PRECISION_MS_PLEASE_CHECK_YOUR_INPUT_92667537);
       } else if (s.endsWith("ms")) {
         unit = 1;
         s = s.substring(0, s.length() - 2);
@@ -333,7 +335,8 @@ public class Util {
     } else if (timestampPrecision.equals("us")) {
       if (s.endsWith("ns")) {
         throw new IllegalArgumentException(
-            "The provided time precision is higher than the system's time precision (us). Please check your input.");
+            LibraryUdfMessages
+                .EXCEPTION_THE_PROVIDED_TIME_PRECISION_IS_HIGHER_THAN_THE_SYSTEM_S_TIME_PRECISION_US_PLEASE_CHECK_YOUR_INPUT_07596E70);
       } else if (s.endsWith("us")) {
         unit = 1;
         s = s.substring(0, s.length() - 2);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.datastructure.tv;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.datastructure.SerializableList;
 import org.apache.iotdb.calc.transformation.datastructure.iterator.TVListForwardIterator;
 import org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils;
@@ -110,7 +111,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
       return;
     }
 
-    throw new RuntimeException("Memory is not enough for current query.");
+    throw new RuntimeException(CalcMessages.MEMORY_IS_NOT_ENOUGH_FOR_CURRENT_QUERY);
   }
 
   private void applyNewMemoryControlParameters(

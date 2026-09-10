@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import javax.annotation.Nullable;
 
@@ -282,7 +283,7 @@ public interface CommonQueryAstVisitor<R, C> extends IAstVisitor<R, C> {
   }
 
   default R visitSubqueryExpression(SubqueryExpression node, C context) {
-    throw new SemanticException("Only TableSubquery is supported now");
+    throw new SemanticException(QueryMessages.ONLY_TABLE_SUBQUERY_SUPPORTED);
   }
 
   default R visitSortItem(SortItem node, C context) {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.tsfile.utils.Accountable;
@@ -56,18 +58,18 @@ public class QualifiedName implements Accountable {
   private final String suffix;
 
   public static QualifiedName of(String first, String... rest) {
-    requireNonNull(first, "first is null");
+    requireNonNull(first, QueryMessages.EXCEPTION_FIRST_IS_NULL_DC679129);
     return of(Lists.asList(first, rest).stream().map(Identifier::new).collect(toImmutableList()));
   }
 
   public static QualifiedName of(String name) {
-    requireNonNull(name, "name is null");
+    requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     return of(ImmutableList.of(new Identifier(name)));
   }
 
   public static QualifiedName of(Iterable<Identifier> originalParts) {
-    requireNonNull(originalParts, "originalParts is null");
-    checkArgument(!isEmpty(originalParts), "originalParts is empty");
+    requireNonNull(originalParts, QueryMessages.EXCEPTION_ORIGINALPARTS_IS_NULL_EA9B01F3);
+    checkArgument(!isEmpty(originalParts), QueryMessages.EXCEPTION_ORIGINALPARTS_IS_EMPTY_0D1EFAC4);
 
     return new QualifiedName(ImmutableList.copyOf(originalParts));
   }
@@ -80,7 +82,7 @@ public class QualifiedName implements Accountable {
       String suffix) {
     this.originalParts = ImmutableList.copyOf(originalParts);
     this.parts = ImmutableList.copyOf(parts);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.prefix = prefix;
     this.suffix = suffix;
   }

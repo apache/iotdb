@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
@@ -47,7 +48,8 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override
   public TSDataType getBuiltInScalarFunctionReturnType(FunctionExpression functionExpression) {
     if (!functionExpression.getFunctionAttributes().containsKey(CAST_TYPE)) {
-      throw new SemanticException("Function Cast must specify a target data type.");
+      throw new SemanticException(
+          DataNodeQueryMessages.FUNCTION_CAST_MUST_SPECIFY_A_TARGET_DATA_TYPE);
     }
     return TSDataType.valueOf(
         functionExpression.getFunctionAttributes().get(CAST_TYPE).toUpperCase());

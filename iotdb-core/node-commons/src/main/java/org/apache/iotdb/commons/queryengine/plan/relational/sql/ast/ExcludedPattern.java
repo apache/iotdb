@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -36,7 +38,7 @@ public class ExcludedPattern extends RowPattern {
 
   public ExcludedPattern(NodeLocation location, RowPattern pattern) {
     super(location);
-    this.pattern = requireNonNull(pattern, "pattern is null");
+    this.pattern = requireNonNull(pattern, QueryMessages.EXCEPTION_PATTERN_IS_NULL_AC4E239A);
   }
 
   public RowPattern getPattern() {

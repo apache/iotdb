@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -50,7 +51,10 @@ public class ConcatPathRewriter {
   }
 
   public Statement rewrite(
-      Statement statement, PathPatternTree patternTree, MPPQueryContext queryContext)
+      Statement statement,
+      PathPatternTree patternTree,
+      MPPQueryContext queryContext,
+      TreeAnalysisMutationJournal mutationJournal)
       throws StatementAnalyzeException {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.patternTree = patternTree;
@@ -78,20 +82,20 @@ public class ConcatPathRewriter {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
           concatSelectWithFrom(queryStatement.getSelectComponent(), prefixPaths, queryContext);
-      queryStatement.getSelectComponent().setResultColumns(resultColumns);
+      mutationJournal.replaceResultColumns(queryStatement, resultColumns);
 
       // concat GROUP BY with FROM
       if (queryStatement.hasGroupByExpression()) {
-        queryStatement
-            .getGroupByComponent()
-            .setControlColumnExpression(
-                contactGroupByWithFrom(
-                    queryStatement.getGroupByComponent().getControlColumnExpression(),
-                    prefixPaths,
-                    queryContext));
+        mutationJournal.replaceGroupByControlExpression(
+            queryStatement,
+            contactGroupByWithFrom(
+                queryStatement.getGroupByComponent().getControlColumnExpression(),
+                prefixPaths,
+                queryContext));
       }
       if (queryStatement.hasOrderByExpression()) {
-        List<Expression> sortItemExpressions = queryStatement.getExpressionSortItemList();
+        List<Expression> sortItemExpressions =
+            mutationJournal.getMutableOrderByComponent(queryStatement).getExpressionSortItemList();
         sortItemExpressions.replaceAll(
             expression -> contactOrderByWithFrom(expression, prefixPaths, queryContext));
       }
@@ -149,7 +153,8 @@ public class ConcatPathRewriter {
         ExpressionAnalyzer.concatExpressionWithSuffixPaths(
             expression, prefixPaths, patternTree, queryContext);
     if (resultExpressions.size() != 1) {
-      throw new IllegalStateException("Expression in group by should indicate one value");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXPRESSION_IN_GROUP_BY_SHOULD_INDICATE_ONE_VALUE);
     }
     return resultExpressions.get(0);
   }
@@ -162,7 +167,8 @@ public class ConcatPathRewriter {
         ExpressionAnalyzer.concatExpressionWithSuffixPaths(
             expression, prefixPaths, patternTree, queryContext);
     if (resultExpressions.size() != 1) {
-      throw new IllegalStateException("Expression in order by should indicate one value");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXPRESSION_IN_ORDER_BY_SHOULD_INDICATE_ONE_VALUE);
     }
     return resultExpressions.get(0);
   }

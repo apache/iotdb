@@ -174,7 +174,7 @@ public class IoTConsensusV2ServerMetrics implements IMetricSet {
         Tag.NAME.toString(),
         Metric.IOT_CONSENSUS_V2.toString(),
         Tag.TYPE.toString(),
-        "writeStateMachine",
+        "userWriteStateMachine",
         Tag.REGION.toString(),
         impl.getConsensusGroupId());
     metricService.remove(

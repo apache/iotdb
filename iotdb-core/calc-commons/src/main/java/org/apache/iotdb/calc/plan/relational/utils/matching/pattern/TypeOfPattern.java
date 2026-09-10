@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching.pattern;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Match;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
@@ -37,7 +38,8 @@ public class TypeOfPattern<T> extends Pattern<T> {
 
   public TypeOfPattern(Class<T> expectedClass, Optional<Pattern<?>> previous) {
     super(previous);
-    this.expectedClass = requireNonNull(expectedClass, "expectedClass is null");
+    this.expectedClass =
+        requireNonNull(expectedClass, CalcMessages.EXCEPTION_EXPECTEDCLASS_IS_NULL_B619CCC7);
   }
 
   public Class<T> expectedClass() {

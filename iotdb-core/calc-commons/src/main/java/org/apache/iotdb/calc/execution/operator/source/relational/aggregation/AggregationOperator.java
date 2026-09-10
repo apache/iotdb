@@ -92,9 +92,7 @@ public class AggregationOperator implements ProcessOperator {
         return null;
       }
 
-      for (TableAggregator aggregator : aggregators) {
-        aggregator.processBlock(block);
-      }
+      processBlock(block);
 
       return null;
     } else {
@@ -125,6 +123,17 @@ public class AggregationOperator implements ProcessOperator {
   @Override
   public CommonOperatorContext getOperatorContext() {
     return operatorContext;
+  }
+
+  private void processBlock(TsBlock block) {
+    long startTime = System.nanoTime();
+    try {
+      for (TableAggregator aggregator : aggregators) {
+        aggregator.processBlock(block);
+      }
+    } finally {
+      operatorContext.recordAggregationOperatorFromRawDataCost(System.nanoTime() - startTime);
+    }
   }
 
   @Override

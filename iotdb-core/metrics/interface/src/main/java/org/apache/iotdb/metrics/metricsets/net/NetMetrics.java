@@ -114,7 +114,7 @@ public class NetMetrics implements IMetricSet {
           iface);
       metricService.remove(
           MetricType.AUTO_GAUGE,
-          TRANSMIT,
+          SystemMetric.TRANSMITTED_BYTES.toString(),
           SystemTag.TYPE.toString(),
           TRANSMIT,
           SystemTag.IFACE_NAME.toString(),

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.client;
 
+import org.apache.iotdb.commons.i18n.ClientMessages;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
@@ -69,7 +71,7 @@ public interface ThriftClient {
       int level = 0;
       while (cur != null) {
         logger.debug(
-            "level-{} Exception class {}, message {}",
+            ClientMessages.EXCEPTION_LEVEL_DETAIL,
             level,
             cur.getClass().getName(),
             cur.getMessage());
@@ -84,16 +86,13 @@ public interface ThriftClient {
       // if the exception is SocketException and its error message is Broken pipe, it means that
       // the remote node may restart and all the connection we cached before should be cleared.
       logger.debug(
-          "root cause message {}, LocalizedMessage {}, ",
+          ClientMessages.ROOT_CAUSE_DETAIL,
           rootCause.getMessage(),
           rootCause.getLocalizedMessage(),
           rootCause);
       if (isConnectionBroken(rootCause)) {
         if (o.printLogWhenEncounterException()) {
-          logger.info(
-              "Broken pipe error happened in sending RPC,"
-                  + " we need to clear all previous cached connection, error msg is {}",
-              rootCause.toString());
+          logger.info(ClientMessages.BROKEN_PIPE_CLEAR_CONNECTIONS, rootCause.toString());
         }
         o.invalidateAll();
       }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -36,7 +38,7 @@ public final class ProcessingMode extends Node {
 
   public ProcessingMode(NodeLocation location, Mode mode) {
     super(location);
-    this.mode = requireNonNull(mode, "mode is null");
+    this.mode = requireNonNull(mode, QueryMessages.EXCEPTION_MODE_IS_NULL_54A948DB);
   }
 
   public Mode getMode() {

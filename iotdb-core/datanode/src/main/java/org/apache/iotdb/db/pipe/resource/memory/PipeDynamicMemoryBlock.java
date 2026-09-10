@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.tsfile.utils.Pair;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.function.Consumer;
 import java.util.stream.Stream;

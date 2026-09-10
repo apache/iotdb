@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.write.req;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -127,8 +128,7 @@ public class SchemaRegionWritePlanFactory {
       default:
         throw new UnsupportedOperationException(
             String.format(
-                "SchemaRegionPlan of type %s doesn't support creating empty plan.",
-                planType.name()));
+                DataNodeSchemaMessages.SCHEMA_REGION_PLAN_NOT_SUPPORT_EMPTY, planType.name()));
     }
   }
 

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.client.property;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+
 import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
 
 import java.time.Duration;
@@ -49,7 +51,11 @@ public class ClientPoolProperty<V> {
      * the maximum number of clients that can be allocated for a node. When some clients are idle
      * for more than {@code maxIdleTimeForClient}, they will be cleaned up.
      */
-    private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+    private int maxClientNumForEachNode =
+        CommonDescriptor.getInstance().getConfig().getMaxClientNumForEachNode();
+
+    private int maxIdleClientNumForEachNode =
+        CommonDescriptor.getInstance().getConfig().getMaxIdleClientNumForEachNode();
 
     /**
      * the minimum amount of time a client may sit idle in the pool before it is eligible for
@@ -74,6 +80,11 @@ public class ClientPoolProperty<V> {
       return this;
     }
 
+    public Builder<V> setMaxIdleClientNumForEachNode(int maxIdleClientNumForEachNode) {
+      this.maxIdleClientNumForEachNode = maxIdleClientNumForEachNode;
+      return this;
+    }
+
     public Builder<V> setMinIdleTimeForClient(long minIdleTimeForClient) {
       this.minIdleTimeForClient = minIdleTimeForClient;
       return this;
@@ -87,7 +98,7 @@ public class ClientPoolProperty<V> {
     public ClientPoolProperty<V> build() {
       GenericKeyedObjectPoolConfig<V> poolConfig = new GenericKeyedObjectPoolConfig<>();
       poolConfig.setMaxTotalPerKey(maxClientNumForEachNode);
-      poolConfig.setMaxIdlePerKey(maxClientNumForEachNode);
+      poolConfig.setMaxIdlePerKey(maxIdleClientNumForEachNode);
       poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(timeBetweenEvictionRuns));
       poolConfig.setMinEvictableIdleTime(Duration.ofMillis(minIdleTimeForClient));
       poolConfig.setMaxWait(Duration.ofMillis(waitClientTimeoutMs));
@@ -105,5 +116,6 @@ public class ClientPoolProperty<V> {
     public static final long MIN_IDLE_TIME_FOR_CLIENT_MS = TimeUnit.MINUTES.toMillis(1);
     public static final long TIME_BETWEEN_EVICTION_RUNS_MS = TimeUnit.MINUTES.toMillis(1);
     public static final int MAX_CLIENT_NUM_FOR_EACH_NODE = 1000;
+    public static final int MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE = 1000;
   }
 }

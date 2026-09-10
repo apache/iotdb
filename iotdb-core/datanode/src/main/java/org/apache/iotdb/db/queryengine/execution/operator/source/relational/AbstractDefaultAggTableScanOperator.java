@@ -34,7 +34,7 @@ import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN
 
 public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTableScanOperator {
 
-  private static final long INSTANCE_SIZE =
+  protected static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AbstractDefaultAggTableScanOperator.class);
 
   protected AbstractDefaultAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
@@ -46,7 +46,17 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
     if (retainedTsBlock != null) {
       return true;
     }
+    if (!batchQueryDataSource) {
+      return prepareNextDeviceBatch()
+          && (timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange());
+    }
 
+    if (batchLeasePending) {
+      return true;
+    }
+    if (!currentBatchInitialized) {
+      return deviceEntries.size() > 0 || deviceEntrySource.hasNextBatch();
+    }
     return timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange();
   }
 
@@ -54,6 +64,9 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
   public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
+    }
+    if (!prepareNextDeviceBatch() || batchLeasePending) {
+      return null;
     }
 
     // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)
@@ -74,6 +87,7 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
 
     while (System.nanoTime() - start < maxRuntime
         && (timeIterator.hasCachedTimeRange() || timeIterator.hasNextTimeRange())
+        && !batchLeasePending
         && !resultTsBlockBuilder.isFull()) {
 
       // calculate aggregation result on current time window

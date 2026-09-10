@@ -26,6 +26,7 @@ import java.util.Map;
 public enum SubscriptionMessageType {
   RECORD_HANDLER((short) 0),
   TS_FILE((short) 1),
+  WATERMARK((short) 3),
   ;
 
   private final short type;

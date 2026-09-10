@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -185,7 +186,8 @@ public class CreateLogicalViewStatement extends Statement {
         } else {
           throw new SemanticException(
               new UnsupportedViewException(
-                  "Cannot create views using data sources with calculated expressions while using into item."));
+                  DataNodeQueryMessages
+                      .CANNOT_CREATE_VIEWS_USING_DATA_SOURCES_WITH_CALCULATED_EXPRESSIONS_WHILE_USING_INTO_ITEM));
         }
       }
       this.targetPaths.setFullPathList(targetPathsList);

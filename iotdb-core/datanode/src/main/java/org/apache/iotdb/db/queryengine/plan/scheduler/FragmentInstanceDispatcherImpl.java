@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -35,8 +36,11 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
@@ -168,7 +172,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interrupted when dispatching read async", e);
+      LOGGER.warn(DataNodeQueryMessages.INTERRUPTED_WHEN_DISPATCHING_READ_ASYNC, e);
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
@@ -288,6 +292,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
 
     try {
+      shouldDispatch.forEach(instance -> instance.getFragment().clearUselessFieldsAfterRouting());
+
       // 2. try the dispatch
       final List<FailedFragmentInstanceWithStatus> failedInstances =
           dispatchWriteOnce(shouldDispatch);
@@ -320,7 +326,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.error("Interrupted when dispatching write async", e);
+      LOGGER.error(DataNodeQueryMessages.INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC, e);
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
@@ -467,6 +473,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           ClientManagerException,
           RatisReadUnavailableException,
           ConsensusGroupNotExistException {
+    final boolean containsUserData =
+        (instance.getType() == QueryType.WRITE || instance.getType() == QueryType.OTHER)
+            && AsyncPlanNodeSender.containsUserData(
+                instance.getFragment().getPlanNodeTree(),
+                instance.getSessionInfo() == null ? null : instance.getSessionInfo().getUserName());
+    boolean transferAttemptRecorded = false;
     try (final SyncDataNodeInternalServiceClient client =
         syncInternalServiceClientManager.borrowClient(endPoint)) {
       switch (instance.getType()) {
@@ -519,6 +531,25 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                           instance.getRegionReplicaSet().getRegionId())));
           final TSendSinglePlanNodeResp sendPlanNodeResp =
               client.sendBatchPlanNode(sendPlanNodeReq).getResponses().get(0);
+          if (containsUserData) {
+            final boolean success =
+                sendPlanNodeResp.isAccepted()
+                    && (!sendPlanNodeResp.isSetStatus()
+                        || sendPlanNodeResp.getStatus().getCode()
+                            == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            DataNodeUserDataTransferAuditor.record(
+                new TEndPoint(localhostIpAddr, localhostInternalPort),
+                new TEndPoint(localhostIpAddr, localhostInternalPort),
+                endPoint,
+                success,
+                success
+                    ? null
+                    : sendPlanNodeResp.isSetStatus()
+                        ? String.valueOf(sendPlanNodeResp.getStatus().getCode())
+                        : UserDataTransferErrorCode.REMOTE_REJECTED.name(),
+                null);
+            transferAttemptRecorded = true;
+          }
           if (!sendPlanNodeResp.accepted) {
             if (sendPlanNodeResp.getStatus() == null) {
               throw new FragmentInstanceDispatchException(
@@ -529,7 +560,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               if (sendPlanNodeResp.getStatus().getCode()
                   != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
                 LOGGER.warn(
-                    "Dispatch write failed. status: {}, code: {}, message: {}, node {}",
+                    DataNodeQueryMessages
+                        .DISPATCH_WRITE_FAILED_STATUS_ARG_CODE_ARG_MESSAGE_ARG_NODE_ARG,
                     sendPlanNodeResp.status,
                     TSStatusCode.representOf(sendPlanNodeResp.status.code),
                     sendPlanNodeResp.message,
@@ -549,9 +581,17 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           throw new FragmentInstanceDispatchException(
               RpcUtils.getStatus(
                   TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                  String.format("unknown read type [%s]", instance.getType())));
+                  String.format(DataNodeQueryMessages.UNKNOWN_READ_TYPE_FMT, instance.getType())));
       }
+    } catch (ClientManagerException e) {
+      if (!transferAttemptRecorded) {
+        recordWriteTransferFailureIfNecessary(endPoint, containsUserData, e);
+      }
+      throw e;
     } catch (TException e) {
+      if (!transferAttemptRecorded) {
+        recordWriteTransferFailureIfNecessary(endPoint, containsUserData, e);
+      }
       Throwable rootCause = ExceptionUtils.getRootCause(e);
       if (rootCause instanceof TTransportException
           && ((TTransportException) rootCause).getType() == TTransportException.CORRUPTED_DATA) {
@@ -563,15 +603,25 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
+  private void recordWriteTransferFailureIfNecessary(
+      TEndPoint endPoint, boolean containsUserData, Throwable error) {
+    if (!containsUserData) {
+      return;
+    }
+    final TEndPoint localEndPoint = new TEndPoint(localhostIpAddr, localhostInternalPort);
+    DataNodeUserDataTransferAuditor.record(
+        localEndPoint, localEndPoint, endPoint, false, null, error);
+  }
+
   private void dispatchRemoteFailed(TEndPoint endPoint, Exception e)
       throws FragmentInstanceDispatchException {
     LOGGER.warn(
-        "can't execute request on node  {} in second try, error msg is {}.",
+        DataNodeQueryMessages.CAN_T_EXECUTE_REQUEST_ON_NODE_ARG_IN_SECOND_TRY_ERROR_MSG_IS_ARG,
         endPoint,
         ExceptionUtils.getRootCause(e).toString());
     TSStatus status = new TSStatus();
     status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-    status.setMessage("can't connect to node " + endPoint);
+    status.setMessage(DataNodeQueryMessages.CANT_CONNECT_TO_NODE_PREFIX + endPoint);
     // If the DataNode cannot be connected, its endPoint will be put into black list
     // so that the following retry will avoid dispatching instance towards this DataNode.
     queryContext.addFailedEndPoint(endPoint);
@@ -585,9 +635,24 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       dispatchRemoteHelper(instance, endPoint);
     } catch (ClientManagerException | TException | RatisReadUnavailableException e) {
       LOGGER.warn(
-          "can't execute request on node {}, error msg is {}, and we try to reconnect this node.",
+          DataNodeQueryMessages
+              .CAN_T_EXECUTE_REQUEST_ON_NODE_ARG_ERROR_MSG_IS_ARG_AND_WE_TRY_TO_RECONNECT_THIS_NODE,
           endPoint,
           ExceptionUtils.getRootCause(e).toString());
+      // If the query has already timed out, do not retry. Re-dispatching the same FragmentInstance
+      // may cause it to be executed twice on the remote node (see the REPEATED_RPC_CALL handling in
+      // FragmentInstanceManager), so we fail fast with a timeout status instead.
+      long currentTime = System.currentTimeMillis();
+      if (currentTime - queryContext.getStartTime() >= queryContext.getTimeOut()) {
+        throw new FragmentInstanceDispatchException(
+            RpcUtils.getStatus(
+                TSStatusCode.QUERY_TIMEOUT,
+                String.format(
+                    QueryTimeoutRuntimeException.QUERY_TIMEOUT_EXCEPTION_MESSAGE,
+                    queryContext.getStartTime(),
+                    queryContext.getStartTime() + queryContext.getTimeOut(),
+                    currentTime)));
+      }
       // we just retry once to clear stale connection for a restart node.
       try {
         dispatchRemoteHelper(instance, endPoint);
@@ -612,11 +677,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             ConsensusGroupId.Factory.createFromTConsensusGroupId(
                 instance.getRegionReplicaSet().getRegionId());
       } catch (final Throwable t) {
-        LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
+        LOGGER.warn(DataNodeQueryMessages.DESERIALIZE_CONSENSUSGROUPID_FAILED, t);
         throw new FragmentInstanceDispatchException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                "Deserialize ConsensusGroupId failed: " + t.getMessage()));
+                String.format(
+                    DataNodeQueryMessages.DESERIALIZE_CONSENSUSGROUPID_FAILED_WITH_REASON_FMT,
+                    t.getMessage())));
       }
     }
 
@@ -669,7 +736,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             if (writeResult.getStatus().getCode()
                 != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
               LOGGER.warn(
-                  "write locally failed. TSStatus: {}, message: {}",
+                  DataNodeQueryMessages.WRITE_LOCALLY_FAILED_TSSTATUS_ARG_MESSAGE_ARG,
                   writeResult.getStatus(),
                   writeResult.getMessage());
             }
@@ -687,7 +754,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                String.format("unknown read type [%s]", instance.getType())));
+                String.format(DataNodeQueryMessages.UNKNOWN_READ_TYPE_FMT, instance.getType())));
     }
   }
 

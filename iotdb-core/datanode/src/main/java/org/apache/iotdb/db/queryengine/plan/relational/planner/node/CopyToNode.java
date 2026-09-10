@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -119,11 +120,13 @@ public class CopyToNode extends SingleChildProcessNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new UnsupportedOperationException("CopyToNode should not be serialized");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.COPYTONODE_SHOULD_NOT_BE_SERIALIZED);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    throw new UnsupportedOperationException("CopyToNode should not be serialized");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.COPYTONODE_SHOULD_NOT_BE_SERIALIZED);
   }
 }

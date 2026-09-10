@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

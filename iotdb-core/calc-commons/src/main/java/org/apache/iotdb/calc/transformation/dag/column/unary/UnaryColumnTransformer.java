@@ -72,4 +72,10 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
     super.clearCache();
     childColumnTransformer.clearCache();
   }
+
+  @Override
+  public void close() {
+    super.close();
+    childColumnTransformer.close();
+  }
 }

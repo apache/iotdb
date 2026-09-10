@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 
 @FunctionalInterface

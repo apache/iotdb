@@ -142,6 +142,92 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
+  public void testCopyToRejectsClientSuppliedAbsolutePath()
+      throws IoTDBConnectionException, IOException {
+    File targetDirectory = Files.createTempDirectory("iotdb-copy-to-security").toFile();
+    File targetFile = new File(targetDirectory, "result.tsfile");
+    String targetPath = targetFile.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      try {
+        session.executeQueryStatement(
+            "copy table1 to '" + targetPath + "' (memory_threshold 1000000)");
+        Assert.fail("COPY TO should reject a client-supplied absolute path");
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(
+            e.getMessage(), e.getMessage().contains("COPY TO target path is outside"));
+      }
+      Assert.assertFalse(targetFile.exists());
+    } finally {
+      Files.deleteIfExists(targetFile.toPath());
+      Files.deleteIfExists(targetDirectory.toPath());
+    }
+  }
+
+  @Test
+  public void testCopyToRejectsAllowedExportDirectoryItself()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    File exportDirectory = Files.createTempDirectory("iotdb-copy-to-directory").toFile();
+    File targetDirectory = new File(exportDirectory, "export");
+    String targetPath = targetDirectory.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+    String exportDirectoryPath =
+        targetDirectory.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      session.executeNonQueryStatement(
+          "set configuration \"copy_to_allowed_export_dirs\"='" + exportDirectoryPath + "'");
+      try {
+        try {
+          session.executeQueryStatement(
+              "copy table1 to '" + targetPath + "' (memory_threshold 1000000)");
+          Assert.fail("COPY TO should reject the allowed export directory itself");
+        } catch (StatementExecutionException e) {
+          Assert.assertTrue(
+              e.getMessage(), e.getMessage().contains("COPY TO target path is outside"));
+        }
+        Assert.assertFalse(targetDirectory.exists());
+      } finally {
+        session.executeNonQueryStatement("set configuration \"copy_to_allowed_export_dirs\"=''");
+      }
+    } finally {
+      Files.deleteIfExists(targetDirectory.toPath());
+      Files.deleteIfExists(exportDirectory.toPath());
+    }
+  }
+
+  @Test
+  public void testCopyToUsesHotReloadedAllowedExportDirectory()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    File targetDirectory = Files.createTempDirectory("iotdb-copy-to-allowed").toFile();
+    File targetFile = new File(targetDirectory, "result.tsfile");
+    String targetPath = targetFile.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+    String exportDirectoryPath =
+        targetDirectory.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      session.executeNonQueryStatement(
+          "set configuration \"copy_to_allowed_export_dirs\"='" + exportDirectoryPath + "'");
+      try {
+        SessionDataSet sessionDataSet =
+            session.executeQueryStatement(
+                "copy table1 to '" + targetPath + "' (memory_threshold 1000000)");
+        SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+        Assert.assertTrue(iterator.next());
+        Assert.assertEquals(targetFile.getAbsolutePath(), iterator.getString(1));
+        Assert.assertTrue(targetFile.exists());
+      } finally {
+        session.executeNonQueryStatement("set configuration \"copy_to_allowed_export_dirs\"=''");
+      }
+    } finally {
+      Files.deleteIfExists(targetFile.toPath());
+      Files.deleteIfExists(targetDirectory.toPath());
+    }
+  }
+
+  @Test
   public void testCopySelectAllColumns()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
@@ -272,6 +358,38 @@ public class IoTDBCopyToTsFileIT {
           Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
           Assert.assertEquals(3, timeseriesMetadataList.get(0).getStatistics().getEndTime());
         }
+      }
+    }
+  }
+
+  @Test
+  public void testDuplicateTagColumns()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      try {
+        session.executeQueryStatement(
+            "copy table1(time,tag1,tag2,s1) to 'dup.tsfile' with (tags(tag1,tag1), memory_threshold 1000000)");
+        Assert.fail("Should report duplicate tag column error");
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(
+            e.getMessage(), e.getMessage().contains("Duplicate tag column in TAGS clause: tag1"));
+      }
+    }
+  }
+
+  @Test
+  public void testDuplicateOption()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      try {
+        session.executeQueryStatement(
+            "copy table1(time,tag1,tag2,s1) to 'dup_option.tsfile' with (tags(tag1), tags(tag2), memory_threshold 1000000)");
+        Assert.fail("Should report duplicate option error");
+      } catch (StatementExecutionException e) {
+        Assert.assertTrue(
+            e.getMessage(), e.getMessage().contains("Duplicate option in COPY TO statement: TAGS"));
       }
     }
   }
@@ -474,7 +592,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(2, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
-        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("default(auto_gen)", tableName);
         Assert.assertEquals("time(auto_gen)", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 
@@ -515,7 +633,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(2, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
-        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("default(auto_gen)", tableName);
         Assert.assertEquals("time(auto_gen)", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 
@@ -648,7 +766,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals(1, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
-        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("default(auto_gen)", tableName);
         Assert.assertEquals("time", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 

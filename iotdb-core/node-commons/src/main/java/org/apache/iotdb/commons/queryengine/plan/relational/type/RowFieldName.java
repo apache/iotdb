@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.type;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.errorprone.annotations.Immutable;
 
 import java.util.Objects;
@@ -30,7 +32,7 @@ public final class RowFieldName {
   private final String name;
 
   public RowFieldName(String name) {
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
   }
 
   public String getName() {

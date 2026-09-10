@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.library.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 /** Circular queue for boolean. */
 public class BooleanCircularQueue {
 
@@ -61,7 +63,7 @@ public class BooleanCircularQueue {
    */
   public boolean pop() {
     if (isEmpty()) {
-      throw new IllegalArgumentException("Error: Queue is Empty!");
+      throw new IllegalArgumentException(LibraryUdfMessages.QUEUE_IS_EMPTY);
     }
     final boolean ret = data[head];
     head = (head + 1) % data.length;
@@ -79,7 +81,7 @@ public class BooleanCircularQueue {
    */
   public boolean getHead() {
     if (isEmpty()) {
-      throw new IllegalArgumentException("Error: Queue is Empty!");
+      throw new IllegalArgumentException(LibraryUdfMessages.QUEUE_IS_EMPTY);
     }
     return data[head];
   }

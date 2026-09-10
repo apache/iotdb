@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -31,6 +35,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Map;
 
 public class PipeTsFileEpochProgressIndexKeeperTest {
 
@@ -90,6 +95,31 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
   }
 
   @Test
+  public void testProgressIndexCheckUsesEqualOrAfterCoverage() throws IOException {
+    final ProgressIndex registeredProgressIndex =
+        hybridProgressIndex(
+            new IoTProgressIndex(Map.of(1, 90L)),
+            new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10)));
+    keeper.registerProgressIndex(
+        DATA_REGION_ID,
+        TASK_SCOPE_A,
+        createTsFileResource("registered-hybrid.tsfile", registeredProgressIndex));
+
+    Assert.assertFalse(
+        keeper.isProgressIndexAfterOrEquals(
+            DATA_REGION_ID, TASK_SCOPE_A, "current.tsfile", new IoTProgressIndex(Map.of(1, 100L))));
+
+    Assert.assertTrue(
+        keeper.isProgressIndexAfterOrEquals(
+            DATA_REGION_ID,
+            TASK_SCOPE_A,
+            "current.tsfile",
+            hybridProgressIndex(
+                new IoTProgressIndex(Map.of(1, 100L)),
+                new RecoverProgressIndex(-1, new SimpleProgressIndex(0, 10)))));
+  }
+
+  @Test
   public void testClearProgressIndexOnlyRemovesTargetTaskScope() throws IOException {
     final TsFileResource scopeAResource = createTsFileResource("scope-a.tsfile", 1L);
     final TsFileResource scopeBResource = createTsFileResource("scope-b.tsfile", 1L);
@@ -107,11 +137,25 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
 
   private TsFileResource createTsFileResource(final String fileName, final long flushOrderId)
       throws IOException {
+    return createTsFileResource(fileName, new SimpleProgressIndex(1, flushOrderId));
+  }
+
+  private TsFileResource createTsFileResource(
+      final String fileName, final ProgressIndex progressIndex) throws IOException {
     final File file = new File(tempDir, fileName);
     Assert.assertTrue(file.createNewFile());
 
     final TsFileResource resource = new TsFileResource(file);
-    resource.updateProgressIndex(new SimpleProgressIndex(1, flushOrderId));
+    resource.updateProgressIndex(progressIndex);
     return resource;
+  }
+
+  private ProgressIndex hybridProgressIndex(
+      final ProgressIndex firstProgressIndex, final ProgressIndex... progressIndexes) {
+    ProgressIndex result = new HybridProgressIndex(firstProgressIndex);
+    for (final ProgressIndex progressIndex : progressIndexes) {
+      result = result.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
+    }
+    return result;
   }
 }

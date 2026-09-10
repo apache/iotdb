@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -91,24 +92,27 @@ public class DeleteDatabaseProcedure
       switch (state) {
         case PRE_DELETE_DATABASE:
           LOG.info(
-              "[DeleteDatabaseProcedure] Pre delete database: {}", deleteDatabaseSchema.getName());
+              ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_PRE_DELETE_DATABASE_ARG_6A1FEACC,
+              deleteDatabaseSchema.getName());
           env.preDeleteDatabase(
               PreDeleteDatabasePlan.PreDeleteType.EXECUTE, deleteDatabaseSchema.getName());
           setNextState(DeleteDatabaseState.INVALIDATE_CACHE);
           break;
         case INVALIDATE_CACHE:
           LOG.info(
-              "[DeleteDatabaseProcedure] Invalidate cache of database: {}",
+              ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_DATABASE_ARG_299FC9BC,
               deleteDatabaseSchema.getName());
           if (env.invalidateCache(deleteDatabaseSchema.getName())) {
             setNextState(DeleteDatabaseState.DELETE_DATABASE_SCHEMA);
           } else {
-            setFailure(new ProcedureException("[DeleteDatabaseProcedure] Invalidate cache failed"));
+            setFailure(
+                new ProcedureException(
+                    ProcedureMessages.DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_FAILED));
           }
           break;
         case DELETE_DATABASE_SCHEMA:
           LOG.info(
-              "[DeleteDatabaseProcedure] Delete DatabaseSchema: {}",
+              ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_ARG_A49A47AC,
               deleteDatabaseSchema.getName());
 
           // Submit RegionDeleteTasks
@@ -195,11 +199,14 @@ public class DeleteDatabaseProcedure
               .getLoadManager()
               .clearDataPartitionPolicyTable(deleteDatabaseSchema.getName());
           LOG.info(
-              "[DeleteDatabaseProcedure] The data partition policy table of database: {} is cleared.",
+              ProcedureMessages
+                  .LOG_DELETEDATABASEPROCEDURE_DATA_PARTITION_POLICY_TABLE_DATABASE_ARG_CLEARED_7A32E28A,
               deleteDatabaseSchema.getName());
 
           // Delete Database metrics
           PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(
+              MetricService.getInstance(), deleteDatabaseSchema.getName());
+          PartitionMetrics.unbindDatabaseTableMetrics(
               MetricService.getInstance(), deleteDatabaseSchema.getName());
 
           // Delete DatabasePartitionTable
@@ -208,30 +215,35 @@ public class DeleteDatabaseProcedure
 
           if (deleteConfigResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOG.info(
-                "[DeleteDatabaseProcedure] Database: {} is deleted successfully",
+                ProcedureMessages
+                    .LOG_DELETEDATABASEPROCEDURE_DATABASE_ARG_DELETED_SUCCESSFULLY_3A4E9202,
                 deleteDatabaseSchema.getName());
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > RETRY_THRESHOLD) {
             setFailure(
-                new ProcedureException("[DeleteDatabaseProcedure] Delete DatabaseSchema failed"));
+                new ProcedureException(
+                    ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_FAILED));
           }
       }
     } catch (final ConsensusException | TException | IOException e) {
       if (isRollbackSupported(state)) {
         setFailure(
             new ProcedureException(
-                "[DeleteDatabaseProcedure] Delete database "
+                ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASE
                     + deleteDatabaseSchema.getName()
-                    + " failed "
+                    + ProcedureMessages.EXCEPTION_FAILED_DAA6EA2F
                     + state));
       } else {
         LOG.error(
-            "[DeleteDatabaseProcedure] Retriable error trying to delete database {}, state {}",
+            ProcedureMessages
+                .LOG_DELETEDATABASEPROCEDURE_RETRIABLE_ERROR_TRYING_DELETE_DATABASE_ARG_STATE_ARG_8167D246,
             deleteDatabaseSchema.getName(),
             state,
             e);
         if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(new ProcedureException("[DeleteDatabaseProcedure] State stuck at " + state));
+          setFailure(
+              new ProcedureException(
+                  ProcedureMessages.DELETEDATABASEPROCEDURE_STATE_STUCK_AT + state));
         }
       }
     }
@@ -245,7 +257,8 @@ public class DeleteDatabaseProcedure
       case PRE_DELETE_DATABASE:
       case INVALIDATE_CACHE:
         LOG.info(
-            "[DeleteDatabaseProcedure] Rollback to preDeleted: {}", deleteDatabaseSchema.getName());
+            ProcedureMessages.LOG_DELETEDATABASEPROCEDURE_ROLLBACK_PREDELETED_ARG_638F53DA,
+            deleteDatabaseSchema.getName());
         env.preDeleteDatabase(
             PreDeleteDatabasePlan.PreDeleteType.ROLLBACK, deleteDatabaseSchema.getName());
         break;
@@ -300,7 +313,7 @@ public class DeleteDatabaseProcedure
     try {
       deleteDatabaseSchema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(byteBuffer);
     } catch (final ThriftSerDeException e) {
-      LOG.error("Error in deserialize DeleteDatabaseProcedure", e);
+      LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_DELETEDATABASEPROCEDURE, e);
     }
   }
 
@@ -309,7 +322,7 @@ public class DeleteDatabaseProcedure
     if (that instanceof DeleteDatabaseProcedure) {
       final DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && Objects.equals(thatProc.getCurrentState(), this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && thatProc.deleteDatabaseSchema.equals(this.getDeleteDatabaseSchema());

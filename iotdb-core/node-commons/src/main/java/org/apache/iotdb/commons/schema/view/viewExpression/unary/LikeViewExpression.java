@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.view.viewExpression.unary;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
@@ -80,7 +81,8 @@ public class LikeViewExpression extends UnaryViewExpression {
         isNot = ReadWriteIOUtils.readBool(byteBuffer);
         break;
       default:
-        throw new IllegalStateException("Unexpected value in LikeViewExpression: " + judge);
+        throw new IllegalStateException(
+            SchemaMessages.UNEXPECTED_VALUE_IN_LIKE_VIEW_EXPRESSION + judge);
     }
   }
 
@@ -113,7 +115,8 @@ public class LikeViewExpression extends UnaryViewExpression {
           isNot = ReadWriteIOUtils.readBool(inputStream);
           break;
         default:
-          throw new IllegalStateException("Unexpected value in LikeViewExpression: " + judge);
+          throw new IllegalStateException(
+              SchemaMessages.UNEXPECTED_VALUE_IN_LIKE_VIEW_EXPRESSION + judge);
       }
     } catch (IOException e) {
       throw new RuntimeException(e);

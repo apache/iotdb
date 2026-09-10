@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
@@ -36,10 +37,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesR
 
 import org.junit.Test;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class RegionScanPlanningTest {
@@ -144,5 +150,80 @@ public class RegionScanPlanningTest {
     }
     assertEquals(devicePaths, targetDevicePaths);
     assertEquals(path, targetMeasurementPaths);
+  }
+
+  @Test
+  public void testCountTimeseriesWithLogicalViewUsesMergeBeforeCount() throws IllegalPathException {
+    QueryId queryId = new QueryId("test");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+
+    Map<String, TimeseriesContext> logicalViewContextMap =
+        Collections.singletonMap(
+            "root.sg.view.v1",
+            new TimeseriesContext(
+                "INT32",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                1,
+                true,
+                "root.sg",
+                Collections.emptyMap()));
+    Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesSchemaInfo =
+        new HashMap<>();
+    deviceToTimeseriesSchemaInfo.put(
+        new PartialPath("root.sg.d22"),
+        Collections.singletonMap(
+            new MeasurementPath("root.sg.d22.s1"),
+            Collections.singletonList(
+                new TimeseriesContext(
+                    "INT32",
+                    null,
+                    "PLAIN",
+                    "LZ4",
+                    null,
+                    null,
+                    null,
+                    null,
+                    0,
+                    logicalViewContextMap))));
+    deviceToTimeseriesSchemaInfo.put(
+        new PartialPath("root.sg.d55555"),
+        Collections.singletonMap(
+            new MeasurementPath("root.sg.d55555.s1"),
+            Collections.singletonList(
+                new TimeseriesContext(
+                    "INT32",
+                    null,
+                    "PLAIN",
+                    "LZ4",
+                    null,
+                    null,
+                    null,
+                    null,
+                    0,
+                    logicalViewContextMap))));
+
+    TimeseriesRegionScanNode regionScanNode =
+        new TimeseriesRegionScanNode(
+            queryId.genPlanNodeId(), deviceToTimeseriesSchemaInfo, true, null);
+    PlanNode rewrittenRoot =
+        new DistributionPlanner(Util.ANALYSIS, new LogicalQueryPlan(context, regionScanNode))
+            .rewriteSource();
+
+    assertTrue(rewrittenRoot instanceof ActiveRegionScanMergeNode);
+    ActiveRegionScanMergeNode mergeNode = (ActiveRegionScanMergeNode) rewrittenRoot;
+    assertTrue(mergeNode.isOutputCount());
+    assertTrue(mergeNode.isNeedMerge());
+    assertEquals(2, mergeNode.getChildren().size());
+    for (PlanNode child : mergeNode.getChildren()) {
+      assertTrue(child instanceof TimeseriesRegionScanNode);
+      assertFalse(((TimeseriesRegionScanNode) child).isOutputCount());
+    }
   }
 }

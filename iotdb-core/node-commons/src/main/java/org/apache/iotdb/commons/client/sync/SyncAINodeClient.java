@@ -63,7 +63,8 @@ public class SyncAINodeClient extends IAINodeRPCService.Client
                         COMMON_CONFIG.getTrustStorePath(),
                         COMMON_CONFIG.getTrustStorePwd(),
                         COMMON_CONFIG.getKeyStorePath(),
-                        COMMON_CONFIG.getKeyStorePwd())
+                        COMMON_CONFIG.getKeyStorePwd(),
+                        COMMON_CONFIG.getSslProtocol())
                     : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         new TSocket(
                             TConfigurationConst.defaultTConfiguration,

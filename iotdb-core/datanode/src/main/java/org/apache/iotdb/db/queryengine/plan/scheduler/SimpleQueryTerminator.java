@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -126,11 +127,12 @@ public class SimpleQueryTerminator implements IQueryTerminator {
                     .collect(Collectors.toList()),
                 hasThrowable));
       } catch (final ClientManagerException e) {
-        logger.warn("can't connect to node {}", endPoint, e);
+        logger.warn(DataNodeQueryMessages.CAN_T_CONNECT_TO_NODE, endPoint, e);
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;
       } catch (final TException t) {
-        logger.warn("cancel query {} on node {} failed.", queryId.getId(), endPoint, t);
+        logger.warn(
+            DataNodeQueryMessages.CANCEL_QUERY_ON_NODE_FAILED, queryId.getId(), endPoint, t);
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;
       }

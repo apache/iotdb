@@ -123,13 +123,13 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
         "ClientRPC");
 
     metricService.remove(
-        MetricType.TIMER,
+        MetricType.GAUGE,
         Metric.THRIFT_RPC_UNCOMPRESS_SIZE.toString(),
         Tag.NAME.toString(),
         "unCompressionSize");
 
     metricService.remove(
-        MetricType.TIMER,
+        MetricType.GAUGE,
         Metric.THRIFT_RPC_COMPRESS_SIZE.toString(),
         Tag.NAME.toString(),
         "compressionSize");

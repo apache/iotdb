@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.binary;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -70,7 +71,7 @@ public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTran
   @Override
   protected void checkType() {
     if (!leftTransformer.isReturnTypeNumeric() || !rightTransformer.isReturnTypeNumeric()) {
-      throw new UnsupportedOperationException("Unsupported Type");
+      throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_TYPE_BINARY);
     }
   }
 

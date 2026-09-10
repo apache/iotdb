@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.tool.data;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
@@ -79,7 +81,7 @@ public class ImportDataTable extends AbstractImportData {
   public void init() throws InterruptedException {
     TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
-            .nodeUrls(Collections.singletonList(host + ":" + port))
+            .nodeUrls(Collections.singletonList(UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port)))
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
@@ -88,8 +90,7 @@ public class ImportDataTable extends AbstractImportData {
             .enableAutoFetch(false)
             .database(database);
     if (useSsl) {
-      tableSessionPoolBuilder =
-          tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      tableSessionPoolBuilder = configureSsl(tableSessionPoolBuilder);
     }
     sessionPool = tableSessionPoolBuilder.build();
     final File file = new File(targetPath);
@@ -134,7 +135,9 @@ public class ImportDataTable extends AbstractImportData {
               }
             }
           } else {
-            ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, null));
+            ioTPrinter.println(
+                CliMessages
+                    .MESSAGE_INVALID_ARGS_REQUIRED_VALUES_FOR_OPTION_TABLE_NOT_PROVIDED_4BC3FCFA);
             System.exit(1);
           }
         }

@@ -89,18 +89,10 @@ public class BasicAuthorityCache implements IAuthorCache {
         }
         userCache.invalidate(userName);
       }
-      if (userCache.getIfPresent(userName) != null) {
-        LOGGER.error("datanode cache initialization failed");
-        return false;
-      }
     }
     if (roleName != null) {
       if (roleCache.getIfPresent(roleName) != null) {
         roleCache.invalidate(roleName);
-      }
-      if (roleCache.getIfPresent(roleName) != null) {
-        LOGGER.error("datanode cache initialization failed");
-        return false;
       }
     }
     return true;

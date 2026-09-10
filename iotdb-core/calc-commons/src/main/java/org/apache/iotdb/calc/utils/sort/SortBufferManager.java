@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.utils.sort;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 public class SortBufferManager {
 
@@ -46,7 +47,7 @@ public class SortBufferManager {
   public void allocateOneSortBranch() {
     boolean success = allocate(bufferSizeForOneBranch);
     if (!success) {
-      throw new MemoryNotEnoughException("Not enough memory for sorting");
+      throw new MemoryNotEnoughException(CalcMessages.NOT_ENOUGH_MEMORY_FOR_SORTING);
     }
     branchNum++;
   }

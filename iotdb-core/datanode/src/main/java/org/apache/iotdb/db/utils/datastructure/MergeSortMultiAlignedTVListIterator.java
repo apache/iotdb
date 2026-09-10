@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -284,7 +285,9 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", tsDataTypeList.get(columnIndex)));
+                String.format(
+                    DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    tsDataTypeList.get(columnIndex)));
         }
       }
       next();

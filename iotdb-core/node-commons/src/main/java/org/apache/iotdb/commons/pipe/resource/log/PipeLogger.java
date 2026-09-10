@@ -19,18 +19,19 @@
 
 package org.apache.iotdb.commons.pipe.resource.log;
 
+import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.function.Consumer;
 
 public class PipeLogger {
-  private static PipePeriodicalLogger logger =
-      (loggerFunction, rawMessage, formatter) ->
-          loggerFunction.accept(String.format(rawMessage, formatter));
+  private static PipePeriodicalLogger logger = LoggerPeriodicalLogReducer::log;
 
   public static void log(
       final Consumer<String> loggerFunction, final String rawMessage, final Object... formatter) {
-    logger.log(loggerFunction, rawMessage, formatter);
+    logger.log(
+        loggerFunction, "%s", LoggerPeriodicalLogReducer.formatMessage(rawMessage, formatter));
   }
 
   public static void log(
@@ -40,7 +41,10 @@ public class PipeLogger {
       final Object... formatter) {
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     throwable.printStackTrace(new PrintStream(out));
-    logger.log(loggerFunction, rawMessage + "\n" + out, formatter);
+    logger.log(
+        loggerFunction,
+        "%s",
+        LoggerPeriodicalLogReducer.formatMessage(rawMessage, formatter) + "\n" + out);
   }
 
   public static void setLogger(final PipePeriodicalLogger logger) {

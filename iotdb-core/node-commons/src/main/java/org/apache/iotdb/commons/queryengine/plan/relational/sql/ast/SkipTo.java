@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -66,15 +68,15 @@ public class SkipTo extends Node {
 
   private SkipTo(NodeLocation location, Position position, Optional<Identifier> identifier) {
     super(location);
-    requireNonNull(position, "position is null");
-    requireNonNull(identifier, "identifier is null");
+    requireNonNull(position, QueryMessages.EXCEPTION_POSITION_IS_NULL_5B14C61B);
+    requireNonNull(identifier, QueryMessages.EXCEPTION_IDENTIFIER_IS_NULL_8F8171C8);
     checkArgument(
         identifier.isPresent() || (position == PAST_LAST || position == NEXT),
-        "missing identifier in SKIP TO %s",
+        QueryMessages.EXCEPTION_MISSING_IDENTIFIER_IN_SKIP_TO_ARG_33E1A7C3,
         position.name());
     checkArgument(
         !identifier.isPresent() || (position == FIRST || position == LAST),
-        "unexpected identifier in SKIP TO %s",
+        QueryMessages.EXCEPTION_UNEXPECTED_IDENTIFIER_IN_SKIP_TO_ARG_58438AFC,
         position.name());
     this.position = position;
     this.identifier = identifier;

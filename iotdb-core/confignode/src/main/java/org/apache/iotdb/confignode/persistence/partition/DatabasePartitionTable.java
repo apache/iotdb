@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
@@ -533,15 +534,15 @@ public class DatabasePartitionTable {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn(
-          "Cannot find RegionGroup for region {} when addRegionNewLocation in {}",
+          ConfigNodeMessages.CANNOT_FIND_REGIONGROUP_FOR_REGION_WHEN_ADDREGIONNEWLOCATION_IN,
           regionId,
           databaseName);
       return;
     }
     if (regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
-          "Node is already in region locations when addRegionNewLocation in {}, "
-              + "node: {}, region: {}",
+          ConfigNodeMessages.NODE_IS_ALREADY_IN_REGION_LOCATIONS_WHEN_ADDREGIONNEWLOCATION_IN
+              + ConfigNodeMessages.LOG_NODE_ARG_REGION_ARG_70A7CD4F,
           databaseName,
           node,
           regionId);
@@ -554,7 +555,7 @@ public class DatabasePartitionTable {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn(
-          "Cannot find RegionGroup for region {} when removeRegionOldLocation in {}",
+          ConfigNodeMessages.CANNOT_FIND_REGIONGROUP_FOR_REGION_WHEN_REMOVEREGIONOLDLOCATION_IN,
           regionId,
           databaseName);
       return;
@@ -563,8 +564,8 @@ public class DatabasePartitionTable {
         .map(TDataNodeLocation::getDataNodeId)
         .noneMatch(id -> id == nodeId)) {
       LOGGER.info(
-          "Node is not in region locations when removeRegionOldLocation in {}, "
-              + "no need to remove it, node: {}, region: {}",
+          ConfigNodeMessages.NODE_IS_NOT_IN_REGION_LOCATIONS_WHEN_REMOVEREGIONOLDLOCATION_IN
+              + ConfigNodeMessages.LOG_NO_NEED_REMOVE_IT_NODE_ARG_REGION_ARG_D14062CE,
           databaseName,
           nodeId,
           regionId);
@@ -639,7 +640,7 @@ public class DatabasePartitionTable {
             .toArray();
     if (removedTimePartitionSlots.length > 0) {
       LOGGER.info(
-          "[PartitionTableCleaner] The TimePartitions: {} are removed from Database: {}",
+          ConfigNodeMessages.PARTITIONTABLECLEANER_THE_TIMEPARTITIONS_ARE_REMOVED_FROM_DATABASE,
           removedTimePartitionSlots,
           databaseName);
     }

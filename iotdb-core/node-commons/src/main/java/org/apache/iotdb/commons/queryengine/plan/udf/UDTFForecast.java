@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.queryengine.plan.udf;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -45,6 +46,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.queryengine.plan.udf.ForecastTimeUtils.calculateForecastInterval;
+import static org.apache.iotdb.commons.queryengine.plan.udf.ForecastTimeUtils.calculateForecastOutputTime;
+import static org.apache.iotdb.commons.queryengine.plan.udf.ForecastTimeUtils.calculateForecastStartTime;
 
 public class UDTFForecast implements UDTF {
   private static final TsBlockSerde serde = new TsBlockSerde();
@@ -85,9 +90,7 @@ public class UDTFForecast implements UDTF {
     for (Type type : this.types) {
       if (!ALLOWED_INPUT_TYPES.contains(type)) {
         throw new IllegalArgumentException(
-            String.format(
-                "Input data type %s is not supported, only %s are allowed.",
-                type, ALLOWED_INPUT_TYPES));
+            String.format(QueryMessages.INPUT_DATA_TYPE_NOT_SUPPORTED, type, ALLOWED_INPUT_TYPES));
       }
     }
   }
@@ -101,8 +104,7 @@ public class UDTFForecast implements UDTF {
 
     this.model_id = parameters.getString(MODEL_ID_PARAMETER_NAME);
     if (this.model_id == null || this.model_id.isEmpty()) {
-      throw new IllegalArgumentException(
-          "MODEL_ID parameter must be provided and cannot be empty.");
+      throw new IllegalArgumentException(QueryMessages.MODEL_ID_MUST_BE_PROVIDED);
     }
     this.maxInputLength = MAX_INPUT_LENGTH;
 
@@ -146,7 +148,7 @@ public class UDTFForecast implements UDTF {
           break;
         default:
           throw new IllegalArgumentException(
-              String.format("Unsupported data type %s", this.types.get(i + 1)));
+              String.format(QueryMessages.UNSUPPORTED_DATA_TYPE_FOR_UDF, this.types.get(i + 1)));
       }
     }
   }
@@ -172,7 +174,7 @@ public class UDTFForecast implements UDTF {
           break;
         default:
           throw new IllegalArgumentException(
-              String.format("Unsupported data type %s", this.types.get(i + 1)));
+              String.format(QueryMessages.UNSUPPORTED_DATA_TYPE_FOR_UDF, this.types.get(i + 1)));
       }
     }
   }
@@ -210,8 +212,9 @@ public class UDTFForecast implements UDTF {
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(
           String.format(
-              "Forecast failed due to %d %s",
-              resp.getStatus().getCode(), resp.getStatus().getMessage()),
+              QueryMessages.FORECAST_FAILED,
+              resp.getStatus().getCode(),
+              resp.getStatus().getMessage()),
           resp.getStatus().getCode());
     }
     return serde.deserialize(resp.forecastResult.get(0));
@@ -224,32 +227,28 @@ public class UDTFForecast implements UDTF {
     if (inputStartTime > inputEndTime) {
       throw new IllegalArgumentException(
           String.format(
-              "input end time should never less than start time, start time is %s, end time is %s",
-              inputStartTime, inputEndTime));
+              QueryMessages.INPUT_END_TIME_LESS_THAN_START_TIME, inputStartTime, inputEndTime));
     }
-    long interval = this.outputInterval;
-    if (outputInterval <= 0) {
-      interval = (inputEndTime - inputStartTime) / (inputRows.size() - 1);
-    }
-    long outputTime =
-        (this.outputStartTime == Long.MIN_VALUE) ? inputEndTime + interval : this.outputStartTime;
+    long interval =
+        calculateForecastInterval(inputStartTime, inputEndTime, inputRows.size(), outputInterval);
+    long outputTime = calculateForecastStartTime(inputEndTime, this.outputStartTime, interval);
     long[] outputTimes = new long[this.outputLength];
     for (int i = 0; i < this.outputLength; i++) {
-      outputTimes[i] = outputTime + interval * i;
+      outputTimes[i] = calculateForecastOutputTime(outputTime, interval, i);
     }
 
     TsBlock forecastResult = forecast();
     if (forecastResult.getPositionCount() != this.outputLength) {
       throw new IllegalArgumentException(
           String.format(
-              "The forecast result length %d does not match the expected output length %d",
-              forecastResult.getPositionCount(), this.outputLength));
+              QueryMessages.FORECAST_RESULT_LENGTH_MISMATCH,
+              forecastResult.getPositionCount(),
+              this.outputLength));
     }
     if (forecastResult.getValueColumnCount() != 1) {
       throw new IllegalArgumentException(
           String.format(
-              "The forecast result should have only one value column, but got %d",
-              forecastResult.getValueColumnCount()));
+              QueryMessages.FORECAST_RESULT_SINGLE_COLUMN, forecastResult.getValueColumnCount()));
     }
 
     for (int i = 0; i < forecastResult.getPositionCount(); i++) {

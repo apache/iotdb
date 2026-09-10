@@ -352,6 +352,14 @@ public class SessionConnectionTest {
   }
 
   @Test
+  public void testDeleteEmptyTimeseries()
+      throws IoTDBConnectionException, StatementExecutionException, TException {
+    sessionConnection.deleteTimeseries(Collections.emptyList());
+
+    Mockito.verify(client, Mockito.never()).deleteTimeseries(anyLong(), any());
+  }
+
+  @Test
   public void testDeleteData() throws IoTDBConnectionException, StatementExecutionException {
     sessionConnection.deleteData(new TSDeleteDataReq());
   }

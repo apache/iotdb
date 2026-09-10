@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.Arrays;
@@ -223,7 +224,7 @@ public enum PrivilegeType {
       case AUDIT:
         return AuditLogOperation.CONTROL;
       default:
-        throw new IllegalStateException("Unexpected value:" + this);
+        throw new IllegalStateException(AuthMessages.UNEXPECTED_PRIVILEGE_VALUE + this);
     }
   }
 }

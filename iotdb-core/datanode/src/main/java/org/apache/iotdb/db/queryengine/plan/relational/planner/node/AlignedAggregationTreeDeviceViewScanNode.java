@@ -23,13 +23,13 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import java.nio.ByteBuffer;
@@ -94,28 +94,29 @@ public class AlignedAggregationTreeDeviceViewScanNode extends AggregationTreeDev
 
   @Override
   public AlignedAggregationTreeDeviceViewScanNode clone() {
-    return new AlignedAggregationTreeDeviceViewScanNode(
-        getPlanNodeId(),
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice,
-        projection,
-        aggregations,
-        groupingSets,
-        preGroupedSymbols,
-        step,
-        groupIdSymbol,
-        getTreeDBName(),
-        getMeasurementColumnNameMap());
+    return copyDeviceEntryDataSetTo(
+        new AlignedAggregationTreeDeviceViewScanNode(
+            getPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice,
+            projection,
+            aggregations,
+            groupingSets,
+            preGroupedSymbols,
+            step,
+            groupIdSymbol,
+            getTreeDBName(),
+            getMeasurementColumnNameMap()));
   }
 
   protected PlanNodeType getPlanNodeType() {

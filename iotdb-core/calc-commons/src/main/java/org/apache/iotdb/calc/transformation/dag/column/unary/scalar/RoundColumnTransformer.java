@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.binary.BinaryColumnTransformer;
 
@@ -92,14 +93,15 @@ public class RoundColumnTransformer extends BinaryColumnTransformer {
       case TIMESTAMP:
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported source dataType: %s", sourceType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_ARG_678B759C, sourceType));
     }
   }
 
   @Override
   protected void checkType() {
     if (!leftTransformer.isReturnTypeNumeric() || !rightTransformer.isReturnTypeNumeric()) {
-      throw new UnsupportedOperationException("Unsupported Type");
+      throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_TYPE_BINARY);
     }
   }
 }

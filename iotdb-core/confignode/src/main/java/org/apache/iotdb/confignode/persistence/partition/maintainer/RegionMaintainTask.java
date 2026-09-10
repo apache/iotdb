@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.partition.maintainer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
@@ -75,7 +76,7 @@ public abstract class RegionMaintainTask {
     public static RegionMaintainTask create(ByteBuffer buffer) throws IOException {
       int typeNum = buffer.getInt();
       if (typeNum >= RegionMaintainType.values().length) {
-        throw new IOException("Unrecognized RegionMaintainType: " + typeNum);
+        throw new IOException(ConfigNodeMessages.UNRECOGNIZED_REGIONMAINTAINTYPE + typeNum);
       }
       RegionMaintainTask task;
       RegionMaintainType type = RegionMaintainType.values()[typeNum];
@@ -87,7 +88,7 @@ public abstract class RegionMaintainTask {
           task = new RegionDeleteTask();
           break;
         default:
-          throw new IOException("Unrecognized RegionMaintainType: " + typeNum);
+          throw new IOException(ConfigNodeMessages.UNRECOGNIZED_REGIONMAINTAINTYPE + typeNum);
       }
       task.deserialize(buffer);
       return task;
@@ -97,7 +98,7 @@ public abstract class RegionMaintainTask {
         throws IOException, TException {
       int typeNum = ReadWriteIOUtils.readInt(inputStream);
       if (typeNum >= RegionMaintainType.values().length) {
-        throw new IOException("Unrecognized RegionMaintainType: " + typeNum);
+        throw new IOException(ConfigNodeMessages.UNRECOGNIZED_REGIONMAINTAINTYPE + typeNum);
       }
       RegionMaintainTask task;
       RegionMaintainType type = RegionMaintainType.values()[typeNum];
@@ -109,7 +110,7 @@ public abstract class RegionMaintainTask {
           task = new RegionDeleteTask();
           break;
         default:
-          throw new IOException("Unrecognized RegionMaintainType: " + typeNum);
+          throw new IOException(ConfigNodeMessages.UNRECOGNIZED_REGIONMAINTAINTYPE + typeNum);
       }
       task.deserialize(inputStream, protocol);
       return task;

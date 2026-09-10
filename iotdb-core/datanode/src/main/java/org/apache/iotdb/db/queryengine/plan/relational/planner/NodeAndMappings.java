@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.List;
 
@@ -31,8 +32,8 @@ public class NodeAndMappings {
   private final List<Symbol> fields;
 
   public NodeAndMappings(PlanNode node, List<Symbol> fields) {
-    this.node = requireNonNull(node, "node is null");
-    this.fields = requireNonNull(fields, "fields is null");
+    this.node = requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
+    this.fields = requireNonNull(fields, DataNodeQueryMessages.EXCEPTION_FIELDS_IS_NULL_DE209DBF);
   }
 
   public PlanNode getNode() {

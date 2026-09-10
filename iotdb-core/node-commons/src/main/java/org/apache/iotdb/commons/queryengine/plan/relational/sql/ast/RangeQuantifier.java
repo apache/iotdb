@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -42,8 +44,8 @@ public class RangeQuantifier extends PatternQuantifier {
       Optional<LongLiteral> atLeast,
       Optional<LongLiteral> atMost) {
     super(location, greedy);
-    this.atLeast = requireNonNull(atLeast, "atLeast is null");
-    this.atMost = requireNonNull(atMost, "atMost is null");
+    this.atLeast = requireNonNull(atLeast, QueryMessages.EXCEPTION_ATLEAST_IS_NULL_2FE8D701);
+    this.atMost = requireNonNull(atMost, QueryMessages.EXCEPTION_ATMOST_IS_NULL_778B3B3A);
   }
 
   public Optional<LongLiteral> getAtLeast() {

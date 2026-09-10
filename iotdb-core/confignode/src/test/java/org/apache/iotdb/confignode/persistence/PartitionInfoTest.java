@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.commons.snapshot.SnapshotStreamFactory;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -66,6 +67,8 @@ public class PartitionInfoTest {
   private static PartitionInfo partitionInfo;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
+  private long originalSnapshotBufferSizeMax;
+
   public enum testFlag {
     DataPartition(20),
     SchemaPartition(30);
@@ -87,6 +90,10 @@ public class PartitionInfoTest {
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
+    // Run the snapshot round-trips of this class with a small buffer cap, proving that snapshot
+    // correctness does not depend on a large fixed buffer.
+    originalSnapshotBufferSizeMax = SnapshotStreamFactory.getBufferSizeMax();
+    SnapshotStreamFactory.setBufferSizeMax(64 * 1024);
   }
 
   @After
@@ -95,6 +102,7 @@ public class PartitionInfoTest {
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
     }
+    SnapshotStreamFactory.setBufferSizeMax(originalSnapshotBufferSizeMax);
   }
 
   @Test
@@ -148,6 +156,63 @@ public class PartitionInfoTest {
     Assert.assertTrue(partitionInfo.processTakeSnapshot(snapshotDir));
 
     PartitionInfo partitionInfo1 = new PartitionInfo();
+    partitionInfo1.processLoadSnapshot(snapshotDir);
+    Assert.assertEquals(partitionInfo, partitionInfo1);
+  }
+
+  @Test
+  public void testSnapshotWithWriteBufferSmallerThanSnapshot() throws TException, IOException {
+    partitionInfo.generateNextRegionGroupId();
+
+    // Set StorageGroup
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test")));
+
+    // Create a SchemaRegion
+    CreateRegionGroupsPlan createRegionGroupsReq = new CreateRegionGroupsPlan();
+    final TRegionReplicaSet schemaRegionReplicaSet =
+        generateTRegionReplicaSet(
+            testFlag.SchemaPartition.getFlag(),
+            generateTConsensusGroupId(
+                testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
+    createRegionGroupsReq.addRegionGroup("root.test", schemaRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionGroupsReq);
+
+    // Create a DataRegion
+    createRegionGroupsReq = new CreateRegionGroupsPlan();
+    final TRegionReplicaSet dataRegionReplicaSet =
+        generateTRegionReplicaSet(
+            testFlag.DataPartition.getFlag(),
+            generateTConsensusGroupId(
+                testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
+    createRegionGroupsReq.addRegionGroup("root.test", dataRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionGroupsReq);
+
+    // Create a data partition table far larger than the 64KB write buffer configured in setup(),
+    // so the buffered snapshot stream must flush and wrap around many times.
+    final CreateDataPartitionPlan createDataPartitionPlan = new CreateDataPartitionPlan();
+    final Map<String, DataPartitionTable> dataPartitionMap = new HashMap<>();
+    final Map<TSeriesPartitionSlot, SeriesPartitionTable> slotInfo = new HashMap<>();
+    final TConsensusGroupId dataRegionId = dataRegionReplicaSet.getRegionId();
+    for (int seriesSlot = 0; seriesSlot < 2000; seriesSlot++) {
+      final Map<TTimePartitionSlot, List<TConsensusGroupId>> relationInfo = new HashMap<>();
+      for (int timeSlot = 0; timeSlot < 8; timeSlot++) {
+        relationInfo.put(new TTimePartitionSlot(timeSlot), Collections.singletonList(dataRegionId));
+      }
+      slotInfo.put(new TSeriesPartitionSlot(seriesSlot), new SeriesPartitionTable(relationInfo));
+    }
+    dataPartitionMap.put("root.test", new DataPartitionTable(slotInfo));
+    createDataPartitionPlan.setAssignedDataPartition(dataPartitionMap);
+    partitionInfo.createDataPartition(createDataPartitionPlan);
+
+    Assert.assertTrue(partitionInfo.processTakeSnapshot(snapshotDir));
+
+    // The snapshot must actually be larger than the 64KB buffer for this test to be meaningful.
+    final File snapshotFile = new File(snapshotDir, "partition_info.bin");
+    Assert.assertTrue(snapshotFile.length() > 64 * 1024);
+
+    final PartitionInfo partitionInfo1 = new PartitionInfo();
     partitionInfo1.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(partitionInfo, partitionInfo1);
   }

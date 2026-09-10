@@ -18,22 +18,34 @@
 package org.apache.iotdb.rest.protocol.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 public class AuthorizationHandler {
 
   public Response checkAuthority(SecurityContext securityContext, Statement statement) {
+    return checkAuthority(securityContext, statement, null);
+  }
+
+  public Response checkAuthority(
+      SecurityContext securityContext, Statement statement, String sqlString) {
     String userName = securityContext.getUserPrincipal().getName();
     long userId = AuthorityChecker.getUserId(userName).orElse(-1L);
+    IClientSession clientSession = SessionManager.getInstance().getCurrSession();
     TSStatus status =
-        AuthorityChecker.checkAuthority(statement, new UserEntity(userId, userName, ""));
+        AuthorityChecker.checkAuthority(
+            statement,
+            new TreeAccessCheckContext(
+                    userId, userName, clientSession == null ? "" : clientSession.getClientAddress())
+                .setSqlString(sqlString));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return Response.ok()
           .entity(new ExecutionStatus().code(status.getCode()).message(status.getMessage()))

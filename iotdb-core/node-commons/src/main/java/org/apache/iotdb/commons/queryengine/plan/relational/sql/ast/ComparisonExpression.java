@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -74,7 +76,7 @@ public class ComparisonExpression extends Expression {
         case IS_DISTINCT_FROM:
           return IS_DISTINCT_FROM;
       }
-      throw new IllegalArgumentException("Unsupported comparison: " + this);
+      throw new IllegalArgumentException(String.format(QueryMessages.UNSUPPORTED_COMPARISON, this));
     }
 
     public Operator negate() {
@@ -95,7 +97,7 @@ public class ComparisonExpression extends Expression {
           // Cannot negate
           break;
       }
-      throw new IllegalArgumentException("Unsupported comparison: " + this);
+      throw new IllegalArgumentException(String.format(QueryMessages.UNSUPPORTED_COMPARISON, this));
     }
   }
 
@@ -107,9 +109,9 @@ public class ComparisonExpression extends Expression {
 
   public ComparisonExpression(Operator operator, Expression left, Expression right) {
     super(null);
-    requireNonNull(operator, "operator is null");
-    requireNonNull(left, "left is null");
-    requireNonNull(right, "right is null");
+    requireNonNull(operator, QueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
 
     this.operator = operator;
     this.left = left;
@@ -118,10 +120,10 @@ public class ComparisonExpression extends Expression {
 
   public ComparisonExpression(
       @Nonnull NodeLocation location, Operator operator, Expression left, Expression right) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(operator, "operator is null");
-    requireNonNull(left, "left is null");
-    requireNonNull(right, "right is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    requireNonNull(operator, QueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
 
     this.operator = operator;
     this.left = left;

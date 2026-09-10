@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.ClassLoaderManagerInitializationException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,7 @@ public class TriggerClassLoaderManager {
 
   private TriggerClassLoaderManager(String libRoot) throws IOException {
     this.libRoot = libRoot;
-    LOGGER.info("Trigger lib root: {}", libRoot);
+    LOGGER.info(DataNodeMiscMessages.TRIGGER_LIB_ROOT, libRoot);
     activeClassLoader = new TriggerClassLoader(libRoot);
   }
 

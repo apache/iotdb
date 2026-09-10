@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -38,8 +40,8 @@ public class TableFunctionArgument extends Node {
 
   public TableFunctionArgument(NodeLocation location, Optional<Identifier> name, Node value) {
     super(location);
-    this.name = requireNonNull(name, "name is null");
-    requireNonNull(value, "value is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     checkArgument(value instanceof TableFunctionTableArgument || value instanceof Expression);
     this.value = value;
   }

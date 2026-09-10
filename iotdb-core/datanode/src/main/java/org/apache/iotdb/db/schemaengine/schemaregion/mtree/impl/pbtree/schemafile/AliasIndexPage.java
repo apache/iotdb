@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -237,7 +238,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   @Override
   public void extendsTo(ByteBuffer newBuffer) throws MetadataException {
     if (newBuffer.capacity() != this.pageBuffer.capacity()) {
-      throw new MetadataException("AliasIndexPage can only extend to buffer with same capacity.");
+      throw new MetadataException(DataNodeSchemaMessages.ALIAS_INDEX_PAGE_EXTEND_CAPACITY);
     }
 
     syncPageBuffer();
@@ -252,15 +253,15 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
       throws MetadataException {
 
     if (this.pageBuffer.capacity() != dstBuffer.capacity()) {
-      throw new MetadataException("Segments only splits with same capacity.");
+      throw new MetadataException(DataNodeSchemaMessages.SEGMENTS_SPLIT_SAME_CAPACITY);
     }
 
     if (memberNum == 0) {
-      throw new MetadataException("Segment can not be split with no records.");
+      throw new MetadataException(DataNodeSchemaMessages.SEGMENT_SPLIT_NO_RECORDS);
     }
 
     if (key == null && memberNum <= 1) {
-      throw new MetadataException("Segment can not be split with only one record.");
+      throw new MetadataException(DataNodeSchemaMessages.SEGMENT_SPLIT_ONLY_ONE_RECORD);
     }
 
     // notice that key can be null here

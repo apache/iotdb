@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -37,17 +38,18 @@ public class ResolvedFunctionCallBuilder {
   }
 
   private ResolvedFunctionCallBuilder(ResolvedFunction resolvedFunction) {
-    this.resolvedFunction = requireNonNull(resolvedFunction, "resolvedFunction is null");
+    this.resolvedFunction =
+        requireNonNull(resolvedFunction, QueryMessages.EXCEPTION_RESOLVEDFUNCTION_IS_NULL_81B5B93A);
   }
 
   public ResolvedFunctionCallBuilder addArgument(Expression value) {
-    requireNonNull(value, "value is null");
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     argumentValues.add(value);
     return this;
   }
 
   public ResolvedFunctionCallBuilder setArguments(List<Expression> values) {
-    requireNonNull(values, "values is null");
+    requireNonNull(values, QueryMessages.EXCEPTION_VALUES_IS_NULL_F1D7D3D8);
     argumentValues = new ArrayList<>(values);
     return this;
   }

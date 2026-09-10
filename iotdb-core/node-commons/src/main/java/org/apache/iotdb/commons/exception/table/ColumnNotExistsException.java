@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.exception.table;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class ColumnNotExistsException extends MetadataException {
@@ -27,7 +28,10 @@ public class ColumnNotExistsException extends MetadataException {
       final String database, final String tableName, final String columnName) {
     super(
         String.format(
-            "Column %s in table '%s.%s' does not exist.", columnName, database, tableName),
+            CommonMessages.EXCEPTION_COLUMN_ARG_TABLE_ARG_ARG_DOES_NOT_EXIST_D8145581,
+            columnName,
+            database,
+            tableName),
         TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
   }
 }

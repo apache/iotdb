@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.sink.payload.thrift.common;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -42,8 +43,14 @@ public class PipeTransferSliceReqHandler {
 
   private int sliceCount = -1;
   private final List<byte[]> sliceBodies = new ArrayList<>();
+  private long receivedBodySize = 0;
 
   public boolean receiveSlice(final PipeTransferSliceReq req) {
+    if (!isValidSliceReq(req)) {
+      clear();
+      return false;
+    }
+
     if (orderId == -1
         || originReqType == -1
         || originBodySize == -1
@@ -58,9 +65,10 @@ public class PipeTransferSliceReqHandler {
         originReqType = req.getOriginReqType();
         originBodySize = req.getOriginBodySize();
         sliceCount = req.getSliceCount();
+        receivedBodySize = 0;
       } else {
         LOGGER.warn(
-            "Invalid state: orderId={}, originReqType={}, originBodySize={}, sliceCount={}, sliceBodies.size={}",
+            PipeMessages.INVALID_STATE_SLICE,
             orderId,
             originReqType,
             originBodySize,
@@ -72,13 +80,13 @@ public class PipeTransferSliceReqHandler {
     }
 
     if (orderId != req.getOrderId()) {
-      LOGGER.warn("Order ID mismatch: expected {}, actual {}", orderId, req.getOrderId());
+      LOGGER.warn(PipeMessages.ORDER_ID_MISMATCH, orderId, req.getOrderId());
       clear();
       return false;
     }
     if (originReqType != req.getOriginReqType()) {
       LOGGER.warn(
-          "Origin request type mismatch: expected {}, actual {}",
+          PipeMessages.LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE,
           originReqType,
           req.getOriginReqType());
       clear();
@@ -86,26 +94,57 @@ public class PipeTransferSliceReqHandler {
     }
     if (originBodySize != req.getOriginBodySize()) {
       LOGGER.warn(
-          "Origin body size mismatch: expected {}, actual {}",
+          PipeMessages.LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75,
           originBodySize,
           req.getOriginBodySize());
       clear();
       return false;
     }
     if (sliceCount != req.getSliceCount()) {
-      LOGGER.warn("Slice count mismatch: expected {}, actual {}", sliceCount, req.getSliceCount());
+      LOGGER.warn(PipeMessages.SLICE_COUNT_MISMATCH, sliceCount, req.getSliceCount());
       clear();
       return false;
     }
     if (sliceBodies.size() != req.getSliceIndex()) {
       LOGGER.warn(
-          "Invalid slice index: expected {}, actual {}", sliceBodies.size(), req.getSliceIndex());
+          PipeMessages.LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628,
+          sliceBodies.size(),
+          req.getSliceIndex());
+      clear();
+      return false;
+    }
+
+    if (receivedBodySize + req.getSliceBody().length > originBodySize) {
+      LOGGER.warn(
+          "Received slice body size {} exceeds origin body size {}",
+          receivedBodySize + req.getSliceBody().length,
+          originBodySize);
       clear();
       return false;
     }
 
     sliceBodies.add(req.getSliceBody());
+    receivedBodySize += req.getSliceBody().length;
+
+    if (sliceBodies.size() == sliceCount && receivedBodySize != originBodySize) {
+      LOGGER.warn(
+          "Received slice body size {} is not equal to origin body size {}",
+          receivedBodySize,
+          originBodySize);
+      clear();
+      return false;
+    }
+
     return true;
+  }
+
+  private boolean isValidSliceReq(final PipeTransferSliceReq req) {
+    return req.getOriginBodySize() >= 0
+        && req.getSliceCount() > 0
+        && req.getSliceIndex() >= 0
+        && req.getSliceIndex() < req.getSliceCount()
+        && req.getSliceBody() != null
+        && req.getSliceBody().length <= req.getOriginBodySize();
   }
 
   public Optional<TPipeTransferReq> makeReqIfComplete() {
@@ -131,5 +170,6 @@ public class PipeTransferSliceReqHandler {
     originBodySize = -1;
     sliceCount = -1;
     sliceBodies.clear();
+    receivedBodySize = 0;
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 
 import java.net.SocketException;
@@ -31,7 +32,8 @@ public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFrame
   private final TSocket underlyingSocket;
 
   public TimeoutChangeableTSnappyFramedTransport(
-      TSocket underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize, boolean copyBinary) {
+      TSocket underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize, boolean copyBinary)
+      throws TTransportException {
     super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
     this.underlyingSocket = underlying;
   }
@@ -65,7 +67,7 @@ public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFrame
     }
 
     @Override
-    public TTransport getTransport(TTransport trans) {
+    public TTransport getTransport(TTransport trans) throws TTransportException {
       if (trans instanceof TSocket) {
         return new TimeoutChangeableTSnappyFramedTransport(
             (TSocket) trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);

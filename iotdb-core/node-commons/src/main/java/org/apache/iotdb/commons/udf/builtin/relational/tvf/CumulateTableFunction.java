@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -43,7 +44,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+import static com.google.common.math.LongMath.saturatedMultiply;
+import static com.google.common.math.LongMath.saturatedSubtract;
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.getWindowStart;
 import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
 
 public class CumulateTableFunction implements TableFunction {
@@ -92,7 +97,8 @@ public class CumulateTableFunction implements TableFunction {
 
     if (size % step != 0) {
       throw new UDFException(
-          "Cumulative table function requires size must be an integral multiple of step.");
+          CommonMessages
+              .EXCEPTION_CUMULATIVE_TABLE_FUNCTION_REQUIRES_SIZE_MUST_INTEGRAL_MULTIPLE_STEP_D8A9DA94);
     }
 
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
@@ -163,13 +169,18 @@ public class CumulateTableFunction implements TableFunction {
       // find the first windows
       long timeValue = input.getLong(0);
       if (timeValue >= origin) {
-        long windowStart = origin + (timeValue - origin) / size * size;
-        for (long steps = (timeValue - windowStart + step) / step * step;
-            steps <= size;
-            steps += step) {
+        long windowStart = getWindowStart(timeValue, origin, size);
+        long steps =
+            saturatedAdd(
+                saturatedMultiply(saturatedSubtract(timeValue, windowStart) / step, step), step);
+        while (steps <= size) {
           properColumnBuilders.get(0).writeLong(windowStart);
-          properColumnBuilders.get(1).writeLong(windowStart + steps);
+          properColumnBuilders.get(1).writeLong(saturatedAdd(windowStart, steps));
           passThroughIndexBuilder.writeLong(curIndex);
+          if (size - steps < step) {
+            break;
+          }
+          steps += step;
         }
       }
       curIndex++;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -78,23 +79,23 @@ public class JoinNode extends TwoChildProcessNode {
       Optional<Expression> filter,
       Optional<Boolean> spillable) {
     super(id);
-    requireNonNull(joinType, "type is null");
-    requireNonNull(leftChild, "left is null");
-    requireNonNull(rightChild, "right is null");
-    requireNonNull(criteria, "criteria is null");
-    requireNonNull(leftOutputSymbols, "leftOutputSymbols is null");
-    requireNonNull(rightOutputSymbols, "rightOutputSymbols is null");
-    requireNonNull(filter, "filter is null");
+    requireNonNull(joinType, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    requireNonNull(leftChild, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    requireNonNull(rightChild, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
+    requireNonNull(criteria, QueryMessages.EXCEPTION_CRITERIA_IS_NULL_2996D1A3);
+    requireNonNull(leftOutputSymbols, QueryMessages.EXCEPTION_LEFTOUTPUTSYMBOLS_IS_NULL_083AE900);
+    requireNonNull(rightOutputSymbols, QueryMessages.EXCEPTION_RIGHTOUTPUTSYMBOLS_IS_NULL_F44B848F);
+    requireNonNull(filter, QueryMessages.EXCEPTION_FILTER_IS_NULL_8F83BD19);
     // The condition doesn't guarantee that filter is of type boolean, but was found to be a
     // practical way to identify
     // places where JoinNode could be created without appropriate coercions.
     checkArgument(
         !filter.isPresent() || !(filter.get() instanceof NullLiteral),
-        "Filter must be an expression of boolean type: %s",
+        QueryMessages.EXCEPTION_FILTER_MUST_BE_AN_EXPRESSION_OF_BOOLEAN_TYPE_COLON_ARG_F358F1A8,
         filter);
     // requireNonNull(leftHashSymbol, "leftHashSymbol is null");
     // requireNonNull(rightHashSymbol, "rightHashSymbol is null");
-    requireNonNull(spillable, "spillable is null");
+    requireNonNull(spillable, QueryMessages.EXCEPTION_SPILLABLE_IS_NULL_8226EA70);
 
     this.joinType = joinType;
     this.leftChild = leftChild;
@@ -114,10 +115,11 @@ public class JoinNode extends TwoChildProcessNode {
 
     checkArgument(
         leftSymbols.containsAll(leftOutputSymbols),
-        "Left source inputs do not contain all left output symbols");
+        QueryMessages.EXCEPTION_LEFT_SOURCE_INPUTS_DO_NOT_CONTAIN_ALL_LEFT_OUTPUT_SYMBOLS_71459E3B);
     checkArgument(
         rightSymbols.containsAll(rightOutputSymbols),
-        "Right source inputs do not contain all right output symbols");
+        QueryMessages
+            .EXCEPTION_RIGHT_SOURCE_INPUTS_DO_NOT_CONTAIN_ALL_RIGHT_OUTPUT_SYMBOLS_23EBC024);
 
     //    checkArgument(
     //        !(criteria.isEmpty() && leftHashSymbol.isPresent()),
@@ -131,7 +133,8 @@ public class JoinNode extends TwoChildProcessNode {
             checkArgument(
                 leftSymbols.contains(equiJoinClause.getLeft())
                     && rightSymbols.contains(equiJoinClause.getRight()),
-                "Equality join criteria should be normalized according to join sides: %s",
+                QueryMessages
+                    .EXCEPTION_EQUALITY_JOIN_CRITERIA_SHOULD_BE_NORMALIZED_ACCORDING_TO_JOIN_SIDES_COLON_ARG_76EB7C14,
                 equiJoinClause));
   }
 
@@ -144,8 +147,8 @@ public class JoinNode extends TwoChildProcessNode {
       List<Symbol> leftOutputSymbols,
       List<Symbol> rightOutputSymbols) {
     super(id);
-    requireNonNull(joinType, "type is null");
-    requireNonNull(criteria, "criteria is null");
+    requireNonNull(joinType, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    requireNonNull(criteria, QueryMessages.EXCEPTION_CRITERIA_IS_NULL_2996D1A3);
 
     this.leftOutputSymbols = leftOutputSymbols;
     this.rightOutputSymbols = rightOutputSymbols;
@@ -181,7 +184,9 @@ public class JoinNode extends TwoChildProcessNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(newChildren.size() == 2, "expected newChildren to contain 2 nodes for JoinNode");
+    checkArgument(
+        newChildren.size() == 2,
+        QueryMessages.EXCEPTION_EXPECTED_NEWCHILDREN_TO_CONTAIN_2_NODES_FOR_JOINNODE_BEEC3D82);
     return new JoinNode(
         getPlanNodeId(),
         joinType,
@@ -372,8 +377,8 @@ public class JoinNode extends TwoChildProcessNode {
     private final Symbol right;
 
     public EquiJoinClause(Symbol left, Symbol right) {
-      this.left = requireNonNull(left, "left is null");
-      this.right = requireNonNull(right, "right is null");
+      this.left = requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+      this.right = requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
     }
 
     public Symbol getLeft() {
@@ -432,8 +437,8 @@ public class JoinNode extends TwoChildProcessNode {
 
     public AsofJoinClause(ComparisonExpression.Operator operator, Symbol left, Symbol right) {
       this.operator = operator;
-      this.left = requireNonNull(left, "left is null");
-      this.right = requireNonNull(right, "right is null");
+      this.left = requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+      this.right = requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
     }
 
     public Symbol getLeft() {
@@ -466,7 +471,8 @@ public class JoinNode extends TwoChildProcessNode {
         case LESS_THAN_OR_EQUAL:
           return false;
         default:
-          throw new IllegalArgumentException("Invalid operator type: " + operator);
+          throw new IllegalArgumentException(
+              String.format(QueryMessages.INVALID_OPERATOR_TYPE, operator));
       }
     }
 
@@ -526,7 +532,7 @@ public class JoinNode extends TwoChildProcessNode {
           return LEFT;
         default:
       }
-      throw new IllegalArgumentException("Unsupported join type: " + this);
+      throw new IllegalArgumentException(String.format(QueryMessages.UNSUPPORTED_JOIN_TYPE, this));
     }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.row;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.type.Type;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -64,7 +65,7 @@ public class PipeDataTypeTransformer {
       case 11:
         return Type.STRING;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(DataNodePipeMessages.INVALID_INPUT + type);
     }
   }
 

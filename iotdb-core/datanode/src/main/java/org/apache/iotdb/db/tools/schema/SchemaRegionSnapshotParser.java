@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +86,7 @@ public class SchemaRegionSnapshotParser {
         snapshotList.add(path);
       }
     } catch (final IOException ioException) {
-      LOGGER.warn("ioexception when get {}'s folder", schemaRegionId, ioException);
+      LOGGER.warn(DataNodeMiscMessages.IOEXCEPTION_GET_FOLDER, schemaRegionId, ioException);
       return null;
     }
     final Path latestSnapshotPath = getLatestSnapshotPath(snapshotList, isTmp);
@@ -134,21 +135,24 @@ public class SchemaRegionSnapshotParser {
     if (!mtreefile.getName().equals(SchemaConstant.MTREE_SNAPSHOT)) {
       throw new IllegalArgumentException(
           String.format(
-              "%s is not allowed, only support %s",
-              mtreefile.getName(), SchemaConstant.MTREE_SNAPSHOT));
+              DataNodeMiscMessages.MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_862A4D86,
+              mtreefile.getName(),
+              SchemaConstant.MTREE_SNAPSHOT));
     }
     if (tagfile != null && !tagfile.getName().equals(SchemaConstant.TAG_LOG_SNAPSHOT)) {
       throw new IllegalArgumentException(
           String.format(
-              " %s is not allowed, only support %s",
-              tagfile.getName(), SchemaConstant.TAG_LOG_SNAPSHOT));
+              DataNodeMiscMessages.MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_1B06E0B7,
+              tagfile.getName(),
+              SchemaConstant.TAG_LOG_SNAPSHOT));
     }
     if (attributeFile != null
         && !attributeFile.getName().equals(SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT)) {
       throw new IllegalArgumentException(
           String.format(
-              " %s is not allowed, only support %s",
-              attributeFile.getName(), SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT));
+              DataNodeMiscMessages.MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_1B06E0B7,
+              attributeFile.getName(),
+              SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT));
     }
     return new SRStatementGenerator(mtreefile, tagfile, attributeFile, databasePath);
   }

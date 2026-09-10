@@ -80,8 +80,7 @@ public class ExportDataTree extends AbstractExportData {
             .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
             .version(SessionConfig.DEFAULT_VERSION);
     if (useSsl) {
-      sessionBuilder =
-          sessionBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+      sessionBuilder = configureSsl(sessionBuilder);
     }
     session = sessionBuilder.build();
     session.open(false);

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.ReplaceFunctionColumnTransformer;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
@@ -44,7 +45,8 @@ public class ReplaceFunctionHelper implements BuiltInScalarFunctionHelper {
       return;
     }
     throw new SemanticException(
-        String.format("Unsupported data type %s for function REPLACE.", tsDataType));
+        String.format(
+            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_S_FOR_FUNCTION_REPLACE, tsDataType));
   }
 
   @Override
@@ -86,7 +88,8 @@ public class ReplaceFunctionHelper implements BuiltInScalarFunctionHelper {
   private void checkFromAndToAttributes(FunctionExpression expression) {
     if (!expression.getFunctionAttributes().containsKey(REPLACE_FROM)
         || !expression.getFunctionAttributes().containsKey(REPLACE_TO)) {
-      throw new SemanticException("Function REPLACE must specify from and to component.");
+      throw new SemanticException(
+          DataNodeQueryMessages.FUNCTION_REPLACE_MUST_SPECIFY_FROM_AND_TO_COMPONENT);
     }
   }
 }

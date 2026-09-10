@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -241,9 +242,9 @@ public class SystemMetrics implements IMetricSet {
           }
         }
       } catch (IOException e) {
-        logger.debug("Failed to get memory, because ", e);
+        logger.debug(MetricsMessages.LOG_FAILED_GET_MEMORY_BECAUSE_041BE661, e);
       } catch (InterruptedException e) {
-        logger.debug("Interrupted while waiting for memory command", e);
+        logger.debug(MetricsMessages.LOG_INTERRUPTED_WAITING_MEMORY_COMMAND_CF538E10, e);
         Thread.currentThread().interrupt();
       } finally {
         if (process != null && process.isAlive()) {

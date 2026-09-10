@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.queue;
 
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
+
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,18 +35,22 @@ import java.util.TreeSet;
  * <p>The time complexity of operations are:
  *
  * <ul>
- *   <li><b>{@link #remove(IDIndexedAccessible)} ()}: </b> O(logN).
- *   <li><b>{@link #push(IDIndexedAccessible)}: </b> O(logN).
+ *   <li><b>{@link #remove(org.apache.iotdb.calc.execution.schedule.queue.IDIndexedAccessible)} ()}:
+ *       </b> O(logN).
+ *   <li><b>{@link #push(org.apache.iotdb.calc.execution.schedule.queue.IDIndexedAccessible)}: </b>
+ *       O(logN).
  *   <li><b>{@link #poll()}: </b> O(logN).
- *   <li><b>{@link #get(ID)}}: </b> O(1).
+ *   <li><b>{@link #get(org.apache.iotdb.calc.execution.schedule.queue.ID)}}: </b> O(1).
  * </ul>
  */
-public class L2PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlockingQueue<E> {
+public class L2PriorityQueue<
+        E extends org.apache.iotdb.calc.execution.schedule.queue.IDIndexedAccessible>
+    extends IndexedBlockingQueue<E> {
 
   private SortedSet<E> workingSortedElements;
   private SortedSet<E> idleSortedElements;
-  private Map<ID, E> workingKeyedElements;
-  private Map<ID, E> idleKeyedElements;
+  private Map<org.apache.iotdb.calc.execution.schedule.queue.ID, E> workingKeyedElements;
+  private Map<org.apache.iotdb.calc.execution.schedule.queue.ID, E> idleKeyedElements;
 
   /**
    * Init the queue with max capacity and specified comparator.
@@ -64,7 +70,7 @@ public class L2PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
   }
 
   @Override
-  protected boolean isEmpty() {
+  public boolean isEmpty() {
     return workingKeyedElements.isEmpty() && idleKeyedElements.isEmpty();
   }
 
@@ -72,7 +78,7 @@ public class L2PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
   protected E pollFirst() {
     if (workingKeyedElements.isEmpty()) {
       // Switch the two queues
-      Map<ID, E> tmp = workingKeyedElements;
+      Map<org.apache.iotdb.calc.execution.schedule.queue.ID, E> tmp = workingKeyedElements;
       workingKeyedElements = idleKeyedElements;
       idleKeyedElements = tmp;
       SortedSet<E> tmpSet = workingSortedElements;

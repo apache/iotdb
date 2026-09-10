@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.AbstractCaseWhenThenColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransformer;
@@ -429,7 +430,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     } else if (columnTransformer instanceof FailFunctionColumnTransformer) {
       return 0;
     } else {
-      throw new UnsupportedOperationException("Unsupported ColumnTransformer");
+      throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_COLUMN_TRANSFORMER);
     }
   }
 

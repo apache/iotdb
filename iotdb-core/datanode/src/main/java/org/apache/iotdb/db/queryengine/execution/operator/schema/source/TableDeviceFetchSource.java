@@ -81,21 +81,21 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
-    int idIndex = 0;
+    int tagIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
     final TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
     TsTableColumnSchema columnSchema;
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-        if (pathNodes.length <= idIndex + 3 || pathNodes[idIndex + 3] == null) {
+        if (pathNodes.length <= tagIndex + 3 || pathNodes[tagIndex + 3] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder
               .getColumnBuilder(resultIndex)
-              .writeBinary(new Binary(pathNodes[idIndex + 3], TSFileConfig.STRING_CHARSET));
+              .writeBinary(new Binary(pathNodes[tagIndex + 3], TSFileConfig.STRING_CHARSET));
         }
-        idIndex++;
+        tagIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
         if (Objects.isNull(schemaInfo.getAttributeValue(columnHeader.getColumnName()))) {
           builder.getColumnBuilder(resultIndex).appendNull();

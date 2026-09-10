@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -41,7 +42,8 @@ import java.util.Optional;
 public class TransformUtils {
 
   private TransformUtils() {
-    throw new IllegalStateException("TransformUtils should not be instantiated.");
+    throw new IllegalStateException(
+        DataNodeQueryMessages.TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED);
   }
 
   public static Column transformConstantOperandToColumn(ConstantOperand constantOperand) {
@@ -52,7 +54,9 @@ public class TransformUtils {
           CommonUtils.parseValue(constantOperand.getDataType(), constantOperand.getValueString());
       if (value == null) {
         throw new UnsupportedOperationException(
-            "Invalid constant operand: " + constantOperand.getExpressionString());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_INVALID_CONSTANT_OPERAND_S_939F3B8D,
+                constantOperand.getExpressionString()));
       }
 
       switch (constantOperand.getDataType()) {
@@ -75,7 +79,7 @@ public class TransformUtils {
         case TIMESTAMP:
         default:
           throw new UnSupportedDataTypeException(
-              "Unsupported type: " + constantOperand.getDataType());
+              DataNodeQueryMessages.UNSUPPORTED_TYPE + constantOperand.getDataType());
       }
     } catch (QueryProcessException e) {
       throw new UnsupportedOperationException(e);
@@ -155,7 +159,8 @@ public class TransformUtils {
       case STRING:
       default:
         throw new UnsupportedOperationException(
-            "The data type of the state window strategy is not valid.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_DFFBF210);
     }
     return res;
   }

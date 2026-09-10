@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.transformation.dag.column;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -34,7 +36,8 @@ public class ColumnCache {
 
   public Column getColumn() {
     referenceCount--;
-    checkArgument(referenceCount >= 0, "Exceed max call times of getColumn");
+    checkArgument(
+        referenceCount >= 0, CalcMessages.EXCEPTION_EXCEED_MAX_CALL_TIMES_OF_GETCOLUMN_69C77C7E);
     Column res = this.column;
     // set column to null for memory control
     if (referenceCount == 0) {

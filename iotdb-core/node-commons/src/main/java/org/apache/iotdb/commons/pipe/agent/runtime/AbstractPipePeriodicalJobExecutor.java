@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.utils.Pair;
@@ -66,13 +67,13 @@ public abstract class AbstractPipePeriodicalJobExecutor {
                 try {
                   periodicalJob.run();
                 } catch (Exception e) {
-                  LOGGER.warn("Periodical job {} failed.", id, e);
+                  LOGGER.warn(PipeMessages.PERIODICAL_JOB_FAILED, id, e);
                 }
               }
             },
             Math.max(intervalInSeconds / minIntervalSeconds, 1)));
     LOGGER.info(
-        "Pipe periodical job {} is registered successfully. Interval: {} seconds.",
+        PipeMessages.PERIODICAL_JOB_REGISTERED,
         id,
         Math.max(intervalInSeconds / minIntervalSeconds, 1) * minIntervalSeconds);
   }
@@ -88,7 +89,7 @@ public abstract class AbstractPipePeriodicalJobExecutor {
               minIntervalSeconds,
               minIntervalSeconds,
               TimeUnit.SECONDS);
-      LOGGER.info("Pipe periodical job executor is started successfully.");
+      LOGGER.info(PipeMessages.PERIODICAL_JOB_EXECUTOR_STARTED);
     }
   }
 
@@ -106,7 +107,7 @@ public abstract class AbstractPipePeriodicalJobExecutor {
     if (executorFuture != null) {
       executorFuture.cancel(false);
       executorFuture = null;
-      LOGGER.info("Pipe periodical job executor is stopped successfully.");
+      LOGGER.info(PipeMessages.PERIODICAL_JOB_EXECUTOR_STOPPED);
     }
   }
 
@@ -117,6 +118,6 @@ public abstract class AbstractPipePeriodicalJobExecutor {
   @TestOnly
   public void clear() {
     periodicalJobs.clear();
-    LOGGER.info("All pipe periodical jobs are cleared successfully.");
+    LOGGER.info(PipeMessages.PERIODICAL_JOBS_CLEARED);
   }
 }

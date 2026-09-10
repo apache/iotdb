@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
@@ -56,21 +57,21 @@ public class WalChecker {
    */
   public List<File> doCheck() throws WALException {
     File walFolderFile = SystemFileFactory.INSTANCE.getFile(walFolder);
-    logger.info("Checking folder: {}", walFolderFile.getAbsolutePath());
+    logger.info(DataNodeMiscMessages.CHECKING_FOLDER, walFolderFile.getAbsolutePath());
     if (!walFolderFile.exists() || !walFolderFile.isDirectory()) {
       throw new WALException(walFolder);
     }
 
     File[] walNodeFolders = walFolderFile.listFiles(File::isDirectory);
     if (walNodeFolders == null || walNodeFolders.length == 0) {
-      logger.info("No sub-directories under the given directory, check ends");
+      logger.info(DataNodeMiscMessages.NO_SUB_DIRECTORIES);
       return Collections.emptyList();
     }
 
     List<File> failedFiles = new ArrayList<>();
     for (int dirIndex = 0; dirIndex < walNodeFolders.length; dirIndex++) {
       File walNodeFolder = walNodeFolders[dirIndex];
-      logger.info("Checking the No.{} directory {}", dirIndex, walNodeFolder.getName());
+      logger.info(DataNodeMiscMessages.CHECKING_DIRECTORY, dirIndex, walNodeFolder.getName());
       File[] walFiles = WALFileUtils.listAllWALFiles(walNodeFolder);
       if (walFiles == null) {
         continue;
@@ -93,10 +94,10 @@ public class WalChecker {
         }
       }
     } catch (FileNotFoundException e) {
-      logger.debug("Wal file doesn't exist, skipping");
+      logger.debug(DataNodeMiscMessages.WAL_FILE_NOT_EXIST);
       return true;
     } catch (IOException e) {
-      logger.error("{} fails the check because", walFile, e);
+      logger.error(DataNodeMiscMessages.WAL_CHECK_FAILED, walFile, e);
       return false;
     }
     return true;
@@ -105,9 +106,9 @@ public class WalChecker {
   // a temporary method which should be in the integrated self-check module in the future
   public static void report(List<File> failedFiles) {
     if (failedFiles.isEmpty()) {
-      logger.info("Check finished. There is no damaged file");
+      logger.info(DataNodeMiscMessages.CHECK_FINISHED_NO_DAMAGED);
     } else {
-      logger.error("There are {} failed files. They are {}", failedFiles.size(), failedFiles);
+      logger.error(DataNodeMiscMessages.FAILED_FILES_FOUND, failedFiles.size(), failedFiles);
     }
   }
 
@@ -116,7 +117,7 @@ public class WalChecker {
    */
   public static void main(String[] args) throws WALException {
     if (args.length < 1) {
-      logger.error("No enough args: require the walRootDirectory");
+      logger.error(DataNodeMiscMessages.NO_ENOUGH_ARGS);
       return;
     }
 

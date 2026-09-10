@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.CircularQueue;
 import org.apache.iotdb.library.util.DoubleCircularQueue;
 import org.apache.iotdb.library.util.LongCircularQueue;
@@ -149,7 +150,7 @@ public class Resampler {
         ret = valueWindow.get(valueWindow.size() - 1);
         break;
       default:
-        throw new IllegalArgumentException("Error: Illegal Aggregation Algorithm.");
+        throw new IllegalArgumentException(LibraryUdfMessages.ILLEGAL_AGGREGATION_ALGORITHM);
     }
     return ret;
   }
@@ -186,7 +187,7 @@ public class Resampler {
         ret = ret / (source.get(1).time - source.get(0).time);
         break;
       default:
-        throw new IllegalArgumentException("Error: Illegal Interpolation Algorithm.");
+        throw new IllegalArgumentException(LibraryUdfMessages.ILLEGAL_INTERPOLATION_ALGORITHM);
     }
     return ret;
   }

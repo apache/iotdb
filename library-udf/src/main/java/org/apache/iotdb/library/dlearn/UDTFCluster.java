@@ -22,6 +22,7 @@ package org.apache.iotdb.library.dlearn;
 import org.apache.iotdb.library.dlearn.util.cluster.KMeans;
 import org.apache.iotdb.library.dlearn.util.cluster.KShape;
 import org.apache.iotdb.library.dlearn.util.cluster.MedoidShape;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -140,16 +141,20 @@ public class UDTFCluster implements UDTF {
     int n = values.size();
     if (n < l) {
       throw new UDFException(
-          "Time series length must be at least l; got " + n + " points, l=" + l + ".");
+          String.format(
+              LibraryUdfMessages
+                  .EXCEPTION_TIME_SERIES_LENGTH_MUST_BE_AT_LEAST_L_GOT_ARG_POINTS_L_ARG_8C796580,
+              n,
+              l));
     }
     int numWindows = n / l;
     if (numWindows < k) {
       throw new UDFException(
-          "Not enough non-overlapping windows: got "
-              + numWindows
-              + " windows, need at least k="
-              + k
-              + ".");
+          String.format(
+              LibraryUdfMessages
+                  .EXCEPTION_NOT_ENOUGH_NON_OVERLAPPING_WINDOWS_GOT_ARG_WINDOWS_NEED_AT_LEAST_K_ARG_9E42BA1F,
+              numWindows,
+              k));
     }
 
     double[][] windows = new double[numWindows][l];
@@ -177,7 +182,7 @@ public class UDTFCluster implements UDTF {
         ms.fit(windows, k, norm, maxIter);
         labels = ms.getLabels();
       } else {
-        throw new UDFException("Unsupported method: " + method);
+        throw new UDFException(LibraryUdfMessages.UNSUPPORTED_METHOD + method);
       }
       for (int w = 0; w < numWindows; w++) {
         collector.putInt(windowStartTime[w], labels[w]);
@@ -198,7 +203,7 @@ public class UDTFCluster implements UDTF {
         ms.fit(windows, k, norm, maxIter);
         centroids = ms.getCentroids();
       } else {
-        throw new UDFException("Unsupported method: " + method);
+        throw new UDFException(LibraryUdfMessages.UNSUPPORTED_METHOD + method);
       }
       emitConcatenatedCentroids(collector, centroids);
     }

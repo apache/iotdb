@@ -43,8 +43,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDele
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.read.common.TimeRange;
@@ -100,6 +100,16 @@ public class DeletionResourceTest {
     File dataRegionDir = new File(baseDir + File.separator + FAKE_DATA_REGION_IDS[0]);
     Assert.assertTrue(baseDir.exists());
     Assert.assertTrue(dataRegionDir.exists());
+  }
+
+  @Test
+  public void testGetInstanceAfterCloseReturnsFreshManager() {
+    DeletionResourceManager closedDeletionResourceManager =
+        DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[0]);
+    closedDeletionResourceManager.close();
+
+    deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[0]);
+    Assert.assertNotSame(closedDeletionResourceManager, deletionResourceManager);
   }
 
   @Test

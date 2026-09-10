@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpre
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import javax.annotation.Nullable;
@@ -93,7 +94,8 @@ public class GapFillStartAndEndTimeExtractVisitor
       }
       return false;
     } else {
-      throw new IllegalStateException("Illegal state in visitLogicalExpression");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.ILLEGAL_STATE_IN_VISITLOGICALEXPRESSION);
     }
   }
 
@@ -246,10 +248,16 @@ public class GapFillStartAndEndTimeExtractVisitor
       }
       long[] result = new long[2];
       if (leftOperator == GREATER_THAN) {
+        if (startTime == Long.MAX_VALUE) {
+          throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
+        }
         startTime++;
       }
       result[0] = dateBin(startTime, origin, monthDuration, nonMonthDuration, zoneId);
       if (rightOperator == LESS_THAN) {
+        if (endTime == Long.MIN_VALUE) {
+          throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
+        }
         endTime--;
       }
       result[1] = dateBin(endTime, origin, monthDuration, nonMonthDuration, zoneId);

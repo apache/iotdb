@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
 import org.apache.tsfile.block.column.Column;
@@ -41,7 +42,8 @@ public class RegularTransformer extends UnaryTransformer {
     this.pattern = pattern;
 
     if (layerReaderDataType != TSDataType.TEXT) {
-      throw new UnSupportedDataTypeException("Unsupported data type: " + layerReaderDataType);
+      throw new UnSupportedDataTypeException(
+          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + layerReaderDataType);
     }
   }
 

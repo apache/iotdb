@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
@@ -64,11 +65,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
-    // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
-    if (endTime <= startTime) {
-      endTime = Long.MAX_VALUE;
-    }
+    final long endTime = TimePartitionUtils.getTimePartitionEndTime(startTime);
     final int satisfiedLength = satisfiedLengthQueue.poll();
     // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);
@@ -115,7 +112,9 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", dataType));
+                  String.format(
+                      StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                      dataType));
           }
         }
       }
@@ -208,7 +207,9 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                String.format(
+                    StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                    chunkHeader.getDataType()));
         }
       }
       Statistics<? extends Serializable> statistics =

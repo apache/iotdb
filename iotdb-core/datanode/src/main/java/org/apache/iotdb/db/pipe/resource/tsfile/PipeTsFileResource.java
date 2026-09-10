@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,13 +70,19 @@ public class PipeTsFileResource implements AutoCloseable {
   }
 
   public boolean decreaseReferenceCount() {
+    return decreaseReferenceCount(true);
+  }
+
+  public boolean decreaseReferenceCount(final boolean deleteFileWhenNoReference) {
     final int finalReferenceCount = referenceCount.addAndGet(-1);
     if (finalReferenceCount == 0) {
-      close();
+      if (deleteFileWhenNoReference) {
+        close();
+      }
       return true;
     }
     if (finalReferenceCount < 0) {
-      LOGGER.warn("PipeTsFileResource's reference count is decreased to below 0.");
+      LOGGER.warn(DataNodePipeMessages.PIPETSFILERESOURCE_S_REFERENCE_COUNT_IS_DECREASED_TO);
     }
     return false;
   }
@@ -86,14 +94,16 @@ public class PipeTsFileResource implements AutoCloseable {
       successful = Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
     } catch (final Exception e) {
       LOGGER.error(
-          "PipeTsFileResource: Failed to delete tsfile {} when closing, because {}. Please MANUALLY delete it.",
+          DataNodePipeMessages.PIPETSFILERESOURCE_FAILED_TO_DELETE_TSFILE_WHEN_CLOSING,
           hardlinkOrCopiedFile,
           e.getMessage(),
           e);
     }
 
     if (successful) {
-      LOGGER.info("PipeTsFileResource: Closed tsfile {} and cleaned up.", hardlinkOrCopiedFile);
+      LOGGER.info(
+          DataNodePipeMessages.PIPETSFILERESOURCE_CLOSED_TSFILE_AND_CLEANED_UP,
+          hardlinkOrCopiedFile);
     }
   }
 }

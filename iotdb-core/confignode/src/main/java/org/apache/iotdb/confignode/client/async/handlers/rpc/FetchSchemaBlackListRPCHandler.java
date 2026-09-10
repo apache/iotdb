@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -54,14 +55,19 @@ public class FetchSchemaBlackListRPCHandler
     responseMap.put(requestId, tFetchSchemaBlackListResp);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully fetch schemaengine black list on DataNode: {}", targetNode);
+      LOGGER.info(
+          ConfigNodeMessages.SUCCESSFULLY_FETCH_SCHEMAENGINE_BLACK_LIST_ON_DATANODE, targetNode);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       nodeLocationMap.remove(requestId);
       LOGGER.error(
-          "Failed to fetch schemaengine black list on DataNode {}, {}", targetNode, tsStatus);
+          ConfigNodeMessages.FAILED_TO_FETCH_SCHEMAENGINE_BLACK_LIST_ON_DATANODE,
+          targetNode,
+          tsStatus);
     } else {
       LOGGER.error(
-          "Failed to fetch schemaengine black list on DataNode {}, {}", targetNode, tsStatus);
+          ConfigNodeMessages.FAILED_TO_FETCH_SCHEMAENGINE_BLACK_LIST_ON_DATANODE,
+          targetNode,
+          tsStatus);
     }
     countDownLatch.countDown();
   }
@@ -77,11 +83,11 @@ public class FetchSchemaBlackListRPCHandler
             + e.getMessage();
     LOGGER.error(errorMsg);
 
-    countDownLatch.countDown();
     TFetchSchemaBlackListResp resp = new TFetchSchemaBlackListResp();
     resp.setStatus(
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
     responseMap.put(requestId, resp);
+    countDownLatch.countDown();
   }
 }

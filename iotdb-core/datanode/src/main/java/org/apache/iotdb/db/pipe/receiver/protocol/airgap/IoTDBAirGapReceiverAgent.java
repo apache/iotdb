@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
           ThreadName.PIPE_AIR_GAP_RECEIVER.getName() + "-" + airGapReceiverId);
       airGapReceiverThread.start();
     } catch (final IOException e) {
-      LOGGER.warn("Unhandled exception during pipe air gap receiver listening", e);
+      LOGGER.warn(DataNodePipeMessages.UNHANDLED_EXCEPTION_DURING_PIPE_AIR_GAP_RECEIVER, e);
     }
 
     if (allowSubmitListen.get()) {
@@ -79,7 +80,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
     allowSubmitListen.set(true);
     listenExecutor.submit(this::listen);
 
-    LOGGER.info("IoTDBAirGapReceiverAgent {} started.", serverSocket);
+    LOGGER.info(DataNodePipeMessages.IOTDBAIRGAPRECEIVERAGENT_STARTED, serverSocket);
   }
 
   @Override
@@ -89,13 +90,13 @@ public class IoTDBAirGapReceiverAgent implements IService {
         serverSocket.close();
       }
     } catch (final IOException e) {
-      LOGGER.warn("Failed to close IoTDBAirGapReceiverAgent's server socket", e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_IOTDBAIRGAPRECEIVERAGENT_S_SERVER_SOCKET, e);
     }
 
     allowSubmitListen.set(false);
     listenExecutor.shutdown();
 
-    LOGGER.info("IoTDBAirGapReceiverAgent {} stopped.", serverSocket);
+    LOGGER.info(DataNodePipeMessages.IOTDBAIRGAPRECEIVERAGENT_STOPPED, serverSocket);
   }
 
   @Override

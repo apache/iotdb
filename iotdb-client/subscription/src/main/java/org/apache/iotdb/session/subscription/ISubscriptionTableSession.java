@@ -100,6 +100,49 @@ public interface ISubscriptionTableSession extends AutoCloseable {
       throws IoTDBConnectionException, StatementExecutionException;
 
   /**
+   * Alters a topic with the specified properties.
+   *
+   * @param topicName If the topic name contains single quotes, the passed parameter needs to be
+   *     enclosed in backticks.
+   * @param properties A {@link Properties} object containing the topic properties to alter.
+   * @throws IoTDBConnectionException If a connection issue occurs.
+   * @throws StatementExecutionException If the SQL statement execution fails.
+   */
+  void alterTopic(final String topicName, final Properties properties)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  /**
+   * Transfers a topic owner to the specified owner id and epoch.
+   *
+   * @param topicName If the topic name contains single quotes, the passed parameter needs to be
+   *     enclosed in backticks.
+   * @param ownerId The new topic owner id.
+   * @param ownerEpoch The new monotonically increasing topic owner epoch.
+   * @throws IoTDBConnectionException If a connection issue occurs.
+   * @throws StatementExecutionException If the SQL statement execution fails.
+   */
+  void alterTopicOwner(final String topicName, final String ownerId, final long ownerEpoch)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  /**
+   * Transfers a topic owner to the specified owner id, epoch, and lease duration.
+   *
+   * @param topicName If the topic name contains single quotes, the passed parameter needs to be
+   *     enclosed in backticks.
+   * @param ownerId The new topic owner id.
+   * @param ownerEpoch The new monotonically increasing topic owner epoch.
+   * @param ownerLeaseDurationMs The owner lease duration in milliseconds.
+   * @throws IoTDBConnectionException If a connection issue occurs.
+   * @throws StatementExecutionException If the SQL statement execution fails.
+   */
+  void alterTopicOwner(
+      final String topicName,
+      final String ownerId,
+      final long ownerEpoch,
+      final Long ownerLeaseDurationMs)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  /**
    * Drops the specified topic.
    *
    * <p>This method removes the specified topic from the database. If the topic name contains single

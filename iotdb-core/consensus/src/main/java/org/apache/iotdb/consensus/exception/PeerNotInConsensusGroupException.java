@@ -20,9 +20,10 @@
 package org.apache.iotdb.consensus.exception;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
 public class PeerNotInConsensusGroupException extends ConsensusException {
   public PeerNotInConsensusGroupException(ConsensusGroupId groupId, String peer) {
-    super(String.format("Peer %s is not in group %d", peer, groupId.getId()));
+    super(String.format(ConsensusMessages.PEER_NOT_IN_GROUP, peer, groupId.getId()));
   }
 }

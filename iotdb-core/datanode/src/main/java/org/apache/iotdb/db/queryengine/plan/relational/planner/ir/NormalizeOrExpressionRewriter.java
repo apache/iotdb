@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultimap;
@@ -115,7 +116,7 @@ public final class NormalizeOrExpressionRewriter {
           InListExpression valueList = (InListExpression) inPredicate.getValueList();
           expressionValues.addAll(valueList.getValues());
         } else {
-          throw new IllegalStateException("Unexpected expression: " + expression);
+          throw new IllegalStateException(DataNodeQueryMessages.UNEXPECTED_EXPRESSION + expression);
         }
       }
 

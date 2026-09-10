@@ -25,6 +25,7 @@ import org.awaitility.core.ConditionTimeoutException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -143,22 +144,41 @@ public class StampedWriterPreferredLockTest {
   }
 
   @Test
-  public void testAcquireReadLockWhileWriting() {
+  public void testAcquireReadLockWhileWriting() throws InterruptedException {
     StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
     lock.writeLock();
     AtomicInteger counter = new AtomicInteger();
-    new Thread(
+    CountDownLatch readerFinished = new CountDownLatch(1);
+    Thread readerThread =
+        new Thread(
             () -> {
               lock.threadReadLock();
-              counter.incrementAndGet();
-              lock.threadReadUnlock();
-            })
-        .start();
-    // block reader util writer release write lock
-    Assert.assertEquals(0, counter.get());
-    lock.writeUnlock();
-    Awaitility.await().atMost(2, TimeUnit.SECONDS).until(() -> counter.get() == 1);
-    Assert.assertEquals(1, counter.get());
+              try {
+                counter.incrementAndGet();
+              } finally {
+                lock.threadReadUnlock();
+                readerFinished.countDown();
+              }
+            });
+    readerThread.setDaemon(true);
+    readerThread.start();
+
+    boolean writeLocked = true;
+    try {
+      // block reader until writer release write lock
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(() -> readerThread.getState() == Thread.State.WAITING);
+      Assert.assertEquals(0, counter.get());
+      lock.writeUnlock();
+      writeLocked = false;
+      Assert.assertTrue(readerFinished.await(10, TimeUnit.SECONDS));
+      Assert.assertEquals(1, counter.get());
+    } finally {
+      if (writeLocked) {
+        lock.writeUnlock();
+      }
+    }
   }
 
   @Test

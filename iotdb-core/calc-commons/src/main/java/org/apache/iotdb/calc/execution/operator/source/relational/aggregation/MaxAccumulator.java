@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -57,7 +59,9 @@ public class MaxAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of MAX should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_MAX_SHOULD_BE_ONE_COLUMN_FC251F55);
 
     switch (seriesDataType) {
       case INT32:
@@ -84,7 +88,9 @@ public class MaxAccumulator implements TableAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                seriesDataType));
     }
   }
 
@@ -120,7 +126,9 @@ public class MaxAccumulator implements TableAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+              String.format(
+                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                  seriesDataType));
       }
     }
   }
@@ -157,7 +165,9 @@ public class MaxAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                seriesDataType));
     }
   }
 
@@ -192,7 +202,9 @@ public class MaxAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                seriesDataType));
     }
   }
 
@@ -240,7 +252,9 @@ public class MaxAccumulator implements TableAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                seriesDataType));
     }
   }
 

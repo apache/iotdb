@@ -21,9 +21,10 @@ package org.apache.iotdb.db.pipe.event.common.row;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletEventConverter;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -54,10 +55,26 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
     super(pipeTaskMeta, sourceEvent, sourceEventDataBase, isTableModel);
   }
 
+  public PipeRowCollector(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel,
+      String rawTableModelDataBaseName,
+      String rawTreeModelDataBaseName) {
+    super(
+        pipeTaskMeta,
+        sourceEvent,
+        sourceEventDataBase,
+        isTableModel,
+        rawTableModelDataBaseName,
+        rawTreeModelDataBaseName);
+  }
+
   @Override
   public void collectRow(Row row) {
     if (!(row instanceof PipeRow)) {
-      throw new PipeException("Row can not be customized");
+      throw new PipeException(DataNodePipeMessages.ROW_CAN_NOT_BE_CUSTOMIZED);
     }
 
     final PipeRow pipeRow = (PipeRow) row;
@@ -76,7 +93,6 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
       Pair<Integer, Integer> rowCountAndMemorySize =
           PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(pipeRow);
       tablet = new Tablet(deviceId, measurementSchemaList, rowCountAndMemorySize.getLeft());
-      tablet.initBitMaps();
       isAligned = pipeRow.isAligned();
     }
 
@@ -84,16 +100,16 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
     tablet.addTimestamp(rowIndex, row.getTime());
     for (int i = 0; i < row.size(); i++) {
       final Object value = row.getObject(i);
-      if (value instanceof Binary) {
-        tablet.addValue(
-            measurementSchemaArray[i].getMeasurementName(),
-            rowIndex,
-            PipeBinaryTransformer.transformToBinary((Binary) value));
-      } else {
-        tablet.addValue(measurementSchemaArray[i].getMeasurementName(), rowIndex, value);
-      }
+      PipeTabletUtils.putValue(
+          tablet,
+          rowIndex,
+          i,
+          measurementSchemaArray[i].getType(),
+          value instanceof Binary
+              ? PipeBinaryTransformer.transformToBinary((Binary) value)
+              : value);
       if (row.isNull(i)) {
-        tablet.getBitMaps()[i].mark(rowIndex);
+        PipeTabletUtils.markNullValue(tablet, rowIndex, i);
       }
     }
 
@@ -104,15 +120,13 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
 
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
-      // TODO: non-PipeInsertionEvent sourceEvent is not supported?
-      final PipeInsertionEvent pipeInsertionEvent =
-          sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
+      PipeTabletUtils.compactBitMaps(tablet);
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
               isTableModel,
               sourceEventDataBaseName,
-              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTableModelDataBase(),
-              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTreeModelDataBase(),
+              rawTableModelDataBaseName,
+              rawTreeModelDataBaseName,
               tablet,
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),

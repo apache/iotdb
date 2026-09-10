@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.pipe;
 
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
@@ -41,7 +42,7 @@ public class IoTConsensusV2PeerManager {
 
     this.peers.addAll(peers);
     if (this.peers.size() != peers.size()) {
-      LOGGER.warn("Duplicate peers in the input list, ignore the duplicates.");
+      LOGGER.warn(ConsensusMessages.DUPLICATE_PEERS_IGNORED);
     }
   }
 

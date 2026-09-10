@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -198,6 +200,9 @@ public enum PlanNodeType {
   TABLE_DISK_USAGE_INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1040),
   ALIGNED_AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1041),
   NON_ALIGNED_AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1042),
+  TABLE_NEXT_FILL_NODE((short) 1043),
+  SESSION_SCAN_NODE((short) 1044),
+  EVENT_SCAN_NODE((short) 1045),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -214,7 +219,7 @@ public enum PlanNodeType {
         ServiceLoader.load(IPlanNodeDeserializerProvider.class);
     for (IPlanNodeDeserializerProvider provider : loader) {
       if (deserializer != null) {
-        throw new IllegalStateException("Multiple IPlanNodeDeserializerProvider found");
+        throw new IllegalStateException(QueryMessages.MULTIPLE_PLAN_NODE_DESERIALIZER_PROVIDER);
       }
       deserializer = provider.getDeserializer();
     }

@@ -31,8 +31,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -41,7 +40,6 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.metadata.view.ViewNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -97,12 +95,12 @@ public class AlterLogicalViewProcedure
     try {
       switch (state) {
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of view {}", viewPathToSourceMap.keySet());
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_VIEW, viewPathToSourceMap.keySet());
           invalidateCache(env);
           setNextState(AlterLogicalViewState.ALTER_LOGICAL_VIEW);
           return Flow.HAS_MORE_STATE;
         case ALTER_LOGICAL_VIEW:
-          LOGGER.info("Alter view {}", viewPathToSourceMap.keySet());
+          LOGGER.info(ProcedureMessages.ALTER_VIEW, viewPathToSourceMap.keySet());
           try {
             alterLogicalView(env);
           } catch (final ProcedureException e) {
@@ -110,35 +108,27 @@ public class AlterLogicalViewProcedure
           }
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
     } finally {
       LOGGER.info(
-          "AlterLogicalView-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.ALTERLOGICALVIEW_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related schemaengine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            "Failed to invalidate schemaengine cache of view {}", viewPathToSourceMap.keySet());
-        setFailure(
-            new ProcedureException(
-                new MetadataException("Invalidate view schemaengine cache failed")));
-        return;
-      }
+    if (!SchemaUtils.invalidateMatchedSchemaCache(
+        env.getConfigManager(), patternTreeBytes, false)) {
+      // all dataNodes must clear the related schema engine cache
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW,
+          viewPathToSourceMap.keySet());
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_VIEW_SCHEMAENGINE_CACHE_FAILED)));
     }
   }
 
@@ -393,7 +383,7 @@ public class AlterLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Alter view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s, statuses: %s",
+                      ProcedureMessages.ALTER_VIEW_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN_ALL,
                       viewPathToSourceMap.keySet(),
                       taskName,
                       consensusGroupId.id,

@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
 
@@ -129,7 +130,8 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               sourceProperties.isRequireRecordSnapshot()));
     } else {
       // we don't support multiple source now.
-      throw new IllegalArgumentException("table function does not support multiple source now.");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.TABLE_FUNCTION_DOES_NOT_SUPPORT_MULTIPLE_SOURCE_NOW);
     }
   }
 }

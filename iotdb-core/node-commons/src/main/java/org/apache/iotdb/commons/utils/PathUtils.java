@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.PathParseException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -34,6 +37,12 @@ import java.util.List;
 import java.util.Map;
 
 public class PathUtils {
+
+  private static final Cache<String, SingleMeasurementCheckResult> SINGLE_MEASUREMENT_CHECK_CACHE =
+      Caffeine.newBuilder()
+          .maximumSize(
+              CommonDescriptor.getInstance().getConfig().getSingleMeasurementCheckCacheSize())
+          .build();
 
   /**
    * @param path the path will split. ex, root.ln.
@@ -70,7 +79,7 @@ public class PathUtils {
     }
     // skip checking duplicated measurements
     Map<String, String> checkedMeasurements = new HashMap<>();
-    List<List<String>> res = new ArrayList<>();
+    List<List<String>> res = new ArrayList<>(measurementLists.size());
     for (List<String> measurements : measurementLists) {
       res.add(checkLegalSingleMeasurementsAndSkipDuplicate(measurements, checkedMeasurements));
     }
@@ -86,7 +95,7 @@ public class PathUtils {
     if (measurements == null) {
       return null;
     }
-    List<String> res = new ArrayList<>();
+    List<String> res = new ArrayList<>(measurements.size());
     for (String measurement : measurements) {
       if (measurement == null) {
         res.add(null);
@@ -111,7 +120,7 @@ public class PathUtils {
     if (measurements == null) {
       return null;
     }
-    List<String> res = new ArrayList<>();
+    List<String> res = new ArrayList<>(measurements.size());
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
         res.add(null);
@@ -120,6 +129,67 @@ public class PathUtils {
       res.add(checkAndReturnSingleMeasurement(measurement));
     }
     return res;
+  }
+
+  /**
+   * Check and canonicalize single measurements in place. This avoids allocating another list when
+   * the input is a mutable list created by Thrift.
+   */
+  public static void checkIsLegalSingleMeasurementsAndUpdateInPlace(List<String> measurements)
+      throws MetadataException {
+    if (measurements == null) {
+      return;
+    }
+    for (int i = 0; i < measurements.size(); i++) {
+      String measurement = measurements.get(i);
+      measurements.set(
+          i,
+          measurement == null || measurement.isEmpty()
+              ? null
+              : checkAndReturnSingleMeasurement(measurement));
+    }
+  }
+
+  /**
+   * Check and canonicalize lists of single measurements in place. Duplicate measurements in one
+   * request are checked only once.
+   */
+  public static void checkIsLegalSingleMeasurementListsAndUpdateInPlace(
+      List<List<String>> measurementLists) throws MetadataException {
+    if (measurementLists == null || measurementLists.isEmpty()) {
+      return;
+    }
+    if (measurementLists.size() == 1) {
+      List<String> measurements = measurementLists.get(0);
+      if (measurements == null) {
+        return;
+      }
+      for (int i = 0; i < measurements.size(); i++) {
+        String measurement = measurements.get(i);
+        if (measurement != null) {
+          measurements.set(i, checkAndReturnSingleMeasurement(measurement));
+        }
+      }
+      return;
+    }
+    Map<String, String> checkedMeasurements = new HashMap<>();
+    for (List<String> measurements : measurementLists) {
+      if (measurements == null) {
+        continue;
+      }
+      for (int i = 0; i < measurements.size(); i++) {
+        String measurement = measurements.get(i);
+        if (measurement == null) {
+          continue;
+        }
+        String checked = checkedMeasurements.get(measurement);
+        if (checked == null) {
+          checked = checkAndReturnSingleMeasurement(measurement);
+          checkedMeasurements.put(measurement, checked);
+        }
+        measurements.set(i, checked);
+      }
+    }
   }
 
   /**
@@ -162,20 +232,29 @@ public class PathUtils {
     if (measurement == null) {
       return null;
     }
+    SingleMeasurementCheckResult result =
+        SINGLE_MEASUREMENT_CHECK_CACHE.get(measurement, PathUtils::checkSingleMeasurement);
+    if (result.isLegal()) {
+      return result.getMeasurement();
+    }
+    throw new IllegalPathException(measurement);
+  }
+
+  private static SingleMeasurementCheckResult checkSingleMeasurement(String measurement) {
     if (measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       if (checkBackQuotes(measurement.substring(1, measurement.length() - 1))) {
-        return removeBackQuotesIfNecessary(measurement);
+        return SingleMeasurementCheckResult.legal(removeBackQuotesIfNecessary(measurement));
       } else {
-        throw new IllegalPathException(measurement);
+        return SingleMeasurementCheckResult.illegal();
       }
     }
     if (IoTDBConstant.reservedWords.contains(measurement.toUpperCase())
         || isRealNumber(measurement)
         || !TsFileConstant.NODE_NAME_PATTERN.matcher(measurement).matches()) {
-      throw new IllegalPathException(measurement);
+      return SingleMeasurementCheckResult.illegal();
     }
-    return measurement;
+    return SingleMeasurementCheckResult.legal(measurement);
   }
 
   /** Return true if the str is a real number. Examples: 1.0; +1.0; -1.0; 0011; 011e3; +23e-3 */
@@ -224,5 +303,35 @@ public class PathUtils {
 
   public static boolean isTableModelDatabase(final String databaseName) {
     return !databaseName.startsWith("root.");
+  }
+
+  private static class SingleMeasurementCheckResult {
+
+    private static final SingleMeasurementCheckResult ILLEGAL =
+        new SingleMeasurementCheckResult(false, null);
+
+    private final boolean legal;
+    private final String measurement;
+
+    private SingleMeasurementCheckResult(boolean legal, String measurement) {
+      this.legal = legal;
+      this.measurement = measurement;
+    }
+
+    private static SingleMeasurementCheckResult legal(String measurement) {
+      return new SingleMeasurementCheckResult(true, measurement);
+    }
+
+    private static SingleMeasurementCheckResult illegal() {
+      return ILLEGAL;
+    }
+
+    private boolean isLegal() {
+      return legal;
+    }
+
+    private String getMeasurement() {
+      return measurement;
+    }
   }
 }

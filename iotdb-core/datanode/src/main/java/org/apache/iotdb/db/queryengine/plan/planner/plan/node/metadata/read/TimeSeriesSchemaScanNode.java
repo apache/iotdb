@@ -29,11 +29,12 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -139,7 +140,8 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     try {
       path = new MeasurementPath(fullPath);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize TimeSeriesSchemaScanNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_TIMESERIESSCHEMASCANNODE, e);
     }
     PathPatternTree scope = PathPatternTree.deserialize(byteBuffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(byteBuffer);

@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.process.window.partition.Partiti
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.RowComparator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -129,7 +130,7 @@ public class RangeFrame implements Frame {
         break;
       default:
         // UNBOUND_FOLLOWING is not allowed in frame start
-        throw new SemanticException("UNBOUND PRECEDING is not allowed in frame start!");
+        throw new SemanticException(CalcMessages.UNBOUND_PRECEDING_NOT_ALLOWED_IN_FRAME_START);
     }
 
     int frameEnd;
@@ -148,7 +149,7 @@ public class RangeFrame implements Frame {
         break;
       default:
         // UNBOUND_PRECEDING is not allowed in frame start
-        throw new SemanticException("UNBOUND PRECEDING is not allowed in frame end!");
+        throw new SemanticException(CalcMessages.UNBOUND_PRECEDING_NOT_ALLOWED_IN_FRAME_END);
     }
 
     if (frameEnd < frameStart || frameEnd < 0 || frameStart >= partitionSize) {
@@ -309,7 +310,8 @@ public class RangeFrame implements Frame {
         return followDouble >= currentDouble + deltaDouble;
       default:
         // Unreachable
-        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+        throw new UnSupportedDataTypeException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
     }
   }
 
@@ -354,7 +356,8 @@ public class RangeFrame implements Frame {
         return followDouble > currentDouble + deltaDouble;
       default:
         // Unreachable
-        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+        throw new UnSupportedDataTypeException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
     }
   }
 
@@ -399,7 +402,8 @@ public class RangeFrame implements Frame {
         return precedeDouble >= currentDouble - deltaDouble;
       default:
         // Unreachable
-        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+        throw new UnSupportedDataTypeException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
     }
   }
 
@@ -444,7 +448,8 @@ public class RangeFrame implements Frame {
         return precedeDouble > currentDouble - deltaDouble;
       default:
         // Unreachable
-        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+        throw new UnSupportedDataTypeException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
     }
   }
 
@@ -489,7 +494,8 @@ public class RangeFrame implements Frame {
         return followDouble <= currentDouble - deltaDouble;
       default:
         // Unreachable
-        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+        throw new UnSupportedDataTypeException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
     }
   }
 
@@ -534,7 +540,8 @@ public class RangeFrame implements Frame {
         return followDouble < currentDouble - deltaDouble;
       default:
         // Unreachable
-        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+        throw new UnSupportedDataTypeException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
     }
   }
 
@@ -579,7 +586,8 @@ public class RangeFrame implements Frame {
         return precedeDouble <= currentDouble + deltaDouble;
       default:
         // Unreachable
-        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+        throw new UnSupportedDataTypeException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
     }
   }
 
@@ -624,7 +632,8 @@ public class RangeFrame implements Frame {
         return precedeDouble < currentDouble + deltaDouble;
       default:
         // Unreachable
-        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+        throw new UnSupportedDataTypeException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
     }
   }
 }

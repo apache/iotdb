@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -41,10 +42,14 @@ public class StatementAnalyzerFactory {
       final SqlParser sqlParser,
       final AccessControl accessControl,
       final TypeManager typeManager) {
-    this.metadata = requireNonNull(metadata, "plannerContext is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
     this.sqlParser = sqlParser;
-    this.accessControl = requireNonNull(accessControl, "accessControl is null");
-    this.typeManager = requireNonNull(typeManager, "typeManager is null");
+    this.accessControl =
+        requireNonNull(
+            accessControl, DataNodeQueryMessages.EXCEPTION_ACCESSCONTROL_IS_NULL_F534EBDD);
+    this.typeManager =
+        requireNonNull(typeManager, DataNodeQueryMessages.EXCEPTION_TYPEMANAGER_IS_NULL_12A72016);
   }
 
   public StatementAnalyzerFactory withSpecializedAccessControl(AccessControl accessControl) {

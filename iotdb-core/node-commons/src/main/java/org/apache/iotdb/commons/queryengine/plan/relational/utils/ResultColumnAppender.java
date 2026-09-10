@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.utils;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
@@ -47,7 +48,8 @@ public interface ResultColumnAppender {
       case DOUBLE:
         return new DoubleAppender();
       default:
-        throw new IllegalArgumentException("Unsupported column type: " + type);
+        throw new IllegalArgumentException(
+            String.format(QueryMessages.UNSUPPORTED_COLUMN_TYPE, type));
     }
   }
 

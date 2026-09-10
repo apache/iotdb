@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -60,10 +61,11 @@ public class TreeDeviceViewFieldDetectionHandler
     responseMap.put(requestId, response);
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+      LOGGER.info(
+          ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
     } else {
       LOGGER.error(
-          "Failed to {} on DataNode: {}, response: {}",
+          ConfigNodeMessages.FAILED_TO_ON_DATANODE_RESPONSE,
           requestType,
           formattedTargetLocation,
           response);

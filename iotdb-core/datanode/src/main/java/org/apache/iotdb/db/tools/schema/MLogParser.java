@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.tools.schema;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.BufferedSerializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
@@ -101,14 +102,14 @@ public class MLogParser {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      logger.warn("Too few params input, please check the following hint.");
+      logger.warn(DataNodeMiscMessages.TOO_FEW_PARAMS);
       hf.printHelp(MLOG_CLI_PREFIX, options, true);
       return;
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      logger.error("Parse error: {}", e.getMessage());
+      logger.error(DataNodeMiscMessages.PARSE_ERROR, e.getMessage());
       hf.printHelp(MLOG_CLI_PREFIX, options, true);
       return;
     }
@@ -121,7 +122,7 @@ public class MLogParser {
       parseBasicParams(commandLine);
       parseFromFile(inputFile, outputFile);
     } catch (Exception e) {
-      logger.error("Encounter an error, because: {} ", e.getMessage());
+      logger.error(DataNodeMiscMessages.ENCOUNTER_ERROR, e.getMessage());
     }
   }
 
@@ -140,7 +141,7 @@ public class MLogParser {
     if (str == null) {
       String msg = String.format("Required values for option '%s' not provided", name);
       logger.info(msg);
-      logger.info("Use -help for more information");
+      logger.info(DataNodeMiscMessages.USE_HELP);
       throw new ParseException(msg);
     }
     return str;

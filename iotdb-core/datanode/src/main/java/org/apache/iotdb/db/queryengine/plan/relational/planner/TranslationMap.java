@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
@@ -124,16 +125,20 @@ public class TranslationMap {
       Map<ScopeAware<Expression>, Symbol> astToSymbols,
       Map<NodeRef<Expression>, Symbol> substitutions,
       PlannerContext plannerContext) {
-    this.outerContext = requireNonNull(outerContext, "outerContext is null");
-    this.scope = requireNonNull(scope, "scope is null");
-    this.analysis = requireNonNull(analysis, "analysis is null");
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.outerContext =
+        requireNonNull(outerContext, DataNodeQueryMessages.EXCEPTION_OUTERCONTEXT_IS_NULL_031CD366);
+    this.scope = requireNonNull(scope, DataNodeQueryMessages.EXCEPTION_SCOPE_IS_NULL_4F364BA2);
+    this.analysis =
+        requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
     this.substitutions = ImmutableMap.copyOf(substitutions);
 
-    requireNonNull(fieldSymbols, "fieldSymbols is null");
+    requireNonNull(fieldSymbols, DataNodeQueryMessages.EXCEPTION_FIELDSYMBOLS_IS_NULL_5130E49C);
     this.fieldSymbols = fieldSymbols.clone();
 
-    requireNonNull(astToSymbols, "astToSymbols is null");
+    requireNonNull(astToSymbols, DataNodeQueryMessages.EXCEPTION_ASTTOSYMBOLS_IS_NULL_80B3970F);
     this.astToSymbols = ImmutableMap.copyOf(astToSymbols);
 
     //    checkArgument(
@@ -218,7 +223,8 @@ public class TranslationMap {
     verifyAstExpression(expression);
     verify(
         analysis.isAnalyzed(expression),
-        "Expression is not analyzed (%s): %s",
+        DataNodeQueryMessages
+            .EXCEPTION_EXPRESSION_IS_NOT_ANALYZED_LEFT_PAREN_ARG_RIGHT_PAREN_COLON_ARG_DAE760B6,
         expression.getClass().getName(),
         expression);
 
@@ -247,8 +253,9 @@ public class TranslationMap {
                             () ->
                                 new IllegalStateException(
                                     format(
-                                        "No symbol mapping for node '%s' (%s)",
-                                        node, node.getFieldIndex()))));
+                                        DataNodeQueryMessages.NO_SYMBOL_MAPPING_FOR_NODE_FMT,
+                                        node,
+                                        node.getFieldIndex()))));
           }
 
           @Override
@@ -318,9 +325,12 @@ public class TranslationMap {
                   getSymbolForColumn(node)
                       .map(Symbol::toSymbolReference)
                       .orElseThrow(
-                          () -> new IllegalStateException(format("No mapping for %s", node))));
+                          () ->
+                              new IllegalStateException(
+                                  format(DataNodeQueryMessages.NO_MAPPING_FOR_S, node))));
             } else {
-              throw new IllegalStateException("Subscript is not supported in current version");
+              throw new IllegalStateException(
+                  DataNodeQueryMessages.SUBSCRIPT_IS_NOT_SUPPORTED_IN_CURRENT_VERSION);
             }
           }
 
@@ -358,7 +368,9 @@ public class TranslationMap {
               return coerceIfNecessary(node, mapped.get());
             }
 
-            checkState(analysis.getParameters().size() > node.getId(), "Too few parameter values");
+            checkState(
+                analysis.getParameters().size() > node.getId(),
+                DataNodeQueryMessages.EXCEPTION_TOO_FEW_PARAMETER_VALUES_2F7358C6);
             return coerceIfNecessary(
                 node, treeRewriter.rewrite(analysis.getParameters().get(NodeRef.of(node)), null));
           }
@@ -407,7 +419,7 @@ public class TranslationMap {
   private static void verifyAstExpression(Expression astExpression) {
     verify(
         AstUtil.preOrder(astExpression).noneMatch(SymbolReference.class::isInstance),
-        "symbol references are not allowed");
+        DataNodeQueryMessages.EXCEPTION_SYMBOL_REFERENCES_ARE_NOT_ALLOWED_93779D6C);
   }
 
   public Scope getScope() {

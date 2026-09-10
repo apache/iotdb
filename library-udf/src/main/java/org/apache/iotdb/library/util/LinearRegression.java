@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.exception.UDFException;
 
 import java.util.Arrays;
@@ -38,13 +39,13 @@ public class LinearRegression {
     y = b.clone();
     n = x.length;
     if (x.length == 0 || y.length == 0) {
-      throw new UDFException("Empty input array(s).");
+      throw new UDFException(LibraryUdfMessages.EMPTY_INPUT_ARRAYS);
     }
     if (x.length != y.length) {
-      throw new UDFException("Different input array length.");
+      throw new UDFException(LibraryUdfMessages.DIFFERENT_INPUT_ARRAY_LENGTH);
     }
     if (x.length == 1) { // cannot do regression
-      throw new UDFException("Input series should be longer than 1.");
+      throw new UDFException(LibraryUdfMessages.INPUT_SERIES_SHOULD_BE_LONGER_THAN_1);
     }
     e = new double[n];
     yhead = new double[n];
@@ -62,7 +63,7 @@ public class LinearRegression {
       xybar += (x[i] - xbar) * (y[i] - ybar);
     }
     if (xxbar == 0d) {
-      throw new UDFException("All input x are same.");
+      throw new UDFException(LibraryUdfMessages.ALL_INPUT_X_ARE_SAME);
     }
     beta1 = xybar / xxbar;
     beta0 = ybar - beta1 * xbar;

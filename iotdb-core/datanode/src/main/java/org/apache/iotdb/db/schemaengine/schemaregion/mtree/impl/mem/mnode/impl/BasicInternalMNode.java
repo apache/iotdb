@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic.BasicMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.container.MemMNodeContainer;
@@ -179,7 +180,7 @@ public class BasicInternalMNode extends BasicMNode implements IInternalMNode<IMe
     if (isDevice()) {
       return new DeviceMNodeWrapper<>(this);
     } else {
-      throw new UnsupportedOperationException("Wrong node type");
+      throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_NODE_TYPE);
     }
   }
 

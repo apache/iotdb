@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.sink.util.builder;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -77,12 +79,13 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   @Override
   public void bufferTableModelTablet(String dataBase, Tablet tablet) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
+    fallbackBuilder.bufferTableModelTablet(dataBase, tablet);
   }
 
   @Override
   public void bufferTreeModelTablet(Tablet tablet, Boolean isAligned) {
     throw new UnsupportedOperationException(
-        "PipeTableModeTsFileBuilderV2 does not support tree model tablet to build TSFile");
+        DataNodePipeMessages.PIPETABLEMODETSFILEBUILDERV2_DOES_NOT_SUPPORT_TREE_MODEL_TABLET);
   }
 
   @Override
@@ -90,15 +93,18 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     if (dataBase2TabletList.isEmpty()) {
       return new ArrayList<>(0);
     }
+    final List<Pair<String, File>> pairList = new ArrayList<>();
     try {
-      final List<Pair<String, File>> pairList = new ArrayList<>();
       for (final String dataBase : dataBase2TabletList.keySet()) {
         pairList.addAll(writeTabletsToTsFiles(dataBase));
       }
       return pairList;
     } catch (final Exception e) {
+      pairList.forEach(
+          pair -> org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(pair.right));
       LOGGER.warn(
-          "Exception occurred when PipeTableModelTsFileBuilderV2 writing tablets to tsfile, use fallback tsfile builder: {}",
+          DataNodePipeMessages
+              .EXCEPTION_OCCURRED_WHEN_PIPETABLEMODELTSFILEBUILDERV2_WRITING_TABLETS_TO,
           e.getMessage(),
           e);
       return fallbackBuilder.convertTabletToTsFileWithDBInfo();
@@ -108,6 +114,34 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   @Override
   public boolean isEmpty() {
     return dataBase2TabletList.isEmpty();
+  }
+
+  @Override
+  public Object createCheckpoint() {
+    final Map<String, Integer> tabletListSizes = new HashMap<>();
+    dataBase2TabletList.forEach(
+        (database, tablets) -> tabletListSizes.put(database, tablets.size()));
+    return new BatchState(tabletListSizes, fallbackBuilder.createCheckpoint());
+  }
+
+  @Override
+  public void rollbackToCheckpoint(final Object checkpoint) {
+    if (!(checkpoint instanceof BatchState)) {
+      return;
+    }
+    final BatchState batchState = (BatchState) checkpoint;
+    dataBase2TabletList
+        .entrySet()
+        .removeIf(
+            entry -> {
+              final Integer size = batchState.tabletListSizes.get(entry.getKey());
+              if (size == null) {
+                return true;
+              }
+              truncate(entry.getValue(), size);
+              return false;
+            });
+    fallbackBuilder.rollbackToCheckpoint(batchState.fallbackCheckpoint);
   }
 
   @Override
@@ -124,16 +158,40 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     fallbackBuilder.close();
   }
 
+  private static <T> void truncate(final List<T> list, final int size) {
+    if (list.size() > size) {
+      list.subList(size, list.size()).clear();
+    }
+  }
+
+  private static final class BatchState {
+    private final Map<String, Integer> tabletListSizes;
+    private final Object fallbackCheckpoint;
+
+    private BatchState(
+        final Map<String, Integer> tabletListSizes, final Object fallbackCheckpoint) {
+      this.tabletListSizes = tabletListSizes;
+      this.fallbackCheckpoint = fallbackCheckpoint;
+    }
+  }
+
   private List<Pair<String, File>> writeTabletsToTsFiles(final String dataBase)
       throws WriteProcessException {
     final IMemTable memTable = new PrimitiveMemTable(null, null);
     final List<Pair<String, File>> sealedFiles = new ArrayList<>();
-    try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
-      writeTabletsIntoOneFile(dataBase, memTable, writer);
-      sealedFiles.add(new Pair<>(dataBase, writer.getFile()));
+    File file = null;
+    try {
+      file = createFile();
+      try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(file)) {
+        writeTabletsIntoOneFile(dataBase, memTable, writer);
+        sealedFiles.add(new Pair<>(dataBase, writer.getFile()));
+      }
     } catch (final Exception e) {
+      if (file != null) {
+        org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(file);
+      }
       LOGGER.warn(
-          "Batch id = {}: Failed to write tablets into tsfile, because {}",
+          DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
           currentBatchId.get(),
           e.getMessage(),
           e);
@@ -200,7 +258,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
               .map(schema -> (MeasurementSchema) schema)
               .toArray(MeasurementSchema[]::new);
       Object[] values = Arrays.copyOf(tablet.getValues(), tablet.getValues().length);
-      BitMap[] bitMaps = Arrays.copyOf(tablet.getBitMaps(), tablet.getBitMaps().length);
+      BitMap[] bitMaps = PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet);
       ColumnCategory[] columnCategory = tablet.getColumnTypes().toArray(new ColumnCategory[0]);
 
       // convert date value to int refer to

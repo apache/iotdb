@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,14 +49,20 @@ public class SyncStatus {
    * @throws InterruptedException
    */
   public synchronized void addNextBatch(Batch batch) throws InterruptedException {
-    while ((pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
-            || !iotConsensusMemoryManager.reserve(batch))
-        && !Thread.interrupted()) {
-      wait();
+    while (true) {
+      while (pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()) {
+        wait();
+      }
+      if (iotConsensusMemoryManager.reserve(batch)) {
+        break;
+      }
+      // Memory may be freed by another SyncStatus, which cannot notify this monitor.
+      wait(Math.max(1, config.getReplication().getBasicRetryWaitTimeMs()));
     }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Reserved {} bytes for batch {}-{}, current total usage {}",
+          IoTConsensusMessages
+              .LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2,
           batch.getMemorySize(),
           batch.getStartIndex(),
           batch.getEndIndex(),
@@ -108,5 +115,9 @@ public class SyncStatus {
 
   public synchronized List<Batch> getPendingBatches() {
     return pendingBatches;
+  }
+
+  public synchronized boolean hasPendingBatches() {
+    return !pendingBatches.isEmpty();
   }
 }

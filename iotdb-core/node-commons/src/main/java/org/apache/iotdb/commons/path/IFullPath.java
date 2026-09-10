@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.path;
 
+import org.apache.iotdb.commons.i18n.PathMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Accountable;
@@ -41,7 +43,7 @@ public interface IFullPath extends Accountable {
           ((AlignedPath) fullPath).getMeasurementList(),
           ((AlignedPath) fullPath).getSchemaList());
     } else {
-      throw new IllegalArgumentException("Only accept MeasurementPath and AlignedPath.");
+      throw new IllegalArgumentException(PathMessages.ONLY_ACCEPT_MEASUREMENT_AND_ALIGNED);
     }
   }
 }

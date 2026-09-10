@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
@@ -44,8 +47,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetResult;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.InMemoryDeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -279,7 +284,20 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
-  public Map<String, List<DeviceEntry>> indexScan(
+  public DeviceEntryDataSetResult indexScan(
+      QualifiedObjectName tableName,
+      List<Expression> expressionList,
+      List<String> attributeColumns,
+      MPPQueryContext context,
+      PlanNodeId planNodeId) {
+    final Map<String, List<DeviceEntry>> deviceEntries =
+        indexScanEntries(tableName, expressionList, attributeColumns, context);
+    final String database = deviceEntries.keySet().iterator().next();
+    return new DeviceEntryDataSetResult(
+        database, new InMemoryDeviceEntryDataSet(deviceEntries.get(database)), false);
+  }
+
+  private Map<String, List<DeviceEntry>> indexScanEntries(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns,
@@ -388,8 +406,24 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
+  public DataPartition getDataPartition(
+      String database, DeviceEntryDataSet dataSet, List<TTimePartitionSlot> timePartitionSlots) {
+    return DATA_PARTITION;
+  }
+
+  @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
+    return DATA_PARTITION;
+  }
+
+  @Override
+  public DataPartition getDataPartitionWithUnclosedTimeRange(
+      String database,
+      DeviceEntryDataSet dataSet,
+      List<TTimePartitionSlot> timePartitionSlots,
+      boolean needLeftAll,
+      boolean needRightAll) {
     return DATA_PARTITION;
   }
 
@@ -431,8 +465,26 @@ public class TSBSMetadata implements Metadata {
       }
 
       @Override
+      public DataPartition getDataPartition(
+          String database,
+          DeviceEntryDataSet dataSet,
+          List<TTimePartitionSlot> timePartitionSlots) {
+        return DATA_PARTITION;
+      }
+
+      @Override
       public DataPartition getDataPartitionWithUnclosedTimeRange(
           Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getDataPartitionWithUnclosedTimeRange(
+          String database,
+          DeviceEntryDataSet dataSet,
+          List<TTimePartitionSlot> timePartitionSlots,
+          boolean needLeftAll,
+          boolean needRightAll) {
         return DATA_PARTITION;
       }
 

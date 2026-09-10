@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -66,21 +67,21 @@ public class CorrelatedJoinNode extends TwoChildProcessNode {
       Expression filter,
       Node originSubquery) {
     super(id, input, subquery);
-    requireNonNull(correlation, "correlation is null");
-    requireNonNull(filter, "filter is null");
+    requireNonNull(correlation, QueryMessages.EXCEPTION_CORRELATION_IS_NULL_F8327EAD);
+    requireNonNull(filter, QueryMessages.EXCEPTION_FILTER_IS_NULL_8F83BD19);
     // The condition doesn't guarantee that filter is of type boolean, but was found to be a
     // practical way to identify
     // places where CorrelatedJoinNode could be created without appropriate coercions.
     checkArgument(
         !(filter instanceof NullLiteral),
-        "Filter must be an expression of boolean type: %s",
+        QueryMessages.EXCEPTION_FILTER_MUST_BE_AN_EXPRESSION_OF_BOOLEAN_TYPE_COLON_ARG_F358F1A8,
         filter);
-    requireNonNull(originSubquery, "originSubquery is null");
+    requireNonNull(originSubquery, QueryMessages.EXCEPTION_ORIGINSUBQUERY_IS_NULL_8EFEB8D5);
 
     if (input != null) {
       checkArgument(
           input.getOutputSymbols().containsAll(correlation),
-          "Input does not contain symbols from correlation");
+          QueryMessages.EXCEPTION_INPUT_DOES_NOT_CONTAIN_SYMBOLS_FROM_CORRELATION_1B3DB7BF);
     }
 
     this.correlation = ImmutableList.copyOf(correlation);
@@ -127,7 +128,9 @@ public class CorrelatedJoinNode extends TwoChildProcessNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(newChildren.size() == 2, "expected newChildren to contain 2 nodes");
+    checkArgument(
+        newChildren.size() == 2,
+        QueryMessages.EXCEPTION_EXPECTED_NEWCHILDREN_TO_CONTAIN_2_NODES_25FE7927);
     return new CorrelatedJoinNode(
         getPlanNodeId(),
         newChildren.get(0),

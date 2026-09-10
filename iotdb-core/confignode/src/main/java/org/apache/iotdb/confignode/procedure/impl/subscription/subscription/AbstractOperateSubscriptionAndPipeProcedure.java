@@ -20,8 +20,12 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -47,14 +51,15 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    LOGGER.info("ProcedureId {} try to acquire subscription and pipe lock.", getProcId());
+    LOGGER.info(
+        ProcedureMessages.PROCEDUREID_TRY_TO_ACQUIRE_SUBSCRIPTION_AND_PIPE_LOCK, getProcId());
 
     pipeTaskInfo =
         configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
     if (pipeTaskInfo == null) {
-      LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
+      LOGGER.warn(ProcedureMessages.PROCEDUREID_FAILED_TO_ACQUIRE_PIPE_LOCK, getProcId());
     } else {
-      LOGGER.info("ProcedureId {} acquired pipe lock.", getProcId());
+      LOGGER.info(ProcedureMessages.PROCEDUREID_ACQUIRED_PIPE_LOCK, getProcId());
     }
 
     final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
@@ -63,19 +68,25 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
       case LOCK_ACQUIRED:
         if (pipeTaskInfo == null) {
           LOGGER.warn(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
+              ProcedureMessages
+                  .PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_NOT_BE_EXECUTED,
               getProcId());
         } else {
           LOGGER.info(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with subscription and pipe lock.",
+              ProcedureMessages
+                  .PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_BE_EXECUTED_WITH_2,
               getProcId());
         }
         break;
       case LOCK_EVENT_WAIT:
         if (pipeTaskInfo == null) {
-          LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
+          LOGGER.warn(
+              ProcedureMessages.PROCEDUREID_LOCK_EVENT_WAIT_WITHOUT_ACQUIRING_PIPE_LOCK,
+              getProcId());
         } else {
-          LOGGER.info("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
+          LOGGER.info(
+              ProcedureMessages.PROCEDUREID_LOCK_EVENT_WAIT_PIPE_LOCK_WILL_BE_RELEASED,
+              getProcId());
           configNodeProcedureEnv
               .getConfigManager()
               .getPipeManager()
@@ -87,12 +98,12 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
       default:
         if (pipeTaskInfo == null) {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Without acquiring pipe lock.",
+              ProcedureMessages.PROCEDUREID_INVALID_LOCK_STATE_WITHOUT_ACQUIRING_PIPE_LOCK,
               getProcId(),
               procedureLockState);
         } else {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Pipe lock will be released.",
+              ProcedureMessages.PROCEDUREID_INVALID_LOCK_STATE_PIPE_LOCK_WILL_BE_RELEASED,
               getProcId(),
               procedureLockState);
           configNodeProcedureEnv
@@ -112,9 +123,11 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
     super.releaseLock(configNodeProcedureEnv);
 
     if (pipeTaskInfo == null) {
-      LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
+      LOGGER.warn(
+          ProcedureMessages.PROCEDUREID_RELEASE_LOCK_NO_NEED_TO_RELEASE_PIPE_LOCK, getProcId());
     } else {
-      LOGGER.info("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
+      LOGGER.info(
+          ProcedureMessages.PROCEDUREID_RELEASE_LOCK_PIPE_LOCK_WILL_BE_RELEASED, getProcId());
       configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
       pipeTaskInfo = null;
     }
@@ -123,18 +136,20 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
   /**
    * Pushing multiple pipeMetas to all the dataNodes, forcing an update to the pipes' runtime state.
    *
-   * @param pipeNames pipe names of the pipes to push
+   * @param pipeStaticMetas pipe static metas of the pipes to push
    * @param env ConfigNodeProcedureEnv
    * @return The responseMap after pushing pipe meta
    * @throws IOException Exception when Serializing to byte buffer
    */
   protected Map<Integer, TPushPipeMetaResp> pushMultiPipeMetaToDataNodes(
-      List<String> pipeNames, ConfigNodeProcedureEnv env) throws IOException {
+      List<PipeStaticMeta> pipeStaticMetas, ConfigNodeProcedureEnv env) throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    for (String pipeName : pipeNames) {
-      PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
+    for (PipeStaticMeta pipeStaticMeta : pipeStaticMetas) {
+      PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeStaticMeta(pipeStaticMeta);
       if (pipeMeta == null) {
-        LOGGER.warn("Pipe {} not found in PipeTaskInfo, can not push its meta.", pipeName);
+        LOGGER.warn(
+            ProcedureMessages.PIPE_NOT_FOUND_IN_PIPETASKINFO_CAN_NOT_PUSH_ITS_META,
+            pipeStaticMeta.getPipeName());
         continue;
       }
       pipeMetaBinaryList.add(copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
@@ -146,12 +161,31 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
   /**
    * Drop multiple pipes on all the dataNodes.
    *
-   * @param pipeNames pipe names of the pipes to drop
+   * @param dropPipeProcedures drop pipe procedures that captured the pipe metas to drop
    * @param env ConfigNodeProcedureEnv
    * @return The responseMap after pushing pipe meta
    */
   protected Map<Integer, TPushPipeMetaResp> dropMultiPipeOnDataNodes(
-      List<String> pipeNames, ConfigNodeProcedureEnv env) {
-    return env.dropMultiPipeOnDataNodes(pipeNames);
+      List<DropPipeProcedureV2> dropPipeProcedures, ConfigNodeProcedureEnv env) throws IOException {
+    boolean hasMissingPipeMeta = false;
+    final List<String> pipeNamesToDrop = new ArrayList<>();
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    for (final DropPipeProcedureV2 dropPipeProcedure : dropPipeProcedures) {
+      pipeNamesToDrop.add(dropPipeProcedure.getPipeName());
+      final PipeMeta pipeMetaToDrop = dropPipeProcedure.getPipeMetaToDrop();
+      if (pipeMetaToDrop == null) {
+        hasMissingPipeMeta = true;
+        continue;
+      }
+
+      final PipeMeta droppedPipeMeta =
+          copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMetaToDrop);
+      droppedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+      pipeMetaBinaryList.add(droppedPipeMeta.serialize());
+    }
+
+    return hasMissingPipeMeta
+        ? env.dropMultiPipeOnDataNodes(pipeNamesToDrop)
+        : env.pushMultiPipeMetaToDataNodes(pipeMetaBinaryList);
   }
 }

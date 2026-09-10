@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.g
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.TDigest;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
@@ -46,7 +47,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
           continue;
         }
         if (weightColumn.getInt(i) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+          throw new SemanticException(CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(i));
         }
         int groupId = groupIds[i];
         TDigest tDigest = array.get(groupId);
@@ -64,7 +65,8 @@ public class GroupedApproxPercentileWithWeightAccumulator
           continue;
         }
         if (weightColumn.getInt(position) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+          throw new SemanticException(
+              CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(position));
         }
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
@@ -88,7 +90,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
           continue;
         }
         if (weightColumn.getInt(i) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+          throw new SemanticException(CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(i));
         }
         int groupId = groupIds[i];
         TDigest tDigest = array.get(groupId);
@@ -106,7 +108,8 @@ public class GroupedApproxPercentileWithWeightAccumulator
           continue;
         }
         if (weightColumn.getInt(position) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+          throw new SemanticException(
+              CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(position));
         }
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
@@ -130,7 +133,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
           continue;
         }
         if (weightColumn.getInt(i) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+          throw new SemanticException(CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(i));
         }
         int groupId = groupIds[i];
         TDigest tDigest = array.get(groupId);
@@ -148,7 +151,8 @@ public class GroupedApproxPercentileWithWeightAccumulator
           continue;
         }
         if (weightColumn.getInt(position) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+          throw new SemanticException(
+              CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(position));
         }
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
@@ -172,7 +176,7 @@ public class GroupedApproxPercentileWithWeightAccumulator
           continue;
         }
         if (weightColumn.getInt(i) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+          throw new SemanticException(CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(i));
         }
         int groupId = groupIds[i];
         TDigest tDigest = array.get(groupId);
@@ -190,7 +194,8 @@ public class GroupedApproxPercentileWithWeightAccumulator
           continue;
         }
         if (weightColumn.getInt(position) < 1) {
-          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+          throw new SemanticException(
+              CalcMessages.WEIGHT_MUST_BE_GE_1 + weightColumn.getInt(position));
         }
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);

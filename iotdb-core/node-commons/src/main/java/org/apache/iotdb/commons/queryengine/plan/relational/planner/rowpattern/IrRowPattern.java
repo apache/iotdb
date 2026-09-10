@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -58,7 +59,7 @@ public abstract class IrRowPattern {
       ReadWriteIOUtils.write(7, byteBuffer);
       IrQuantified.serialize((IrQuantified) pattern, byteBuffer);
     } else {
-      throw new SemanticException("Unknown IrRowPattern type");
+      throw new SemanticException(QueryMessages.UNKNOWN_IR_ROW_PATTERN_TYPE);
     }
   }
 
@@ -88,7 +89,7 @@ public abstract class IrRowPattern {
       ReadWriteIOUtils.write(7, stream);
       IrQuantified.serialize((IrQuantified) pattern, stream);
     } else {
-      throw new SemanticException("Unknown IrRowPattern type");
+      throw new SemanticException(QueryMessages.UNKNOWN_IR_ROW_PATTERN_TYPE);
     }
   }
 
@@ -113,7 +114,7 @@ public abstract class IrRowPattern {
       case 7:
         return IrQuantified.deserialize(byteBuffer);
       default:
-        throw new SemanticException("Unknown IrRowPattern type");
+        throw new SemanticException(QueryMessages.UNKNOWN_IR_ROW_PATTERN_TYPE);
     }
   }
 }

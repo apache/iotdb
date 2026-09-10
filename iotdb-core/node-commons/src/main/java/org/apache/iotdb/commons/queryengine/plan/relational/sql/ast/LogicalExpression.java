@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -48,7 +50,8 @@ public class LogicalExpression extends Expression {
       } else if (this == OR) {
         return AND;
       } else {
-        throw new IllegalArgumentException("Unsupported logical expression type: " + this);
+        throw new IllegalArgumentException(
+            String.format(QueryMessages.UNSUPPORTED_LOGICAL_EXPRESSION_TYPE, this));
       }
     }
   }
@@ -58,15 +61,15 @@ public class LogicalExpression extends Expression {
 
   public LogicalExpression(Operator operator, List<Expression> terms) {
     super(null);
-    this.operator = requireNonNull(operator, "operator is null");
-    checkArgument(terms.size() >= 2, "Expected at least 2 terms");
+    this.operator = requireNonNull(operator, QueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    checkArgument(terms.size() >= 2, QueryMessages.EXCEPTION_EXPECTED_AT_LEAST_2_TERMS_87CD9010);
     this.terms = ImmutableList.copyOf(terms);
   }
 
   public LogicalExpression(NodeLocation location, Operator operator, List<Expression> terms) {
-    super(requireNonNull(location, "location is null"));
-    this.operator = requireNonNull(operator, "operator is null");
-    checkArgument(terms.size() >= 2, "Expected at least 2 terms");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.operator = requireNonNull(operator, QueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    checkArgument(terms.size() >= 2, QueryMessages.EXCEPTION_EXPECTED_AT_LEAST_2_TERMS_87CD9010);
     this.terms = ImmutableList.copyOf(terms);
   }
 

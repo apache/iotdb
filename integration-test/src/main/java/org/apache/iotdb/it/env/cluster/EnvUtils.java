@@ -25,6 +25,7 @@ import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,8 +93,12 @@ public class EnvUtils {
         // ignore
       }
       // Delete the lock file if the ports can't be used or some error happens
-      if (lockFile.exists() && !lockFile.delete()) {
-        IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath);
+      try {
+        if (lockFile.exists() && !Files.deleteIfExists(lockFile.toPath())) {
+          IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath);
+        }
+      } catch (IOException e) {
+        IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath, e);
       }
     }
   }
@@ -163,22 +168,7 @@ public class EnvUtils {
    */
   public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports)
       throws IOException {
-    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN -P -n", 10, 9, 1);
-  }
-
-  private static String getSearchAvailablePortCmd(final List<Integer> ports) {
-    return SystemUtils.IS_OS_WINDOWS ? getWindowsSearchPortCmd(ports) : getUnixSearchPortCmd(ports);
-  }
-
-  private static String getWindowsSearchPortCmd(final List<Integer> ports) {
-    return "netstat -aon -p tcp | findStr "
-        + ports.stream().map(v -> "/C:\"127.0.0.1:" + v + "\"").collect(Collectors.joining(" "));
-  }
-
-  private static String getUnixSearchPortCmd(final List<Integer> ports) {
-    return "lsof -iTCP -sTCP:LISTEN -P -n | awk '{print $9}' | grep -E "
-        + ports.stream().map(String::valueOf).collect(Collectors.joining("|"))
-        + "\"";
+    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN,TIME_WAIT -P -n", 10, 9, 1);
   }
 
   private static Pair<Integer, Integer> getClusterNodesNum(final int index) {

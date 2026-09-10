@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -48,7 +50,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -63,7 +64,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   private TVList list;
   private List<TVList> sortedList;
   private long sortedRowCount = 0;
-  private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
+  private static final String UNSUPPORTED_TYPE = DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 
@@ -440,7 +441,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
           dataSizeInCurrentChunk += 8L + getBinarySize(value);
           break;
         default:
-          LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
+          LOGGER.error(StorageEngineMessages.WRITABLE_MEM_CHUNK_UNSUPPORTED_TYPE, tsDataType);
           break;
       }
       pointNumInCurrentChunk++;
@@ -526,7 +527,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public int serializedSize() {
-    int serializedSize = schema.serializedSize() + list.serializedSize();
+    int serializedSize = getSerializedSchemaSize(schema) + list.serializedSize();
     serializedSize += Integer.BYTES;
     for (TVList tvList : sortedList) {
       serializedSize += tvList.serializedSize();
@@ -536,9 +537,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    byte[] bytes = new byte[schema.serializedSize()];
-    schema.serializeTo(ByteBuffer.wrap(bytes));
-    buffer.put(bytes);
+    buffer.put(serializeSchemaToWALBytes(schema));
     buffer.putInt(sortedList.size());
     for (TVList tvList : sortedList) {
       tvList.serializeToWAL(buffer);

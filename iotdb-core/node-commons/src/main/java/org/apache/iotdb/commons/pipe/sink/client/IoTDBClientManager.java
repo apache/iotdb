@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import org.slf4j.Logger;
@@ -107,7 +108,7 @@ public abstract class IoTDBClientManager {
         if (newConnectionTimeout != CONNECTION_TIMEOUT_MS.get()) {
           CONNECTION_TIMEOUT_MS.set(newConnectionTimeout);
           LOGGER.info(
-              "Pipe connection timeout is adjusted to {} ms ({} mins)",
+              ClientMessages.LOG_PIPE_CONNECTION_TIMEOUT_ADJUSTED_ARG_MS_ARG_MINS_6D126A53,
               newConnectionTimeout,
               newConnectionTimeout / 60000.0);
         }

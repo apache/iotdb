@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.downsampling.changing;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRemarkableRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
@@ -124,7 +125,7 @@ public class ChangingValueSamplingProcessor extends DownSamplingProcessor {
     super.customize(parameters, configuration);
 
     LOGGER.info(
-        "ChangingValueSamplingProcessor in {} is initialized with {}: {}, {}: {}, {}: {}.",
+        DataNodePipeMessages.CHANGINGVALUESAMPLINGPROCESSOR_IN_IS_INITIALIZED_WITH,
         dataBaseNameWithPathSeparator,
         PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION,
         compressionDeviation,

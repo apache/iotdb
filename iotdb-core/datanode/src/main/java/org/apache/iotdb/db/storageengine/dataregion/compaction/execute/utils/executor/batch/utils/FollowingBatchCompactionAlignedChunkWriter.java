@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.BatchCompactionCannotAlignedException;
 
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -194,17 +195,17 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
 
     @Override
     public void write(long[] timestamps, int batchSize, int arrayOffset) {
-      throw new RuntimeException("unimplemented");
+      throw new RuntimeException(StorageEngineMessages.UNIMPLEMENTED);
     }
 
     @Override
     public boolean checkPageSizeAndMayOpenANewPage() {
-      throw new RuntimeException("unimplemented");
+      throw new RuntimeException(StorageEngineMessages.UNIMPLEMENTED);
     }
 
     @Override
     public long getRemainingPointNumberForCurrentPage() {
-      throw new RuntimeException("unimplemented");
+      throw new RuntimeException(StorageEngineMessages.UNIMPLEMENTED);
     }
 
     @Override
@@ -229,7 +230,7 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
 
     @Override
     public long getCurrentChunkSize() {
-      throw new RuntimeException("unimplemented");
+      throw new RuntimeException(StorageEngineMessages.UNIMPLEMENTED);
     }
 
     @Override
@@ -260,17 +261,17 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
 
     @Override
     public PublicBAOS getPageBuffer() {
-      throw new RuntimeException("unimplemented");
+      throw new RuntimeException(StorageEngineMessages.UNIMPLEMENTED);
     }
 
     @Override
     public TimePageWriter getPageWriter() {
-      throw new RuntimeException("unimplemented");
+      throw new RuntimeException(StorageEngineMessages.UNIMPLEMENTED);
     }
 
     @Override
     public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
-      throw new RuntimeException("unimplemented");
+      throw new RuntimeException(StorageEngineMessages.UNIMPLEMENTED);
     }
 
     public TimeStatistics getChunkStatistics() {

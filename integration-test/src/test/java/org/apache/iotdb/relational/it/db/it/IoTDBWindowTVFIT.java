@@ -31,17 +31,23 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.*;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBWindowTVFIT {
   private static final String DATABASE_NAME = "test";
+  private static final double DELTA = 1e-9;
   private static final String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -62,6 +68,31 @@ public class IoTDBWindowTVFIT {
         "insert into multi_type values (2021-01-01T09:05:00, 'device1', 3, 3, 3.0, 3.0, false, '2', X'02', 2021-01-01T10:00:00, '2021-01-02')",
         "create table t1 (value double field, value1 int32 field)",
         "insert into t1 values (1, 1, 0),(2, 2, 0),(3, 1, 0),(4, 1, 0),(5, 1, 0),(6, 1.2, 0),(7, 1, 0),(8, 1, 0),(9, 2, 0),(10, 3, 0),(11, 4, 0),(12, 3, 0),(13, 2, 0),(14, 3, 0),(15, 4, 0),(16, 2, 0),(17, 1, 0),(18, 1, 0),(19, 1, 0),(20, 1, 0),(21, 1, 0),(41, 1, 0),(42, 2, 0),(43, 3, 0),(44, 4, 0),(45, 3, 0),(46, 2, 0),(47, 2, 0),(48, 2, 0),(49, 2, 0),(50, 2, 0),(51, 2, 0),(52, 2, 0)",
+        // M4 table function test data
+        "CREATE TABLE table1(device_id STRING TAG, s1 DOUBLE FIELD, s2 DOUBLE FIELD, s3 STRING FIELD)",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.001+08:00, 'device_1', 15.0, 12.0, 'OK')",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.003+08:00, 'device_1', 5.0, null, 'OK')",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.006+08:00, 'device_1', 30.0, null, 'WARN')",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.009+08:00, 'device_1', 10.0, null, 'OK')",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.020+08:00, 'device_1', 40.0, 35.0, 'CRIT')",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.002+08:00, 'device_2', 8.0, 8.0, 'OK')",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.005+08:00, 'device_2', 25.0, 24.0, 'WARN')",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.008+08:00, 'device_2', 12.0, 13.0, 'OK')",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.011+08:00, 'device_2', 18.0, 19.0, 'OK')",
+        "INSERT INTO table1(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.015+08:00, 'device_2', 6.0, 7.0, 'WARN')",
+        "CREATE TABLE table3(device_id STRING TAG, s1 DOUBLE FIELD, s2 DOUBLE FIELD, s3 STRING FIELD)",
+        "INSERT INTO table3(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.001+08:00, 'device_1', null, null, null)",
+        "INSERT INTO table3(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.003+08:00, 'device_1', null, null, null)",
+        "INSERT INTO table3(time, device_id, s1, s2, s3) VALUES (1970-01-01T08:00:00.020+08:00, 'device_1', 40.0, 35.0, 'CRIT')",
+        "CREATE TABLE table4(device_id STRING TAG, object_col BLOB FIELD)",
+        "INSERT INTO table4(time, device_id, object_col) VALUES (1970-01-01T08:00:00.001+08:00, 'device_1', X'0102')",
+        "CREATE TABLE table5(factory_id STRING TAG, device_id STRING TAG, s1 DOUBLE FIELD)",
+        "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.001+08:00, 'F1', 'device_1', 10.0)",
+        "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.005+08:00, 'F1', 'device_1', 15.0)",
+        "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.009+08:00, 'F1', 'device_1', 5.0)",
+        "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.002+08:00, 'F1', 'device_2', 20.0)",
+        "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.011+08:00, 'F1', 'device_2', 25.0)",
+        "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.003+08:00, 'F2', 'device_1', 30.0)",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
@@ -433,6 +464,107 @@ public class IoTDBWindowTVFIT {
         "SELECT first(time) as start_time, last(time) as end_time, stock_id, avg(price) as avg FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with SLIDE=2 (same as SIZE=2, should behave identically to no SLIDE)
+    expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "0,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "1,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "0,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "0,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 2) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with SIZE=2, SLIDE=1 (overlapping windows)
+    expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "0,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "1,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "1,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "2,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "0,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "0,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "1,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+          "2,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 1) ORDER BY stock_id, window_index, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with SIZE=3, SLIDE=2 (overlapping windows, different params)
+    expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "0,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "0,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "1,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "0,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "0,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "0,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+          "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 3, SLIDE => 2) ORDER BY stock_id, window_index, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with SIZE=2, SLIDE=3 (gap windows, some rows discarded)
+    expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "0,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "0,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "0,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 3) ORDER BY stock_id, window_index, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with SIZE=2, SLIDE=1 + GROUP BY (verify aggregation with overlapping windows)
+    expectedHeader = new String[] {"stock_id", "window_index", "avg"};
+    retArray =
+        new String[] {
+          "AAPL,0,101.5,",
+          "AAPL,1,102.5,",
+          "AAPL,2,102.0,",
+          "TESL,0,201.0,",
+          "TESL,1,198.5,",
+          "TESL,2,195.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT stock_id, window_index, avg(price) as avg FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 1) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with negative SLIDE (error case)
+    tableAssertTestFail(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => -1) ORDER BY stock_id, time",
+        "Invalid scalar argument SLIDE, should be a positive value",
+        DATABASE_NAME);
+
+    // CAPACITY with SLIDE=0 (error case)
+    tableAssertTestFail(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 0) ORDER BY stock_id, time",
+        "Invalid scalar argument SLIDE, should be a positive value",
         DATABASE_NAME);
   }
 
@@ -911,5 +1043,581 @@ public class IoTDBWindowTVFIT {
         "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
         "Invalid pattern",
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4TimeWindowMode() {
+    String[] expectedHeader =
+        new String[] {
+          "window_start",
+          "window_end",
+          "device_id",
+          "s1_time",
+          "s1",
+          "s2_time",
+          "s2",
+          "s3_time",
+          "s3"
+        };
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.001Z,15.0,1970-01-01T00:00:00.001Z,12.0,1970-01-01T00:00:00.001Z,OK,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.003Z,5.0,null,null,1970-01-01T00:00:00.006Z,WARN,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.006Z,30.0,null,null,1970-01-01T00:00:00.009Z,OK,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.009Z,10.0,null,null,null,null,",
+          "1970-01-01T00:00:00.020Z,1970-01-01T00:00:00.030Z,device_1,1970-01-01T00:00:00.020Z,40.0,1970-01-01T00:00:00.020Z,35.0,1970-01-01T00:00:00.020Z,CRIT,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_2,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.002Z,OK,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_2,1970-01-01T00:00:00.005Z,25.0,1970-01-01T00:00:00.005Z,24.0,1970-01-01T00:00:00.005Z,WARN,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_2,1970-01-01T00:00:00.008Z,12.0,1970-01-01T00:00:00.008Z,13.0,1970-01-01T00:00:00.008Z,OK,",
+          "1970-01-01T00:00:00.010Z,1970-01-01T00:00:00.020Z,device_2,1970-01-01T00:00:00.011Z,18.0,1970-01-01T00:00:00.011Z,19.0,1970-01-01T00:00:00.011Z,OK,",
+          "1970-01-01T00:00:00.010Z,1970-01-01T00:00:00.020Z,device_2,1970-01-01T00:00:00.015Z,6.0,1970-01-01T00:00:00.015Z,7.0,1970-01-01T00:00:00.015Z,WARN,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, device_id, s1_time, s1, s2_time, s2, s3_time, s3 "
+            + "FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, "
+            + "TIMECOL => 'time', SIZE => 10ms) "
+            + "ORDER BY device_id, window_start, s1_time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4TimeWindowModeSelectStar() {
+    String[] expectedHeader =
+        new String[] {
+          "window_start",
+          "window_end",
+          "device_id",
+          "s1_time",
+          "s1",
+          "s2_time",
+          "s2",
+          "s3_time",
+          "s3"
+        };
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.001Z,15.0,1970-01-01T00:00:00.001Z,12.0,1970-01-01T00:00:00.001Z,OK,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.003Z,5.0,null,null,1970-01-01T00:00:00.006Z,WARN,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.006Z,30.0,null,null,1970-01-01T00:00:00.009Z,OK,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.009Z,10.0,null,null,null,null,",
+          "1970-01-01T00:00:00.020Z,1970-01-01T00:00:00.030Z,device_1,1970-01-01T00:00:00.020Z,40.0,1970-01-01T00:00:00.020Z,35.0,1970-01-01T00:00:00.020Z,CRIT,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_2,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.002Z,OK,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_2,1970-01-01T00:00:00.005Z,25.0,1970-01-01T00:00:00.005Z,24.0,1970-01-01T00:00:00.005Z,WARN,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_2,1970-01-01T00:00:00.008Z,12.0,1970-01-01T00:00:00.008Z,13.0,1970-01-01T00:00:00.008Z,OK,",
+          "1970-01-01T00:00:00.010Z,1970-01-01T00:00:00.020Z,device_2,1970-01-01T00:00:00.011Z,18.0,1970-01-01T00:00:00.011Z,19.0,1970-01-01T00:00:00.011Z,OK,",
+          "1970-01-01T00:00:00.010Z,1970-01-01T00:00:00.020Z,device_2,1970-01-01T00:00:00.015Z,6.0,1970-01-01T00:00:00.015Z,7.0,1970-01-01T00:00:00.015Z,WARN,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * "
+            + "FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, "
+            + "TIMECOL => 'time', SIZE => 10ms) "
+            + "ORDER BY device_id, window_start, s1_time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4TimeWindowModeByPosition() {
+    String[] expectedHeader =
+        new String[] {"window_start", "window_end", "device_id", "s1_time", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.001Z,15.0,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.003Z,5.0,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.006Z,30.0,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,device_1,1970-01-01T00:00:00.009Z,10.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, device_id, s1_time, s1 "
+            + "FROM M4(table1 PARTITION BY device_id ORDER BY time, 'time', 10ms) "
+            + "WHERE device_id = 'device_1' AND window_start = 0 "
+            + "ORDER BY s1_time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4TimeWindowWithSlide() {
+    String[] expectedHeader =
+        new String[] {
+          "window_start",
+          "window_end",
+          "device_id",
+          "s1_time",
+          "s1",
+          "s2_time",
+          "s2",
+          "s3_time",
+          "s3"
+        };
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.005Z,device_1,1970-01-01T00:00:00.001Z,15.0,1970-01-01T00:00:00.001Z,12.0,1970-01-01T00:00:00.001Z,OK,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.005Z,device_1,1970-01-01T00:00:00.003Z,5.0,null,null,1970-01-01T00:00:00.003Z,OK,",
+          "1970-01-01T00:00:00.020Z,1970-01-01T00:00:00.025Z,device_1,1970-01-01T00:00:00.020Z,40.0,1970-01-01T00:00:00.020Z,35.0,1970-01-01T00:00:00.020Z,CRIT,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.005Z,device_2,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.002Z,OK,",
+          "1970-01-01T00:00:00.010Z,1970-01-01T00:00:00.015Z,device_2,1970-01-01T00:00:00.011Z,18.0,1970-01-01T00:00:00.011Z,19.0,1970-01-01T00:00:00.011Z,OK,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, device_id, s1_time, s1, s2_time, s2, s3_time, s3 "
+            + "FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, "
+            + "TIMECOL => 'time', SIZE => 5ms, SLIDE => 10ms) "
+            + "ORDER BY device_id, window_start, s1_time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4CountWindowMode() {
+    String[] expectedHeader =
+        new String[] {
+          "window_index", "device_id", "s1_time", "s1", "s2_time", "s2", "s3_time", "s3"
+        };
+    String[] retArray =
+        new String[] {
+          "0,device_1,1970-01-01T00:00:00.001Z,15.0,1970-01-01T00:00:00.001Z,12.0,1970-01-01T00:00:00.001Z,OK,",
+          "0,device_1,1970-01-01T00:00:00.003Z,5.0,null,null,1970-01-01T00:00:00.003Z,OK,",
+          "1,device_1,1970-01-01T00:00:00.006Z,30.0,null,null,1970-01-01T00:00:00.006Z,WARN,",
+          "1,device_1,1970-01-01T00:00:00.009Z,10.0,null,null,1970-01-01T00:00:00.009Z,OK,",
+          "2,device_1,1970-01-01T00:00:00.020Z,40.0,1970-01-01T00:00:00.020Z,35.0,1970-01-01T00:00:00.020Z,CRIT,",
+          "0,device_2,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.002Z,8.0,1970-01-01T00:00:00.002Z,OK,",
+          "0,device_2,1970-01-01T00:00:00.005Z,25.0,1970-01-01T00:00:00.005Z,24.0,1970-01-01T00:00:00.005Z,WARN,",
+          "1,device_2,1970-01-01T00:00:00.008Z,12.0,1970-01-01T00:00:00.008Z,13.0,1970-01-01T00:00:00.008Z,OK,",
+          "1,device_2,1970-01-01T00:00:00.011Z,18.0,1970-01-01T00:00:00.011Z,19.0,1970-01-01T00:00:00.011Z,OK,",
+          "2,device_2,1970-01-01T00:00:00.015Z,6.0,1970-01-01T00:00:00.015Z,7.0,1970-01-01T00:00:00.015Z,WARN,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * "
+            + "FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, "
+            + "TIMECOL => 'time', SIZE => 2) "
+            + "ORDER BY device_id, window_index, s1_time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4Origin() {
+    String[] expectedHeader =
+        new String[] {"window_start", "window_end", "device_id", "s1_time", "s1"};
+    String[] retArray =
+        new String[] {
+          "1969-12-31T23:59:59.995Z,1970-01-01T00:00:00.005Z,device_1,1970-01-01T00:00:00.001Z,15.0,",
+          "1969-12-31T23:59:59.995Z,1970-01-01T00:00:00.005Z,device_1,1970-01-01T00:00:00.003Z,5.0,",
+          "1970-01-01T00:00:00.005Z,1970-01-01T00:00:00.015Z,device_1,1970-01-01T00:00:00.006Z,30.0,",
+          "1970-01-01T00:00:00.005Z,1970-01-01T00:00:00.015Z,device_1,1970-01-01T00:00:00.009Z,10.0,",
+          "1970-01-01T00:00:00.015Z,1970-01-01T00:00:00.025Z,device_1,1970-01-01T00:00:00.020Z,40.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, device_id, s1_time, s1 "
+            + "FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, "
+            + "TIMECOL => 'time', ORIGIN => 1970-01-01T08:00:00.005+08:00, SIZE => 10ms) "
+            + "WHERE device_id = 'device_1' ORDER BY window_start, s1_time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4MultiplePartitionColumns() {
+    String[] expectedHeader =
+        new String[] {"window_start", "window_end", "factory_id", "device_id", "s1_time", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,F1,device_1,1970-01-01T00:00:00.001Z,10.0,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,F1,device_1,1970-01-01T00:00:00.005Z,15.0,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,F1,device_1,1970-01-01T00:00:00.009Z,5.0,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,F1,device_2,1970-01-01T00:00:00.002Z,20.0,",
+          "1970-01-01T00:00:00.010Z,1970-01-01T00:00:00.020Z,F1,device_2,1970-01-01T00:00:00.011Z,25.0,",
+          "1970-01-01T00:00:00.000Z,1970-01-01T00:00:00.010Z,F2,device_1,1970-01-01T00:00:00.003Z,30.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, factory_id, device_id, s1_time, s1 "
+            + "FROM M4(DATA => table5 PARTITION BY (factory_id, device_id) ORDER BY time, "
+            + "TIMECOL => 'time', SIZE => 10ms) "
+            + "ORDER BY factory_id, device_id, window_start, s1_time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4AllNullWindowSkipped() {
+    String[] expectedHeader =
+        new String[] {
+          "window_start",
+          "window_end",
+          "device_id",
+          "s1_time",
+          "s1",
+          "s2_time",
+          "s2",
+          "s3_time",
+          "s3"
+        };
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.020Z,1970-01-01T00:00:00.030Z,device_1,1970-01-01T00:00:00.020Z,40.0,1970-01-01T00:00:00.020Z,35.0,1970-01-01T00:00:00.020Z,CRIT,"
+        };
+    tableResultSetEqualTest(
+        "SELECT window_start, window_end, device_id, s1_time, s1, s2_time, s2, s3_time, s3 "
+            + "FROM M4(DATA => table3 PARTITION BY device_id ORDER BY time, "
+            + "TIMECOL => 'time', SIZE => 10ms) "
+            + "ORDER BY device_id, window_start, s1_time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4MissingSize() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        "701: Missing required argument: SIZE",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4MissingOrderBy() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table1 PARTITION BY device_id, TIMECOL => 'time', SIZE => 10ms)",
+        "701: Table argument with set semantics requires an ORDER BY clause.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4UnexpectedOrderBy() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY s1, TIMECOL => 'time', SIZE => 10ms)",
+        "701: The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4TimeColumnNotFound() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, TIMECOL => 'timestamp', SIZE => 10ms)",
+        "701: Required column [timestamp] not found in the source table argument.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4IllegalValueType() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table4 PARTITION BY device_id ORDER BY time, TIMECOL => 'time', SIZE => 10ms)",
+        "701: The type of the column [object_col] is not comparable.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4CountWindowRejectsOrigin() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, TIMECOL => 'time', SIZE => 5, ORIGIN => 1970-01-01T08:00:00.000+08:00)",
+        "701: The ORIGIN argument is only supported in time window mode.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4DescendingOrderByRejected() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time DESC, TIMECOL => 'time', SIZE => 10ms)",
+        "701: The ORDER BY clause of the DATA argument must sort the time column in ascending order.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4RejectsNegativeSize() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, TIMECOL => 'time', SIZE => -1)",
+        "701: Invalid scalar argument SIZE, should be a positive value",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4RejectsFloatSize() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, TIMECOL => 'time', SIZE => 1.5)",
+        "701: Invalid scalar argument 'SIZE'. Expected type INT64, got Double",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testM4RejectsNonTimestampTimecol() {
+    tableAssertTestFail(
+        "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time, TIMECOL => 's1', SIZE => 10ms)",
+        "701: The type of the column [s1] is not as expected.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassWithOnePartition() {
+    String[] expectedHeader = new String[] {"stock_id", "time", "lowpass(price)", "lowpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,2021-01-01T09:05:00.000Z,101.66666666666667,101.0,",
+          "AAPL,2021-01-01T09:07:00.000Z,101.66666666666667,101.0,",
+          "AAPL,2021-01-01T09:09:00.000Z,101.66666666666667,101.0,",
+          "TESL,2021-01-01T09:06:00.000Z,199.0,212.0,",
+          "TESL,2021-01-01T09:07:00.000Z,199.0,212.0,",
+          "TESL,2021-01-01T09:15:00.000Z,199.0,212.0,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM LOWPASS(DATA => bid PARTITION BY stock_id ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassWithNullValues() {
+    String[] expectedHeader = new String[] {"device_id", "time", "lowpass(s2)"};
+    String[] retArray =
+        new String[] {
+          "device_1,1970-01-01T00:00:00.001Z,23.5,",
+          "device_1,1970-01-01T00:00:00.003Z,null,",
+          "device_1,1970-01-01T00:00:00.006Z,null,",
+          "device_1,1970-01-01T00:00:00.009Z,null,",
+          "device_1,1970-01-01T00:00:00.020Z,23.5,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM LOWPASS(DATA => "
+            + "(SELECT time, device_id, s2 FROM table1 WHERE device_id = 'device_1') "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "lowpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,1970-01-01T00:00:00.001Z,10.0,",
+          "F1,device_1,1970-01-01T00:00:00.005Z,10.0,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,10.0,",
+          "F1,device_2,1970-01-01T00:00:00.002Z,22.5,",
+          "F1,device_2,1970-01-01T00:00:00.011Z,22.5,",
+          "F2,device_1,1970-01-01T00:00:00.003Z,30.0,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM LOWPASS(DATA => table5 "
+            + "PARTITION BY (factory_id, device_id) ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY factory_id, device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLowPassRejectsUnsupportedCalculationColumnType() {
+    tableAssertTestFail(
+        "SELECT * FROM LOWPASS(DATA => (SELECT time, device_id, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5)",
+        "701: Only column with double, float, int32, int64 can be calculated by the function, s3 is the STRING.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighWithOnePartition() {
+    String[] expectedHeader = new String[] {"stock_id", "time", "highpass(price)", "highpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,2021-01-01T09:05:00.000Z,-1.6666666666666667,0.0,",
+          "AAPL,2021-01-01T09:07:00.000Z,1.3333333333333333,0.0,",
+          "AAPL,2021-01-01T09:09:00.000Z,0.3333333333333333,0.0,",
+          "TESL,2021-01-01T09:06:00.000Z,1.0,-110.0,",
+          "TESL,2021-01-01T09:07:00.000Z,3.0,-10.0,",
+          "TESL,2021-01-01T09:15:00.000Z,-4.0,120.0,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM HIGHPASS(DATA => bid PARTITION BY stock_id ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighPassWithNullValues() {
+    String[] expectedHeader = new String[] {"device_id", "time", "highpass(s2)"};
+    String[] retArray =
+        new String[] {
+          "device_1,1970-01-01T00:00:00.001Z,-11.5,",
+          "device_1,1970-01-01T00:00:00.003Z,null,",
+          "device_1,1970-01-01T00:00:00.006Z,null,",
+          "device_1,1970-01-01T00:00:00.009Z,null,",
+          "device_1,1970-01-01T00:00:00.020Z,11.5,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM HIGHPASS(DATA => "
+            + "(SELECT time, device_id, s2 FROM table1 WHERE device_id = 'device_1') "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighPassWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "highpass(s1)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,1970-01-01T00:00:00.001Z,0.0,",
+          "F1,device_1,1970-01-01T00:00:00.005Z,5.0,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,-5.0,",
+          "F1,device_2,1970-01-01T00:00:00.002Z,-2.5,",
+          "F1,device_2,1970-01-01T00:00:00.011Z,2.5,",
+          "F2,device_1,1970-01-01T00:00:00.003Z,0.0,"
+        };
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM HIGHPASS(DATA => table5 "
+            + "PARTITION BY (factory_id, device_id) ORDER BY time, "
+            + "TIMECOL => 'time', WPASS => 0.5) ORDER BY factory_id, device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testHighPassRejectsUnsupportedCalculationColumnType() {
+    tableAssertTestFail(
+        "SELECT * FROM HIGHPASS(DATA => (SELECT time, device_id, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time', WPASS => 0.5)",
+        "701: Only column with double, float, int32, int64 can be calculated by the function, s3 is the STRING.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrP0() {
+    String[] expectedHeader = new String[] {"stock_id", "xcorr(price, s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,10100.0,",
+          "AAPL,10251.5,",
+          "AAPL,10268.333333333334,",
+          "AAPL,10352.5,",
+          "AAPL,10302.0,",
+          "TESL,66400.0,",
+          "TESL,53732.0,",
+          "TESL,41981.333333333336,",
+          "TESL,29997.0,",
+          "TESL,19890.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM XCORR(DATA => bid PARTITION BY stock_id ORDER BY time, "
+            + "TIMECOL => 'time') ORDER BY stock_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrWithNullValues() {
+    String[] expectedHeader = new String[] {"device_id", "xcorr(s1, s2)"};
+    String[] retArray =
+        new String[] {
+          "device_1,525.0,",
+          "device_1,175.0,",
+          "device_1,1050.0,",
+          "device_1,350.0,",
+          "device_1,790.0,",
+          "device_1,60.0,",
+          "device_1,360.0,",
+          "device_1,120.0,",
+          "device_1,480.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM XCORR(DATA => "
+            + "(SELECT time, device_id, s1, s2 FROM table1 WHERE device_id = 'device_1') "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "xcorr(s1, s2)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,50.0,",
+          "F1,device_1,112.5,",
+          "F1,device_1,116.66666666666667,",
+          "F1,device_1,112.5,",
+          "F1,device_1,50.0,",
+          "F1,device_2,500.0,",
+          "F1,device_2,512.5,",
+          "F1,device_2,500.0,",
+          "F2,device_1,900.0,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM XCORR(DATA => "
+            + "(SELECT time, factory_id, device_id, s1, s1 AS s2 FROM table5) "
+            + "PARTITION BY (factory_id, device_id) ORDER BY time, TIMECOL => 'time') "
+            + "ORDER BY factory_id, device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrRejectsUnsupportedCalculationColumnType() {
+    tableAssertTestFail(
+        "SELECT * FROM XCORR(DATA => (SELECT time, device_id, s1, s3 FROM table1) "
+            + "PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        "701: Only column with double, float, int32, int64 can be calculated by the function, s3 is the STRING.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testXCorrRejectsUnexpectedCalculationColumnCount() {
+    tableAssertTestFail(
+        "SELECT * FROM XCORR(DATA => (select time, device_id, int_val, long_val, float_val from multi_type) PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
+        "701: XCorr requires exactly two calculation columns, but found 3.",
+        DATABASE_NAME);
+  }
+
+  private static void tableResultSetEqualWithTolerance(
+      String sql, String[] expectedHeader, String[] expectedRetArray, String database) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      statement.execute("USE " + database);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(expectedHeader.length, metaData.getColumnCount());
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+          assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
+        }
+
+        int rowIndex = 0;
+        while (resultSet.next()) {
+          String[] expectedColumns = expectedRetArray[rowIndex].split(",", -1);
+          for (int i = 1; i <= expectedHeader.length; i++) {
+            String expected = expectedColumns[i - 1];
+            if (resultSet.getString(i) == null) {
+              assertEquals("null", expected);
+            } else if (metaData.getColumnType(i) == Types.DOUBLE) {
+              assertEquals(Double.parseDouble(expected), resultSet.getDouble(i), DELTA);
+            } else {
+              assertEquals(expected, resultSet.getString(i));
+            }
+          }
+          rowIndex++;
+        }
+        assertEquals(expectedRetArray.length, rowIndex);
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
   }
 }

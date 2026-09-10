@@ -50,6 +50,26 @@ public class SubscriptionEventSingleResponse
     this.response = new CachedSubscriptionPollResponse(responseType, payload, commitContext);
   }
 
+  public SubscriptionEventSingleResponse(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected) {
+    this.response =
+        new CachedSubscriptionPollResponse(responseType, payload, commitContext, timeSelected);
+  }
+
+  public SubscriptionEventSingleResponse(
+      final short responseType,
+      final SubscriptionPollPayload payload,
+      final SubscriptionCommitContext commitContext,
+      final boolean timeSelected,
+      final Map<String, Map<String, Boolean>> timeSelectedByTable) {
+    this.response =
+        new CachedSubscriptionPollResponse(
+            responseType, payload, commitContext, timeSelected, timeSelectedByTable);
+  }
+
   public SubscriptionEventSingleResponse(final SubscriptionPollResponse response) {
     this.response = new CachedSubscriptionPollResponse(response);
   }

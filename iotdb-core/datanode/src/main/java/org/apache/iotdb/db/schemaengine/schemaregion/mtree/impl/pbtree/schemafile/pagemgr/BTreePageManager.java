@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISegmentedPage;
@@ -99,7 +100,7 @@ public class BTreePageManager extends PageManager {
     ISchemaPage cursorPage = getPageInstance(getPageIndex(getNodeAddress(parNode)), cxt);
 
     if (cursorPage.getAsInternalPage() == null) {
-      throw new MetadataException("Subordinate index shall not build upon single page segment.");
+      throw new MetadataException(DataNodeSchemaMessages.SUBORDINATE_INDEX_NOT_ON_SINGLE_PAGE);
     }
 
     ISchemaPage tPage = cursorPage; // reserve the top page to modify subIndex
@@ -165,7 +166,7 @@ public class BTreePageManager extends PageManager {
       throws MetadataException, IOException {
     ISchemaPage tarPage = getTargetLeafPage(topPage, alias, cxt);
     if (tarPage.getAsAliasIndexPage() == null) {
-      throw new MetadataException("File may be corrupted that subordinate index has broken.");
+      throw new MetadataException(DataNodeSchemaMessages.SUBORDINATE_INDEX_BROKEN);
     }
 
     if (tarPage.getAsAliasIndexPage().insertRecord(alias, name) < 0) {
@@ -431,8 +432,7 @@ public class BTreePageManager extends PageManager {
         crabPage.decrementAndGetRefCnt();
         initPage.decrementAndGetRefCnt();
         initPage.getLock().readLock().unlock();
-        throw new MetadataException(
-            "Page[%d] replacement error: Different ref count or lock object.");
+        throw new MetadataException(DataNodeSchemaMessages.PAGE_REPLACEMENT_ERROR);
       }
       // update context is enough, ref and lock is left for main read process
       cxt.referredPages.put(initPage.getPageIndex(), crabPage);
@@ -452,7 +452,7 @@ public class BTreePageManager extends PageManager {
     if (getNodeAddress(parent) < 0) {
       throw new MetadataException(
           String.format(
-              "Node [%s] has no valid segment address in pbtree file.", parent.getFullPath()));
+              DataNodeSchemaMessages.NODE_NO_VALID_SEGMENT_ADDRESS, parent.getFullPath()));
     }
 
     // a single read lock on initial page is sufficient to mutex write, no need to trace it

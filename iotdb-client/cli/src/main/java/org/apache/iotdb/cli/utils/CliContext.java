@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli.utils;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.type.ExitType;
 
 import org.jline.reader.LineReader;
@@ -94,7 +95,7 @@ public class CliContext {
     if (exitType == ExitType.SYSTEM_EXIT) {
       System.exit(exitCode);
     } else {
-      throw new RuntimeException("Exiting with code " + exitCode);
+      throw new RuntimeException(String.format(CliMessages.EXITING_WITH_CODE, exitCode));
     }
   }
 }

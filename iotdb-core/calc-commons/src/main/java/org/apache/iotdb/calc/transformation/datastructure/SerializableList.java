@@ -22,13 +22,14 @@ package org.apache.iotdb.calc.transformation.datastructure;
 import org.apache.iotdb.calc.service.AbstractTemporaryQueryDataFileService;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.IOUtils;
 
 import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 
 public interface SerializableList {
 
@@ -60,7 +61,7 @@ public interface SerializableList {
     }
     init();
     ByteBuffer byteBuffer = ByteBuffer.allocate(recorder.getSerializedByteLength());
-    recorder.getFileChannel().read(byteBuffer);
+    IOUtils.readFully(recorder.getFileChannel(), byteBuffer);
     byteBuffer.flip();
     deserialize(byteBuffer);
     recorder.closeFile();
@@ -86,7 +87,6 @@ public interface SerializableList {
     protected int serializedElementSize;
 
     protected String fileName;
-    protected RandomAccessFile file;
     protected FileChannel fileChannel;
 
     public SerializationRecorder(String queryId) {
@@ -126,28 +126,21 @@ public interface SerializableList {
       return serializedElementSize;
     }
 
-    public RandomAccessFile getFile() throws IOException {
-      if (file == null) {
-        if (fileName == null) {
-          fileName = AbstractTemporaryQueryDataFileService.getInstance().register(this);
-        }
-        file = new RandomAccessFile(SystemFileFactory.INSTANCE.getFile(fileName), "rw");
-      }
-      return file;
-    }
-
     public void closeFile() throws IOException {
-      if (file == null) {
-        return;
-      }
       closeFileChannel();
-      file.close();
-      file = null;
     }
 
     public FileChannel getFileChannel() throws IOException {
       if (fileChannel == null) {
-        fileChannel = getFile().getChannel();
+        if (fileName == null) {
+          fileName = AbstractTemporaryQueryDataFileService.getInstance().register(this);
+        }
+        fileChannel =
+            FileChannel.open(
+                SystemFileFactory.INSTANCE.getFile(fileName).toPath(),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.READ,
+                StandardOpenOption.WRITE);
       }
       return fileChannel;
     }

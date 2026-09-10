@@ -20,9 +20,11 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
@@ -42,6 +44,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -51,7 +54,9 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
       LoggerFactory.getLogger(ConsumerGroupMetaSyncProcedure.class);
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 / 2;
+      TimeUnit.MINUTES.toMillis(
+              SubscriptionConfig.getInstance().getSubscriptionMetaSyncerSyncIntervalMinutes())
+          / 2;
   // No need to serialize this field
   private static final AtomicLong LAST_EXECUTION_TIME = new AtomicLong(0);
 
@@ -77,7 +82,7 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
       // Skip by setting the subscriptionInfo to null
       subscriptionInfo = null;
       LOGGER.info(
-          "ConsumerGroupMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
+          ProcedureMessages.CONSUMERGROUPMETASYNCPROCEDURE_ACQUIRELOCK_SKIP_THE_PROCEDURE_DUE_TO,
           LAST_EXECUTION_TIME.get());
       return ProcedureLockState.LOCK_ACQUIRED;
     }
@@ -92,7 +97,7 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
 
   @Override
   public boolean executeFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("ConsumerGroupMetaSyncProcedure: executeFromValidate");
+    LOGGER.info(ProcedureMessages.CONSUMERGROUPMETASYNCPROCEDURE_EXECUTEFROMVALIDATE);
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
     return true;
@@ -101,7 +106,7 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
   @Override
   public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("ConsumerGroupMetaSyncProcedure: executeFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.CONSUMERGROUPMETASYNCPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES);
 
     final List<ConsumerGroupMeta> consumerGroupMetaList =
         new ArrayList<>(subscriptionInfo.get().getAllConsumerGroupMeta());
@@ -113,7 +118,7 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
               .getConsensusManager()
               .write(new ConsumerGroupHandleMetaChangePlan(consumerGroupMetaList));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -125,32 +130,34 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("ConsumerGroupMetaSyncProcedure: executeFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.CONSUMERGROUPMETASYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
-    Map<Integer, TPushConsumerGroupMetaResp> respMap = pushConsumerGroupMetaToDataNodes(env);
+    Map<Integer, TPushConsumerGroupMetaResp> respMap =
+        pushConsumerGroupMetaToDataNodesBestEffort(env);
     if (pushConsumerGroupMetaHasException(respMap)) {
       throw new SubscriptionException(
-          String.format("Failed to push consumer group meta to dataNodes, details: %s", respMap));
+          String.format(
+              ProcedureMessages.FAILED_TO_PUSH_CONSUMER_GROUP_META_TO_DATANODES_DETAILS, respMap));
     }
   }
 
   @Override
   public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("ConsumerGroupMetaSyncProcedure: rollbackFromValidate");
+    LOGGER.info(ProcedureMessages.CONSUMERGROUPMETASYNCPROCEDURE_ROLLBACKFROMVALIDATE);
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("ConsumerGroupMetaSyncProcedure: rollbackFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.CONSUMERGROUPMETASYNCPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES);
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("ConsumerGroupMetaSyncProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.CONSUMERGROUPMETASYNCPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     // Do nothing
   }

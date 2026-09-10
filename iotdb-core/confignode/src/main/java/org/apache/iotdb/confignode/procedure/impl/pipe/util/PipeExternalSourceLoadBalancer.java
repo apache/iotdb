@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -60,7 +61,8 @@ public class PipeExternalSourceLoadBalancer {
         this.strategy = new ProportionalBalanceStrategy();
         break;
       default:
-        throw new IllegalArgumentException("Unknown load balance strategy: " + balanceStrategy);
+        throw new IllegalArgumentException(
+            ProcedureMessages.UNKNOWN_LOAD_BALANCE_STRATEGY + balanceStrategy);
     }
   }
 
@@ -107,7 +109,7 @@ public class PipeExternalSourceLoadBalancer {
                 .sorted()
                 .collect(Collectors.toList());
         if (runningDataNodes.isEmpty()) {
-          throw new PipeException("No available datanode to assign tasks");
+          throw new PipeException(ProcedureMessages.NO_AVAILABLE_DATANODE_TO_ASSIGN_TASKS);
         }
         final int numNodes = runningDataNodes.size();
         for (int i = 1; i <= Math.min(numNodes, parallelCount); i++) {
@@ -141,7 +143,7 @@ public class PipeExternalSourceLoadBalancer {
                 .sorted()
                 .collect(Collectors.toList());
         if (runningDataNodes.isEmpty()) {
-          throw new PipeException("No available datanode to assign tasks");
+          throw new PipeException(ProcedureMessages.NO_AVAILABLE_DATANODE_TO_ASSIGN_TASKS);
         }
         final int numNodes = runningDataNodes.size();
         final int quotient = parallelCount / numNodes;

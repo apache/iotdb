@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.OptionalInt;
 
@@ -38,7 +39,7 @@ public class CanonicalizationAware<T extends Node> {
   private int hashCode;
 
   private CanonicalizationAware(T node) {
-    this.node = requireNonNull(node, "node is null");
+    this.node = requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
   }
 
   public static <T extends Node> CanonicalizationAware<T> canonicalizationAwareKey(T node) {

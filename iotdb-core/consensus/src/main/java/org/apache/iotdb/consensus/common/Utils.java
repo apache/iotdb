@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.consensus.common;
 
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +60,7 @@ public class Utils {
 
             @Override
             public FileVisitResult visitFileFailed(Path file, IOException exc) {
-              logger.info("visit file {} failed due to {}", file.toAbsolutePath(), exc);
+              logger.info(ConsensusMessages.VISIT_FILE_FAILED, file.toAbsolutePath(), exc);
               return FileVisitResult.TERMINATE;
             }
 
@@ -68,7 +70,7 @@ public class Utils {
             }
           });
     } catch (IOException ioException) {
-      logger.error("IOException occurred during listing snapshot directory: ", ioException);
+      logger.error(ConsensusMessages.IO_EXCEPTION_LISTING_SNAPSHOT_DIR, ioException);
       return Collections.emptyList();
     }
     return allFiles;

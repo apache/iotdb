@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.node.info.IDeviceInfo;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.basic.CachedBasicMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.CachedMNodeContainer;
@@ -196,7 +197,7 @@ public class CachedBasicInternalMNode extends CachedBasicMNode
     if (isDevice()) {
       return new DeviceMNodeWrapper<>(this);
     } else {
-      throw new UnsupportedOperationException("Wrong node type");
+      throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_NODE_TYPE);
     }
   }
 

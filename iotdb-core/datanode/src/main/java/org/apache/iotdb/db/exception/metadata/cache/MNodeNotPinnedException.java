@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.exception.metadata.cache;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 public class MNodeNotPinnedException extends MetadataException {
 
   public MNodeNotPinnedException() {
-    super("MNode has not been pinned.");
+    super(DataNodeSchemaMessages.MNODE_NOT_PINNED);
   }
 }

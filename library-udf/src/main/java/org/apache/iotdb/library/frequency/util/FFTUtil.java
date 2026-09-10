@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.frequency.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.exception.UDFException;
 
@@ -76,7 +77,7 @@ public class FFTUtil {
         ans = Math.atan2(a[2 * i + 1], a[2 * i]);
         break;
       default:
-        throw new UDFException("It's impossible");
+        throw new UDFException(LibraryUdfMessages.ITS_IMPOSSIBLE);
     }
     collector.putDouble(i, ans);
   }

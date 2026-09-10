@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
@@ -71,7 +71,7 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
 
   private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
 
-  TableModelQueryFragmentPlanner(
+  public TableModelQueryFragmentPlanner(
       SubPlan subPlan,
       Analysis analysis,
       MPPQueryContext queryContext,
@@ -129,9 +129,19 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
           deviceCountMapOfEachTable.computeIfAbsent(
               aggregationTableScanNode.getQualifiedObjectName(), name -> new HashMap<>());
 
-      aggregationTableScanNode
-          .getDeviceEntries()
-          .forEach(deviceEntry -> deviceMap.merge(deviceEntry, 1, Integer::sum));
+      // Spill planning records one count for each region while consuming the DeviceEntry stream.
+      // Merge those counts here across all regions hosted by this DataNode. For non-spill plans the
+      // map is null and the inline device entries are counted as before.
+      Map<DeviceEntry, Integer> existingDeviceMap = aggregationTableScanNode.getDeviceCountMap();
+      if (existingDeviceMap != null && existingDeviceMap != deviceMap) {
+        existingDeviceMap.forEach(
+            (deviceEntry, count) -> deviceMap.merge(deviceEntry, count, Integer::sum));
+      }
+      if (existingDeviceMap == null) {
+        aggregationTableScanNode
+            .getDeviceEntries()
+            .forEach(deviceEntry -> deviceMap.merge(deviceEntry, 1, Integer::sum));
+      }
       // Each AggTableScanNode with the same complete tableName in this DataNode holds this map
       aggregationTableScanNode.setDeviceCountMap(deviceMap);
       return;

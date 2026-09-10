@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.primitives.Ints;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -126,7 +128,7 @@ public final class VariableWidthData {
 
   public static int clamp(long value, int min, int max) {
     if (min > max) {
-      throw new IllegalArgumentException(min + " > " + max);
+      throw new IllegalArgumentException(min + QueryMessages.EXCEPTION_GREATER_THAN_0B37D87A + max);
     }
     return (int) Math.min(max, Math.max(value, min));
   }

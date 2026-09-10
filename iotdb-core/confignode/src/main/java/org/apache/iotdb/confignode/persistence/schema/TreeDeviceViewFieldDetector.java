@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewReq;
@@ -146,7 +147,9 @@ public class TreeDeviceViewFieldDetector {
           return new TSStatus(TSStatusCode.TYPE_NOT_FOUND.getStatusCode())
               .setMessage(
                   String.format(
-                      "Measurements not found for %s, cannot auto detect", unknownField.getKey()));
+                      ManagerMessages
+                          .MESSAGE_MEASUREMENTS_NOT_FOUND_ARG_CANNOT_AUTO_DETECT_980D7D44,
+                      unknownField.getKey()));
         }
       }
     }

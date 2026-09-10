@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 
 import java.util.List;
@@ -26,7 +28,7 @@ import java.util.List;
 public class MathUtils {
 
   private MathUtils() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(DataNodeMiscMessages.UTILITY_CLASS);
   }
 
   public static float roundWithGivenPrecision(float data, int size) {

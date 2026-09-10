@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.schema.table;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -58,7 +60,7 @@ public enum TsTableInternalRPCType {
       case 2:
         return COMMIT_UPDATE_TABLE;
       default:
-        throw new IllegalArgumentException("Unknown table update operation type" + type);
+        throw new IllegalArgumentException(SchemaMessages.UNKNOWN_TABLE_UPDATE_OP_TYPE + type);
     }
   }
 }

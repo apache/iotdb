@@ -34,6 +34,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
@@ -106,6 +107,24 @@ public class LoginLockManagerTest {
 
     LoginLockManager customLockTime = new LoginLockManager(5, 1000, 30);
     assertEquals(30, getField(customLockTime, "passwordLockTimeMinutes"));
+  }
+
+  @Test
+  public void testLargeLockTimeDoesNotOverflowCutoff() {
+    long now = 1_000_000L;
+    assertEquals(
+        now - TimeUnit.MINUTES.toMillis(Integer.MAX_VALUE),
+        LoginLockManager.getLockWindowCutoffTime(now, Integer.MAX_VALUE));
+    assertEquals(Long.MIN_VALUE, LoginLockManager.getLockWindowCutoffTime(Long.MIN_VALUE, 1));
+
+    LoginLockManager largeWindowManager =
+        new LoginLockManager(failedLoginAttempts, failedLoginAttemptsPerUser, Integer.MAX_VALUE);
+    for (int i = 0; i < failedLoginAttempts; i++) {
+      largeWindowManager.recordFailure(TEST_USER_ID, TEST_IP);
+    }
+    assertTrue(
+        "Large lock window should not overflow and discard recent failures",
+        largeWindowManager.checkLock(TEST_USER_ID, TEST_IP));
   }
 
   private int getField(LoginLockManager manager, String fieldName) {
@@ -285,7 +304,8 @@ public class LoginLockManagerTest {
       Deque<Long> timestamps = (Deque<Long>) tsField.get(lockInfo);
 
       timestamps.clear();
-      timestamps.add(System.currentTimeMillis() - (passwordLockTimeMinutes * 60 * 1000L) - 5000);
+      timestamps.add(
+          System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(passwordLockTimeMinutes) - 5000);
 
     } catch (Exception e) {
       fail("Failed to modify failure timestamps via reflection: " + e.getMessage());
@@ -337,7 +357,8 @@ public class LoginLockManagerTest {
       Deque<Long> timestamps = (Deque<Long>) tsField.get(lockInfo);
 
       timestamps.clear();
-      timestamps.add(System.currentTimeMillis() - (passwordLockTimeMinutes * 60 * 1000L) - 5000);
+      timestamps.add(
+          System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(passwordLockTimeMinutes) - 5000);
 
     } catch (Exception e) {
       fail("Reflection modification failed: " + e.getMessage());

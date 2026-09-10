@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.event;
 
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -69,7 +70,7 @@ public enum PipeConfigSerializableEventType {
         event = new PipeConfigRegionSnapshotEvent();
         break;
       default:
-        throw new IllegalArgumentException("Invalid event type: " + eventType);
+        throw new IllegalArgumentException(ManagerMessages.INVALID_EVENT_TYPE + eventType);
     }
     event.deserializeFromByteBuffer(buffer);
     return event;

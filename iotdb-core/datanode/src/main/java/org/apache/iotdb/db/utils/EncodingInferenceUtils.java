@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -55,7 +56,9 @@ public class EncodingInferenceUtils {
         return conf.getDefaultTextEncoding();
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+            String.format(
+                DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                dataType));
     }
   }
 }

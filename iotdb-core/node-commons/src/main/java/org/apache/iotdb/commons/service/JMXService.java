@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +54,7 @@ public class JMXService implements IService {
         | InstanceAlreadyExistsException
         | MBeanRegistrationException
         | NotCompliantMBeanException e) {
-      logger.error("Failed to registerMBean {}", name, e);
+      logger.error(ServiceMessages.FAILED_TO_REGISTER_MBEAN, name, e);
     }
   }
 
@@ -68,7 +69,7 @@ public class JMXService implements IService {
     } catch (MalformedObjectNameException
         | MBeanRegistrationException
         | InstanceNotFoundException e) {
-      logger.error("Failed to unregisterMBean {}", name, e);
+      logger.error(ServiceMessages.FAILED_TO_UNREGISTER_MBEAN, name, e);
     }
   }
 
@@ -81,7 +82,7 @@ public class JMXService implements IService {
   public void start() {
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
     if (jmxPort == null) {
-      logger.debug("{} JMX port is undefined", this.getID().getName());
+      logger.debug(ServiceMessages.JMX_PORT_IS_UNDEFINED, this.getID().getName());
     }
   }
 

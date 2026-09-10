@@ -37,6 +37,7 @@ import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.TableChunkReader;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -141,5 +142,9 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
 
   public TsFileID getTsFileID() {
     return resource.getTsFileID();
+  }
+
+  public File getTsFile() {
+    return resource.getTsFile();
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.ExpressionFormatter;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -52,7 +53,8 @@ public abstract class Expression extends Node {
 
   public TableExpressionType getExpressionType() {
     throw new UnsupportedOperationException(
-        "getExpressionType is not implemented yet: " + this.getClass().getSimpleName());
+        String.format(
+            QueryMessages.GET_EXPRESSION_TYPE_NOT_IMPLEMENTED, this.getClass().getSimpleName()));
   }
 
   // TODO make abstract later
@@ -174,7 +176,8 @@ public abstract class Expression extends Node {
         expression = new FloatLiteral(byteBuffer);
         break;
       default:
-        throw new IllegalArgumentException("Invalid expression type: " + type);
+        throw new IllegalArgumentException(
+            String.format(QueryMessages.INVALID_EXPRESSION_TYPE, type));
     }
 
     return expression;

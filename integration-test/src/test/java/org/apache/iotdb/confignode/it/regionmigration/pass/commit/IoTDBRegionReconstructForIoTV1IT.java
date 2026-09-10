@@ -45,7 +45,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -108,7 +111,9 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       Assert.assertTrue(dataRegionMap.containsKey(selectedRegion));
       Pair<Integer, Set<Integer>> leaderAndNodeIds = dataRegionMap.get(selectedRegion);
       Assert.assertEquals(2, leaderAndNodeIds.right.size());
-      // reconstruct from the leader to ensure no data is lost
+      // Stop the current leader; reconstruct will later target the surviving follower (whose
+      // tsfiles get deleted below). When the original leader is restarted, the follower's
+      // missing data is replicated back from it, so no committed data is lost.
       final int dataNodeToBeClosed = leaderAndNodeIds.left;
       final int dataNodeToBeReconstructed =
           leaderAndNodeIds.right.stream().filter(x -> x != dataNodeToBeClosed).findAny().get();
@@ -144,70 +149,161 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
                   .get()
                   .getDataPath());
 
+      DataNodeWrapper followerNode =
+          EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeReconstructed).orElseThrow();
+      Awaitility.await()
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(1, TimeUnit.MINUTES)
+          .untilAsserted(
+              () -> {
+                try (Connection followerConnection =
+                        EnvFactory.getEnv().getConnection(followerNode);
+                    Statement followerStatement = followerConnection.createStatement();
+                    ResultSet resultSet =
+                        followerStatement.executeQuery(
+                            "select speed, temperature from root.sg.d1")) {
+                  Assert.assertTrue(resultSet.next());
+                  Assert.assertEquals(1.0, resultSet.getDouble(2), 0.0);
+                  Assert.assertEquals(2.0, resultSet.getDouble(3), 0.0);
+                }
+              });
+
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
-      while (true) {
-        try (Connection flushConn =
-                EnvFactory.getEnv()
-                    .getConnection(
-                        EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeReconstructed).get(),
-                        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
-                        CommonDescriptor.getInstance().getConfig().getAdminPassword(),
-                        BaseEnv.TREE_SQL_DIALECT);
-            Statement flushStatement = flushConn.createStatement()) {
-          flushStatement.execute("FLUSH ON LOCAL");
-        }
-        deleteTsFiles(dataDirToBeReconstructed);
+      Awaitility.await()
+          .pollInSameThread()
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(1, TimeUnit.MINUTES)
+          .untilAsserted(
+              () -> {
+                try (Connection flushConn =
+                        EnvFactory.getEnv()
+                            .getConnection(
+                                EnvFactory.getEnv()
+                                    .dataNodeIdToWrapper(dataNodeToBeReconstructed)
+                                    .get(),
+                                CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
+                                CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+                                BaseEnv.TREE_SQL_DIALECT);
+                    Statement flushStatement = flushConn.createStatement()) {
+                  flushStatement.execute("FLUSH ON LOCAL");
+                }
+                Assert.assertTrue(deleteTsFiles(dataDirToBeReconstructed));
 
-        // now, the query should throw exception
-        try {
-          session.executeQueryStatement("select * from root.sg.**");
-        } catch (StatementExecutionException e) {
-          break;
-        }
-      }
+                // The query should fail after the reconstructed follower's data files are deleted.
+                try {
+                  SessionDataSet resultSet =
+                      session.executeQueryStatement("select * from root.sg.**");
+                  try {
+                    Assert.fail();
+                  } finally {
+                    try {
+                      resultSet.close();
+                    } catch (Exception ignored) {
+                      // Ignore cleanup failures because the query unexpectedly succeeded.
+                    }
+                  }
+                } catch (StatementExecutionException expected) {
+                  // The query is expected to fail while the follower's data files are missing.
+                }
+              });
 
       // start DataNode, reconstruct the delete one
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().start();
       EnvFactory.getAbstractEnv().checkNodeInStatus(dataNodeToBeClosed, NodeStatus.Running);
       session.executeNonQueryStatement(
           String.format(RECONSTRUCT_FORMAT, selectedRegion, dataNodeToBeReconstructed));
+      // Confirm reconstruct succeeded: the selected region must contain both the reconstructed
+      // peer and the (formerly closed) peer, with both rows reporting Running.
       try {
         Awaitility.await()
             .pollInterval(1, TimeUnit.SECONDS)
             .atMost(10, TimeUnit.MINUTES)
             .until(
-                () ->
-                    getRegionStatusWithoutRunning(session).isEmpty()
-                        && dataDirToBeReconstructed.getAbsoluteFile().exists());
+                () -> {
+                  Map<Integer, String> peerStatus =
+                      getRegionStatusMap(session)
+                          .getOrDefault(selectedRegion, Collections.emptyMap());
+                  return "Running".equals(peerStatus.get(dataNodeToBeReconstructed))
+                      && "Running".equals(peerStatus.get(dataNodeToBeClosed));
+                });
       } catch (Exception e) {
         LOGGER.error(
-            "Two factor: {} && {}",
-            getRegionStatusWithoutRunning(session),
-            dataDirToBeReconstructed.getAbsoluteFile().exists());
+            "Reconstruct did not finish in time. region {} status map: {}",
+            selectedRegion,
+            getRegionStatusMap(session).get(selectedRegion));
         fail();
       }
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       // now, the query should work fine, but the update of region status may have some delay
-      long start = System.currentTimeMillis();
-      while (true) {
-        SessionDataSet resultSet;
-        try {
-          resultSet = session.executeQueryStatement("select * from root.sg.**");
-        } catch (StatementExecutionException e) {
-          if (System.currentTimeMillis() - start > 60_000L) {
-            fail("Cannot execute query within 60s");
-          }
-          TimeUnit.SECONDS.sleep(1);
-          continue;
-        }
-        if (resultSet.hasNext()) {
-          RowRecord rowRecord = resultSet.next();
-          Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
-          Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
-          break;
-        }
+      Awaitility.await()
+          .pollInSameThread()
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(1, TimeUnit.MINUTES)
+          .untilAsserted(
+              () -> {
+                try (SessionDataSet resultSet =
+                    session.executeQueryStatement("select * from root.sg.**")) {
+                  Assert.assertTrue(resultSet.hasNext());
+                  RowRecord rowRecord = resultSet.next();
+                  Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
+                  Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
+                }
+              });
+    }
+  }
+
+  /**
+   * Regression test for TIMECHODB-0689 (reconstruct path): targeting "reconstruct region" at an id
+   * that is not a registered DataNode (a ConfigNode id or a non-existent id) used to trigger a
+   * NullPointerException in {@code checkReconstructRegion}. After the fix a clear, correct error
+   * message must be returned instead of crashing the ConfigNode RPC.
+   */
+  @Test
+  public void reconstructRegionToInvalidDataNodeTest() throws Exception {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
+
+    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      // prepare data so that at least one region exists
+      statement.execute(INSERTION1);
+      statement.execute(FLUSH_COMMAND);
+
+      Map<Integer, Set<Integer>> regionMap = getAllRegionMap(statement);
+      Set<Integer> allDataNodeId = getAllDataNodes(statement);
+      Assert.assertFalse(regionMap.isEmpty());
+
+      int selectedRegion = regionMap.keySet().iterator().next();
+      // an id that is guaranteed not to belong to any registered DataNode; a ConfigNode id triggers
+      // the exact same code path (getRegisteredDataNode returns an empty configuration whose
+      // location is null)
+      int invalidDataNodeId = 9999;
+      Assert.assertFalse(allDataNodeId.contains(invalidDataNodeId));
+
+      try {
+        statement.execute(String.format(RECONSTRUCT_FORMAT, selectedRegion, invalidDataNodeId));
+        Assert.fail("reconstruct region on a non-existent DataNode is expected to fail");
+      } catch (SQLException e) {
+        String message = e.getMessage();
+        LOGGER.info("reconstruct region on invalid DataNode failed as expected: {}", message);
+        Assert.assertNotNull(message);
+        // the ConfigNode must not crash with an NPE any more ...
+        Assert.assertFalse(
+            "ConfigNode should not throw NullPointerException, but got: " + message,
+            message.contains("NullPointerException"));
+        // ... and the client should receive a clear, correct error message
+        Assert.assertTrue(
+            "Expected a 'does not exist in the cluster' error but got: " + message,
+            message.contains("does not exist in the cluster"));
       }
     }
   }

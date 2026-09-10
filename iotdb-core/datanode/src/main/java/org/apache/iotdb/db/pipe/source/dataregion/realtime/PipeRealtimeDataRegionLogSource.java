@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -55,8 +56,10 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
     } else {
       throw new UnsupportedOperationException(
           String.format(
-              "Unsupported event type %s for log realtime extractor %s",
-              eventToExtract.getClass(), this));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_UNSUPPORTED_EVENT_TYPE_S_FOR_LOG_REALTIME_EXTRACTOR_S_961C5D2D,
+              eventToExtract.getClass(),
+              this));
     }
   }
 
@@ -111,9 +114,7 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
         // and report the exception to PipeRuntimeAgent.
         final String errorMessage =
             String.format(
-                "Event %s can not be supplied because "
-                    + "the reference count can not be increased, "
-                    + "the data represented by this event is lost",
+                DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
                 realtimeEvent.getEvent());
         LOGGER.error(errorMessage);
         PipeDataNodeAgent.runtime()

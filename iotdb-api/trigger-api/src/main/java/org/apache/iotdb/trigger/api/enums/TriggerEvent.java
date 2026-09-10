@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.trigger.api.enums;
 
+import org.apache.iotdb.trigger.api.i18n.TriggerApiMessages;
+
 public enum TriggerEvent {
   BEFORE_INSERT((byte) 0, "BEFORE_INSERT"),
   AFTER_INSERT((byte) 1, "AFTER_INSERT");
@@ -47,7 +49,8 @@ public enum TriggerEvent {
       case 1:
         return AFTER_INSERT;
       default:
-        throw new IllegalArgumentException(String.format("No such trigger event (id: %d)", id));
+        throw new IllegalArgumentException(
+            String.format(TriggerApiMessages.NO_SUCH_TRIGGER_EVENT, id));
     }
   }
 }

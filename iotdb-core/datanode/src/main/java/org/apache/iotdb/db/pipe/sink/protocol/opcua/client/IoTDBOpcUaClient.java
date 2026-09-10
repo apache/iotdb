@@ -21,16 +21,20 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
-import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
+import org.eclipse.milo.opcua.sdk.client.identity.IdentityProvider;
 import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.ValueRanks;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
@@ -51,7 +55,6 @@ import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesItem;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResponse;
 import org.eclipse.milo.opcua.stack.core.types.structured.AddNodesResult;
-import org.eclipse.milo.opcua.stack.core.types.structured.EndpointDescription;
 import org.eclipse.milo.opcua.stack.core.types.structured.ObjectAttributes;
 import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
 import org.slf4j.Logger;
@@ -61,17 +64,24 @@ import javax.annotation.Nullable;
 
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Predicate;
 
 import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.convertToOpcDataType;
 import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.timestampToUtc;
 import static org.eclipse.milo.opcua.stack.core.StatusCodes.Bad_Timeout;
+import static org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn.Neither;
 
 public class IoTDBOpcUaClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaNameSpace.class);
+
+  private static final int DEFAULT_MAX_NODES_PER_WRITE = 10_000;
+  private static final int DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT = 250;
 
   // Customized nodes
   private static final int NAME_SPACE_INDEX = 2;
@@ -85,6 +95,8 @@ public class IoTDBOpcUaClient {
   private OpcUaClient client;
   private final boolean historizing;
   private ClientRunner runner;
+  private int maxNodesPerWrite = DEFAULT_MAX_NODES_PER_WRITE;
+  private int maxNodesPerNodeManagement = DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT;
 
   public IoTDBOpcUaClient(
       final String nodeUrl,
@@ -103,7 +115,7 @@ public class IoTDBOpcUaClient {
     long startTime = System.currentTimeMillis();
     while (System.currentTimeMillis() - startTime < runner.getTimeoutSeconds() * 1000L) {
       try {
-        client.connect().get();
+        client.connectAsync().get();
       } catch (final ExecutionException e) {
         if (e.getCause() instanceof UaException
             && ((UaException) e.getCause()).getStatusCode().getValue() == Bad_Timeout) {
@@ -114,12 +126,89 @@ public class IoTDBOpcUaClient {
       }
       break;
     }
+    updateOperationLimits();
+  }
+
+  private void updateOperationLimits() {
+    try {
+      final List<DataValue> operationLimits =
+          client
+              .readValuesAsync(
+                  0.0,
+                  Neither,
+                  Arrays.asList(
+                      Identifiers.Server_ServerCapabilities_OperationLimits_MaxNodesPerWrite,
+                      Identifiers
+                          .Server_ServerCapabilities_OperationLimits_MaxNodesPerNodeManagement))
+              .get();
+      maxNodesPerWrite = getOperationLimit(operationLimits, 0, DEFAULT_MAX_NODES_PER_WRITE);
+      maxNodesPerNodeManagement =
+          getOperationLimit(operationLimits, 1, DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT);
+      LOGGER.info(
+          DataNodePipeMessages
+              .LOG_OPC_UA_SERVER_OPERATION_LIMITS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_5D2BCC90,
+          maxNodesPerWrite,
+          maxNodesPerNodeManagement);
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          DataNodePipeMessages
+              .LOG_INTERRUPTED_WHILE_READING_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_357D46A4,
+          DEFAULT_MAX_NODES_PER_WRITE,
+          DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          DataNodePipeMessages
+              .LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871,
+          DEFAULT_MAX_NODES_PER_WRITE,
+          DEFAULT_MAX_NODES_PER_NODE_MANAGEMENT,
+          e);
+    }
+  }
+
+  private static int getOperationLimit(
+      final List<DataValue> operationLimits, final int index, final int defaultValue) {
+    if (Objects.isNull(operationLimits) || operationLimits.size() <= index) {
+      return defaultValue;
+    }
+
+    final DataValue dataValue = operationLimits.get(index);
+    if (Objects.isNull(dataValue)
+        || Objects.isNull(dataValue.getStatusCode())
+        || !dataValue.getStatusCode().isGood()
+        || Objects.isNull(dataValue.getValue())
+        || !(dataValue.getValue().getValue() instanceof Number)) {
+      return defaultValue;
+    }
+
+    final long limit = ((Number) dataValue.getValue().getValue()).longValue();
+    return limit == 0 ? Integer.MAX_VALUE : (int) Math.min(limit, Integer.MAX_VALUE);
   }
 
   // Only support tree model & client-server
   public void transfer(final Tablet tablet, final OpcUaSink sink) throws Exception {
     OpcUaNameSpace.transferTabletForClientServerModel(
         tablet, false, sink, this::transferTabletRowForClientServerModel);
+  }
+
+  public void transferLastValues(
+      final Map<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> deviceLastValues,
+      final boolean isTableModel,
+      final OpcUaSink sink)
+      throws Exception {
+    final List<OpcUaWriteRequest> writeRequests = new ArrayList<>();
+    for (final Map.Entry<IDeviceID, List<Pair<IMeasurementSchema, TimeValuePair>>> entry :
+        deviceLastValues.entrySet()) {
+      OpcUaNameSpace.transferLastValues(
+          entry.getKey(),
+          entry.getValue(),
+          isTableModel,
+          sink,
+          (segments, measurementSchemas, timestamps, values, currentSink) ->
+              collectWriteRequests(
+                  segments, measurementSchemas, timestamps, values, currentSink, writeRequests));
+    }
+    writeValues(writeRequests);
   }
 
   private void transferTabletRowForClientServerModel(
@@ -129,6 +218,18 @@ public class IoTDBOpcUaClient {
       final List<Object> values,
       final OpcUaSink sink)
       throws Exception {
+    final List<OpcUaWriteRequest> writeRequests = new ArrayList<>();
+    collectWriteRequests(segments, measurementSchemas, timestamps, values, sink, writeRequests);
+    writeValues(writeRequests);
+  }
+
+  private void collectWriteRequests(
+      final String[] segments,
+      final List<IMeasurementSchema> measurementSchemas,
+      final List<Long> timestamps,
+      final List<Object> values,
+      final OpcUaSink sink,
+      final List<OpcUaWriteRequest> writeRequests) {
     StatusCode currentQuality = sink.getDefaultQuality();
     Object value = null;
     long timestamp = 0;
@@ -143,7 +244,7 @@ public class IoTDBOpcUaClient {
       if (Objects.nonNull(sink.getQualityName()) && sink.getQualityName().equals(name)) {
         if (!type.equals(TSDataType.BOOLEAN)) {
           throw new UnsupportedOperationException(
-              "The quality value only supports boolean type, while true == GOOD and false == BAD.");
+              DataNodePipeMessages.THE_QUALITY_VALUE_ONLY_SUPPORTS_BOOLEAN_TYPE);
         }
         currentQuality = values.get(i) == Boolean.TRUE ? StatusCode.GOOD : StatusCode.BAD;
         continue;
@@ -151,73 +252,170 @@ public class IoTDBOpcUaClient {
       if (Objects.nonNull(sink.getValueName()) && !sink.getValueName().equals(name)) {
         PipeLogger.log(
             LOGGER::warn,
-            "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
+            DataNodePipeMessages.WITH_QUALITY_MEASUREMENT_MUST_BE_VALUE_OR_QUALITY_NAME);
         continue;
       }
 
       final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
       if (Objects.isNull(sink.getValueName())) {
-        writeValue(
-            values.get(i),
-            utcTimestamp,
-            convertToOpcDataType(type),
-            currentQuality,
-            segments,
-            name);
+        writeRequests.add(
+            new OpcUaWriteRequest(
+                values.get(i),
+                utcTimestamp,
+                convertToOpcDataType(type),
+                currentQuality,
+                segments,
+                name));
       } else {
         value = values.get(i);
         timestamp = utcTimestamp;
         opcDataType = convertToOpcDataType(type);
       }
     }
-    if (Objects.isNull(value)) {
+    if (Objects.nonNull(value)) {
+      writeRequests.add(
+          new OpcUaWriteRequest(value, timestamp, opcDataType, currentQuality, segments, null));
+    }
+  }
+
+  private void writeValues(final List<OpcUaWriteRequest> writeRequests) throws Exception {
+    if (writeRequests.isEmpty()) {
       return;
     }
 
-    writeValue(value, timestamp, opcDataType, currentQuality, segments, null);
+    final List<OpcUaWriteRequest> missingNodeWriteRequests =
+        getMissingNodeWriteRequests(writeRequests, writeValuesOnce(writeRequests));
+    if (missingNodeWriteRequests.isEmpty()) {
+      return;
+    }
+
+    addMissingNodes(missingNodeWriteRequests);
+    validateRetriedWrites(missingNodeWriteRequests, writeValuesOnce(missingNodeWriteRequests));
   }
 
-  private void writeValue(
-      final Object value,
-      final long timestamp,
-      final NodeId opcDataType,
-      final StatusCode currentQuality,
-      final String[] segments,
-      final @Nullable String name)
-      throws Exception {
-    final NodeId nodeId =
-        new NodeId(
-            NAME_SPACE_INDEX,
-            Objects.nonNull(name)
-                ? String.join("/", segments) + "/" + name
-                : String.join("/", segments));
-    final Variant variant = new Variant(value);
-    final DataValue dataValue =
-        new DataValue(variant, currentQuality, new DateTime(timestamp), new DateTime());
-    StatusCode writeStatus = client.writeValue(nodeId, dataValue).get();
+  private List<OpcUaWriteRequest> getMissingNodeWriteRequests(
+      final List<OpcUaWriteRequest> writeRequests, final List<StatusCode> writeStatuses) {
+    final List<OpcUaWriteRequest> missingNodeWriteRequests = new ArrayList<>();
+    for (int i = 0; i < writeRequests.size(); ++i) {
+      if (writeStatuses.get(i).getValue() == StatusCodes.Bad_NodeIdUnknown) {
+        missingNodeWriteRequests.add(writeRequests.get(i));
+      } else {
+        validateInitialWrite(writeRequests.get(i), writeStatuses.get(i));
+      }
+    }
+    return missingNodeWriteRequests;
+  }
 
-    if (writeStatus.getValue() == StatusCodes.Bad_NodeIdUnknown) {
-      final AddNodesResponse addStatus =
-          client.addNodes(getNodesToAdd(segments, name, opcDataType, variant)).get();
-      for (final AddNodesResult result : addStatus.getResults()) {
-        if (!result.getStatusCode().equals(StatusCode.GOOD)
-            && !(result.getStatusCode().getValue() == StatusCodes.Bad_NodeIdExists)) {
-          throw new PipeException(
-              "Failed to create nodes after transfer data value, creation status: "
-                  + addStatus
-                  + getErrorString(segments, name, opcDataType, value, writeStatus));
+  private void validateInitialWrite(
+      final OpcUaWriteRequest writeRequest, final StatusCode writeStatus) {
+    if (writeStatus.getValue() != StatusCode.GOOD.getValue()) {
+      throw new PipeException(
+          DataNodePipeMessages.FAILED_TO_TRANSFER_DATAVALUE
+              + writeRequest.getErrorString(writeStatus));
+    }
+  }
+
+  private void addMissingNodes(final List<OpcUaWriteRequest> writeRequests) throws Exception {
+    final List<AddNodesItem> nodesToAdd = new ArrayList<>();
+    final Set<ExpandedNodeId> nodeIdsToAdd = new HashSet<>();
+    for (final OpcUaWriteRequest writeRequest : writeRequests) {
+      for (final AddNodesItem nodeToAdd :
+          getNodesToAdd(
+              writeRequest.segments,
+              writeRequest.name,
+              writeRequest.opcDataType,
+              writeRequest.variant)) {
+        if (nodeIdsToAdd.add(nodeToAdd.getRequestedNewNodeId())) {
+          nodesToAdd.add(nodeToAdd);
         }
       }
-      writeStatus = client.writeValue(nodeId, dataValue).get();
-      if (writeStatus.getValue() != StatusCode.GOOD.getValue()) {
-        throw new PipeException(
-            "Failed to transfer dataValue after successfully created nodes"
-                + getErrorString(segments, name, opcDataType, value, writeStatus));
+    }
+
+    for (int startIndex = 0; startIndex < nodesToAdd.size(); ) {
+      final int endIndex =
+          getBatchEndIndex(startIndex, nodesToAdd.size(), maxNodesPerNodeManagement);
+      final AddNodesResponse addStatus =
+          client.addNodesAsync(nodesToAdd.subList(startIndex, endIndex)).get();
+      for (final AddNodesResult result : addStatus.getResults()) {
+        if (!result.getStatusCode().equals(StatusCode.GOOD)
+            && result.getStatusCode().getValue() != StatusCodes.Bad_NodeIdExists) {
+          throw new PipeException(
+              DataNodePipeMessages.FAILED_TO_CREATE_NODES_AFTER_TRANSFER_DATA
+                  + addStatus
+                  + writeRequests
+                      .get(0)
+                      .getErrorString(new StatusCode(StatusCodes.Bad_NodeIdUnknown)));
+        }
       }
-    } else if (writeStatus.getValue() != StatusCode.GOOD.getValue()) {
-      throw new PipeException(
-          "Failed to transfer dataValue"
-              + getErrorString(segments, name, opcDataType, value, writeStatus));
+      startIndex = endIndex;
+    }
+  }
+
+  private void validateRetriedWrites(
+      final List<OpcUaWriteRequest> writeRequests, final List<StatusCode> writeStatuses) {
+    for (int i = 0; i < writeRequests.size(); ++i) {
+      if (writeStatuses.get(i).getValue() != StatusCode.GOOD.getValue()) {
+        throw new PipeException(
+            DataNodePipeMessages.FAILED_TO_TRANSFER_DATAVALUE_AFTER_SUCCESSFULLY_CREATED
+                + writeRequests.get(i).getErrorString(writeStatuses.get(i)));
+      }
+    }
+  }
+
+  private List<StatusCode> writeValuesOnce(final List<OpcUaWriteRequest> writeRequests)
+      throws Exception {
+    final List<StatusCode> writeStatuses = new ArrayList<>(writeRequests.size());
+    for (int startIndex = 0; startIndex < writeRequests.size(); ) {
+      final int endIndex = getBatchEndIndex(startIndex, writeRequests.size(), maxNodesPerWrite);
+      final List<NodeId> nodeIds = new ArrayList<>(endIndex - startIndex);
+      final List<DataValue> dataValues = new ArrayList<>(endIndex - startIndex);
+      for (int i = startIndex; i < endIndex; ++i) {
+        nodeIds.add(writeRequests.get(i).nodeId);
+        dataValues.add(writeRequests.get(i).dataValue);
+      }
+      writeStatuses.addAll(client.writeValuesAsync(nodeIds, dataValues).get());
+      startIndex = endIndex;
+    }
+    return writeStatuses;
+  }
+
+  private static int getBatchEndIndex(
+      final int startIndex, final int totalSize, final int batchSize) {
+    return (int) Math.min((long) totalSize, (long) startIndex + batchSize);
+  }
+
+  private static final class OpcUaWriteRequest {
+    private final Object value;
+    private final NodeId opcDataType;
+    private final String[] segments;
+    private final @Nullable String name;
+    private final NodeId nodeId;
+    private final Variant variant;
+    private final DataValue dataValue;
+
+    private OpcUaWriteRequest(
+        final Object value,
+        final long timestamp,
+        final NodeId opcDataType,
+        final StatusCode currentQuality,
+        final String[] segments,
+        final @Nullable String name) {
+      this.value = value;
+      this.opcDataType = opcDataType;
+      this.segments = segments;
+      this.name = name;
+      nodeId =
+          new NodeId(
+              NAME_SPACE_INDEX,
+              Objects.nonNull(name)
+                  ? String.join("/", segments) + "/" + name
+                  : String.join("/", segments));
+      variant = new Variant(value);
+      dataValue = new DataValue(variant, currentQuality, new DateTime(timestamp), new DateTime());
+    }
+
+    private String getErrorString(final StatusCode writeStatus) {
+      return IoTDBOpcUaClient.getErrorString(segments, name, opcDataType, value, writeStatus);
     }
   }
 
@@ -257,7 +455,7 @@ public class IoTDBOpcUaClient {
             new QualifiedName(NAME_SPACE_INDEX, segments[0]),
             NodeClass.Object,
             ExtensionObject.encode(
-                client.getStaticSerializationContext(), createFolderAttributes(segments[0])),
+                client.getStaticEncodingContext(), createFolderAttributes(segments[0])),
             Identifiers.FolderType.expanded()));
 
     // segments.length >= 3
@@ -272,7 +470,7 @@ public class IoTDBOpcUaClient {
               new QualifiedName(NAME_SPACE_INDEX, segments[i]),
               NodeClass.Object,
               ExtensionObject.encode(
-                  client.getStaticSerializationContext(), createFolderAttributes(segments[i])),
+                  client.getStaticEncodingContext(), createFolderAttributes(segments[i])),
               Identifiers.FolderType.expanded()));
       curNodeId = nextId;
     }
@@ -287,7 +485,7 @@ public class IoTDBOpcUaClient {
             new QualifiedName(NAME_SPACE_INDEX, measurementName),
             NodeClass.Variable,
             ExtensionObject.encode(
-                client.getStaticSerializationContext(),
+                client.getStaticEncodingContext(),
                 createMeasurementAttributes(measurementName, opcDataType, initialValue)),
             Identifiers.BaseDataVariableType.expanded()));
 
@@ -295,8 +493,14 @@ public class IoTDBOpcUaClient {
   }
 
   public void disconnect() throws Exception {
-    if (Objects.nonNull(client)) {
-      client.disconnect().get();
+    try {
+      if (Objects.nonNull(client)) {
+        client.disconnectAsync().get();
+      }
+    } finally {
+      if (Objects.nonNull(runner)) {
+        runner.close();
+      }
     }
   }
 
@@ -304,10 +508,6 @@ public class IoTDBOpcUaClient {
 
   String getNodeUrl() {
     return nodeUrl;
-  }
-
-  Predicate<EndpointDescription> endpointFilter() {
-    return e -> getSecurityPolicy().getUri().equals(e.getSecurityPolicyUri());
   }
 
   SecurityPolicy getSecurityPolicy() {
@@ -364,7 +564,9 @@ public class IoTDBOpcUaClient {
       final String user,
       final String password,
       final String securityDir,
-      final SecurityPolicy securityPolicy) {
-    runner.checkEquals(user, password, Paths.get(securityDir), securityPolicy);
+      final SecurityPolicy securityPolicy,
+      final boolean allowEndpointRedirect) {
+    runner.checkEquals(
+        user, password, Paths.get(securityDir), securityPolicy, allowEndpointRedirect);
   }
 }

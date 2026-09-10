@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -71,7 +72,8 @@ public class DeviceRegionScanNode extends RegionScanNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("DeviceRegionScanNode has no children");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.DEVICEREGIONSCANNODE_HAS_NO_CHILDREN);
   }
 
   @Override

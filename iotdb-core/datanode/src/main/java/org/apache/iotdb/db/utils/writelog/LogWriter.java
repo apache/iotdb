@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.db.utils.writelog;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.zip.CRC32;
 
 /**
@@ -38,7 +40,6 @@ public class LogWriter implements ILogWriter {
   private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
 
   private final File logFile;
-  private FileOutputStream fileOutputStream;
   private FileChannel channel;
   private final CRC32 checkSummer = new CRC32();
   private final ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
@@ -49,15 +50,13 @@ public class LogWriter implements ILogWriter {
     this.logFile = logFile;
     this.forceEachWrite = forceEachWrite;
 
-    fileOutputStream = new FileOutputStream(logFile, true);
-    channel = fileOutputStream.getChannel();
+    channel = openChannel(logFile);
   }
 
   @Override
   public void write(ByteBuffer logBuffer) throws IOException {
     if (channel == null) {
-      fileOutputStream = new FileOutputStream(logFile, true);
-      channel = fileOutputStream.getChannel();
+      channel = openChannel(logFile);
     }
     logBuffer.flip();
     int logSize = logBuffer.limit();
@@ -85,7 +84,7 @@ public class LogWriter implements ILogWriter {
         channel.force(true);
       }
     } catch (ClosedChannelException ignored) {
-      logger.warn("someone interrupt current thread, so no need to do write for io safety");
+      logger.warn(DataNodeMiscMessages.INTERRUPTED_NO_WRITE);
     }
   }
 
@@ -102,8 +101,6 @@ public class LogWriter implements ILogWriter {
       if (channel.isOpen()) {
         channel.force(true);
       }
-      fileOutputStream.close();
-      fileOutputStream = null;
       channel.close();
       channel = null;
     }
@@ -112,5 +109,19 @@ public class LogWriter implements ILogWriter {
   @Override
   public String toString() {
     return "LogWriter{" + "logFile=" + logFile + '}';
+  }
+
+  private static FileChannel openChannel(File file) throws FileNotFoundException {
+    try {
+      return FileChannel.open(
+          file.toPath(),
+          StandardOpenOption.CREATE,
+          StandardOpenOption.WRITE,
+          StandardOpenOption.APPEND);
+    } catch (IOException e) {
+      FileNotFoundException exception = new FileNotFoundException(e.getMessage());
+      exception.initCause(e);
+      throw exception;
+    }
   }
 }

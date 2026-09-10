@@ -74,12 +74,15 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("__system.sql-dialect", "table");
+      extractorAttributes.put("mode.double-living", "true");
       extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "true");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.serialize-by-region", "false");
       connectorAttributes.put("connector.parallel.tasks", "3");
 
       final TSStatus status =

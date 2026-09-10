@@ -98,6 +98,28 @@ public class SubscriptionTreeSession extends AbstractSubscriptionSession
   }
 
   @Override
+  public void alterTopic(final String topicName, final Properties properties)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.alterTopic(topicName, properties);
+  }
+
+  @Override
+  public void alterTopicOwner(final String topicName, final String ownerId, final long ownerEpoch)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.alterTopicOwner(topicName, ownerId, ownerEpoch);
+  }
+
+  @Override
+  public void alterTopicOwner(
+      final String topicName,
+      final String ownerId,
+      final long ownerEpoch,
+      final Long ownerLeaseDurationMs)
+      throws IoTDBConnectionException, StatementExecutionException {
+    super.alterTopicOwner(topicName, ownerId, ownerEpoch, ownerLeaseDurationMs);
+  }
+
+  @Override
   public void dropTopic(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
     super.dropTopic(topicName);

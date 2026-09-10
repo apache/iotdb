@@ -47,7 +47,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected final ColumnTransformer filterOutputTransformer;
   private final List<TSDataType> inputDataTypes;
   private final List<TsTableColumnSchema> columnSchemaList;
-  private final int idIndex;
+  private final int tagIndex;
 
   // Batch logic
   protected static final int DEFAULT_MAX_TS_BLOCK_LINE_NUMBER =
@@ -72,7 +72,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
         columnSchemaList.stream()
             .map(TsTableColumnSchema::getDataType)
             .collect(Collectors.toList());
-    this.idIndex =
+    this.tagIndex =
         PathUtils.isTableModelDatabase(database)
             ? 3
             : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length;
@@ -100,7 +100,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     deviceSchemaBatch.forEach(
         deviceSchemaInfo ->
             transformToTableDeviceTsBlockColumns(
-                deviceSchemaInfo, builder, columnSchemaList, idIndex));
+                deviceSchemaInfo, builder, columnSchemaList, tagIndex));
     curBlock = builder.build();
     if (withoutFilter()) {
       return;

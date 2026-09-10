@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
@@ -30,11 +31,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 
 /**
  * LogWriter writes the binary logs into a file, including writing {@link WALEntry} into .wal file
@@ -44,7 +45,6 @@ public abstract class LogWriter implements ILogWriter {
   private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
 
   protected final File logFile;
-  protected final FileOutputStream logStream;
   protected final FileChannel logChannel;
   protected long originalSize = 0;
 
@@ -67,9 +67,14 @@ public abstract class LogWriter implements ILogWriter {
 
   protected LogWriter(File logFile, WALFileVersion version) throws IOException {
     this.logFile = logFile;
-    this.logStream = new FileOutputStream(logFile, true);
-    this.logChannel = this.logStream.getChannel();
-    if ((!logFile.exists() || logFile.length() == 0) && version == WALFileVersion.V2) {
+    this.logChannel =
+        FileChannel.open(
+            logFile.toPath(),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.WRITE,
+            StandardOpenOption.APPEND);
+    if ((!logFile.exists() || logFile.length() == 0)
+        && (version == WALFileVersion.V2 || version == WALFileVersion.V3)) {
       this.logChannel.write(ByteBuffer.wrap(version.getVersionBytes()));
     }
   }
@@ -124,7 +129,7 @@ public abstract class LogWriter implements ILogWriter {
       logChannel.write(headerBuffer);
       logChannel.write(buffer);
     } catch (ClosedChannelException e) {
-      logger.warn("Cannot write to {}", logFile, e);
+      logger.warn(StorageEngineMessages.CANNOT_WRITE_TO, logFile, e);
     }
     WritingMetrics.getInstance()
         .recordWroteWALBuffer(uncompressedSize, bufferSize, System.nanoTime() - startTime);
@@ -172,7 +177,6 @@ public abstract class LogWriter implements ILogWriter {
         }
       } finally {
         logChannel.close();
-        logStream.close();
       }
     }
   }

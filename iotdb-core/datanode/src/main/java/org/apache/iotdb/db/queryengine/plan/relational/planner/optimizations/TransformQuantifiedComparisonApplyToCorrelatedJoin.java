@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SimplePlanRewriter;
@@ -76,7 +77,8 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
   private final Metadata metadata;
 
   public TransformQuantifiedComparisonApplyToCorrelatedJoin(Metadata metadata) {
-    this.metadata = requireNonNull(metadata, "metadata is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
   }
 
   @Override
@@ -91,9 +93,13 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
     private final Metadata metadata;
 
     public Rewriter(QueryId idAllocator, SymbolAllocator symbolAllocator, Metadata metadata) {
-      this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
-      this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-      this.metadata = requireNonNull(metadata, "metadata is null");
+      this.idAllocator =
+          requireNonNull(idAllocator, DataNodeQueryMessages.EXCEPTION_IDALLOCATOR_IS_NULL_752B308D);
+      this.symbolAllocator =
+          requireNonNull(
+              symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+      this.metadata =
+          requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
     }
 
     @Override
@@ -119,7 +125,9 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
 
       Symbol outputColumn = getOnlyElement(subqueryPlan.getOutputSymbols());
       Type outputColumnType = symbolAllocator.getTypes().getTableModelType(outputColumn);
-      checkState(outputColumnType.isOrderable(), "Subquery result type must be orderable");
+      checkState(
+          outputColumnType.isOrderable(),
+          DataNodeQueryMessages.EXCEPTION_SUBQUERY_RESULT_TYPE_MUST_BE_ORDERABLE_82AF0EFA);
 
       Symbol minValue = symbolAllocator.newSymbol("min", outputColumnType);
       Symbol maxValue = symbolAllocator.newSymbol("max", outputColumnType);
@@ -261,7 +269,9 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
             boundValue.toSymbolReference());
       }
       throw new IllegalArgumentException(
-          "Unsupported quantified comparison: " + quantifiedComparison);
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_QUANTIFIED_COMPARISON_S_C3700430,
+              quantifiedComparison));
     }
 
     private static ComparisonExpression.Operator mapOperator(
@@ -281,7 +291,9 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
           return GREATER_THAN_OR_EQUAL;
         default:
           throw new IllegalArgumentException(
-              "Unexpected quantifiedComparison: " + quantifiedComparison.getOperator());
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_QUANTIFIEDCOMPARISON_S_F13E4EB2,
+                  quantifiedComparison.getOperator()));
       }
     }
 
@@ -298,7 +310,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
             case GREATER_THAN_OR_EQUAL:
               return false;
             default:
-              throw new IllegalArgumentException("Unexpected value: " + operator);
+              throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + operator);
           }
         case ANY:
         case SOME:
@@ -310,11 +322,13 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
             case GREATER_THAN_OR_EQUAL:
               return true;
             default:
-              throw new IllegalArgumentException("Unexpected value: " + operator);
+              throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + operator);
           }
         default:
           throw new IllegalArgumentException(
-              "Unexpected Quantifier: " + quantifiedComparison.getQuantifier());
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_QUANTIFIER_S_62214B74,
+                  quantifiedComparison.getQuantifier()));
       }
     }
 

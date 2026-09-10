@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 
@@ -129,7 +130,10 @@ public class RootProcedureStack<Env> {
       subprocStack = new ArrayList<>();
     }
     proc.addStackIndex(subprocStack.size());
-    LOG.trace("Add procedure {} as the {}th rollback step", proc, subprocStack.size());
+    LOG.trace(
+        ProcedureMessages.LOG_ADD_PROCEDURE_ARG_AS_ARG_TH_ROLLBACK_STEP_C71B2184,
+        proc,
+        subprocStack.size());
     subprocStack.add(proc);
   }
 

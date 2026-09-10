@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.subscription.event.cache;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -48,12 +50,13 @@ public class SubscriptionPollResponseCache {
   public ByteBuffer serialize(final CachedSubscriptionPollResponse response) throws IOException {
     try {
       if (Objects.isNull(response)) {
-        throw new IOException("null response when serializing");
+        throw new IOException(DataNodeMiscMessages.NULL_RESPONSE_WHEN_SERIALIZING);
       }
       return this.cache.get(response);
     } catch (final Exception e) {
       LOGGER.warn(
-          "SubscriptionEventBinaryCache raised an exception while serializing CachedSubscriptionPollResponse: {}",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONEVENTBINARYCACHE_RAISED_AN_EXCEPTION_WHILE_SERIALIZING_F3B698CB,
           response,
           e);
       throw new IOException(e);
@@ -63,12 +66,13 @@ public class SubscriptionPollResponseCache {
   public Optional<ByteBuffer> trySerialize(final CachedSubscriptionPollResponse response) {
     try {
       if (Objects.isNull(response)) {
-        throw new IOException("null response when serializing");
+        throw new IOException(DataNodeMiscMessages.NULL_RESPONSE_WHEN_SERIALIZING);
       }
       return Optional.of(serialize(response));
     } catch (final IOException e) {
       LOGGER.warn(
-          "Subscription: something unexpected happened when serializing CachedSubscriptionPollResponse: {}",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SERIALIZING_5467B7B6,
           response,
           e);
       return Optional.empty();
@@ -77,7 +81,7 @@ public class SubscriptionPollResponseCache {
 
   public void invalidate(final CachedSubscriptionPollResponse response) {
     if (Objects.isNull(response)) {
-      LOGGER.warn("null response when invalidating, skip it");
+      LOGGER.warn(DataNodeMiscMessages.NULL_RESPONSE_INVALIDATING);
       return;
     }
     this.cache.invalidate(response);
@@ -128,7 +132,8 @@ public class SubscriptionPollResponseCache {
             (oldMemory, newMemory) -> {
               cache.policy().eviction().ifPresent(eviction -> eviction.setMaximum(newMemory));
               LOGGER.info(
-                  "SubscriptionEventBinaryCache.allocatedMemoryBlock has shrunk from {} to {}.",
+                  DataNodePipeMessages
+                      .PIPE_LOG_SUBSCRIPTIONEVENTBINARYCACHE_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_08F23ADE,
                   oldMemory,
                   newMemory);
             })
@@ -137,7 +142,8 @@ public class SubscriptionPollResponseCache {
             (oldMemory, newMemory) -> {
               cache.policy().eviction().ifPresent(eviction -> eviction.setMaximum(newMemory));
               LOGGER.info(
-                  "SubscriptionEventBinaryCache.allocatedMemoryBlock has expanded from {} to {}.",
+                  DataNodePipeMessages
+                      .PIPE_LOG_SUBSCRIPTIONEVENTBINARYCACHE_ALLOCATEDMEMORYBLOCK_HAS_EXPANDED_52A971D9,
                   oldMemory,
                   newMemory);
             });
