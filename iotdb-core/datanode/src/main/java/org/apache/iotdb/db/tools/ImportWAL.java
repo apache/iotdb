@@ -33,12 +33,14 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemC
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
+import org.apache.iotdb.db.tools.TableWALDeleteConverter.ConversionException;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -86,6 +88,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -162,7 +165,8 @@ public class ImportWAL {
       out.println();
       if (deleteSource) {
         out.printf(
-            ImportWALMessages.MESSAGE_DELETED_ARG_SOURCE_WAL_FILES_C7A5AA1B, walFiles.size());
+            ImportWALMessages.MESSAGE_DELETED_ARG_SOURCE_WAL_FILES_C7A5AA1B,
+            statistics.fullyReplayedFiles.size());
         out.println();
       }
       return CODE_OK;
@@ -746,7 +750,7 @@ public class ImportWAL {
     private final Session tableSession;
     private final ConsensusLogToTabletConverter converter;
     private final ReplayDecisionPrompt replayDecisionPrompt;
-    private final Map<String, List<IMeasurementSchema>> tableTagSchemas = new HashMap<>();
+    private final Map<String, TableSchema> tableSchemas = new HashMap<>();
 
     WALReplayer(
         final Session treeSession, final Session tableSession, final String tableDatabaseName) {
@@ -783,7 +787,8 @@ public class ImportWAL {
         replayInsert(insertNode);
         return ReplayResult.REPLAYED;
       }
-      if (entry.getValue() instanceof DeleteDataNode deleteDataNode) {
+      if (entry.getValue() instanceof DeleteDataNode
+          || entry.getValue() instanceof RelationalDeleteDataNode) {
         final ReplayDecision decision = replayDecisionPrompt.decide(entry, true);
         if (decision == ReplayDecision.SKIP || decision == ReplayDecision.SKIP_ALL) {
           return ReplayResult.SKIPPED;
@@ -791,21 +796,39 @@ public class ImportWAL {
         if (decision == ReplayDecision.TERMINATE) {
           throw replayTerminatedByUser();
         }
-        replayTreeDelete(deleteDataNode);
-        return ReplayResult.REPLAYED;
+        if (entry.getValue() instanceof DeleteDataNode deleteDataNode) {
+          replayTreeDelete(deleteDataNode);
+          return ReplayResult.REPLAYED;
+        }
+        final List<String> statements;
+        try {
+          statements = prepareTableDelete((RelationalDeleteDataNode) entry.getValue());
+        } catch (final ConversionException e) {
+          return replayUnsupportedEntry(entry, e);
+        }
+        // Execution stays outside the conversion fallback: a failed RPC may have applied data.
+        for (final String sql : statements) {
+          tableSession.executeNonQueryStatement(sql);
+        }
+        return statements.isEmpty() ? ReplayResult.IGNORED : ReplayResult.REPLAYED;
       }
-      if (entry.getValue() instanceof RelationalDeleteDataNode
-          || entry.getValue() instanceof ObjectNode) {
-        final ReplayDecision decision = replayDecisionPrompt.decide(entry, false);
-        if (decision == ReplayDecision.SKIP || decision == ReplayDecision.SKIP_ALL) {
-          return ReplayResult.SKIPPED;
-        }
-        if (decision == ReplayDecision.TERMINATE) {
-          throw replayTerminatedByUser();
-        }
-        throw unsupportedOperation(entry);
+      if (entry.getValue() instanceof ObjectNode) {
+        return replayUnsupportedEntry(entry, unsupportedOperation(entry));
       }
       return ReplayResult.IGNORED;
+    }
+
+    private ReplayResult replayUnsupportedEntry(
+        final WALEntry entry, final StatementExecutionException failure)
+        throws StatementExecutionException {
+      final ReplayDecision decision =
+          replayDecisionPrompt.decide(
+              entry, false, failure instanceof ConversionException ? failure.getMessage() : null);
+      return switch (decision) {
+        case SKIP, SKIP_ALL -> ReplayResult.SKIPPED;
+        case TERMINATE -> throw replayTerminatedByUser();
+        case EXECUTE, EXECUTE_ALL -> throw failure;
+      };
     }
 
     enum ReplayDecision {
@@ -819,66 +842,89 @@ public class ImportWAL {
     @FunctionalInterface
     interface ReplayDecisionPrompt {
 
-      ReplayDecision decide(WALEntry entry, boolean treeDelete);
+      ReplayDecision decide(WALEntry entry, boolean executableDelete);
+
+      default ReplayDecision decide(
+          final WALEntry entry, final boolean executableDelete, final String reason) {
+        return decide(entry, executableDelete);
+      }
     }
 
     static class ReplayDecisionController implements ReplayDecisionPrompt {
 
-      private final Console console;
+      private final BiFunction<String, Object, String> readLine;
       private ReplayDecision treeDeleteDecision;
+      private ReplayDecision tableDeleteDecision;
       private boolean skipAllUnsupportedEntries;
 
       ReplayDecisionController(final Console console) {
-        this.console = console;
+        this(console == null ? null : console::readLine);
+      }
+
+      ReplayDecisionController(final BiFunction<String, Object, String> readLine) {
+        this.readLine = readLine;
       }
 
       // The controller is shared by parallel workers so an "all" choice applies to the whole
       // import rather than only to the WAL files assigned to one worker.
       @Override
-      public synchronized ReplayDecision decide(final WALEntry entry, final boolean treeDelete) {
-        if (treeDelete && treeDeleteDecision != null) {
-          return treeDeleteDecision == ReplayDecision.EXECUTE_ALL
+      public ReplayDecision decide(final WALEntry entry, final boolean executableDelete) {
+        return decide(entry, executableDelete, null);
+      }
+
+      @Override
+      public synchronized ReplayDecision decide(
+          final WALEntry entry, final boolean executableDelete, final String reason) {
+        final boolean tableDelete = entry.getValue() instanceof RelationalDeleteDataNode;
+        final ReplayDecision rememberedDecision =
+            tableDelete ? tableDeleteDecision : treeDeleteDecision;
+        if (executableDelete && rememberedDecision != null) {
+          return rememberedDecision == ReplayDecision.EXECUTE_ALL
               ? ReplayDecision.EXECUTE
               : ReplayDecision.SKIP;
         }
-        if (!treeDelete && skipAllUnsupportedEntries) {
+        if (!executableDelete && skipAllUnsupportedEntries) {
           return ReplayDecision.SKIP;
         }
-        if (console == null) {
+        if (readLine == null) {
           return ReplayDecision.TERMINATE;
         }
         final String answer =
-            console.readLine(
-                treeDelete
-                    ? ImportWALMessages
-                        .MESSAGE_TREE_MODEL_DELETE_OPERATION_DETECTED_ARG_CHOOSE_E_EXECUTE_S_SKIP_A_EXECUTE_ALL_L_SKIP_ALL_Q_QUIT_11E39FD7
+            readLine.apply(
+                executableDelete
+                    ? (tableDelete
+                        ? ImportWALMessages
+                            .MESSAGE_TABLE_MODEL_DELETE_OPERATION_DETECTED_ARG_CHOOSE_E_EXECUTE_S_SKIP_A_EXECUTE_ALL_L_SKIP_ALL_Q_QUIT_0C8D178A
+                        : ImportWALMessages
+                            .MESSAGE_TREE_MODEL_DELETE_OPERATION_DETECTED_ARG_CHOOSE_E_EXECUTE_S_SKIP_A_EXECUTE_ALL_L_SKIP_ALL_Q_QUIT_11E39FD7)
                     : ImportWALMessages
                         .MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_CHOOSE_S_SKIP_L_SKIP_ALL_Q_QUIT_0A734E52,
-                entry.getType());
-        final ReplayDecision decision = parseDecision(answer, treeDelete);
-        rememberAllDecision(decision, treeDelete);
+                reason == null ? entry.getType() : reason);
+        final ReplayDecision decision = parseDecision(answer, executableDelete);
+        // Approval for one data model must not implicitly authorize deletes in the other model.
+        if (executableDelete
+            && (decision == ReplayDecision.EXECUTE_ALL || decision == ReplayDecision.SKIP_ALL)) {
+          if (tableDelete) {
+            tableDeleteDecision = decision;
+          } else {
+            treeDeleteDecision = decision;
+          }
+        } else if (!executableDelete && decision == ReplayDecision.SKIP_ALL) {
+          skipAllUnsupportedEntries = true;
+        }
         return decision;
       }
 
-      private void rememberAllDecision(final ReplayDecision decision, final boolean treeDelete) {
-        if (treeDelete
-            && (decision == ReplayDecision.EXECUTE_ALL || decision == ReplayDecision.SKIP_ALL)) {
-          treeDeleteDecision = decision;
-        } else if (!treeDelete && decision == ReplayDecision.SKIP_ALL) {
-          skipAllUnsupportedEntries = true;
-        }
-      }
-
-      static ReplayDecision parseDecision(final String answer, final boolean treeDelete) {
+      static ReplayDecision parseDecision(final String answer, final boolean executableDelete) {
         if (answer == null) {
           return ReplayDecision.TERMINATE;
         }
         return switch (answer.trim().toLowerCase(Locale.ROOT)) {
           case "e", "execute", "yes", "y" ->
-              treeDelete ? ReplayDecision.EXECUTE : ReplayDecision.TERMINATE;
+              executableDelete ? ReplayDecision.EXECUTE : ReplayDecision.TERMINATE;
           case "s", "skip", "no", "n" -> ReplayDecision.SKIP;
           case "a", "all", "execute_all" ->
-              treeDelete ? ReplayDecision.EXECUTE_ALL : ReplayDecision.TERMINATE;
+              executableDelete ? ReplayDecision.EXECUTE_ALL : ReplayDecision.TERMINATE;
           case "l", "skip_all" -> ReplayDecision.SKIP_ALL;
           case "q", "quit", "terminate", "t" -> ReplayDecision.TERMINATE;
           default -> ReplayDecision.TERMINATE;
@@ -942,6 +988,35 @@ public class ImportWAL {
         paths.add(path.getFullPath());
       }
       treeSession.deleteData(paths, node.getDeleteStartTime(), node.getDeleteEndTime());
+    }
+
+    private List<String> prepareTableDelete(final RelationalDeleteDataNode node)
+        throws IoTDBConnectionException, StatementExecutionException {
+      requireTableSessionIfNeeded(true);
+      final Map<String, List<TableDeletionEntry>> entriesByTable = new LinkedHashMap<>();
+      for (final TableDeletionEntry entry : node.getModEntries()) {
+        entriesByTable
+            .computeIfAbsent(entry.getTableName(), ignored -> new ArrayList<>())
+            .add(entry);
+      }
+      final List<String> statements = new ArrayList<>();
+      // Validate the entire node before executing its first DELETE. A merged node can span tables,
+      // while each SQL statement can delete from only one table in the target -db session.
+      for (final Map.Entry<String, List<TableDeletionEntry>> entry : entriesByTable.entrySet()) {
+        final TableSchema schema = getTableSchema(entry.getKey());
+        final String sql =
+            new TableWALDeleteConverter(
+                    entry.getKey(),
+                    schema.timeColumn,
+                    schema.tagSchemas.stream()
+                        .map(IMeasurementSchema::getMeasurementName)
+                        .collect(Collectors.toList()))
+                .toSql(entry.getValue());
+        if (sql != null) {
+          statements.add(sql);
+        }
+      }
+      return statements;
     }
 
     private boolean replayMemTableSnapshot(final IMemTable memTable)
@@ -1051,24 +1126,8 @@ public class ImportWAL {
       if (!deviceId.isTableModel()) {
         return new TableTabletSchema(fieldSchemas, null, 0);
       }
-      final String tableName = deviceId.getTableName();
-      List<IMeasurementSchema> tagSchemas = tableTagSchemas.get(tableName);
-      if (tagSchemas == null) {
-        tagSchemas = new ArrayList<>();
-        try (SessionDataSet dataSet =
-            tableSession.executeQueryStatement("DESCRIBE " + quoteIdentifier(tableName))) {
-          final SessionDataSet.DataIterator iterator = dataSet.iterator();
-          while (iterator.next()) {
-            final String category = iterator.getString(3);
-            if ("TAG".equalsIgnoreCase(category)) {
-              tagSchemas.add(
-                  new MeasurementSchema(
-                      iterator.getString(1), TSDataType.valueOf(iterator.getString(2))));
-            }
-          }
-        }
-        tableTagSchemas.put(tableName, tagSchemas);
-      }
+      final List<IMeasurementSchema> tagSchemas =
+          getTableSchema(deviceId.getTableName()).tagSchemas;
       final List<IMeasurementSchema> schemas =
           new ArrayList<>(tagSchemas.size() + fieldSchemas.size());
       schemas.addAll(tagSchemas);
@@ -1078,6 +1137,34 @@ public class ImportWAL {
       categories.addAll(Collections.nCopies(fieldSchemas.size(), ColumnCategory.FIELD));
       return new TableTabletSchema(schemas, categories, tagSchemas.size());
     }
+
+    private TableSchema getTableSchema(final String tableName)
+        throws IoTDBConnectionException, StatementExecutionException {
+      TableSchema schema = tableSchemas.get(tableName);
+      if (schema == null) {
+        final List<IMeasurementSchema> tagSchemas = new ArrayList<>();
+        String timeColumn = null;
+        try (SessionDataSet dataSet =
+            tableSession.executeQueryStatement("DESCRIBE " + quoteIdentifier(tableName))) {
+          final SessionDataSet.DataIterator iterator = dataSet.iterator();
+          while (iterator.next()) {
+            final String category = iterator.getString(3);
+            if ("TAG".equalsIgnoreCase(category)) {
+              tagSchemas.add(
+                  new MeasurementSchema(
+                      iterator.getString(1), TSDataType.valueOf(iterator.getString(2))));
+            } else if ("TIME".equalsIgnoreCase(category)) {
+              timeColumn = iterator.getString(1);
+            }
+          }
+        }
+        schema = new TableSchema(tagSchemas, timeColumn);
+        tableSchemas.put(tableName, schema);
+      }
+      return schema;
+    }
+
+    private record TableSchema(List<IMeasurementSchema> tagSchemas, String timeColumn) {}
 
     static String quoteIdentifier(final String identifier) {
       return "\"" + identifier.replace("\"", "\"\"") + "\"";

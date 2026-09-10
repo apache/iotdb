@@ -100,5 +100,23 @@ public final class ImportWALMessages {
       EXCEPTION_PASSWORD_WAS_NOT_PROVIDED_AND_INTERACTIVE_INPUT_IS_UNAVAILABLE_40F42BCD =
           "Password was not provided and interactive input is unavailable. Specify -pw/--password.";
 
+  public static final String MESSAGE_TABLE_MODEL_DELETE_OPERATION_DETECTED_ARG_CHOOSE_E_EXECUTE_S_SKIP_A_EXECUTE_ALL_L_SKIP_ALL_Q_QUIT_0C8D178A =
+      "Table-model delete operation detected: %s. Choose e=execute, s=skip, a=execute all, l=skip all, q=quit: ";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_COLUMN_SPECIFIC_DELETION_FOR_TABLE_ARG_AS_DELETE_FROM_4A7ACC93 =
+      "Cannot replay column-specific deletion for table %s as DELETE FROM.";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_TARGET_TABLE_ARG_HAS_NO_TIME_COLUMN_55B1C25C =
+      "Cannot replay table deletion: target table %s has no TIME column.";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_TAG_SEGMENT_INDEX_ARG_IS_INCOMPATIBLE_WITH_TARGET_TABLE_ARG_D5E3CCEE =
+      "Cannot replay table deletion: TAG segment index %d is incompatible with target table %s.";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_DEVICE_ARG_IS_INCOMPATIBLE_WITH_TARGET_TABLE_ARG_A6320535 =
+      "Cannot replay table deletion: device %s is incompatible with target table %s.";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_UNSUPPORTED_TAG_PREDICATE_ARG_AD0753A8 =
+      "Cannot replay table deletion: unsupported TAG predicate %s.";
+
   private ImportWALMessages() {}
 }

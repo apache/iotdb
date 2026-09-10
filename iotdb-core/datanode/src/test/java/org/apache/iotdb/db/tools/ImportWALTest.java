@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.ImportWALMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALTestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
@@ -44,6 +46,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.tools.ImportWAL.ReplayResult;
 import org.apache.iotdb.db.tools.ImportWAL.WALReplayer.ReplayDecision;
+import org.apache.iotdb.db.tools.ImportWAL.WALReplayer.ReplayDecisionController;
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
@@ -60,6 +65,7 @@ import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -85,10 +91,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 public class ImportWALTest {
@@ -613,7 +621,7 @@ public class ImportWALTest {
     assertEquals(ReplayResult.SKIPPED, result);
   }
 
-  /** Table deletes and ObjectNode entries skipped with SKIP_ALL must both retain their WALs. */
+  /** Unsupported ObjectNode entries skipped with SKIP_ALL must retain their source WALs. */
   @Test
   public void testReplayUnsupportedEntriesSkipAllAfterConfirmation() throws Exception {
     final AtomicInteger promptCount = new AtomicInteger();
@@ -622,19 +630,12 @@ public class ImportWALTest {
           promptCount.incrementAndGet();
           return ImportWAL.WALReplayer.ReplayDecision.SKIP_ALL;
         };
-    final ImportWAL.WALReplayer relationalDeleteReplayer =
+    final ImportWAL.WALReplayer replayer =
         new ImportWAL.WALReplayer(mock(Session.class), null, null, skipAllPrompt);
 
-    assertEquals(ReplayResult.SKIPPED, relationalDeleteReplayer.replay(mockUnsupportedEntry()));
-    assertEquals(ReplayResult.SKIPPED, relationalDeleteReplayer.replay(mockUnsupportedEntry()));
-
-    final WALEntry objectEntry = mock(WALEntry.class);
-    when(objectEntry.getType()).thenReturn(WALEntryType.OBJECT_FILE_NODE);
-    when(objectEntry.getValue()).thenReturn(mock(ObjectNode.class));
-    final ImportWAL.WALReplayer objectNodeReplayer =
-        new ImportWAL.WALReplayer(mock(Session.class), null, null, skipAllPrompt);
-    assertEquals(ReplayResult.SKIPPED, objectNodeReplayer.replay(objectEntry));
-    assertEquals(3, promptCount.get());
+    assertEquals(ReplayResult.SKIPPED, replayer.replay(mockUnsupportedEntry()));
+    assertEquals(ReplayResult.SKIPPED, replayer.replay(mockUnsupportedEntry()));
+    assertEquals(2, promptCount.get());
   }
 
   /** Covers an unsupported entry when the interactive user declines the skip prompt. */
@@ -665,7 +666,7 @@ public class ImportWALTest {
                     mock(Session.class),
                     null,
                     null,
-                    new ImportWAL.WALReplayer.ReplayDecisionController((java.io.Console) null))
+                    new ImportWAL.WALReplayer.ReplayDecisionController((Console) null))
                 .replay(entry));
   }
 
@@ -692,6 +693,418 @@ public class ImportWALTest {
     assertEquals(
         ImportWAL.WALReplayer.ReplayDecision.TERMINATE,
         ImportWAL.WALReplayer.ReplayDecisionController.parseDecision("q", true));
+  }
+
+  /**
+   * A real table-delete WAL must execute one SQL per table and become deletable only on success.
+   */
+  @Test
+  public void testReplayTableDeleteAsSql() throws Exception {
+    final File walFile = createWALFile(0);
+    writeWAL(
+        walFile,
+        tableDeleteEntry(
+            tableDeletion("table1", new TagPredicate.SegmentExactMatch("a", 1), 10, 20),
+            tableDeletion("table1", new TagPredicate.SegmentExactMatch(null, 2), 30, 40)));
+    final Session tree = mock(Session.class);
+    final Session table = mock(Session.class);
+    final SessionDataSet schema = mockTableSchema(table, "table1", "ts", "tag1", "tag2");
+    final ImportWAL.ReplayStatistics statistics =
+        ImportWAL.replayWALFiles(
+            Collections.singletonList(walFile.toPath()),
+            new ImportWAL.WALReplayer(
+                tree,
+                table,
+                "target_db",
+                (entry, executable) -> {
+                  assertTrue(executable);
+                  return ReplayDecision.EXECUTE;
+                }),
+            null,
+            true);
+
+    verify(table)
+        .executeNonQueryStatement(
+            "DELETE FROM \"table1\" WHERE (((\"tag1\" = 'a') AND (\"ts\" >= 10) AND (\"ts\" <= 20)) OR ((\"tag2\" IS NULL) AND (\"ts\" >= 30) AND (\"ts\" <= 40)))");
+    verify(schema).close();
+    verifyZeroInteractions(tree);
+    assertEquals(1, statistics.getReplayedOperationCount());
+    assertEquals(0, statistics.getSkippedEntryCount());
+    assertFalse(walFile.exists());
+  }
+
+  /**
+   * A node spanning tables emits one DELETE per table and reuses DESCRIBE metadata on later nodes.
+   */
+  @Test
+  public void testReplayTableDeleteGroupsTablesAndCachesSchema() throws Exception {
+    final Session table = mock(Session.class);
+    mockTableSchema(table, "table1", "time", "tag1");
+    mockTableSchema(table, "table2", "time", "tag1");
+    final ImportWAL.WALReplayer replayer =
+        new ImportWAL.WALReplayer(
+            mock(Session.class), table, "target_db", (entry, executable) -> ReplayDecision.EXECUTE);
+    final WALEntry entry =
+        tableDeleteEntry(
+            tableDeletion("table1", new TagPredicate.NOP(), 10, 20),
+            tableDeletion("table2", new TagPredicate.NOP(), 10, 20));
+    assertEquals(ReplayResult.REPLAYED, replayer.replay(entry));
+    assertEquals(ReplayResult.REPLAYED, replayer.replay(entry));
+    verify(table, times(2))
+        .executeNonQueryStatement(
+            "DELETE FROM \"table1\" WHERE ((\"time\" >= 10) AND (\"time\" <= 20))");
+    verify(table, times(2))
+        .executeNonQueryStatement(
+            "DELETE FROM \"table2\" WHERE ((\"time\" >= 10) AND (\"time\" <= 20))");
+    verify(table).executeQueryStatement("DESCRIBE \"table1\"");
+    verify(table).executeQueryStatement("DESCRIBE \"table2\"");
+  }
+
+  /** SKIP/SKIP_ALL and quit must avoid all table RPCs, even if no target database was supplied. */
+  @Test
+  public void testReplayTableDeleteDecisionsBeforeSchemaLookup() throws Exception {
+    final WALEntry entry =
+        tableDeleteEntry(tableDeletion("table1", new TagPredicate.NOP(), 10, 20));
+    final Session table = mock(Session.class);
+    for (final ReplayDecision decision :
+        Arrays.asList(ReplayDecision.SKIP, ReplayDecision.SKIP_ALL)) {
+      assertEquals(
+          ReplayResult.SKIPPED,
+          new ImportWAL.WALReplayer(
+                  mock(Session.class), table, "target_db", (ignored, executable) -> decision)
+              .replay(entry));
+      assertEquals(
+          ReplayResult.SKIPPED,
+          new ImportWAL.WALReplayer(
+                  mock(Session.class), null, null, (ignored, executable) -> decision)
+              .replay(entry));
+    }
+    assertThrows(
+        StatementExecutionException.class,
+        () ->
+            new ImportWAL.WALReplayer(
+                    mock(Session.class),
+                    table,
+                    "target_db",
+                    (ignored, executable) -> ReplayDecision.TERMINATE)
+                .replay(entry));
+    assertThrows(
+        StatementExecutionException.class,
+        () ->
+            new ImportWAL.WALReplayer(
+                    mock(Session.class),
+                    table,
+                    "target_db",
+                    new ReplayDecisionController((Console) null))
+                .replay(entry));
+    assertThrows(
+        StatementExecutionException.class,
+        () ->
+            new ImportWAL.WALReplayer(
+                    mock(Session.class),
+                    null,
+                    null,
+                    (ignored, executable) -> ReplayDecision.EXECUTE)
+                .replay(entry));
+    verifyZeroInteractions(table);
+  }
+
+  /**
+   * Empty device sets represent no pending deletion and must never send an unconditional DELETE.
+   */
+  @Test
+  public void testReplayEmptyTableDelete() throws Exception {
+    final Session table = mock(Session.class);
+    mockTableSchema(table, "table1", "time", "tag1");
+    final ImportWAL.WALReplayer replayer =
+        new ImportWAL.WALReplayer(
+            mock(Session.class), table, "target_db", (entry, executable) -> ReplayDecision.EXECUTE);
+    assertEquals(
+        ReplayResult.IGNORED,
+        replayer.replay(
+            tableDeleteEntry(
+                tableDeletion(
+                    "table1", new TagPredicate.DeviceIn(Collections.emptySet()), 10, 20))));
+    assertEquals(ReplayResult.IGNORED, replayer.replay(tableDeleteEntry()));
+    verify(table, never()).executeNonQueryStatement(any());
+  }
+
+  /**
+   * Quitting the conversion fallback must retain the entire WAL without executing earlier tables.
+   */
+  @Test
+  public void testTableDeletePrevalidationRetainsSource() throws Exception {
+    final Session table = mock(Session.class);
+    mockTableSchema(table, "table1", "time", "tag1");
+    mockTableSchema(table, "table2", "time", "tag1");
+    final TableDeletionEntry columnDelete =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "table2", new TagPredicate.NOP(), Collections.singletonList("s1")),
+            new TimeRange(10, 20));
+    final List<TableDeletionEntry> invalidEntries =
+        Arrays.asList(
+            columnDelete,
+            tableDeletion("table2", new TagPredicate.SegmentExactMatch("a", 2), 10, 20));
+    for (int i = 0; i < invalidEntries.size(); i++) {
+      final File walFile = createWALFile(i);
+      writeWAL(
+          walFile,
+          tableDeleteEntry(
+              tableDeletion("table1", new TagPredicate.NOP(), 10, 20), invalidEntries.get(i)));
+      final byte[] original = Files.readAllBytes(walFile.toPath());
+      final AtomicInteger prompts = new AtomicInteger();
+      final ImportWAL.WALReplayer replayer =
+          new ImportWAL.WALReplayer(
+              mock(Session.class),
+              table,
+              "target_db",
+              new ReplayDecisionController(
+                  (prompt, argument) -> {
+                    prompts.incrementAndGet();
+                    return argument instanceof WALEntryType ? "a" : "q";
+                  }));
+      assertThrows(
+          IOException.class,
+          () ->
+              ImportWAL.replayWALFiles(
+                  Collections.singletonList(walFile.toPath()), replayer, null, true));
+      assertArrayEquals(original, Files.readAllBytes(walFile.toPath()));
+      assertEquals(2, prompts.get());
+    }
+    verify(table, never()).executeNonQueryStatement(any());
+  }
+
+  /** Skipping an unconvertible node retains its WAL and lets serial replay finish later entries. */
+  @Test
+  public void testSkipUnconvertibleTableDeleteRetainsSource() throws Exception {
+    assertSkipUnconvertibleTableDeletes("s", false);
+  }
+
+  /** Skip-all for conversion failures must not skip subsequent convertible table deletes. */
+  @Test
+  public void testSkipAllUnconvertibleTableDeletesRetainsSources() throws Exception {
+    assertSkipUnconvertibleTableDeletes("l", false);
+  }
+
+  /** Parallel workers must preserve skipped nodes while deleting only completely replayed WALs. */
+  @Test
+  public void testParallelSkipUnconvertibleTableDeleteRetainsSource() throws Exception {
+    assertSkipUnconvertibleTableDeletes("s", true);
+  }
+
+  /** Parallel workers share one unsupported skip-all choice independently of table execute-all. */
+  @Test
+  public void testParallelSkipAllUnconvertibleTableDeletesRetainsSources() throws Exception {
+    assertSkipUnconvertibleTableDeletes("l", true);
+  }
+
+  private void assertSkipUnconvertibleTableDeletes(final String answer, final boolean parallel)
+      throws Exception {
+    final Path root = temporaryFolder.newFolder("conversion-wals").toPath();
+    final Path nodeA = Files.createDirectory(root.resolve("node-a"));
+    final Path nodeB = Files.createDirectory(root.resolve("node-b"));
+    final Path columnWAL = createWALFile(nodeA, 0);
+    final Path incompatibleWAL = createWALFile(nodeB, 0);
+    final Path completeWAL = createWALFile(nodeA, 1);
+    final TableDeletionEntry valid = tableDeletion("table1", new TagPredicate.NOP(), 10, 20);
+    final TableDeletionEntry columnDelete =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "table2", new TagPredicate.NOP(), Collections.singletonList("s1")),
+            new TimeRange(10, 20));
+    final WALEntry insert = new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.d1", 1));
+    // Even the convertible part of a mixed node must not execute when the user skips the node.
+    writeWAL(columnWAL.toFile(), tableDeleteEntry(valid, columnDelete), insert);
+    writeWAL(
+        incompatibleWAL.toFile(),
+        tableDeleteEntry(
+            valid, tableDeletion("table2", new TagPredicate.SegmentExactMatch("a", 2), 10, 20)),
+        insert);
+    writeWAL(completeWAL.toFile(), tableDeleteEntry(valid));
+    final byte[] columnBytes = Files.readAllBytes(columnWAL);
+    final byte[] incompatibleBytes = Files.readAllBytes(incompatibleWAL);
+    final Session tree = mock(Session.class);
+    final Session table = mock(Session.class);
+    mockTableSchema(table, "table1", "time", "tag1");
+    mockTableSchema(table, "table2", "time", "tag1");
+    final AtomicInteger executePrompts = new AtomicInteger();
+    final List<String> skipReasons = new CopyOnWriteArrayList<>();
+    final ReplayDecisionController controller =
+        new ReplayDecisionController(
+            (prompt, argument) -> {
+              if (argument instanceof WALEntryType) {
+                executePrompts.incrementAndGet();
+                return "a";
+              }
+              assertEquals(
+                  ImportWALMessages
+                      .MESSAGE_UNSUPPORTED_WAL_OPERATION_ARG_CHOOSE_S_SKIP_L_SKIP_ALL_Q_QUIT_0A734E52,
+                  prompt);
+              skipReasons.add((String) argument);
+              return answer;
+            });
+    final List<Path> files = ImportWAL.collectWALFiles(root);
+    final ImportWAL.ReplayStatistics statistics =
+        parallel
+            ? ImportWAL.replayWALDirectories(
+                files,
+                2,
+                () -> new ImportWAL.WALReplayer(tree, table, "target_db", controller),
+                null,
+                true)
+            : ImportWAL.replayWALFiles(
+                files, new ImportWAL.WALReplayer(tree, table, "target_db", controller), null, true);
+    assertArrayEquals(columnBytes, Files.readAllBytes(columnWAL));
+    assertArrayEquals(incompatibleBytes, Files.readAllBytes(incompatibleWAL));
+    assertFalse(Files.exists(completeWAL));
+    assertEquals(3, statistics.getReplayedOperationCount());
+    assertEquals(2, statistics.getSkippedEntryCount());
+    assertEquals(3, statistics.getCompletedFileCount());
+    assertEquals(1, executePrompts.get());
+    assertEquals("l".equals(answer) ? 1 : 2, skipReasons.size());
+    final List<String> expectedReasons =
+        Arrays.asList(
+            String.format(
+                ImportWALMessages
+                    .EXCEPTION_CANNOT_REPLAY_COLUMN_SPECIFIC_DELETION_FOR_TABLE_ARG_AS_DELETE_FROM_4A7ACC93,
+                "table2"),
+            String.format(
+                ImportWALMessages
+                    .EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_TAG_SEGMENT_INDEX_ARG_IS_INCOMPATIBLE_WITH_TARGET_TABLE_ARG_D5E3CCEE,
+                2,
+                "table2"));
+    assertTrue(expectedReasons.containsAll(skipReasons));
+    verify(table).executeNonQueryStatement(any());
+    verify(tree, times(2)).insertTablet(any(Tablet.class));
+  }
+
+  /** Missing interaction and attempts to execute an unconvertible delete must still terminate. */
+  @Test
+  public void testUnconvertibleTableDeleteRequiresSkipChoice() throws Exception {
+    final Session table = mock(Session.class);
+    mockTableSchema(table, "table1", "time", "tag1");
+    final WALEntry entry =
+        tableDeleteEntry(
+            tableDeletion("table1", new TagPredicate.SegmentExactMatch("a", 2), 10, 20));
+    for (final String answer : Arrays.asList(null, "e", "a")) {
+      final AtomicInteger prompts = new AtomicInteger();
+      final ReplayDecisionController controller =
+          new ReplayDecisionController(
+              (prompt, argument) -> {
+                prompts.incrementAndGet();
+                return argument instanceof WALEntryType ? "a" : answer;
+              });
+      assertThrows(
+          StatementExecutionException.class,
+          () ->
+              new ImportWAL.WALReplayer(mock(Session.class), table, "target_db", controller)
+                  .replay(entry));
+      assertEquals(2, prompts.get());
+    }
+    verify(table, never()).executeNonQueryStatement(any());
+  }
+
+  /** DESCRIBE RPC errors must abort import rather than being offered as skippable conversions. */
+  @Test
+  public void testTableDeleteSchemaFailureDoesNotOfferSkip() throws Exception {
+    for (final Exception failure :
+        Arrays.asList(
+            new StatementExecutionException("describe failed"),
+            new IoTDBConnectionException("disconnected"))) {
+      final Session table = mock(Session.class);
+      when(table.executeQueryStatement(any())).thenThrow(failure);
+      final AtomicInteger prompts = new AtomicInteger();
+      final ImportWAL.WALReplayer replayer =
+          new ImportWAL.WALReplayer(
+              mock(Session.class),
+              table,
+              "target_db",
+              (entry, executable) -> {
+                assertTrue(executable);
+                prompts.incrementAndGet();
+                return ReplayDecision.EXECUTE;
+              });
+      assertEquals(
+          failure,
+          assertThrows(
+              Exception.class,
+              () ->
+                  replayer.replay(
+                      tableDeleteEntry(tableDeletion("table1", new TagPredicate.NOP(), 10, 20)))));
+      assertEquals(1, prompts.get());
+      verify(table, never()).executeNonQueryStatement(any());
+    }
+  }
+
+  /** DELETE RPC failures cannot be skipped and must retain even previously completed WAL files. */
+  @Test
+  public void testTableDeleteExecutionFailureRetainsAllSources() throws Exception {
+    final File insertFile = createWALFile(0);
+    final File deleteFile = createWALFile(1);
+    writeWAL(insertFile, new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.d1", 1)));
+    writeWAL(deleteFile, tableDeleteEntry(tableDeletion("table1", new TagPredicate.NOP(), 10, 20)));
+    final Session table = mock(Session.class);
+    mockTableSchema(table, "table1", "time", "tag1");
+    doThrow(new StatementExecutionException("delete failed"))
+        .when(table)
+        .executeNonQueryStatement(any());
+    final ImportWAL.WALReplayer replayer =
+        new ImportWAL.WALReplayer(
+            mock(Session.class),
+            table,
+            "target_db",
+            (entry, executable) -> {
+              assertTrue(executable);
+              return ReplayDecision.EXECUTE;
+            });
+    assertThrows(
+        IOException.class,
+        () ->
+            ImportWAL.replayWALFiles(
+                Arrays.asList(insertFile.toPath(), deleteFile.toPath()), replayer, null, true));
+    assertTrue(insertFile.exists());
+    assertTrue(deleteFile.exists());
+  }
+
+  /**
+   * Shared workers remember table execute-all independently of tree skip-all and unsupported skips.
+   */
+  @Test
+  public void testDeleteDecisionControllerSeparatesModelsAcrossWorkers() throws Exception {
+    final AtomicInteger prompts = new AtomicInteger();
+    final ReplayDecisionController controller =
+        new ReplayDecisionController(
+            (prompt, type) -> {
+              prompts.incrementAndGet();
+              return type == WALEntryType.RELATIONAL_DELETE_DATA_NODE ? "a" : "l";
+            });
+    final Session tree = mock(Session.class);
+    final Session table = mock(Session.class);
+    mockTableSchema(table, "table1", "time", "tag1");
+    final ImportWAL.WALReplayer first =
+        new ImportWAL.WALReplayer(tree, table, "target_db", controller);
+    final ImportWAL.WALReplayer second =
+        new ImportWAL.WALReplayer(tree, table, "target_db", controller);
+    final WALEntry treeDelete =
+        new WALInfoEntry(
+            1,
+            new DeleteDataNode(
+                new PlanNodeId(""),
+                Collections.singletonList(new MeasurementPath("root.sg.d1.s1")),
+                10,
+                20));
+    final WALEntry tableDelete =
+        tableDeleteEntry(tableDeletion("table1", new TagPredicate.NOP(), 10, 20));
+    assertEquals(ReplayResult.SKIPPED, first.replay(treeDelete));
+    assertEquals(ReplayResult.SKIPPED, first.replay(mockUnsupportedEntry()));
+    assertEquals(ReplayResult.REPLAYED, first.replay(tableDelete));
+    assertEquals(ReplayResult.SKIPPED, second.replay(treeDelete));
+    assertEquals(ReplayResult.SKIPPED, second.replay(mockUnsupportedEntry()));
+    assertEquals(ReplayResult.REPLAYED, second.replay(tableDelete));
+    assertEquals(3, prompts.get());
+    verify(table, times(2)).executeNonQueryStatement(any());
+    verifyZeroInteractions(tree);
   }
 
   /** Covers a non-aligned snapshot whose measurements have independent time axes. */
@@ -905,8 +1318,41 @@ public class ImportWALTest {
 
   private static WALEntry mockUnsupportedEntry() {
     final WALEntry entry = mock(WALEntry.class);
-    when(entry.getType()).thenReturn(WALEntryType.RELATIONAL_DELETE_DATA_NODE);
-    when(entry.getValue()).thenReturn(mock(RelationalDeleteDataNode.class));
+    when(entry.getType()).thenReturn(WALEntryType.OBJECT_FILE_NODE);
+    when(entry.getValue()).thenReturn(mock(ObjectNode.class));
     return entry;
+  }
+
+  private static WALEntry tableDeleteEntry(final TableDeletionEntry... entries) {
+    return new WALInfoEntry(
+        1, new RelationalDeleteDataNode(new PlanNodeId(""), Arrays.asList(entries), "source_db"));
+  }
+
+  private static TableDeletionEntry tableDeletion(
+      final String table, final TagPredicate predicate, final long start, final long end) {
+    return new TableDeletionEntry(
+        new DeletionPredicate(table, predicate), new TimeRange(start, end));
+  }
+
+  private static SessionDataSet mockTableSchema(
+      final Session session, final String table, final String timeColumn, final String... tags)
+      throws Exception {
+    final SessionDataSet dataSet = mock(SessionDataSet.class);
+    when(session.executeQueryStatement("DESCRIBE " + ImportWAL.WALReplayer.quoteIdentifier(table)))
+        .thenReturn(dataSet);
+    when(dataSet.iterator())
+        .thenAnswer(
+            ignored -> {
+              final SessionDataSet.DataIterator iterator = mock(SessionDataSet.DataIterator.class);
+              final AtomicInteger row = new AtomicInteger(-1);
+              when(iterator.next()).thenAnswer(call -> row.incrementAndGet() <= tags.length);
+              when(iterator.getString(1))
+                  .thenAnswer(call -> row.get() == 0 ? timeColumn : tags[row.get() - 1]);
+              when(iterator.getString(2))
+                  .thenAnswer(call -> row.get() == 0 ? "TIMESTAMP" : "STRING");
+              when(iterator.getString(3)).thenAnswer(call -> row.get() == 0 ? "TIME" : "TAG");
+              return iterator;
+            });
+    return dataSet;
   }
 }

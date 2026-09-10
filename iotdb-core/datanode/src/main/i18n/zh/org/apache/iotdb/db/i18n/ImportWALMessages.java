@@ -99,5 +99,23 @@ public final class ImportWALMessages {
       EXCEPTION_PASSWORD_WAS_NOT_PROVIDED_AND_INTERACTIVE_INPUT_IS_UNAVAILABLE_40F42BCD =
           "未提供密码且当前环境不支持交互式输入，请指定 -pw/--password。";
 
+  public static final String MESSAGE_TABLE_MODEL_DELETE_OPERATION_DETECTED_ARG_CHOOSE_E_EXECUTE_S_SKIP_A_EXECUTE_ALL_L_SKIP_ALL_Q_QUIT_0C8D178A =
+      "检测到表模型删除操作：%s。请选择 e=执行、s=跳过、a=全部执行、l=全部跳过、q=退出：";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_COLUMN_SPECIFIC_DELETION_FOR_TABLE_ARG_AS_DELETE_FROM_4A7ACC93 =
+      "无法将表 %s 的指定列删除重放为 DELETE FROM。";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_TARGET_TABLE_ARG_HAS_NO_TIME_COLUMN_55B1C25C =
+      "无法重放表模型删除：目标表 %s 没有 TIME 列。";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_TAG_SEGMENT_INDEX_ARG_IS_INCOMPATIBLE_WITH_TARGET_TABLE_ARG_D5E3CCEE =
+      "无法重放表模型删除：TAG 段索引 %d 与目标表 %s 不兼容。";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_DEVICE_ARG_IS_INCOMPATIBLE_WITH_TARGET_TABLE_ARG_A6320535 =
+      "无法重放表模型删除：设备 %s 与目标表 %s 不兼容。";
+
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_UNSUPPORTED_TAG_PREDICATE_ARG_AD0753A8 =
+      "无法重放表模型删除：不支持 TAG 条件 %s。";
+
   private ImportWALMessages() {}
 }
