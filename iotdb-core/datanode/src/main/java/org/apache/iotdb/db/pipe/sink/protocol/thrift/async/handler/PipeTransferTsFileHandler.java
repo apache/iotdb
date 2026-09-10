@@ -269,11 +269,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
     if (readLength == -1) {
       if (advanceToNextFile()) {
-        try {
-          reader.close();
-        } catch (final IOException e) {
-          LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_WHEN_SUCCESSFULLY, e);
-        }
+        reader.close();
+        reader = null;
         reader = new RandomAccessFile(currentFile, "r");
         transfer(clientManager, client);
       } else {
@@ -357,13 +354,12 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
-  public void onComplete(final TPipeTransferResp response) {
+  public synchronized void onComplete(final TPipeTransferResp response) {
     try {
       super.onComplete(response);
     } finally {
       if (sink.isClosed()) {
-        releaseReadBufferMemoryBlock();
-        returnClientIfNecessary();
+        releaseReadBufferAndReturnClient();
       }
     }
   }
@@ -389,41 +385,33 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       }
 
       try {
-        if (reader != null) {
-          reader.close();
-        }
-
-        // Delete current file when using tsFile as batch
-        if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          cleanupBatchFiles();
-        }
-      } catch (final IOException e) {
-        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE_1, e);
+        closeReaderAndDeleteBatchFile(true);
       } finally {
-        final int referenceCount = eventsReferenceCount.decrementAndGet();
-        if (referenceCount <= 0) {
-          events.forEach(
-              event ->
-                  event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
-        }
+        try {
+          final int referenceCount = eventsReferenceCount.decrementAndGet();
+          if (referenceCount <= 0) {
+            events.forEach(
+                event ->
+                    event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
+          }
 
-        if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
-          LOGGER.info(
-              DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_COMMIT_ID,
-              tsFile,
-              events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-              events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
-              referenceCount);
-        } else {
-          LOGGER.info(
-              DataNodePipeMessages
-                  .SUCCESSFULLY_TRANSFERRED_FILE_BATCHED_TABLEINSERTIONEVENTS_REFERENCE_COUNT,
-              tsFile,
-              referenceCount);
+          if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
+            LOGGER.info(
+                DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_COMMIT_ID,
+                tsFile,
+                events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+                events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
+                referenceCount);
+          } else {
+            LOGGER.info(
+                DataNodePipeMessages
+                    .SUCCESSFULLY_TRANSFERRED_FILE_BATCHED_TABLEINSERTIONEVENTS_REFERENCE_COUNT,
+                tsFile,
+                referenceCount);
+          }
+        } finally {
+          releaseReadBufferAndReturnClient();
         }
-
-        releaseReadBufferMemoryBlock();
-        returnClientIfNecessary();
       }
 
       return true;
@@ -471,12 +459,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
-  public void onError(final Exception exception) {
+  public synchronized void onError(final Exception exception) {
     try {
       super.onError(exception);
     } finally {
-      releaseReadBufferMemoryBlock();
-      returnClientIfNecessary();
+      releaseReadBufferAndReturnClient();
     }
   }
 
@@ -511,23 +498,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     try {
-      if (reader != null) {
-        reader.close();
-      }
-
-      // Delete current file when using tsFile as batch
-      if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-        cleanupBatchFiles();
-      }
-    } catch (final IOException e) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE, e);
+      closeReaderAndDeleteBatchFile(false);
     } finally {
       try {
-        releaseReadBufferMemoryBlock();
-        returnClientIfNecessary();
+        releaseReadBufferAndReturnClient();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
-          sink.addFailureEventsToRetryQueue(events, exception);
+          sink.addFailureEventsToRetryQueue(events, exception, this);
         }
       }
     }
@@ -599,7 +576,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   private void cleanupBatchFiles() throws IOException {
-    objectFileStream.close();
     RetryUtils.retryOnException(
         () -> {
           if (tsFile.exists()) {
@@ -613,31 +589,71 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     try {
-      if (reader != null) {
-        reader.close();
-        reader = null;
-      }
-
-      if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-        cleanupBatchFiles();
-      } else {
-        objectFileStream.close();
-      }
-    } catch (final IOException e) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE, e);
+      closeReaderAndDeleteBatchFile(false);
     } finally {
-      super.close();
+      try {
+        super.close();
+      } finally {
+        releaseReadBufferMemoryBlock();
+      }
+    }
+  }
+
+  private void closeReaderAndDeleteBatchFile(final boolean transferSucceeded) {
+    final String errorMessage =
+        transferSucceeded
+            ? DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE_1
+            : DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE;
+
+    final RandomAccessFile readerToClose = reader;
+    if (readerToClose != null) {
+      try {
+        RetryUtils.retryOnException(
+            () -> {
+              readerToClose.close();
+              return null;
+            });
+        if (reader == readerToClose) {
+          reader = null;
+        }
+      } catch (final IOException e) {
+        LOGGER.warn(errorMessage, e);
+      }
+    }
+
+    try {
+      objectFileStream.close();
+    } catch (final Exception e) {
+      LOGGER.warn(errorMessage, e);
+    }
+
+    // Reader, Object stream and generated-file cleanup are independent. A failed close must not
+    // leave a tablet-batch TsFile or its Object directory behind.
+    if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+      try {
+        cleanupBatchFiles();
+      } catch (final IOException e) {
+        LOGGER.warn(errorMessage, e);
+      }
+    }
+  }
+
+  private void releaseReadBufferAndReturnClient() {
+    try {
       releaseReadBufferMemoryBlock();
+    } finally {
+      returnClientIfNecessary();
     }
   }
 
   private void releaseReadBufferMemoryBlock() {
-    if (memoryBlock != null) {
-      memoryBlock.close();
-      memoryBlock = null;
-      readBuffer = null;
+    final PipeTsFileMemoryBlock block = memoryBlock;
+    memoryBlock = null;
+    readBuffer = null;
+    if (block != null) {
+      block.close();
     }
   }
 

@@ -153,9 +153,9 @@ public class PipeTsFileResourceManager {
     }
     try {
       increasePublicReference(resultFile, pipeName, isTsFile);
-    } catch (final IOException e) {
+    } catch (final IOException | RuntimeException e) {
       // The private reference must not outlive a failed public reference increase.
-      decreaseFileReference(resultFile, pipeName, false);
+      rollbackFileReference(resultFile, pipeName, e);
       throw e;
     }
     return resultFile;
@@ -228,8 +228,25 @@ public class PipeTsFileResourceManager {
     } finally {
       segmentLock.unlock(file);
     }
-    increasePublicReference(file, pipeName, isTsFile);
+    try {
+      increasePublicReference(file, pipeName, isTsFile);
+    } catch (final IOException | RuntimeException e) {
+      // The private reference is acquired before the public (assigner) reference.  If the latter
+      // fails, roll back the reference acquired above; otherwise every failed retry permanently
+      // pins the pipe file in the logical memory/file pool.
+      rollbackFileReference(file, pipeName, e);
+      throw e;
+    }
     return true;
+  }
+
+  private void rollbackFileReference(
+      final File file, final @Nullable String pipeName, final Exception originalException) {
+    try {
+      decreaseFileReference(file, pipeName, false);
+    } catch (final RuntimeException rollbackException) {
+      originalException.addSuppressed(rollbackException);
+    }
   }
 
   private void increasePublicReference(
@@ -468,22 +485,54 @@ public class PipeTsFileResourceManager {
 
   public void pinTsFileResource(final TsFileResource resource, final @Nullable String pipeName)
       throws IOException {
-    increaseFileReference(resource.getTsFile(), true, pipeName);
-    // Create hard links as long as the mods exist, ensuring that the Object can be used normally.
-    if (resource.getExclusiveModFile().exists()) {
-      increaseFileReference(resource.getExclusiveModFile().getFile(), false, pipeName);
+    final File pinnedTsFile = increaseFileReference(resource.getTsFile(), true, pipeName);
+    try {
+      if (resource.getExclusiveModFile().exists()) {
+        increaseFileReference(resource.getExclusiveModFile().getFile(), false, pipeName);
+      }
+    } catch (final IOException | RuntimeException e) {
+      // Pinning is a two-file operation.  Do not leave the TsFile pinned when the mod file cannot
+      // be pinned (for example, when the pipe directory is temporarily unavailable).
+      try {
+        decreaseFileReference(pinnedTsFile, pipeName);
+      } catch (final RuntimeException rollbackException) {
+        e.addSuppressed(rollbackException);
+      }
+      throw e;
     }
   }
 
   public void unpinTsFileResource(final TsFileResource resource, final @Nullable String pipeName)
       throws IOException {
-    decreaseFileReference(
-        getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName), pipeName);
-
-    if (resource.exclusiveModFileExists()) {
+    Exception firstException = null;
+    try {
       decreaseFileReference(
-          getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),
-          pipeName);
+          getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName), pipeName);
+    } catch (final IOException | RuntimeException e) {
+      firstException = e;
+    }
+
+    // Always attempt the mod-file cleanup even when resolving/decreasing the TsFile fails.  A
+    // failed first cleanup must not strand the second reference.
+    if (resource.exclusiveModFileExists()) {
+      try {
+        decreaseFileReference(
+            getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),
+            pipeName);
+      } catch (final IOException | RuntimeException e) {
+        if (firstException == null) {
+          firstException = e;
+        } else {
+          firstException.addSuppressed(e);
+        }
+      }
+    }
+
+    if (firstException != null) {
+      if (firstException instanceof IOException) {
+        throw (IOException) firstException;
+      }
+      throw (RuntimeException) firstException;
     }
   }
 

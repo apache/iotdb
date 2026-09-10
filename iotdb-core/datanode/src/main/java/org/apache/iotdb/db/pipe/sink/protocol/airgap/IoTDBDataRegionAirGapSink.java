@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -161,7 +162,17 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   private void transferNonObjectTablet(
       final AirGapSocket socket, final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder.onEvent(tabletInsertionEvent);
+      try {
+        tabletBatchBuilder.onEvent(tabletInsertionEvent);
+      } catch (final PipeRuntimeOutOfMemoryCriticalException memoryException) {
+        try {
+          doTransferWrapper(socket);
+        } catch (final Exception transferException) {
+          transferException.addSuppressed(memoryException);
+          throw transferException;
+        }
+        tabletBatchBuilder.onEvent(tabletInsertionEvent);
+      }
       doTransferWrapper(socket);
     } else {
       transferTabletInsertionEventDirectly(socket, tabletInsertionEvent);

@@ -33,6 +33,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.util.Collections;
@@ -49,6 +51,26 @@ public class PipeTransferTsFileHandlerCleanupTest {
     createHandler(file, event).close();
 
     Assert.assertFalse(file.exists());
+  }
+
+  @Test
+  public void testCloseDeletesBatchFileWhenReaderCloseFails() throws Exception {
+    final File file = Files.createTempFile("pipe-transfer-close-failure", ".tsfile").toFile();
+    final File objectDir = Files.createTempDirectory("pipe-transfer-object-close-failure").toFile();
+    Files.createFile(objectDir.toPath().resolve("object.bin"));
+    final EnrichedEvent event = Mockito.mock(EnrichedEvent.class);
+    final PipeTransferTsFileHandler handler = createHandler(file, objectDir, event);
+    final RandomAccessFile reader = Mockito.mock(RandomAccessFile.class);
+    Mockito.doThrow(new IOException("close failed")).when(reader).close();
+    final Field readerField = PipeTransferTsFileHandler.class.getDeclaredField("reader");
+    readerField.setAccessible(true);
+    readerField.set(handler, reader);
+
+    handler.close();
+
+    Mockito.verify(reader, Mockito.atLeastOnce()).close();
+    Assert.assertFalse(file.exists());
+    Assert.assertFalse(objectDir.exists());
   }
 
   @Test
@@ -112,7 +134,9 @@ public class PipeTransferTsFileHandlerCleanupTest {
       final ArgumentCaptor<Exception> exceptionCaptor = ArgumentCaptor.forClass(Exception.class);
       Mockito.verify(sink)
           .addFailureEventsToRetryQueue(
-              Mockito.eq(Collections.singletonList(event)), exceptionCaptor.capture());
+              Mockito.eq(Collections.singletonList(event)),
+              exceptionCaptor.capture(),
+              Mockito.eq(handler));
       Assert.assertEquals("receiver disk is full", exceptionCaptor.getValue().getMessage());
     } finally {
       if (file.exists()) {
@@ -129,6 +153,11 @@ public class PipeTransferTsFileHandlerCleanupTest {
 
   private PipeTransferTsFileHandler createHandler(final File file, final EnrichedEvent event)
       throws Exception {
+    return createHandler(file, null, event);
+  }
+
+  private PipeTransferTsFileHandler createHandler(
+      final File file, final File objectDir, final EnrichedEvent event) throws Exception {
     return new PipeTransferTsFileHandler(
         Mockito.mock(IoTDBDataRegionAsyncSink.class),
         Collections.emptyMap(),
@@ -137,7 +166,7 @@ public class PipeTransferTsFileHandlerCleanupTest {
         new AtomicBoolean(false),
         file,
         null,
-        null,
+        objectDir,
         false,
         null);
   }

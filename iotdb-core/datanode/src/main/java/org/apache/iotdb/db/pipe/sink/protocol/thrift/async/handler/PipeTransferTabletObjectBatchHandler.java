@@ -154,7 +154,7 @@ public class PipeTransferTabletObjectBatchHandler extends PipeTransferTrackableH
   @Override
   protected void onErrorInternal(final Exception exception) {
     releaseSendBufferMemoryBlock();
-    sink.addFailureEventsToRetryQueue(events, exception);
+    sink.addFailureEventsToRetryQueue(events, exception, this);
     batch.onFailure();
     requestIterator.close();
     returnClientToPool(client);

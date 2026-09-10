@@ -96,6 +96,21 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
+  public Object createCheckpoint() {
+    return new BatchState(tabletList.size(), isTabletAlignedList.size());
+  }
+
+  @Override
+  public void rollbackToCheckpoint(final Object checkpoint) {
+    if (!(checkpoint instanceof BatchState)) {
+      return;
+    }
+    final BatchState batchState = (BatchState) checkpoint;
+    truncate(tabletList, batchState.tabletListSize);
+    truncate(isTabletAlignedList, batchState.isTabletAlignedListSize);
+  }
+
+  @Override
   public void onSuccess() {
     super.onSuccess();
     tabletList.clear();
@@ -107,6 +122,22 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     super.close();
     tabletList.clear();
     isTabletAlignedList.clear();
+  }
+
+  private static <T> void truncate(final List<T> list, final int size) {
+    if (list.size() > size) {
+      list.subList(size, list.size()).clear();
+    }
+  }
+
+  private static final class BatchState {
+    private final int tabletListSize;
+    private final int isTabletAlignedListSize;
+
+    private BatchState(final int tabletListSize, final int isTabletAlignedListSize) {
+      this.tabletListSize = tabletListSize;
+      this.isTabletAlignedListSize = isTabletAlignedListSize;
+    }
   }
 
   private List<Pair<String, File>> writeTabletsToTsFiles()
