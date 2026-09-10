@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.utils.NumericRowValues;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -44,8 +45,52 @@ import java.util.Set;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+import static org.junit.Assert.assertEquals;
 
 public class AlignedTVListTest {
+
+  @Test
+  public void testNumericRowsMatchObjectRowsAcrossBlocksAndSorting() {
+    // Reordered columns, nulls and descending timestamps must match the existing write path
+    // across a primitive-array block boundary and after sorting.
+    List<TSDataType> types =
+        Arrays.asList(
+            TSDataType.BOOLEAN,
+            TSDataType.INT32,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.INT64,
+            TSDataType.STRING);
+    AlignedTVList numeric = AlignedTVList.newAlignedList(types);
+    AlignedTVList boxed = AlignedTVList.newAlignedList(types);
+    try {
+      for (int i = ARRAY_SIZE + 3; i >= 0; i--) {
+        NumericRowValues row = new NumericRowValues(5);
+        row.getValues()[0] = i;
+        row.getValues()[1] = i % 2;
+        row.getValues()[2] = -i;
+        row.getValues()[3] = Float.floatToRawIntBits(-0.0f);
+        row.getValues()[4] = Double.doubleToRawLongBits(-i * 0.25);
+        if (i % 3 == 0) {
+          row.setNull(2);
+        }
+        // Also exercise a missing STRING column in an existing memtable.
+        numeric.putAlignedNumericValue(i, row, new int[] {1, 2, 3, 4, 0, -1});
+        boxed.putAlignedValue(
+            i, new Object[] {i % 2 != 0, i % 3 == 0 ? null : -i, -0.0f, -i * 0.25, (long) i, null});
+      }
+      numeric.sort();
+      boxed.sort();
+      assertEquals(boxed.rowCount(), numeric.rowCount());
+      for (int i = 0; i < numeric.rowCount(); i++) {
+        assertEquals(boxed.getTime(i), numeric.getTime(i));
+        assertEquals(boxed.getAlignedValue(i), numeric.getAlignedValue(i));
+      }
+    } finally {
+      numeric.clear();
+      boxed.clear();
+    }
+  }
 
   @Test
   public void testValueListArrayMemCostExcludesLazyBitmapAndNullPlaceholder() {

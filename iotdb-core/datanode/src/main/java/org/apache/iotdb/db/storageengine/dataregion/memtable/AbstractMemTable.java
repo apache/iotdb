@@ -32,9 +32,11 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
@@ -241,10 +243,13 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public int insertAlignedRow(InsertRowNode insertRowNode) {
+  public int insertAlignedRow(AbstractInsertRowNode insertRowNode) {
+    if (insertRowNode instanceof RelationalInsertNumericRowNode numeric) {
+      return insertAlignedNumericRow(numeric);
+    }
 
     String[] measurements = insertRowNode.getMeasurements();
-    Object[] values = insertRowNode.getValues();
+    Object[] values = ((InsertRowNode) insertRowNode).getValues();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     Object[] writableValues = new Object[measurements == null ? 0 : measurements.length];
@@ -284,6 +289,43 @@ public abstract class AbstractMemTable implements IMemTable {
     totalValueCount += validValueCount;
     nullValueCount += nullPointsNumber;
     return pointsInserted;
+  }
+
+  private int insertAlignedNumericRow(RelationalInsertNumericRowNode row) {
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    int nullPoints = 0;
+    long rowSize = Long.BYTES + Integer.BYTES;
+    for (int i = 0; i < row.getMeasurements().length; i++) {
+      if (!row.isValidMeasurement(i, true) || row.isNull(i)) {
+        if (row.isValidMeasurement(i, true) && i < row.getValueCount() && row.isNull(i)) {
+          nullPoints++;
+        }
+        schemas.add(null);
+      } else {
+        schemas.add(row.getMeasurementSchemas()[i]);
+        rowSize += row.getDataType(i).getDataTypeSize();
+      }
+    }
+    if (schemas.isEmpty()) {
+      return 0;
+    }
+    AlignedWritableMemChunkGroup group =
+        (AlignedWritableMemChunkGroup)
+            createAlignedMemChunkGroupIfNotExistAndGet(row.getDeviceID(), schemas);
+    group
+        .getAlignedMemChunk()
+        .writeAlignedNumericPoints(row.getTime(), row.getNumericValues(), schemas);
+    memSize += rowSize;
+    int validValues = row.getValidMeasurementNumber(true);
+    int inserted =
+        validValues
+            - (IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric()
+                ? 0
+                : nullPoints);
+    totalPointsNum += inserted;
+    totalValueCount += validValues;
+    nullValueCount += nullPoints;
+    return inserted;
   }
 
   @Override
