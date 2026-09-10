@@ -1,4 +1,4 @@
-Apache IoTDB
+Apache IoTDB AINode
 Copyright 2018-2026 The Apache Software Foundation.
 
 This product includes software developed at
@@ -19,10 +19,34 @@ grant the users the right to the use of patent under the requirement of Apache 2
 
 This product includes source code derived from the DataDog/toto project:
 
-  Toto – Timeseries-Optimized Transformer for Observability
+  Toto - Timeseries-Optimized Transformer for Observability
   Copyright 2025 Datadog, Inc.
   Licensed under the Apache License, Version 2.0
   https://github.com/DataDog/toto
+
+============================================================================
+
+This product includes source code modified from the GLIDE project:
+
+  Copyright (c) 2021 OpenAI
+  Licensed under the MIT License (see licenses/LICENSE-GLIDE)
+  https://github.com/openai/glide-text2im
+
+============================================================================
+
+This product includes source code modified from the MOMENT project:
+
+  Copyright (c) 2024 Auton Lab, Carnegie Mellon University
+  Licensed under the MIT License (see licenses/LICENSE-MOMENT)
+  https://github.com/moment-timeseries-foundation-model/moment
+
+============================================================================
+
+This product includes source code modified from the uni2ts project:
+
+  Copyright (c) 2024, Salesforce, Inc.
+  Licensed under the Apache License, Version 2.0
+  https://github.com/SalesforceAIResearch/uni2ts
 
 ============================================================================
 

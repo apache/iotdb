@@ -98,7 +98,9 @@ class TimestepEmbedder(nn.Module):
         :param max_period: controls the minimum frequency of the embeddings.
         :return: an (N, D) Tensor of positional embeddings.
         """
+        # Adapted from GLIDE:
         # https://github.com/openai/glide-text2im/blob/main/glide_text2im/nn.py
+        # Copyright (c) 2021 OpenAI
         half = dim // 2
         freqs = torch.exp(
             -math.log(max_period)

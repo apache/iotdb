@@ -16,6 +16,10 @@
 # under the License.
 #
 
+# This file includes code modified from the uni2ts project:
+# https://github.com/SalesforceAIResearch/uni2ts
+# Copyright (c) 2024, Salesforce, Inc.
+
 from typing import Optional
 
 import torch
