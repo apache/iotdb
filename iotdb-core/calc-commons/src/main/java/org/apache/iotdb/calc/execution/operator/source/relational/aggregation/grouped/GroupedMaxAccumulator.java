@@ -306,12 +306,14 @@ public class GroupedMaxAccumulator
 
   @Override
   public void initializeFloatValues() {
-    floatValues = new FloatBigArray(Float.MIN_VALUE);
+    // MIN_VALUE is positive; negative infinity allows all non-NaN values to initialize a group.
+    floatValues = new FloatBigArray(Float.NEGATIVE_INFINITY);
   }
 
   @Override
   public void initializeDoubleValues() {
-    doubleValues = new DoubleBigArray(Double.MIN_VALUE);
+    // MIN_VALUE is positive; negative infinity allows all non-NaN values to initialize a group.
+    doubleValues = new DoubleBigArray(Double.NEGATIVE_INFINITY);
   }
 
   @Override
