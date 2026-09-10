@@ -24,6 +24,7 @@
 #include "TableSessionBuilder.h"
 #include "SessionBuilder.h"
 #include "SessionDataSet.h"
+#include "RpcSslUtils.h"
 
 #include <cstring>
 #include <map>
@@ -39,10 +40,14 @@
 
 struct CSession_ {
   std::shared_ptr<Session> cpp;
+  SslConfig sslConfig;
+  bool sslConfigured = false;
 };
 
 struct CTableSession_ {
   std::shared_ptr<TableSession> cpp;
+  SslConfig sslConfig;
+  bool sslConfigured = false;
 };
 
 struct CTablet_ {
@@ -152,6 +157,32 @@ static std::map<std::string, std::string> toStringMap(int count, const char* con
     m[keys[i]] = values[i];
   }
   return m;
+}
+
+static void applyPendingSslConfig(CSession* session) {
+  if (session != nullptr && session->sslConfigured) {
+    session->cpp->setSslConfig(session->sslConfig);
+  }
+}
+
+static void applyPendingSslConfig(CTableSession* session) {
+  if (session != nullptr && session->sslConfigured) {
+    session->cpp->setSslConfig(session->sslConfig);
+  }
+}
+
+static TsStatus setSslStringField(std::string& field, const char* value, const char* label) {
+  if (value == nullptr) {
+    return setError(TS_ERR_INVALID_PARAM, std::string(label) + " is null");
+  }
+  field = value;
+  return TS_OK;
+}
+
+static std::shared_ptr<TableSession> createTableSession(TableSessionBuilder* builder) {
+  builder->sqlDialect = "table";
+  auto session = std::make_shared<Session>(builder);
+  return std::make_shared<TableSession>(session);
 }
 
 /**
@@ -301,6 +332,7 @@ TsStatus ts_session_open(CSession* session) {
   if (!session)
     return setError(TS_ERR_NULL_PTR, "session is null");
   try {
+    applyPendingSslConfig(session);
     session->cpp->open();
     return TS_OK;
   } catch (const std::exception& e) {
@@ -313,6 +345,7 @@ TsStatus ts_session_open_with_compression(CSession* session, bool enableRPCCompr
   if (!session)
     return setError(TS_ERR_NULL_PTR, "session is null");
   try {
+    applyPendingSslConfig(session);
     session->cpp->open(enableRPCCompression);
     return TS_OK;
   } catch (const std::exception& e) {
@@ -332,6 +365,92 @@ TsStatus ts_session_close(CSession* session) {
   }
 }
 
+TsStatus ts_session_set_use_ssl(CSession* session, bool useSsl) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  session->sslConfig.useSsl = useSsl;
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
+TsStatus ts_session_set_ssl_protocol(CSession* session, const char* sslProtocol) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status = setSslStringField(session->sslConfig.sslProtocol, sslProtocol, "sslProtocol");
+  if (status == TS_OK) {
+    session->sslConfigured = true;
+  }
+  return status;
+}
+
+TsStatus ts_session_set_trust_store(CSession* session, const char* trustStore,
+                                    const char* trustStorePwd) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status = setSslStringField(session->sslConfig.trustStore, trustStore, "trustStore");
+  if (status != TS_OK) {
+    return status;
+  }
+  if (trustStorePwd != nullptr) {
+    session->sslConfig.trustStorePwd = trustStorePwd;
+  }
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
+TsStatus ts_session_set_key_store(CSession* session, const char* keyStore,
+                                  const char* keyStorePwd) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status = setSslStringField(session->sslConfig.keyStore, keyStore, "keyStore");
+  if (status != TS_OK) {
+    return status;
+  }
+  if (keyStorePwd != nullptr) {
+    session->sslConfig.keyStorePwd = keyStorePwd;
+  }
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
+TsStatus ts_session_set_tlcp_pem_files(CSession* session, const char* certChainFile,
+                                       const char* privateKeyFile, const char* privateKeyPwd) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status =
+      setSslStringField(session->sslConfig.tlcpCertChainFile, certChainFile, "certChainFile");
+  if (status != TS_OK) {
+    return status;
+  }
+  status =
+      setSslStringField(session->sslConfig.tlcpPrivateKeyFile, privateKeyFile, "privateKeyFile");
+  if (status != TS_OK) {
+    return status;
+  }
+  if (privateKeyPwd != nullptr) {
+    session->sslConfig.tlcpPrivateKeyPwd = privateKeyPwd;
+  }
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
+TsStatus ts_session_set_trust_cert_file_path(CSession* session, const char* trustCertFilePath) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status = setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath,
+                                      "trustCertFilePath");
+  if (status == TS_OK) {
+    session->sslConfigured = true;
+  }
+  return status;
+}
+
 /* ============================================================
  *  Session Lifecycle  —  Table Model
  * ============================================================ */
@@ -340,17 +459,14 @@ CTableSession* ts_table_session_new(const char* host, int rpcPort, const char* u
                                     const char* password, const char* database) {
   clearError();
   try {
-    std::unique_ptr<TableSessionBuilder> builder(new TableSessionBuilder());
-    auto tableSession = builder->host(std::string(host))
-                            ->rpcPort(rpcPort)
-                            ->username(std::string(username))
-                            ->password(std::string(password))
-                            ->database(std::string(database ? database : ""))
-                            ->build();
-    CTableSession_ tmp{};
-    tmp.cpp = std::move(tableSession);
+    TableSessionBuilder builder;
+    builder.host(std::string(host))
+        ->rpcPort(rpcPort)
+        ->username(std::string(username))
+        ->password(std::string(password))
+        ->database(std::string(database ? database : ""));
     auto* cts = new CTableSession_();
-    cts->cpp = std::move(tmp.cpp);
+    cts->cpp = createTableSession(&builder);
     return cts;
   } catch (const std::exception& e) {
     handleException(e);
@@ -364,16 +480,13 @@ CTableSession* ts_table_session_new_multi_node(const char* const* nodeUrls, int 
   clearError();
   try {
     auto urls = toStringVec(nodeUrls, urlCount);
-    std::unique_ptr<TableSessionBuilder> builder(new TableSessionBuilder());
-    auto tableSession = builder->nodeUrls(urls)
-                            ->username(std::string(username))
-                            ->password(std::string(password))
-                            ->database(std::string(database ? database : ""))
-                            ->build();
-    CTableSession_ tmp{};
-    tmp.cpp = std::move(tableSession);
+    TableSessionBuilder builder;
+    builder.nodeUrls(urls)
+        ->username(std::string(username))
+        ->password(std::string(password))
+        ->database(std::string(database ? database : ""));
     auto* cts = new CTableSession_();
-    cts->cpp = std::move(tmp.cpp);
+    cts->cpp = createTableSession(&builder);
     return cts;
   } catch (const std::exception& e) {
     handleException(e);
@@ -390,6 +503,7 @@ TsStatus ts_table_session_open(CTableSession* session) {
   if (!session)
     return setError(TS_ERR_NULL_PTR, "session is null");
   try {
+    applyPendingSslConfig(session);
     session->cpp->open();
     return TS_OK;
   } catch (const std::exception& e) {
@@ -407,6 +521,94 @@ TsStatus ts_table_session_close(CTableSession* session) {
   } catch (const std::exception& e) {
     return handleException(e);
   }
+}
+
+TsStatus ts_table_session_set_use_ssl(CTableSession* session, bool useSsl) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  session->sslConfig.useSsl = useSsl;
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
+TsStatus ts_table_session_set_ssl_protocol(CTableSession* session, const char* sslProtocol) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status = setSslStringField(session->sslConfig.sslProtocol, sslProtocol, "sslProtocol");
+  if (status == TS_OK) {
+    session->sslConfigured = true;
+  }
+  return status;
+}
+
+TsStatus ts_table_session_set_trust_store(CTableSession* session, const char* trustStore,
+                                          const char* trustStorePwd) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status = setSslStringField(session->sslConfig.trustStore, trustStore, "trustStore");
+  if (status != TS_OK) {
+    return status;
+  }
+  if (trustStorePwd != nullptr) {
+    session->sslConfig.trustStorePwd = trustStorePwd;
+  }
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
+TsStatus ts_table_session_set_key_store(CTableSession* session, const char* keyStore,
+                                        const char* keyStorePwd) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status = setSslStringField(session->sslConfig.keyStore, keyStore, "keyStore");
+  if (status != TS_OK) {
+    return status;
+  }
+  if (keyStorePwd != nullptr) {
+    session->sslConfig.keyStorePwd = keyStorePwd;
+  }
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
+TsStatus ts_table_session_set_tlcp_pem_files(CTableSession* session, const char* certChainFile,
+                                             const char* privateKeyFile,
+                                             const char* privateKeyPwd) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status =
+      setSslStringField(session->sslConfig.tlcpCertChainFile, certChainFile, "certChainFile");
+  if (status != TS_OK) {
+    return status;
+  }
+  status =
+      setSslStringField(session->sslConfig.tlcpPrivateKeyFile, privateKeyFile, "privateKeyFile");
+  if (status != TS_OK) {
+    return status;
+  }
+  if (privateKeyPwd != nullptr) {
+    session->sslConfig.tlcpPrivateKeyPwd = privateKeyPwd;
+  }
+  session->sslConfigured = true;
+  return TS_OK;
+}
+
+TsStatus ts_table_session_set_trust_cert_file_path(CTableSession* session,
+                                                   const char* trustCertFilePath) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  TsStatus status = setSslStringField(session->sslConfig.trustCertFilePath, trustCertFilePath,
+                                      "trustCertFilePath");
+  if (status == TS_OK) {
+    session->sslConfigured = true;
+  }
+  return status;
 }
 
 /* ============================================================

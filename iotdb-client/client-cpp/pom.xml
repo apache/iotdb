@@ -38,7 +38,7 @@
           3. Packages the produced install tree (maven-assembly-plugin)
 
         Everything else - thrift download, code generation, Boost/m4/flex/bison
-        bootstrap, OpenSSL discovery - lives in CMake modules under cmake/.
+        bootstrap, Tongsuo build - lives in CMake modules under cmake/.
     -->
     <properties>
         <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
@@ -50,7 +50,11 @@
         <iotdb.deps.dir>${project.basedir}/third-party</iotdb.deps.dir>
         <iotdb.offline>OFF</iotdb.offline>
         <with.ssl>ON</with.ssl>
-        <iotdb.openssl.from.source>OFF</iotdb.openssl.from.source>
+        <thrift.version>0.24.0</thrift.version>
+        <ntls.provider>TONGSUO</ntls.provider>
+        <tongsuo.git.ref>0aed892c5f48c9a52d1f5667667ae45156b9cdf4</tongsuo.git.ref>
+        <tongsuo.sha256>4bb302df8ff73a89b3483873d10e7b6a4eeb041310b8eabd2be309004a88f8b6</tongsuo.sha256>
+        <gmssl.root.dir/>
         <iotdb.cxx11.abi/>
         <!-- Switched to OFF by the .skipTests profile below. -->
         <build.tests>ON</build.tests>
@@ -63,6 +67,7 @@
         <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
         <client.cpp.package.name>iotdb-session-cpp-${project.version}-${client.cpp.package.classifier}</client.cpp.package.name>
         <client.cpp.ci.build.id>${env.GITHUB_RUN_ID}</client.cpp.ci.build.id>
+        <iotdb.dist.root>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin</iotdb.dist.root>
     </properties>
     <dependencies>
         <dependency>
@@ -113,7 +118,11 @@
                                 <option>-DCMAKE_INSTALL_PREFIX=${cmake.install.prefix}</option>
                                 <option>-DBUILD_TESTING=${build.tests}</option>
                                 <option>-DWITH_SSL=${with.ssl}</option>
-                                <option>-DIOTDB_OPENSSL_FROM_SOURCE=${iotdb.openssl.from.source}</option>
+                                <option>-DTHRIFT_VERSION=${thrift.version}</option>
+                                <option>-DIOTDB_NTLS_PROVIDER=${ntls.provider}</option>
+                                <option>-DTONGSUO_GIT_REF=${tongsuo.git.ref}</option>
+                                <option>-DTONGSUO_SHA256=${tongsuo.sha256}</option>
+                                <option>-DIOTDB_GMSSL_ROOT_DIR=${gmssl.root.dir}</option>
                                 <option>-DIOTDB_OFFLINE=${iotdb.offline}</option>
                                 <option>-DIOTDB_DEPS_DIR=${iotdb.deps.dir}</option>
                                 <option>-DIOTDB_USE_CXX11_ABI=${iotdb.cxx11.abi}</option>
@@ -139,16 +148,56 @@
                         </configuration>
                     </execution>
                     <!-- Run ctest against the test binaries built in cmake-compile -->
+                    <!-- CTest is driven by run-cpp-it-phases (plain, TLS, then mutual TLS IoTDB). -->
                     <execution>
                         <id>cmake-run-test</id>
                         <goals>
                             <goal>test</goal>
                         </goals>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>configure-iotdb-plain-it</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <skip>${ctest.skip.tests}</skip>
+                            <executable>python</executable>
+                            <arguments>
+                                <argument>${project.basedir}/test/scripts/configure_iotdb_ssl_it.py</argument>
+                                <argument>${iotdb.dist.root}</argument>
+                                <argument>${project.basedir}/test/fixtures</argument>
+                                <argument>disable</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>run-cpp-it-phases</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
                         <phase>integration-test</phase>
                         <configuration>
-                            <config>${cmake.build.type}</config>
-                            <projectDirectory>${cmake.project.dir}</projectDirectory>
-                            <skipTests>${maven.test.skip}</skipTests>
+                            <skip>${ctest.skip.tests}</skip>
+                            <executable>python</executable>
+                            <arguments>
+                                <argument>${project.basedir}/test/scripts/run_cpp_it_phases.py</argument>
+                                <argument>${cmake.project.dir}</argument>
+                                <argument>${iotdb.dist.root}</argument>
+                                <argument>${project.basedir}/test/fixtures</argument>
+                                <argument>${project.basedir}/test/scripts</argument>
+                                <argument>${iotdb.start.script}</argument>
+                                <argument>--config</argument>
+                                <argument>${cmake.build.type}</argument>
+                            </arguments>
                         </configuration>
                     </execution>
                 </executions>

@@ -59,7 +59,8 @@ Linux 发版包在 `manylinux_2_28` 容器中构建，部署机需要 glibc 2.28
 
 ## SDK 目录结构（解压后）
 
-`client-cpp` 打出的 SDK 压缩包只包含 **公开头文件** 和 **一个共享库**：
+`client-cpp` 打出的 SDK 压缩包包含 **公开头文件**、`iotdb_session` 共享库，
+以及（默认开启 SSL 时）**内置的 Tongsuo** 运行时（`libssl` / `libcrypto`）：
 
 ```
 client/
@@ -70,7 +71,9 @@ client/
 └── lib/
     ├── iotdb_session.dll + iotdb_session.lib   （Windows）
     ├── libiotdb_session.so                     （Linux）
-    └── libiotdb_session.dylib                  （macOS）
+    ├── libiotdb_session.dylib                  （macOS）
+    ├── libssl-3-x64.dll + libcrypto-3-x64.dll  （Windows SSL 运行时，WITH_SSL=ON）
+    └── libssl.so* + libcrypto.so*              （Linux/macOS SSL 运行时，WITH_SSL=ON）
 ```
 
 ## 编译示例
@@ -103,6 +106,10 @@ cmake -S iotdb-client/client-cpp/examples -B build \
 cmake --build build
 ```
 
+若 SDK 的 `lib/` 下已包含 `libssl` / `libcrypto`（默认 `WITH_SSL=ON` 构建），
+CMake 会自动检测并链接这些内置库，不会使用系统 OpenSSL。仅当使用未启用 SSL 的
+SDK 时才需要传入 `-DWITH_SSL=OFF`。
+
 Windows（Visual Studio 生成器）：
 
 ```powershell
@@ -119,6 +126,7 @@ cmake --build build --config Release
 ```bash
 cmake --build build --target example-dist
 # 生成 build/dist/，内含全部示例二进制 + libiotdb_session.{so,dll,dylib}
+# 以及 WITH_SSL=ON 时的 libssl/libcrypto
 ```
 
 ## 在「干净机器」上运行（无需编译器、无需 SDK 头文件）
@@ -139,9 +147,11 @@ cmake --build build --target example-dist
 ```
 SessionExample.exe
 iotdb_session.dll
+libssl-3-x64.dll
+libcrypto-3-x64.dll
 ```
 
-（其他示例同理，可执行文件与 `iotdb_session.dll` 成对拷贝。）
+（其他示例同理。SSL DLL 文件名与 SDK 中打包的 Tongsuo 主版本号一致。）
 
 **目标机器前置条件**
 
@@ -160,7 +170,8 @@ iotdb_session.dll
 
 若提示缺少 `VCRUNTIME140.dll`，请安装上述 VC++ 可再发行包。
 
-Thrift、Boost 已包含在 `iotdb_session.dll` 内，无需单独部署。
+Thrift、Boost 已包含在 `iotdb_session.dll` 内；SSL 由上述内置 Tongsuo 库提供，
+无需单独部署系统 OpenSSL。
 
 ### Linux
 
@@ -169,8 +180,13 @@ Thrift、Boost 已包含在 `iotdb_session.dll` 内，无需单独部署。
 ```
 SessionExample
 libiotdb_session.so
+libssl.so*
+libcrypto.so*
 chmod +x SessionExample
 ```
+
+请一并拷贝 SDK `lib/` 目录中与 `libiotdb_session.so` 同目录的 `libssl` /
+`libcrypto` 文件（Tongsuo，OpenSSL 兼容）。
 
 **目标机器前置条件**
 
@@ -225,6 +241,26 @@ export LD_LIBRARY_PATH=.
 ```bash
 otool -L SessionExample
 ```
+
+## SSL / TLCP 示例
+
+连接已启用 SSL 的 DataNode 时，在 `build()` 前配置：
+
+```cpp
+SessionBuilder()
+    .host("127.0.0.1")
+    ->rpcPort(6667)
+    ->useSSL(true)
+    ->sslProtocol("TLS")              // 国密请使用 "TLCP"
+    ->trustStore("/path/to/ca.p12")
+    ->trustStorePwd("thrift")
+    ->keyStore("/path/to/client.p12") // 可选，双向认证
+    ->keyStorePwd("thrift")
+    ->build();
+```
+
+请使用 PKCS12 证书库（JKS 可用 `keytool -importkeystore` 转换）。详见
+[README.md](../README.md#client-ssl--tlcp-configuration)。
 
 ## 开发说明
 

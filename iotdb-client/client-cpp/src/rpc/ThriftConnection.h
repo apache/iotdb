@@ -20,10 +20,11 @@
 #define IOTDB_THRIFTCONNECTION_H
 
 #include <memory>
-#if WITH_SSL
+#if WITH_SSL && defined(IOTDB_NTLS_PROVIDER_TONGSUO)
 #include <thrift/transport/TSSLSocket.h>
 #endif
 #include "IClientRPCService.h"
+#include "RpcSslUtils.h"
 #include "SessionConfig.h"
 
 class SessionDataSet;
@@ -43,9 +44,8 @@ public:
   ~ThriftConnection();
 
   void init(const std::string& username, const std::string& password,
-            bool enableRPCCompression = false, bool useSSL = false,
-            const std::string& trustCertFilePath = "", const std::string& zoneId = std::string(),
-            const std::string& version = "V_1_0");
+            bool enableRPCCompression = false, const SslConfig& sslConfig = SslConfig(),
+            const std::string& zoneId = std::string(), const std::string& version = "V_1_0");
 
   std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql,
                                                         int64_t timeoutInMs = -1);
@@ -60,7 +60,7 @@ private:
   int connectionTimeoutInMs_;
   int fetchSize_;
 
-#if WITH_SSL
+#if WITH_SSL && defined(IOTDB_NTLS_PROVIDER_TONGSUO)
   std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
       std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
 #endif

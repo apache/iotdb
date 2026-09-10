@@ -20,6 +20,7 @@
 // This file is a translation of the Java file iotdb-client/session/src/main/java/org/apache/iotdb/session/TableSession.java
 
 #include "TableSession.h"
+#include "RpcSslUtils.h"
 #include "SessionDataSet.h"
 
 void TableSession::insert(Tablet& tablet, bool sorted) {
@@ -43,4 +44,8 @@ void TableSession::open(bool enableRPCCompression) {
 }
 void TableSession::close() {
   session_->close();
+}
+
+void TableSession::setSslConfig(const SslConfig& sslConfig) {
+  session_->setSslConfig(sslConfig);
 }

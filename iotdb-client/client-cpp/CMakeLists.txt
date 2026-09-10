@@ -78,7 +78,7 @@ if(NOT MSVC)
     file(WRITE "${_iotdb_cxx11_abi_stamp}" "${_iotdb_cxx11_abi_stamp_value}")
 endif()
 
-option(WITH_SSL "Build with OpenSSL support" ON)
+option(WITH_SSL "Build with SSL/TLS support" ON)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
 set(IOTDB_SESSION_VERSION "0.0.0"
@@ -99,6 +99,19 @@ set(BOOST_VERSION "${_iotdb_default_boost_version}"
     CACHE STRING "Boost version used when downloading / unpacking (Thrift build only)")
 set(THRIFT_VERSION "0.24.0"
     CACHE STRING "Apache Thrift version used when downloading / building")
+set(IOTDB_NTLS_PROVIDER "TONGSUO"
+    CACHE STRING "NTLS provider: TONGSUO (default) or GMSSL")
+set_property(CACHE IOTDB_NTLS_PROVIDER PROPERTY STRINGS TONGSUO GMSSL)
+string(TOUPPER "${IOTDB_NTLS_PROVIDER}" IOTDB_NTLS_PROVIDER)
+if(NOT IOTDB_NTLS_PROVIDER MATCHES "^(TONGSUO|GMSSL)$")
+    message(FATAL_ERROR "IOTDB_NTLS_PROVIDER must be TONGSUO or GMSSL")
+endif()
+set(TONGSUO_GIT_REF "0aed892c5f48c9a52d1f5667667ae45156b9cdf4"
+    CACHE STRING "Pinned Tongsuo git commit used when building SSL/TLS from source")
+set(TONGSUO_SHA256 "4bb302df8ff73a89b3483873d10e7b6a4eeb041310b8eabd2be309004a88f8b6"
+    CACHE STRING "SHA-256 of the pinned Tongsuo source archive")
+set(IOTDB_GMSSL_ROOT_DIR ""
+    CACHE PATH "Preinstalled GmSSL 3.2 root (required for the GMSSL provider)")
 
 if(WIN32)
     set(IOTDB_OS_DEPS_DIR "${IOTDB_DEPS_DIR}/windows")
@@ -145,8 +158,8 @@ if(UNIX AND NOT APPLE)
             SOVERSION "${IOTDB_SESSION_SOVERSION}")
 endif()
 
-# When SSL is on we bundle the OpenSSL shared libraries next to libiotdb_session
-# in the package lib/ directory. Give the library an $ORIGIN-relative runtime
+# When SSL is on we bundle the Tongsuo/OpenSSL-compatible shared libraries next to
+# libiotdb_session in the package lib/ directory. Give the library an $ORIGIN-relative runtime
 # search path so the loader finds them without LD_LIBRARY_PATH / install_name
 # tweaks, keeping the SDK self-contained.
 if(WITH_SSL)
@@ -179,6 +192,13 @@ target_include_directories(iotdb_session
             ${THRIFT_INCLUDE_DIR}
             $<$<BOOL:${BOOST_INCLUDE_DIR}>:${BOOST_INCLUDE_DIR}>)
 
+if(WITH_SSL AND IOTDB_NTLS_PROVIDER STREQUAL "TONGSUO")
+    # Homebrew installs Boost and OpenSSL into the same broad include prefix.
+    # Put Tongsuo first so Boost's -I prefix cannot shadow its NTLS headers.
+    set_target_properties(iotdb_session PROPERTIES NO_SYSTEM_FROM_IMPORTED ON)
+    target_include_directories(iotdb_session BEFORE PRIVATE "${OPENSSL_INCLUDE_DIR}")
+endif()
+
 if(APPLE)
     target_link_libraries(iotdb_session PRIVATE "-Wl,-force_load,${THRIFT_STATIC_LIB_PATH}")
 elseif(UNIX AND NOT MSVC)
@@ -194,8 +214,14 @@ else()
 endif()
 
 if(WITH_SSL)
-    target_link_libraries(iotdb_session PUBLIC OpenSSL::SSL OpenSSL::Crypto)
     target_compile_definitions(iotdb_session PUBLIC WITH_SSL=1)
+    if(IOTDB_NTLS_PROVIDER STREQUAL "GMSSL")
+        target_link_libraries(iotdb_session PRIVATE IoTDB::gmssl)
+        target_compile_definitions(iotdb_session PUBLIC IOTDB_NTLS_PROVIDER_GMSSL=1)
+    else()
+        target_link_libraries(iotdb_session PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+        target_compile_definitions(iotdb_session PUBLIC IOTDB_NTLS_PROVIDER_TONGSUO=1)
+    endif()
 else()
     target_compile_definitions(iotdb_session PUBLIC WITH_SSL=0)
 endif()
@@ -217,6 +243,7 @@ include(GNUInstallDirs)
 set(IOTDB_PUBLIC_HEADERS
         Export.h
         SessionConfig.h
+        SslConfig.h
         Session.h
         Common.h
         Optional.h
@@ -240,8 +267,8 @@ install(TARGETS iotdb_session
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
 
-# Ship the OpenSSL shared libraries we link against next to iotdb_session so the
-# packaged SDK is self-contained on machines without a system OpenSSL.
+# Ship the Tongsuo shared libraries we link against next to iotdb_session so the
+# packaged SDK is self-contained on machines without a system SSL library.
 if(WITH_SSL)
     iotdb_install_openssl_runtime()
 endif()
@@ -296,6 +323,9 @@ file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         "cmake.generator=${CMAKE_GENERATOR}\n"
         "cmake.build.type=${CMAKE_BUILD_TYPE}\n"
         "with.ssl=${WITH_SSL}\n"
+        "ntls.provider=${IOTDB_NTLS_PROVIDER}\n"
+        "tongsuo.git.ref=${TONGSUO_GIT_REF}\n"
+        "tongsuo.sha256=${TONGSUO_SHA256}\n"
         "iotdb.offline=${IOTDB_OFFLINE}\n"
         "iotdb.use.cxx11.abi=${IOTDB_USE_CXX11_ABI}\n"
         "iotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}\n")
@@ -307,7 +337,6 @@ install(FILES
         "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
         "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         DESTINATION .)
-
 if(BUILD_TESTING)
     enable_testing()
     add_subdirectory(test)
@@ -317,6 +346,7 @@ endif()
 
 message(STATUS "iotdb_session configuration summary:")
 message(STATUS "    WITH_SSL              = ${WITH_SSL}")
+message(STATUS "    IOTDB_NTLS_PROVIDER   = ${IOTDB_NTLS_PROVIDER}")
 message(STATUS "    BUILD_TESTING         = ${BUILD_TESTING}")
 message(STATUS "    IOTDB_OFFLINE         = ${IOTDB_OFFLINE}")
 message(STATUS "    IOTDB_USE_CXX11_ABI   = ${IOTDB_USE_CXX11_ABI}")

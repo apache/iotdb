@@ -237,17 +237,105 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 | CMake 变量 | Maven 属性 |
 |------------|------------|
 | `WITH_SSL` | `with.ssl`（默认 `ON`，关闭用 `-Dwith.ssl=OFF`） |
+| `IOTDB_NTLS_PROVIDER` | `ntls.provider`（`TONGSUO` 或 `GMSSL`） |
+| `TONGSUO_GIT_REF` | `tongsuo.git.ref`（默认固定到 commit `0aed892c`） |
+| `TONGSUO_SHA256` | `tongsuo.sha256`（Tongsuo 源码归档校验值） |
+| `IOTDB_GMSSL_ROOT_DIR` | `gmssl.root.dir` |
 | `IOTDB_OFFLINE` | `iotdb.offline` |
 | `BUILD_TESTING` | `build.tests` |
 | `IOTDB_DEPS_DIR` | `iotdb.deps.dir` |
 | `BOOST_INCLUDEDIR` | `boost.include.dir` |
 | `CMAKE_BUILD_TYPE` | `cmake.build.type`，例如 `-Dcmake.build.type=Debug` |
 
-SSL 默认开启（`WITH_SSL=ON`）。所捆绑的 Apache Thrift 0.24 同时支持 OpenSSL 1.x
-与 3.x，因此直接使用系统的 OpenSSL（任意版本）。CMake 通过 `find_package(OpenSSL)`
-解析系统 OpenSSL，找不到时回退到从源码构建 OpenSSL 3.5.0；并会把所用的 OpenSSL
-动态库一并复制到产物 `lib/` 目录。Windows 可用 `choco install openssl` 安装。
+SSL 默认开启（`WITH_SSL=ON`）。支持的 NTLS Provider：
+
+- `TONGSUO`（默认）：源码构建固定到 commit `0aed892c` 的 Tongsuo 8.4-stable，支持 TLS/TLCP 及
+  PKCS12、PEM 凭据。
+- `GMSSL`：使用预安装的 GmSSL 3.2 原生 TLCP API，支持 TLCP 及 PEM 凭据。
+  OCL 未实现 Thrift 所需的完整 OpenSSL API，因此不使用 OCL。
+
+选择 GmSSL 时传入
+`-DIOTDB_NTLS_PROVIDER=GMSSL -DIOTDB_GMSSL_ROOT_DIR=<gmssl>`。
+Provider 动态库会复制到产物 `lib/` 目录。GmSSL 仅支持 TLCP，必须设置
+`sslProtocol("TLCP")`；PKCS12 `keyStore` 会被拒绝，双向认证需使用 TLCP PEM
+证书和私钥 setter。配置阶段会根据库符号自动推导影响 ABI 的 `ENABLE_*`
+定义，并校验 GmSSL 3.2 的头文件/动态库 ABI。Tongsuo 在 Windows 上需要
+Perl 与 VS 的 `nmake`。
 直接使用 CMake 时传入 `-DWITH_SSL=OFF`、`-DIOTDB_OFFLINE=ON` 等即可。
+
+### 客户端 SSL / TLCP 配置
+
+C++ 客户端 API 与 Java Session 对齐。Tongsuo 的 `trustStore` 支持 PKCS12 或 PEM，
+GmSSL 使用 PEM；C++ 端不解析 JKS。
+
+**TLS 单向认证：**
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLS")
+                   ->trustStore("/path/to/truststore.p12")
+                   ->trustStorePwd("thrift")
+                   ->build();
+```
+
+**TLCP 单向认证（国密 NTLS）：**
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLCP")
+                   ->trustStore("/path/to/ca.p12")
+                   ->trustStorePwd("thrift")
+                   ->build();
+```
+
+**TLCP 双向认证**（PKCS12 `keyStore` 内含 SM2 签名/加密双证书）：
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLCP")
+                   ->trustStore("/path/to/ca.p12")
+                   ->trustStorePwd("thrift")
+                   ->keyStore("/path/to/client-dual.p12")
+                   ->keyStorePwd("thrift")
+                   ->build();
+```
+
+Tongsuo 使用 PEM 时，将签名/加密证书及 CA 链合并到一个文件，并将两个私钥合并到另一个文件。
+GmSSL 则使用客户端签名证书及其中间证书链，以及对应的单个私钥：
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLCP")
+                   ->trustStore("/path/to/ca.pem")
+                   ->tlcpCertChainFile("/path/to/client-certs.pem")
+                   ->tlcpPrivateKeyFile("/path/to/client-keys.pem")
+                   ->tlcpPrivateKeyPwd("secret")
+                   ->build();
+```
+
+旧版 `trustCertFilePath()` 在未设置 `trustStore` 时仍可作为 PEM CA 路径使用。
+
+**C API**（在 `ts_session_open` / `ts_table_session_open` 之前配置）：
+
+```c
+ts_session_set_use_ssl(session, true);
+ts_session_set_ssl_protocol(session, "TLCP");
+ts_session_set_trust_store(session, "/path/to/ca.p12", "thrift");
+ts_session_set_key_store(session, "/path/to/client-dual.p12", "thrift");
+```
+
 Debug 构建请在配置阶段传入 `-DCMAKE_BUILD_TYPE=Debug`。Windows 使用 Visual
 Studio 生成器时也需要传入该选项，以便内置 Thrift 静态库使用 Debug MSVC 运行时；
 随后用 `cmake --build build --config Debug --target install` 构建安装。

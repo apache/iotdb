@@ -309,14 +309,12 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          # Pin openssl@3 (Apache-2.0): the default 'openssl' formula will move to
-          # OpenSSL 4.0, which drops the legacy TLS-method APIs Thrift still uses.
-          brew install boost openssl@3 llvm@17 bison
+          # Build Tongsuo from source for SSL/TLS (国密 / TLCP support).
+          brew install boost llvm@17 bison perl
           ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
-          # Homebrew OpenSSL is keg-only, so point find_package(OpenSSL) at it.
-          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
+          echo "$(brew --prefix perl)/bin" >> "$GITHUB_PATH"
           clang-format --version
           bison --version
       - name: Cache Maven packages
@@ -420,6 +418,7 @@ jobs:
         shell: pwsh
         run: |
           choco install winflexbison3 -y --no-progress
+          choco install strawberryperl -y --no-progress
           $boostArgs = @('install', '${{ matrix.boost_choco }}', '-y', '--no-progress')
           if ('${{ matrix.boost_choco_version }}' -ne '') {
             $boostArgs += @("--version=${{ matrix.boost_choco_version }}")
@@ -433,18 +432,7 @@ jobs:
             throw "Boost not found under C:\local after installing ${{ matrix.boost_choco }}"
           }
           echo $boostDir.FullName >> $env:GITHUB_PATH
-          # Use a pinned OpenSSL 3.x (Apache-2.0). 'choco install openssl' now
-          # installs OpenSSL 4.0, which removed the legacy TLS-method APIs that
-          # Apache Thrift's TSSLSocket still calls. The FireDaemon zip is a clean
-          # prebuilt OpenSSL 3.5.x that keeps them.
-          $sslZip = "$env:RUNNER_TEMP\openssl-3.5.3.zip"
-          $sslDir = "$env:RUNNER_TEMP\openssl-3"
-          curl.exe -L --fail --retry 3 -o $sslZip 'https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.3.zip'
-          Expand-Archive -Path $sslZip -DestinationPath $sslDir -Force
-          $sslPath = (Get-ChildItem $sslDir -Recurse -Directory -Filter 'x64' | Select-Object -First 1).FullName
-          if (-not $sslPath) { throw "OpenSSL x64 dir not found under $sslDir" }
-          echo "$sslPath\bin" >> $env:GITHUB_PATH
-          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
+          echo "C:\strawberry\perl\bin" >> $env:GITHUB_PATH
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
@@ -459,6 +447,12 @@ jobs:
           PACKAGE_CLASSIFIER: ${{ matrix.package_classifier }}
         run: |
           set -euxo pipefail
+          # Git Bash perl lacks modules for Tongsuo Configure; Strawberry is installed above.
+          if [ -d /c/Strawberry/perl/bin ]; then
+            export PATH="/c/Strawberry/perl/bin:${PATH}"
+          fi
+          which perl
+          perl -MLocale::Maketext::Simple -e1
           MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
             -Dspotless.skip=true \
             "-Dclient.cpp.package.classifier=${PACKAGE_CLASSIFIER}")

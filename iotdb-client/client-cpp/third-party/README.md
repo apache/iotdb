@@ -68,7 +68,7 @@ Alternatively copy files manually from the URLs listed in
 
 | Platform   | Typical files |
 |------------|---------------|
-| `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (+ `openssl-3.5.0.tar.gz` only when `WITH_SSL=ON` and no system OpenSSL is present) |
+| `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `tongsuo-0aed892c5f48c9a52d1f5667667ae45156b9cdf4.tar.gz` (when `WITH_SSL=ON`, default) |
 | `mac/`     | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz` (Xcode CLT usually provides m4/flex/bison) |
 | `windows/` | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `win_flex_bison-2.5.25.zip` (or any `win_flex_bison*.zip`; skip if flex/bison already on `PATH`) |
 

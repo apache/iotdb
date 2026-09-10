@@ -109,6 +109,46 @@ SessionPool& SessionPool::setTrustCertFilePath(std::string path) {
   return *this;
 }
 
+SessionPool& SessionPool::setSslProtocol(std::string sslProtocol) {
+  sslProtocol_ = std::move(sslProtocol);
+  return *this;
+}
+
+SessionPool& SessionPool::setTrustStore(std::string trustStore) {
+  trustStore_ = std::move(trustStore);
+  return *this;
+}
+
+SessionPool& SessionPool::setTrustStorePwd(std::string trustStorePwd) {
+  trustStorePwd_ = std::move(trustStorePwd);
+  return *this;
+}
+
+SessionPool& SessionPool::setKeyStore(std::string keyStore) {
+  keyStore_ = std::move(keyStore);
+  return *this;
+}
+
+SessionPool& SessionPool::setKeyStorePwd(std::string keyStorePwd) {
+  keyStorePwd_ = std::move(keyStorePwd);
+  return *this;
+}
+
+SessionPool& SessionPool::setTlcpCertChainFile(std::string path) {
+  tlcpCertChainFile_ = std::move(path);
+  return *this;
+}
+
+SessionPool& SessionPool::setTlcpPrivateKeyFile(std::string path) {
+  tlcpPrivateKeyFile_ = std::move(path);
+  return *this;
+}
+
+SessionPool& SessionPool::setTlcpPrivateKeyPwd(std::string password) {
+  tlcpPrivateKeyPwd_ = std::move(password);
+  return *this;
+}
+
 std::shared_ptr<Session> SessionPool::constructNewSession() {
   AbstractSessionBuilder builder;
   builder.host = host_;
@@ -126,6 +166,14 @@ std::shared_ptr<Session> SessionPool::constructNewSession() {
   builder.connectTimeoutMs = connectTimeoutMs_;
   builder.useSSL = useSSL_;
   builder.trustCertFilePath = trustCertFilePath_;
+  builder.sslProtocol = sslProtocol_;
+  builder.trustStore = trustStore_;
+  builder.trustStorePwd = trustStorePwd_;
+  builder.keyStore = keyStore_;
+  builder.keyStorePwd = keyStorePwd_;
+  builder.tlcpCertChainFile = tlcpCertChainFile_;
+  builder.tlcpPrivateKeyFile = tlcpPrivateKeyFile_;
+  builder.tlcpPrivateKeyPwd = tlcpPrivateKeyPwd_;
 
   auto session = std::make_shared<Session>(&builder);
   session->open(enableRPCCompression_, connectTimeoutMs_);

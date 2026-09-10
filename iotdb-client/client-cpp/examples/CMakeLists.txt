@@ -61,21 +61,55 @@ else()
     INCLUDE_DIRECTORIES("${IOTDB_SDK_ROOT}/include")
 endif()
 
-option(WITH_SSL "Build with SSL support" OFF)
+# Match the SDK default (WITH_SSL=ON in the main client build). When this
+# directory is added via add_subdirectory(), the parent cache value wins.
+option(WITH_SSL "Build with SSL/TLS support" ON)
 
-IF(WITH_SSL)
-    FIND_PACKAGE(OpenSSL REQUIRED)
-    IF(OpenSSL_FOUND)
-        MESSAGE(STATUS "OpenSSL found: ${OPENSSL_VERSION}")
-        INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
-        ADD_DEFINITIONS(-DWITH_SSL=1)
-    ELSE()
-        MESSAGE(FATAL_ERROR "OpenSSL not found, but WITH_SSL is enabled")
-    ENDIF()
-ELSE()
-    MESSAGE(STATUS "Building without SSL support")
-    ADD_DEFINITIONS(-DWITH_SSL=0)
-ENDIF()
+set(_iotdb_use_bundled_ssl OFF)
+set(_iotdb_ssl_link_libs "")
+
+if(NOT _iotdb_examples_in_tree)
+    file(GLOB _iotdb_bundled_ssl_runtime
+        "${IOTDB_SDK_ROOT}/lib/libssl*.so*"
+        "${IOTDB_SDK_ROOT}/lib/libcrypto*.so*"
+        "${IOTDB_SDK_ROOT}/lib/libssl*.dylib"
+        "${IOTDB_SDK_ROOT}/lib/libcrypto*.dylib"
+        "${IOTDB_SDK_ROOT}/lib/libssl*.dll"
+        "${IOTDB_SDK_ROOT}/lib/libcrypto*.dll")
+    if(_iotdb_bundled_ssl_runtime)
+        set(_iotdb_use_bundled_ssl ON)
+        set(WITH_SSL ON CACHE BOOL "Build with SSL/TLS support" FORCE)
+        message(STATUS "Using bundled Tongsuo/OpenSSL-compatible libraries from ${IOTDB_SDK_ROOT}/lib")
+    endif()
+endif()
+
+if(WITH_SSL)
+    if(_iotdb_examples_in_tree)
+        add_compile_definitions(WITH_SSL=1)
+    elseif(_iotdb_use_bundled_ssl)
+        add_compile_definitions(WITH_SSL=1)
+        if(UNIX)
+            find_library(_iotdb_ssl_lib NAMES ssl libssl
+                PATHS "${IOTDB_SDK_ROOT}/lib" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+            find_library(_iotdb_crypto_lib NAMES crypto libcrypto
+                PATHS "${IOTDB_SDK_ROOT}/lib" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+            if(_iotdb_ssl_lib AND _iotdb_crypto_lib)
+                set(_iotdb_ssl_link_libs "${_iotdb_ssl_lib}" "${_iotdb_crypto_lib}")
+            else()
+                message(FATAL_ERROR
+                    "Bundled libssl/libcrypto not found under ${IOTDB_SDK_ROOT}/lib")
+            endif()
+        endif()
+    else()
+        message(FATAL_ERROR
+            "WITH_SSL=ON requires building inside the IoTDB client tree, or an SDK "
+            "that bundles libssl/libcrypto under ${IOTDB_SDK_ROOT}/lib. "
+            "Pass -DWITH_SSL=OFF only for SDKs built without SSL.")
+    endif()
+else()
+    message(STATUS "Building without SSL support")
+    add_compile_definitions(WITH_SSL=0)
+endif()
 
 if(NOT _iotdb_examples_in_tree)
     find_package(iotdb-session CONFIG QUIET
@@ -118,35 +152,61 @@ set(_example_targets
     tree_example
     table_example)
 
-# OpenSSL runtime libraries bundled in the SDK lib/ (libssl / libcrypto). When
-# building against an unpacked package, copy them next to each example binary so
-# the examples run without a system OpenSSL - libiotdb_session records them as
-# NEEDED and resolves them via its $ORIGIN runtime path.
-set(_iotdb_sdk_ssl_runtime "")
-if(NOT _iotdb_examples_in_tree)
-    file(GLOB _iotdb_sdk_ssl_runtime
-        "${IOTDB_SDK_ROOT}/lib/libssl*.so*"
-        "${IOTDB_SDK_ROOT}/lib/libcrypto*.so*"
-        "${IOTDB_SDK_ROOT}/lib/libssl*.dylib"
-        "${IOTDB_SDK_ROOT}/lib/libcrypto*.dylib"
-        "${IOTDB_SDK_ROOT}/lib/libssl*.dll"
-        "${IOTDB_SDK_ROOT}/lib/libcrypto*.dll")
+set(_it_plain_examples "")
+set(_it_ssl_examples "")
+set(_it_ntls_examples "")
+
+if(_iotdb_examples_in_tree)
+    ADD_EXECUTABLE(cpp_tree_example cpp_tree_example.cpp)
+    ADD_EXECUTABLE(cpp_table_example cpp_table_example.cpp)
+
+    list(APPEND _example_targets
+        cpp_tree_example
+        cpp_table_example)
+
+    set(_it_plain_examples
+        cpp_tree_example
+        cpp_table_example
+        tree_example
+        table_example)
+
+    # These examples exercise the OpenSSL-compatible Tongsuo API and command-line
+    # server. GmSSL has a separate native API and is covered by rpcNtlsUtilsTest.
+    if(WITH_SSL AND IOTDB_NTLS_PROVIDER STREQUAL "TONGSUO")
+        ADD_EXECUTABLE(cpp_tls_example cpp_tls_example.cpp ExampleTlsConfig.cpp)
+        ADD_EXECUTABLE(cpp_ntls_example cpp_ntls_example.cpp ExampleNtlsHandshake.cpp)
+        ADD_EXECUTABLE(tls_tree_example tls_tree_example.c ExampleTlsConfig.cpp)
+        ADD_EXECUTABLE(c_ntls_example c_ntls_example.c ExampleNtlsHandshake.cpp)
+
+        list(APPEND _example_targets
+            cpp_tls_example
+            cpp_ntls_example
+            tls_tree_example
+            c_ntls_example)
+
+        set(_it_ssl_examples
+            cpp_tls_example
+            tls_tree_example)
+
+        set(_it_ntls_examples
+            cpp_ntls_example
+            c_ntls_example)
+    endif()
 endif()
 
 foreach(_t IN LISTS _example_targets)
-  IF(WITH_SSL)
-      TARGET_LINK_LIBRARIES(${_t} PRIVATE "${_iotdb_link_lib}" OpenSSL::SSL OpenSSL::Crypto)
-  ELSE()
-      TARGET_LINK_LIBRARIES(${_t} PRIVATE "${_iotdb_link_lib}")
-  ENDIF()
+  if(WITH_SSL AND _iotdb_ssl_link_libs)
+      target_link_libraries(${_t} PRIVATE "${_iotdb_link_lib}" ${_iotdb_ssl_link_libs})
+  else()
+      target_link_libraries(${_t} PRIVATE "${_iotdb_link_lib}")
+  endif()
   IF(UNIX)
       TARGET_LINK_LIBRARIES(${_t} PRIVATE pthread)
   ENDIF()
 
-  # The packaged libiotdb_session records the bundled OpenSSL libs as DT_NEEDED;
-  # point the linker at the SDK lib/ so it can resolve them without a system
-  # OpenSSL present.
-  if(UNIX AND NOT _iotdb_examples_in_tree)
+  # The packaged libiotdb_session records the bundled SSL libs as DT_NEEDED; point
+  # the linker at the SDK lib/ so it can resolve them without a system install.
+  if(UNIX AND NOT _iotdb_examples_in_tree AND _iotdb_use_bundled_ssl)
       target_link_directories(${_t} PRIVATE "${IOTDB_SDK_ROOT}/lib")
   endif()
 
@@ -162,21 +222,76 @@ foreach(_t IN LISTS _example_targets)
           COMMAND ${CMAKE_COMMAND} -E copy_if_different
                   $<TARGET_FILE:iotdb_session> $<TARGET_FILE_DIR:${_t}>
           COMMENT "Copy IoTDB runtime library next to ${_t}")
+      if(WIN32 AND WITH_SSL)
+          _iotdb_collect_openssl_windows_dlls(_iotdb_ssl_runtime_dlls)
+          foreach(_ssl_dll IN LISTS _iotdb_ssl_runtime_dlls)
+              add_custom_command(TARGET ${_t} POST_BUILD
+                  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                          "${_ssl_dll}" $<TARGET_FILE_DIR:${_t}>
+                  COMMENT "Copy bundled SSL runtime next to ${_t}")
+          endforeach()
+      endif()
   elseif(EXISTS "${_iotdb_runtime}")
       add_custom_command(TARGET ${_t} POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy_if_different
                   "${_iotdb_runtime}" $<TARGET_FILE_DIR:${_t}>
           COMMENT "Copy IoTDB runtime library next to ${_t}")
-      foreach(_ssl_lib IN LISTS _iotdb_sdk_ssl_runtime)
+      foreach(_ssl_lib IN LISTS _iotdb_bundled_ssl_runtime)
           add_custom_command(TARGET ${_t} POST_BUILD
               COMMAND ${CMAKE_COMMAND} -E copy_if_different
                       "${_ssl_lib}" $<TARGET_FILE_DIR:${_t}>
-              COMMENT "Copy bundled OpenSSL runtime next to ${_t}")
+              COMMENT "Copy bundled SSL runtime next to ${_t}")
       endforeach()
   elseif(WIN32)
       message(WARNING "Missing ${_iotdb_runtime}; copy iotdb_session.dll manually before running ${_t}.")
   endif()
 endforeach()
+
+if(_iotdb_examples_in_tree AND WITH_SSL AND IOTDB_EXAMPLES_REGISTER_TESTS)
+    file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../test/fixtures" _iotdb_example_fixtures_dir)
+    string(REPLACE "\\" "/" _iotdb_example_fixtures_dir_fwd "${_iotdb_example_fixtures_dir}")
+    foreach(_t IN LISTS _it_ssl_examples _it_ntls_examples)
+        target_compile_definitions(${_t} PRIVATE
+                IOTDB_TEST_FIXTURES_DIR="${_iotdb_example_fixtures_dir_fwd}")
+        add_custom_command(TARGET ${_t} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                        "${CMAKE_CURRENT_SOURCE_DIR}/../test/fixtures"
+                        "$<TARGET_FILE_DIR:${_t}>/fixtures"
+                COMMENT "Copy SSL test fixtures next to ${_t}")
+    endforeach()
+    foreach(_t IN LISTS _it_ntls_examples)
+        target_sources(${_t} PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/../test/cpp/SslTestFixtures.cpp")
+        target_include_directories(${_t} PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/../test/cpp"
+                "${CMAKE_CURRENT_SOURCE_DIR}/../src/rpc"
+                "${THRIFT_GEN_CPP_DIR}"
+                "${THRIFT_INCLUDE_DIR}")
+        if(BOOST_INCLUDE_DIR)
+            target_include_directories(${_t} PRIVATE "${BOOST_INCLUDE_DIR}")
+        endif()
+        # Keep Homebrew OpenSSL headers from shadowing Tongsuo for the NTLS helpers.
+        set_target_properties(${_t} PROPERTIES NO_SYSTEM_FROM_IMPORTED ON)
+        target_include_directories(${_t} BEFORE PRIVATE "${OPENSSL_INCLUDE_DIR}")
+        file(TO_CMAKE_PATH "${OPENSSL_ROOT_DIR}" _iotdb_openssl_root_dir_cmake)
+        string(REPLACE "\\" "/" _iotdb_openssl_root_dir_fwd "${_iotdb_openssl_root_dir_cmake}")
+        if(WIN32)
+            file(TO_CMAKE_PATH "${OPENSSL_ROOT_DIR}/bin/openssl.exe" _iotdb_openssl_executable_cmake)
+            string(REPLACE "\\" "/" _iotdb_openssl_executable_fwd "${_iotdb_openssl_executable_cmake}")
+            target_compile_definitions(${_t} PRIVATE
+                    IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}"
+                    IOTDB_OPENSSL_ROOT_DIR="${_iotdb_openssl_root_dir_fwd}")
+            target_link_libraries(${_t} PRIVATE ws2_32 "${THRIFT_STATIC_LIB_PATH}")
+        else()
+            file(TO_CMAKE_PATH "${OPENSSL_ROOT_DIR}/bin/openssl" _iotdb_openssl_executable_cmake)
+            string(REPLACE "\\" "/" _iotdb_openssl_executable_fwd "${_iotdb_openssl_executable_cmake}")
+            target_compile_definitions(${_t} PRIVATE
+                    IOTDB_OPENSSL_EXECUTABLE="${_iotdb_openssl_executable_fwd}"
+                    IOTDB_OPENSSL_ROOT_DIR="${_iotdb_openssl_root_dir_fwd}")
+            target_link_libraries(${_t} PRIVATE iotdb_thrift_static)
+        endif()
+    endforeach()
+endif()
 
 # Optional: stage a self-contained folder for copying to another machine (see package README).
 set(_example_dist_dir "${CMAKE_BINARY_DIR}/dist")
@@ -194,29 +309,27 @@ if(EXISTS "${_iotdb_runtime}")
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${_iotdb_runtime}" "${_example_dist_dir}/")
 endif()
-# Stage the bundled OpenSSL runtime too, so a copied dist/ runs on a machine
-# without a system OpenSSL.
-foreach(_ssl_lib IN LISTS _iotdb_sdk_ssl_runtime)
+# Stage the bundled SSL runtime too, so a copied dist/ runs without a system SSL.
+foreach(_ssl_lib IN LISTS _iotdb_bundled_ssl_runtime)
     add_custom_command(TARGET example-dist POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${_ssl_lib}" "${_example_dist_dir}/")
 endforeach()
 
 if(IOTDB_EXAMPLES_REGISTER_TESTS)
-    set(_runnable_example_targets
-        SessionExample
-        AlignedTimeseriesSessionExample
-        TableModelSessionExample
-        tree_example
-        table_example)
-    foreach(_t IN LISTS _runnable_example_targets)
+    foreach(_t IN LISTS _it_plain_examples)
         add_test(NAME example_${_t} COMMAND ${_t})
+        set_tests_properties(example_${_t} PROPERTIES
+                LABELS "plain" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
     endforeach()
-    set_tests_properties(
-        example_SessionExample
-        example_AlignedTimeseriesSessionExample
-        example_TableModelSessionExample
-        example_tree_example
-        example_table_example
-        PROPERTIES RUN_SERIAL TRUE)
+    foreach(_t IN LISTS _it_ssl_examples)
+        add_test(NAME example_${_t} COMMAND ${_t})
+        set_tests_properties(example_${_t} PROPERTIES
+                LABELS "ssl" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
+    endforeach()
+    foreach(_t IN LISTS _it_ntls_examples)
+        add_test(NAME example_${_t} COMMAND ${_t})
+        set_tests_properties(example_${_t} PROPERTIES
+                LABELS "ntls" RUN_SERIAL TRUE RESOURCE_LOCK iotdb_cpp_it_server)
+    endforeach()
 endif()

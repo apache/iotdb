@@ -415,6 +415,7 @@ int main() {
   session->close();
 
   delete session;
+  session = nullptr;
 
   cout << "finished\n" << endl;
   return 0;

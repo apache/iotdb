@@ -19,6 +19,7 @@
 
 #include "catch.hpp"
 #include "SessionC.h"
+#include "SessionC.h"
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -245,8 +246,10 @@ TEST_CASE("C API Table - Multi-node table session", "[c_table_multiNode][c_table
   CTableSession* localSession = ts_table_session_new_multi_node(urls, 1, "root", "root", "");
   REQUIRE(localSession != nullptr);
 
-  TsStatus status =
-      ts_table_session_execute_non_query(localSession, "DROP DATABASE IF EXISTS c_db5");
+  TsStatus status = ts_table_session_open(localSession);
+  REQUIRE(status == TS_OK);
+
+  status = ts_table_session_execute_non_query(localSession, "DROP DATABASE IF EXISTS c_db5");
   REQUIRE(status == TS_OK);
   ts_table_session_execute_non_query(localSession, "CREATE DATABASE c_db5");
 

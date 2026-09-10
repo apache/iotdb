@@ -367,6 +367,8 @@ pass them as Maven properties (the POM maps them to `-D` options for CMake):
 | CMake variable | Maven property (`-D...`) |
 |----------------|--------------------------|
 | `WITH_SSL` | `with.ssl` (e.g. `-Dwith.ssl=ON`) |
+| `IOTDB_NTLS_PROVIDER` | `ntls.provider` (`TONGSUO` or `GMSSL`) |
+| `IOTDB_GMSSL_ROOT_DIR` | `gmssl.root.dir` |
 | `IOTDB_OFFLINE` | `iotdb.offline` |
 | `BUILD_TESTING` | `build.tests` |
 | `IOTDB_DEPS_DIR` | `iotdb.deps.dir` |
@@ -378,15 +380,18 @@ etc. directly.
 
 | Option                | Default                          | Purpose                                                                                                  |
 |-----------------------|----------------------------------|----------------------------------------------------------------------------------------------------------|
-| `WITH_SSL`            | `ON`                             | Link against OpenSSL and bundle its runtime libraries. See *SSL* below.                                  |
+| `WITH_SSL`            | `ON`                             | Link against Tongsuo (OpenSSL-compatible) and bundle its runtime libraries. See *SSL* below.               |
 | `BUILD_TESTING`       | `OFF` (Maven sets `ON` for verify) | Build Catch2 IT executables (Catch2 v2.13.7 header downloaded at configure time).                        |
 | `CATCH2_INCLUDE_DIR`  | (unset)                          | Pre-downloaded Catch2 include dir (Maven sets this under `target/test/catch2`).                          |
 | `IOTDB_OFFLINE`       | `OFF`                            | Disallow any network access during configure.                                                            |
 | `IOTDB_DEPS_DIR`      | `<client-cpp>/third-party`       | Override the local tarball cache directory.                                                              |
 | `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
 | `THRIFT_VERSION`      | `0.24.0`                         | Apache Thrift version to build from source.                                                              |
+| `IOTDB_NTLS_PROVIDER` | `TONGSUO`                        | NTLS provider: `TONGSUO` or `GMSSL`.                                                                     |
+| `TONGSUO_GIT_REF`     | commit `0aed892c`                | Pinned Tongsuo 8.4-stable commit built from source when `WITH_SSL=ON`.                                  |
+| `TONGSUO_SHA256`      | pinned archive hash              | SHA-256 used to verify the Tongsuo source archive and offline cache.                                    |
+| `IOTDB_GMSSL_ROOT_DIR` | (unset)                         | Preinstalled GmSSL 3 root required by the `GMSSL` provider.                                             |
 | `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
-| `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install when `WITH_SSL=ON`.                                                             |
 | `CMAKE_INSTALL_PREFIX`| `<build>/install`                | Install location.                                                                                        |
 | `CMAKE_BUILD_TYPE`    | `Release`                        | Single-config generator build type. Use `Debug` to produce a debug library.                              |
 
@@ -427,8 +432,8 @@ cmake --build build --config Release --target install
 
    | Platform   | Required files                                                                                                                                                       |
    |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-   | `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (and `openssl-3.5.0.tar.gz` only when `WITH_SSL=ON` and no system OpenSSL is present) |
-   | `mac/`     | `thrift-0.24.0.tar.gz`, `boost_1_84_0.tar.gz` (newer Boost for Xcode/Clang; Apple ships m4/flex/bison; `openssl-3.5.0.tar.gz` optional)                               |
+   | `linux/`   | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz`, `tongsuo-0aed892c5f48c9a52d1f5667667ae45156b9cdf4.tar.gz` |
+   | `mac/`     | `thrift-0.24.0.tar.gz`, `boost_1_84_0.tar.gz`, `tongsuo-0aed892c5f48c9a52d1f5667667ae45156b9cdf4.tar.gz` (Apple ships m4/flex/bison) |
    | `windows/` | `thrift-0.24.0.tar.gz`, `boost_1_60_0.tar.gz` (Boost headers only - no `b2` build required for `iotdb_session`)                                                      |
 
    Reference URLs (the configure step uses the same):
@@ -437,7 +442,7 @@ cmake --build build --config Release --target install
    - GNU m4 1.4.19:       <https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz>
    - GNU flex 2.6.4:      <https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz>
    - GNU bison 3.8:       <https://ftp.gnu.org/gnu/bison/bison-3.8.tar.gz>
-   - OpenSSL 3.5.0:       <https://www.openssl.org/source/openssl-3.5.0.tar.gz>
+   - Tongsuo 8.4-stable commit `0aed892c`: <https://github.com/Tongsuo-Project/Tongsuo/archive/0aed892c5f48c9a52d1f5667667ae45156b9cdf4.tar.gz>
 
 2. Run the build with offline mode enabled:
 
@@ -492,11 +497,10 @@ Prerequisites:
 2. **flex / bison.** Install <https://sourceforge.net/projects/winflexbison/>
    and rename `win_flex.exe`→`flex.exe`, `win_bison.exe`→`bison.exe` on
    `PATH`.
-3. **OpenSSL** *(`WITH_SSL=ON` is the default)*: install OpenSSL — e.g.
-   `choco install openssl`, or a Win64 OpenSSL installer from
-   <https://slproweb.com/products/Win32OpenSSL.html> — then pass
-   `-DOPENSSL_ROOT_DIR=...` to CMake if it is not auto-detected. Pass
-   `-DWITH_SSL=OFF` to build without SSL.
+3. **Perl** (for building Tongsuo when `WITH_SSL=ON`).
+4. **Tongsuo / SSL** *(`WITH_SSL=ON` is the default)*: a pinned Tongsuo 8.4-stable commit is
+   always built from source (requires Perl and `nmake` from the VS Developer
+   Command Prompt). Pass `-DWITH_SSL=OFF` to build without SSL.
 
 On Windows the SDK ships as **`iotdb_session.dll`** plus an import library
 **`iotdb_session.lib`**, built with **`/MD`** (dynamic CRT, same as a
@@ -509,27 +513,125 @@ the GNU autotools tarballs assume a POSIX shell environment.
 
 ## SSL
 
-`iotdb_session` builds **with OpenSSL by default** (`WITH_SSL=ON`). Disable
-it with `-Dwith.ssl=OFF` (Maven) or `-DWITH_SSL=OFF` (standalone CMake).
+`iotdb_session` builds with SSL/TLS by default. Supported NTLS providers:
 
-OpenSSL **3.x** is used (Apache-2.0 licensed). Note that **OpenSSL 4.0 removed**
-the legacy TLS-method APIs (`TLSv1_method`, `SSLv3_method`, …) that Apache
-Thrift's `TSSLSocket` still calls, so install/point at a 3.x build, not 4.0.
+- `TONGSUO` (default): pinned Tongsuo 8.4-stable commit `0aed892c`, built from source; TLS/TLCP and
+  PKCS12 or PEM credentials.
+- `GMSSL`: preinstalled GmSSL 3.2 using its native TLCP API; TLCP with PEM
+  credentials. OCL is not used because it does not implement
+  the complete OpenSSL API required by Thrift.
 
-CMake calls `find_package(OpenSSL)` and uses the system OpenSSL it finds. Its
-shared libraries are **bundled into the package `lib/` directory** (next to
-`iotdb_session`, which records an `$ORIGIN`/`@loader_path` runtime path) so the
-published SDK is self-contained.
+Select GmSSL with
+`-DIOTDB_NTLS_PROVIDER=GMSSL -DIOTDB_GMSSL_ROOT_DIR=<gmssl>`. Provider runtime
+libraries are bundled into the package `lib/` directory. GmSSL supports TLCP
+only: set `sslProtocol("TLCP")`. PKCS12 `keyStore` is rejected; mutual
+authentication requires the TLCP PEM certificate and private-key setters.
+CMake probes ABI-affecting `ENABLE_*` symbols and validates the GmSSL 3.2
+headers/library pair during configuration.
 
-Fallbacks:
+Host prerequisites for the default `TONGSUO` provider:
 
-- **Linux / macOS** – when no system OpenSSL is found (or
-  `-DIOTDB_OPENSSL_FROM_SOURCE=ON`, which the Linux packaging build uses so the
-  AlmaLinux 8 baseline's OpenSSL 1.1.1 is never redistributed), build
-  `openssl-3.5.0.tar.gz` from source as **shared** libraries and bundle them.
-- **Windows** – fail with a friendly message; install a prebuilt OpenSSL 3.x
-  (e.g. the FireDaemon or slproweb 3.5.x zip) and set `-DOPENSSL_ROOT_DIR=...`.
-  Building OpenSSL from source via MSVC is out of scope.
+- **Linux / macOS** – `perl`, `make`, and a C compiler (Tongsuo `./config`).
+- **Windows** – Perl (e.g. Strawberry Perl) and `nmake` from the Visual Studio
+  Developer Command Prompt.
+
+### Client SSL / TLCP configuration
+
+The C++ client mirrors the Java Session API. `trustStore` accepts PKCS12 or PEM
+with Tongsuo and PEM with GmSSL. JKS files must be converted first
+(the C++ client does not parse JKS).
+
+**TLS one-way (server authentication):**
+
+```cpp
+#include "SessionBuilder.h"
+
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->username("root")
+                   ->password("root")
+                   ->useSSL(true)
+                   ->sslProtocol("TLS")
+                   ->trustStore("/path/to/truststore.p12")
+                   ->trustStorePwd("thrift")
+                   ->build();
+```
+
+**TLS mutual authentication:**
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLS")
+                   ->trustStore("/path/to/truststore.p12")
+                   ->trustStorePwd("thrift")
+                   ->keyStore("/path/to/keystore.p12")
+                   ->keyStorePwd("thrift")
+                   ->build();
+```
+
+**TLCP one-way (NTLS, GM/T):**
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLCP")
+                   ->trustStore("/path/to/ca.p12")
+                   ->trustStorePwd("thrift")
+                   ->build();
+```
+
+**TLCP mutual authentication** (dual SM2 certificates in PKCS12 `keyStore`):
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLCP")
+                   ->trustStore("/path/to/ca.p12")
+                   ->trustStorePwd("thrift")
+                   ->keyStore("/path/to/client-dual.p12")
+                   ->keyStorePwd("thrift")
+                   ->build();
+```
+
+For Tongsuo PEM, put signing/encryption certificates (then the CA chain) in one
+file and both private keys in another. For GmSSL, use the client signing
+certificate followed by its intermediate chain, plus the matching single
+private key:
+
+```cpp
+auto session = SessionBuilder()
+                   .host("127.0.0.1")
+                   ->rpcPort(6667)
+                   ->useSSL(true)
+                   ->sslProtocol("TLCP")
+                   ->trustStore("/path/to/ca.pem")
+                   ->tlcpCertChainFile("/path/to/client-certs.pem")
+                   ->tlcpPrivateKeyFile("/path/to/client-keys.pem")
+                   ->tlcpPrivateKeyPwd("secret")
+                   ->build();
+```
+
+The legacy `trustCertFilePath()` setter still works as an alias for a PEM CA
+file when `trustStore` is not set.
+
+**C API** (configure before `ts_session_open` / `ts_table_session_open`):
+
+```c
+CSession* session = ts_session_new("127.0.0.1", 6667, "root", "root");
+ts_session_set_use_ssl(session, true);
+ts_session_set_ssl_protocol(session, "TLCP");
+ts_session_set_trust_store(session, "/path/to/ca.p12", "thrift");
+ts_session_set_key_store(session, "/path/to/client-dual.p12", "thrift");
+ts_session_open(session);
+```
 
 ## Tests
 

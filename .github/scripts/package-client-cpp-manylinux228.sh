@@ -73,10 +73,10 @@ java -version
 
 # manylinux_2_28 is AlmaLinux 8, whose system OpenSSL is 1.1.1 (EOL and not
 # Apache-2.0 - must not be bundled/redistributed in an ASF convenience binary).
-# Build OpenSSL 3.x from source instead (-Diotdb.openssl.from.source=ON), which
-# keeps the glibc 2.28 baseline. OpenSSL 3.x's Configure needs perl plus a few
-# modules (IPC::Cmd, Data::Dumper) that are not on the minimal image - install
-# them even when perl itself is already present.
+# A pinned Tongsuo 8.4-stable commit is always built from source (WITH_SSL=ON), which keeps the
+# glibc 2.28 baseline. Tongsuo's Configure needs perl plus a
+# few modules (IPC::Cmd, Data::Dumper) that are not on the minimal image -
+# install them even when perl itself is already present.
 if command -v dnf >/dev/null 2>&1; then
   dnf install -y perl perl-IPC-Cmd perl-Data-Dumper
 else
@@ -86,7 +86,6 @@ fi
 cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dspotless.skip=true \
-  -Diotdb.openssl.from.source=ON \
   -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}"
 
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"

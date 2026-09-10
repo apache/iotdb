@@ -19,9 +19,16 @@ This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
 ------------------------------------------------------------------------------
-OpenSSL  (bundled shared libraries: libssl / libcrypto, present only when the
+Tongsuo  (bundled shared libraries: libssl / libcrypto, present only when the
 SDK is built with SSL support)
-Copyright 1999-2025 The OpenSSL Project Authors. All Rights Reserved.
+Copyright The Tongsuo Project Authors. All Rights Reserved.
+Licensed under the Apache License, Version 2.0 (see the top-level LICENSE).
+Tongsuo is an OpenSSL-compatible cryptographic library with additional Chinese
+commercial cipher and TLCP protocol support.
+
+------------------------------------------------------------------------------
+GmSSL  (optional NTLS provider; bundled shared library: libgmssl)
+Copyright 2014-2026 The GmSSL Project. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (see the top-level LICENSE).
 
 ------------------------------------------------------------------------------

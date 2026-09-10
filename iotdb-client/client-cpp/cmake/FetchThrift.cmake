@@ -57,7 +57,9 @@ if(NOT EXISTS "${_thrift_tarball}")
     set(_thrift_url "https://archive.apache.org/dist/thrift/${THRIFT_VERSION}/${_thrift_tarname}")
     message(STATUS "[Thrift] downloading ${_thrift_url}")
     file(DOWNLOAD "${_thrift_url}" "${_thrift_tarball}"
-            SHOW_PROGRESS TLS_VERIFY ON STATUS _thrift_dl)
+            SHOW_PROGRESS TLS_VERIFY ON
+            TIMEOUT 600
+            STATUS _thrift_dl)
     list(GET _thrift_dl 0 _code)
     if(NOT _code EQUAL 0)
         list(GET _thrift_dl 1 _msg)
@@ -89,11 +91,26 @@ if(NOT EXISTS "${_thrift_marker}")
     file(TOUCH "${_thrift_marker}")
 endif()
 
+# GitHub archives use thrift-<commit>, release tarballs use thrift-<version>.
+if(NOT EXISTS "${_thrift_src}/CMakeLists.txt")
+    file(GLOB _thrift_extracted "${_thrift_root}/src/thrift-*")
+    list(LENGTH _thrift_extracted _thrift_extracted_count)
+    if(_thrift_extracted_count EQUAL 1)
+        list(GET _thrift_extracted 0 _thrift_found)
+        if(NOT _thrift_found STREQUAL _thrift_src)
+            message(STATUS "[Thrift] normalizing extracted dir ${_thrift_found} -> ${_thrift_src}")
+            file(RENAME "${_thrift_found}" "${_thrift_src}")
+        endif()
+    endif()
+endif()
+
 if(NOT EXISTS "${_thrift_src}/CMakeLists.txt")
     message(FATAL_ERROR
             "[Thrift] could not find ${_thrift_src}/CMakeLists.txt after "
             "extracting ${_thrift_tarball}.")
 endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/PatchThriftSsl.cmake")
 
 # ---------------------------------------------------------------------------
 # ExternalProject_Add: build thrift at *configure* time so the produced
@@ -136,9 +153,9 @@ else()
             "-DCMAKE_CXX_FLAGS=${_thrift_cxxflags}")
 endif()
 
-if(WITH_SSL)
+if(WITH_SSL AND IOTDB_NTLS_PROVIDER STREQUAL "TONGSUO")
     list(APPEND _thrift_cmake_args "-DWITH_OPENSSL=ON")
-    # Build Thrift's TSSLSocket against the same OpenSSL that iotdb_session links
+    # Build Thrift's TSSLSocket against the same SSL library that iotdb_session links
     # and bundles, so the runtime libraries match. find_package does not set
     # OPENSSL_ROOT_DIR itself, so derive it from the resolved include dir.
     if(OPENSSL_ROOT_DIR)
@@ -146,6 +163,15 @@ if(WITH_SSL)
     elseif(OPENSSL_INCLUDE_DIR)
         get_filename_component(_thrift_ossl_root "${OPENSSL_INCLUDE_DIR}" DIRECTORY)
         list(APPEND _thrift_cmake_args "-DOPENSSL_ROOT_DIR=${_thrift_ossl_root}")
+    endif()
+    if(OPENSSL_INCLUDE_DIR)
+        list(APPEND _thrift_cmake_args "-DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
+    endif()
+    if(OPENSSL_SSL_LIBRARY)
+        list(APPEND _thrift_cmake_args "-DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
+    endif()
+    if(OPENSSL_CRYPTO_LIBRARY)
+        list(APPEND _thrift_cmake_args "-DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}")
     endif()
 else()
     list(APPEND _thrift_cmake_args "-DWITH_OPENSSL=OFF")
@@ -164,12 +190,17 @@ endif()
 # Encode WITH_SSL in the stamp: toggling SSL changes WITH_OPENSSL, so a cached
 # build of the opposite flavour must not be reused (otherwise TSSLSocket is
 # missing/extra at link time).
-if(WITH_SSL)
+if(WITH_SSL AND IOTDB_NTLS_PROVIDER STREQUAL "TONGSUO")
     set(_thrift_ssl_stamp "-ssl")
 else()
     set(_thrift_ssl_stamp "-nossl")
 endif()
-set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-${_thrift_build_config}-mdll${_thrift_abi_stamp}${_thrift_ssl_stamp}")
+set(_thrift_provider_signature
+        "${IOTDB_NTLS_PROVIDER};${IOTDB_GMSSL_ROOT_DIR};${OPENSSL_ROOT_DIR};"
+        "${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY}")
+string(JOIN "" _thrift_provider_signature ${_thrift_provider_signature})
+string(MD5 _thrift_provider_stamp "${_thrift_provider_signature}")
+set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-${_thrift_build_config}-mdll${_thrift_abi_stamp}${_thrift_ssl_stamp}-sslctx-${_thrift_provider_stamp}")
 if(NOT EXISTS "${_thrift_stamp}")
     file(MAKE_DIRECTORY "${_thrift_build}")
     message(STATUS "[Thrift] configuring ${_thrift_dirname}")

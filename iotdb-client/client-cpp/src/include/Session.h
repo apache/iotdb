@@ -38,6 +38,7 @@
 #include "Date.h"
 #include "DeviceID.h"
 #include "SessionDataSet.h"
+#include "SslConfig.h"
 
 //== For compatible with Windows OS ==
 #ifndef LONG_LONG_MIN
@@ -606,6 +607,7 @@ public:
 
   void setSqlDialect(const std::string& dialect);
   void setDatabase(const std::string& database);
+  void setSslConfig(const SslConfig& sslConfig);
   std::string getDatabase();
   void changeDatabase(const std::string& database);
 

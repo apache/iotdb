@@ -39,7 +39,10 @@ function(_iotdb_collect_openssl_windows_dlls _out_var)
     if(OPENSSL_ROOT_DIR)
         list(APPEND _roots "${OPENSSL_ROOT_DIR}")
     endif()
-    foreach(_implib IN LISTS OPENSSL_SSL_LIBRARY OPENSSL_CRYPTO_LIBRARY OPENSSL_LIBRARIES)
+    if(IOTDB_GMSSL_ROOT_DIR)
+        list(APPEND _roots "${IOTDB_GMSSL_ROOT_DIR}")
+    endif()
+    foreach(_implib IN LISTS IOTDB_NTLS_RUNTIME_LIBRARIES OPENSSL_LIBRARIES)
         if(_implib AND EXISTS "${_implib}")
             # Walk up from the import lib (.../lib, .../lib/VC/x64/MD, ...) to find
             # a directory that owns a bin/ holding the DLLs.
@@ -60,8 +63,12 @@ function(_iotdb_collect_openssl_windows_dlls _out_var)
             file(GLOB _found
                     "${_root}/bin/libssl-${OPENSSL_VERSION_MAJOR}*.dll"
                     "${_root}/bin/libcrypto-${OPENSSL_VERSION_MAJOR}*.dll"
+                    "${_root}/bin/gmssl*.dll"
+                    "${_root}/bin/libgmssl*.dll"
                     "${_root}/libssl-${OPENSSL_VERSION_MAJOR}*.dll"
-                    "${_root}/libcrypto-${OPENSSL_VERSION_MAJOR}*.dll")
+                    "${_root}/libcrypto-${OPENSSL_VERSION_MAJOR}*.dll"
+                    "${_root}/gmssl*.dll"
+                    "${_root}/libgmssl*.dll")
             # The same DLL can appear under several candidate roots (e.g. bin/ and
             # the install root); keep only the first occurrence of each filename.
             foreach(_dll IN LISTS _found)
@@ -99,7 +106,7 @@ function(iotdb_install_openssl_runtime)
     # are skipped: they are already linked into libiotdb_session.
     set(_files_arg "")
     set(_have_libs OFF)
-    foreach(_lib IN LISTS OPENSSL_SSL_LIBRARY OPENSSL_CRYPTO_LIBRARY)
+    foreach(_lib IN LISTS IOTDB_NTLS_RUNTIME_LIBRARIES)
         if(_lib AND EXISTS "${_lib}" AND NOT _lib MATCHES "\\.a$")
             string(APPEND _files_arg " \"${_lib}\"")
             set(_have_libs ON)

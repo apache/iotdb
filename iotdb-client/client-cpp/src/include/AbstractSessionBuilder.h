@@ -55,7 +55,16 @@ public:
   bool enableRPCCompression = DEFAULT_ENABLE_RPC_COMPRESSION;
   std::vector<std::string> nodeUrls;
   bool useSSL = false;
+  /** @deprecated Use trustStore() instead. Legacy PEM trust certificate path. */
   std::string trustCertFilePath;
+  std::string sslProtocol = "TLS";
+  std::string trustStore;
+  std::string trustStorePwd;
+  std::string keyStore;
+  std::string keyStorePwd;
+  std::string tlcpCertChainFile;
+  std::string tlcpPrivateKeyFile;
+  std::string tlcpPrivateKeyPwd;
 };
 
 #endif // IOTDB_ABSTRACTSESSIONBUILDER_H

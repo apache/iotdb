@@ -55,6 +55,46 @@ public:
     return this;
   }
 
+  TableSessionBuilder* sslProtocol(const std::string& sslProtocol) {
+    AbstractSessionBuilder::sslProtocol = sslProtocol;
+    return this;
+  }
+
+  TableSessionBuilder* trustStore(const std::string& trustStore) {
+    AbstractSessionBuilder::trustStore = trustStore;
+    return this;
+  }
+
+  TableSessionBuilder* trustStorePwd(const std::string& trustStorePwd) {
+    AbstractSessionBuilder::trustStorePwd = trustStorePwd;
+    return this;
+  }
+
+  TableSessionBuilder* keyStore(const std::string& keyStore) {
+    AbstractSessionBuilder::keyStore = keyStore;
+    return this;
+  }
+
+  TableSessionBuilder* keyStorePwd(const std::string& keyStorePwd) {
+    AbstractSessionBuilder::keyStorePwd = keyStorePwd;
+    return this;
+  }
+
+  TableSessionBuilder* tlcpCertChainFile(const std::string& path) {
+    AbstractSessionBuilder::tlcpCertChainFile = path;
+    return this;
+  }
+
+  TableSessionBuilder* tlcpPrivateKeyFile(const std::string& path) {
+    AbstractSessionBuilder::tlcpPrivateKeyFile = path;
+    return this;
+  }
+
+  TableSessionBuilder* tlcpPrivateKeyPwd(const std::string& password) {
+    AbstractSessionBuilder::tlcpPrivateKeyPwd = password;
+    return this;
+  }
+
   TableSessionBuilder* username(const std::string& username) {
     AbstractSessionBuilder::username = username;
     return this;
