@@ -16,6 +16,11 @@
 # under the License.
 #
 
+# This file includes code modified from the uni2ts project:
+# https://github.com/SalesforceAIResearch/uni2ts
+# Copyright (c) 2024, Salesforce, Inc.
+# SPDX-License-Identifier: Apache-2
+
 import abc
 from dataclasses import dataclass
 from typing import Any
