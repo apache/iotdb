@@ -38,6 +38,11 @@ public:
     return session.impl_->nodesSupplier_->getEndPointList();
   }
 
+  static bool hasConnectionTo(Session& session, const TEndPoint& endpoint) {
+    return session.impl_->endPointToSessionConnection.find(endpoint) !=
+           session.impl_->endPointToSessionConnection.end();
+  }
+
   static void makeInitialConnectionUnavailable(Session& session,
                                                const TEndPoint& bootstrapEndpoint) {
     auto initialConnection = session.impl_->defaultSessionConnection_;
@@ -155,23 +160,25 @@ TEST_CASE("TLS node discovery uses the final SSL configuration and supports fail
   auto discoveredNodes = SessionTestAccessor::availableNodes(session);
   auto discovered =
       std::find_if(discoveredNodes.begin(), discoveredNodes.end(), [](const TEndPoint& node) {
-        return node.ip == "127.0.0.1" && node.port == 6667;
+        return node.ip == "localhost" && node.port == 6667;
       });
   REQUIRE(discovered != discoveredNodes.end());
 
-  TEndPoint unavailableBootstrap;
-  unavailableBootstrap.ip = "127.0.0.1";
-  unavailableBootstrap.port = 1;
+  TEndPoint bootstrapEndpoint;
+  bootstrapEndpoint.ip = "127.0.0.1";
+  bootstrapEndpoint.port = 6667;
   REQUIRE(std::none_of(discoveredNodes.begin(), discoveredNodes.end(),
-                       [&unavailableBootstrap](const TEndPoint& node) {
-                         return node.ip == unavailableBootstrap.ip &&
-                                node.port == unavailableBootstrap.port;
+                       [&bootstrapEndpoint](const TEndPoint& node) {
+                         return node.ip == bootstrapEndpoint.ip &&
+                                node.port == bootstrapEndpoint.port;
                        }));
 
   // Model an unavailable initial bootstrap after discovery. The query must
   // establish a new TLS connection to the endpoint learned from the server.
-  SessionTestAccessor::makeInitialConnectionUnavailable(session, unavailableBootstrap);
+  SessionTestAccessor::makeInitialConnectionUnavailable(session, bootstrapEndpoint);
+  REQUIRE_FALSE(SessionTestAccessor::hasConnectionTo(session, *discovered));
   requireDataSet(session.executeQueryStatement("SHOW VERSION"));
+  REQUIRE(SessionTestAccessor::hasConnectionTo(session, *discovered));
   session.close();
 }
 
