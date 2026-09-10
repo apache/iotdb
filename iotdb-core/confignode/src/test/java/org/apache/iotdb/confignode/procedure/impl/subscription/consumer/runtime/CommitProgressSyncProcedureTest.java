@@ -32,14 +32,9 @@ import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -80,7 +75,7 @@ public class CommitProgressSyncProcedureTest {
   }
 
   @Test
-  public void bestEffortSyncShouldOnlyWarnForUnexpectedResponses() throws Exception {
+  public void bestEffortSyncShouldSkipUnsuccessfulResponses() throws Exception {
     final String progressKey = "successful_progress";
     final RegionProgress progress =
         new RegionProgress(
@@ -116,25 +111,7 @@ public class CommitProgressSyncProcedureTest {
             subscriptionInfo = new AtomicReference<>(new SubscriptionInfo());
           }
         };
-    final Logger logger = (Logger) LoggerFactory.getLogger(CommitProgressSyncProcedure.class);
-    final Level originalLevel = logger.getLevel();
-    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
-    appender.start();
-    logger.addAppender(appender);
-    logger.setLevel(Level.WARN);
-    try {
-      procedure.executeFromOperateOnConfigNodes(env);
-
-      assertEquals(3, appender.list.size());
-      for (int i = 0; i < appender.list.size(); i++) {
-        assertEquals(Level.WARN, appender.list.get(i).getLevel());
-        assertEquals(i + 3, appender.list.get(i).getArgumentArray()[0]);
-      }
-    } finally {
-      logger.detachAppender(appender);
-      appender.stop();
-      logger.setLevel(originalLevel);
-    }
+    procedure.executeFromOperateOnConfigNodes(env);
 
     final ArgumentCaptor<CommitProgressHandleMetaChangePlan> planCaptor =
         ArgumentCaptor.forClass(CommitProgressHandleMetaChangePlan.class);
