@@ -37,6 +37,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
@@ -111,6 +112,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.storageengine.load.LoadTsFilePathUtils.getValidatedDevicePath;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
 
@@ -611,8 +613,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
-    return (e instanceof LoadAnalyzeTypeMismatchException)
-        && !loadTsFileStatement.isConvertOnTypeMismatch();
+    return e instanceof LoadAnalyzeInvalidPathException
+        || (e instanceof LoadAnalyzeTypeMismatchException)
+            && !loadTsFileStatement.isConvertOnTypeMismatch();
   }
 
   @Override
@@ -642,6 +645,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
           device2TimeSeriesMetadataList.entrySet()) {
         final IDeviceID device = entry.getKey();
+
+        getValidatedDevicePath(device);
 
         try {
           if (schemaCache.isDeviceDeletedByMods(device)) {
@@ -706,10 +711,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     public void checkWritePermission(
         Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
-        throws AuthException {
+        throws AuthException, LoadAnalyzeInvalidPathException {
       for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
           device2TimeseriesMetadataList.entrySet()) {
         final IDeviceID device = entry.getKey();
+
+        getValidatedDevicePath(device);
 
         try {
           if (schemaCache.isDeviceDeletedByMods(device)) {
@@ -813,7 +820,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         if (isVerifySchema) {
           verifySchema(schemaTree);
         }
-      } catch (AuthException | LoadAnalyzeTypeMismatchException e) {
+      } catch (AuthException
+          | LoadAnalyzeInvalidPathException
+          | LoadAnalyzeTypeMismatchException e) {
         throw e;
       } catch (LoadAnalyzeMissingSchemaException e) {
         if (isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
@@ -858,18 +867,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
       for (final IDeviceID device : schemaCache.getDevice2TimeSeries().keySet()) {
-        final PartialPath devicePath;
-        try {
-          devicePath = new PartialPath(device);
-        } catch (final IllegalPathException e) {
-          throw new LoadAnalyzeException(e.getMessage());
-        }
+        final PartialPath devicePath = getValidatedDevicePath(device);
 
         final String[] devicePrefixNodes = devicePath.getNodes();
-        if (hasEmptyPathNode(devicePath)) {
-          throw new LoadAnalyzeException(
-              new IllegalPathException(devicePath.getFullPath()).getMessage());
-        }
         if (devicePrefixNodes.length < databasePrefixNodesLength) {
           throw new LoadAnalyzeException(
               String.format(

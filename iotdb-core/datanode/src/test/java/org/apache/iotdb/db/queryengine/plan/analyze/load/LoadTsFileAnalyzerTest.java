@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -65,7 +65,7 @@ public class LoadTsFileAnalyzerTest {
               () -> getAutoCreateDatabaseMethod(verifier).invoke(verifier));
       Assert.assertTrue(
           String.valueOf(exception.getCause()),
-          exception.getCause() instanceof LoadAnalyzeException);
+          exception.getCause() instanceof LoadAnalyzeInvalidPathException);
     } finally {
       Assert.assertTrue(tsFile.delete());
     }
@@ -97,6 +97,13 @@ public class LoadTsFileAnalyzerTest {
           Collections.singleton(databaseWithSameStringPrefix), databasesNeededToBeSet);
       Assert.assertEquals(
           Collections.singleton(database), getAlreadySetDatabases(getSchemaCache(verifier)));
+
+      addTimeSeries(
+          getSchemaCache(verifier),
+          new PlainDeviceID("root.sg.d1"),
+          new MeasurementSchema("s1", TSDataType.INT32));
+      // A valid device still uses its existing database despite the legacy root. entry.
+      getAutoCreateDatabaseMethod(verifier).invoke(verifier);
     } finally {
       Assert.assertTrue(tsFile.delete());
     }
