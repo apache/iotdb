@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidTimeSeriesException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
@@ -961,7 +962,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
     return ((e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch)
-        || e instanceof LoadAnalyzeInvalidTimeSeriesException;
+        || e instanceof LoadAnalyzeInvalidTimeSeriesException
+        || e instanceof LoadAnalyzeInvalidPathException;
   }
 
   private LoadTsFileStatement createTreeConversionStatement(final File tsFile)

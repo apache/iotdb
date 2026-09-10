@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidTimeSeriesException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
@@ -83,6 +84,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.storageengine.load.LoadTsFilePathUtils.getValidatedDevicePath;
+
 public class TreeSchemaAutoCreatorAndVerifier {
 
   private static final Logger LOGGER =
@@ -116,6 +119,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         device2TimeseriesMetadataList.entrySet()) {
       final IDeviceID device = entry.getKey();
+
+      getValidatedDevicePath(device);
 
       try {
         if (schemaCache.isDeviceDeletedByMods(device)) {
@@ -181,10 +186,13 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   public void checkWritePermission(
-      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList) throws AuthException {
+      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
+      throws AuthException, LoadAnalyzeInvalidPathException {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         device2TimeseriesMetadataList.entrySet()) {
       final IDeviceID device = entry.getKey();
+
+      getValidatedDevicePath(device);
 
       try {
         if (schemaCache.isDeviceDeletedByMods(device)) {
@@ -275,7 +283,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (loadTsFileAnalyzer.isVerifySchema()) {
         verifySchema(schemaTree);
       }
-    } catch (AuthException e) {
+    } catch (AuthException | LoadAnalyzeInvalidPathException e) {
       throw e;
     } catch (LoadAnalyzeMissingSchemaException e) {
       if (loadTsFileAnalyzer.isTemporaryUnavailableDueToPipeSchemaNotReady(e)) {
@@ -358,15 +366,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
     final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
     for (final IDeviceID device : schemaCache.getDevice2TimeSeries().keySet()) {
-      final PartialPath devicePath = new PartialPath(device);
+      final PartialPath devicePath = getValidatedDevicePath(device);
 
       final String[] devicePrefixNodes = devicePath.getNodes();
-      for (final String node : devicePrefixNodes) {
-        if (node == null || node.isEmpty()) {
-          throw new LoadAnalyzeException(
-              new IllegalPathException(devicePath.getFullPath()).getMessage());
-        }
-      }
       if (devicePrefixNodes.length < databasePrefixNodesLength) {
         throw new LoadAnalyzeException(
             String.format(
