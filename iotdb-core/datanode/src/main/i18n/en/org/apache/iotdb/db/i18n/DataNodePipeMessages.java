@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A =
+      "Failed to resolve transfer exception.";
+
   // ===================== CONSENSUS =====================
 
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR =
@@ -2314,6 +2317,12 @@ public final class DataNodePipeMessages {
   public static final String PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC =
       "forceResize: failed to allocate memory after %d retries, total memory size %d bytes, used "
           + "memory size %d bytes, requested memory size %d bytes";
+  public static final String
+      EXCEPTION_UNSUPPORTED_BATCH_TYPE_ARG_WHEN_TRANSFERRING_TABLET_INSERTION_EVENT_66153E12 =
+          "Unsupported batch type %s when transferring tablet insertion event.";
+  public static final String
+      EXCEPTION_FAILED_TO_TRANSFER_TSFILE_BATCH_BECAUSE_NO_TSFILE_WAS_GENERATED_FOR_ARG_CC60CCEB =
+          "Failed to transfer TsFile batch because no TsFile was generated for %s.";
   public static final String PIPE_EXCEPTION_FAILED_TO_GET_HARDLINK_OR_COPIED_FILE_IN_PIPE_DIR_FOR_FILE_F009D86E =
       "failed to get hardlink or copied file in pipe dir for file %s, it is not a tsfile, mod file "
           + "or resource file";

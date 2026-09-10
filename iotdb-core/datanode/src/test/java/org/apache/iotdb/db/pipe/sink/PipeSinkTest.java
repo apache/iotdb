@@ -342,8 +342,11 @@ public class PipeSinkTest {
       recreatedPipeEvent.setCommitterKeyAndCommitId(new CommitterKey("pipe", 2L, 1, -1), 1L);
 
       connector.addFailureEventToRetryQueue(recreatedPipeEvent, new PipeException("test"));
+      connector.addFailureEventToRetryQueue(recreatedPipeEvent, new PipeException("test-again"));
 
       Assert.assertEquals(1, connector.getRetryEventQueueSize());
+      connector.clearRetryEventsReferenceCount();
+      Assert.assertTrue(recreatedPipeEvent.isReleased());
     }
   }
 
