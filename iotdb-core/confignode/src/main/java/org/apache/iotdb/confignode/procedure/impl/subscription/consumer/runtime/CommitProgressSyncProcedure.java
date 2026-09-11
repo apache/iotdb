@@ -147,10 +147,13 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
     for (final Map.Entry<Integer, TPullCommitProgressResp> entry : respMap.entrySet()) {
       final TPullCommitProgressResp resp = entry.getValue();
       if (!isSuccessfulResponse(resp)) {
-        LOGGER.warn(
-            ProcedureMessages.LOG_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_33037B29,
-            entry.getKey(),
-            Objects.isNull(resp) ? null : resp.getStatus());
+        // DataNodes with subscription disabled are expected to reject best-effort pulls.
+        if (!isUnsupportedOperationResponse(resp)) {
+          LOGGER.warn(
+              ProcedureMessages.LOG_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_33037B29,
+              entry.getKey(),
+              Objects.isNull(resp) ? null : resp.getStatus());
+        }
         continue;
       }
       if (resp.isSetCommitRegionProgress()) {
@@ -190,6 +193,12 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
     return Objects.nonNull(response)
         && response.isSetStatus()
         && response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  private static boolean isUnsupportedOperationResponse(final TPullCommitProgressResp response) {
+    return Objects.nonNull(response)
+        && response.isSetStatus()
+        && response.getStatus().getCode() == TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode();
   }
 
   @Override
