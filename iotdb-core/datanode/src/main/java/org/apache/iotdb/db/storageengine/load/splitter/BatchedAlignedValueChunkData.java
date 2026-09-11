@@ -102,15 +102,9 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
         long pageStartTime = Long.MAX_VALUE;
         long pageEndTime = Long.MIN_VALUE;
 
-        for (int j = 0; j < page.satisfiedLength; j++) {
+        for (int j = 0; j < page.timeBatch.length; j++) {
           long time = page.timeBatch[j];
-
-          // Apply time partition bounds check
-          if (time > endTime) {
-            break;
-          }
-
-          if (time >= startTime) {
+          if (time >= startTime && time <= endTime) {
             boolean isNull =
                 (page.valueBatch == null
                     || page.valueBatch.length == 0

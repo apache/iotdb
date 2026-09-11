@@ -53,9 +53,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 import static org.apache.iotdb.db.storageengine.load.LoadTsFileManager.MEASUREMENT_ID_CACHE;
 import static org.apache.tsfile.common.constant.TsFileConstant.TIME_COLUMN_MASK;
@@ -329,31 +331,37 @@ public class AlignedChunkData implements ChunkData {
 
     writePageBuffersToWriter(writer);
 
-    // endChunk() seals one physical Chunk. Building all columns here would emit the time Chunk
-    // again whenever a later value Chunk is split and encoded.
-    final ChunkHeader sourceHeader = chunkHeaderList.get(currentChunkIndex);
-    final ByteBuffer encodedData;
-    final Statistics<?> statistics;
-    final int pageCount;
-    final int mask;
-    if (currentChunkIndex == 0) {
-      encodedData = writer.getTimeChunkWriter().getByteBuffer();
-      statistics = writer.getTimeChunkWriter().getStatistics();
-      pageCount = writer.getTimeChunkWriter().getNumOfPages();
-      mask = TIME_COLUMN_MASK;
-    } else {
-      final ValueChunkWriter valueWriter =
-          writer.getValueChunkWriterList().get(currentChunkIndex - 1);
-      encodedData = valueWriter.getByteBuffer();
-      statistics = valueWriter.getStatistics();
-      pageCount = valueWriter.getNumOfPages();
-      mask = VALUE_COLUMN_MASK;
+    // One aligned ChunkData may accumulate pages from several physical Chunks before it is
+    // consumed. Encode every Chunk represented by the current buffers, while leaving Chunks that
+    // were sealed by an earlier endChunk() untouched.
+    final Set<Integer> bufferedChunkIndexes = new LinkedHashSet<>();
+    for (final PageBuffer pageBuffer : pageBuffers) {
+      bufferedChunkIndexes.add(pageBuffer.chunkIndex);
     }
+    for (final int chunkIndex : bufferedChunkIndexes) {
+      final ChunkHeader sourceHeader = chunkHeaderList.get(chunkIndex);
+      final ByteBuffer encodedData;
+      final Statistics<?> statistics;
+      final int pageCount;
+      final int mask;
+      if (chunkIndex == 0) {
+        encodedData = writer.getTimeChunkWriter().getByteBuffer();
+        statistics = writer.getTimeChunkWriter().getStatistics();
+        pageCount = writer.getTimeChunkWriter().getNumOfPages();
+        mask = TIME_COLUMN_MASK;
+      } else {
+        final ValueChunkWriter valueWriter = writer.getValueChunkWriterList().get(chunkIndex - 1);
+        encodedData = valueWriter.getByteBuffer();
+        statistics = valueWriter.getStatistics();
+        pageCount = valueWriter.getNumOfPages();
+        mask = VALUE_COLUMN_MASK;
+      }
 
-    final ChunkHeader encodedHeader =
-        createEncodedChunkHeader(sourceHeader, encodedData.remaining(), pageCount, mask);
-    entireChunks.add(new Chunk(encodedHeader, encodedData, null, statistics));
-    dataSize += encodedData.remaining() + statistics.getSerializedSize();
+      final ChunkHeader encodedHeader =
+          createEncodedChunkHeader(sourceHeader, encodedData.remaining(), pageCount, mask);
+      entireChunks.add(new Chunk(encodedHeader, encodedData, null, statistics));
+      dataSize += encodedData.remaining() + statistics.getSerializedSize();
+    }
   }
 
   protected static ChunkHeader createEncodedChunkHeader(
@@ -403,19 +411,39 @@ public class AlignedChunkData implements ChunkData {
         continue;
       }
       if (page.valueBatch == null) {
-        for (int i = 0; i < page.satisfiedLength; i++) {
-          writer.writeTime(page.timeBatch[i]);
+        boolean hasPoint = false;
+        for (final long time : page.timeBatch) {
+          if (!isInCurrentTimePartition(time)) {
+            continue;
+          }
+          writer.writeTime(time);
+          hasPoint = true;
         }
-        writer.sealCurrentTimePage();
+        if (hasPoint) {
+          writer.sealCurrentTimePage();
+        }
       } else {
         final TSDataType dataType = chunkHeaderList.get(page.chunkIndex).getDataType();
-        for (int i = 0; i < page.satisfiedLength; i++) {
+        boolean hasPoint = false;
+        for (int i = 0; i < page.timeBatch.length; i++) {
+          if (!isInCurrentTimePartition(page.timeBatch[i])) {
+            continue;
+          }
           writeValueToAlignedChunkWriter(
               writer, page.timeBatch[i], page.valueBatch[i], dataType, page.chunkIndex - 1);
+          hasPoint = true;
         }
-        writer.sealCurrentValuePage(page.chunkIndex - 1);
+        if (hasPoint) {
+          writer.sealCurrentValuePage(page.chunkIndex - 1);
+        }
       }
     }
+  }
+
+  protected boolean isInCurrentTimePartition(final long time) {
+    final long partitionStart = timePartitionSlot.getStartTime();
+    final long partitionEnd = partitionStart + TimePartitionUtils.getTimePartitionInterval() - 1;
+    return time >= partitionStart && (partitionEnd <= partitionStart || time <= partitionEnd);
   }
 
   private void writeValueToAlignedChunkWriter(

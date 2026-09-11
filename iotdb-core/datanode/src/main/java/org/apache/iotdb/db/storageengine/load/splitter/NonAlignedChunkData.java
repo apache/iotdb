@@ -223,10 +223,20 @@ public class NonAlignedChunkData implements ChunkData {
 
     for (PageBuffer page : pageBuffers) {
       if (page.needDecode) {
-        for (int j = 0; j < page.satisfiedLength; j++) {
-          writePointToChunkWriter(chunkWriter, page.timeBatch[j], page.valueBatch[j]);
+        final long partitionStart = timePartitionSlot.getStartTime();
+        final long partitionEnd = getTimePartitionEnd(partitionStart);
+        boolean hasPoint = false;
+        for (int j = 0; j < page.timeBatch.length; j++) {
+          final long time = page.timeBatch[j];
+          if (time < partitionStart || time > partitionEnd) {
+            continue;
+          }
+          writePointToChunkWriter(chunkWriter, time, page.valueBatch[j]);
+          hasPoint = true;
         }
-        chunkWriter.sealCurrentPage();
+        if (hasPoint) {
+          chunkWriter.sealCurrentPage();
+        }
       } else {
         chunkWriter.writePageHeaderAndDataIntoBuff(page.pageData, page.pageHeader);
       }
@@ -249,6 +259,11 @@ public class NonAlignedChunkData implements ChunkData {
 
     // Update global data size
     this.dataSize += chunkData.remaining() + statistics.getSerializedSize();
+  }
+
+  private static long getTimePartitionEnd(final long partitionStart) {
+    final long partitionEnd = partitionStart + TimePartitionUtils.getTimePartitionInterval() - 1;
+    return partitionEnd <= partitionStart ? Long.MAX_VALUE : partitionEnd;
   }
 
   private void writePointToChunkWriter(

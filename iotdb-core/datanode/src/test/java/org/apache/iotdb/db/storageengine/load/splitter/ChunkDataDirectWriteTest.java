@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -119,6 +120,32 @@ public class ChunkDataDirectWriteTest {
     assertEquals(VALUE_COLUMN_MASK, valueChunk.getHeader().getChunkType() & VALUE_COLUMN_MASK);
   }
 
+  @Test
+  public void testNonAlignedChunkSelectsPointsFromCurrentTimePartition() {
+    final long partitionStart = TimePartitionUtils.getTimePartitionInterval();
+    final NonAlignedChunkData chunkData =
+        createNonAlignedChunkData(new TTimePartitionSlot(partitionStart));
+    chunkData.writeDecodePage(new long[] {1L, partitionStart + 1}, new Object[] {1, 2}, 1);
+    chunkData.endChunk();
+
+    final Statistics<?> statistics = chunkData.getChunks().get(0).getChunkStatistic();
+    assertEquals(1, statistics.getCount());
+    assertEquals(partitionStart + 1, statistics.getStartTime());
+  }
+
+  @Test
+  public void testAlignedChunkSelectsPointsFromCurrentTimePartition() throws Exception {
+    final long partitionStart = TimePartitionUtils.getTimePartitionInterval();
+    final AlignedChunkData chunkData =
+        createAlignedTimeChunkData(new TTimePartitionSlot(partitionStart));
+    chunkData.writeDecodePage(new long[] {1L, partitionStart + 1}, new Object[] {null, null}, 1);
+    chunkData.endChunk();
+
+    final Statistics<?> statistics = chunkData.getChunks().get(0).getChunkStatistic();
+    assertEquals(1, statistics.getCount());
+    assertEquals(partitionStart + 1, statistics.getStartTime());
+  }
+
   private static Statistics<?> createInt32Statistics() {
     final Statistics<?> statistics = Statistics.getStatsByType(TSDataType.INT32);
     statistics.update(1L, 1);
@@ -126,9 +153,14 @@ public class ChunkDataDirectWriteTest {
   }
 
   private static NonAlignedChunkData createNonAlignedChunkData() {
+    return createNonAlignedChunkData(new TTimePartitionSlot(0L));
+  }
+
+  private static NonAlignedChunkData createNonAlignedChunkData(
+      final TTimePartitionSlot timePartitionSlot) {
     final IDeviceID device = new StringArrayDeviceID("root", "sg", "d1");
     return (NonAlignedChunkData)
-        ChunkData.createChunkData(false, device, createChunkHeader(), new TTimePartitionSlot(0L));
+        ChunkData.createChunkData(false, device, createChunkHeader(), timePartitionSlot);
   }
 
   private static AlignedChunkData createAlignedChunkData() {
@@ -138,6 +170,11 @@ public class ChunkDataDirectWriteTest {
   }
 
   private static AlignedChunkData createAlignedTimeChunkData() {
+    return createAlignedTimeChunkData(new TTimePartitionSlot(0L));
+  }
+
+  private static AlignedChunkData createAlignedTimeChunkData(
+      final TTimePartitionSlot timePartitionSlot) {
     final IDeviceID device = new StringArrayDeviceID("root", "sg", "d1");
     final ChunkHeader timeHeader =
         new ChunkHeader(
@@ -149,7 +186,7 @@ public class ChunkDataDirectWriteTest {
             2,
             TIME_COLUMN_MASK);
     return (AlignedChunkData)
-        ChunkData.createChunkData(true, device, timeHeader, new TTimePartitionSlot(0L));
+        ChunkData.createChunkData(true, device, timeHeader, timePartitionSlot);
   }
 
   private static ChunkHeader createChunkHeader() {
