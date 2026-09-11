@@ -434,7 +434,7 @@ public class ConfigMTreeTest {
         SchemaUtils.getDataTypeCompatibleEncoding(TSDataType.STRING, TSEncoding.GORILLA);
     Assert.assertNotEquals(TSEncoding.GORILLA, expectedEncoding);
 
-    final TsTable preAlteredTable = root.getUsingTableSchema(database, table.getTableName());
+    final TsTable preAlteredTable = root.getTableSchemaForDesc(database, table.getTableName());
     final FieldColumnSchema preAlteredField =
         (FieldColumnSchema) preAlteredTable.getColumnSchema("measurement");
     Assert.assertEquals(TSDataType.STRING, preAlteredField.getDataType());
@@ -443,7 +443,7 @@ public class ConfigMTreeTest {
     root.commitAlterColumnDataType(
         database, table.getTableName(), "measurement", TSDataType.STRING);
 
-    final TsTable committedTable = root.getUsingTableSchema(database, table.getTableName());
+    final TsTable committedTable = root.getTableSchemaForDesc(database, table.getTableName());
     final FieldColumnSchema committedField =
         (FieldColumnSchema) committedTable.getColumnSchema("measurement");
     Assert.assertEquals(TSDataType.STRING, committedField.getDataType());

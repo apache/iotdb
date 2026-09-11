@@ -578,8 +578,6 @@ public final class DataNodeSchemaMessages {
       "尝试获取信号量以从 ConfigNode 获取表时被中断，已忽略。";
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL = "获取表 {}.{} 信息, {}";
   public static final String UPDATE_TABLE_BY_FETCH = "通过表拉取更新表 {}.{}";
-  public static final String THE_TABLE_IS_IN_PRE_DELETE_STATE =
-      "表 %s.%s 处于预删除的状态，请稍等，如之后重试还是此状态，请输入sql再次删除";
   public static final String COMPARE_TABLE_ADDED = "新增表：";
   public static final String COMPARE_TABLE_REMOVED = "已移除表：";
   public static final String COMPARE_TABLE_NAME = "表名：";

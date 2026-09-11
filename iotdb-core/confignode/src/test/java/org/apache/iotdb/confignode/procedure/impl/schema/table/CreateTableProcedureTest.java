@@ -20,24 +20,63 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
 public class CreateTableProcedureTest {
+  @Test
+  public void testPreDeletedTableIsNotReportedAsAlreadyExisting() throws Exception {
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ClusterSchemaManager schemaManager = Mockito.mock(ClusterSchemaManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getClusterSchemaManager()).thenReturn(schemaManager);
+    final TsTable table = new TsTable("table1");
+    Mockito.when(schemaManager.getTableAndStatusIfExists("database1", "table1"))
+        .thenReturn(Optional.of(new Pair<>(table, TableNodeStatus.PRE_DELETE)));
+
+    final CreateTableProcedure procedure = new CreateTableProcedure("database1", table, false);
+    procedure.checkTableExistence(env);
+
+    Assert.assertTrue(procedure.isFailed());
+    Assert.assertTrue(procedure.getException().getCause() instanceof TableInDeletionException);
+    Assert.assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+        ((IoTDBException) procedure.getException().getCause()).getErrorCode());
+
+    Mockito.when(schemaManager.getTableAndStatusIfExists("database1", "table1"))
+        .thenReturn(Optional.of(new Pair<>(table, TableNodeStatus.USING)));
+    final CreateTableProcedure duplicate = new CreateTableProcedure("database1", table, false);
+    duplicate.checkTableExistence(env);
+    Assert.assertEquals(
+        TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode(),
+        ((IoTDBException) duplicate.getException().getCause()).getErrorCode());
+  }
+
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final TsTable table = new TsTable("table1");

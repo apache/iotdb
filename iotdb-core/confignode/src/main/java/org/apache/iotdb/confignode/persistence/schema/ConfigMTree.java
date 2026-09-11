@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.table.ColumnNotExistsException;
 import org.apache.iotdb.commons.exception.table.TableAlreadyExistsException;
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -684,6 +685,9 @@ public class ConfigMTree {
       tableNode.setTable(table);
       tableNode.setStatus(TableNodeStatus.PRE_CREATE);
     } else if (node instanceof ConfigTableNode) {
+      if (((ConfigTableNode) node).getStatus() == TableNodeStatus.PRE_DELETE) {
+        throw new TableInDeletionException(database.getFullPath(), table.getTableName());
+      }
       throw new TableAlreadyExistsException(
           database.getFullPath().substring(ROOT.length() + 1), table.getTableName());
     } else {
@@ -839,7 +843,7 @@ public class ConfigMTree {
             child ->
                 child instanceof ConfigTableNode
                     && ((ConfigTableNode) child).getStatus().equals(TableNodeStatus.USING))
-        .map(child -> ((ConfigTableNode) child).getTable())
+        .map(child -> getTableSchemaForDataNode((ConfigTableNode) child))
         .collect(Collectors.toList());
   }
 
@@ -869,7 +873,7 @@ public class ConfigMTree {
         TsTable table =
             ((ConfigTableNode) child).getStatus() == TableNodeStatus.PRE_DELETE
                 ? new PreDeleteTsTable(tableName)
-                : ((ConfigTableNode) child).getTable();
+                : getTableSchemaForDataNode((ConfigTableNode) child);
         result.put(tableName, table);
       } else {
         result.put(tableName, null);
@@ -1062,16 +1066,29 @@ public class ConfigMTree {
     }
   }
 
-  public TsTable getUsingTableSchema(final PartialPath database, final String tableName)
+  public TsTable getTableSchemaForDataNode(final PartialPath database, final String tableName)
+      throws MetadataException {
+    return getTableSchemaForDataNode(getTableNode(database, tableName));
+  }
+
+  private TsTable getTableSchemaForDataNode(final ConfigTableNode node) {
+    if (node.getPreDeletedColumns().isEmpty()) {
+      return node.getTable();
+    }
+    // Cache reloads and later schema updates must not make a column writable again while its
+    // deletion is still pending. DESC uses the complete schema separately.
+    final TsTable table = new TsTable(node.getTable());
+    node.getPreDeletedColumns().forEach(table::removeColumnSchema);
+    return table;
+  }
+
+  public TsTable getTableSchemaForDesc(final PartialPath database, final String tableName)
       throws MetadataException {
     final ConfigTableNode node = getTableNode(database, tableName);
-    if (node.getPreDeletedColumns().isEmpty() && node.getPreAlteredColumns().isEmpty()) {
+    if (node.getPreAlteredColumns().isEmpty()) {
       return node.getTable();
     }
     final TsTable newTable = new TsTable(node.getTable());
-    if (!node.getPreDeletedColumns().isEmpty()) {
-      node.getPreDeletedColumns().forEach(newTable::removeColumnSchema);
-    }
     if (!node.getPreAlteredColumns().isEmpty()) {
       node.getPreAlteredColumns()
           .forEach(

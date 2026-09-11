@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 
@@ -29,6 +33,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.Semaphore;
 
 public class DataNodeTableCacheTest {
@@ -115,6 +123,60 @@ public class DataNodeTableCacheTest {
     final Field field = DataNodeTableCache.class.getDeclaredField("fetchTableSemaphore");
     field.setAccessible(true);
     return (Semaphore) field.get(cache);
+  }
+
+  @Test
+  public void preDeletedTableRefreshReportsDeletionAndRecovers() throws Exception {
+    final ITableCache cache = DataNodeTableCache.getInstance();
+    final Method updateDeleteTable =
+        DataNodeTableCache.class.getDeclaredMethod(
+            "updateDeleteTable",
+            Map.class,
+            String.class,
+            String.class,
+            LeaseFencedRetryPolicy.class);
+    updateDeleteTable.setAccessible(true);
+    final String database = "pre_delete_table_test";
+    cache.invalid(database);
+    try {
+      cache.preUpdateTable(database, new PreDeleteTsTable(TABLE_NAME), null);
+      final InvocationTargetException failure =
+          Assert.assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  updateDeleteTable.invoke(
+                      cache,
+                      Collections.singletonMap(
+                          database,
+                          Collections.singletonMap(TABLE_NAME, new PreDeleteTsTable(TABLE_NAME))),
+                      database,
+                      TABLE_NAME,
+                      LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS));
+      Assert.assertTrue(failure.getCause() instanceof SemanticException);
+      Assert.assertEquals(
+          new TableInDeletionException(database, TABLE_NAME).getMessage(),
+          failure.getCause().getCause().getMessage());
+
+      updateDeleteTable.invoke(
+          cache,
+          Collections.singletonMap(
+              database, Collections.singletonMap(TABLE_NAME, createTable(TABLE_NAME))),
+          database,
+          TABLE_NAME,
+          LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+      Assert.assertNotNull(cache.getTableInWrite(database, TABLE_NAME));
+
+      cache.preUpdateTable(database, new PreDeleteTsTable(TABLE_NAME), null);
+      updateDeleteTable.invoke(
+          cache,
+          Collections.singletonMap(database, Collections.singletonMap(TABLE_NAME, null)),
+          database,
+          TABLE_NAME,
+          LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+      Assert.assertNull(cache.getTableInWrite(database, TABLE_NAME));
+    } finally {
+      cache.invalid(database);
+    }
   }
 
   private TsTable createTable(final String tableName) {
