@@ -299,6 +299,7 @@ public class IoTDBObjectQueryIT {
       try {
         session.executeNonQueryStatement(
             "INSERT INTO t1(time, device_id, b1, o1, s1, l1, l2) VALUES(1, 'd1', X'cafebabe01', X'cafebabe01', 'cafebabe01', 0, 100)");
+        fail();
       } catch (StatementExecutionException e) {
         Assert.assertTrue(e.getMessage().contains("data type is not consistent"));
       }
