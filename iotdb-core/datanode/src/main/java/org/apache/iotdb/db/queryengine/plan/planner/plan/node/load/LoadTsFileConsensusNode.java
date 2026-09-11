@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.commons.request.ShardableConsensusRequest;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -36,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
-import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -47,10 +45,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,8 +59,7 @@ import java.util.Objects;
  * Consensus-backed LOAD request carrying Begin / Piece / Seal / Commit phases. Submitted once to
  * the DataRegion write peer (or Ratis leader); replicas apply via the consensus state machine.
  */
-public class LoadTsFileConsensusNode extends SearchNode
-    implements WALEntryValue, ShardableConsensusRequest {
+public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue {
 
   private LoadTsFileConsensusOp op;
   private String loadId;
@@ -73,7 +68,6 @@ public class LoadTsFileConsensusNode extends SearchNode
   private String database;
   private int expectedPieceCount = -1;
   private long pieceIndex = -1;
-  private long pieceOffset = -1;
   private List<PieceRef> pieceRefs = new ArrayList<>();
   private long dataSize;
   private long checksum;
@@ -116,22 +110,15 @@ public class LoadTsFileConsensusNode extends SearchNode
       String loadId,
       String tsFileId,
       long pieceIndex,
-      long pieceOffset,
-      List<TsFileData> tsFileDataList,
-      long checksum) {
+      List<TsFileData> tsFileDataList) {
     final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
     node.op = LoadTsFileConsensusOp.PIECE;
     node.loadId = loadId;
     node.tsFileId = tsFileId;
     node.pieceIndex = pieceIndex;
-    node.pieceOffset = pieceOffset;
     node.tsFileDataList =
         tsFileDataList == null ? new ArrayList<>() : new ArrayList<>(tsFileDataList);
     node.dataSize = node.tsFileDataList.stream().mapToLong(TsFileData::getDataSize).sum();
-    // The checksum is part of the consensus contract and must be preserved exactly as supplied by
-    // the caller. Recomputing it here silently changes the value for callers that use a staged
-    // piece checksum (and made marker/piece validation disagree).
-    node.checksum = checksum;
     return node;
   }
 
@@ -326,10 +313,6 @@ public class LoadTsFileConsensusNode extends SearchNode
     return pieceIndex;
   }
 
-  public long getPieceOffset() {
-    return pieceOffset;
-  }
-
   public String getRelativePath() {
     return pieceRefs.isEmpty() ? null : pieceRefs.get(0).relativePath;
   }
@@ -494,7 +477,6 @@ public class LoadTsFileConsensusNode extends SearchNode
     ReadWriteIOUtils.write(database == null ? "" : database, stream);
     ReadWriteIOUtils.write(expectedPieceCount, stream);
     ReadWriteIOUtils.write(pieceIndex, stream);
-    ReadWriteIOUtils.write(pieceOffset, stream);
     ReadWriteIOUtils.write(dataSize, stream);
     ReadWriteIOUtils.write(checksum, stream);
     ReadWriteIOUtils.write(pieceCount, stream);
@@ -517,7 +499,11 @@ public class LoadTsFileConsensusNode extends SearchNode
       data.serialize(stream);
     }
     ReadWriteIOUtils.write(timePartition2ProgressIndex.size(), stream);
-    for (Map.Entry<TTimePartitionSlot, byte[]> entry : timePartition2ProgressIndex.entrySet()) {
+    final List<Map.Entry<TTimePartitionSlot, byte[]>> sortedProgressIndexes =
+        new ArrayList<>(timePartition2ProgressIndex.entrySet());
+    sortedProgressIndexes.sort(
+        java.util.Comparator.comparingLong(entry -> entry.getKey().getStartTime()));
+    for (Map.Entry<TTimePartitionSlot, byte[]> entry : sortedProgressIndexes) {
       ReadWriteIOUtils.write(entry.getKey().getStartTime(), stream);
       ReadWriteIOUtils.write(entry.getValue().length, stream);
       stream.write(entry.getValue());
@@ -554,7 +540,6 @@ public class LoadTsFileConsensusNode extends SearchNode
     node.database = ReadWriteIOUtils.readString(stream);
     node.expectedPieceCount = ReadWriteIOUtils.readInt(stream);
     node.pieceIndex = ReadWriteIOUtils.readLong(stream);
-    node.pieceOffset = ReadWriteIOUtils.readLong(stream);
     node.dataSize = ReadWriteIOUtils.readLong(stream);
     node.checksum = ReadWriteIOUtils.readLong(stream);
     node.pieceCount = ReadWriteIOUtils.readInt(stream);
@@ -562,6 +547,9 @@ public class LoadTsFileConsensusNode extends SearchNode
     node.isGeneratedByPipe = ReadWriteIOUtils.readBool(stream);
     node.deleteAfterLoad = ReadWriteIOUtils.readBool(stream);
     final int refCount = ReadWriteIOUtils.readInt(stream);
+    if (refCount < 0) {
+      throw new IOException();
+    }
     node.pieceRefs = new ArrayList<>(refCount);
     for (int i = 0; i < refCount; i++) {
       final String refPath = ReadWriteIOUtils.readString(stream);
@@ -570,6 +558,9 @@ public class LoadTsFileConsensusNode extends SearchNode
       byte[] content = null;
       if (readContent) {
         final int contentLength = ReadWriteIOUtils.readInt(stream);
+        if (contentLength < 0) {
+          throw new IOException();
+        }
         if (contentLength > 0) {
           content = new byte[contentLength];
           int offset = 0;
@@ -587,15 +578,24 @@ public class LoadTsFileConsensusNode extends SearchNode
       node.pieceRefs.add(new PieceRef(refPath, refOffset, refSize, content));
     }
     final int dataCount = ReadWriteIOUtils.readInt(stream);
+    if (dataCount < 0) {
+      throw new IOException();
+    }
     node.tsFileDataList = new ArrayList<>(dataCount);
     for (int i = 0; i < dataCount; i++) {
       node.tsFileDataList.add(TsFileData.deserialize(stream));
     }
     final int progressCount = ReadWriteIOUtils.readInt(stream);
+    if (progressCount < 0) {
+      throw new IOException();
+    }
     node.timePartition2ProgressIndex = new HashMap<>(progressCount);
     for (int i = 0; i < progressCount; i++) {
       final long startTime = ReadWriteIOUtils.readLong(stream);
       final int len = ReadWriteIOUtils.readInt(stream);
+      if (len < 0) {
+        throw new IOException();
+      }
       final byte[] bytes = new byte[len];
       int offset = 0;
       while (offset < len) {
@@ -647,38 +647,12 @@ public class LoadTsFileConsensusNode extends SearchNode
     }
   }
 
-  /** Stable, collision-resistant identifier of the logical request this node belongs to. */
-  @Override
-  public long shardGroupId() {
-    return Objects.hash(loadId, tsFileId, pieceIndex);
-  }
-
   private byte[] readPieceContent(PieceRef ref) {
     if (ref.content != null) {
       return ref.content;
     }
-    // PieceRef construction already validated offset/size bounds (non-negative, no overflow,
-    // within int range), so the narrowing cast below is safe.
-    final byte[] content = new byte[(int) ref.size];
-    if (content.length == 0) {
-      return content;
-    }
-    final File file =
-        LoadTsFileManager.findLoadTsFile(ref.relativePath)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        DataNodeQueryMessages
-                                .EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2
-                            + "piece file not found: "
-                            + ref.relativePath));
-    try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
-      raf.seek(ref.offset);
-      raf.readFully(content);
-      return content;
-    } catch (IOException e) {
-      throw new IllegalStateException(e);
-    }
+    throw new IllegalStateException(
+        DataNodeQueryMessages.EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2);
   }
 
   @Override

@@ -75,7 +75,7 @@ import java.util.Set;
  *     |                       DataPartitionRouter -> MemoryBoundedBuffer
  *     |                       -> PieceDispatcher
  *     |                     phase2: BEGIN -> PIECE* -> PREPARE -> COMMIT
- *     |                       or ABORT, via RegionConsensusContext +
+ *     |                       or ABORT, via per-region state +
  *     |                       LoadConsensusSubmitter
  *     |
  *     +--> success -> register pending deletion (the source file is kept
@@ -112,7 +112,7 @@ import java.util.Set;
  *      +-- later pieces:            PIECE(1), PIECE(2), ...
  *      |
  *      v
- * RegionConsensusContext.accumulate(bytes, checksum)
+ * Accumulate per-region piece count and bytes
  *      |
  *      v
  * LoadConsensusSubmitter (submit to the partition write node; bounded retry)
@@ -127,7 +127,7 @@ import java.util.Set;
  *      |---- PIECE(0, chunks) --------------->| append chunks
  *      |---- PIECE(1, chunks) --------------->| append chunks
  *      |---- ...                              |
- *      |---- PREPARE(count, bytes, checksum)->| seal staged TsFile
+ *      |---- PREPARE(count, bytes)----------->| seal staged TsFile
  *      |---- COMMIT ------------------------->| load staged TsFile
  *      |                                      |
  *   on failure:
@@ -178,9 +178,9 @@ import java.util.Set;
  *         dispatcher into the route -&gt; buffer -&gt; dispatch pipeline</td>
  *   </tr>
  *   <tr>
- *     <td>{@link RegionConsensusContext}</td>
+ *     <td>Per-region maps in {@link TwoPhaseConsensusLoadStrategy}</td>
  *     <td>LOAD per-region two-phase state: one context per region with load id, piece count, total
- *         bytes, XOR checksum and BEGIN state</td>
+ *         bytes and BEGIN state</td>
  *   </tr>
  *   <tr>
  *     <td>{@link LoadConsensusSubmitter}</td>

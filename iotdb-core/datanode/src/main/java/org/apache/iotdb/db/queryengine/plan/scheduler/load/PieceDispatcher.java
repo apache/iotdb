@@ -27,10 +27,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
-import org.apache.iotdb.db.storageengine.load.splitter.ChunkEncoder;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
-import org.apache.iotdb.db.storageengine.load.splitter.EncodedChunk;
-import org.apache.iotdb.db.storageengine.load.splitter.EncodedChunkGroup;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -90,8 +87,9 @@ class PieceDispatcher {
 
   private final Map<PartitionKey, Pair<TRegionReplicaSet, LoadTsFilePieceNode>>
       regionId2ReplicaSetAndNode = new HashMap<>();
-  private final Map<PartitionKey, Long> partition2NextPieceIndex = new HashMap<>();
-  private final Map<PartitionKey, Long> partition2NextOffset = new HashMap<>();
+  private final Map<TConsensusGroupId, Long> region2NextPieceIndex = new HashMap<>();
+  private final Map<PartitionKey, ChunkOffsetCalculator> partition2OffsetCalculator =
+      new HashMap<>();
 
   /**
    * Max-heap of (regionId, buffered piece size at offer time) used to dispatch the largest pieces
@@ -114,9 +112,8 @@ class PieceDispatcher {
   void offerChunk(ChunkData chunkData, TRegionReplicaSet replicaSet)
       throws LoadFileException, IOException {
     final TConsensusGroupId regionId = replicaSet.getRegionId();
-    final EncodedChunkGroup encodedChunkGroup = ChunkEncoder.encode(chunkData);
     final PartitionKey key =
-        new PartitionKey(regionId, encodedChunkGroup.getTimePartitionSlot().getStartTime());
+        new PartitionKey(regionId, chunkData.getTimePartitionSlot().getStartTime());
     if (regionId2ReplicaSetAndNode.containsKey(key)
         && !Objects.equals(regionId2ReplicaSetAndNode.get(key).getLeft(), replicaSet)) {
       // Detected region replica set changed (maybe due to region migration), throw an exception
@@ -124,22 +121,15 @@ class PieceDispatcher {
           regionId2ReplicaSetAndNode.get(key).getLeft(), replicaSet);
     }
 
-    long nextOffset = partition2NextOffset.getOrDefault(key, 0L);
-    for (EncodedChunk encodedChunk : encodedChunkGroup.getChunks()) {
-      encodedChunk.setOffset(nextOffset);
-      nextOffset += encodedChunk.getBytes().length;
-    }
-    partition2NextOffset.put(key, nextOffset);
-    final long memoryDelta = encodedChunkGroup.getDataSize() - chunkData.getDataSize();
-    if (memoryDelta > 0) {
-      memoryBuffer.add(memoryDelta);
-    } else if (memoryDelta < 0) {
-      memoryBuffer.release(-memoryDelta);
-    }
+    ChunkOffsetCalculator calculator =
+        partition2OffsetCalculator.computeIfAbsent(key, ignored -> new ChunkOffsetCalculator());
+
+    calculator.assign(chunkData);
+
     regionId2ReplicaSetAndNode
         .computeIfAbsent(key, o -> new Pair<>(replicaSet, newPieceNode(key)))
         .getRight()
-        .addTsFileData(encodedChunkGroup);
+        .addTsFileData(chunkData);
     offerPieceRegion(key);
   }
 
@@ -220,8 +210,10 @@ class PieceDispatcher {
   }
 
   private LoadTsFilePieceNode newPieceNode(PartitionKey key) {
-    final long pieceIndex = partition2NextPieceIndex.getOrDefault(key, 0L);
-    partition2NextPieceIndex.put(key, pieceIndex + 1);
+    // pieceIndex is a consensus request identity, not a physical file offset. It must be unique
+    // across every time partition routed to the same Region/loadId.
+    final long pieceIndex = region2NextPieceIndex.getOrDefault(key.regionId(), 0L);
+    region2NextPieceIndex.put(key.regionId(), pieceIndex + 1);
     return new LoadTsFilePieceNode(
         singleTsFileNode.getPlanNodeId(),
         singleTsFileNode.getTsFileResource().getTsFile(),
@@ -254,8 +246,8 @@ class PieceDispatcher {
 
   void clear() {
     regionId2ReplicaSetAndNode.clear();
-    partition2NextPieceIndex.clear();
-    partition2NextOffset.clear();
+    region2NextPieceIndex.clear();
+    partition2OffsetCalculator.clear();
     largestPieceRegions.clear();
   }
 }

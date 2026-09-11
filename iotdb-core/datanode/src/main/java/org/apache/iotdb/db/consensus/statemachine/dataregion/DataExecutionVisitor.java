@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -34,6 +37,7 @@ import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -51,10 +55,13 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.exception.write.PageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
 
 public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
@@ -63,6 +70,46 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   @Override
   public TSStatus visitPlan(PlanNode node, DataRegion context) {
     return null;
+  }
+
+  @Override
+  public TSStatus visitLoadTsFileConsensus(
+      final LoadTsFileConsensusNode node, final DataRegion dataRegion) {
+    switch (node.getOp()) {
+      case BEGIN:
+        return StatusUtils.OK;
+      case PREPARE:
+        return StatusUtils.OK;
+      case PIECE:
+        try {
+          dataRegion.writeLoadTsFilePiece(node.getLoadId(), node.getTsFileDataList());
+          return StatusUtils.OK;
+        } catch (final IOException | PageException e) {
+          LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
+          return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage());
+        }
+      case ABORT:
+        dataRegion.rollbackLoadTsFile(node.getLoadId());
+        return StatusUtils.OK;
+      case COMMIT:
+        try {
+          final Map<TTimePartitionSlot, ProgressIndex> progressIndexes = new HashMap<>();
+          node.getTimePartition2ProgressIndex()
+              .forEach(
+                  (slot, bytes) ->
+                      progressIndexes.put(
+                          slot, ProgressIndexType.deserializeFrom(ByteBuffer.wrap(bytes))));
+          return dataRegion.commitLoadTsFile(
+                  node.getLoadId(), node.isGeneratedByPipe(), progressIndexes)
+              ? StatusUtils.OK
+              : RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
+        } catch (final Exception e) {
+          LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
+          return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage());
+        }
+      default:
+        return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
+    }
   }
 
   public TSStatus visitRelationalInsertRow(RelationalInsertRowNode node, DataRegion context) {

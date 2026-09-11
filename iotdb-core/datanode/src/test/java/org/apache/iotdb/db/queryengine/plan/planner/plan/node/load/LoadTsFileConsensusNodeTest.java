@@ -62,21 +62,6 @@ public class LoadTsFileConsensusNodeTest {
   }
 
   @Test
-  public void testPiecePreservesCallerChecksum() {
-    final LoadTsFileConsensusNode piece =
-        LoadTsFileConsensusNode.piece(
-            new PlanNodeId("checksum"),
-            "load",
-            "file",
-            0L,
-            0L,
-            Collections.emptyList(),
-            987654321L);
-
-    Assert.assertEquals(987654321L, piece.getChecksum());
-  }
-
-  @Test
   public void testPieceRefSerializeRoundTrip() {
     final LoadTsFileConsensusNode.PieceRef ref =
         new LoadTsFileConsensusNode.PieceRef(

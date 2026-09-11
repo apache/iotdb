@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -118,7 +119,11 @@ public class TsFileSplitConsumer implements TsFileSplitter.TsFileDataConsumer {
 
     final List<TRegionReplicaSet> replicaSets = router.route(nonDirectionalChunkData);
     for (int i = 0, size = nonDirectionalChunkData.size(); i < size; i++) {
-      dispatcher.offerChunk(nonDirectionalChunkData.get(i), replicaSets.get(i));
+      try {
+        dispatcher.offerChunk(nonDirectionalChunkData.get(i), replicaSets.get(i));
+      } catch (final IOException e) {
+        throw new LoadFileException(e);
+      }
     }
     nonDirectionalChunkData.clear();
   }
