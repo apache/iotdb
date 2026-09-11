@@ -40,6 +40,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -196,6 +197,13 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
         expected,
         method.invoke(
             source, createClosedTsFileResource(tempDir, fileName, resourceProgressIndex)));
+  }
+
+  private static TsFileResource createTsFileResource(final File tempDir, final String fileName)
+      throws IOException {
+    final File file = new File(tempDir, fileName);
+    Assert.assertTrue(file.createNewFile());
+    return new TsFileResource(file);
   }
 
   private static TsFileResource createClosedTsFileResource(
