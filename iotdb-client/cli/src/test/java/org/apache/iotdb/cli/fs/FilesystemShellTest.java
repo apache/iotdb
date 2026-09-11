@@ -298,6 +298,21 @@ public class FilesystemShellTest {
   }
 
   @Test
+  public void executeMetaPrintsMetadataRows() throws SQLException {
+    when(provider.describe(FsPath.absolute("/db1/table1.csv")))
+        .thenReturn(
+            new FsNode(
+                "table1.csv", FsPath.absolute("/db1/table1.csv"), FsNodeType.TABLE_DATA_FILE));
+    when(provider.meta(FsPath.absolute("/db1/table1.csv")))
+        .thenReturn(Arrays.asList(SqlRow.of("TableName", "table1", "Status", "USING")));
+
+    assertTrue(shell.execute("meta /db1/table1.csv"));
+
+    assertEquals("table1\tUSING" + System.lineSeparator(), out.toString());
+    verify(provider).meta(FsPath.absolute("/db1/table1.csv"));
+  }
+
+  @Test
   public void executeLsUnknownPathPrintsNoSuchFile() throws SQLException {
     when(provider.describe(FsPath.absolute("/db1/table1")))
         .thenReturn(new FsNode("table1", FsPath.absolute("/db1/table1"), FsNodeType.UNKNOWN));

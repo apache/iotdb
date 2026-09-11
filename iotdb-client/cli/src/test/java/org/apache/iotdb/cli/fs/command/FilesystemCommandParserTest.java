@@ -96,6 +96,14 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseMetaCommandUsesTablePath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("meta /db1/table1.csv");
+
+    assertEquals(FilesystemCommand.Type.META, command.getType());
+    assertEquals("/db1/table1.csv", command.getPath());
+  }
+
+  @Test
   public void parseCatSidecarPath() {
     FilesystemCommand command = FilesystemCommandParser.parse("cat /db1/table1.csv");
 
