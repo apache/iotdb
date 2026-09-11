@@ -230,14 +230,23 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
           continue;
         }
 
-        TypeServices.StorageEngine.ARRAY_VALUE_COLUMN_WRITER_SERVICE
-            .call(Type.fromTsDataType(tsDataTypeList.get(columnIndex)))
-            .write(
-                valueBuilder,
-                alignedTVList.values.get(validColumnIndex).get(valueIndex / ARRAY_SIZE),
-                valueIndex % ARRAY_SIZE,
-                floatPrecision,
-                encodingList == null ? null : encodingList.get(columnIndex));
+        TSDataType sourceDataType = alignedTVList.dataTypes.get(validColumnIndex);
+        TSDataType targetDataType = tsDataTypeList.get(columnIndex);
+        if (sourceDataType == targetDataType) {
+          TypeServices.StorageEngine.ARRAY_VALUE_COLUMN_WRITER_SERVICE
+              .call(Type.fromTsDataType(targetDataType))
+              .write(
+                  valueBuilder,
+                  alignedTVList.values.get(validColumnIndex).get(valueIndex / ARRAY_SIZE),
+                  valueIndex % ARRAY_SIZE,
+                  floatPrecision,
+                  encodingList == null ? null : encodingList.get(columnIndex));
+        } else {
+          TsPrimitiveType value =
+              alignedTVListIterator.getPrimitiveTypeObject(
+                  currentRowIndex(columnIndex), columnIndex);
+          Type.fromTsDataType(targetDataType).write(valueBuilder, value);
+        }
       }
       next();
 

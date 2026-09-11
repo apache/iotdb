@@ -2581,12 +2581,33 @@ public abstract class AlignedTVList extends TVList {
         TypeServices.ArrayValueColumnWriter valueWriter) {
       int arrayIndex = originRowIndex / ARRAY_SIZE;
       int elementIndex = originRowIndex % ARRAY_SIZE;
-      valueWriter.write(
-          valueBuilder,
-          values.get(validColumnIndex).get(arrayIndex),
-          elementIndex,
-          floatPrecision,
-          encodingList == null ? null : encodingList.get(columnIndex));
+      TSDataType sourceDataType = dataTypes.get(validColumnIndex);
+      TSDataType targetDataType = dataTypeList.get(columnIndex);
+      TSEncoding encoding = encodingList == null ? null : encodingList.get(columnIndex);
+      if (sourceDataType == targetDataType) {
+        valueWriter.write(
+            valueBuilder,
+            values.get(validColumnIndex).get(arrayIndex),
+            elementIndex,
+            floatPrecision,
+            encoding);
+        return;
+      }
+
+      Type resultType =
+          targetDataType == TSDataType.DATE
+              ? Type.fromTsDataType(targetDataType)
+              : getPhysicalType(targetDataType);
+      TsPrimitiveType value =
+          getPrimitiveTypeByValueIndex(
+              originRowIndex,
+              validColumnIndex,
+              resultType,
+              sourceDataType,
+              targetDataType,
+              floatPrecision,
+              encoding);
+      Type.fromTsDataType(targetDataType).write(valueBuilder, value);
     }
 
     private TsBlock reBuildTsBlock(

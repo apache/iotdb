@@ -174,7 +174,11 @@ public class FirstAccumulator implements TableAccumulator {
       return;
     }
     Object value = statistics[0].getFirstValue();
-    if (statistics[0] instanceof DateStatistics) {
+    if (statistics[0] instanceof DateStatistics
+        && (seriesDataType == TSDataType.TEXT
+            || seriesDataType == TSDataType.STRING
+            || seriesDataType == TSDataType.BLOB
+            || seriesDataType == TSDataType.OBJECT)) {
       value = new Binary(TSDataType.getDateStringValue((Integer) value), StandardCharsets.UTF_8);
     }
     if (checkAndUpdateFirstTime(statistics[0].getStartTime())) {

@@ -232,7 +232,11 @@ public class LastAccumulator implements TableAccumulator, TypeServices.LastValue
     }
 
     Object value = statistics[0].getLastValue();
-    if (statistics[0] instanceof DateStatistics) {
+    if (statistics[0] instanceof DateStatistics
+        && (seriesDataType == TSDataType.TEXT
+            || seriesDataType == TSDataType.STRING
+            || seriesDataType == TSDataType.BLOB
+            || seriesDataType == TSDataType.OBJECT)) {
       value = new Binary(TSDataType.getDateStringValue((Integer) value), StandardCharsets.UTF_8);
     }
     if (checkAndUpdateLastTime(statistics[0].getEndTime())) {
