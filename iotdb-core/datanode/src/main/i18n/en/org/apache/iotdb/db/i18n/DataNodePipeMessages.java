@@ -2643,4 +2643,15 @@ public final class DataNodePipeMessages {
       "Interrupted while reading OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
   public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
       "Failed to read OPC UA server operation limits, use defaults: maxNodesPerWrite={}, maxNodesPerNodeManagement={}";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EVENT_POLICY_ARG_BF42E405 =
+      "Unsupported logical backup event policy: %s";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_RESUME_POLICY_ARG_583FCCF9 =
+      "Unsupported logical backup resume policy: %s";
+  public static final String EXCEPTION_UNSUPPORTED_PIPE_EVENT_FOR_LOGICAL_BACKUP_ARG_521AEE97 =
+      "Unsupported Pipe event for logical backup: %s";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_ID_MUST_RESOLVE_BELOW_THE_CONFIGURED_BACKUP_DIRECTORY_ARG_25BE4B22 =
+          "Logical backup ID must resolve below the configured backup directory: %s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_DIRECTORY_MUST_NOT_BE_EMPTY_99DB3EDB =
+      "Logical backup directory must not be empty";
 }

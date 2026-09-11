@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTD
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSslSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSyncSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.logicalbackup.LogicalBackupSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.opcda.OpcDaSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.opcua.OpcUaSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.websocket.WebSocketSink;
@@ -95,6 +96,7 @@ public enum BuiltinPipePlugin {
   OPC_UA_CONNECTOR("opc-ua-connector", OpcUaSink.class),
   OPC_DA_CONNECTOR("opc-da-connector", OpcDaSink.class),
   WRITE_BACK_CONNECTOR("write-back-connector", WriteBackSink.class),
+  LOGICAL_BACKUP_CONNECTOR("logical-backup-connector", LogicalBackupSink.class),
 
   DO_NOTHING_SINK("do-nothing-sink", DoNothingSink.class),
   IOTDB_THRIFT_SINK("iotdb-thrift-sink", IoTDBThriftSink.class),
@@ -107,6 +109,7 @@ public enum BuiltinPipePlugin {
   OPC_UA_SINK("opc-ua-sink", OpcUaSink.class),
   OPC_DA_SINK("opc-da-sink", OpcDaSink.class),
   WRITE_BACK_SINK("write-back-sink", WriteBackSink.class),
+  LOGICAL_BACKUP_SINK("logical-backup-sink", LogicalBackupSink.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingSink.class),
   IOT_CONSENSUS_V2_ASYNC_SINK("iot-consensus-v2-async-sink", IoTConsensusV2AsyncSink.class),
   // Legacy alias for stale PipeMeta written before the PipeConsensus -> IoTConsensusV2 rename.
@@ -178,6 +181,7 @@ public enum BuiltinPipePlugin {
                   OPC_UA_CONNECTOR.getPipePluginName().toUpperCase(),
                   OPC_DA_CONNECTOR.getPipePluginName().toUpperCase(),
                   WRITE_BACK_CONNECTOR.getPipePluginName().toUpperCase(),
+                  LOGICAL_BACKUP_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOT_CONSENSUS_V2_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
                   // Sinks
