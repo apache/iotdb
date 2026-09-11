@@ -457,8 +457,8 @@ Table-mode read behavior is currently:
 
 `schema` and `meta` also accept `/db/table.csv`. Table mode does not expose `/db/table` as a
 directory or `/db/table/column` as a file. Bare table paths can be used as `schema` and `meta`
-arguments but must not trigger data reads. The removed `.schema` and `.meta` sidecar paths are
-not readable filesystem objects.
+arguments but must not trigger data reads. The removed `.schema` sidecar path is not a readable
+filesystem object; `.meta` remains a readable metadata sidecar.
 
 `paste` remains Unix-like: users pass multiple regular file paths and the shell joins
 corresponding lines with tabs. It must not become a database-specific `select` command or
@@ -497,7 +497,7 @@ Append writes are allowed only when all of these conditions hold:
 - Target path is exactly a table data file of the form `/<database>/<table>.csv`.
 - Command is `tee -a`; `tee` without `-a` is rejected.
 
-Schema and metadata are read-only command results, not writable filesystem objects:
+Schema and metadata are read-only views, not writable filesystem objects:
 
 - `tee -a /db/table.schema` is rejected.
 - `tee -a /db/table.meta` is rejected.
@@ -606,7 +606,7 @@ Filesystem mode separates reads from mutations. The schema provider owns read op
 - `read(FsPath path)`
 - `schema(FsPath path)` for table or timeseries schema rows
 - `meta(FsPath path)` for object metadata rows
-- `readLines(FsPath path)` for `.csv` data files
+- `readLines(FsPath path)` for `.csv` data files and the `.meta` compatibility sidecar
 - `tail(FsPath path)` / `tailLines(FsPath path)` where the provider supports tail
 - `count(FsPath path)` where the provider supports logical count
 - `read(List<FsPath> paths)` remains available for providers that need optimized multi-path reads,
@@ -632,10 +632,10 @@ The current table-model write boundary is intentionally narrow:
 - `mv /db/t1.csv /db/t2.csv` renames a table within the same database.
 - `tee -a /db/table.csv` appends CSV records as table rows.
 
-The removed schema and metadata sidecar paths are not writable objects:
+Schema commands and metadata sidecars are not writable objects:
 
-- `rm /db/table.schema` and `rm /db/table.meta` are forbidden.
-- `mv /db/table.schema ...` and `mv /db/table.meta ...` are forbidden.
+- `rm /db/table.schema` (removed) and `rm /db/table.meta` are forbidden.
+- `mv /db/table.schema ...` (removed) and `mv /db/table.meta ...` are forbidden.
 - `rm /db` is forbidden; database deletion must remain an explicit SQL operation or a separately
   designed filesystem command with stronger safeguards.
 - Cross-database table rename, such as `mv /db1/t.csv /db2/t.csv`, is forbidden.
@@ -698,7 +698,8 @@ Unit tests should cover the behavior without needing a live IoTDB instance where
 - Provider tests with a mocked `SqlExecutor`, verifying tree-mode path-to-SQL mapping.
 - Provider tests with a mocked `SqlExecutor`, verifying table-mode path-to-SQL mapping, CSV data
   files, IoTDB-preserved `schema`/`meta` result columns, table references accepted by those commands,
-  rejection of sidecar and column paths, and table mutation restrictions.
+  rejection of the removed `.schema` sidecar and column paths, `.meta` compatibility behavior, and
+  table mutation restrictions.
 - CLI option tests extending existing CLI unit coverage for default `access_mode`, filesystem
   mode, invalid mode values, and `fs_write_mode`.
 - Shell tests proving SQL mode remains the default and filesystem mode dispatches to
