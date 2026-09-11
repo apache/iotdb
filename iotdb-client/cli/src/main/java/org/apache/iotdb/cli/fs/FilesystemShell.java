@@ -60,7 +60,7 @@ public class FilesystemShell {
   private static final int DEFAULT_READ_LIMIT = 20;
   private static final List<String> COMMANDS =
       Arrays.asList(
-          "pwd", "ls", "ll", "cd", "stat", "schema", "cat", "head", "tail", "wc", "grep", "find",
+          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "cat", "head", "tail", "wc", "grep", "find",
           "less", "more", "file", "du", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join",
           "tree", "help", "exit", "quit", "tee");
 
@@ -109,6 +109,13 @@ public class FilesystemShell {
         FsNode node = provider.describe(resolve(command.getPath()));
         if (checkExists("stat", node)) {
           printNode(node);
+        }
+        return true;
+      case META:
+        FsPath metadataPath = resolve(command.getPath());
+        FsNode metadataNode = provider.describe(metadataPath);
+        if (checkExists("meta", metadataNode)) {
+          printRows(provider.meta(metadataPath));
         }
         return true;
       case SCHEMA:

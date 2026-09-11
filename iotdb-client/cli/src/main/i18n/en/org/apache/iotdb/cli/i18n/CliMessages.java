@@ -127,6 +127,10 @@ public final class CliMessages {
   // Filesystem command help
   public static final String MESSAGE_USAGE_ARG_RESULT_ARG_DEFAULT_ARG_EXAMPLES_ARG_05BEA07B = "Usage: %s\nResult: %s\nDefault: %s\nExamples:\n  %s";
   public static final String MESSAGE_FILESYSTEM_COMMANDS_USE_HELP_COMMAND_FOR_DETAILS_38FE89C6 = "Filesystem commands (use help <command> for details):";
+  public static final String MESSAGE_META_PATH_USAGE = "meta [path]";
+  public static final String MESSAGE_META_PATH_RESULT = "Print object metadata rows for a table or timeseries path.";
+  public static final String MESSAGE_META_PATH_DEFAULT = "Current directory; table paths may use /database/table or /database/table.csv.";
+  public static final String MESSAGE_META_PATH_EXAMPLE = "meta /db1/table1.csv";
   public static final String MESSAGE_SCHEMA_PATH_USAGE = "schema [path]";
   public static final String MESSAGE_SCHEMA_PATH_RESULT = "Print schema rows for a table or timeseries path.";
   public static final String MESSAGE_SCHEMA_PATH_DEFAULT = "Current directory; table paths may use /database/table or /database/table.csv.";

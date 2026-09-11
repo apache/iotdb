@@ -123,6 +123,10 @@ public final class CliMessages {
   // Filesystem command help
   public static final String MESSAGE_USAGE_ARG_RESULT_ARG_DEFAULT_ARG_EXAMPLES_ARG_05BEA07B = "用法：%s\n结果：%s\n默认：%s\n示例：\n  %s";
   public static final String MESSAGE_FILESYSTEM_COMMANDS_USE_HELP_COMMAND_FOR_DETAILS_38FE89C6 = "文件系统命令（使用 help <command> 查看详情）：";
+  public static final String MESSAGE_META_PATH_USAGE = "meta [path]";
+  public static final String MESSAGE_META_PATH_RESULT = "输出表或时间序列路径的对象元数据。";
+  public static final String MESSAGE_META_PATH_DEFAULT = "默认使用当前目录；表路径可使用 /database/table 或 /database/table.csv。";
+  public static final String MESSAGE_META_PATH_EXAMPLE = "meta /db1/table1.csv";
   public static final String MESSAGE_SCHEMA_PATH_USAGE = "schema [path]";
   public static final String MESSAGE_SCHEMA_PATH_RESULT = "输出表或时间序列路径的模式信息。";
   public static final String MESSAGE_SCHEMA_PATH_DEFAULT = "默认使用当前目录；表路径可使用 /database/table 或 /database/table.csv。";

@@ -37,6 +37,11 @@ public interface FilesystemSchemaProvider {
     throw new SQLException("Schema is not supported for path: " + path);
   }
 
+  /** Return file/object metadata rows for a path. */
+  default List<SqlRow> meta(FsPath path) throws SQLException {
+    throw new SQLException("Metadata is not supported for path: " + path);
+  }
+
   List<SqlRow> read(FsPath path, int limit) throws SQLException;
 
   default List<String> readLines(FsPath path, int limit) throws SQLException {

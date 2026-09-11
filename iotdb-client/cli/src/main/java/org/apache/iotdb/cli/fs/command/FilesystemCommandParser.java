@@ -131,6 +131,7 @@ public class FilesystemCommandParser {
         args.paths(0, 0);
         return FilesystemCommand.simple(type);
       case SCHEMA:
+      case META:
         return FilesystemCommand.path(type, args.path(false));
       case LS:
       case LL:

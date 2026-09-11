@@ -112,6 +112,24 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   }
 
   @Override
+  public List<SqlRow> meta(FsPath path) throws SQLException {
+    TableFileRef file = parseTableFile(path);
+    if (file.kind == TableFileKind.UNKNOWN && path.getSegments().size() == 2) {
+      file = new TableFileRef(path.getSegments().get(0), path.getSegments().get(1), TableFileKind.DATA_CSV);
+    }
+    if (file.kind == TableFileKind.UNKNOWN || !tableExists(parent(path), file.table)) {
+      throw new SQLException("Path does not exist: " + path);
+    }
+    List<SqlRow> result = new ArrayList<>();
+    for (SqlRow row : executor.query("SHOW TABLES DETAILS FROM " + TableFilesystemSql.identifier(file.database))) {
+      if (file.table.equals(row.get("TableName"))) {
+        result.add(row);
+      }
+    }
+    return result;
+  }
+
+  @Override
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
     int depth = path.getSegments().size();
     TableFileRef file = parseTableFile(path);
