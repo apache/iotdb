@@ -68,6 +68,13 @@ public final class FilesystemCommandHelp {
             CliMessages.MESSAGE_CURRENT_DIRECTORY_4B3788F6,
             CliMessages.MESSAGE_STAT_DB1_TABLE1_CSV_411B4588));
     COMMANDS.put(
+        "schema",
+        new Entry(
+            CliMessages.MESSAGE_SCHEMA_PATH_USAGE,
+            CliMessages.MESSAGE_SCHEMA_PATH_RESULT,
+            CliMessages.MESSAGE_SCHEMA_PATH_DEFAULT,
+            CliMessages.MESSAGE_SCHEMA_PATH_EXAMPLE));
+    COMMANDS.put(
         "cat",
         new Entry(
             CliMessages.MESSAGE_CAT_PATH_C889DFB2,

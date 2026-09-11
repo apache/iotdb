@@ -30,7 +30,6 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
   private static final String INVALID_WRITE_OPERATION =
       "Invalid filesystem write operation for this path";
   private static final String CSV_SUFFIX = ".csv";
-  private static final String SCHEMA_SUFFIX = ".schema";
 
   private final SqlExecutor executor;
 
@@ -81,14 +80,7 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
 
   @Override
   public void copy(FsPath source, FsPath target) throws SQLException {
-    if (!isSchemaFile(source) || !isSchemaFile(target)) {
-      throw invalidOperation();
-    }
-    executor.execute(
-        "CREATE TABLE "
-            + toTablePath(target, SCHEMA_SUFFIX)
-            + " LIKE "
-            + toTablePath(source, SCHEMA_SUFFIX));
+    throw invalidOperation();
   }
 
   @Override
@@ -125,10 +117,6 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
     return TableFilesystemSql.tablePath(databaseName(path), tableName(path));
   }
 
-  private static String toTablePath(FsPath path, String suffix) {
-    return TableFilesystemSql.tablePath(databaseName(path), tableName(path, suffix));
-  }
-
   private static String databaseName(FsPath path) {
     return path.getSegments().get(0);
   }
@@ -137,18 +125,9 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
     return path.getSegments().size() == 2 && path.getFileName().endsWith(CSV_SUFFIX);
   }
 
-  private static boolean isSchemaFile(FsPath path) {
-    return path.getSegments().size() == 2 && path.getFileName().endsWith(SCHEMA_SUFFIX);
-  }
-
   private static String tableName(FsPath path) {
     String fileName = path.getFileName();
     return fileName.substring(0, fileName.length() - CSV_SUFFIX.length());
-  }
-
-  private static String tableName(FsPath path, String suffix) {
-    String fileName = path.getFileName();
-    return fileName.substring(0, fileName.length() - suffix.length());
   }
 
   private static FsPath parent(FsPath path) {

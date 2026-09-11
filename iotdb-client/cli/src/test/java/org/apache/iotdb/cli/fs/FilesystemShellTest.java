@@ -271,6 +271,33 @@ public class FilesystemShellTest {
   }
 
   @Test
+  public void executeSchemaQueriesTablePath() throws SQLException {
+    when(provider.schema(FsPath.absolute("/db1/table1")))
+        .thenReturn(
+            Arrays.asList(
+                SqlRow.of("ColumnName", "tag1", "DataType", "STRING"),
+                SqlRow.of("ColumnName", "value", "DataType", "DOUBLE")));
+
+    assertTrue(shell.execute("schema /db1/table1"));
+
+    assertEquals(
+        "tag1\tSTRING" + System.lineSeparator() + "value\tDOUBLE" + System.lineSeparator(),
+        out.toString());
+    verify(provider).schema(FsPath.absolute("/db1/table1"));
+  }
+
+  @Test
+  public void executeSchemaReportsProviderFailure() throws SQLException {
+    when(provider.schema(FsPath.absolute("/db1/table1")))
+        .thenThrow(new SQLException("table does not exist"));
+
+    assertEquals(FilesystemShell.RUNTIME_ERROR, shell.runNonInteractive("schema /db1/table1"));
+
+    assertTrue(err.toString().contains("table does not exist"));
+    assertEquals("", out.toString());
+  }
+
+  @Test
   public void executeLsUnknownPathPrintsNoSuchFile() throws SQLException {
     when(provider.describe(FsPath.absolute("/db1/table1")))
         .thenReturn(new FsNode("table1", FsPath.absolute("/db1/table1"), FsNodeType.UNKNOWN));
@@ -327,12 +354,12 @@ public class FilesystemShellTest {
 
     assertTrue(shell.execute("rmdir /db1"));
     assertTrue(shell.execute("rm -r /db2"));
-    assertTrue(shell.execute("cp /db1/table1.schema /db1/table2.schema"));
+    assertTrue(shell.execute("cp /db1/table1.csv /db1/table2.csv"));
 
     verify(mutationProvider).rmdir(FsPath.absolute("/db1"));
     verify(mutationProvider).removeRecursive(FsPath.absolute("/db2"));
     verify(mutationProvider)
-        .copy(FsPath.absolute("/db1/table1.schema"), FsPath.absolute("/db1/table2.schema"));
+        .copy(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv"));
   }
 
   @Test
@@ -453,18 +480,6 @@ public class FilesystemShellTest {
   }
 
   @Test
-  public void executeCatReadsSchemaFileLines() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.schema"), 20))
-        .thenReturn(Arrays.asList("ColumnName,DataType", "key,STRING"));
-
-    assertTrue(shell.execute("cat /db1/table1.schema"));
-
-    assertTrue(out.toString().contains("ColumnName,DataType"));
-    assertTrue(out.toString().contains("key,STRING"));
-    verify(provider).readLines(FsPath.absolute("/db1/table1.schema"), 20);
-  }
-
-  @Test
   public void executeCatPrintsCsvFileLines() throws SQLException {
     when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
         .thenReturn(Arrays.asList("Time,tag1,s1", "1,a,42"));
@@ -500,17 +515,6 @@ public class FilesystemShellTest {
   }
 
   @Test
-  public void executeHeadReadsSchemaFileLinesWithLimit() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.schema"), 5))
-        .thenReturn(Arrays.asList("ColumnName,DataType", "key,STRING"));
-
-    assertTrue(shell.execute("head -n 5 /db1/table1.schema"));
-
-    assertTrue(out.toString().contains("ColumnName,DataType"));
-    verify(provider).readLines(FsPath.absolute("/db1/table1.schema"), 5);
-  }
-
-  @Test
   public void executeHeadReadsCsvFileLinesWithLimit() throws SQLException {
     when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 5))
         .thenReturn(Arrays.asList("Time,tag1,s1", "1,a,42"));
@@ -520,17 +524,6 @@ public class FilesystemShellTest {
     assertTrue(out.toString().contains("Time,tag1,s1"));
     assertTrue(out.toString().contains("1,a,42"));
     verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 5);
-  }
-
-  @Test
-  public void executeTailReadsSchemaFileLinesWithLimit() throws SQLException {
-    when(provider.tailLines(FsPath.absolute("/db1/table1.schema"), 3))
-        .thenReturn(Arrays.asList("key,STRING", "value,DOUBLE"));
-
-    assertTrue(shell.execute("tail -n 3 /db1/table1.schema"));
-
-    assertTrue(out.toString().contains("value,DOUBLE"));
-    verify(provider).tailLines(FsPath.absolute("/db1/table1.schema"), 3);
   }
 
   @Test

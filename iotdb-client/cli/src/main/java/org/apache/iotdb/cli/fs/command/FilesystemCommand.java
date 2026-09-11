@@ -30,6 +30,7 @@ public class FilesystemCommand {
     LL,
     CD,
     STAT,
+    SCHEMA,
     CAT,
     HEAD,
     TAIL,

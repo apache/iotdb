@@ -41,13 +41,11 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
 
   private enum TableFileKind {
     DATA_CSV,
-    SCHEMA,
     META,
     UNKNOWN
   }
 
   private static final String CSV_SUFFIX = ".csv";
-  private static final String SCHEMA_SUFFIX = ".schema";
   private static final String META_SUFFIX = ".meta";
   private static final CSVFormat CSV_FORMAT =
       CSVFormat.DEFAULT.builder().setRecordSeparator("").build();
@@ -95,6 +93,25 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   }
 
   @Override
+  public List<SqlRow> schema(FsPath path) throws SQLException {
+    TableFileRef file = parseTableFile(path);
+    if (file.kind == TableFileKind.UNKNOWN) {
+      // Accept a bare /database/table path as a convenience for schema queries.
+      if (path.getSegments().size() == 2) {
+        file =
+            new TableFileRef(
+                path.getSegments().get(0), path.getSegments().get(1), TableFileKind.DATA_CSV);
+      } else {
+        throw new SQLException("Path is not a table: " + path);
+      }
+    }
+    if (!tableExists(parent(path), file.table)) {
+      throw new SQLException("Path does not exist: " + path);
+    }
+    return executor.query("DESC " + file.toTablePath() + " DETAILS");
+  }
+
+  @Override
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
     int depth = path.getSegments().size();
     TableFileRef file = parseTableFile(path);
@@ -113,10 +130,6 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       return head(
           rowsToCsvLines(executor.query("SELECT * FROM " + file.toTablePath() + " LIMIT " + limit)),
           limit);
-    }
-    if (file.kind == TableFileKind.SCHEMA) {
-      ensureExists(path, file);
-      return head(rowsToCsvLines(executor.query("DESC " + file.toTablePath() + " DETAILS")), limit);
     }
     if (file.kind == TableFileKind.META) {
       ensureExists(path, file);
@@ -145,7 +158,7 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   @Override
   public List<String> tailLines(FsPath path, int limit) throws SQLException {
     TableFileRef file = parseTableFile(path);
-    if (file.kind == TableFileKind.SCHEMA || file.kind == TableFileKind.META) {
+    if (file.kind == TableFileKind.META) {
       return tail(readLines(path, Integer.MAX_VALUE), limit);
     }
     if (file.kind == TableFileKind.DATA_CSV) {
@@ -168,8 +181,7 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       ensureExists(path, file);
       rows = executor.query("SELECT COUNT(*) FROM " + file.toTablePath());
       return countValue(rows) + 1;
-    } else if (depth == 2
-        && (file.kind == TableFileKind.SCHEMA || file.kind == TableFileKind.META)) {
+    } else if (depth == 2 && file.kind == TableFileKind.META) {
       return readLines(path, Integer.MAX_VALUE).size();
     } else {
       throw new SQLException("Path is not countable: " + path);
@@ -230,12 +242,6 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
               FsPath.absolute("/" + database + "/" + table + CSV_SUFFIX),
               FsNodeType.TABLE_DATA_FILE,
               tableFileMetadata(database, table, TableFileKind.DATA_CSV)));
-      nodes.add(
-          new FsNode(
-              table + SCHEMA_SUFFIX,
-              FsPath.absolute("/" + database + "/" + table + SCHEMA_SUFFIX),
-              FsNodeType.TABLE_SCHEMA_FILE,
-              tableFileMetadata(database, table, TableFileKind.SCHEMA)));
       nodes.add(
           new FsNode(
               table + META_SUFFIX,
@@ -319,10 +325,6 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       return new TableFileRef(
           segments.get(0), removeSuffix(fileName, CSV_SUFFIX), TableFileKind.DATA_CSV);
     }
-    if (fileName.endsWith(SCHEMA_SUFFIX)) {
-      return new TableFileRef(
-          segments.get(0), removeSuffix(fileName, SCHEMA_SUFFIX), TableFileKind.SCHEMA);
-    }
     if (fileName.endsWith(META_SUFFIX)) {
       return new TableFileRef(
           segments.get(0), removeSuffix(fileName, META_SUFFIX), TableFileKind.META);
@@ -398,8 +400,6 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       switch (kind) {
         case DATA_CSV:
           return table + CSV_SUFFIX;
-        case SCHEMA:
-          return table + SCHEMA_SUFFIX;
         case META:
           return table + META_SUFFIX;
         case UNKNOWN:
@@ -416,8 +416,6 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       switch (kind) {
         case DATA_CSV:
           return FsNodeType.TABLE_DATA_FILE;
-        case SCHEMA:
-          return FsNodeType.TABLE_SCHEMA_FILE;
         case META:
           return FsNodeType.TABLE_META_FILE;
         case UNKNOWN:

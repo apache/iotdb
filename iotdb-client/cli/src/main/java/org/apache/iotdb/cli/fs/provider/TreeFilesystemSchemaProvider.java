@@ -72,6 +72,14 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
   }
 
   @Override
+  public List<SqlRow> schema(FsPath path) throws SQLException {
+    if (path.isRoot()) {
+      throw new SQLException("Path is not a schema object: " + path);
+    }
+    return executor.query("SHOW TIMESERIES " + toTreePath(path));
+  }
+
+  @Override
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
     String measurement = path.getFileName();
     FsPath devicePath = parent(path);

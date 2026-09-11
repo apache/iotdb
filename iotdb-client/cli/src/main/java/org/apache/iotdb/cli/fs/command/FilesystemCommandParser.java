@@ -130,6 +130,8 @@ public class FilesystemCommandParser {
       case EXIT:
         args.paths(0, 0);
         return FilesystemCommand.simple(type);
+      case SCHEMA:
+        return FilesystemCommand.path(type, args.path(false));
       case LS:
       case LL:
         String listPath = args.path(false);

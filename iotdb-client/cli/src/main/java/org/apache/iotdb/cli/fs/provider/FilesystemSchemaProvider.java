@@ -32,6 +32,11 @@ public interface FilesystemSchemaProvider {
 
   FsNode describe(FsPath path) throws SQLException;
 
+  /** Return schema rows for a table or data file path. */
+  default List<SqlRow> schema(FsPath path) throws SQLException {
+    throw new SQLException("Schema is not supported for path: " + path);
+  }
+
   List<SqlRow> read(FsPath path, int limit) throws SQLException;
 
   default List<String> readLines(FsPath path, int limit) throws SQLException {

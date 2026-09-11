@@ -127,6 +127,10 @@ public final class CliMessages {
   // Filesystem command help
   public static final String MESSAGE_USAGE_ARG_RESULT_ARG_DEFAULT_ARG_EXAMPLES_ARG_05BEA07B = "Usage: %s\nResult: %s\nDefault: %s\nExamples:\n  %s";
   public static final String MESSAGE_FILESYSTEM_COMMANDS_USE_HELP_COMMAND_FOR_DETAILS_38FE89C6 = "Filesystem commands (use help <command> for details):";
+  public static final String MESSAGE_SCHEMA_PATH_USAGE = "schema [path]";
+  public static final String MESSAGE_SCHEMA_PATH_RESULT = "Print schema rows for a table or timeseries path.";
+  public static final String MESSAGE_SCHEMA_PATH_DEFAULT = "Current directory; table paths may use /database/table or /database/table.csv.";
+  public static final String MESSAGE_SCHEMA_PATH_EXAMPLE = "schema /db1/table1.csv";
   public static final String MESSAGE_QUOTE_PATHS_AND_PATTERNS_CONTAINING_SPACES_USE_BEFORE_OPERANDS_BEGINNING_WITH_COUNTS_USE_UNSIGNED_DECIMAL_INTEGERS_WITHOUT_LEADING_ZEROS_FIELDS_START_AT_1_OPTIONS_MAY_PRECEDE_OR_FOLLOW_PATHS_SINGLETON_OPTIONS_MUST_NOT_REPEAT_WRITES_REQUIRE_FS_WRITE_MODE_ENABLED_BATCH_OUTPUT_GOES_TO_STDOUT_ERRORS_GO_TO_STDERR_EXIT_STATUS_0_SUCCESS_1_USAGE_ERROR_2_INPUT_ERROR_3_RUNTIME_ERROR_832F0BFC = "Quote paths and patterns containing spaces. Use -- before operands beginning with -.\nCounts use unsigned decimal integers without leading zeros; fields start at 1.\nOptions may precede or follow paths; singleton options must not repeat.\nWrites require --fs_write_mode enabled. Batch output goes to stdout; errors go to stderr.\nExit status: 0 success, 1 usage error, 2 input error, 3 runtime error.";
   public static final String MESSAGE_PWD_9003D1DF = "pwd";
   public static final String MESSAGE_ABSOLUTE_VIRTUAL_WORKING_DIRECTORY_A179DC18 = "Absolute virtual working directory.";

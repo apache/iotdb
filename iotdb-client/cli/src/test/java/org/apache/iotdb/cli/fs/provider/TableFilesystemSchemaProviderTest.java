@@ -73,15 +73,13 @@ public class TableFilesystemSchemaProviderTest {
 
     List<FsNode> children = provider.list(FsPath.absolute("/db1"));
 
-    assertEquals(6, children.size());
+    assertEquals(4, children.size());
     assertEquals("table1.csv", children.get(0).getName());
     assertEquals("/db1/table1.csv", children.get(0).getPath().toString());
     assertEquals(FsNodeType.TABLE_DATA_FILE, children.get(0).getType());
-    assertEquals("table1.schema", children.get(1).getName());
-    assertEquals(FsNodeType.TABLE_SCHEMA_FILE, children.get(1).getType());
-    assertEquals("table1.meta", children.get(2).getName());
-    assertEquals(FsNodeType.TABLE_META_FILE, children.get(2).getType());
-    assertEquals("view1.csv", children.get(3).getName());
+    assertEquals("table1.meta", children.get(1).getName());
+    assertEquals(FsNodeType.TABLE_META_FILE, children.get(1).getType());
+    assertEquals("view1.csv", children.get(2).getName());
     verify(executor).query("SHOW TABLES FROM db1");
   }
 
@@ -179,19 +177,28 @@ public class TableFilesystemSchemaProviderTest {
   }
 
   @Test
-  public void readTableSchemaReturnsIoTDBDescCsvLines() throws SQLException {
+  public void schemaReturnsDescRowsForBareTablePath() throws SQLException {
     mockTableExists("db1", "table1");
     when(executor.query("DESC db1.table1 DETAILS"))
         .thenReturn(
-            SqlRow.list(
-                SqlRow.of("ColumnName", "tag1", "DataType", "STRING", "Category", "TAG"),
-                SqlRow.of("ColumnName", "s1", "DataType", "INT32", "Category", "FIELD")));
+            SqlRow.list(SqlRow.of("ColumnName", "tag1", "DataType", "STRING", "Category", "TAG")));
 
-    List<String> lines = provider.readLines(FsPath.absolute("/db1/table1.schema"), 5);
+    List<SqlRow> rows = provider.schema(FsPath.absolute("/db1/table1"));
 
-    assertEquals("ColumnName,DataType,Category", lines.get(0));
-    assertEquals("tag1,STRING,TAG", lines.get(1));
-    assertEquals("s1,INT32,FIELD", lines.get(2));
+    assertEquals(1, rows.size());
+    assertEquals("tag1", rows.get(0).get("ColumnName"));
+    verify(executor).query("DESC db1.table1 DETAILS");
+  }
+
+  @Test
+  public void schemaAcceptsCsvPathForCompatibility() throws SQLException {
+    mockTableExists("db1", "table1");
+    when(executor.query("DESC db1.table1 DETAILS"))
+        .thenReturn(SqlRow.list(SqlRow.of("ColumnName", "s1", "DataType", "INT32")));
+
+    List<SqlRow> rows = provider.schema(FsPath.absolute("/db1/table1.csv"));
+
+    assertEquals("s1", rows.get(0).get("ColumnName"));
     verify(executor).query("DESC db1.table1 DETAILS");
   }
 
@@ -257,22 +264,15 @@ public class TableFilesystemSchemaProviderTest {
   }
 
   @Test
-  public void countSchemaAndMetaCountsCsvLines() throws SQLException {
+  public void countMetaCountsCsvLines() throws SQLException {
     mockTableExists("db1", "table1");
-    when(executor.query("DESC db1.table1 DETAILS"))
-        .thenReturn(
-            SqlRow.list(
-                SqlRow.of("ColumnName", "tag1", "DataType", "STRING", "Category", "TAG"),
-                SqlRow.of("ColumnName", "s1", "DataType", "INT32", "Category", "FIELD")));
     when(executor.query("SHOW TABLES DETAILS FROM db1"))
         .thenReturn(
             SqlRow.list(
                 SqlRow.of("TableName", "table1", "Status", "USING"),
                 SqlRow.of("TableName", "table2", "Status", "USING")));
 
-    assertEquals(3L, provider.count(FsPath.absolute("/db1/table1.schema")));
     assertEquals(2L, provider.count(FsPath.absolute("/db1/table1.meta")));
-    verify(executor).query("DESC db1.table1 DETAILS");
     verify(executor).query("SHOW TABLES DETAILS FROM db1");
   }
 
@@ -285,13 +285,10 @@ public class TableFilesystemSchemaProviderTest {
         () -> provider.readLines(FsPath.absolute("/db1/table1.csv"), 5),
         "Path does not exist: /db1/table1.csv");
     assertSqlError(
-        () -> provider.readLines(FsPath.absolute("/db1/table1.schema"), 5),
-        "Path does not exist: /db1/table1.schema");
-    assertSqlError(
         () -> provider.readLines(FsPath.absolute("/db1/table1.meta"), 5),
         "Path does not exist: /db1/table1.meta");
 
-    verify(executor, times(3)).query("SHOW TABLES FROM db1");
+    verify(executor, times(2)).query("SHOW TABLES FROM db1");
   }
 
   @Test

@@ -120,6 +120,21 @@ public class TreeFilesystemSchemaProviderTest {
   }
 
   @Test
+  public void schemaReturnsTimeseriesRows() throws SQLException {
+    when(executor.query("SHOW TIMESERIES root.sg.d1.s1"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of(
+                    "Timeseries", "root.sg.d1.s1", "DataType", "INT32", "Encoding", "PLAIN")));
+
+    List<SqlRow> rows = provider.schema(FsPath.absolute("/root/sg/d1/s1"));
+
+    assertEquals(1, rows.size());
+    assertEquals("INT32", rows.get(0).get("DataType"));
+    verify(executor).query("SHOW TIMESERIES root.sg.d1.s1");
+  }
+
+  @Test
   public void describeVirtualRootReturnsDirectoryNode() throws SQLException {
     FsNode node = provider.describe(FsPath.absolute("/"));
 

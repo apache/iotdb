@@ -80,6 +80,22 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseSchemaCommandUsesTablePath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("schema /db1/table1");
+
+    assertEquals(FilesystemCommand.Type.SCHEMA, command.getType());
+    assertEquals("/db1/table1", command.getPath());
+  }
+
+  @Test
+  public void parseSchemaCommandDefaultsToCurrentDirectory() {
+    FilesystemCommand command = FilesystemCommandParser.parse("schema");
+
+    assertEquals(FilesystemCommand.Type.SCHEMA, command.getType());
+    assertEquals(".", command.getPath());
+  }
+
+  @Test
   public void parseCatSidecarPath() {
     FilesystemCommand command = FilesystemCommandParser.parse("cat /db1/table1.csv");
 

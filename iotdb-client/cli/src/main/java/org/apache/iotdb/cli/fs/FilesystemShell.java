@@ -60,9 +60,9 @@ public class FilesystemShell {
   private static final int DEFAULT_READ_LIMIT = 20;
   private static final List<String> COMMANDS =
       Arrays.asList(
-          "pwd", "ls", "ll", "cd", "stat", "cat", "head", "tail", "wc", "grep", "find", "less",
-          "more", "file", "du", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join", "tree",
-          "help", "exit", "quit", "tee");
+          "pwd", "ls", "ll", "cd", "stat", "schema", "cat", "head", "tail", "wc", "grep", "find",
+          "less", "more", "file", "du", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join",
+          "tree", "help", "exit", "quit", "tee");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
@@ -110,6 +110,9 @@ public class FilesystemShell {
         if (checkExists("stat", node)) {
           printNode(node);
         }
+        return true;
+      case SCHEMA:
+        printRows(provider.schema(resolve(command.getPath())));
         return true;
       case CAT:
         printSequentialReads(command.getPaths(), DEFAULT_READ_LIMIT);

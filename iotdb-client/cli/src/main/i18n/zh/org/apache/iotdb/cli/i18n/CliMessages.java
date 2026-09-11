@@ -123,6 +123,10 @@ public final class CliMessages {
   // Filesystem command help
   public static final String MESSAGE_USAGE_ARG_RESULT_ARG_DEFAULT_ARG_EXAMPLES_ARG_05BEA07B = "用法：%s\n结果：%s\n默认：%s\n示例：\n  %s";
   public static final String MESSAGE_FILESYSTEM_COMMANDS_USE_HELP_COMMAND_FOR_DETAILS_38FE89C6 = "文件系统命令（使用 help <command> 查看详情）：";
+  public static final String MESSAGE_SCHEMA_PATH_USAGE = "schema [path]";
+  public static final String MESSAGE_SCHEMA_PATH_RESULT = "输出表或时间序列路径的模式信息。";
+  public static final String MESSAGE_SCHEMA_PATH_DEFAULT = "默认使用当前目录；表路径可使用 /database/table 或 /database/table.csv。";
+  public static final String MESSAGE_SCHEMA_PATH_EXAMPLE = "schema /db1/table1.csv";
   public static final String MESSAGE_QUOTE_PATHS_AND_PATTERNS_CONTAINING_SPACES_USE_BEFORE_OPERANDS_BEGINNING_WITH_COUNTS_USE_UNSIGNED_DECIMAL_INTEGERS_WITHOUT_LEADING_ZEROS_FIELDS_START_AT_1_OPTIONS_MAY_PRECEDE_OR_FOLLOW_PATHS_SINGLETON_OPTIONS_MUST_NOT_REPEAT_WRITES_REQUIRE_FS_WRITE_MODE_ENABLED_BATCH_OUTPUT_GOES_TO_STDOUT_ERRORS_GO_TO_STDERR_EXIT_STATUS_0_SUCCESS_1_USAGE_ERROR_2_INPUT_ERROR_3_RUNTIME_ERROR_832F0BFC = "包含空格的路径和模式需加引号；以 - 开头的参数前需加 --。\n计数使用不带前导零的无符号十进制整数；字段编号从 1 开始。\n选项可放在路径前或后；单值选项不能重复。\n写入需要 --fs_write_mode enabled。批处理结果写入 stdout，错误写入 stderr。\n退出码：0 成功，1 参数错误，2 输入错误，3 运行错误。";
   public static final String MESSAGE_PWD_9003D1DF = "pwd";
   public static final String MESSAGE_ABSOLUTE_VIRTUAL_WORKING_DIRECTORY_A179DC18 = "当前虚拟工作目录的绝对路径。";
