@@ -160,10 +160,6 @@ public final class CliMessages {
   public static final String MESSAGE_TAIL_N_COUNT_COUNT_PATH_07ADC736 = "tail [-n count | -count] [path]";
   public static final String MESSAGE_LAST_COUNT_TEXT_LINES_OR_DATA_ROWS_EF2CC0FC = "后 count 行文本或数据。";
   public static final String MESSAGE_TAIL_N_5_DB1_TABLE1_CSV_E75ED46B = "tail -n 5 /db1/table1.csv";
-  public static final String MESSAGE_WC_L_PATH_062C2793 = "wc [-l] [path]";
-  public static final String MESSAGE_ROW_COUNT_AND_ABSOLUTE_PATH_49560C8C = "行数和绝对路径。";
-  public static final String MESSAGE_CURRENT_DIRECTORY_L_IS_IMPLIED_5191D6B4 = "当前目录；默认使用 -l。";
-  public static final String MESSAGE_WC_L_DB1_TABLE1_CSV_40CA70C4 = "wc -l /db1/table1.csv";
   public static final String MESSAGE_GREP_PATTERN_PATH_3EF6BB72 = "grep <pattern> <path>";
   public static final String MESSAGE_LINES_CONTAINING_THE_LITERAL_PATTERN_REGULAR_EXPRESSIONS_ARE_NOT_USED_47F2D493 = "包含指定字面模式的行；不使用正则表达式。";
   public static final String MESSAGE_BOTH_PATTERN_AND_PATH_ARE_REQUIRED_SEARCHES_AT_MOST_20_ROWS_0B801CE1 = "必须指定模式和路径；最多搜索 20 行。";
@@ -181,9 +177,6 @@ public final class CliMessages {
   public static final String MESSAGE_FILE_PATH_4928CBD2 = "file [path]";
   public static final String MESSAGE_ABSOLUTE_PATH_AND_VIRTUAL_FILE_TYPE_C3A88F3C = "绝对路径和虚拟文件类型。";
   public static final String MESSAGE_FILE_DB1_TABLE1_CSV_A4914994 = "file /db1/table1.csv";
-  public static final String MESSAGE_DU_PATH_B7DB6302 = "du [path]";
-  public static final String MESSAGE_ROW_COUNT_AND_ABSOLUTE_PATH_SEPARATED_BY_A_TAB_THE_COUNT_IS_NOT_A_BYTE_SIZE_8624847B = "以制表符分隔的行数和绝对路径；该计数不是字节大小。";
-  public static final String MESSAGE_DU_DB1_TABLE1_CSV_03098463 = "du /db1/table1.csv";
   public static final String MESSAGE_MKDIR_PATH_76FAFA85 = "mkdir [path]";
   public static final String MESSAGE_CREATES_A_TABLE_MODEL_DATABASE_NO_OUTPUT_ON_SUCCESS_DAE4AAC6 = "创建表模型数据库；成功时不输出内容。";
   public static final String MESSAGE_CURRENT_DIRECTORY_REQUIRES_FS_WRITE_MODE_ENABLED_5A485B47 = "当前目录；需要 --fs_write_mode enabled。";

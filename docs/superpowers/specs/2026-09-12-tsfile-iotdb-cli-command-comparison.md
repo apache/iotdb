@@ -1,3 +1,24 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+
 # TsFile-Cli 与 IoTDB-cli fs 命令对照
 
 本文记录 `fs/inner-view` 分支当前 filesystem CLI 与 `tsfile-cli` 的命令级差异。TsFile-Cli
@@ -31,7 +52,7 @@
 | `mkdir` / `rmdir` | 无此命令 | 写模式下创建或删除 table-model 数据库 | IoTDB-cli 的远程写入扩展 |
 | `rm` | 无此命令 | 写模式下删除表或数据库 | IoTDB-cli 的远程写入扩展 |
 | `mv` | 无此命令 | 写模式下重命名同一数据库中的表 | IoTDB-cli 的远程写入扩展 |
-| `cp` | 无此命令 | 写模式下复制表 schema | IoTDB-cli 的远程写入扩展 |
+| `cp` | 无此命令 | 命令入口保留，但当前 table provider 返回“不支持的写操作” | IoTDB-cli 的预留写入扩展，当前不可用 |
 | `cut` | 无此命令 | 按 Unix 分隔符和字段编号投影可读文本 | IoTDB-cli 的 Unix 兼容扩展 |
 | `paste` | 无此命令 | 合并多个可读文件的对应行 | IoTDB-cli 的 Unix 兼容扩展 |
 | `join` | 无此命令 | 按字段执行两个可读文件的 inner join | IoTDB-cli 的 Unix 兼容扩展 |
