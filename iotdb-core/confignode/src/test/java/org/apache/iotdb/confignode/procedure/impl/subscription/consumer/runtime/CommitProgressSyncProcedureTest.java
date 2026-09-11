@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.ByteArrayOutputStream;
@@ -51,12 +52,15 @@ public class CommitProgressSyncProcedureTest {
 
   @Test
   public void requiredSyncShouldRejectFailedResponseBeforeConsensusWrite() throws Exception {
+    assertRequiredSyncRejectsResponse(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    assertRequiredSyncRejectsResponse(TSStatusCode.UNSUPPORTED_OPERATION);
+  }
+
+  private static void assertRequiredSyncRejectsResponse(final TSStatusCode statusCode)
+      throws Exception {
     final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
     final Map<Integer, TPullCommitProgressResp> responses = new LinkedHashMap<>();
-    responses.put(
-        2,
-        new TPullCommitProgressResp(
-            new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())));
+    responses.put(2, new TPullCommitProgressResp(new TSStatus(statusCode.getStatusCode())));
     Mockito.when(env.pullCommitProgressFromDataNodes()).thenReturn(responses);
 
     try {
@@ -68,6 +72,54 @@ public class CommitProgressSyncProcedureTest {
     }
 
     Mockito.verify(env, Mockito.never()).getConfigManager();
+  }
+
+  @Test
+  public void bestEffortSyncShouldSkipUnsuccessfulResponses() throws Exception {
+    final String progressKey = "successful_progress";
+    final RegionProgress progress =
+        new RegionProgress(
+            Collections.singletonMap(new WriterId("DataRegion[1]", 1), new WriterProgress(200, 1)));
+    final Map<Integer, TPullCommitProgressResp> responses = new LinkedHashMap<>();
+    responses.put(
+        1,
+        new TPullCommitProgressResp(
+            new TSStatus(TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode())));
+    responses.put(
+        2,
+        new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+            .setCommitRegionProgress(Collections.singletonMap(progressKey, serialize(progress))));
+    responses.put(
+        3,
+        new TPullCommitProgressResp(
+            new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())));
+    responses.put(4, null);
+    responses.put(5, new TPullCommitProgressResp());
+
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ConsensusManager consensusManager = Mockito.mock(ConsensusManager.class);
+    Mockito.when(env.pullCommitProgressFromDataNodesBestEffort()).thenReturn(responses);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+    Mockito.when(consensusManager.write(Mockito.any()))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
+    final CommitProgressSyncProcedure procedure =
+        new CommitProgressSyncProcedure() {
+          {
+            subscriptionInfo = new AtomicReference<>(new SubscriptionInfo());
+          }
+        };
+    procedure.executeFromOperateOnConfigNodes(env);
+
+    final ArgumentCaptor<CommitProgressHandleMetaChangePlan> planCaptor =
+        ArgumentCaptor.forClass(CommitProgressHandleMetaChangePlan.class);
+    Mockito.verify(consensusManager).write(planCaptor.capture());
+    assertEquals(
+        progress,
+        RegionProgress.deserialize(planCaptor.getValue().getRegionProgressMap().get(progressKey)));
+    Mockito.verify(env, Mockito.never()).pullCommitProgressFromDataNodes();
   }
 
   @Test

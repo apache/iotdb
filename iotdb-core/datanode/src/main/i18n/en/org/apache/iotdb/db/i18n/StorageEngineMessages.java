@@ -47,6 +47,8 @@ public final class StorageEngineMessages {
   public static final String REBOOT_ALL_TIMED_SERVICE_SUCCESSFULLY = "Reboot all timed service successfully";
   public static final String FAILED_TO_DELETE = "Failed to delete: {} -> {}";
   public static final String FAILED_TO_CHECK_OBJECT_FILES = "Failed to check Object Files: {}";
+  public static final String EXCEPTION_CANNOT_REPAIR_ARG_BECAUSE_TARGET_FILE_ALREADY_EXISTS_AND_TIMESTAMP_IS_LONG_MAX_VALUE_F29F630A =
+      "Cannot repair %s because the target file already exists and the file timestamp is Long.MAX_VALUE";
 
   // ======================== Buffer Cache ========================
 
@@ -62,7 +64,6 @@ public final class StorageEngineMessages {
 
   // ======================== Resource Control - Disk ========================
 
-  public static final String FAILED_TO_DEREGISTER_FILE_LOCK = "Failed to deregister file lock because {}";
   public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY = "All folders are full, change system mode to read-only.";
   public static final String FAILED_TO_PROCESS_FOLDER = "Failed to process folder '";
   public static final String FAIL_TO_GET_CANONICAL_PATH = "Fail to get canonical path of data dir {}";
@@ -1442,14 +1443,6 @@ public final class StorageEngineMessages {
       "number of read requests exceeded - wait %sms";
   public static final String STORAGE_EXCEPTION_READ_SIZE_LIMIT_EXCEEDED_WAIT_SMS_E19598BA =
       "read size limit exceeded - wait %sms";
-  public static final String STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_BECAUSE_THERE_IS_FILE_UNDER_1C59ACFC =
-      "Unable to create directory %s because there is file under the path, please check "
-          + "configuration and restart.";
-  public static final String STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_PLEASE_CHECK_CONFIGURATION_BA580B67 =
-      "Unable to create directory %s, please check configuration and restart.";
-  public static final String STORAGE_EXCEPTION_CONFLICT_IS_DETECTED_IN_DIRECTORY_S_WHICH_MAY_BE_BEING_USED_CB5C77FC =
-      "Conflict is detected in directory %s, which may be being used by another IoTDB "
-          + "(ProcessId=%s). Please check configuration and restart.";
   public static final String COMPACTION_INNER_SPACE = "inner";
   public static final String COMPACTION_CROSS_SPACE = "cross";
   public static final String DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT =

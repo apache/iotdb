@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -258,6 +259,12 @@ public class IoTDBConfig {
   /** Query directory, stores temporary files of query */
   private String queryDir =
       IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+
+  /**
+   * Maximum DeviceEntry bytes kept in memory before a table-query spill, capped by the effective
+   * Thrift frame size minus 1 KiB reserved for the RPC response envelope.
+   */
+  private long tableQueryDeviceEntryBatchSizeInBytes;
 
   /** External lib directory, stores user-uploaded JAR files */
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
@@ -1013,6 +1020,18 @@ public class IoTDBConfig {
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
 
+  /** Thread pool size for scheduling query state checks and termination. */
+  private int coordinatorScheduledExecutorSize = 10;
+
+  /** Thread pool size for fragment instance state change notifications. */
+  private int fragmentInstanceNotificationThreadCount = 4;
+
+  /** Zero retains the cached pool used by general deployments. */
+  private int driverTaskSchedulerNotificationThreadCount = 0;
+
+  /** Zero selects max(20, twice the available processors). */
+  private int fragmentInstanceDispatchThreadCount = 0;
+
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
@@ -1190,6 +1209,13 @@ public class IoTDBConfig {
             + File.separator
             + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME
       };
+
+  /**
+   * Directories into which COPY ... TO may export when the client supplies a target path with a
+   * parent component. Empty (the default) rejects such paths; bare file names always land in the
+   * TierManager-managed copyto folders.
+   */
+  private String[] copyToAllowedExportDirs = new String[0];
 
   private String loadActiveListeningPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME
@@ -1419,6 +1445,9 @@ public class IoTDBConfig {
       loadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
     }
     loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
+    for (int i = 0; i < copyToAllowedExportDirs.length; i++) {
+      copyToAllowedExportDirs[i] = addDataHomeDir(copyToAllowedExportDirs[i]);
+    }
     loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
     loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
     udfDir = addDataHomeDir(udfDir);
@@ -1790,6 +1819,14 @@ public class IoTDBConfig {
 
   public void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
+  }
+
+  public long getTableQueryDeviceEntryBatchSizeInBytes() {
+    return tableQueryDeviceEntryBatchSizeInBytes;
+  }
+
+  public void setTableQueryDeviceEntryBatchSizeInBytes(long tableQueryDeviceEntryBatchSizeInBytes) {
+    this.tableQueryDeviceEntryBatchSizeInBytes = tableQueryDeviceEntryBatchSizeInBytes;
   }
 
   public String getRatisDataRegionSnapshotDir() {
@@ -3562,7 +3599,57 @@ public class IoTDBConfig {
   }
 
   public void setCoordinatorReadExecutorSize(int coordinatorReadExecutorSize) {
+    if (coordinatorReadExecutorSize <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
     this.coordinatorReadExecutorSize = coordinatorReadExecutorSize;
+  }
+
+  public int getCoordinatorScheduledExecutorSize() {
+    return coordinatorScheduledExecutorSize;
+  }
+
+  public void setCoordinatorScheduledExecutorSize(int coordinatorScheduledExecutorSize) {
+    if (coordinatorScheduledExecutorSize <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.coordinatorScheduledExecutorSize = coordinatorScheduledExecutorSize;
+  }
+
+  public int getFragmentInstanceNotificationThreadCount() {
+    return fragmentInstanceNotificationThreadCount;
+  }
+
+  public void setFragmentInstanceNotificationThreadCount(
+      int fragmentInstanceNotificationThreadCount) {
+    if (fragmentInstanceNotificationThreadCount <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    this.fragmentInstanceNotificationThreadCount = fragmentInstanceNotificationThreadCount;
+  }
+
+  public int getDriverTaskSchedulerNotificationThreadCount() {
+    return driverTaskSchedulerNotificationThreadCount;
+  }
+
+  public void setDriverTaskSchedulerNotificationThreadCount(int threadCount) {
+    if (threadCount < 0) {
+      throw new IllegalArgumentException(
+          CommonMessages.EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B);
+    }
+    this.driverTaskSchedulerNotificationThreadCount = threadCount;
+  }
+
+  public int getFragmentInstanceDispatchThreadCount() {
+    return fragmentInstanceDispatchThreadCount;
+  }
+
+  public void setFragmentInstanceDispatchThreadCount(int threadCount) {
+    if (threadCount < 0) {
+      throw new IllegalArgumentException(
+          CommonMessages.EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B);
+    }
+    this.fragmentInstanceDispatchThreadCount = threadCount;
   }
 
   public TEndPoint getAddressAndPort() {
@@ -4335,6 +4422,24 @@ public class IoTDBConfig {
       }
     }
     this.loadActiveListeningDirs = normalizedDirs;
+  }
+
+  public String[] getCopyToAllowedExportDirs() {
+    return copyToAllowedExportDirs;
+  }
+
+  public void setCopyToAllowedExportDirs(final String[] copyToAllowedExportDirs) {
+    if (copyToAllowedExportDirs == null) {
+      this.copyToAllowedExportDirs = new String[0];
+      return;
+    }
+    this.copyToAllowedExportDirs =
+        Arrays.stream(copyToAllowedExportDirs)
+            .filter(Objects::nonNull)
+            .map(String::trim)
+            .filter(dir -> !dir.isEmpty())
+            .map(IoTDBConfig::addDataHomeDir)
+            .toArray(String[]::new);
   }
 
   public boolean getLoadActiveListeningEnable() {

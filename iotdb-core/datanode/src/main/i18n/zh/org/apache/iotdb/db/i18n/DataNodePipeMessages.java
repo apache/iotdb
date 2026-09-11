@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A =
+      "解析 transfer exception 失败。";
+
   // ===================== CONSENSUS =====================
 
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR = "正在关闭 {} 的删除资源管理器...";
@@ -124,12 +127,32 @@ public final class DataNodePipeMessages {
       "减少 reference count for event {} in PipeRealtimePriorityBlockingQueue 失败";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "获取 PendingQueue 失败，没有该子任务:  ";
+  public static final String
+      EXCEPTION_MULTIPLE_PIPES_MATCH_THE_REQUESTED_SINK_SUBTASK_USE_THE_PIPE_SPECIFIC_PIPESINKSUBTASKMANAGER_API_C180D94C =
+          "多个 Pipe 匹配请求的 sink 子任务。请使用指定 Pipe 的 PipeSinkSubtaskManager API。";
   public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
       "从 CN 处获取 pipe 信息失败，状态是 %s。";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
       "获取 pipe metas 失败，稍后会从 CN 处再次同步。";
   public static final String FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM =
       "从 CN 处获取 pipe 插件 jar 包失败。";
+  public static final String
+      LOG_FAILED_TO_FETCH_PIPE_PLUGIN_JARS_FROM_CONFIGNODE_PLUGINS_ARG_JARS_ARG_STATUS_ARG_RETRYING_EACH_PLUGIN_INDIVIDUALLY_574C0077 =
+          "从 ConfigNode 获取 pipe plugin jars 失败。插件：{}，jars：{}，状态：{}。将逐个重试每个插件。";
+  public static final String
+      LOG_CONFIGNODE_RETURNED_ARG_PIPE_PLUGIN_JARS_FOR_ARG_REQUESTED_PLUGINS_PLUGINS_ARG_JARS_ARG_RETRYING_EACH_PLUGIN_INDIVIDUALLY_27E32FDE =
+          "ConfigNode 为 {} 个请求的插件返回了 {} 个 pipe plugin jars。插件：{}，jars：{}。将逐个重试每个插件。";
+  public static final String
+      EXCEPTION_FAILED_TO_FETCH_PIPE_PLUGIN_JAR_FROM_CONFIGNODE_FOR_PLUGIN_ARG_JAR_ARG_STATUS_ARG_B7C7FDE5 =
+          "从 ConfigNode 获取插件 %s（jar %s）的 pipe plugin jar 失败。状态：%s。";
+  public static final String
+      EXCEPTION_CONFIGNODE_RETURNED_ARG_JARS_FOR_PIPE_PLUGIN_ARG_WHILE_ONE_WAS_REQUESTED_A724E582 =
+          "ConfigNode 返回了 %d 个 jars，而 pipe plugin %s 只请求了一个。";
+  public static final String
+      LOG_FAILED_TO_FETCH_PIPE_PLUGIN_JAR_ARG_FOR_PIPE_PLUGIN_ARG_FROM_CONFIGNODE_4929C5D9 =
+          "从 ConfigNode 获取 pipe plugin jar {}（pipe plugin {}）失败。";
+  public static final String LOG_FAILED_TO_SAVE_JAR_ARG_FOR_PIPE_PLUGIN_ARG_A64D1530 =
+      "保存 jar {}（pipe plugin {}）失败。";
   public static final String FAILED_TO_GET_PIPE_TASK_META_FROM =
       "获取 pipe task meta from config node. Ignore the exception 失败，原因：config node may not be "
           + "ready yet, and meta will be pushed by config node later.";
@@ -1949,10 +1972,11 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_INITIALIZED_STARTSEARCHINDEX_69B53EE6 =
       "ConsensusPrefetchingQueue {}：prefetch 已初始化，startSearchIndex={}，progressSource={}，"
           + "recoveryWriterCount={}";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_D75375D0 =
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_WALGAPSKIPPEDENTRIES_9A4E6608 =
       "ConsensusPrefetchingQueue {}：周期统计，lag={}，pendingDelta={}，walDelta={}，pendingTotal={}，"
-          + "walTotal={}，pendingQueueSize={}，prefetchingQueueSize={}，inFlightEventsSize={}，"
-          + "realtimeWriterCount={}，walHasNext={}，isActive={}，subtaskScheduled={}";
+          + "walTotal={}，walGapSkippedEntries={}，pendingQueueSize={}，prefetchingQueueSize={}，"
+          + "inFlightEventsSize={}，realtimeWriterCount={}，walHasNext={}，isActive={}，"
+          + "subtaskScheduled={}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
       "ConsensusPrefetchingQueue {}：等待 {}ms，使 WAL 缺口 [{}, {}) 可见，currentNextExpected={}，"
           + "currentWalIndex={}，seekGeneration={}";
@@ -2028,6 +2052,12 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator：读取 WAL 出错";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
       "ProgressWALIterator：打开 WAL 文件 {} 失败，跳过该文件";
+  public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
+      "ProgressWALIterator：跳过了 {} 个无法读取的保留 WAL 文件，directory={}，firstFile={}，"
+          + "lastFile={}，firstError={}；这些文件中的历史订阅数据无法重放";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64 =
+      "ConsensusPrefetchingQueue {}：WAL 重放跳过了不可用的 searchIndex 区间 [{}, {})，"
+          + "skippedEntries={}，totalWalGapSkippedEntries={}；缺失的 WAL 数据可能已在订阅消费前被回收";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}：历史传输的终止事件已提交。creationTime：{}，shouldMark：{}。{}";
   public static final String PIPE_LOG_PIPE_HISTORICAL_SOURCE_HAS_SUPPLIED_ALL_EVENTS_EMITTING_8B58DE19 =
@@ -2135,6 +2165,12 @@ public final class DataNodePipeMessages {
       "forceAllocate：重试 %d 次后仍无法分配内存，总内存大小 %d bytes，已用内存大小 %d bytes，请求内存大小 %d bytes";
   public static final String PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC =
       "forceResize：重试 %d 次后仍无法分配内存，总内存大小 %d bytes，已用内存大小 %d bytes，请求内存大小 %d bytes";
+  public static final String
+      EXCEPTION_UNSUPPORTED_BATCH_TYPE_ARG_WHEN_TRANSFERRING_TABLET_INSERTION_EVENT_66153E12 =
+          "传输 tablet insertion event 时不支持 batch 类型 %s。";
+  public static final String
+      EXCEPTION_FAILED_TO_TRANSFER_TSFILE_BATCH_BECAUSE_NO_TSFILE_WAS_GENERATED_FOR_ARG_CC60CCEB =
+          "无法传输 TsFile batch，因为没有为 %s 生成 TsFile。";
   public static final String PIPE_EXCEPTION_FAILED_TO_GET_HARDLINK_OR_COPIED_FILE_IN_PIPE_DIR_FOR_FILE_F009D86E =
       "获取 pipe 目录中文件 %s 的 hardlink 或复制文件失败；该文件不是 tsfile、mod 文件或 resource 文件";
   public static final String PIPE_EXCEPTION_PIPEPLANTOSTATEMENTVISITOR_DOES_NOT_SUPPORT_VISITING_GENERAL_452AAA60 =
@@ -2405,6 +2441,13 @@ public final class DataNodePipeMessages {
       "已上报 %s 个 pipe meta。";
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "传输文件 %s 出错，结果状态为 %s。";
+
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_5B4B2E7C =
+          "重试 retry queue 中的事件失败。剩余事件：%d（tablet 事件：%d，tsfile 事件：%d）。";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_LAST_FAILURE_ARG_EB8F9DCD =
+          "重试 retry queue 中的事件失败。剩余事件：%d（tablet 事件：%d，tsfile 事件：%d）。最近一次失败：%s。";
 
   public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
       "Legacy pipe receiver 需要已登录的 session。";

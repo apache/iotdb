@@ -2158,13 +2158,31 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setGroupByTimeParameter(groupByTimeParameter);
 
     Expression globalTimePredicate = analysis.getGlobalTimePredicate();
-    Expression groupByTimePredicate = ExpressionFactory.groupByTime(groupByTimeParameter);
+    Expression groupByTimePredicate = getGroupByTimePredicate(groupByTimeParameter);
     if (globalTimePredicate == null) {
       globalTimePredicate = groupByTimePredicate;
     } else {
       globalTimePredicate = ExpressionFactory.and(globalTimePredicate, groupByTimePredicate);
     }
     analysis.setGlobalTimePredicate(globalTimePredicate);
+  }
+
+  private static Expression getGroupByTimePredicate(GroupByTimeParameter groupByTimeParameter) {
+    if (groupByTimeParameter.isLeftCRightO()
+        || groupByTimeParameter.getEndTime() != Long.MAX_VALUE) {
+      return ExpressionFactory.groupByTime(groupByTimeParameter);
+    }
+    GroupByTimeParameter rightOpenParameter =
+        new GroupByTimeParameter(
+            groupByTimeParameter.getStartTime() + 1,
+            groupByTimeParameter.getEndTime(),
+            groupByTimeParameter.getInterval(),
+            groupByTimeParameter.getSlidingStep(),
+            true);
+    return ExpressionFactory.or(
+        ExpressionFactory.groupByTime(rightOpenParameter),
+        ExpressionFactory.eq(
+            ExpressionFactory.time(), ExpressionFactory.longValue(Long.MAX_VALUE)));
   }
 
   static void analyzeFill(Analysis analysis, QueryStatement queryStatement) {
@@ -2246,7 +2264,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // (-oo, +oo)
       return new Pair<>(Collections.emptyList(), new Pair<>(true, true));
     }
-    List<TimeRange> timeRangeList = timeFilter.getTimeRanges();
+    List<TimeRange> timeRangeList = normalizeTimeRanges(timeFilter.getTimeRanges());
     if (timeRangeList.isEmpty()) {
       // no satisfied time range
       return new Pair<>(Collections.emptyList(), new Pair<>(false, false));
@@ -2297,11 +2315,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         result.add(timePartitionSlot);
         // next init
         timePartitionSlot = new TTimePartitionSlot(endTime);
-        // beware of overflow
-        endTime =
-            endTime + TimePartitionUtils.getTimePartitionInterval() > endTime
-                ? endTime + TimePartitionUtils.getTimePartitionInterval()
-                : Long.MAX_VALUE;
+        endTime = TimePartitionUtils.getTimePartitionUpperBound(endTime);
       } else {
         index++;
         if (index < size) {
@@ -2330,8 +2344,39 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
     long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
-    context.reserveMemoryForFrontEnd(
-        RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class) * size);
+    context.reserveMemoryForFrontEnd(estimateTimePartitionSlotMemory(size));
+  }
+
+  private static List<TimeRange> normalizeTimeRanges(List<TimeRange> timeRanges) {
+    if (timeRanges.size() < 2) {
+      return timeRanges;
+    }
+
+    List<TimeRange> normalized = new ArrayList<>();
+    TimeRange current = timeRanges.get(0);
+    for (int i = 1; i < timeRanges.size(); i++) {
+      TimeRange next = timeRanges.get(i);
+      // Time ranges returned by a Filter are ordered. Merge both overlapping and adjacent ranges
+      // so partition routing does not depend on the shape of an OR expression.
+      boolean overlaps = next.getMin() <= current.getMax();
+      boolean adjacent =
+          current.getMax() != Long.MAX_VALUE && next.getMin() == current.getMax() + 1;
+      if (overlaps || adjacent) {
+        current = new TimeRange(current.getMin(), Math.max(current.getMax(), next.getMax()));
+      } else {
+        normalized.add(current);
+        current = next;
+      }
+    }
+    normalized.add(current);
+    return normalized;
+  }
+
+  static long estimateTimePartitionSlotMemory(long timePartitionSlotCount) {
+    long timePartitionSlotSize = RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class);
+    return timePartitionSlotCount > Long.MAX_VALUE / timePartitionSlotSize
+        ? Long.MAX_VALUE
+        : timePartitionSlotSize * timePartitionSlotCount;
   }
 
   private void analyzeInto(

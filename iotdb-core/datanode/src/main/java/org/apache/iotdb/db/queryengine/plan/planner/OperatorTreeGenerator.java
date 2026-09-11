@@ -36,6 +36,7 @@ import org.apache.iotdb.calc.execution.operator.process.fill.constant.FloatConst
 import org.apache.iotdb.calc.execution.operator.process.fill.constant.IntConstantFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
@@ -159,7 +160,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ColumnTransformerVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimatorFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;

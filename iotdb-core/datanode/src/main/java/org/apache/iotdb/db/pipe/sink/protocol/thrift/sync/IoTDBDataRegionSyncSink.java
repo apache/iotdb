@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -147,7 +148,17 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
     try {
       if (isTabletBatchModeEnabled) {
-        tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        try {
+          tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        } catch (final PipeRuntimeOutOfMemoryCriticalException memoryException) {
+          try {
+            doTransferWrapper();
+          } catch (final Exception transferException) {
+            transferException.addSuppressed(memoryException);
+            throw transferException;
+          }
+          tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        }
         doTransferWrapper();
       } else {
         if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {

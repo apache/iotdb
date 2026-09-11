@@ -122,28 +122,39 @@ public class PipeTsFileResourceManager {
 
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
-      resultFile =
-          isTsFile
-              ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
-              : FileUtils.copyFile(source, hardlinkOrCopiedFile);
-
-      // If the file is not a hardlink or copied file, and there is no related hardlink or copied
-      // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
-      // the hardlink or copied file, and return the hardlink or copied file.
-      if (Objects.nonNull(pipeName)) {
-        pipeNameToPipeTsFileDirPathMap.putIfAbsent(
-            pipeName, hardlinkOrCopiedFile.getParentFile().getPath());
-        hardlinkOrCopiedFileToPipeTsFileResourceMap
-            .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
-            .put(resultFile.getPath(), new PipeTsFileResource(resultFile));
+      final PipeTsFileResource existingResource =
+          getResourceMap(pipeName).get(hardlinkOrCopiedFile.getPath());
+      if (existingResource != null) {
+        existingResource.increaseReferenceCount();
+        resultFile = existingResource.getFile();
       } else {
-        hardlinkOrCopiedFileToTsFilePublicResourceMap.put(
-            resultFile.getPath(), new PipeTsFilePublicResource(resultFile));
+        resultFile =
+            isTsFile
+                ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
+                : FileUtils.copyFile(source, hardlinkOrCopiedFile);
+
+        // Create the hardlink or copy and its reference-counted resource only when none exists.
+        if (Objects.nonNull(pipeName)) {
+          pipeNameToPipeTsFileDirPathMap.putIfAbsent(
+              pipeName, hardlinkOrCopiedFile.getParentFile().getPath());
+          hardlinkOrCopiedFileToPipeTsFileResourceMap
+              .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
+              .put(resultFile.getPath(), new PipeTsFileResource(resultFile));
+        } else {
+          hardlinkOrCopiedFileToTsFilePublicResourceMap.put(
+              resultFile.getPath(), new PipeTsFilePublicResource(resultFile));
+        }
       }
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
-    increasePublicReference(resultFile, pipeName, isTsFile);
+    try {
+      increasePublicReference(resultFile, pipeName, isTsFile);
+    } catch (final IOException | RuntimeException e) {
+      // The private reference must not outlive a failed public reference increase.
+      rollbackFileReference(resultFile, pipeName, e);
+      throw e;
+    }
     return resultFile;
   }
 
@@ -161,8 +172,25 @@ public class PipeTsFileResourceManager {
     } finally {
       segmentLock.unlock(file);
     }
-    increasePublicReference(file, pipeName, isTsFile);
+    try {
+      increasePublicReference(file, pipeName, isTsFile);
+    } catch (final IOException | RuntimeException e) {
+      // The private reference is acquired before the public (assigner) reference.  If the latter
+      // fails, roll back the reference acquired above; otherwise every failed retry permanently
+      // pins the pipe file in the logical memory/file pool.
+      rollbackFileReference(file, pipeName, e);
+      throw e;
+    }
     return true;
+  }
+
+  private void rollbackFileReference(
+      final File file, final @Nullable String pipeName, final Exception originalException) {
+    try {
+      decreaseFileReference(file, pipeName, false);
+    } catch (final RuntimeException rollbackException) {
+      originalException.addSuppressed(rollbackException);
+    }
   }
 
   private void increasePublicReference(
@@ -228,6 +256,13 @@ public class PipeTsFileResourceManager {
    */
   public void decreaseFileReference(
       final File hardlinkOrCopiedFile, final @Nullable String pipeName) {
+    decreaseFileReference(hardlinkOrCopiedFile, pipeName, true);
+  }
+
+  private void decreaseFileReference(
+      final File hardlinkOrCopiedFile,
+      final @Nullable String pipeName,
+      final boolean decreasePublicReference) {
     segmentLock.lock(hardlinkOrCopiedFile);
     try {
       final String filePath = hardlinkOrCopiedFile.getPath();
@@ -242,7 +277,9 @@ public class PipeTsFileResourceManager {
 
     // Decrease the assigner's file to clear hard-link and memory cache
     // Note that it does not exist for historical files
-    decreasePublicReferenceIfExists(hardlinkOrCopiedFile, pipeName);
+    if (decreasePublicReference) {
+      decreasePublicReferenceIfExists(hardlinkOrCopiedFile, pipeName);
+    }
   }
 
   private void decreasePublicReferenceIfExists(final File file, final @Nullable String pipeName) {
@@ -382,6 +419,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
+  /** Returns the shared public resource map when {@code pipeName} is null. */
   public Map<String, ? extends PipeTsFileResource> getResourceMap(final @Nullable String pipeName) {
     return Objects.nonNull(pipeName)
         ? hardlinkOrCopiedFileToPipeTsFileResourceMap.computeIfAbsent(
@@ -392,9 +430,20 @@ public class PipeTsFileResourceManager {
   public void pinTsFileResource(
       final TsFileResource resource, final boolean withMods, final @Nullable String pipeName)
       throws IOException {
-    increaseFileReference(resource.getTsFile(), true, pipeName);
-    if (withMods && resource.getExclusiveModFile().exists()) {
-      increaseFileReference(resource.getExclusiveModFile().getFile(), false, pipeName);
+    final File pinnedTsFile = increaseFileReference(resource.getTsFile(), true, pipeName);
+    try {
+      if (withMods && resource.getExclusiveModFile().exists()) {
+        increaseFileReference(resource.getExclusiveModFile().getFile(), false, pipeName);
+      }
+    } catch (final IOException | RuntimeException e) {
+      // Pinning is a two-file operation.  Do not leave the TsFile pinned when the mod file cannot
+      // be pinned (for example, when the pipe directory is temporarily unavailable).
+      try {
+        decreaseFileReference(pinnedTsFile, pipeName);
+      } catch (final RuntimeException rollbackException) {
+        e.addSuppressed(rollbackException);
+      }
+      throw e;
     }
   }
 
@@ -403,13 +452,35 @@ public class PipeTsFileResourceManager {
       final boolean shouldTransferModFile,
       final @Nullable String pipeName)
       throws IOException {
-    decreaseFileReference(
-        getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName), pipeName);
-
-    if (shouldTransferModFile && resource.exclusiveModFileExists()) {
+    Exception firstException = null;
+    try {
       decreaseFileReference(
-          getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),
-          pipeName);
+          getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName), pipeName);
+    } catch (final IOException | RuntimeException e) {
+      firstException = e;
+    }
+
+    // Always attempt the mod-file cleanup even when resolving/decreasing the TsFile fails.  A
+    // failed first cleanup must not strand the second reference.
+    if (shouldTransferModFile && resource.exclusiveModFileExists()) {
+      try {
+        decreaseFileReference(
+            getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),
+            pipeName);
+      } catch (final IOException | RuntimeException e) {
+        if (firstException == null) {
+          firstException = e;
+        } else {
+          firstException.addSuppressed(e);
+        }
+      }
+    }
+
+    if (firstException != null) {
+      if (firstException instanceof IOException) {
+        throw (IOException) firstException;
+      }
+      throw (RuntimeException) firstException;
     }
   }
 

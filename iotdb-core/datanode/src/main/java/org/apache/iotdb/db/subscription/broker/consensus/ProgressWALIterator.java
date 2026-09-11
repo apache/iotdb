@@ -82,6 +82,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
   private boolean currentReaderUsesLiveSnapshot = false;
   private int consumedEntryCountInCurrentFile = 0;
   private final Set<Long> skippedBrokenWalVersionIds = new HashSet<>();
+  private int unreportedSkippedBrokenWalFileCount = 0;
+  private String firstUnreportedSkippedBrokenWalFile;
+  private String lastUnreportedSkippedBrokenWalFile;
+  private String firstUnreportedSkippedBrokenWalError;
   private IOException lastError;
   private boolean incompleteScan = false;
   private String incompleteScanDetail;
@@ -188,9 +192,9 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         lastError = e;
         LOGGER.warn(
             DataNodePipeMessages.PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41, e);
-        return false;
       }
       if (nextReady == null) {
+        logSkippedBrokenWalFilesIfNecessary();
         return false;
       }
     }
@@ -356,6 +360,10 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
 
   public boolean hasSkippedBrokenWalFiles() {
     return !skippedBrokenWalVersionIds.isEmpty();
+  }
+
+  int getSkippedBrokenWalFileCount() {
+    return skippedBrokenWalVersionIds.size();
   }
 
   public boolean hasIncompleteScan() {
@@ -579,14 +587,52 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
             e);
         return false;
       }
-      skippedBrokenWalVersionIds.add(versionId);
-      LOGGER.warn(
-          DataNodePipeMessages
-              .PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092,
-          walFile.getName(),
-          e);
+      recordSkippedBrokenWalFile(versionId, walFile, e);
       return false;
     }
+  }
+
+  private void recordSkippedBrokenWalFile(
+      final long versionId, final File walFile, final IOException error) {
+    if (!skippedBrokenWalVersionIds.add(versionId)) {
+      return;
+    }
+
+    if (unreportedSkippedBrokenWalFileCount == 0) {
+      firstUnreportedSkippedBrokenWalFile = walFile.getName();
+      firstUnreportedSkippedBrokenWalError = summarizeException(error);
+    }
+    lastUnreportedSkippedBrokenWalFile = walFile.getName();
+    unreportedSkippedBrokenWalFileCount++;
+    LOGGER.debug(
+        DataNodePipeMessages.PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092,
+        walFile.getName(),
+        error);
+  }
+
+  private void logSkippedBrokenWalFilesIfNecessary() {
+    if (unreportedSkippedBrokenWalFileCount == 0) {
+      return;
+    }
+
+    LOGGER.warn(
+        DataNodePipeMessages
+            .PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E,
+        unreportedSkippedBrokenWalFileCount,
+        logDirectory,
+        firstUnreportedSkippedBrokenWalFile,
+        lastUnreportedSkippedBrokenWalFile,
+        firstUnreportedSkippedBrokenWalError);
+    unreportedSkippedBrokenWalFileCount = 0;
+    firstUnreportedSkippedBrokenWalFile = null;
+    lastUnreportedSkippedBrokenWalFile = null;
+    firstUnreportedSkippedBrokenWalError = null;
+  }
+
+  private static String summarizeException(final IOException error) {
+    return error.getMessage() == null
+        ? error.getClass().getSimpleName()
+        : error.getClass().getSimpleName() + ": " + error.getMessage();
   }
 
   private boolean skipEntries(final ProgressWALReader reader, final int skipEntries)

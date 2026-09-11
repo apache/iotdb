@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
@@ -986,6 +987,21 @@ public class SubscriptionBrokerAgent {
 
   public Map<String, ByteBuffer> collectAllRegionCommitProgress(final int dataNodeId) {
     return ConsensusSubscriptionCommitManager.getInstance().collectAllRegionProgress(dataNodeId);
+  }
+
+  public Map<String, ByteBuffer> collectAllProgressSnapshots() {
+    final Map<String, ByteBuffer> result = new ConcurrentHashMap<>();
+    for (final Map.Entry<String, List<ISubscriptionBroker>> entry :
+        consumerGroupIdToBrokers.entrySet()) {
+      for (final ISubscriptionBroker broker : entry.getValue()) {
+        for (final Map.Entry<String, SubscriptionProgressSnapshot> snapshotEntry :
+            broker.getProgressSnapshotMap().entrySet()) {
+          result.put(
+              entry.getKey() + "/" + snapshotEntry.getKey(), snapshotEntry.getValue().serialize());
+        }
+      }
+    }
+    return result;
   }
 
   /**

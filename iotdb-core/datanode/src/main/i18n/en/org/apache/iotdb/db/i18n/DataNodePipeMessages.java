@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
 
+  public static final String LOG_FAILED_TO_RESOLVE_TRANSFER_EXCEPTION_A4F5397A =
+      "Failed to resolve transfer exception.";
+
   // ===================== CONSENSUS =====================
 
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR =
@@ -134,12 +137,35 @@ public final class DataNodePipeMessages {
       "Failed to decrease reference count for event {} in PipeRealtimePriorityBlockingQueue";
   public static final String FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK =
       "Failed to get PendingQueue. No such subtask: ";
+  public static final String
+      EXCEPTION_MULTIPLE_PIPES_MATCH_THE_REQUESTED_SINK_SUBTASK_USE_THE_PIPE_SPECIFIC_PIPESINKSUBTASKMANAGER_API_C180D94C =
+          "Multiple pipes match the requested sink subtask. Use the pipe-specific "
+              + "PipeSinkSubtaskManager API.";
   public static final String FAILED_TO_GET_PIPE_INFO_FROM_CONFIG_NODE_STATUS =
       "Failed to get pipe info from config node, status is %s.";
   public static final String FAILED_TO_GET_PIPE_METAS_WILL_BE =
       "Failed to get pipe metas, will be synced by configNode later...";
   public static final String FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM =
       "Failed to get pipe plugin jar from config node.";
+  public static final String
+      LOG_FAILED_TO_FETCH_PIPE_PLUGIN_JARS_FROM_CONFIGNODE_PLUGINS_ARG_JARS_ARG_STATUS_ARG_RETRYING_EACH_PLUGIN_INDIVIDUALLY_574C0077 =
+          "Failed to fetch pipe plugin jars from ConfigNode. Plugins: {}, jars: {}, status: {}. "
+              + "Retrying each plugin individually.";
+  public static final String
+      LOG_CONFIGNODE_RETURNED_ARG_PIPE_PLUGIN_JARS_FOR_ARG_REQUESTED_PLUGINS_PLUGINS_ARG_JARS_ARG_RETRYING_EACH_PLUGIN_INDIVIDUALLY_27E32FDE =
+          "ConfigNode returned {} pipe plugin jars for {} requested plugins. Plugins: {}, jars: {}. "
+              + "Retrying each plugin individually.";
+  public static final String
+      EXCEPTION_FAILED_TO_FETCH_PIPE_PLUGIN_JAR_FROM_CONFIGNODE_FOR_PLUGIN_ARG_JAR_ARG_STATUS_ARG_B7C7FDE5 =
+          "Failed to fetch pipe plugin jar from ConfigNode for plugin %s (jar %s). Status: %s.";
+  public static final String
+      EXCEPTION_CONFIGNODE_RETURNED_ARG_JARS_FOR_PIPE_PLUGIN_ARG_WHILE_ONE_WAS_REQUESTED_A724E582 =
+          "ConfigNode returned %d jars for pipe plugin %s while one was requested.";
+  public static final String
+      LOG_FAILED_TO_FETCH_PIPE_PLUGIN_JAR_ARG_FOR_PIPE_PLUGIN_ARG_FROM_CONFIGNODE_4929C5D9 =
+          "Failed to fetch pipe plugin jar {} for pipe plugin {} from ConfigNode.";
+  public static final String LOG_FAILED_TO_SAVE_JAR_ARG_FOR_PIPE_PLUGIN_ARG_A64D1530 =
+      "Failed to save jar {} for pipe plugin {}.";
   public static final String FAILED_TO_GET_PIPE_TASK_META_FROM =
       "Failed to get pipe task meta from config node. Ignore the exception, because config "
           + "node may not be ready yet, and meta will be pushed by config node later.";
@@ -2100,11 +2126,11 @@ public final class DataNodePipeMessages {
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_INITIALIZED_STARTSEARCHINDEX_69B53EE6 =
       "ConsensusPrefetchingQueue {}: prefetch initialized, startSearchIndex={}, progressSource={}, "
           + "recoveryWriterCount={}";
-  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_D75375D0 =
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_WALGAPSKIPPEDENTRIES_9A4E6608 =
       "ConsensusPrefetchingQueue {}: periodic stats, lag={}, pendingDelta={}, walDelta={}, "
-          + "pendingTotal={}, walTotal={}, pendingQueueSize={}, prefetchingQueueSize={}, "
-          + "inFlightEventsSize={}, realtimeWriterCount={}, walHasNext={}, isActive={}, "
-          + "subtaskScheduled={}";
+          + "pendingTotal={}, walTotal={}, walGapSkippedEntries={}, pendingQueueSize={}, "
+          + "prefetchingQueueSize={}, inFlightEventsSize={}, realtimeWriterCount={}, "
+          + "walHasNext={}, isActive={}, subtaskScheduled={}";
   public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
       "ConsensusPrefetchingQueue {}: waiting {}ms for WAL gap [{}, {}) to become visible, "
           + "currentNextExpected={}, currentWalIndex={}, seekGeneration={}";
@@ -2184,6 +2210,14 @@ public final class DataNodePipeMessages {
       "ProgressWALIterator: error reading WAL";
   public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
       "ProgressWALIterator: failed to open WAL file {}, skipping";
+  public static final String PIPE_LOG_PROGRESSWALITERATOR_SKIPPED_UNREADABLE_RETAINED_WAL_FILES_FFC8455E =
+      "ProgressWALIterator: skipped {} unreadable retained WAL files in directory {}, "
+          + "firstFile={}, lastFile={}, firstError={}; historical subscription data in these "
+          + "files cannot be replayed";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAL_REPLAY_SKIPPED_UNAVAILABLE_SEARCH_INDEXES_B8023B64 =
+      "ConsensusPrefetchingQueue {}: WAL replay skipped unavailable search indexes [{}, {}), "
+          + "skippedEntries={}, totalWalGapSkippedEntries={}; the missing WAL data may have been "
+          + "reclaimed before subscription consumption";
   public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
       "Pipe {}@{}: terminate event committed for historical transfer. creationTime: {}, "
           + "shouldMark: {}. {}";
@@ -2302,6 +2336,12 @@ public final class DataNodePipeMessages {
   public static final String PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC =
       "forceResize: failed to allocate memory after %d retries, total memory size %d bytes, used "
           + "memory size %d bytes, requested memory size %d bytes";
+  public static final String
+      EXCEPTION_UNSUPPORTED_BATCH_TYPE_ARG_WHEN_TRANSFERRING_TABLET_INSERTION_EVENT_66153E12 =
+          "Unsupported batch type %s when transferring tablet insertion event.";
+  public static final String
+      EXCEPTION_FAILED_TO_TRANSFER_TSFILE_BATCH_BECAUSE_NO_TSFILE_WAS_GENERATED_FOR_ARG_CC60CCEB =
+          "Failed to transfer TsFile batch because no TsFile was generated for %s.";
   public static final String PIPE_EXCEPTION_FAILED_TO_GET_HARDLINK_OR_COPIED_FILE_IN_PIPE_DIR_FOR_FILE_F009D86E =
       "failed to get hardlink or copied file in pipe dir for file %s, it is not a tsfile, mod file "
           + "or resource file";
@@ -2577,6 +2617,13 @@ public final class DataNodePipeMessages {
       "Reported %s pipe metas.";
   public static final String MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD =
       "Transfer file %s error, result status %s.";
+
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_5B4B2E7C =
+          "Failed to retry transferring events in the retry queue. Remaining events: %d (tablet events: %d, tsfile events: %d).";
+  public static final String
+      EXCEPTION_FAILED_TO_RETRY_TRANSFERRING_EVENTS_IN_THE_RETRY_QUEUE_REMAINING_EVENTS_ARG_TABLET_EVENTS_ARG_TSFILE_EVENTS_ARG_LAST_FAILURE_ARG_EB8F9DCD =
+          "Failed to retry transferring events in the retry queue. Remaining events: %d (tablet events: %d, tsfile events: %d). Last failure: %s.";
 
   public static final String EXCEPTION_LEGACY_PIPE_RECEIVER_REQUIRES_A_LOGGED_IN_SESSION_D96219BF =
       "Legacy pipe receiver requires a logged-in session.";

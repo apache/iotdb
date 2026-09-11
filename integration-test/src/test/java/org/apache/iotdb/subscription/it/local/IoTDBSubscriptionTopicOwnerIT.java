@@ -58,7 +58,6 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         // Lower the owner-lease floor so the drain test can use a short lease and stay fast.

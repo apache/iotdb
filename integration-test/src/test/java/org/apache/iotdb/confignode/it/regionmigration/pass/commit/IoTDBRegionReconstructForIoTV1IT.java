@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
@@ -148,28 +149,64 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
                   .get()
                   .getDataPath());
 
+      DataNodeWrapper followerNode =
+          EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeReconstructed).orElseThrow();
+      Awaitility.await()
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(1, TimeUnit.MINUTES)
+          .untilAsserted(
+              () -> {
+                try (Connection followerConnection =
+                        EnvFactory.getEnv().getConnection(followerNode);
+                    Statement followerStatement = followerConnection.createStatement();
+                    ResultSet resultSet =
+                        followerStatement.executeQuery(
+                            "select speed, temperature from root.sg.d1")) {
+                  Assert.assertTrue(resultSet.next());
+                  Assert.assertEquals(1.0, resultSet.getDouble(2), 0.0);
+                  Assert.assertEquals(2.0, resultSet.getDouble(3), 0.0);
+                }
+              });
+
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
-      while (true) {
-        try (Connection flushConn =
-                EnvFactory.getEnv()
-                    .getConnection(
-                        EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeReconstructed).get(),
-                        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
-                        CommonDescriptor.getInstance().getConfig().getAdminPassword(),
-                        BaseEnv.TREE_SQL_DIALECT);
-            Statement flushStatement = flushConn.createStatement()) {
-          flushStatement.execute("FLUSH ON LOCAL");
-        }
-        deleteTsFiles(dataDirToBeReconstructed);
+      Awaitility.await()
+          .pollInSameThread()
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(1, TimeUnit.MINUTES)
+          .untilAsserted(
+              () -> {
+                try (Connection flushConn =
+                        EnvFactory.getEnv()
+                            .getConnection(
+                                EnvFactory.getEnv()
+                                    .dataNodeIdToWrapper(dataNodeToBeReconstructed)
+                                    .get(),
+                                CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
+                                CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+                                BaseEnv.TREE_SQL_DIALECT);
+                    Statement flushStatement = flushConn.createStatement()) {
+                  flushStatement.execute("FLUSH ON LOCAL");
+                }
+                Assert.assertTrue(deleteTsFiles(dataDirToBeReconstructed));
 
-        // now, the query should throw exception
-        try {
-          session.executeQueryStatement("select * from root.sg.**");
-        } catch (StatementExecutionException e) {
-          break;
-        }
-      }
+                // The query should fail after the reconstructed follower's data files are deleted.
+                try {
+                  SessionDataSet resultSet =
+                      session.executeQueryStatement("select * from root.sg.**");
+                  try {
+                    Assert.fail();
+                  } finally {
+                    try {
+                      resultSet.close();
+                    } catch (Exception ignored) {
+                      // Ignore cleanup failures because the query unexpectedly succeeded.
+                    }
+                  }
+                } catch (StatementExecutionException expected) {
+                  // The query is expected to fail while the follower's data files are missing.
+                }
+              });
 
       // start DataNode, reconstruct the delete one
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().start();
@@ -200,25 +237,20 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       // now, the query should work fine, but the update of region status may have some delay
-      long start = System.currentTimeMillis();
-      while (true) {
-        SessionDataSet resultSet;
-        try {
-          resultSet = session.executeQueryStatement("select * from root.sg.**");
-        } catch (StatementExecutionException e) {
-          if (System.currentTimeMillis() - start > 60_000L) {
-            fail("Cannot execute query within 60s");
-          }
-          TimeUnit.SECONDS.sleep(1);
-          continue;
-        }
-        if (resultSet.hasNext()) {
-          RowRecord rowRecord = resultSet.next();
-          Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
-          Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
-          break;
-        }
-      }
+      Awaitility.await()
+          .pollInSameThread()
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(1, TimeUnit.MINUTES)
+          .untilAsserted(
+              () -> {
+                try (SessionDataSet resultSet =
+                    session.executeQueryStatement("select * from root.sg.**")) {
+                  Assert.assertTrue(resultSet.hasNext());
+                  RowRecord rowRecord = resultSet.next();
+                  Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
+                  Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
+                }
+              });
     }
   }
 

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IM
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,6 +125,7 @@ public class PBTreeFlushExecutor {
           DataNodeSchemaMessages.IO_EXCEPTION_UPDATING_SG_MNODE,
           updatedStorageGroupMNode.getFullPath(),
           e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw e;
     }
   }

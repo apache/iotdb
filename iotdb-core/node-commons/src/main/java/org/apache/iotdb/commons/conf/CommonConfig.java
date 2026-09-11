@@ -58,6 +58,7 @@ public class CommonConfig {
   public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
   public static final long DEFAULT_TIME_PARTITION_INTERVAL = 604_800_000L;
+  public static final boolean SUBSCRIPTION_ENABLED = false;
 
   // The authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
@@ -386,8 +387,6 @@ public class CommonConfig {
 
   private boolean pipeAutoSplitFullEnabled = true;
 
-  private boolean subscriptionEnabled = true;
-
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
   private int subscriptionConsensusPrefetchExecutorMaxThreadNum = 2;
@@ -467,16 +466,6 @@ public class CommonConfig {
   // timeseries and device limit
   private long seriesLimitThreshold = -1;
   private long deviceLimitThreshold = -1;
-
-  private boolean enableBinaryAllocator = true;
-
-  private int arenaNum = 4;
-
-  private int minAllocateSize = 4096;
-
-  private int maxAllocateSize = 1024 * 1024;
-
-  private int log2SizeClassGroup = 3;
 
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
@@ -836,7 +825,11 @@ public class CommonConfig {
     return status;
   }
 
-  public void setNodeStatus(NodeStatus newStatus) {
+  public synchronized void setNodeStatus(NodeStatus newStatus) {
+    if (status == newStatus) {
+      return;
+    }
+
     logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
     this.status = newStatus;
     this.statusReason = null;
@@ -2541,11 +2534,7 @@ public class CommonConfig {
   }
 
   public boolean getSubscriptionEnabled() {
-    return subscriptionEnabled;
-  }
-
-  public void setSubscriptionEnabled(boolean subscriptionEnabled) {
-    this.subscriptionEnabled = subscriptionEnabled;
+    return SUBSCRIPTION_ENABLED;
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {
@@ -3030,46 +3019,6 @@ public class CommonConfig {
 
   public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
     this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
-  }
-
-  public int getArenaNum() {
-    return arenaNum;
-  }
-
-  public void setArenaNum(int arenaNum) {
-    this.arenaNum = arenaNum;
-  }
-
-  public int getMinAllocateSize() {
-    return minAllocateSize;
-  }
-
-  public void setMinAllocateSize(int minAllocateSize) {
-    this.minAllocateSize = minAllocateSize;
-  }
-
-  public int getMaxAllocateSize() {
-    return maxAllocateSize;
-  }
-
-  public void setMaxAllocateSize(int maxAllocateSize) {
-    this.maxAllocateSize = maxAllocateSize;
-  }
-
-  public boolean isEnableBinaryAllocator() {
-    return enableBinaryAllocator;
-  }
-
-  public void setEnableBinaryAllocator(boolean enableBinaryAllocator) {
-    this.enableBinaryAllocator = enableBinaryAllocator;
-  }
-
-  public int getLog2SizeClassGroup() {
-    return log2SizeClassGroup;
-  }
-
-  public void setLog2SizeClassGroup(int log2SizeClassGroup) {
-    this.log2SizeClassGroup = log2SizeClassGroup;
   }
 
   public int getPathLogMaxSize() {

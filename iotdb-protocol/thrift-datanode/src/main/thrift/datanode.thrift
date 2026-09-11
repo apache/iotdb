@@ -319,6 +319,7 @@ struct TDataNodeHeartbeatResp {
   17: optional map<i32, i64> dataRegionRawDataSize
   18: optional list<i32> pipeDegradedStatusList
   19: optional list<map<string, i64>> pipeRecentFailureList
+  20: optional list<common.TPipeCompletedDataRegion> pipeCompletedDataRegionList
 }
 
 struct TPipeHeartbeatReq {
@@ -629,6 +630,7 @@ struct TPullCommitProgressReq {
 struct TPullCommitProgressResp {
   1: required common.TSStatus status
   2: optional map<string, binary> commitRegionProgress
+  3: optional map<string, binary> subscriptionProgress
 }
 
 struct TSyncSubscriptionProgressReq {
@@ -877,6 +879,17 @@ struct TFetchFragmentInstanceStatisticsResp {
 struct TKillQueryInstanceReq {
   1: optional string queryId
   2: optional string allowedUsername
+}
+
+struct TFetchDeviceEntrySegmentReq {
+  1: required string queryId
+  2: required string planNodeId
+  3: required i32 segmentId
+}
+
+struct TFetchDeviceEntrySegmentResp {
+  1: required common.TSStatus status
+  2: optional binary payload
 }
 
 /**
@@ -1439,6 +1452,10 @@ service MPPDataExchangeService {
   void onNewDataBlockEvent(TNewDataBlockEvent e);
 
   void onEndOfDataBlockEvent(TEndOfDataBlockEvent e);
+
+  TFetchDeviceEntrySegmentResp fetchDeviceEntrySegment(TFetchDeviceEntrySegmentReq req);
+
+  common.TSStatus finishDeviceEntrySegment(1: string queryId, 2: string planNodeId);
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()

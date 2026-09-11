@@ -129,6 +129,16 @@ public abstract class PipeTsFileBuilder {
 
   public abstract boolean isEmpty();
 
+  /** Captures the in-memory tablet state before appending one event. */
+  public Object createCheckpoint() {
+    return null;
+  }
+
+  /** Restores the in-memory tablet state after a failed append. */
+  public void rollbackToCheckpoint(final Object checkpoint) {
+    // Builders that keep append-only state override this method.
+  }
+
   public synchronized void onSuccess() {
     fileWriter = null;
   }

@@ -1012,7 +1012,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               .getDeviceIsAlignedMapFromCache(resource.getTsFile(), false);
       deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-    } catch (final IOException e) {
+    } catch (final IOException | RuntimeException e) {
       LOGGER.warn(
           DataNodePipeMessages.PIPE_FAILED_TO_GET_DEVICES_FROM_TSFILE_1,
           pipeName,

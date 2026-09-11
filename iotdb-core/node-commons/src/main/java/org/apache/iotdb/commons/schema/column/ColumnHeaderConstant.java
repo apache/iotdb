@@ -140,6 +140,19 @@ public class ColumnHeaderConstant {
   public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
   public static final String SUBSCRIBED_CONSUMERS = "SubscribedConsumers";
   public static final String SUBSCRIPTION_ID = "SubscriptionID";
+  public static final String SUBSCRIPTION_ACTIVE = "Active";
+  public static final String SUBSCRIPTION_INITIALIZED = "Initialized";
+  public static final String RAW_WAL_GAP = "RawWalGap";
+  public static final String APPROXIMATE_LAG = "ApproximateLag";
+  public static final String IN_FLIGHT_EVENT_COUNT = "InFlightEventCount";
+  public static final String PREFETCHED_EVENT_COUNT = "PrefetchedEventCount";
+  public static final String PENDING_EVENT_COUNT = "PendingEventCount";
+  public static final String CURRENT_WAL_SEARCH_INDEX = "CurrentWalSearchIndex";
+  public static final String NEXT_READ_SEARCH_INDEX = "NextReadSearchIndex";
+  public static final String LAST_PROGRESS_TIME = "LastProgressTime";
+  public static final String LAST_POLL_TIME = "LastPollTime";
+  public static final String LAST_CONSUMER_ID = "LastConsumerId";
+  public static final String SEEK_GENERATION = "SeekGeneration";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -646,6 +659,29 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(CONSUMER_GROUP_NAME, TSDataType.TEXT),
           new ColumnHeader(SUBSCRIBED_CONSUMERS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showSubscriptionDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SUBSCRIPTION_ID, TSDataType.TEXT),
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(CONSUMER_GROUP_NAME, TSDataType.TEXT),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(REGION_ID, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(SUBSCRIPTION_ACTIVE, TSDataType.BOOLEAN),
+          new ColumnHeader(SUBSCRIPTION_INITIALIZED, TSDataType.BOOLEAN),
+          new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(RAW_WAL_GAP, TSDataType.INT64),
+          new ColumnHeader(APPROXIMATE_LAG, TSDataType.INT64),
+          new ColumnHeader(IN_FLIGHT_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(PREFETCHED_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(PENDING_EVENT_COUNT, TSDataType.INT64),
+          new ColumnHeader(CURRENT_WAL_SEARCH_INDEX, TSDataType.INT64),
+          new ColumnHeader(NEXT_READ_SEARCH_INDEX, TSDataType.INT64),
+          new ColumnHeader(LAST_PROGRESS_TIME, TSDataType.INT64),
+          new ColumnHeader(LAST_POLL_TIME, TSDataType.INT64),
+          new ColumnHeader(LAST_CONSUMER_ID, TSDataType.TEXT),
+          new ColumnHeader(SEEK_GENERATION, TSDataType.INT64));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(

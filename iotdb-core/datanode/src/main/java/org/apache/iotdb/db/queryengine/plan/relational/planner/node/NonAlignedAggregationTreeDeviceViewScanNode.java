@@ -95,28 +95,29 @@ public class NonAlignedAggregationTreeDeviceViewScanNode extends AggregationTree
 
   @Override
   public NonAlignedAggregationTreeDeviceViewScanNode clone() {
-    return new NonAlignedAggregationTreeDeviceViewScanNode(
-        getPlanNodeId(),
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice,
-        projection,
-        aggregations,
-        groupingSets,
-        preGroupedSymbols,
-        step,
-        groupIdSymbol,
-        getTreeDBName(),
-        getMeasurementColumnNameMap());
+    return copyDeviceEntryDataSetTo(
+        new NonAlignedAggregationTreeDeviceViewScanNode(
+            getPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice,
+            projection,
+            aggregations,
+            groupingSets,
+            preGroupedSymbols,
+            step,
+            groupIdSymbol,
+            getTreeDBName(),
+            getMeasurementColumnNameMap()));
   }
 
   protected PlanNodeType getPlanNodeType() {
