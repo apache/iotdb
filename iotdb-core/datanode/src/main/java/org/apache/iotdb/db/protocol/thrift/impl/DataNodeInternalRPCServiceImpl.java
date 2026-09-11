@@ -629,10 +629,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendTsFilePieceNode(final TTsFilePieceReq req) {
-    LOGGER.info(DataNodeMiscMessages.RECEIVE_LOAD_NODE, req.uuid);
+    if (!req.isSetSliceIndex() || req.sliceIndex == 0) {
+      LOGGER.info(DataNodeMiscMessages.RECEIVE_LOAD_NODE, req.uuid);
+    }
 
     final ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
+    final boolean isSliced =
+        req.isSetSliceIndex() || req.isSetSliceCount() || req.isSetOriginBodySize();
+    if (isSliced) {
+      if (!req.isSetSliceIndex() || !req.isSetSliceCount() || !req.isSetOriginBodySize()) {
+        return createTLoadResp(
+            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
+      }
+      return createTLoadResp(
+          StorageEngine.getInstance()
+              .writeLoadTsFileNodeSlice(
+                  (DataRegionId) groupId,
+                  req.body,
+                  req.uuid,
+                  req.sliceIndex,
+                  req.sliceCount,
+                  req.originBodySize));
+    }
+
     final LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
       return createTLoadResp(

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -63,6 +64,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -82,6 +84,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
 
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
   private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
+  private static final int LOAD_TSFILE_PIECE_RPC_FRAME_RESERVED_BYTES = 1024;
   private static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(IoTDBDescriptor.getInstance().getConfig().getConnectionTimeoutInMS());
 
@@ -143,7 +146,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
 
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    TTsFilePieceReq loadTsFileReq = null;
+    List<TTsFilePieceReq> loadTsFileReqs = null;
 
     for (TDataNodeLocation dataNodeLocation :
         instance.getRegionReplicaSet().getDataNodeLocations()) {
@@ -151,16 +154,73 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
       } else {
-        if (loadTsFileReq == null) {
-          loadTsFileReq =
-              new TTsFilePieceReq(
+        if (loadTsFileReqs == null) {
+          loadTsFileReqs =
+              splitTsFilePieceReq(
                   instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
                   uuid,
-                  instance.getRegionReplicaSet().getRegionId());
+                  instance.getRegionReplicaSet().getRegionId(),
+                  getLoadTsFilePieceBodySizeLimit());
         }
-        dispatchRemote(loadTsFileReq, endPoint);
+        dispatchRemote(loadTsFileReqs, endPoint);
       }
     }
+  }
+
+  private static int getLoadTsFilePieceBodySizeLimit() {
+    final int thriftMaxFrameSize =
+        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    return Math.max(1, thriftMaxFrameSize - LOAD_TSFILE_PIECE_RPC_FRAME_RESERVED_BYTES);
+  }
+
+  static List<TTsFilePieceReq> splitTsFilePieceReq(
+      final ByteBuffer body,
+      final String uuid,
+      final TConsensusGroupId consensusGroupId,
+      final int bodySizeLimit) {
+    if (bodySizeLimit <= 0) {
+      throw new IllegalArgumentException();
+    }
+
+    final int originBodySize = body.remaining();
+    final int sliceCount = getSliceCount(originBodySize, bodySizeLimit);
+    final List<TTsFilePieceReq> requests = new ArrayList<>(sliceCount);
+    if (sliceCount == 1) {
+      requests.add(createTsFilePieceReq(body.duplicate(), uuid, consensusGroupId));
+      return requests;
+    }
+
+    final int originPosition = body.position();
+    for (int sliceIndex = 0; sliceIndex < sliceCount; sliceIndex++) {
+      final int startOffset = sliceIndex * bodySizeLimit;
+      final int endOffset = startOffset + Math.min(bodySizeLimit, originBodySize - startOffset);
+      final ByteBuffer slicedBody = body.duplicate();
+      slicedBody.position(originPosition + startOffset);
+      slicedBody.limit(originPosition + endOffset);
+      requests.add(
+          createTsFilePieceReq(slicedBody.slice(), uuid, consensusGroupId)
+              .setSliceIndex(sliceIndex)
+              .setSliceCount(sliceCount)
+              .setOriginBodySize(originBodySize));
+    }
+    return requests;
+  }
+
+  static int getSliceCount(final int bodySize, final int bodySizeLimit) {
+    if (bodySize < 0 || bodySizeLimit <= 0) {
+      throw new IllegalArgumentException();
+    }
+    return bodySize == 0 ? 1 : (bodySize - 1) / bodySizeLimit + 1;
+  }
+
+  private static TTsFilePieceReq createTsFilePieceReq(
+      final ByteBuffer body, final String uuid, final TConsensusGroupId consensusGroupId) {
+    final TTsFilePieceReq request =
+        new TTsFilePieceReq().setUuid(uuid).setConsensusGroupId(consensusGroupId);
+    // The generated setter copies the whole buffer, while these immutable slices remain valid until
+    // all replicas have been dispatched.
+    request.body = body;
+    return request;
   }
 
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
@@ -222,25 +282,27 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
     }
   }
 
-  private void dispatchRemote(TTsFilePieceReq loadTsFileReq, TEndPoint endPoint)
+  private void dispatchRemote(List<TTsFilePieceReq> loadTsFileReqs, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
     boolean transferAttemptRecorded = false;
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
       client.setTimeout(CONNECTION_TIMEOUT_MS.get());
 
-      final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
-      if (!loadResp.isAccepted()) {
-        recordTransferAttempt(
-            endPoint,
-            false,
-            loadResp.isSetStatus()
-                ? String.valueOf(loadResp.getStatus().getCode())
-                : UserDataTransferErrorCode.REMOTE_REJECTED.name(),
-            null);
-        transferAttemptRecorded = true;
-        LOGGER.warn(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
+      for (final TTsFilePieceReq loadTsFileReq : loadTsFileReqs) {
+        final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
+        if (!loadResp.isAccepted()) {
+          recordTransferAttempt(
+              endPoint,
+              false,
+              loadResp.isSetStatus()
+                  ? String.valueOf(loadResp.getStatus().getCode())
+                  : UserDataTransferErrorCode.REMOTE_REJECTED.name(),
+              null);
+          transferAttemptRecorded = true;
+          LOGGER.warn(loadResp.message);
+          throw new FragmentInstanceDispatchException(loadResp.status);
+        }
       }
       recordTransferAttempt(endPoint, true, null, null);
       transferAttemptRecorded = true;
@@ -253,7 +315,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
       final String exceptionMessage =
           String.format(
               "failed to dispatch load command %s to node %s because of exception: %s",
-              loadTsFileReq, endPoint, e);
+              uuid, endPoint, e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()

@@ -399,6 +399,9 @@ struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
+    4: optional i32 sliceIndex
+    5: optional i32 sliceCount
+    6: optional i32 originBodySize
 }
 
 struct TLoadCommandReq {
