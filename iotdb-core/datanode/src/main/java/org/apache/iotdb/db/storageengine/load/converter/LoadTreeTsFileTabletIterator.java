@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.load.converter;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
+import org.apache.iotdb.db.exception.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
@@ -29,6 +31,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInserti
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileParserMemoryManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.exception.PathParseException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -54,6 +57,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.storageengine.load.LoadTsFilePathUtils.getValidatedDevicePath;
+
 /**
  * Load uses scan parsing first for throughput. If scan parsing hits corruption, fall back to query
  * parsing for the remaining measurements and devices so later data can still be loaded.
@@ -63,7 +68,18 @@ class LoadTreeTsFileTabletIterator
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTreeTsFileTabletIterator.class);
 
-  private static final PipePattern LOAD_TREE_PATTERN = new IoTDBPipePattern(null);
+  private static final PipePattern LOAD_TREE_PATTERN =
+      new IoTDBPipePattern(null) {
+        @Override
+        public boolean mayOverlapWithDevice(final String device) {
+          try {
+            getValidatedDevicePath(new PlainDeviceID(device));
+          } catch (final LoadAnalyzeInvalidPathException e) {
+            throw new IllegalArgumentException(e.getMessage(), e);
+          }
+          return super.mayOverlapWithDevice(device);
+        }
+      };
 
   private final File file;
   private final boolean isWithMod;
@@ -333,6 +349,7 @@ class LoadTreeTsFileTabletIterator
     while (!pendingQueryTasks.isEmpty()) {
       activeQueryTask = pendingQueryTasks.removeFirst();
       try {
+        getValidatedDevicePath(activeQueryTask.device);
         activeQueryParser =
             new TsFileInsertionQueryDataContainer(
                 file,
@@ -412,6 +429,10 @@ class LoadTreeTsFileTabletIterator
     Throwable current = e;
     while (Objects.nonNull(current)) {
       if (current instanceof InterruptedException
+          // Invalid paths cannot be recovered by query parsing or splitting measurements.
+          || current instanceof PathParseException
+          || current instanceof IllegalPathException
+          || current instanceof LoadAnalyzeInvalidPathException
           || current instanceof PipeRuntimeOutOfMemoryCriticalException
           || current instanceof LoadRuntimeOutOfMemoryException) {
         return true;
@@ -422,6 +443,9 @@ class LoadTreeTsFileTabletIterator
   }
 
   private RuntimeException toRuntimeException(final Exception e) {
+    if (e instanceof LoadAnalyzeInvalidPathException) {
+      return new IllegalArgumentException(e.getMessage(), e);
+    }
     return e instanceof RuntimeException
         ? (RuntimeException) e
         : new IllegalStateException("Failed to iterate tablets while loading TsFile.", e);
