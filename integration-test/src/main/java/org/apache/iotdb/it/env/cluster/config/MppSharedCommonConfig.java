@@ -785,8 +785,8 @@ public class MppSharedCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setEnableEncryptPermissionFile(boolean enableEncryptPermissionFile) {
-    dnConfig.setEnableEncryptConfigFile(enableEncryptPermissionFile);
-    cnConfig.setEnableEncryptConfigFile(enableEncryptPermissionFile);
+    dnConfig.setEnableEncryptPermissionFile(enableEncryptPermissionFile);
+    cnConfig.setEnableEncryptPermissionFile(enableEncryptPermissionFile);
     return this;
   }
 
