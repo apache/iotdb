@@ -132,6 +132,22 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseTsFileReadOptions() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse(
+            "head -t sensors -m temperature -m humidity -f ndjson --offset 2 --start -10 --end 20 "
+                + "--tag-filter site eq north --tag-match any data.tsfile");
+    assertEquals(FilesystemCommand.Type.HEAD, command.getType());
+    assertEquals("ndjson", command.getFormat());
+    assertEquals("sensors", command.getTable());
+    assertEquals(2, command.getColumns().size());
+    assertEquals(2, command.getOffset());
+    assertEquals("-10", command.getStart());
+    assertEquals("any", command.getTagMatch());
+    assertEquals(1, command.getTagFilters().size());
+  }
+
+  @Test
   public void parseTailLimitAndPath() {
     FilesystemCommand command = FilesystemCommandParser.parse("tail -n 3 /db1/table1.csv");
 
@@ -170,9 +186,11 @@ public class FilesystemCommandParserTest {
         FilesystemCommand.Type.FILE,
         FilesystemCommandParser.parse("file /db1/table1.csv").getType());
     assertEquals(
-        FilesystemCommand.Type.STATS, FilesystemCommandParser.parse("stats /db1/table1.csv").getType());
+        FilesystemCommand.Type.STATS,
+        FilesystemCommandParser.parse("stats /db1/table1.csv").getType());
     assertEquals(
-        FilesystemCommand.Type.COUNT, FilesystemCommandParser.parse("count /db1/table1.csv").getType());
+        FilesystemCommand.Type.COUNT,
+        FilesystemCommandParser.parse("count /db1/table1.csv").getType());
   }
 
   @Test
@@ -559,9 +577,9 @@ public class FilesystemCommandParserTest {
     assertEquals(FilesystemCommand.Type.HELP, FilesystemCommandParser.parse("--help").getType());
     for (String command :
         new String[] {
-          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "cat", "head", "tail", "grep", "find", "less",
-          "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join", "tee",
-          "tree", "sql", "help", "exit", "quit"
+          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "cat", "head",
+          "tail", "grep", "find", "less", "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut",
+          "paste", "join", "tee", "tree", "sql", "help", "exit", "quit"
         }) {
       FilesystemCommand help = FilesystemCommandParser.parse(command + " --help");
       assertEquals(command, FilesystemCommand.Type.HELP, help.getType());

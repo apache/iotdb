@@ -146,10 +146,27 @@ public class FilesystemCommandParser {
             args.has("-a") ? "-a" : "",
             listPath);
       case CAT:
+        validateScope(args);
         List<String> catPaths = args.paths(0, Integer.MAX_VALUE);
-        return catPaths.isEmpty()
-            ? FilesystemCommand.path(type, DEFAULT_PATH)
-            : FilesystemCommand.paths(type, catPaths);
+        FilesystemCommand catCommand =
+            catPaths.isEmpty()
+                ? FilesystemCommand.path(type, DEFAULT_PATH)
+                : FilesystemCommand.paths(type, catPaths);
+        return catCommand
+            .withLimit(
+                args.has("-n") ? unsignedInteger(command, "-n", args.value("-n"), false) : -1)
+            .withReadOptions(
+                format(args.valueOrDefault("-f", "table")),
+                args.valueOrDefault("-d", ""),
+                args.valueOrDefault("-t", ""),
+                args.values("-m"),
+                args.has("--offset")
+                    ? parseLong(command, "--offset", args.value("--offset"), false)
+                    : 0,
+                parseTimestamp(command, "--start", args.valueOrDefault("--start", null)),
+                parseTimestamp(command, "--end", args.valueOrDefault("--end", null)),
+                args.values("--tag-filter"),
+                args.valueOrDefault("--tag-match", "all"));
       case PASTE:
         return FilesystemCommand.paths(type, args.paths(1, Integer.MAX_VALUE));
       case MV:
@@ -157,14 +174,28 @@ public class FilesystemCommandParser {
         return FilesystemCommand.paths(type, args.paths(2, 2));
       case HEAD:
       case TAIL:
+        validateScope(args);
         int limit =
             args.has("-n")
                 ? unsignedInteger(command, "-n", args.value("-n"), false)
                 : DEFAULT_HEAD_LIMIT;
         String readPath = args.path(false);
-        return type == FilesystemCommand.Type.HEAD
-            ? FilesystemCommand.head(readPath, limit)
-            : FilesystemCommand.tail(readPath, limit);
+        FilesystemCommand readCommand =
+            type == FilesystemCommand.Type.HEAD
+                ? FilesystemCommand.head(readPath, limit)
+                : FilesystemCommand.tail(readPath, limit);
+        return readCommand.withReadOptions(
+            format(args.valueOrDefault("-f", "table")),
+            args.valueOrDefault("-d", ""),
+            args.valueOrDefault("-t", ""),
+            args.values("-m"),
+            args.has("--offset")
+                ? parseLong(command, "--offset", args.value("--offset"), false)
+                : 0,
+            parseTimestamp(command, "--start", args.valueOrDefault("--start", null)),
+            parseTimestamp(command, "--end", args.valueOrDefault("--end", null)),
+            args.values("--tag-filter"),
+            args.valueOrDefault("--tag-match", "all"));
       case GREP:
         // The first operand is a literal pattern and may be empty.
         args.paths(2, 2, true);
@@ -254,6 +285,51 @@ public class FilesystemCommandParser {
     }
   }
 
+  private static String format(String value) {
+    if (!"table".equals(value) && !"csv".equals(value) && !"ndjson".equals(value)) {
+      throw invalid("Invalid output format: %s", value);
+    }
+    return value;
+  }
+
+  private static void validateScope(Arguments args) {
+    if (args.has("-d") && args.has("-t")) {
+      throw invalid("Options -d and -t are mutually exclusive");
+    }
+    if (args.has("--tag-match") && args.values("--tag-filter").isEmpty()) {
+      throw invalid("--tag-match requires --tag-filter");
+    }
+    if (args.has("--tag-match")) {
+      String match = args.value("--tag-match");
+      if (!"all".equals(match) && !"any".equals(match))
+        throw invalid("Invalid --tag-match: %s", match);
+    }
+  }
+
+  private static long parseLong(String command, String option, String value, boolean positive) {
+    try {
+      if (value == null
+          || value.isEmpty()
+          || (value.startsWith("-") && !option.startsWith("--start")))
+        throw new NumberFormatException();
+      long parsed = Long.parseLong(value);
+      if (parsed < 0 || (positive && parsed == 0)) throw new NumberFormatException();
+      return parsed;
+    } catch (NumberFormatException e) {
+      throw invalid("Invalid value for %s: %s", option, value);
+    }
+  }
+
+  private static String parseTimestamp(String command, String option, String value) {
+    if (value == null) return null;
+    try {
+      Long.parseLong(value);
+      return value;
+    } catch (NumberFormatException e) {
+      throw invalid("Invalid value for %s: %s", option, value);
+    }
+  }
+
   private static void validateCutFields(String fields) {
     try {
       for (String field : fields.split(",", -1)) {
@@ -287,6 +363,7 @@ public class FilesystemCommandParser {
   private static class Arguments {
     private final String command;
     private final Map<String, String> options = new HashMap<>();
+    private final Map<String, List<String>> repeated = new HashMap<>();
     private final List<String> operands = new ArrayList<>();
 
     private Arguments(String command, List<String> tokens) {
@@ -343,7 +420,26 @@ public class FilesystemCommandParser {
                     CliMessages
                         .MESSAGE_USE_HELP_COMMAND_OR_COMMAND_HELP_WITHOUT_OTHER_ARGUMENTS_3EED45E5);
               }
-              put(flag, value);
+              if ("--format".equals(flag)) flag = "-f";
+              if ("--limit".equals(flag)) flag = "-n";
+              if ("--device".equals(flag)) flag = "-d";
+              if ("--table".equals(flag)) flag = "-t";
+              if ("--tag-filter".equals(flag)) {
+                if (i + 1 >= tokens.size() || "--".equals(tokens.get(i + 1))) {
+                  throw invalid(
+                      CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, flag);
+                }
+                String op = tokens.get(++i);
+                String filter = value + " " + op;
+                if (i + 1 < tokens.size() && !tokens.get(i + 1).startsWith("-")) {
+                  filter += " " + tokens.get(++i);
+                }
+                repeated.computeIfAbsent(flag, ignored -> new ArrayList<>()).add(filter);
+              } else if ("-m".equals(flag)) {
+                repeated.computeIfAbsent(flag, ignored -> new ArrayList<>()).add(value);
+              } else {
+                put(flag, value);
+              }
             } else {
               throw invalid(
                   CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, flag);
@@ -365,9 +461,23 @@ public class FilesystemCommandParser {
 
     private boolean takesValue(String flag) {
       switch (command) {
+        case "cat":
         case "head":
         case "tail":
-          return "-n".equals(flag);
+          return "-n".equals(flag)
+              || "--limit".equals(flag)
+              || "-f".equals(flag)
+              || "--format".equals(flag)
+              || "-d".equals(flag)
+              || "--device".equals(flag)
+              || "-t".equals(flag)
+              || "--table".equals(flag)
+              || "-m".equals(flag)
+              || "--offset".equals(flag)
+              || "--start".equals(flag)
+              || "--end".equals(flag)
+              || "--tag-filter".equals(flag)
+              || "--tag-match".equals(flag);
         case "tree":
           return "-L".equals(flag);
         case "find":
@@ -382,13 +492,17 @@ public class FilesystemCommandParser {
     }
 
     private void put(String option, String value) {
-      if (options.containsKey(option)) {
+      if (options.containsKey(option) && !"-m".equals(option) && !"--tag-filter".equals(option)) {
         throw invalid(
             CliMessages.EXCEPTION_ARG_OPTION_SPECIFIED_MORE_THAN_ONCE_ARG_CEB275DB,
             command,
             option);
       }
       options.put(option, value);
+    }
+
+    private List<String> values(String option) {
+      return repeated.getOrDefault(option, java.util.Collections.emptyList());
     }
 
     private boolean has(String option) {

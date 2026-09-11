@@ -115,13 +115,17 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   public List<SqlRow> meta(FsPath path) throws SQLException {
     TableFileRef file = parseTableFile(path);
     if (file.kind == TableFileKind.UNKNOWN && path.getSegments().size() == 2) {
-      file = new TableFileRef(path.getSegments().get(0), path.getSegments().get(1), TableFileKind.DATA_CSV);
+      file =
+          new TableFileRef(
+              path.getSegments().get(0), path.getSegments().get(1), TableFileKind.DATA_CSV);
     }
     if (file.kind == TableFileKind.UNKNOWN || !tableExists(parent(path), file.table)) {
       throw new SQLException("Path does not exist: " + path);
     }
     List<SqlRow> result = new ArrayList<>();
-    for (SqlRow row : executor.query("SHOW TABLES DETAILS FROM " + TableFilesystemSql.identifier(file.database))) {
+    for (SqlRow row :
+        executor.query(
+            "SHOW TABLES DETAILS FROM " + TableFilesystemSql.identifier(file.database))) {
       if (file.table.equals(row.get("TableName"))) {
         result.add(row);
       }
@@ -140,10 +144,23 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       }
       String c = TableFilesystemSql.identifier(name);
       String sql =
-          "SELECT COUNT(*) AS row_count, COUNT(" + c + ") AS non_null_count, "
-              + "MIN(time) AS min_time, MAX(time) AS max_time, MIN(" + c + ") AS min, "
-              + "MAX(" + c + ") AS max, FIRST_VALUE(" + c + ") AS first, "
-              + "LAST_VALUE(" + c + ") AS last, SUM(" + c + ") AS sum FROM " + file.toTablePath();
+          "SELECT COUNT(*) AS row_count, COUNT("
+              + c
+              + ") AS non_null_count, "
+              + "MIN(time) AS min_time, MAX(time) AS max_time, MIN("
+              + c
+              + ") AS min, "
+              + "MAX("
+              + c
+              + ") AS max, FIRST_VALUE("
+              + c
+              + ") AS first, "
+              + "LAST_VALUE("
+              + c
+              + ") AS last, SUM("
+              + c
+              + ") AS sum FROM "
+              + file.toTablePath();
       List<SqlRow> rows = executor.query(sql);
       java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
       values.put("model", "table");
@@ -177,7 +194,9 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       String c = TableFilesystemSql.identifier(name);
       List<SqlRow> rows =
           executor.query(
-              "SELECT COUNT(*) AS row_count, COUNT(" + c + ") AS non_null_count FROM "
+              "SELECT COUNT(*) AS row_count, COUNT("
+                  + c
+                  + ") AS non_null_count FROM "
                   + file.toTablePath());
       java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
       values.put("model", "table");
@@ -199,7 +218,9 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   private TableFileRef tableFile(FsPath path) throws SQLException {
     TableFileRef file = parseTableFile(path);
     if (file.kind == TableFileKind.UNKNOWN && path.getSegments().size() == 2) {
-      file = new TableFileRef(path.getSegments().get(0), path.getSegments().get(1), TableFileKind.DATA_CSV);
+      file =
+          new TableFileRef(
+              path.getSegments().get(0), path.getSegments().get(1), TableFileKind.DATA_CSV);
     }
     if (file.kind != TableFileKind.DATA_CSV) {
       throw new SQLException("Path is not a table: " + path);
@@ -222,7 +243,8 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
 
   private static String difference(List<SqlRow> rows, String left, String right) {
     try {
-      return Long.toString(Long.parseLong(scalar(rows, left, "0")) - Long.parseLong(scalar(rows, right, "0")));
+      return Long.toString(
+          Long.parseLong(scalar(rows, left, "0")) - Long.parseLong(scalar(rows, right, "0")));
     } catch (NumberFormatException e) {
       return "";
     }
@@ -234,7 +256,7 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     TableFileRef file = parseTableFile(path);
     if (depth == 2 && file.kind == TableFileKind.DATA_CSV) {
       ensureExists(path, file);
-      return executor.query("SELECT * FROM " + file.toTablePath() + " LIMIT " + limit);
+      return executor.query(selectWithLimit("SELECT * FROM " + file.toTablePath(), limit));
     }
     throw new SQLException("Path is not readable: " + path);
   }
@@ -245,7 +267,8 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     if (file.kind == TableFileKind.DATA_CSV) {
       ensureExists(path, file);
       return head(
-          rowsToCsvLines(executor.query("SELECT * FROM " + file.toTablePath() + " LIMIT " + limit)),
+          rowsToCsvLines(
+              executor.query(selectWithLimit("SELECT * FROM " + file.toTablePath(), limit))),
           limit);
     }
     if (file.kind == TableFileKind.META) {
@@ -317,6 +340,10 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     if (!tableExists(parent(path), file.table)) {
       throw new SQLException("Path does not exist: " + path);
     }
+  }
+
+  private static String selectWithLimit(String query, int limit) {
+    return limit < 0 ? query : query + " LIMIT " + limit;
   }
 
   private List<FsNode> listDatabases() throws SQLException {

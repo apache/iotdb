@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli.fs.command;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -67,6 +68,15 @@ public class FilesystemCommand {
   private final String pattern;
   private final String statement;
   private final String errorMessage;
+  private final String format;
+  private final String device;
+  private final String table;
+  private final List<String> columns;
+  private final long offset;
+  private final String start;
+  private final String end;
+  private final List<String> tagFilters;
+  private final String tagMatch;
 
   private FilesystemCommand(
       Type type,
@@ -77,7 +87,16 @@ public class FilesystemCommand {
       String option,
       String pattern,
       String statement,
-      String errorMessage) {
+      String errorMessage,
+      String format,
+      String device,
+      String table,
+      List<String> columns,
+      long offset,
+      String start,
+      String end,
+      List<String> tagFilters,
+      String tagMatch) {
     this.type = type;
     this.path = path;
     this.paths = paths;
@@ -87,67 +106,151 @@ public class FilesystemCommand {
     this.pattern = pattern;
     this.statement = statement;
     this.errorMessage = errorMessage;
+    this.format = format;
+    this.device = device;
+    this.table = table;
+    this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
+    this.offset = offset;
+    this.start = start;
+    this.end = end;
+    this.tagFilters = Collections.unmodifiableList(new ArrayList<>(tagFilters));
+    this.tagMatch = tagMatch;
+  }
+
+  private static FilesystemCommand create(
+      Type type,
+      String path,
+      List<String> paths,
+      int depth,
+      int limit,
+      String option,
+      String pattern,
+      String statement,
+      String errorMessage) {
+    return new FilesystemCommand(
+        type,
+        path,
+        paths,
+        depth,
+        limit,
+        option,
+        pattern,
+        statement,
+        errorMessage,
+        "table",
+        "",
+        "",
+        Collections.emptyList(),
+        0,
+        null,
+        null,
+        Collections.emptyList(),
+        "all");
   }
 
   public static FilesystemCommand simple(Type type) {
-    return new FilesystemCommand(type, "", Collections.emptyList(), -1, -1, "", "", "", "");
+    return create(type, "", Collections.emptyList(), -1, -1, "", "", "", "");
   }
 
   public static FilesystemCommand path(Type type, String path) {
-    return new FilesystemCommand(
-        type, path, Collections.singletonList(path), -1, -1, "", "", "", "");
+    return create(type, path, Collections.singletonList(path), -1, -1, "", "", "", "");
   }
 
   public static FilesystemCommand paths(Type type, List<String> paths) {
     String path = paths.isEmpty() ? "" : paths.get(0);
-    return new FilesystemCommand(
-        type, path, Collections.unmodifiableList(paths), -1, -1, "", "", "", "");
+    return create(type, path, Collections.unmodifiableList(paths), -1, -1, "", "", "", "");
   }
 
   public static FilesystemCommand head(String path, int limit) {
-    return new FilesystemCommand(
-        Type.HEAD, path, Collections.singletonList(path), -1, limit, "", "", "", "");
+    return create(Type.HEAD, path, Collections.singletonList(path), -1, limit, "", "", "", "");
   }
 
   public static FilesystemCommand tail(String path, int limit) {
-    return new FilesystemCommand(
-        Type.TAIL, path, Collections.singletonList(path), -1, limit, "", "", "", "");
+    return create(Type.TAIL, path, Collections.singletonList(path), -1, limit, "", "", "", "");
   }
 
   public static FilesystemCommand option(Type type, String option, String path) {
-    return new FilesystemCommand(
-        type, path, Collections.singletonList(path), -1, -1, option, "", "", "");
+    return create(type, path, Collections.singletonList(path), -1, -1, option, "", "", "");
   }
 
   public static FilesystemCommand pattern(Type type, String pattern, String path) {
-    return new FilesystemCommand(
-        type, path, Collections.singletonList(path), -1, -1, "", pattern, "", "");
+    return create(type, path, Collections.singletonList(path), -1, -1, "", pattern, "", "");
   }
 
   public static FilesystemCommand cut(String delimiter, String fields, String path) {
-    return new FilesystemCommand(
+    return create(
         Type.CUT, path, Collections.singletonList(path), -1, -1, delimiter, fields, "", "");
   }
 
   public static FilesystemCommand join(String delimiter, String fields, List<String> paths) {
     String path = paths.isEmpty() ? "" : paths.get(0);
-    return new FilesystemCommand(
+    return create(
         Type.JOIN, path, Collections.unmodifiableList(paths), -1, -1, delimiter, fields, "", "");
   }
 
   public static FilesystemCommand tree(String path, int depth) {
-    return new FilesystemCommand(
-        Type.TREE, path, Collections.singletonList(path), depth, -1, "", "", "", "");
+    return create(Type.TREE, path, Collections.singletonList(path), depth, -1, "", "", "", "");
   }
 
   public static FilesystemCommand sql(String statement) {
-    return new FilesystemCommand(
-        Type.SQL, "", Collections.emptyList(), -1, -1, "", "", statement, "");
+    return create(Type.SQL, "", Collections.emptyList(), -1, -1, "", "", statement, "");
   }
 
   public static FilesystemCommand invalid(String errorMessage) {
+    return create(Type.INVALID, "", Collections.emptyList(), -1, -1, "", "", "", errorMessage);
+  }
+
+  public FilesystemCommand withReadOptions(
+      String format,
+      String device,
+      String table,
+      List<String> columns,
+      long offset,
+      String start,
+      String end,
+      List<String> tagFilters,
+      String tagMatch) {
     return new FilesystemCommand(
-        Type.INVALID, "", Collections.emptyList(), -1, -1, "", "", "", errorMessage);
+        type,
+        path,
+        paths,
+        depth,
+        limit,
+        option,
+        pattern,
+        statement,
+        errorMessage,
+        format,
+        device,
+        table,
+        columns,
+        offset,
+        start,
+        end,
+        tagFilters,
+        tagMatch);
+  }
+
+  public FilesystemCommand withLimit(int newLimit) {
+    return new FilesystemCommand(
+        type,
+        path,
+        paths,
+        depth,
+        newLimit,
+        option,
+        pattern,
+        statement,
+        errorMessage,
+        format,
+        device,
+        table,
+        columns,
+        offset,
+        start,
+        end,
+        tagFilters,
+        tagMatch);
   }
 
   public Type getType() {
@@ -184,5 +287,48 @@ public class FilesystemCommand {
 
   public String getErrorMessage() {
     return errorMessage;
+  }
+
+  public String getFormat() {
+    return format;
+  }
+
+  public String getDevice() {
+    return device;
+  }
+
+  public String getTable() {
+    return table;
+  }
+
+  public List<String> getColumns() {
+    return columns;
+  }
+
+  public long getOffset() {
+    return offset;
+  }
+
+  public String getStart() {
+    return start;
+  }
+
+  public String getEnd() {
+    return end;
+  }
+
+  public List<String> getTagFilters() {
+    return tagFilters;
+  }
+
+  public String getTagMatch() {
+    return tagMatch;
+  }
+
+  public ReadOptions getReadOptions() {
+    Long startValue = start == null ? null : Long.valueOf(start);
+    Long endValue = end == null ? null : Long.valueOf(end);
+    return new ReadOptions(
+        format, device, table, columns, limit, offset, startValue, endValue, tagFilters, tagMatch);
   }
 }

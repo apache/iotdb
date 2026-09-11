@@ -22,6 +22,7 @@ package org.apache.iotdb.cli.fs;
 import org.apache.iotdb.cli.fs.command.FilesystemCommand;
 import org.apache.iotdb.cli.fs.command.FilesystemCommandHelp;
 import org.apache.iotdb.cli.fs.command.FilesystemCommandParser;
+import org.apache.iotdb.cli.fs.command.ReadOptions;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
@@ -56,13 +57,13 @@ public class FilesystemShell {
   public static final int USAGE_ERROR = 1;
   public static final int INPUT_ERROR = 2;
   public static final int RUNTIME_ERROR = 3;
-
   private static final int DEFAULT_READ_LIMIT = 20;
+
   private static final List<String> COMMANDS =
       Arrays.asList(
-          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "cat", "head", "tail", "grep", "find",
-          "less", "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join",
-          "tree", "help", "exit", "quit", "tee");
+          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "cat", "head",
+          "tail", "grep", "find", "less", "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut",
+          "paste", "join", "tree", "help", "exit", "quit", "tee");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
@@ -125,10 +126,10 @@ public class FilesystemShell {
         printRows(provider.countRows(resolve(command.getPath())));
         return true;
       case CAT:
-        printSequentialReads(command.getPaths(), DEFAULT_READ_LIMIT);
+        printSequentialReads(command.getPaths(), command.getReadOptions());
         return true;
       case HEAD:
-        printHead(command.getPath(), command.getLimit());
+        printHead(command);
         return true;
       case TAIL:
         printTail(command.getPath(), command.getLimit());
@@ -366,29 +367,100 @@ public class FilesystemShell {
     }
   }
 
+  private void printRows(List<SqlRow> rows, String format) {
+    if ("csv".equalsIgnoreCase(format)) {
+      for (SqlRow row : rows) {
+        List<String> values = new ArrayList<>();
+        for (String value : row.asMap().values()) {
+          values.add("\"" + (value == null ? "" : value.replace("\"", "\"\"")) + "\"");
+        }
+        ctx.getPrinter().println(String.join(",", values));
+      }
+    } else if ("ndjson".equalsIgnoreCase(format)) {
+      for (SqlRow row : rows) {
+        List<String> values = new ArrayList<>();
+        for (Map.Entry<String, String> e : row.asMap().entrySet()) {
+          String v =
+              e.getValue() == null ? "" : e.getValue().replace("\\", "\\\\").replace("\"", "\\\"");
+          values.add("\"" + e.getKey() + "\":\"" + v + "\"");
+        }
+        ctx.getPrinter().println("{" + String.join(",", values) + "}");
+      }
+    } else {
+      printRows(rows);
+    }
+  }
+
   private void printLines(List<String> lines) {
     for (String line : lines) {
       ctx.getPrinter().println(line);
     }
   }
 
-  private void printSequentialReads(List<String> paths, int limit) throws SQLException {
+  private void printSequentialReads(List<String> paths, ReadOptions options) throws SQLException {
     for (String path : paths) {
-      printReadable(path, limit);
+      printReadable(path, options);
     }
   }
 
   private void printReadable(String path, int limit) throws SQLException {
+    printReadable(path, limit, "table");
+  }
+
+  private void printReadable(String path, int limit, String format) throws SQLException {
     FsPath resolvedPath = resolve(path);
     if (isTextFile(resolvedPath)) {
       printLines(provider.readLines(resolvedPath, limit));
       return;
     }
-    printRows(provider.read(resolvedPath, limit));
+    printRows(provider.read(resolvedPath, limit), format);
   }
 
-  private void printHead(String path, int limit) throws SQLException {
-    printReadable(path, limit);
+  private void printHead(FilesystemCommand command) throws SQLException {
+    printReadable(command.getPath(), command.getReadOptions());
+  }
+
+  private void printReadable(String path, ReadOptions options) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    if (isTextFile(resolvedPath)) {
+      printLines(
+          provider.readLines(
+              resolvedPath,
+              options.getLimit() < 0 ? DEFAULT_READ_LIMIT : (int) options.getLimit()));
+      return;
+    }
+    List<SqlRow> rows =
+        provider.read(
+            resolvedPath,
+            options.getLimit() > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) options.getLimit());
+    List<SqlRow> filtered = new ArrayList<>();
+    for (SqlRow row : rows) {
+      String time = row.get("Time");
+      if (options.getStart() != null && !withinLowerBound(time, options.getStart())) continue;
+      if (options.getEnd() != null && !withinUpperBound(time, options.getEnd())) continue;
+      filtered.add(row);
+    }
+    long offset = Math.min(options.getOffset(), filtered.size());
+    List<SqlRow> result = filtered.subList((int) offset, filtered.size());
+    if (options.getLimit() >= 0 && result.size() > options.getLimit())
+      result = result.subList(0, (int) options.getLimit());
+    printRows(result, options.getFormat());
+  }
+
+  private static boolean withinLowerBound(String value, long bound) {
+    try {
+      return value != null && Long.parseLong(value) >= bound;
+    } catch (NumberFormatException e) {
+      return true;
+    }
+  }
+
+  private static boolean withinUpperBound(String value, long bound) {
+    try {
+      return value != null && Long.parseLong(value) <= bound;
+    } catch (NumberFormatException e) {
+      return true;
+    }
   }
 
   private void printTail(String path, int limit) throws SQLException {

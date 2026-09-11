@@ -93,10 +93,24 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
     FsPath devicePath = parent(path);
     List<SqlRow> rows =
         executor.query(
-            "SELECT COUNT(" + measurement + "), MIN_TIME(" + measurement + "), MAX_TIME("
-                + measurement + "), MIN_VALUE(" + measurement + "), MAX_VALUE(" + measurement
-                + "), FIRST_VALUE(" + measurement + "), LAST_VALUE(" + measurement + "), SUM("
-                + measurement + ") FROM " + toTreePath(devicePath));
+            "SELECT COUNT("
+                + measurement
+                + "), MIN_TIME("
+                + measurement
+                + "), MAX_TIME("
+                + measurement
+                + "), MIN_VALUE("
+                + measurement
+                + "), MAX_VALUE("
+                + measurement
+                + "), FIRST_VALUE("
+                + measurement
+                + "), LAST_VALUE("
+                + measurement
+                + "), SUM("
+                + measurement
+                + ") FROM "
+                + toTreePath(devicePath));
     String dataType = "";
     List<SqlRow> schemaRows = schema(path);
     if (!schemaRows.isEmpty()) {
@@ -161,7 +175,11 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
     String measurement = path.getFileName();
     FsPath devicePath = parent(path);
     return executor.query(
-        "SELECT " + measurement + " FROM " + toTreePath(devicePath) + " LIMIT " + limit);
+        "SELECT "
+            + measurement
+            + " FROM "
+            + toTreePath(devicePath)
+            + (limit < 0 ? "" : " LIMIT " + limit));
   }
 
   @Override
