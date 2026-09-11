@@ -132,7 +132,7 @@ public class FilesystemShell {
         printHead(command);
         return true;
       case TAIL:
-        printTail(command.getPath(), command.getLimit());
+        printTail(command);
         return true;
       case GREP:
         printMatchingRows(command.getPath(), command.getPattern());
@@ -369,10 +369,17 @@ public class FilesystemShell {
 
   private void printRows(List<SqlRow> rows, String format) {
     if ("csv".equalsIgnoreCase(format)) {
+      if (!rows.isEmpty()) {
+        List<String> headers = new ArrayList<>();
+        for (String header : rows.get(0).asMap().keySet()) {
+          headers.add(csvValue(header));
+        }
+        ctx.getPrinter().println(String.join(",", headers));
+      }
       for (SqlRow row : rows) {
         List<String> values = new ArrayList<>();
         for (String value : row.asMap().values()) {
-          values.add("\"" + (value == null ? "" : value.replace("\"", "\"\"")) + "\"");
+          values.add(csvValue(value));
         }
         ctx.getPrinter().println(String.join(",", values));
       }
@@ -380,15 +387,43 @@ public class FilesystemShell {
       for (SqlRow row : rows) {
         List<String> values = new ArrayList<>();
         for (Map.Entry<String, String> e : row.asMap().entrySet()) {
-          String v =
-              e.getValue() == null ? "" : e.getValue().replace("\\", "\\\\").replace("\"", "\\\"");
-          values.add("\"" + e.getKey() + "\":\"" + v + "\"");
+          values.add(jsonString(e.getKey()) + ":" + jsonValue(e.getKey(), e.getValue()));
         }
         ctx.getPrinter().println("{" + String.join(",", values) + "}");
       }
     } else {
-      printRows(rows);
+      printTableRows(rows);
     }
+  }
+
+  private void printTableRows(List<SqlRow> rows) {
+    if (rows.isEmpty()) return;
+    List<String> headers = new ArrayList<>(rows.get(0).asMap().keySet());
+    List<Integer> widths = new ArrayList<>();
+    for (String header : headers) widths.add(header.length());
+    for (SqlRow row : rows) {
+      for (int i = 0; i < headers.size(); i++) {
+        String value = row.asMap().get(headers.get(i));
+        widths.set(i, Math.max(widths.get(i), value == null ? 0 : value.length()));
+      }
+    }
+    ctx.getPrinter().println(formatTableLine(headers, widths));
+    for (SqlRow row : rows) {
+      List<String> values = new ArrayList<>();
+      for (String header : headers) values.add(row.asMap().getOrDefault(header, ""));
+      ctx.getPrinter().println(formatTableLine(values, widths));
+    }
+  }
+
+  private static String formatTableLine(List<String> values, List<Integer> widths) {
+    StringBuilder line = new StringBuilder();
+    for (int i = 0; i < values.size(); i++) {
+      if (i > 0) line.append("  ");
+      String value = values.get(i) == null ? "" : values.get(i);
+      line.append(value);
+      for (int padding = value.length(); padding < widths.get(i); padding++) line.append(' ');
+    }
+    return line.toString();
   }
 
   private void printLines(List<String> lines) {
@@ -429,17 +464,16 @@ public class FilesystemShell {
               options.getLimit() < 0 ? DEFAULT_READ_LIMIT : (int) options.getLimit()));
       return;
     }
-    List<SqlRow> rows =
-        provider.read(
-            resolvedPath,
-            options.getLimit() > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) options.getLimit());
+    List<SqlRow> rows = provider.read(resolvedPath, readLimit(options));
     List<SqlRow> filtered = new ArrayList<>();
     for (SqlRow row : rows) {
-      String time = row.get("Time");
+      String time = valueIgnoreCase(row, "time");
       if (options.getStart() != null && !withinLowerBound(time, options.getStart())) continue;
       if (options.getEnd() != null && !withinUpperBound(time, options.getEnd())) continue;
+      if (!matchesTagFilters(row, options)) continue;
       filtered.add(row);
     }
+    filtered = projectColumns(filtered, options.getColumns());
     long offset = Math.min(options.getOffset(), filtered.size());
     List<SqlRow> result = filtered.subList((int) offset, filtered.size());
     if (options.getLimit() >= 0 && result.size() > options.getLimit())
@@ -463,13 +497,175 @@ public class FilesystemShell {
     }
   }
 
-  private void printTail(String path, int limit) throws SQLException {
+  private void printTail(FilesystemCommand command) throws SQLException {
+    ReadOptions options = command.getReadOptions();
+    String path = command.getPath();
+    int limit = readLimit(options);
     FsPath resolvedPath = resolve(path);
     if (isTextFile(resolvedPath)) {
       printLines(provider.tailLines(resolvedPath, limit));
       return;
     }
-    printRows(provider.tail(resolvedPath, limit));
+    List<SqlRow> rows = provider.tail(resolvedPath, limit);
+    List<SqlRow> filtered = new ArrayList<>();
+    for (SqlRow row : rows) {
+      String time = valueIgnoreCase(row, "time");
+      if (options.getStart() != null && !withinLowerBound(time, options.getStart())) continue;
+      if (options.getEnd() != null && !withinUpperBound(time, options.getEnd())) continue;
+      if (!matchesTagFilters(row, options)) continue;
+      filtered.add(row);
+    }
+    filtered = projectColumns(filtered, options.getColumns());
+    long offset = Math.min(options.getOffset(), filtered.size());
+    List<SqlRow> result = filtered.subList((int) offset, filtered.size());
+    if (options.getLimit() >= 0 && result.size() > options.getLimit()) {
+      result = result.subList(0, (int) options.getLimit());
+    }
+    printRows(result, options.getFormat());
+  }
+
+  private static String csvValue(String value) {
+    if (value == null) {
+      return "\\N";
+    }
+    if (value.isEmpty()
+        || value.indexOf(',') >= 0
+        || value.indexOf('"') >= 0
+        || value.indexOf('\n') >= 0
+        || value.indexOf('\r') >= 0) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  private static String jsonString(String value) {
+    if (value == null) {
+      return "\"\"";
+    }
+    StringBuilder escaped = new StringBuilder(value.length() + 2);
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '\\':
+          escaped.append("\\\\");
+          break;
+        case '"':
+          escaped.append("\\\"");
+          break;
+        case '\b':
+          escaped.append("\\b");
+          break;
+        case '\f':
+          escaped.append("\\f");
+          break;
+        case '\n':
+          escaped.append("\\n");
+          break;
+        case '\r':
+          escaped.append("\\r");
+          break;
+        case '\t':
+          escaped.append("\\t");
+          break;
+        default:
+          if (c < 0x20) {
+            escaped.append(String.format("\\u%04x", (int) c));
+          } else {
+            escaped.append(c);
+          }
+      }
+    }
+    return "\"" + escaped + "\"";
+  }
+
+  private static String jsonValue(String column, String value) {
+    if (value == null) return "null";
+    // IoTDB exposes timestamps as decimal values; keep them strings for parity
+    // with TsFile-Cli's INT64/TIMESTAMP JSON representation.
+    if ("time".equalsIgnoreCase(column)) return jsonString(value);
+    if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value))
+      return value.toLowerCase();
+    if (value.matches("-?(?:0|[1-9]\\d*)")
+        || value.matches("-?(?:0|[1-9]\\d*)\\.[0-9]+(?:[eE][+-]?[0-9]+)?")
+        || value.matches("-?(?:0|[1-9]\\d*)(?:[eE][+-]?[0-9]+)")) return value;
+    return jsonString(value);
+  }
+
+  private static List<SqlRow> projectColumns(List<SqlRow> rows, List<String> columns) {
+    if (columns == null || columns.isEmpty()) return rows;
+    List<SqlRow> projected = new ArrayList<>();
+    for (SqlRow row : rows) {
+      Map<String, String> values = new LinkedHashMap<>();
+      for (Map.Entry<String, String> entry : row.asMap().entrySet()) {
+        if ("time".equalsIgnoreCase(entry.getKey())
+            || columns.stream().anyMatch(c -> c.equalsIgnoreCase(entry.getKey()))) {
+          values.put(entry.getKey(), entry.getValue());
+        }
+      }
+      projected.add(new SqlRow(values));
+    }
+    return projected;
+  }
+
+  private static boolean matchesTagFilters(SqlRow row, ReadOptions options) {
+    if (options.getTagFilters().isEmpty()) return true;
+    boolean any = "any".equalsIgnoreCase(options.getTagMatch());
+    boolean matched = !any;
+    for (String spec : options.getTagFilters()) {
+      String[] parts = spec.split("\\s+", 3);
+      if (parts.length < 2) continue;
+      String actual = valueIgnoreCase(row, parts[0]);
+      String op = parts[1].toLowerCase();
+      String expected = parts.length == 3 ? parts[2] : null;
+      boolean current;
+      switch (op) {
+        case "eq":
+          current = actual != null && actual.equals(expected);
+          break;
+        case "neq":
+          current = actual == null || !actual.equals(expected);
+          break;
+        case "is-null":
+          current = actual == null;
+          break;
+        case "not-null":
+          current = actual != null;
+          break;
+        case "regexp":
+          try {
+            current = actual != null && Pattern.matches(expected == null ? "" : expected, actual);
+          } catch (RuntimeException e) {
+            current = false;
+          }
+          break;
+        default:
+          current = false;
+      }
+      if (any) matched |= current;
+      else matched &= current;
+    }
+    return matched;
+  }
+
+  private static int readLimit(ReadOptions options) {
+    if (options.getLimit() < 0) return -1;
+    if (options.getStart() != null
+        || options.getEnd() != null
+        || !options.getTagFilters().isEmpty()) return -1;
+    long requested =
+        options.getOffset() > Integer.MAX_VALUE - options.getLimit()
+            ? Integer.MAX_VALUE
+            : options.getLimit() + options.getOffset();
+    return requested > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) requested;
+  }
+
+  private static String valueIgnoreCase(SqlRow row, String column) {
+    String value = row.get(column);
+    if (value != null) return value;
+    for (Map.Entry<String, String> entry : row.asMap().entrySet()) {
+      if (column.equalsIgnoreCase(entry.getKey())) return entry.getValue();
+    }
+    return null;
   }
 
   private void printMatchingRows(String path, String pattern) throws SQLException {

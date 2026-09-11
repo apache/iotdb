@@ -542,6 +542,42 @@ public class FilesystemShellTest {
   }
 
   @Test
+  public void executeHeadAppliesOffsetProjectionAndCsvHeader() throws SQLException {
+    when(provider.read(FsPath.absolute("/db1/table1"), 3))
+        .thenReturn(
+            Arrays.asList(
+                SqlRow.of("Time", "1", "tag", "north", "value", "10"),
+                SqlRow.of("Time", "2", "tag", "south", "value", "20"),
+                SqlRow.of("Time", "3", "tag", "north", "value", "30")));
+
+    assertTrue(shell.execute("head -n 2 --offset 1 -m value -f csv /db1/table1"));
+
+    assertEquals(
+        "Time,value"
+            + System.lineSeparator()
+            + "2,20"
+            + System.lineSeparator()
+            + "3,30"
+            + System.lineSeparator(),
+        out.toString());
+    verify(provider).read(FsPath.absolute("/db1/table1"), 3);
+  }
+
+  @Test
+  public void executeCatFormatsNdjsonAndFiltersTags() throws SQLException {
+    when(provider.read(FsPath.absolute("/db1/table1"), -1))
+        .thenReturn(
+            Arrays.asList(
+                SqlRow.of("Time", "1", "tag", "north", "value", "10"),
+                SqlRow.of("Time", "2", "tag", "south", "value", null)));
+
+    assertTrue(shell.execute("cat --tag-filter tag eq north -m value -f ndjson /db1/table1"));
+
+    assertEquals("{\"Time\":\"1\",\"value\":10}" + System.lineSeparator(), out.toString());
+    verify(provider).read(FsPath.absolute("/db1/table1"), -1);
+  }
+
+  @Test
   public void executeTailReadsCsvFileLinesWithLimit() throws SQLException {
     when(provider.tailLines(FsPath.absolute("/db1/table1.csv"), 3))
         .thenReturn(Arrays.asList("Time,tag1,s1", "2,b,43"));

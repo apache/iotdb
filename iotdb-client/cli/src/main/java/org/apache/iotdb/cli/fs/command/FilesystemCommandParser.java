@@ -303,15 +303,26 @@ public class FilesystemCommandParser {
       String match = args.value("--tag-match");
       if (!"all".equals(match) && !"any".equals(match))
         throw invalid("Invalid --tag-match: %s", match);
+      if (args.values("--tag-filter").size() < 2) {
+        throw invalid("--tag-match requires at least two tag filters");
+      }
+    } else if (args.values("--tag-filter").size() >= 2) {
+      throw invalid("two or more tag filters require --tag-match all or any");
     }
   }
 
   private static long parseLong(String command, String option, String value, boolean positive) {
     try {
-      if (value == null
-          || value.isEmpty()
-          || (value.startsWith("-") && !option.startsWith("--start")))
+      if (value == null || value.isEmpty() || value.charAt(0) == '-')
         throw new NumberFormatException();
+      if (value.length() > 1 && value.charAt(0) == '0') {
+        throw new NumberFormatException();
+      }
+      for (int i = 0; i < value.length(); i++) {
+        if (value.charAt(i) < '0' || value.charAt(i) > '9') {
+          throw new NumberFormatException();
+        }
+      }
       long parsed = Long.parseLong(value);
       if (parsed < 0 || (positive && parsed == 0)) throw new NumberFormatException();
       return parsed;
@@ -323,6 +334,17 @@ public class FilesystemCommandParser {
   private static String parseTimestamp(String command, String option, String value) {
     if (value == null) return null;
     try {
+      if (value.isEmpty() || "+".equals(value)) throw new NumberFormatException();
+      int start = value.charAt(0) == '-' ? 1 : 0;
+      if (start == value.length() || (value.charAt(start) == '0' && start + 1 < value.length())) {
+        throw new NumberFormatException();
+      }
+      for (int i = start; i < value.length(); i++) {
+        if (value.charAt(i) < '0' || value.charAt(i) > '9') {
+          throw new NumberFormatException();
+        }
+      }
+      if (value.startsWith("-0")) throw new NumberFormatException();
       Long.parseLong(value);
       return value;
     } catch (NumberFormatException e) {
@@ -424,19 +446,37 @@ public class FilesystemCommandParser {
               if ("--limit".equals(flag)) flag = "-n";
               if ("--device".equals(flag)) flag = "-d";
               if ("--table".equals(flag)) flag = "-t";
+              if ("--measurements".equals(flag)) flag = "-m";
               if ("--tag-filter".equals(flag)) {
                 if (i + 1 >= tokens.size() || "--".equals(tokens.get(i + 1))) {
                   throw invalid(
                       CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, flag);
                 }
                 String op = tokens.get(++i);
+                if (!"eq".equals(op)
+                    && !"neq".equals(op)
+                    && !"regexp".equals(op)
+                    && !"is-null".equals(op)
+                    && !"not-null".equals(op)) {
+                  throw invalid("Invalid --tag-filter operator: %s", op);
+                }
                 String filter = value + " " + op;
-                if (i + 1 < tokens.size() && !tokens.get(i + 1).startsWith("-")) {
+                boolean requiresValue = "eq".equals(op) || "neq".equals(op) || "regexp".equals(op);
+                if (requiresValue) {
+                  if (i + 1 >= tokens.size() || "--".equals(tokens.get(i + 1))) {
+                    throw invalid(
+                        CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, flag);
+                  }
                   filter += " " + tokens.get(++i);
                 }
                 repeated.computeIfAbsent(flag, ignored -> new ArrayList<>()).add(filter);
-              } else if ("-m".equals(flag)) {
-                repeated.computeIfAbsent(flag, ignored -> new ArrayList<>()).add(value);
+              } else if ("-m".equals(flag) || "--measurements".equals(flag)) {
+                List<String> measurements =
+                    repeated.computeIfAbsent(flag, ignored -> new ArrayList<>());
+                if (measurements.contains(value)) {
+                  throw invalid("measurement '%s' specified more than once", value);
+                }
+                measurements.add(value);
               } else {
                 put(flag, value);
               }
@@ -473,6 +513,7 @@ public class FilesystemCommandParser {
               || "-t".equals(flag)
               || "--table".equals(flag)
               || "-m".equals(flag)
+              || "--measurements".equals(flag)
               || "--offset".equals(flag)
               || "--start".equals(flag)
               || "--end".equals(flag)

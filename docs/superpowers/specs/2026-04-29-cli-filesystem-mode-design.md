@@ -165,11 +165,11 @@ The structured format vocabulary is exactly `table`, `csv`, and `ndjson`, matchi
 when stdout is redirected. Newly introduced structured result surfaces default to `table`, as in
 `ResolveFormatTest.AutoAlwaysUsesTable`.
 
-This is a future formatter contract, not a new option accepted by the current filesystem parser.
-Existing `ls`/`tree` name output, CSV data-file content, read limits, and text `cut`/`paste`/`join`
-behavior remain compatible. In particular, `cat /db/table.csv` continues to produce file content;
-it does not acquire TsFile's default table format or unlimited read behavior. A future structured
-command or explicit format option must document its scope and defaults before it is exposed.
+`head`, `cat`, and `tail` now accept the TsFile read options `-f/--format`, `-d/--device`,
+`-t/--table`, repeated `-m/--measurements`, `-n/--limit`, `--offset`, `--start`, `--end`,
+`--tag-filter`, and `--tag-match`. `head` defaults to ten rows, while `cat` has no row limit.
+CSV and NDJSON formatting is applied to provider rows; legacy text files retain their text-line
+behavior.
 
 - Carry ordered names, types, values, and null flags from JDBC to the writer. Do not rebuild types
   from `SqlRow` string values or infer null from an empty string.
@@ -348,16 +348,16 @@ semantics wherever the same command exists. Provider support can still vary by d
 | `stat [path]` | Print filesystem-style metadata, including path, Unix type, and provider metadata. | `stat /db/table.csv` |
 | `schema [path]` | Print table or timeseries schema rows. Table mode accepts a bare table path or its `.csv` data path; tree mode accepts a timeseries path. | `schema /db/table` |
 | `meta [path]` | Print table or path metadata. Table mode accepts a bare table path or its `.csv` data path; tree mode prints provider metadata for the resolved node. | `meta /db/table` |
-| `cat <path>...` | Print one or more readable data files sequentially. Table `.csv` paths print CSV lines. | `cat /db/table.csv` |
-| `head [-n lines] <path>` | Print the first rows or text lines for a readable path. Short numeric form such as `head -5 <path>` is also parsed. | `head -n 5 /db/table.csv` |
+| `cat [options] <path>...` | Print one or more readable paths. Structured rows use `table`, `csv`, or `ndjson` output; text files retain line output. | `cat -t sensors -m temperature -f ndjson /db/table` |
+| `head [options] <path>` | Print the first rows or text lines. Supports TsFile read options and the short numeric form `head -5 <path>`. | `head -n 5 -f csv /db/table` |
 | `tail [-n lines] <path>` | Print the last file lines where the provider supports tail. Table `.csv` uses `ORDER BY time DESC LIMIT n` internally and returns original order. | `tail -n 5 /db/table.csv` |
-| `wc -l <path>` | Print file-line count plus path. Only `-l` is supported. | `wc -l /db/table.csv` |
+| `stats [path]` | Print TsFile-style field statistics for the selected path. | `stats /db/table.csv` |
+| `count [path]` | Print TsFile-style logical column counts for the selected path. | `count /db/table.csv` |
 | `grep <pattern> <path>` | Print lines or rows containing the literal pattern. This is substring matching, not regular-expression matching. | `grep spricoder /db/table.csv` |
 | `find [path] [-name name]` | Recursively list the starting path and descendants whose node name exactly matches `name`; without `-name`, it prints all visited paths. | `find /db -name table.csv` |
 | `less <path>` | Current implementation prints readable content like `cat` with the default read limit; it is not an interactive pager. | `less /db/table.csv` |
 | `more <path>` | Current implementation prints readable content like `cat` with the default read limit; it is not an interactive pager. | `more /db/table.csv` |
 | `file <path>` | Print the Unix type for the path: `directory`, `regular file`, or `unknown`. | `file /db/table.csv` |
-| `du <path>` | Print provider count plus path. Table data files use logical row counts plus the CSV header. | `du /db/table.csv` |
 | `cut -d<delimiter> -f<fields> <path>` | Apply Unix delimiter-based field selection to each line. The delimiter must be one character. Field lists and closed ranges such as `2,3` and `1-2` are supported. | `cut -d, -f2,3 /db/table.csv` |
 | `paste <path>...` | Read multiple regular files side by side and join corresponding lines with tabs. | `paste /db/t1.csv /db/t2.csv` |
 | `join [-t delimiter] [-1 field] [-2 field] <path1> <path2>` | Apply Unix inner join semantics to two readable files using 1-based fields. Default delimiter is whitespace; with `-t`, output uses the same delimiter. Inputs are expected to be sorted by join key. | `join -t, -1 2 -2 1 /db/t1.csv /db/t2.csv` |
@@ -450,7 +450,9 @@ Interactive completion must be mode-aware:
 
 Table-mode read behavior is currently:
 
-- `cat /db/table.csv` maps to `SELECT * FROM db.table LIMIT <limit>`.
+- `cat` and `head` map to provider row reads. The shell applies time ranges, offsets, projections,
+  and tag filters before formatting when those options require post-processing. An unbounded
+  `cat` omits a SQL `LIMIT`, matching TsFile-Cli.
 - `schema /db/table` maps to `DESC db.table DETAILS` and preserves IoTDB result columns.
 - `meta /db/table` maps to `SHOW TABLES DETAILS FROM db`, filters to the table row, and preserves
   IoTDB result columns.
@@ -461,16 +463,15 @@ arguments but must not trigger data reads. The removed `.schema` sidecar path is
 filesystem object; `.meta` remains a readable metadata sidecar.
 
 `paste` remains Unix-like: users pass multiple regular file paths and the shell joins
-corresponding lines with tabs. It must not become a database-specific `select` command or
-`cat --columns` dialect.
+corresponding lines with tabs. It must not become a database-specific `select` command or replace
+the structured `cat --measurements` option.
 
 `join` also remains Unix-like: users pass exactly two regular file paths and optional text field
 selection flags. It must not become a SQL join alias or infer database relationships from table
 metadata.
 
-For CSV-first table files, multi-column projection should prefer Unix `cut` syntax such as
-`cut -d, -f2,3 /db/table.csv`. The implementation may later optimize this internally, but the
-public interface must remain the standard `cut` form.
+For structured row reads, repeated `-m/--measurements` selects columns while preserving the time
+column. Text CSV files continue to support Unix `cut` syntax such as `cut -d, -f2,3`.
 
 In interactive filesystem mode, a single command failure must not terminate the CLI session. For
 example, if `cat time` is resolved from `/testtest` to `/testtest/time`, table mode should reject it
@@ -693,7 +694,7 @@ Unit tests should cover the behavior without needing a live IoTDB instance where
 - `FsPath` tests for absolute paths, relative paths, `.`, `..`, empty input, and attempts to move
   above root.
 - Command parser tests for valid and invalid forms of all supported shell commands, including
-  listing options, `head`/`tail` limits, `wc -l`, `find -name`, `cut`, `paste`, `join`, write-gated
+  listing options, `head`/`tail` limits, `stats`, `count`, `find -name`, `cut`, `paste`, `join`, write-gated
   commands, and the parser-only `sql` form.
 - Provider tests with a mocked `SqlExecutor`, verifying tree-mode path-to-SQL mapping.
 - Provider tests with a mocked `SqlExecutor`, verifying table-mode path-to-SQL mapping, CSV data

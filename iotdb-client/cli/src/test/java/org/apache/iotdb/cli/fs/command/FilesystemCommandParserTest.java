@@ -136,7 +136,7 @@ public class FilesystemCommandParserTest {
     FilesystemCommand command =
         FilesystemCommandParser.parse(
             "head -t sensors -m temperature -m humidity -f ndjson --offset 2 --start -10 --end 20 "
-                + "--tag-filter site eq north --tag-match any data.tsfile");
+                + "--tag-filter site eq north --tag-filter rack eq r1 --tag-match any data.tsfile");
     assertEquals(FilesystemCommand.Type.HEAD, command.getType());
     assertEquals("ndjson", command.getFormat());
     assertEquals("sensors", command.getTable());
@@ -144,7 +144,26 @@ public class FilesystemCommandParserTest {
     assertEquals(2, command.getOffset());
     assertEquals("-10", command.getStart());
     assertEquals("any", command.getTagMatch());
-    assertEquals(1, command.getTagFilters().size());
+    assertEquals(2, command.getTagFilters().size());
+  }
+
+  @Test
+  public void parseLongMeasurementsAliasAndTagFilterOperators() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse(
+            "cat --measurements temperature --measurements humidity "
+                + "--tag-filter site is-null data.tsfile");
+    assertEquals(2, command.getColumns().size());
+    assertEquals("temperature", command.getColumns().get(0));
+    assertEquals("site is-null", command.getTagFilters().get(0));
+  }
+
+  @Test
+  public void rejectInvalidTagFilterCombinations() {
+    assertInvalid(
+        "cat --tag-filter site contains north data.tsfile",
+        "cat --tag-match all --tag-filter site eq north data.tsfile",
+        "cat --tag-filter site eq north --tag-filter rack eq r1 data.tsfile");
   }
 
   @Test
@@ -543,6 +562,18 @@ public class FilesystemCommandParserTest {
     assertEquals(
         Integer.MAX_VALUE, FilesystemCommandParser.parse("tail -n 2147483647 path").getLimit());
     assertInvalid("join -1 0 a b", "join -2 0 a b");
+  }
+
+  @Test
+  public void rejectNonCanonicalReadTimestampsAndOffsets() {
+    assertInvalid(
+        "head --start 01 path",
+        "head --start -0 path",
+        "head --start +1 path",
+        "head --offset 01 path",
+        "head --offset +1 path",
+        "head --offset -1 path");
+    assertEquals("-10", FilesystemCommandParser.parse("head --start -10 path").getStart());
   }
 
   @Test
