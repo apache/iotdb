@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -53,7 +54,12 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
 
       // properties required by pipe memory control framework
       final PipeMemoryBlock allocatedMemoryBlock =
-          PipeDataNodeResourceManager.memory().tryAllocate(initMemorySizeInBytes);
+          PipeDataNodeResourceManager.memory()
+              .tryAllocate(
+                  IoTDBDataNodeCacheLeaderClientManager.class.getSimpleName(),
+                  initMemorySizeInBytes,
+                  PipeMemoryBlockCategory.CACHE,
+                  IoTDBDataNodeCacheLeaderClientManager.class.getSimpleName());
 
       device2endpoint =
           Caffeine.newBuilder()

@@ -75,6 +75,8 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.PipeMemoryBlockInfo;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -186,6 +188,8 @@ public class InformationSchemaContentSupplierFactory {
           return new RegionSupplier(dataTypes, userEntity);
         case InformationSchema.PIPES:
           return new PipeSupplier(dataTypes, userEntity.getUsername());
+        case InformationSchema.PIPE_MEMORY:
+          return new PipeMemorySupplier(dataTypes, userEntity);
         case InformationSchema.PIPE_PLUGINS:
           return new PipePluginSupplier(dataTypes, userEntity);
         case InformationSchema.TOPICS:
@@ -719,6 +723,48 @@ public class InformationSchemaContentSupplierFactory {
                   : "{}",
               TSFileConfig.STRING_CHARSET));
 
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class PipeMemorySupplier extends TsBlockSupplier {
+
+    private final Iterator<PipeMemoryBlockInfo> iterator;
+
+    private PipeMemorySupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      iterator = PipeDataNodeResourceManager.memory().getPipeMemoryBlockInfoList().iterator();
+    }
+
+    @Override
+    protected void constructLine() {
+      final PipeMemoryBlockInfo memoryBlockInfo = iterator.next();
+      columnBuilders[0].writeLong(memoryBlockInfo.getBlockId());
+      columnBuilders[1].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getName()));
+      columnBuilders[2].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getCategory()));
+      columnBuilders[3].writeLong(memoryBlockInfo.getMemoryUsageInBytes());
+      columnBuilders[4].writeLong(memoryBlockInfo.getMaxMemorySizeInBytes());
+      columnBuilders[5].writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(
+              memoryBlockInfo.getAllocationTime(), TimeUnit.MILLISECONDS));
+      if (memoryBlockInfo.getAssigner() == null) {
+        columnBuilders[6].appendNull();
+      } else {
+        columnBuilders[6].writeBinary(BytesUtils.valueOf(memoryBlockInfo.getAssigner()));
+      }
+      if (memoryBlockInfo.getParentBlockId() == null) {
+        columnBuilders[7].appendNull();
+      } else {
+        columnBuilders[7].writeLong(memoryBlockInfo.getParentBlockId());
+      }
+      columnBuilders[8].writeInt(memoryBlockInfo.getHierarchyLevel());
+      columnBuilders[9].writeLong(memoryBlockInfo.getAccountedMemoryUsageInBytes());
       resultBuilder.declarePosition();
     }
 

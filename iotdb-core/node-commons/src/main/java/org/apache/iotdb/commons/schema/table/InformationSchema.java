@@ -47,6 +47,7 @@ public class InformationSchema {
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
   public static final String PIPES = "pipes";
+  public static final String PIPE_MEMORY = "pipe_memory";
   public static final String PIPE_PLUGINS = "pipe_plugins";
   public static final String TOPICS = "topics";
   public static final String SUBSCRIPTIONS = "subscriptions";
@@ -240,6 +241,35 @@ public class InformationSchema {
         new AttributeColumnSchema(
             ColumnHeaderConstant.RECENT_FAILURES_TABLE_MODEL, TSDataType.STRING));
     schemaTables.put(PIPES, pipeTable);
+
+    final TsTable pipeMemoryTable = new TsTable(PIPE_MEMORY);
+    pipeMemoryTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.BLOCK_ID_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.NAME_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.CATEGORY_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MEMORY_USAGE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MAX_MEMORY_SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ALLOCATION_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.ASSIGNER_TABLE_MODEL, TSDataType.STRING));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.PARENT_BLOCK_ID_TABLE_MODEL, TSDataType.INT64));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.HIERARCHY_LEVEL_TABLE_MODEL, TSDataType.INT32));
+    pipeMemoryTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ACCOUNTED_MEMORY_USAGE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    schemaTables.put(PIPE_MEMORY, pipeMemoryTable);
 
     final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);
     pipePluginTable.addColumnSchema(
