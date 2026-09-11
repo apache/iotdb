@@ -218,6 +218,11 @@ public class AnalyzeUtils {
         }
       }
       return computeDataPartitionParams(timePartitionSlotMap, getDatabaseName(statement, context));
+    } else if (statement instanceof InsertNumericRowStatement row) {
+      return computeDataPartitionParams(
+          Collections.singletonMap(
+              row.getTableDeviceID(), Collections.singleton(row.getTimePartitionSlot())),
+          getDatabaseName(statement, context));
     } else if (statement instanceof InsertRowStatement) {
       final InsertRowStatement insertRowStatement = (InsertRowStatement) statement;
       return computeDataPartitionParams(

@@ -84,6 +84,7 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -1174,7 +1175,7 @@ public class DataRegion implements IDataRegionForQuery {
    *
    * @param insertRowNode one row of data
    */
-  public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
+  public void insert(AbstractInsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
     long ttl = getTTL(insertRowNode);
     if (!CommonUtils.isAlive(insertRowNode.getTime(), ttl)) {
@@ -1800,7 +1801,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private TsFileProcessor insertToTsFileProcessor(
-      InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
+      AbstractInsertRowNode insertRowNode, boolean sequence, long timePartitionId)
       throws WriteProcessException {
     if (insertRowNode.allMeasurementFailed()) {
       return null;
@@ -1819,7 +1820,7 @@ public class DataRegion implements IDataRegionForQuery {
     return tsFileProcessor;
   }
 
-  private void tryToUpdateInsertRowLastCache(final InsertRowNode node) {
+  private void tryToUpdateInsertRowLastCache(final AbstractInsertRowNode node) {
     node.updateLastCache(databaseName);
   }
 

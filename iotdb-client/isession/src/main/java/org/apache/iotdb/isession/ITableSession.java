@@ -22,7 +22,11 @@ package org.apache.iotdb.isession;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
+
+import java.util.List;
 
 /**
  * This interface defines a session for interacting with IoTDB tables. It supports operations such

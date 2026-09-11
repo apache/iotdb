@@ -112,8 +112,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -2598,22 +2598,24 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
       }
 
-      InsertRowStatement statement = StatementGenerator.createStatement(req);
+      InsertBaseStatement statement = StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
       if (statement.isEmpty()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      // permission check
-      TSStatus status =
-          AuthorityChecker.checkAuthority(
-              statement,
-              new TreeAccessCheckContext(
-                  clientSession.getUserId(),
-                  clientSession.getUsername(),
-                  clientSession.getClientAddress()));
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
+      // Table-model privileges are checked during relational analysis.
+      if (!statement.isWriteToTable()) {
+        TSStatus status =
+            AuthorityChecker.checkAuthority(
+                statement,
+                new TreeAccessCheckContext(
+                    clientSession.getUserId(),
+                    clientSession.getUsername(),
+                    clientSession.getClientAddress()));
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
       }
 
       quota =
@@ -3544,7 +3546,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // check whether measurement is legal according to syntax convention
       req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
-      final InsertRowStatement statement = StatementGenerator.createStatement(req);
+      final InsertBaseStatement statement = StatementGenerator.createStatement(req);
 
       // Permission check
       final TSStatus status =

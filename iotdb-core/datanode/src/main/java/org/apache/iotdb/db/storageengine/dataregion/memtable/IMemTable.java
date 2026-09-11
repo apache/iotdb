@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -106,7 +107,7 @@ public interface IMemTable extends WALEntryValue {
    */
   int insert(InsertRowNode insertRowNode);
 
-  int insertAlignedRow(InsertRowNode insertRowNode);
+  int insertAlignedRow(AbstractInsertRowNode insertRowNode);
 
   /**
    * insert tablet into this memtable. The rows to be inserted are in the range [start, end). Null

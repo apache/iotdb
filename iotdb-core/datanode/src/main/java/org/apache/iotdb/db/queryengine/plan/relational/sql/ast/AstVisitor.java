@@ -231,6 +231,10 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitInsertNumericRow(InsertNumericRow node, C context) {
+    return visitNode(node, context);
+  }
+
   default R visitInsertRow(InsertRow node, C context) {
     return visitStatement(node, context);
   }

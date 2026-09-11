@@ -33,6 +33,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -3575,8 +3576,8 @@ public class ConsensusPrefetchingQueue {
    */
   private long extractMaxTime(final InsertNode insertNode) {
     try {
-      if (insertNode instanceof InsertRowNode) {
-        return ((InsertRowNode) insertNode).getTime();
+      if (insertNode instanceof AbstractInsertRowNode row) {
+        return row.getTime();
       }
       if (insertNode instanceof InsertTabletNode) {
         final InsertTabletNode tabletNode = (InsertTabletNode) insertNode;

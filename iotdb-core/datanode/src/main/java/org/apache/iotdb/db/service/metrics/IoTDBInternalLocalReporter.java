@@ -46,7 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
@@ -211,7 +211,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     request.setValues(buffer);
     request.setIsAligned(false);
 
-    InsertRowStatement s = StatementGenerator.createStatement(request);
+    InsertBaseStatement s = StatementGenerator.createStatement(request);
     final long queryId = SESSION_MANAGER.requestQueryId();
     ExecutionResult result =
         COORDINATOR.executeForTreeModel(

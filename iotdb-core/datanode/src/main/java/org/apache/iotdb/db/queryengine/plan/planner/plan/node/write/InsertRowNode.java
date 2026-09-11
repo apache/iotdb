@@ -33,12 +33,10 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheUpdateSource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
@@ -61,7 +59,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue, LastCacheUpdateSource {
+public class InsertRowNode extends AbstractInsertRowNode {
 
   private static final byte TYPE_RAW_STRING = -1;
 
@@ -210,6 +208,26 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, LastCach
   }
 
   public Object[] getValues() {
+    return values;
+  }
+
+  @Override
+  public int getValueCount() {
+    return values == null ? 0 : values.length;
+  }
+
+  @Override
+  public boolean isNull(int index) {
+    return index < 0 || index >= getValueCount() || values[index] == null;
+  }
+
+  @Override
+  public Object getValue(int index) {
+    return isNull(index) ? null : values[index];
+  }
+
+  @Override
+  public Object getValuesForMemoryAccounting() {
     return values;
   }
 

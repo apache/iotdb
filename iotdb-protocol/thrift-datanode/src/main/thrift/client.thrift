@@ -248,6 +248,8 @@ struct TSInsertRecordReq {
   6: optional bool isAligned
   7: optional bool isWriteToTable
   8: optional list<byte> columnCategoryies
+  // Numeric table rows retain primitive storage throughout the server write path.
+  9: optional bool isNumericRow
 }
 
 struct TSInsertStringRecordReq {

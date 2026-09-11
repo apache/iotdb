@@ -81,6 +81,7 @@ public class DataNodeThrottleQuotaManager {
       return NoopOperationQuota.get();
     }
     switch (s.getType()) {
+      case INSERT_NUMERIC_ROW:
       case INSERT:
       case BATCH_INSERT:
       case BATCH_INSERT_ONE_DEVICE:
