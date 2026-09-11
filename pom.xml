@@ -766,6 +766,10 @@
                             <!-- bundled third-party NOTICE / license texts for the C++ client package -->
                             <exclude>**/package-metadata/third_party/NOTICE</exclude>
                             <exclude>**/package-metadata/third_party/licenses/**</exclude>
+                            <!-- generated certificates and private keys used only by C++ TLS tests -->
+                            <exclude>**/client-cpp/test/fixtures/**</exclude>
+                            <exclude>test/fixtures/**/*.crt</exclude>
+                            <exclude>test/fixtures/**/*.key</exclude>
                             <!-- bundled third-party NOTICE / license texts for the AINode package -->
                             <exclude>**/ainode/src/assembly/resources/NOTICE-binary</exclude>
                             <exclude>**/ainode/src/assembly/resources/licenses/**</exclude>

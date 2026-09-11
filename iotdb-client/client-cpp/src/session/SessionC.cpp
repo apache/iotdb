@@ -154,6 +154,26 @@ static std::map<std::string, std::string> toStringMap(int count, const char* con
   return m;
 }
 
+static TsStatus setSslConfig(SslConfig& config, const char* trustCertFilePath,
+                             const char* clientCertificateFilePath,
+                             const char* clientPrivateKeyFilePath) {
+  if (trustCertFilePath == nullptr) {
+    return setError(TS_ERR_INVALID_PARAM, "trustCertFilePath is null");
+  }
+  if ((clientCertificateFilePath == nullptr) != (clientPrivateKeyFilePath == nullptr)) {
+    return setError(TS_ERR_INVALID_PARAM,
+                    "clientCertificateFilePath and clientPrivateKeyFilePath must both be null or "
+                    "both be set");
+  }
+  config.useSsl = true;
+  config.trustCertFilePath = trustCertFilePath;
+  config.clientCertificateFilePath =
+      clientCertificateFilePath == nullptr ? "" : clientCertificateFilePath;
+  config.clientPrivateKeyFilePath =
+      clientPrivateKeyFilePath == nullptr ? "" : clientPrivateKeyFilePath;
+  return TS_OK;
+}
+
 /**
  * Convert C typed values (void* const* values, TSDataType_C* types, int count)
  * to C++ vector<char*> that Session expects.
@@ -332,6 +352,26 @@ TsStatus ts_session_close(CSession* session) {
   }
 }
 
+TsStatus ts_session_set_ssl_config(CSession* session, const char* trustCertFilePath,
+                                   const char* clientCertificateFilePath,
+                                   const char* clientPrivateKeyFilePath) {
+  clearError();
+  if (!session)
+    return setError(TS_ERR_NULL_PTR, "session is null");
+  try {
+    SslConfig config;
+    TsStatus status = setSslConfig(config, trustCertFilePath, clientCertificateFilePath,
+                                   clientPrivateKeyFilePath);
+    if (status != TS_OK) {
+      return status;
+    }
+    session->cpp->setSslConfig(config);
+    return TS_OK;
+  } catch (const std::exception& e) {
+    return handleException(e);
+  }
+}
+
 /* ============================================================
  *  Session Lifecycle  —  Table Model
  * ============================================================ */
@@ -406,6 +446,35 @@ TsStatus ts_table_session_close(CTableSession* session) {
     return TS_OK;
   } catch (const std::exception& e) {
     return handleException(e);
+  }
+}
+
+CTableSession* ts_table_session_new_with_ssl(const char* host, int rpcPort, const char* username,
+                                             const char* password, const char* database,
+                                             const char* trustCertFilePath,
+                                             const char* clientCertificateFilePath,
+                                             const char* clientPrivateKeyFilePath) {
+  clearError();
+  try {
+    SslConfig config;
+    if (setSslConfig(config, trustCertFilePath, clientCertificateFilePath,
+                     clientPrivateKeyFilePath) != TS_OK) {
+      return nullptr;
+    }
+    TableSessionBuilder builder;
+    builder.host(std::string(host))
+        ->rpcPort(rpcPort)
+        ->username(std::string(username))
+        ->password(std::string(password))
+        ->database(std::string(database ? database : ""));
+    builder.sslConfig = config;
+    auto tableSession = builder.build();
+    auto* session = new CTableSession_();
+    session->cpp = std::move(tableSession);
+    return session;
+  } catch (const std::exception& e) {
+    handleException(e);
+    return nullptr;
   }
 }
 
