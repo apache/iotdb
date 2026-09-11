@@ -275,6 +275,34 @@ public class PipeSinkSubtaskManager {
     }
   }
 
+  public synchronized void discardReceiverRuntimeSessions(
+      final String attributeSortedString, final String pipeName, final long creationTime) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        new PipeSinkSubtaskKey(pipeName, creationTime, attributeSortedString);
+    if (!pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(pipeSinkSubtaskKey)) {
+      throwNoSuchSubtaskException(pipeSinkSubtaskKey);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
+      lifeCycle.discardReceiverRuntimeSessions(pipeName, creationTime);
+    }
+  }
+
+  public synchronized void registerReceiverRuntimeSessions(
+      final String attributeSortedString, final String pipeName, final long creationTime) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        new PipeSinkSubtaskKey(pipeName, creationTime, attributeSortedString);
+    if (!pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(pipeSinkSubtaskKey)) {
+      throwNoSuchSubtaskException(pipeSinkSubtaskKey);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
+      lifeCycle.registerReceiverRuntimeSessions(pipeName, creationTime);
+    }
+  }
+
   /**
    * @deprecated Use {@link #stop(String, long, String)} to identify the pipe explicitly.
    */

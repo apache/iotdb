@@ -203,4 +203,5 @@ public enum StatementType {
   SHOW_EXTERNAL_SERVICE,
 
   SHOW_DISK_USAGE,
+  SHOW_RECEIVERS,
 }

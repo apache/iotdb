@@ -58,10 +58,11 @@ public abstract class PipeTransferHandshakeV1Req extends TPipeTransferReq {
 
   protected final PipeTransferHandshakeV1Req translateFromTPipeTransferReq(
       TPipeTransferReq transferReq) {
-    timestampPrecision = ReadWriteIOUtils.readString(transferReq.body);
+    timestampPrecision = ReadWriteIOUtils.readString(transferReq.body.duplicate());
 
     version = transferReq.version;
     type = transferReq.type;
+    body = transferReq.body;
 
     return this;
   }

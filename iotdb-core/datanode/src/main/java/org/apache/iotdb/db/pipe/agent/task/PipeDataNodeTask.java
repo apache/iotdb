@@ -101,6 +101,16 @@ public class PipeDataNodeTask implements PipeTask {
         System.currentTimeMillis() - startTime);
   }
 
+  @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    sinkStage.registerReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    sinkStage.discardReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
   public int getRegionId() {
     return regionId;
   }

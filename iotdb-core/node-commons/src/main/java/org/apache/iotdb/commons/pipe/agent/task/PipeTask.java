@@ -28,4 +28,12 @@ public interface PipeTask {
   void start();
 
   void stop();
+
+  default void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
+  }
+
+  default void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Do nothing by default.
+  }
 }

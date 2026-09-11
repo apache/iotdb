@@ -53,7 +53,32 @@ public class PipeRequestTypeTest {
     assertV13RequestType((short) 400, PipeRequestType.TRANSFER_SLICE);
   }
 
+  @Test
+  public void testLifecycleRequestTypesAreRecognized() {
+    assertRequestType((short) 500, PipeRequestType.TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP);
+  }
+
+  @Test
+  public void testPipeReceiverRuntimeInfoCleanupReqSerDe() throws Exception {
+    final PipeTransferPipeReceiverRuntimeInfoCleanupReq req =
+        PipeTransferPipeReceiverRuntimeInfoCleanupReq.toTPipeTransferReq("pipe-a", 1L);
+
+    final PipeTransferPipeReceiverRuntimeInfoCleanupReq parsedReq =
+        PipeTransferPipeReceiverRuntimeInfoCleanupReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(
+        PipeRequestType.TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP.getType(), req.type);
+    Assert.assertEquals("pipe-a", parsedReq.getPipeName());
+    Assert.assertEquals(1L, parsedReq.getPipeCreationTime());
+    Assert.assertEquals(req, parsedReq);
+  }
+
   private static void assertV13RequestType(
+      final short type, final PipeRequestType expectedRequestType) {
+    assertRequestType(type, expectedRequestType);
+  }
+
+  private static void assertRequestType(
       final short type, final PipeRequestType expectedRequestType) {
     Assert.assertTrue(PipeRequestType.isValidatedRequestType(type));
     Assert.assertEquals(expectedRequestType, PipeRequestType.valueOf(type));
