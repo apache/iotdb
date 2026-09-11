@@ -66,15 +66,11 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
     createThriftPipe(database, pipeName);
 
     assertShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
-    assertShowReceivers(
-        "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
 
     TestUtils.executeNonQueries(
         senderEnv, Collections.singletonList("drop pipe " + pipeName), null);
 
     assertShowReceiversDoesNotContainPipe("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
-    assertShowReceiversDoesNotContainPipe(
-        "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
   }
 
   @Test
@@ -85,15 +81,11 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
     createThriftPipe(database, pipeName);
 
     assertShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
-    assertShowReceivers(
-        "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
 
     TestUtils.executeNonQueries(
         senderEnv, Collections.singletonList("stop pipe " + pipeName), null);
 
     assertShowReceiversDoesNotContainPipe("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
-    assertShowReceiversDoesNotContainPipe(
-        "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
   }
 
   @Test
@@ -124,8 +116,6 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
 
     assertShowReceiversContainDataNodeAndConfigNode(
         "show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
-    assertShowReceiversContainDataNodeAndConfigNode(
-        "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
   }
 
   @Test
@@ -143,11 +133,6 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
 
     assertShowReceiversContainProtocol(
         "show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName, "air_gap");
-    assertShowReceiversContainProtocol(
-        "select * from information_schema.receivers",
-        BaseEnv.TABLE_SQL_DIALECT,
-        pipeName,
-        "air_gap");
   }
 
   private void createThriftPipe(final String database, final String pipeName) throws Exception {

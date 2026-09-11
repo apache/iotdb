@@ -450,7 +450,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 // Config requests will first be received by the DataNode receiver,
                 // then transferred to ConfigNode receiver to execute.
-                return recordConfigNodeReceiverRuntimeIfSuccess(handleTransferConfigPlan(req), req);
+                final Pair<TPipeTransferResp, Integer> respWithReceiverNodeId =
+                    handleTransferConfigPlan(req);
+                recordConfigNodeReceiverRuntimeIfSuccess(respWithReceiverNodeId, req);
+                return respWithReceiverNodeId.left;
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
@@ -1182,26 +1185,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return resp;
   }
 
-  private TPipeTransferResp recordConfigNodeReceiverRuntimeIfSuccess(
+  private void recordConfigNodeReceiverRuntimeIfSuccess(
       final Pair<TPipeTransferResp, Integer> respWithReceiverNodeId, final TPipeTransferReq req) {
     final TPipeTransferResp resp = respWithReceiverNodeId.left;
-    if (!PipeRequestType.isValidatedRequestType(req.getType())) {
-      return resp;
+    if (!PipeRequestType.isValidatedRequestType(req.getType()) || !isSuccess(resp)) {
+      return;
     }
 
     final PipeRequestType requestType = PipeRequestType.valueOf(req.getType());
     if (requestType == PipeRequestType.HANDSHAKE_CONFIGNODE_V1
         || requestType == PipeRequestType.HANDSHAKE_CONFIGNODE_V2) {
-      if (isSuccess(resp)) {
-        recordConfigNodeHandshake(req, requestType, respWithReceiverNodeId.right);
-      }
+      recordConfigNodeHandshake(req, requestType, respWithReceiverNodeId.right);
     } else {
-      if (isSuccess(resp)) {
-        PipeReceiverRuntimeRegistry.getInstance()
-            .markTransfer(configPipeReceiverRuntimeSessionKey.get(), System.currentTimeMillis());
-      }
+      PipeReceiverRuntimeRegistry.getInstance()
+          .markTransfer(configPipeReceiverRuntimeSessionKey.get(), System.currentTimeMillis());
     }
-    return resp;
   }
 
   private void recordConfigNodeHandshake(
@@ -1242,10 +1240,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private static Map<String, String> parseHandshakeV2Params(final TPipeTransferReq req) {
-    final Map<String, String> params = new HashMap<>();
     if (req.getBody() == null) {
-      return params;
+      return Collections.emptyMap();
     }
+    final Map<String, String> params = new HashMap<>();
     final ByteBuffer body = req.body.duplicate();
     body.rewind();
     final int size = ReadWriteIOUtils.readInt(body);
