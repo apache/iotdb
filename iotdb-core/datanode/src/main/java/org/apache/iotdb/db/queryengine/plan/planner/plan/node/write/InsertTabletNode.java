@@ -418,7 +418,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           || forSplit && !hasColumnForSplit(i)) {
         continue;
       }
-      values[i] = Type.fromTsDataType(dataTypes[i]).createArray(rowSize);
+      values[i] =
+          TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+              .call(Type.fromTsDataType(dataTypes[i]))
+              .apply(rowSize);
     }
     return values;
   }
