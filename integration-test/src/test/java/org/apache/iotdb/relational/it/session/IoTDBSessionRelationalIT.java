@@ -258,29 +258,36 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement(
-          "create table wrong_time(color string tag, device_id string tag,city string attribute)");
+          "create table wrong_time(color string tag, device_id string tag,city string attribute,"
+              + " value int32 field)");
       try {
-        session.executeNonQueryStatement("insert into wrong_time values('aa','bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values('aa','bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals(
             "701: Input time format aa error. Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or refer to user document for more info.",
             e.getMessage());
       }
-      try {
-        session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd')");
-        fail("No exception thrown");
-      } catch (StatementExecutionException e) {
-        assertEquals("701: Unsupported expression: (1 + 1)", e.getMessage());
+      session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd',1)");
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select * from wrong_time where time = 2")) {
+        assertTrue(dataSet.hasNext());
+        RowRecord rowRecord = dataSet.next();
+        assertEquals(2L, rowRecord.getFields().get(0).getLongV());
+        assertEquals("bb", rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("cc", rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals("dd", rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals(1, rowRecord.getFields().get(4).getIntV());
+        assertFalse(dataSet.hasNext());
       }
       try {
-        session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals("701: Unsupported expression: 1E0", e.getMessage());
       }
       try {
-        session.executeNonQueryStatement("insert into wrong_time values(true,'bb','cc','dd')");
+        session.executeNonQueryStatement("insert into wrong_time values(true,'bb','cc','dd',1)");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
         assertEquals("701: Unsupported expression: true", e.getMessage());
@@ -333,6 +340,14 @@ public class IoTDBSessionRelationalIT {
                 row, "tag:" + row, "attr:" + row, row));
       }
 
+      session.executeNonQueryStatement(
+          "INSERT INTO table1 (time, tag1, attr1, m1) "
+              + "VALUES (if(true, 50, 0), if(true, 'tag:50', 'x'), "
+              + "if(false, 'x', 'attr:50'), if(true, 50.0, 0.0))");
+      session.executeNonQueryStatement(
+          "INSERT INTO table1 VALUES (if(true, 51, 0), if(true, 'tag:51', 'x'), "
+              + "if(true, 'attr:51', 'x'), if(false, 0, 51))");
+
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       int cnt = 0;
       while (dataSet.hasNext()) {
@@ -343,7 +358,7 @@ public class IoTDBSessionRelationalIT {
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
       }
-      assertEquals(50, cnt);
+      assertEquals(52, cnt);
 
       // sql cannot create column
       assertThrows(
