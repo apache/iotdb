@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
@@ -64,7 +65,17 @@ public interface TsFileInsertionEventParserMemoryManager {
 
     @Override
     public void forceResize(final long newSizeInBytes) {
-      PipeDataNodeResourceManager.memory().forceResize(delegate, newSizeInBytes);
+      final long oldSize = delegate.getMemoryUsageInBytes();
+      if (!PipeDataNodeResourceManager.memory().tryResize(delegate, newSizeInBytes)) {
+        throw new PipeRuntimeOutOfMemoryCriticalException(
+            String.format(
+                "forceResize: failed to allocate memory after %d retries, total memory size %d "
+                    + "bytes, used memory size %d bytes, requested memory size %d bytes",
+                0,
+                PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes(),
+                PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
+                newSizeInBytes - oldSize));
+      }
     }
 
     @Override
