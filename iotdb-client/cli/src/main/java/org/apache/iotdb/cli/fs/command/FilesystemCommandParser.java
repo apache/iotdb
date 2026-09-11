@@ -359,8 +359,7 @@ public class FilesystemCommandParser {
     }
 
     private boolean isFlag(String flag) {
-      return ("wc".equals(command) && "-l".equals(flag))
-          || ("rm".equals(command) && "-r".equals(flag))
+      return ("rm".equals(command) && "-r".equals(flag))
           || ("tee".equals(command) && "-a".equals(flag));
     }
 
