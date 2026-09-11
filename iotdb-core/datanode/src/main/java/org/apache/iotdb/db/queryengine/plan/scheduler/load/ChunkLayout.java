@@ -8,18 +8,20 @@
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
  */
+package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
-package org.apache.iotdb.db.storageengine.load.splitter;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.Chunk;
 
-public enum TsFileDataType {
-  CHUNK,
-  DELETION
-}
+/** Self-contained physical layout descriptor for one Chunk. */
+public record ChunkLayout(
+    IDeviceID device,
+    boolean aligned,
+    long chunkGroupIndex,
+    long chunkGroupHeaderOffset,
+    boolean firstChunkOfGroup,
+    Chunk chunk,
+    long offset,
+    long length,
+    int chunkIndexInGroup) {}

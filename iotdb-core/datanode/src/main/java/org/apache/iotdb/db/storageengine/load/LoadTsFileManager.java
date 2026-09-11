@@ -29,13 +29,10 @@ import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,8 +42,6 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -64,14 +59,14 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
-import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
-import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.writer.TsFileIOWriter;
+import org.apache.tsfile.write.TsFilePrecalculatedChunkWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,7 +82,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -122,13 +116,15 @@ public class LoadTsFileManager {
           .build();
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
+  private final DataRegion dataRegion;
 
   private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
 
   private final ActiveLoadAgent activeLoadAgent = new ActiveLoadAgent();
 
-  public LoadTsFileManager() {
+  public LoadTsFileManager(final DataRegion dataRegion) {
+    this.dataRegion = Objects.requireNonNull(dataRegion);
     registerCleanupTaskExecutor();
     recover();
   }
@@ -226,7 +222,11 @@ public class LoadTsFileManager {
       }
     }
 
-    final File[] baseDirs = Arrays.stream(LOAD_BASE_DIRS.get()).map(File::new).toArray(File[]::new);
+    final File[] baseDirs =
+        Arrays.stream(LOAD_BASE_DIRS.get())
+            .map(File::new)
+            .map(this::getDataRegionLoadDir)
+            .toArray(File[]::new);
     final File[] files =
         Arrays.stream(baseDirs)
             .filter(File::exists)
@@ -251,7 +251,12 @@ public class LoadTsFileManager {
             });
   }
 
-  public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
+  public void writeToDataRegion(LoadTsFilePieceNode pieceNode, String uuid)
+      throws IOException, PageException {
+    writePiece(uuid, pieceNode.getAllTsFileData());
+  }
+
+  public void writePiece(final String uuid, final List<TsFileData> tsFileDataList)
       throws IOException, PageException {
     createCleanupTaskIfAbsent(uuid);
 
@@ -265,7 +270,10 @@ public class LoadTsFileManager {
               o -> {
                 try {
                   return getFolderManager()
-                      .getNextWithRetry(folder -> new TsFileWriterManager(new File(folder, uuid)));
+                      .getNextWithRetry(
+                          folder ->
+                              new TsFileWriterManager(
+                                  new File(getDataRegionLoadDir(new File(folder)), uuid)));
                 } catch (DiskSpaceInsufficientException e) {
                   exception.set(e);
                   return null;
@@ -281,7 +289,7 @@ public class LoadTsFileManager {
             exception.get());
       }
 
-      for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
+      for (TsFileData tsFileData : tsFileDataList) {
         switch (tsFileData.getType()) {
           case CHUNK:
             ChunkData chunkData = (ChunkData) tsFileData;
@@ -326,6 +334,14 @@ public class LoadTsFileManager {
     }
 
     return FOLDER_MANAGER.get();
+  }
+
+  private File getDataRegionLoadDir(final File baseDir) {
+    return new File(
+        baseDir,
+        dataRegion.getDatabaseName()
+            + IoTDBConstant.FILE_NAME_SEPARATOR
+            + dataRegion.getDataRegionIdString());
   }
 
   public boolean loadAll(
@@ -442,20 +458,16 @@ public class LoadTsFileManager {
   private static class TsFileWriterManager {
 
     private final File taskDir;
-    private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
+    private Map<DataPartitionInfo, TsFilePrecalculatedChunkWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, TsFileResource> dataPartition2Resource;
-    private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
-    private Map<IDeviceID, Set<DataPartitionInfo>> device2Partition;
     private boolean isClosed;
 
     private TsFileWriterManager(File taskDir) {
       this.taskDir = taskDir;
       this.dataPartition2Writer = new HashMap<>();
       this.dataPartition2Resource = new HashMap<>();
-      this.dataPartition2LastDevice = new HashMap<>();
       this.dataPartition2ModificationFile = new HashMap<>();
-      device2Partition = new HashMap<>();
       this.isClosed = false;
 
       clearDir(taskDir);
@@ -490,83 +502,32 @@ public class LoadTsFileManager {
           return;
         }
 
-        final long chunkMetadataMaxSizeForEachWriter =
-            CONFIG.getLoadChunkMetadataMemorySizeInBytes() / (dataPartition2Writer.size() + 1);
-        final TsFileIOWriter writer =
-            new TsFileIOWriter(newTsFile, chunkMetadataMaxSizeForEachWriter);
-        final TsFileResource resource = new TsFileResource(writer.getFile());
-        writer.addFlushListener(
-            // Update time index by chunk groups going to be flushed to temp file
-            sortedChunkMetadataList ->
-                sortedChunkMetadataList.forEach(
-                    pair -> {
-                      final IDeviceID deviceId = pair.left.left;
-                      pair.getRight()
-                          .forEach(
-                              chunkMetadata -> {
-                                resource.updateStartTime(deviceId, chunkMetadata.getStartTime());
-                                resource.updateEndTime(deviceId, chunkMetadata.getEndTime());
-                              });
-                    }));
-
-        // When a new writer is added, we need to reduce the metadata size limit of all existing
-        // writers for memory control
-        for (final TsFileIOWriter existingWriter : dataPartition2Writer.values()) {
-          existingWriter.setMaxMetadataSize(chunkMetadataMaxSizeForEachWriter);
-        }
+        final TsFilePrecalculatedChunkWriter writer = new TsFilePrecalculatedChunkWriter(newTsFile);
+        final TsFileResource resource = new TsFileResource(newTsFile);
         dataPartition2Writer.put(partitionInfo, writer);
         dataPartition2Resource.put(partitionInfo, resource);
       }
-      TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
-
-      // Table model needs to register TableSchema
-      final String tableName =
-          chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
-      if (tableName != null
-          && PathUtils.isTableModelDatabase(partitionInfo.getDataRegion().getDatabaseName())) {
-        // If the table does not exist, it means that the table is all deleted by mods
-        final TsTable table =
-            DataNodeTableCache.getInstance()
-                .getTable(partitionInfo.getDataRegion().getDatabaseName(), tableName, false);
-        if (Objects.nonNull(table)) {
-          writer
-              .getSchema()
-              .getTableSchemaMap()
-              .computeIfAbsent(
-                  tableName, t -> TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(table));
-        }
+      final TsFilePrecalculatedChunkWriter writer = dataPartition2Writer.get(partitionInfo);
+      final ChunkData.ChunkLayout layout = chunkData.getChunkLayout();
+      if (layout == null) {
+        throw new IOException("Chunk layout is missing");
       }
-
-      IDeviceID device = chunkData.getDevice();
-      IDeviceID lastDevice = dataPartition2LastDevice.get(partitionInfo);
-
-      if (!Objects.equals(device, lastDevice)) {
-        if (lastDevice != null && device2Partition.containsKey(lastDevice)) {
-          Set<DataPartitionInfo> partitions = device2Partition.get(lastDevice);
-          for (DataPartitionInfo partition : partitions) {
-            TsFileIOWriter w = dataPartition2Writer.get(partition);
-            if (dataPartition2LastDevice.containsKey(partition) && w != null) {
-              w.endChunkGroup();
-              w.checkMetadataSizeAndMayFlush();
-            }
-          }
-          device2Partition.remove(lastDevice);
-        }
-        if (writer.isWritingChunkGroup()) {
-          LOGGER.warn(
-              StorageEngineMessages
-                  .STORAGE_LOG_WRITER_FOR_PARTITION_IS_ALREADY_WRITING_CHUNK_GROUP_FOR_903B1D66,
-              writer.getFile().getAbsolutePath(),
-              partitionInfo,
-              device,
-              lastDevice);
-        }
-        writer.startChunkGroup(device);
-        dataPartition2LastDevice.put(partitionInfo, device);
-        device2Partition.computeIfAbsent(device, k -> new HashSet<>()).add(partitionInfo);
+      long chunkOffset = layout.offset();
+      final List<Chunk> chunks = chunkData.getChunks();
+      for (int i = 0; i < chunks.size(); i++) {
+        final Chunk chunk = chunks.get(i);
+        writer.writeChunk(
+            chunkData.getDevice(),
+            chunkData.isAligned(),
+            layout.chunkGroupHeaderOffset(),
+            layout.firstChunkOfGroup() && i == 0,
+            chunk,
+            chunkOffset);
+        chunkOffset += chunk.getHeader().getSerializedSize() + (long) chunk.getData().remaining();
       }
-
-      chunkData.writeToFileWriter(writer);
+      if (chunkOffset != layout.offset() + layout.length()) {
+        throw new IOException("Chunk layout length does not match encoded chunks");
+      }
     }
 
     private void writeDeletion(DataRegion dataRegion, DeletionData deletionData)
@@ -574,10 +535,11 @@ public class LoadTsFileManager {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
-      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+      for (Map.Entry<DataPartitionInfo, TsFilePrecalculatedChunkWriter> entry :
+          dataPartition2Writer.entrySet()) {
         final DataPartitionInfo partitionInfo = entry.getKey();
         if (partitionInfo.getDataRegion().equals(dataRegion)) {
-          final TsFileIOWriter writer = entry.getValue();
+          final TsFilePrecalculatedChunkWriter writer = entry.getValue();
           if (!dataPartition2ModificationFile.containsKey(partitionInfo)) {
             File newModificationFile = ModificationFile.getExclusiveMods(writer.getFile());
             if (!newModificationFile.createNewFile()) {
@@ -592,7 +554,7 @@ public class LoadTsFileManager {
                 partitionInfo, new ModificationFile(newModificationFile, false));
           }
           ModificationFile modificationFile = dataPartition2ModificationFile.get(partitionInfo);
-          writer.flush();
+          writer.getOutput().flush();
           deletionData.writeToModificationFile(modificationFile);
         }
       }
@@ -609,13 +571,10 @@ public class LoadTsFileManager {
           dataPartition2ModificationFile.entrySet()) {
         entry.getValue().close();
       }
-      for (final Map.Entry<DataPartitionInfo, TsFileIOWriter> entry :
+      for (final Map.Entry<DataPartitionInfo, TsFilePrecalculatedChunkWriter> entry :
           dataPartition2Writer.entrySet()) {
-        final TsFileIOWriter writer = entry.getValue();
-        if (writer.isWritingChunkGroup()) {
-          writer.endChunkGroup();
-        }
-        writer.endFile();
+        final TsFilePrecalculatedChunkWriter writer = entry.getValue();
+        writer.close();
 
         final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
@@ -625,12 +584,7 @@ public class LoadTsFileManager {
             tsFileResource,
             timePartitionProgressIndexMap.getOrDefault(
                 entry.getKey().getTimePartitionSlot(), MinimumProgressIndex.INSTANCE));
-        dataRegion.loadNewTsFile(
-            tsFileResource,
-            true,
-            isGeneratedByPipe,
-            false,
-            Optional.ofNullable(writer.getTableSizeMap()));
+        dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe, false, Optional.empty());
 
         // Metrics
         dataRegion
@@ -643,7 +597,9 @@ public class LoadTsFileManager {
     }
 
     private void endTsFileResource(
-        TsFileIOWriter writer, TsFileResource tsFileResource, ProgressIndex progressIndex)
+        TsFilePrecalculatedChunkWriter writer,
+        TsFileResource tsFileResource,
+        ProgressIndex progressIndex)
         throws IOException {
       // Update time index by chunk groups still in memory
       Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues = null;
@@ -652,9 +608,10 @@ public class LoadTsFileManager {
       }
       AtomicLong lastValuesMemCost = new AtomicLong(0);
 
-      for (final ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
-        final IDeviceID device = chunkGroupMetadata.getDevice();
-        for (final ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+      for (final Map.Entry<IDeviceID, List<IChunkMetadata>> entry :
+          writer.getChunkMetadataListMap().entrySet()) {
+        final IDeviceID device = entry.getKey();
+        for (final IChunkMetadata chunkMetadata : entry.getValue()) {
           tsFileResource.updateStartTime(device, chunkMetadata.getStartTime());
           tsFileResource.updateEndTime(device, chunkMetadata.getEndTime());
           if (deviceLastValues != null) {
@@ -727,9 +684,9 @@ public class LoadTsFileManager {
       tsFileResource.serialize();
     }
 
-    private long getTsFileWritePointCount(TsFileIOWriter writer) {
-      return writer.getChunkGroupMetadataList().stream()
-          .flatMap(chunkGroupMetadata -> chunkGroupMetadata.getChunkMetadataList().stream())
+    private long getTsFileWritePointCount(TsFilePrecalculatedChunkWriter writer) {
+      return writer.getChunkMetadataListMap().values().stream()
+          .flatMap(List::stream)
           .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
           .sum();
     }
@@ -739,12 +696,11 @@ public class LoadTsFileManager {
         return;
       }
       if (dataPartition2Writer != null) {
-        for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+        for (Map.Entry<DataPartitionInfo, TsFilePrecalculatedChunkWriter> entry :
+            dataPartition2Writer.entrySet()) {
           try {
-            final TsFileIOWriter writer = entry.getValue();
-            if (writer.canWrite()) {
-              writer.close();
-            }
+            final TsFilePrecalculatedChunkWriter writer = entry.getValue();
+            writer.getOutput().close();
             final Path writerPath = writer.getFile().toPath();
             if (Files.exists(writerPath)) {
               RetryUtils.retryOnException(
@@ -758,7 +714,6 @@ public class LoadTsFileManager {
                 StorageEngineMessages.CLOSE_TSFILE_IO_WRITER_ERROR,
                 entry.getValue().getFile().getPath(),
                 e);
-            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           }
         }
       }
@@ -779,7 +734,6 @@ public class LoadTsFileManager {
           } catch (IOException e) {
             LOGGER.warn(
                 StorageEngineMessages.CLOSE_MODIFICATION_FILE_ERROR, entry.getValue().getFile(), e);
-            DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           }
         }
       }
@@ -793,13 +747,10 @@ public class LoadTsFileManager {
         LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, taskDir.getPath());
       } catch (IOException e) {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
-        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       }
       dataPartition2Writer = null;
       dataPartition2Resource = null;
-      dataPartition2LastDevice = null;
       dataPartition2ModificationFile = null;
-      device2Partition = null;
       isClosed = true;
     }
   }

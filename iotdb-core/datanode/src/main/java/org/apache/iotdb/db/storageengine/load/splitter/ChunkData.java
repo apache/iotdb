@@ -26,12 +26,15 @@ import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
 
 public interface ChunkData extends TsFileData {
   IDeviceID getDevice();
@@ -51,6 +54,24 @@ public interface ChunkData extends TsFileData {
   void writeDecodePage(long[] times, Object[] values, int satisfiedLength) throws IOException;
 
   void writeToFileWriter(TsFileIOWriter writer) throws IOException, PageException;
+
+  default void endChunk() {}
+
+  default List<Chunk> getChunks() {
+    return Collections.emptyList();
+  }
+
+  record ChunkLayout(
+      long chunkGroupIndex,
+      long chunkGroupHeaderOffset,
+      long offset,
+      long length,
+      int chunkIndexInGroup,
+      boolean firstChunkOfGroup) {}
+
+  ChunkLayout getChunkLayout();
+
+  void setChunkLayout(ChunkLayout layout);
 
   @Override
   default TsFileDataType getType() {

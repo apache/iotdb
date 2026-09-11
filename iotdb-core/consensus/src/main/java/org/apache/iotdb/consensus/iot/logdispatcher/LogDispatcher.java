@@ -24,8 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.request.ConsensusRequestShardSource;
-import org.apache.iotdb.commons.request.ShardableConsensusRequest;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.common.Peer;
@@ -44,8 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -256,10 +252,6 @@ public class LogDispatcher {
 
     private final CountDownLatch runFinished = new CountDownLatch(1);
     private volatile long lastIdleWriterSafeTimeBarrierSentTimeMs = 0L;
-    // An in-flight shardable request that is still being streamed out shard by shard. While this
-    // is non-null, the dispatcher keeps appending its remaining shards to batches before any entry
-    // with a larger searchIndex, so the receiver can reassemble the group in order.
-    private PendingShard pendingShard;
 
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
       this.peer = peer;
@@ -465,15 +457,6 @@ public class LogDispatcher {
       }
 
       Batch batches = new Batch(config);
-      // If a shardable request is still being streamed out, finish sending its remaining shards
-      // first so the group stays contiguous and is never interleaved with newer entries.
-      drainPendingShard(batches);
-      if (pendingShard != null || !batches.canAccumulate()) {
-        // The batch is full before the in-flight group completed (or there is nothing left to
-        // drain into it), so send only what has been accumulated so far.
-        batches.buildIndex();
-        return batches;
-      }
       // This condition will be executed in several scenarios:
       // 1. restart
       // 2. The getBatch() is invoked immediately at the moment the PendingEntries are consumed
@@ -671,134 +654,15 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, Batch logBatches) {
-      appendSerializedRequests(request, false, logBatches);
-    }
-
-    /**
-     * Sends the remaining shards of an in-flight shardable request into {@code batch}. Stops when
-     * the batch is full, leaving {@link #pendingShard} non-null so the next {@link #getBatch()}
-     * continues from where it stopped.
-     */
-    private void drainPendingShard(Batch batch) {
-      while (pendingShard != null && pendingShard.hasNext() && batch.canAccumulate()) {
-        batch.addTLogEntry(pendingShard.nextEntry());
-      }
-      if (pendingShard != null && !pendingShard.hasNext()) {
-        pendingShard = null;
-      }
-    }
-
-    /**
-     * Appends a request's serialized bytes into {@code batch}. When the request is shardable and
-     * its serialized form is larger than the configured shard size, the payload is split into
-     * multiple {@link TLogEntry}s that share the same searchIndex, each carrying a single shard, so
-     * it is streamed out shard by shard instead of as one oversized message. Shards that do not fit
-     * into this batch are kept in {@link #pendingShard}.
-     *
-     * @return true if the whole request was consumed; false if the batch filled up before the
-     *     request was fully appended (leftover shards are retained in {@link #pendingShard}).
-     */
-    private boolean appendSerializedRequests(
-        IndexedConsensusRequest data, boolean fromWAL, Batch logBatches) {
-      final int shardMaxSize = config.getReplication().getShardMaxSize();
-      if (isShardableAndOversized(data, shardMaxSize)) {
-        final long shardGroupId =
-            ((ShardableConsensusRequest) data.getRequests().get(0)).shardGroupId();
-        final PendingShard group =
-            new PendingShard(
-                new ConsensusRequestShardSource(
-                    toSingleBuffer(data.getSerializedRequests()), shardGroupId, shardMaxSize),
-                data.getSearchIndex(),
-                fromWAL,
-                data.getRoutingEpoch(),
-                data.getPhysicalTime());
-        while (group.hasNext() && logBatches.canAccumulate()) {
-          logBatches.addTLogEntry(group.nextEntry());
-        }
-        if (group.hasNext()) {
-          pendingShard = group;
-          return false;
-        }
-        return true;
-      }
-      addLogEntry(data.getSerializedRequests(), data, fromWAL, data.getMemorySize(), logBatches);
-      return true;
-    }
-
-    private boolean isShardableAndOversized(IndexedConsensusRequest data, int shardMaxSize) {
-      if (data.getRequests().isEmpty()
-          || !(data.getRequests().get(0) instanceof ShardableConsensusRequest)) {
-        return false;
-      }
-      long total = 0;
-      for (ByteBuffer buffer : data.getSerializedRequests()) {
-        total += buffer.remaining();
-      }
-      return total > shardMaxSize;
-    }
-
-    private void addLogEntry(
-        List<ByteBuffer> data,
-        IndexedConsensusRequest request,
-        boolean fromWAL,
-        long memorySize,
-        Batch logBatches) {
-      TLogEntry logEntry = new TLogEntry(data, request.getSearchIndex(), fromWAL, memorySize);
+      TLogEntry logEntry =
+          new TLogEntry(
+              request.getSerializedRequests(),
+              request.getSearchIndex(),
+              false,
+              request.getMemorySize());
       logEntry.setRoutingEpoch(request.getRoutingEpoch());
       logEntry.setPhysicalTime(request.getPhysicalTime());
       logBatches.addTLogEntry(logEntry, request.containsUserData());
-    }
-
-    private static ByteBuffer toSingleBuffer(List<ByteBuffer> buffers) {
-      if (buffers.size() == 1) {
-        return buffers.get(0);
-      }
-      int total = 0;
-      for (ByteBuffer buffer : buffers) {
-        total += buffer.remaining();
-      }
-      final ByteBuffer merged = ByteBuffer.allocate(total);
-      for (ByteBuffer buffer : buffers) {
-        merged.put(buffer.duplicate());
-      }
-      merged.flip();
-      return merged;
-    }
-  }
-
-  /** In-flight metadata of a shardable request that is still being streamed out. */
-  private static class PendingShard {
-
-    private final ConsensusRequestShardSource source;
-    private final long searchIndex;
-    private final boolean fromWAL;
-    private final long routingEpoch;
-    private final long physicalTime;
-
-    private PendingShard(
-        ConsensusRequestShardSource source,
-        long searchIndex,
-        boolean fromWAL,
-        long routingEpoch,
-        long physicalTime) {
-      this.source = source;
-      this.searchIndex = searchIndex;
-      this.fromWAL = fromWAL;
-      this.routingEpoch = routingEpoch;
-      this.physicalTime = physicalTime;
-    }
-
-    private boolean hasNext() {
-      return source.hasNext();
-    }
-
-    private TLogEntry nextEntry() {
-      final ByteBuffer shard = source.next();
-      final TLogEntry entry =
-          new TLogEntry(Collections.singletonList(shard), searchIndex, fromWAL, shard.remaining());
-      entry.setRoutingEpoch(routingEpoch);
-      entry.setPhysicalTime(physicalTime);
-      return entry;
     }
   }
 

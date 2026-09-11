@@ -54,6 +54,7 @@ import org.apache.iotdb.db.exception.DirectBufferMemoryAllocationException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -108,6 +110,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -169,7 +172,7 @@ public class StorageEngine implements IService {
   private final List<FlushListener> customFlushListeners = new ArrayList<>();
   private int recoverDataRegionNum = 0;
 
-  private final LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
+  private final ActiveLoadAgent activeLoadAgent = new ActiveLoadAgent();
 
   public final AtomicLong objectFileId = new AtomicLong(0);
 
@@ -345,7 +348,18 @@ public class StorageEngine implements IService {
     }
 
     asyncRecoverTsFileResource();
-    loadTsFileManager.start();
+    for (final DataRegion dataRegion : dataRegionMap.values()) {
+      try {
+        dataRegion.getLoadTsFileManager();
+      } catch (final Throwable e) {
+        LOGGER.warn(
+            StorageEngineMessages.STORAGE_LOG_FAILED_TO_RECOVER_DATA_REGION_804B162D,
+            dataRegion.getDatabaseName(),
+            dataRegion.getDataRegionIdString(),
+            e);
+      }
+    }
+    activeLoadAgent.start();
   }
 
   private void startTimedService() {
@@ -430,7 +444,8 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
-    loadTsFileManager.stop();
+    activeLoadAgent.stop();
+    dataRegionMap.values().forEach(DataRegion::stopLoadTsFileManager);
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
         CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
@@ -449,7 +464,8 @@ public class StorageEngine implements IService {
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
-    loadTsFileManager.stop();
+    activeLoadAgent.stop();
+    dataRegionMap.values().forEach(DataRegion::stopLoadTsFileManager);
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
@@ -514,6 +530,7 @@ public class StorageEngine implements IService {
   /** This function is just for unit test. */
   @TestOnly
   public synchronized void reset() {
+    dataRegionMap.values().forEach(DataRegion::stopLoadTsFileManager);
     dataRegionMap.clear();
   }
 
@@ -831,6 +848,7 @@ public class StorageEngine implements IService {
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
       LOGGER.info(StorageEngineMessages.REMOVING_DATA_REGION, regionId);
+      region.stopLoadTsFileManager();
       region.markDeleted();
       try {
         region.abortCompaction();
@@ -952,6 +970,7 @@ public class StorageEngine implements IService {
       DataRegionId regionId, Supplier<DataRegion> newRegionSupplier) {
     if (dataRegionMap.containsKey(regionId)) {
       DataRegion oldRegion = dataRegionMap.get(regionId);
+      oldRegion.stopLoadTsFileManager();
       oldRegion.markDeleted();
       oldRegion.abortCompaction();
       oldRegion.syncCloseAllWorkingTsFileProcessors();
@@ -978,6 +997,7 @@ public class StorageEngine implements IService {
   public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
     if (dataRegionMap.containsKey(regionId)) {
       DataRegion oldRegion = dataRegionMap.get(regionId);
+      oldRegion.stopLoadTsFileManager();
       oldRegion.markDeleted();
       oldRegion.abortCompaction();
       oldRegion.syncCloseAllWorkingTsFileProcessors();
@@ -1040,7 +1060,7 @@ public class StorageEngine implements IService {
     }
 
     try {
-      loadTsFileManager.writeToDataRegion(dataRegion, pieceNode, uuid);
+      dataRegion.getLoadTsFileManager().writeToDataRegion(pieceNode, uuid);
     } catch (IOException | PageException e) {
       LOGGER.warn(
           StorageEngineMessages
@@ -1076,7 +1096,7 @@ public class StorageEngine implements IService {
     try {
       switch (loadCommand) {
         case EXECUTE:
-          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, timePartitionProgressIndexMap)) {
+          if (loadAllInDataRegions(uuid, isGeneratedByPipe, timePartitionProgressIndexMap)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
@@ -1089,7 +1109,7 @@ public class StorageEngine implements IService {
           }
           break;
         case ROLLBACK:
-          if (loadTsFileManager.deleteAll(uuid)) {
+          if (deleteAllInDataRegions(uuid)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
@@ -1112,6 +1132,32 @@ public class StorageEngine implements IService {
     }
 
     return status;
+  }
+
+  private boolean loadAllInDataRegions(
+      final String uuid,
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    boolean loaded = false;
+    for (final DataRegion dataRegion : dataRegionMap.values()) {
+      final Optional<LoadTsFileManager> manager = dataRegion.getLoadTsFileManagerIfPresent();
+      if (manager.isPresent()) {
+        loaded |= manager.get().loadAll(uuid, isGeneratedByPipe, timePartitionProgressIndexMap);
+      }
+    }
+    return loaded;
+  }
+
+  private boolean deleteAllInDataRegions(final String uuid) {
+    boolean deleted = false;
+    for (final DataRegion dataRegion : dataRegionMap.values()) {
+      final Optional<LoadTsFileManager> manager = dataRegion.getLoadTsFileManagerIfPresent();
+      if (manager.isPresent()) {
+        deleted |= manager.get().deleteAll(uuid);
+      }
+    }
+    return deleted;
   }
 
   /** reboot timed flush sequence/unsequence memtable thread */

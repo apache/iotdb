@@ -31,7 +31,6 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.db.storageengine.load.LoadTsFileChecksumUtils;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
@@ -57,18 +56,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * correlation) and feeds the source TsFile through {@link TsFileSplitter} into {@link
  * TsFileSplitConsumer}. Every dispatched piece goes through {@code dispatchConsensusPiece}: the
  * first piece of a region sends BEGIN with a fresh per-region load id, then PIECE commands with a
- * monotonically increasing {@code pieceIndex}; {@link RegionConsensusContext#accumulate(long,
- * long)} records piece count, total bytes and the XOR checksum. Submission goes through {@link
+ * monotonically increasing {@code pieceIndex}. Submission goes through {@link
  * LoadConsensusSubmitter} with bounded retries for transient failures only.
  *
  * <p><b>Phase 2 (commit or abort).</b> If every region received all its pieces, each touched region
- * gets PREPARE (with the accumulated count/bytes/checksum) followed by COMMIT; otherwise every
- * touched region gets ABORT so the staged data is dropped.
+ * gets PREPARE (with the accumulated count/bytes) followed by COMMIT; otherwise every touched
+ * region gets ABORT so the staged data is dropped.
  *
- * <p>Per-file state: {@code allReplicaSets} (the regions to prepare/commit/abort), {@code
- * consensusContexts} (per-region two-phase state) and {@code timePartitionSlotToProgressIndex}
- * (pipe progress index per time partition, collected while splitting for the upcoming
- * progress-index sync).
+ * <p>Per-file state tracks the touched regions, their load ids, BEGIN state, piece counters and
+ * pipe progress indexes.
  */
 public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
 
@@ -100,9 +96,10 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   /** Regions touched by the current file; used to send ABORT/PREPARE+COMMIT in phase two. */
   private final Set<TRegionReplicaSet> allReplicaSets = new HashSet<>();
 
-  /** Per-region two-phase state of the current file; replaces the old five parallel maps. */
-  private final Map<TConsensusGroupId, RegionConsensusContext> consensusContexts =
-      new ConcurrentHashMap<>();
+  private final Map<TConsensusGroupId, String> regionLoadIds = new ConcurrentHashMap<>();
+  private final Set<TConsensusGroupId> begunRegions = ConcurrentHashMap.newKeySet();
+  private final Map<TConsensusGroupId, Long> regionPieceCounts = new ConcurrentHashMap<>();
+  private final Map<TConsensusGroupId, Long> regionTotalBytes = new ConcurrentHashMap<>();
 
   /**
    * Progress index per time partition, assigned while the file is being split. Kept for the
@@ -131,7 +128,10 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
     this.currentNode = node;
     dispatcher.setUuid(UUID.randomUUID().toString());
     allReplicaSets.clear();
-    consensusContexts.clear();
+    regionLoadIds.clear();
+    begunRegions.clear();
+    regionPieceCounts.clear();
+    regionTotalBytes.clear();
     timePartitionSlotToProgressIndex.clear();
 
     long startTime = System.nanoTime();
@@ -195,8 +195,8 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
 
   /**
    * Submits a LOAD consensus request with a bounded number of attempts. Only transient failures are
-   * retried; permanent rejections (checksum mismatch, missing staged writer) are returned to the
-   * caller immediately so the scheduler can abort.
+   * retried; permanent rejections are returned to the caller immediately so the scheduler can
+   * abort.
    */
   private TSStatus submitConsensusWithRetry(
       TRegionReplicaSet replicaSet, LoadTsFileConsensusNode node) {
@@ -241,12 +241,10 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   private boolean dispatchConsensusPiece(
       LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
     final TConsensusGroupId regionId = replicaSet.getRegionId();
-    final RegionConsensusContext context =
-        consensusContexts.computeIfAbsent(regionId, o -> new RegionConsensusContext());
-    final String loadId = context.getLoadId();
+    final String loadId =
+        regionLoadIds.computeIfAbsent(regionId, ignored -> UUID.randomUUID().toString());
 
-    if (!context.isBegun()) {
-      context.markBegun();
+    if (begunRegions.add(regionId)) {
       final LoadTsFileConsensusNode begin =
           LoadTsFileConsensusNode.begin(
               new PlanNodeId("load-begin-" + loadId),
@@ -272,20 +270,13 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
     }
 
     final long pieceIndex = pieceNode.getPieceIndex();
-    // The checksum is part of the consensus contract: both the write node and every follower
-    // verify it, and the per-piece digest includes the piece index so reordered payloads are
-    // detected. Sending a constant here would silently disable checksum validation.
-    final long checksum =
-        LoadTsFileChecksumUtils.checksum(pieceIndex, pieceNode.getAllTsFileData());
     final LoadTsFileConsensusNode piece =
         LoadTsFileConsensusNode.piece(
             new PlanNodeId("load-piece-" + loadId + "-" + pieceIndex),
             loadId,
             pieceNode.getTsFile() == null ? null : pieceNode.getTsFile().getName(),
             pieceIndex,
-            0L,
-            pieceNode.getAllTsFileData(),
-            checksum);
+            pieceNode.getAllTsFileData());
     final TSStatus pieceStatus = submitConsensusWithRetry(replicaSet, piece);
     if (pieceStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
@@ -298,7 +289,8 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
           pieceNode);
       return false;
     }
-    context.accumulate(piece.getDataSize(), piece.getChecksum());
+    regionPieceCounts.merge(regionId, 1L, Long::sum);
+    regionTotalBytes.merge(regionId, piece.getDataSize(), Long::sum);
     return true;
   }
 
@@ -311,7 +303,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
 
   private boolean abortAllRegions() {
     for (TRegionReplicaSet replicaSet : allReplicaSets) {
-      final String loadId = consensusContexts.get(replicaSet.getRegionId()).getLoadId();
+      final String loadId = regionLoadIds.get(replicaSet.getRegionId());
       final LoadTsFileConsensusNode abort =
           LoadTsFileConsensusNode.abort(
               new PlanNodeId("load-abort-" + loadId), loadId, null, isGeneratedByPipe);
@@ -336,16 +328,16 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
     final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex =
         serializeTimePartitionProgressIndexes();
     for (TRegionReplicaSet replicaSet : allReplicaSets) {
-      final RegionConsensusContext context = consensusContexts.get(replicaSet.getRegionId());
-      final String loadId = context.getLoadId();
+      final TConsensusGroupId regionId = replicaSet.getRegionId();
+      final String loadId = regionLoadIds.get(regionId);
       final LoadTsFileConsensusNode prepare =
           LoadTsFileConsensusNode.prepare(
               new PlanNodeId("load-prepare-" + loadId),
               loadId,
               null,
-              (int) context.getPieceCount(),
-              context.getTotalBytes(),
-              context.getChecksum(),
+              Math.toIntExact(regionPieceCounts.getOrDefault(regionId, 0L)),
+              regionTotalBytes.getOrDefault(regionId, 0L),
+              0L,
               timePartition2ProgressIndex);
       final TSStatus prepareStatus = consensusSubmitter.submit(replicaSet, prepare);
       if (prepareStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
