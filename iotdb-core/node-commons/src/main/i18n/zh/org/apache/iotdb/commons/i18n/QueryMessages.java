@@ -210,6 +210,12 @@ public final class QueryMessages {
   public static final String FORECAST_RESULT_SINGLE_COLUMN =
       "预测结果应仅包含一个值列，但实际有 %d 个";
 
+  public static final String EXCEPTION_FORECAST_OUTPUT_TIME_IS_OUT_OF_RANGE_0F114E4E =
+      "Forecast 输出时间超出范围。";
+  public static final String
+      EXCEPTION_FORECAST_OUTPUT_INTERVAL_MUST_BE_POSITIVE_WHEN_INPUT_HAS_ONE_ROW_C9DBE14B =
+          "当输入只有一行时，Forecast 输出间隔必须为正数。";
+
   // ======================== TableSchema ========================
 
   public static final String TABLE_COLUMN_NAME_DUPLICATED =

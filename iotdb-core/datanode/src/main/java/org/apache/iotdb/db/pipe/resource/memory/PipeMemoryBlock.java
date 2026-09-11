@@ -150,25 +150,7 @@ public class PipeMemoryBlock implements AutoCloseable {
    * event object is retained by the memory block.
    */
   public PipeMemoryBlock setAssigner(final Object assignerObject) {
-    String snapshot = null;
-    if (assignerObject != null) {
-      try {
-        if (assignerObject instanceof EnrichedEvent) {
-          snapshot = ((EnrichedEvent) assignerObject).coreReportMessage();
-          // Some event implementations intentionally return no core message while they are being
-          // constructed. Keep a useful diagnostic value in that case instead of losing the
-          // assigner altogether.
-          if (snapshot == null) {
-            snapshot = String.valueOf(assignerObject);
-          }
-        } else {
-          snapshot = String.valueOf(assignerObject);
-        }
-      } catch (final Exception ignored) {
-        snapshot = assignerObject.getClass().getSimpleName();
-      }
-    }
-    assigner.set(truncateAssigner(snapshot));
+    assigner.set(snapshotAssigner(assignerObject));
     return this;
   }
 
@@ -198,6 +180,39 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   PipeMemoryManager getPipeMemoryManager() {
     return pipeMemoryManager;
+  }
+
+  static String snapshotAssigner(final Object assignerObject) {
+    if (assignerObject == null) {
+      return null;
+    }
+
+    try {
+      if (assignerObject instanceof String) {
+        return truncateAssigner((String) assignerObject);
+      }
+      if (assignerObject instanceof EnrichedEvent) {
+        final EnrichedEvent event = (EnrichedEvent) assignerObject;
+        // coreReportMessage() implementations may serialize a complete Tablet and recursively
+        // expand their source events. Building that unbounded string merely to truncate it below
+        // can exhaust the heap on the parser hot path, so retain only stable identity fields.
+        return truncateAssigner(
+            event.getClass().getSimpleName()
+                + '['
+                + truncateAssigner(event.getPipeName())
+                + ','
+                + event.getCreationTime()
+                + ','
+                + event.getRegionId()
+                + ']');
+      }
+
+      // Avoid invoking an arbitrary toString() from an allocation hot path. Call sites that need
+      // a richer value can provide an already bounded String explicitly.
+      return truncateAssigner(assignerObject.getClass().getSimpleName());
+    } catch (final Exception ignored) {
+      return assignerObject.getClass().getSimpleName();
+    }
   }
 
   private static String truncateAssigner(final String value) {

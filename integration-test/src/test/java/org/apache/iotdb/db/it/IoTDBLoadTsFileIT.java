@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -1007,6 +1009,31 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet = statement.executeQuery("show timeseries root.sg")) {
         Assert.assertFalse(resultSet.next());
       }
+    }
+  }
+
+  @Test
+  public void testDeleteEmptyTsFileAfterLoad() throws Exception {
+    final File tsFile = new File(tmpDir, "empty-1-0-0-0.tsfile");
+    try (final TsFileGenerator ignored = new TsFileGenerator(tsFile)) {}
+
+    final File resourceFile = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    final File modsFile = ModificationFile.getExclusiveMods(tsFile);
+    final File modsV1File = new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX);
+
+    Assert.assertTrue(resourceFile.createNewFile());
+    Assert.assertTrue(modsFile.createNewFile());
+    Assert.assertTrue(modsV1File.createNewFile());
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format("load \"%s\" with ('on-success'='delete')", tsFile.getAbsolutePath()));
+
+      Assert.assertFalse(tsFile.exists());
+      Assert.assertFalse(resourceFile.exists());
+      Assert.assertFalse(modsFile.exists());
+      Assert.assertFalse(modsV1File.exists());
     }
   }
 

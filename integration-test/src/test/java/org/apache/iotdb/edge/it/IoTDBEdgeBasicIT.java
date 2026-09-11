@@ -45,6 +45,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -53,17 +54,23 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -108,6 +115,11 @@ public class IoTDBEdgeBasicIT {
     ports = EnvUtils.searchAvailablePorts();
     rpcPort = ports[2];
     configurePorts(edgeHome.resolve("conf/iotdb-system.properties"));
+    // Existing installations may still carry this retired configuration key.
+    Files.writeString(
+        edgeHome.resolve("conf/iotdb-system.properties"),
+        "\nenable_binary_allocator=true\n",
+        StandardOpenOption.APPEND);
 
     runScript(edgeHome.resolve("sbin/start-edge.sh"), START_SCRIPT_LOG);
     edgePid = Long.parseLong(Files.readString(edgeHome.resolve("edge.pid")).trim());
@@ -180,9 +192,201 @@ public class IoTDBEdgeBasicIT {
     }
   }
 
+  @Test
+  public void testConcurrentTableQueriesWithSmallThreadPools() throws Exception {
+    try (Connection connection = openTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE edge_it_concurrent");
+      statement.execute("USE edge_it_concurrent");
+      statement.execute("CREATE TABLE sensor(device STRING TAG, value INT32 FIELD)");
+      statement.execute("INSERT INTO sensor(time,device,value) VALUES (1,'d1',42), (2,'d1',84)");
+    }
+
+    ExecutorService executor = Executors.newFixedThreadPool(4);
+    CountDownLatch ready = new CountDownLatch(4);
+    CountDownLatch start = new CountDownLatch(1);
+    List<Future<Void>> queries = new ArrayList<>();
+    try {
+      for (int i = 0; i < 4; i++) {
+        queries.add(
+            executor.submit(
+                () -> {
+                  try (Connection connection = openTableConnection();
+                      Statement statement = connection.createStatement()) {
+                    statement.execute("USE edge_it_concurrent");
+                    ready.countDown();
+                    assertTrue(start.await(30, TimeUnit.SECONDS));
+                    for (int iteration = 0; iteration < 20; iteration++) {
+                      try (ResultSet result =
+                          statement.executeQuery("SELECT sum(value) FROM sensor")) {
+                        assertTrue(result.next());
+                        assertEquals(126.0, result.getDouble(1), 0.0);
+                        assertFalse(result.next());
+                      }
+                      try (ResultSet result =
+                          statement.executeQuery(
+                              "SELECT value FROM sensor WHERE device='d1' ORDER BY time")) {
+                        assertTrue(result.next());
+                        assertEquals(42, result.getInt(1));
+                        assertTrue(result.next());
+                        assertEquals(84, result.getInt(1));
+                        assertFalse(result.next());
+                      }
+                    }
+                  }
+                  return null;
+                }));
+      }
+      assertTrue(ready.await(30, TimeUnit.SECONDS));
+      start.countDown();
+      for (Future<Void> query : queries) {
+        query.get(60, TimeUnit.SECONDS);
+      }
+    } finally {
+      start.countDown();
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
   private static Connection openTreeConnection() throws SQLException {
     return DriverManager.getConnection(
         jdbcUrl(), SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  }
+
+  @Test
+  public void testConcurrentCrossDatabaseJoinsWithSmallDispatchPool() throws Exception {
+    try (Connection connection = openTableConnection();
+        Statement statement = connection.createStatement()) {
+      for (String database : new String[] {"edge_it_dispatch_a", "edge_it_dispatch_b"}) {
+        statement.execute("CREATE DATABASE " + database);
+        statement.execute("USE " + database);
+        statement.execute("CREATE TABLE sensor(device STRING TAG, value INT32 FIELD)");
+        statement.execute("INSERT INTO sensor(time,device,value) VALUES (1,'d1',42),(2,'d1',84)");
+      }
+    }
+    ExecutorService executor = Executors.newFixedThreadPool(4);
+    CountDownLatch ready = new CountDownLatch(4);
+    CountDownLatch start = new CountDownLatch(1);
+    List<Future<Void>> queries = new ArrayList<>();
+    try {
+      for (int i = 0; i < 4; i++) {
+        queries.add(
+            executor.submit(
+                () -> {
+                  try (Connection connection = openTableConnection();
+                      Statement statement = connection.createStatement()) {
+                    ready.countDown();
+                    assertTrue(start.await(30, TimeUnit.SECONDS));
+                    for (int iteration = 0; iteration < 10; iteration++) {
+                      try (ResultSet result =
+                          statement.executeQuery(
+                              "SELECT count(*), sum(a.value + b.value)"
+                                  + " FROM edge_it_dispatch_a.sensor a JOIN edge_it_dispatch_b.sensor b"
+                                  + " ON a.device = b.device AND a.time = b.time")) {
+                        assertTrue(result.next());
+                        assertEquals(2, result.getLong(1));
+                        assertEquals(252.0, result.getDouble(2), 0.0);
+                        assertFalse(result.next());
+                      }
+                    }
+                  }
+                  return null;
+                }));
+      }
+      assertTrue(ready.await(30, TimeUnit.SECONDS));
+      start.countDown();
+      for (Future<Void> query : queries) {
+        query.get(90, TimeUnit.SECONDS);
+      }
+    } finally {
+      start.countDown();
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+    String threads = captureThreadDump("cross-database-joins");
+    long dispatchWorkers =
+        threads
+            .lines()
+            .filter(
+                line -> line.startsWith("\"pool-") && line.contains("Fragment-Instance-Dispatch-"))
+            .count();
+    assertTrue("The join must exercise fragment dispatch", dispatchWorkers > 0);
+    assertTrue("Fragment dispatch exceeded its configured pool size", dispatchWorkers <= 2);
+  }
+
+  @Test
+  public void testBlobReadWriteAfterLegacyAllocatorConfigurationReload() throws Exception {
+    byte[] expected = new byte[65536];
+    for (int i = 0; i < expected.length; i++) {
+      expected[i] = (byte) i;
+    }
+    try (Connection connection = openTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("LOAD CONFIGURATION");
+      statement.execute("CREATE DATABASE edge_it_blob");
+      statement.execute("USE edge_it_blob");
+      statement.execute("CREATE TABLE payloads(device STRING TAG, payload BLOB FIELD)");
+      statement.execute(
+          "INSERT INTO payloads(time,device,payload) VALUES (1,'d1',X'"
+              + HexFormat.of().formatHex(expected)
+              + "')");
+      for (int round = 0; round < 2; round++) {
+        try (ResultSet result = statement.executeQuery("SELECT payload FROM payloads")) {
+          assertTrue(result.next());
+          assertArrayEquals(expected, result.getBytes(1));
+          assertFalse(result.next());
+        }
+        if (round == 0) {
+          statement.execute("FLUSH");
+          statement.execute("LOAD CONFIGURATION");
+        }
+      }
+    }
+    assertFalse(captureThreadDump("blob-after-reload").contains("BinaryAllocator-"));
+  }
+
+  private static String captureThreadDump(String name) throws Exception {
+    Path output = WORK_DIR.resolve(name + "-threads.txt");
+    Process process =
+        new ProcessBuilder(
+                Paths.get(System.getProperty("java.home"), "bin", "jcmd").toString(),
+                Long.toString(edgePid),
+                "Thread.print",
+                "-l")
+            .redirectErrorStream(true)
+            .redirectOutput(output.toFile())
+            .start();
+    try {
+      assertTrue("Thread dump timed out", process.waitFor(30, TimeUnit.SECONDS));
+      assertEquals("Failed to capture thread dump: " + output, 0, process.exitValue());
+      return Files.readString(output);
+    } finally {
+      if (process.isAlive()) {
+        process.destroyForcibly();
+      }
+    }
+  }
+
+  @Test
+  public void testRatisMetadataConsensus() throws SQLException {
+    Map<String, String> variables = new LinkedHashMap<>();
+    try (Connection connection = openTableConnection();
+        Statement statement = connection.createStatement();
+        ResultSet result = statement.executeQuery("SHOW VARIABLES")) {
+      while (result.next()) {
+        variables.put(result.getString(1), result.getString(2));
+      }
+    }
+    assertEquals(
+        "org.apache.iotdb.consensus.ratis.RatisConsensus",
+        variables.get("ConfigNodeConsensusProtocolClass"));
+    assertEquals(
+        "org.apache.iotdb.consensus.ratis.RatisConsensus",
+        variables.get("SchemaRegionConsensusProtocolClass"));
+    assertEquals(
+        "org.apache.iotdb.consensus.iot.IoTConsensus",
+        variables.get("DataRegionConsensusProtocolClass"));
   }
 
   private static Connection openTableConnection() throws SQLException {
@@ -195,6 +399,12 @@ public class IoTDBEdgeBasicIT {
   @Test
   public void testPackagedConfiguration() throws Exception {
     assertFalse(PACKAGED_SYSTEM_PROPERTIES.containsKey("model_inference_execution_thread_count"));
+    assertEdgeProperty("coordinator_read_executor_size", "2");
+    assertEdgeProperty("coordinator_scheduled_executor_size", "2");
+    assertEdgeProperty("fragment_instance_notification_thread_count", "2");
+    assertEdgeProperty("driver_task_scheduler_notification_thread_count", "2");
+    assertEdgeProperty("fragment_instance_dispatch_thread_count", "2");
+    assertEdgeProperty("cn_load_statistics_publisher_thread_count", "1");
     assertEdgeProperty("candidate_compaction_task_queue_size", "10");
     assertEdgeProperty("compaction_max_aligned_series_num_in_one_batch", "2");
     assertEdgeProperty("target_compaction_file_size", "33554432");

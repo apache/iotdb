@@ -21,6 +21,7 @@ package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -39,7 +41,9 @@ import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config.ReplicateMode;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -67,6 +71,18 @@ import java.util.concurrent.TimeUnit;
 public class DataRegionConsensusImpl {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionConsensusImpl.class);
+  private static final UserDataTransferAuditClassifier USER_DATA_TRANSFER_AUDIT_CLASSIFIER =
+      new UserDataTransferAuditClassifier() {
+        @Override
+        public boolean containsUserData(ConsensusGroupId groupId, IConsensusRequest request) {
+          return DataNodeUserDataTransferAuditor.containsUserData(groupId, request);
+        }
+
+        @Override
+        public boolean containsUserData(ConsensusGroupId groupId) {
+          return DataNodeUserDataTransferAuditor.containsUserData(groupId);
+        }
+      };
 
   private DataRegionConsensusImpl() {
     // do nothing
@@ -143,6 +159,14 @@ public class DataRegionConsensusImpl {
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
           .setTrustedChannelFailureHandler(
               DNAuditLogger.getInstance()::recordTrustedChannelFailureAuditLogIfNecessary)
+          .setUserDataTransferAuditHandler(
+              COMMON_CONF.isEnableAuditLog()
+                  ? DNAuditLogger.getInstance()::recordUserDataTransferAuditLog
+                  : UserDataTransferAuditHandler.NO_OP)
+          .setUserDataTransferAuditClassifier(
+              COMMON_CONF.isEnableAuditLog()
+                  ? USER_DATA_TRANSFER_AUDIT_CLASSIFIER
+                  : UserDataTransferAuditClassifier.NO_USER_DATA)
           .setStorageDir(CONF.getDataRegionConsensusDir())
           .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))
           // IoTConsensus always balances received snapshot files by least occupied space,

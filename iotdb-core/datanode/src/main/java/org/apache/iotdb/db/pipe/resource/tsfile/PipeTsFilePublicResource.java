@@ -39,7 +39,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class PipeTsFilePublicResource extends PipeTsFileResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFilePublicResource.class);
@@ -54,24 +53,15 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     super.close();
-
-    if (deviceMeasurementsMap != null) {
-      deviceMeasurementsMap = null;
-    }
-
-    if (deviceIsAlignedMap != null) {
-      deviceIsAlignedMap = null;
-    }
-
-    if (measurementDataTypeMap != null) {
-      measurementDataTypeMap = null;
-    }
-
-    if (allocatedMemoryBlock != null) {
-      allocatedMemoryBlock.close();
-      allocatedMemoryBlock = null;
+    deviceMeasurementsMap = null;
+    deviceIsAlignedMap = null;
+    measurementDataTypeMap = null;
+    final PipeMemoryBlock block = allocatedMemoryBlock;
+    allocatedMemoryBlock = null;
+    if (block != null) {
+      block.close();
     }
   }
 
@@ -115,7 +105,7 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
     // See if pipe memory is sufficient to be allocated for TsFileSequenceReader.
     // Only allocate when pipe memory used is less than 50%, because memory here
     // is hard to shrink and may consume too much memory.
-    allocatedMemoryBlock =
+    final PipeMemoryBlock readerMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(
                 PipeTsFilePublicResource.class.getSimpleName() + "#sequenceReader",
@@ -124,31 +114,35 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
                 PipeMemoryBlockCategory.TS_FILE,
                 PipeTsFilePublicResource.class.getSimpleName(),
                 null);
-    if (allocatedMemoryBlock == null) {
+    if (readerMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.FAILED_TO_CACHEDEVICEISALIGNEDMAPIFABSENT_FOR_TSFILE_BECAUSE_MEMORY,
           tsFile.getPath());
       return false;
     }
 
+    final Map<IDeviceID, Boolean> cachedDeviceIsAlignedMap = new HashMap<>();
     long memoryRequiredInBytes = 0L;
-    try (TsFileSequenceReader sequenceReader =
-        new TsFileSequenceReader(tsFile.getPath(), true, false)) {
-      deviceIsAlignedMap = new HashMap<>();
-      final TsFileDeviceIterator deviceIsAlignedIterator =
-          sequenceReader.getAllDevicesIteratorWithIsAligned();
-      while (deviceIsAlignedIterator.hasNext()) {
-        final Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
-        deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
+    try {
+      try (TsFileSequenceReader sequenceReader =
+          new TsFileSequenceReader(tsFile.getPath(), true, false)) {
+        final TsFileDeviceIterator deviceIsAlignedIterator =
+            sequenceReader.getAllDevicesIteratorWithIsAligned();
+        while (deviceIsAlignedIterator.hasNext()) {
+          final Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
+          cachedDeviceIsAlignedMap.put(
+              deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
+        }
       }
-      memoryRequiredInBytes += PipeMemoryWeightUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
+      memoryRequiredInBytes +=
+          PipeMemoryWeightUtil.memoryOfIDeviceId2Bool(cachedDeviceIsAlignedMap);
+    } finally {
+      // The reader block is temporary and must never become the persistent metadata block.
+      readerMemoryBlock.close();
     }
-    // Release memory of TsFileSequenceReader.
-    allocatedMemoryBlock.close();
-    allocatedMemoryBlock = null;
 
     // Allocate again for the cached objects.
-    allocatedMemoryBlock =
+    final PipeMemoryBlock cachedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(
                 PipeTsFilePublicResource.class.getSimpleName() + "#metadata",
@@ -157,14 +151,17 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
                 PipeMemoryBlockCategory.CACHE,
                 PipeTsFilePublicResource.class.getSimpleName(),
                 null);
-    if (allocatedMemoryBlock == null) {
+    if (cachedMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.PIPETSFILERESOURCE_FAILED_TO_CACHE_OBJECTS_FOR_TSFILE,
           tsFile.getPath());
-      deviceIsAlignedMap = null;
       return false;
     }
 
+    // Publish the map only after its accounting block has been acquired.  Readers never observe
+    // a partially built map or a map without a corresponding memory reservation.
+    deviceIsAlignedMap = cachedDeviceIsAlignedMap;
+    allocatedMemoryBlock = cachedMemoryBlock;
     LOGGER.info(
         DataNodePipeMessages.PIPETSFILERESOURCE_CACHED_DEVICEISALIGNEDMAP_FOR_TSFILE,
         tsFile.getPath());
@@ -177,15 +174,17 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
         return true;
       } else {
         // Recalculate it again because only deviceIsAligned map is cached
-        allocatedMemoryBlock.close();
+        final PipeMemoryBlock oldMemoryBlock = allocatedMemoryBlock;
         allocatedMemoryBlock = null;
+        deviceIsAlignedMap = null;
+        oldMemoryBlock.close();
       }
     }
 
     // See if pipe memory is sufficient to be allocated for TsFileSequenceReader.
     // Only allocate when pipe memory used is less than 50%, because memory here
     // is hard to shrink and may consume too much memory.
-    allocatedMemoryBlock =
+    final PipeMemoryBlock readerMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(
                 PipeTsFilePublicResource.class.getSimpleName() + "#sequenceReader",
@@ -194,40 +193,46 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
                 PipeMemoryBlockCategory.TS_FILE,
                 PipeTsFilePublicResource.class.getSimpleName(),
                 null);
-    if (allocatedMemoryBlock == null) {
+    if (readerMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.FAILED_TO_CACHEOBJECTSIFABSENT_FOR_TSFILE_BECAUSE_MEMORY,
           tsFile.getPath());
       return false;
     }
 
+    Map<IDeviceID, List<String>> cachedDeviceMeasurementsMap = null;
+    Map<IDeviceID, Boolean> cachedDeviceIsAlignedMap = null;
+    Map<String, TSDataType> cachedMeasurementDataTypeMap = null;
     long memoryRequiredInBytes = 0L;
-    try (TsFileSequenceReader sequenceReader =
-        new TsFileSequenceReader(tsFile.getPath(), true, true)) {
-      deviceMeasurementsMap = sequenceReader.getDeviceMeasurementsMap();
-      memoryRequiredInBytes +=
-          PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
+    try {
+      try (TsFileSequenceReader sequenceReader =
+          new TsFileSequenceReader(tsFile.getPath(), true, true)) {
+        cachedDeviceMeasurementsMap = sequenceReader.getDeviceMeasurementsMap();
+        memoryRequiredInBytes +=
+            PipeMemoryWeightUtil.memoryOfIDeviceID2StrList(cachedDeviceMeasurementsMap);
 
-      if (Objects.isNull(deviceIsAlignedMap)) {
-        deviceIsAlignedMap = new HashMap<>();
+        cachedDeviceIsAlignedMap = new HashMap<>();
         final TsFileDeviceIterator deviceIsAlignedIterator =
             sequenceReader.getAllDevicesIteratorWithIsAligned();
         while (deviceIsAlignedIterator.hasNext()) {
           final Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
-          deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
+          cachedDeviceIsAlignedMap.put(
+              deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
         }
-      }
-      memoryRequiredInBytes += PipeMemoryWeightUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
+        memoryRequiredInBytes +=
+            PipeMemoryWeightUtil.memoryOfIDeviceId2Bool(cachedDeviceIsAlignedMap);
 
-      measurementDataTypeMap = sequenceReader.getFullPathDataTypeMap();
-      memoryRequiredInBytes += PipeMemoryWeightUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
+        cachedMeasurementDataTypeMap = sequenceReader.getFullPathDataTypeMap();
+        memoryRequiredInBytes +=
+            PipeMemoryWeightUtil.memoryOfStr2TSDataType(cachedMeasurementDataTypeMap);
+      }
+    } finally {
+      // The reader block is temporary and must be released even when metadata traversal fails.
+      readerMemoryBlock.close();
     }
-    // Release memory of TsFileSequenceReader.
-    allocatedMemoryBlock.close();
-    allocatedMemoryBlock = null;
 
     // Allocate again for the cached objects.
-    allocatedMemoryBlock =
+    final PipeMemoryBlock cachedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .forceAllocateIfSufficient(
                 PipeTsFilePublicResource.class.getSimpleName() + "#metadata",
@@ -236,16 +241,18 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
                 PipeMemoryBlockCategory.CACHE,
                 PipeTsFilePublicResource.class.getSimpleName(),
                 null);
-    if (allocatedMemoryBlock == null) {
+    if (cachedMemoryBlock == null) {
       LOGGER.info(
           DataNodePipeMessages.PIPETSFILERESOURCE_FAILED_TO_CACHE_OBJECTS_FOR_TSFILE,
           tsFile.getPath());
-      deviceIsAlignedMap = null;
-      deviceMeasurementsMap = null;
-      measurementDataTypeMap = null;
       return false;
     }
 
+    // Publish all metadata only after the persistent accounting block is ready.
+    deviceMeasurementsMap = cachedDeviceMeasurementsMap;
+    deviceIsAlignedMap = cachedDeviceIsAlignedMap;
+    measurementDataTypeMap = cachedMeasurementDataTypeMap;
+    allocatedMemoryBlock = cachedMemoryBlock;
     LOGGER.info(
         DataNodePipeMessages.PIPETSFILERESOURCE_CACHED_OBJECTS_FOR_TSFILE, tsFile.getPath());
     return true;

@@ -107,6 +107,8 @@ public final class CommonMessages {
   public static final String BASE_VALUE_SHOULD_NOT_BE_NULL =
       "When comparing, base value should never be null";
   public static final String SIZE_MUST_BE_POSITIVE = "Size must be greater than 0";
+  public static final String EXCEPTION_THREAD_COUNT_MUST_BE_GREATER_THAN_OR_EQUAL_TO_0_988EF69B =
+      "Thread count must be greater than or equal to 0";
 
   // --- sync ---
   public static final String UNEXPECTED_SERIALIZATION_ERROR =
@@ -117,17 +119,15 @@ public final class CommonMessages {
   public static final String CLASSLOADER_NOT_DETERMINED =
       "A ClassLoader to load the class could not be determined.";
 
-  // --- binaryallocator ---
-  public static final String BINARY_ALLOCATOR_RUNNING_GC_EVICTION =
-      "Binary allocator running GC eviction";
-  public static final String BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC =
-      "Binary allocator is shutting down because of high GC time percentage {}%.";
-  public static final String AUTO_RELEASER_EXIT_INTERRUPTED =
-      "{} exits due to interruptedException.";
-  public static final String STOPPING_COMPONENT = "Stopping {}";
-  public static final String UNABLE_TO_STOP_AUTO_RELEASER =
-      "unable to stop auto releaser after {} ms";
-  public static final String UNABLE_TO_STOP_EVICTOR = "unable to stop evictor after {} ms";
+  // --- startcheck / system.properties ---
+  public static final String IOTDB_VERSION_TOO_OLD = "IoTDB version is too old";
+  public static final String REPAIR_SYSTEM_PROPERTIES = "repair system.properties, lack {}";
+  public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
+      "%s can't be modified after first startup";
+  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
+      "Serialize mutable system properties successfully, which takes {} ms.";
+  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
+      "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
 
   private CommonMessages() {}
 
@@ -322,10 +322,17 @@ public final class CommonMessages {
       "Only column with double, float, int32, int64 can be calculated by the function, %s is the %s.";
   public static final String LOG_TRUSTED_CHANNEL_FUNCTION_FAILED_INITIATOR_ARG_TARGET_ARG_E4C28443 =
       "Trusted channel function failed: initiator=%s, target=%s";
+  public static final String
+      LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF =
+          "User data transfer attempt: time=%d, initiator=%s, source=%s, target=%s,"
+              + " protection_method=%s, result=%s, error=%s";
   public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM =
       "row index exceeds the maximum allowed number in one partition";
   public static final String
       EXCEPTION_XCORR_REQUIRES_EXACTLY_TWO_CALCULATION_COLUMNS_BUT_FOUND_ARG_2FF8EB0C =
           "XCorr requires exactly two calculation columns, but found %d.";
   public static final String EXCEPTION_COLUMN_LACK_OF_NAME = "the column in table lack of the name";
+  public static final String
+      EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
+          "Snapshot buffer size must not exceed %d bytes, but was %d.";
 }

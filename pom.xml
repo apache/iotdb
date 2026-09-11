@@ -146,7 +146,7 @@
         <thrift.version>0.24.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.4.1-260806-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.4.1-260909-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
     </properties>
@@ -766,6 +766,9 @@
                             <!-- bundled third-party NOTICE / license texts for the C++ client package -->
                             <exclude>**/package-metadata/third_party/NOTICE</exclude>
                             <exclude>**/package-metadata/third_party/licenses/**</exclude>
+                            <!-- bundled third-party NOTICE / license texts for the AINode package -->
+                            <exclude>**/ainode/src/assembly/resources/NOTICE-binary</exclude>
+                            <exclude>**/ainode/src/assembly/resources/licenses/**</exclude>
                             <!-- only for Travis CI with WinOS-->
                             <exclude>hadoopbin</exclude>
                             <exclude>windowssystem32</exclude>

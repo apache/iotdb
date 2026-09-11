@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -50,7 +52,8 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private long firstEventProcessingTime = Long.MIN_VALUE;
 
   protected long totalBufferSize = 0;
-  private final PipeMemoryBlock allocatedMemoryBlock;
+  private final PipeTabletMemoryBlock allocatedMemoryBlock;
+  private boolean shouldEmitOnMemoryPressure = false;
 
   protected volatile boolean isClosed = false;
 
@@ -64,7 +67,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     this.maxBatchSizeInBytes = requestMaxBatchSizeInBytes;
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
-            .forceAllocate(
+            .forceAllocateForTabletWithRetry(
                 PipeTabletEventBatch.class.getSimpleName(),
                 0,
                 PipeMemoryBlockCategory.BATCH,
@@ -98,6 +101,11 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       if (((EnrichedEvent) event)
           .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
 
+        final int previousEventsSize = events.size();
+        final long previousTotalBufferSize = totalBufferSize;
+        final boolean previousMemoryPressureState = shouldEmitOnMemoryPressure;
+        final Object batchState = captureBatchState();
+
         try {
           if (constructBatch(event)) {
             events.add((EnrichedEvent) event);
@@ -109,10 +117,28 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
                 .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), true);
           }
         } catch (final Exception e) {
-          if (events.isEmpty()) {
-            clearBatchData();
-            resetMemoryUsage();
+          try {
+            rollbackBatchState(batchState);
+          } catch (final Exception rollbackException) {
+            e.addSuppressed(rollbackException);
           }
+
+          // A failed constructBatch must not retain a partial payload or its memory reservation,
+          // even when older events are already buffered in this batch.
+          if (totalBufferSize != previousTotalBufferSize) {
+            // Shrinking never needs to wait. This path still holds the batch monitor, so a
+            // blocking resize here would recreate the same lock cycle as a failed append.
+            PipeDataNodeResourceManager.memory()
+                .tryResize(allocatedMemoryBlock, previousTotalBufferSize);
+          }
+          totalBufferSize = previousTotalBufferSize;
+          shouldEmitOnMemoryPressure =
+              previousMemoryPressureState
+                  || (e instanceof PipeRuntimeOutOfMemoryCriticalException && !events.isEmpty());
+          if (events.size() > previousEventsSize) {
+            events.subList(previousEventsSize, events.size()).clear();
+          }
+
           // If the event is not added to the batch, we need to decrease the reference count.
           ((EnrichedEvent) event)
               .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
@@ -138,13 +164,34 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   protected abstract boolean constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException;
 
+  /** Captures subclass payload state before constructing one event. */
+  protected Object captureBatchState() {
+    return null;
+  }
+
+  /** Restores subclass payload state after a failed event construction. */
+  protected void rollbackBatchState(final Object state) {}
+
   protected void increaseTotalBufferSizeAndUpdateMemoryBlock(final long bufferSize) {
     if (bufferSize <= 0) {
       return;
     }
 
     final long newTotalBufferSize = Math.min(totalBufferSize + bufferSize, maxBatchSizeInBytes);
-    PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlock, newTotalBufferSize);
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    if (!memoryManager.tryResize(allocatedMemoryBlock, newTotalBufferSize)) {
+      // Existing events must be emitted before this event is retried. Do not wait here: onEvent()
+      // is called while both the request builder and this batch are locked.
+      shouldEmitOnMemoryPressure = !events.isEmpty();
+      throw new PipeRuntimeOutOfMemoryCriticalException(
+          String.format(
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC,
+              0,
+              memoryManager.getTotalNonFloatingMemorySizeInBytes(),
+              memoryManager.getUsedMemorySizeInBytes(),
+              newTotalBufferSize - totalBufferSize));
+    }
     totalBufferSize = newTotalBufferSize;
   }
 
@@ -154,13 +201,20 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   protected void clearBatchData() {}
 
+  /** Close resources owned by a batch that will not be reused. */
+  protected void closeBatchData() {
+    clearBatchData();
+  }
+
   public boolean shouldEmit() {
     if (events.isEmpty()) {
       return false;
     }
 
     final long diff = System.currentTimeMillis() - firstEventProcessingTime;
-    if (totalBufferSize >= maxBatchSizeInBytes || diff >= maxDelayInMs) {
+    if (shouldEmitOnMemoryPressure
+        || totalBufferSize >= maxBatchSizeInBytes
+        || diff >= maxDelayInMs) {
       recordMetric.accept(diff, totalBufferSize, events.size());
       return true;
     }
@@ -169,8 +223,20 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   public synchronized void onSuccess() {
     events.clear();
+    try {
+      clearBatchData();
+    } finally {
+      resetMemoryUsage();
+    }
+  }
 
-    resetMemoryUsage();
+  /**
+   * Close a detached asynchronous batch after its event references have been handed to handlers or
+   * a retry queue. Unlike {@link #close()}, this method does not release those references.
+   */
+  public synchronized void closeAfterEventTransfer() {
+    events.clear();
+    close();
   }
 
   @Override
@@ -180,11 +246,20 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     }
     isClosed = true;
 
-    clearEventsReferenceCount(PipeTabletEventBatch.class.getName());
-    events.clear();
-    clearBatchData();
-    resetMemoryUsage();
-    allocatedMemoryBlock.close();
+    try {
+      clearEventsReferenceCount(PipeTabletEventBatch.class.getName());
+    } finally {
+      events.clear();
+      try {
+        closeBatchData();
+      } finally {
+        try {
+          resetMemoryUsage();
+        } finally {
+          allocatedMemoryBlock.close();
+        }
+      }
+    }
   }
 
   /**
@@ -214,6 +289,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   private void resetMemoryUsage() {
     totalBufferSize = 0;
+    shouldEmitOnMemoryPressure = false;
 
     releaseAllocatedMemoryBlock();
 

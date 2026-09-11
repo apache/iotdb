@@ -32,10 +32,11 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Throwables.throwIfUnchecked;
-import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
+import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 
 /**
@@ -111,24 +112,29 @@ public class DataDriver extends Driver {
       List<DataSourceOperator> sourceOperators =
           ((DataDriverContext) driverContext).getSourceOperators();
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
-        IQueryDataSource dataSource = initQueryDataSource();
-        if (dataSource == null) {
-          // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
-          // for some reasons, we may get null QueryDataSource here.
-          // And it's safe for us to throw this exception here in such case.
-          throw new IllegalStateException(
-              DataNodeQueryMessages.QUERYDATASOURCE_SHOULD_NEVER_BE_NULL);
-        } else if (dataSource == UNFINISHED_QUERY_DATA_SOURCE) {
-          // init query data source timeout. Maybe failed to acquire the read lock within the
-          // specified time
-          // do nothing, wait for next try
-        } else {
-          sourceOperators.forEach(
-              sourceOperator -> {
-                // Construct QueryDataSource for source operator
-                sourceOperator.initQueryDataSource(dataSource.clone());
-              });
+        List<DataSourceOperator> sharedSourceOperators = new ArrayList<>();
+        for (DataSourceOperator sourceOperator : sourceOperators) {
+          if (sourceOperator.isBatchQueryDataSource()) {
+            sourceOperator.initQueryDataSource(EMPTY_QUERY_DATA_SOURCE.clone());
+          } else {
+            sharedSourceOperators.add(sourceOperator);
+          }
+        }
+        if (sharedSourceOperators.isEmpty()) {
           this.init = true;
+        } else {
+          IQueryDataSource dataSource = initQueryDataSource();
+          if (dataSource == null) {
+            // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
+            // for some reasons, we may get null QueryDataSource here.
+            // And it's safe for us to throw this exception here in such case.
+            throw new IllegalStateException(
+                DataNodeQueryMessages.QUERYDATASOURCE_SHOULD_NEVER_BE_NULL);
+          } else if (dataSource != UNFINISHED_QUERY_DATA_SOURCE) {
+            sharedSourceOperators.forEach(
+                sourceOperator -> sourceOperator.initQueryDataSource(dataSource.clone()));
+            this.init = true;
+          }
         }
       } else {
         this.init = true;
@@ -136,9 +142,6 @@ public class DataDriver extends Driver {
     } finally {
       if (this.init) {
         ((DataDriverContext) driverContext).clearSourceOperators();
-        QUERY_EXECUTION_METRICS.recordExecutionCost(
-            QUERY_RESOURCE_INIT,
-            driverContext.getFragmentInstanceContext().getInitQueryDataSourceCost());
       }
     }
     return this.init;

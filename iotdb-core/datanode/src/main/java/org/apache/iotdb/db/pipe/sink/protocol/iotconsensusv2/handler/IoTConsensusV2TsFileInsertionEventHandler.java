@@ -88,6 +88,8 @@ public class IoTConsensusV2TsFileInsertionEventHandler
   private final long createTime;
 
   private long startTransferPieceTime;
+  private boolean currentAttemptContainsUserData;
+  private boolean transferAuditRecorded;
 
   public IoTConsensusV2TsFileInsertionEventHandler(
       final PipeTsFileInsertionEvent event,
@@ -167,6 +169,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         transfer(client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
+        currentAttemptContainsUserData = false;
         client.iotConsensusV2Transfer(
             transferMod
                 ? IoTConsensusV2TsFileSealWithModReq.toTIoTConsensusV2TransferReq(
@@ -197,6 +200,8 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         readLength == readFileBufferSize
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
+    currentAttemptContainsUserData = true;
+    transferAuditRecorded = false;
     client.iotConsensusV2Transfer(
         transferMod
             ? IoTConsensusV2TsFilePieceWithModReq.toTIoTConsensusV2TransferReq(
@@ -281,6 +286,13 @@ public class IoTConsensusV2TsFileInsertionEventHandler
     try {
       final IoTConsensusV2TransferFilePieceResp resp =
           IoTConsensusV2TransferFilePieceResp.fromTIoTConsensusV2TransferResp(response);
+      final TSStatus transferStatus = resp.getStatus();
+      final boolean success =
+          transferStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || transferStatus.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+      connector.recordUserDataTransferAudit(
+          success, success ? null : String.valueOf(transferStatus.getCode()), null);
+      transferAuditRecorded = true;
 
       // This case only happens when the connection is broken, and the connector is reconnected
       // to the receiver, then the receiver will redirect the file position to the last position
@@ -315,6 +327,10 @@ public class IoTConsensusV2TsFileInsertionEventHandler
 
   @Override
   public void onError(final Exception exception) {
+    if (currentAttemptContainsUserData && !transferAuditRecorded) {
+      connector.recordUserDataTransferAudit(false, null, exception);
+      transferAuditRecorded = true;
+    }
     PipeLogger.log(
         ignored ->
             LOGGER.warn(

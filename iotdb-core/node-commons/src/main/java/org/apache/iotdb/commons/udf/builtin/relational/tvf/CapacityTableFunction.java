@@ -134,17 +134,33 @@ public class CapacityTableFunction implements TableFunction {
       //   k * slide <= curIndex < k * slide + size, and k >= 0
       // The first valid k: max(0, ceil((curIndex - size + 1) / slide))
       // The last valid k: floor(curIndex / slide)
-      long firstWindow = Math.max(0, (curIndex - size + slide) / slide);
+      long firstWindow = curIndex < size ? 0 : ceilDiv(curIndex - size + 1, slide);
       long lastWindow = curIndex / slide;
-      for (long k = firstWindow; k <= lastWindow; k++) {
-        // Verify: k * slide <= curIndex < k * slide + size
-        long windowStart = k * slide;
-        if (windowStart <= curIndex && curIndex < windowStart + size) {
-          properColumnBuilders.get(0).writeLong(k);
-          passThroughIndexBuilder.writeLong(curIndex);
+      if (firstWindow <= lastWindow) {
+        for (long k = firstWindow; ; k++) {
+          // Verify: k * slide <= curIndex < k * slide + size
+          if (isIndexInWindow(curIndex, k, slide, size)) {
+            properColumnBuilders.get(0).writeLong(k);
+            passThroughIndexBuilder.writeLong(curIndex);
+          }
+          if (k == lastWindow) {
+            break;
+          }
         }
       }
       curIndex++;
+    }
+
+    private static long ceilDiv(long dividend, long divisor) {
+      return dividend == 0 ? 0 : (dividend - 1) / divisor + 1;
+    }
+
+    private static boolean isIndexInWindow(long curIndex, long windowIndex, long slide, long size) {
+      if (windowIndex > Long.MAX_VALUE / slide) {
+        return false;
+      }
+      long windowStart = windowIndex * slide;
+      return windowStart <= curIndex && curIndex - windowStart < size;
     }
   }
 }

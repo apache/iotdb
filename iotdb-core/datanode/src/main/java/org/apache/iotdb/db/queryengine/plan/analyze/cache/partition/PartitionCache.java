@@ -940,18 +940,18 @@ public class PartitionCache {
       final Map<TConsensusGroupId, HashSet<TimeSlotRegionInfo>> consensusGroupToTimeSlotMap =
           new HashMap<>();
 
-      for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
+      for (final Map.Entry<String, List<DataPartitionQueryParam>> entry :
           databaseToQueryParamsMap.entrySet()) {
-        String databaseName = entry.getKey();
-        List<DataPartitionQueryParam> params = entry.getValue();
+        final String databaseName = entry.getKey();
+        final List<DataPartitionQueryParam> params = entry.getValue();
 
-        if (null == params || params.isEmpty()) {
+        if (params == null || params.isEmpty()) {
           cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
           return null;
         }
 
-        DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(databaseName);
-        if (null == dataPartitionTable) {
+        final DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(databaseName);
+        if (dataPartitionTable == null) {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DATABASE_ARG,
@@ -962,20 +962,17 @@ public class PartitionCache {
           return null;
         }
 
-        Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
+        final Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
             dataPartitionTable.getDataPartitionMap();
-
-        for (DataPartitionQueryParam param : params) {
-          TSeriesPartitionSlot seriesPartitionSlot;
-          if (null != param.getDeviceID()) {
-            seriesPartitionSlot = partitionExecutor.getSeriesPartitionSlot(param.getDeviceID());
-          } else {
+        for (final DataPartitionQueryParam param : params) {
+          if (param.getDeviceID() == null) {
             return null;
           }
-
-          SeriesPartitionTable cachedSeriesPartitionTable =
+          final TSeriesPartitionSlot seriesPartitionSlot =
+              partitionExecutor.getSeriesPartitionSlot(param.getDeviceID());
+          final SeriesPartitionTable cachedSeriesPartitionTable =
               cachedDatabasePartitionMap.get(seriesPartitionSlot);
-          if (null == cachedSeriesPartitionTable) {
+          if (cachedSeriesPartitionTable == null) {
             if (logger.isDebugEnabled()) {
               logger.debug(
                   DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_DEVICE_ARG,
@@ -986,19 +983,17 @@ public class PartitionCache {
             return null;
           }
 
-          Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot =
+          final Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot =
               cachedSeriesPartitionTable.getSeriesPartitionMap();
-
           if (param.getTimePartitionSlotList().isEmpty()) {
             return null;
           }
-
-          for (TTimePartitionSlot timePartitionSlot : param.getTimePartitionSlotList()) {
-            List<TConsensusGroupId> cacheConsensusGroupIds =
+          for (final TTimePartitionSlot timePartitionSlot : param.getTimePartitionSlotList()) {
+            final List<TConsensusGroupId> cachedConsensusGroupIds =
                 cachedTimePartitionSlot.get(timePartitionSlot);
-            if (null == cacheConsensusGroupIds
-                || cacheConsensusGroupIds.isEmpty()
-                || null == timePartitionSlot) {
+            if (cachedConsensusGroupIds == null
+                || cachedConsensusGroupIds.isEmpty()
+                || timePartitionSlot == null) {
               if (logger.isDebugEnabled()) {
                 logger.debug(
                     DataNodeQueryMessages.ARG_CACHE_MISS_WHEN_SEARCH_TIME_PARTITION_ARG,
@@ -1009,10 +1004,10 @@ public class PartitionCache {
               return null;
             }
 
-            for (TConsensusGroupId groupId : cacheConsensusGroupIds) {
+            for (final TConsensusGroupId groupId : cachedConsensusGroupIds) {
               allConsensusGroupIds.add(groupId);
               consensusGroupToTimeSlotMap
-                  .computeIfAbsent(groupId, k -> new HashSet<>())
+                  .computeIfAbsent(groupId, key -> new HashSet<>())
                   .add(
                       new TimeSlotRegionInfo(databaseName, seriesPartitionSlot, timePartitionSlot));
             }
@@ -1022,23 +1017,102 @@ public class PartitionCache {
 
       final List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(allConsensusGroupIds);
       final List<TRegionReplicaSet> allRegionReplicaSets = getRegionReplicaSet(consensusGroupIds);
-
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+      final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           dataPartitionMap = new HashMap<>();
-
       for (int i = 0; i < allRegionReplicaSets.size(); i++) {
-        TConsensusGroupId groupId = consensusGroupIds.get(i);
-        TRegionReplicaSet replicaSet = allRegionReplicaSets.get(i);
-
-        for (TimeSlotRegionInfo info : consensusGroupToTimeSlotMap.get(groupId)) {
+        final TConsensusGroupId groupId = consensusGroupIds.get(i);
+        final TRegionReplicaSet replicaSet = allRegionReplicaSets.get(i);
+        for (final TimeSlotRegionInfo info : consensusGroupToTimeSlotMap.get(groupId)) {
           dataPartitionMap
-              .computeIfAbsent(info.databaseName, k -> new HashMap<>())
-              .computeIfAbsent(info.seriesPartitionSlot, k -> new HashMap<>())
-              .computeIfAbsent(info.timePartitionSlot, k -> new ArrayList<>())
+              .computeIfAbsent(info.databaseName, key -> new HashMap<>())
+              .computeIfAbsent(info.seriesPartitionSlot, key -> new HashMap<>())
+              .computeIfAbsent(info.timePartitionSlot, key -> new ArrayList<>())
               .add(replicaSet);
         }
       }
+      if (logger.isDebugEnabled()) {
+        logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      }
+      cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+      return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
+    } finally {
+      dataPartitionCacheLock.readLock().unlock();
+    }
+  }
 
+  public DataPartition getDataPartition(
+      final String database,
+      final Set<TSeriesPartitionSlot> seriesPartitionSlots,
+      final List<TTimePartitionSlot> timePartitionSlots) {
+    final Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> querySlots = new HashMap<>();
+    for (final TSeriesPartitionSlot seriesPartitionSlot : seriesPartitionSlots) {
+      querySlots.put(seriesPartitionSlot, timePartitionSlots);
+    }
+    return getDataPartitionBySlots(Collections.singletonMap(database, querySlots));
+  }
+
+  private DataPartition getDataPartitionBySlots(
+      final Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> querySlots) {
+    dataPartitionCacheLock.readLock().lock();
+    try {
+      failIfMetadataLeaseFenced();
+      if (querySlots.isEmpty()) {
+        cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+        return null;
+      }
+      final Set<TConsensusGroupId> allConsensusGroupIds = new HashSet<>();
+      final Map<TConsensusGroupId, HashSet<TimeSlotRegionInfo>> consensusGroupToTimeSlotMap =
+          new HashMap<>();
+      for (final Map.Entry<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+          databaseEntry : querySlots.entrySet()) {
+        final DataPartitionTable dataPartitionTable =
+            dataPartitionCache.getIfPresent(databaseEntry.getKey());
+        if (dataPartitionTable == null || databaseEntry.getValue().isEmpty()) {
+          cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+          return null;
+        }
+        for (final Map.Entry<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesEntry :
+            databaseEntry.getValue().entrySet()) {
+          final SeriesPartitionTable cachedSeriesPartitionTable =
+              dataPartitionTable.getDataPartitionMap().get(seriesEntry.getKey());
+          if (cachedSeriesPartitionTable == null || seriesEntry.getValue().isEmpty()) {
+            cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+            return null;
+          }
+          for (final TTimePartitionSlot timePartitionSlot : seriesEntry.getValue()) {
+            final List<TConsensusGroupId> cachedConsensusGroupIds =
+                cachedSeriesPartitionTable.getSeriesPartitionMap().get(timePartitionSlot);
+            if (cachedConsensusGroupIds == null || cachedConsensusGroupIds.isEmpty()) {
+              cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+              return null;
+            }
+            for (final TConsensusGroupId groupId : cachedConsensusGroupIds) {
+              allConsensusGroupIds.add(groupId);
+              consensusGroupToTimeSlotMap
+                  .computeIfAbsent(groupId, key -> new HashSet<>())
+                  .add(
+                      new TimeSlotRegionInfo(
+                          databaseEntry.getKey(), seriesEntry.getKey(), timePartitionSlot));
+            }
+          }
+        }
+      }
+
+      final List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(allConsensusGroupIds);
+      final List<TRegionReplicaSet> allRegionReplicaSets = getRegionReplicaSet(consensusGroupIds);
+      final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+          dataPartitionMap = new HashMap<>();
+      for (int i = 0; i < allRegionReplicaSets.size(); i++) {
+        final TConsensusGroupId groupId = consensusGroupIds.get(i);
+        final TRegionReplicaSet replicaSet = allRegionReplicaSets.get(i);
+        for (final TimeSlotRegionInfo info : consensusGroupToTimeSlotMap.get(groupId)) {
+          dataPartitionMap
+              .computeIfAbsent(info.databaseName, key -> new HashMap<>())
+              .computeIfAbsent(info.seriesPartitionSlot, key -> new HashMap<>())
+              .computeIfAbsent(info.timePartitionSlot, key -> new ArrayList<>())
+              .add(replicaSet);
+        }
+      }
       if (logger.isDebugEnabled()) {
         logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       }

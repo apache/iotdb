@@ -76,6 +76,15 @@ public class ExternalTsFileTableScanOperatorRuntimeFilterTest {
     Assert.assertTrue(operator.shouldStopScanByRuntimeFilter());
   }
 
+  @Test
+  public void shouldFinishAfterLastDeviceWithoutConsumingDeviceEntrySource() throws Exception {
+    ExternalTsFileTableScanOperator operator =
+        new TestExternalTsFileTableScanOperator(createParameter());
+    operator.currentDeviceIndex = 2;
+
+    Assert.assertTrue(operator.isFinished());
+  }
+
   private static AbstractTableScanOperatorParameter createParameter() {
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
     PlanNodeId sourceId = new PlanNodeId("external-scan");

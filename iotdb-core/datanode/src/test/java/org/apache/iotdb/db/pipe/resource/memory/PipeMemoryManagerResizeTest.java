@@ -24,11 +24,13 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.List;
 import java.util.Optional;
@@ -137,6 +139,60 @@ public class PipeMemoryManagerResizeTest {
       manager.release(retainedTablet);
       manager.release(pendingTablet);
       manager.release(sinkBatch);
+    }
+
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testTryResizeRejectsImmediatelyWithoutChangingAccounting() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final PipeTabletMemoryBlock retainedTablet =
+        manager.forceAllocateForTabletWithRetry(TABLET_MEMORY_SIZE_IN_BYTES);
+    final PipeTabletMemoryBlock pendingTablet = manager.forceAllocateForTabletWithRetry(0);
+
+    try {
+      Assert.assertFalse(manager.tryResize(pendingTablet, 1));
+      Assert.assertEquals(0, pendingTablet.getMemoryUsageInBytes());
+      Assert.assertEquals(TABLET_MEMORY_SIZE_IN_BYTES, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(TABLET_MEMORY_SIZE_IN_BYTES, manager.getUsedMemorySizeInBytesOfTablets());
+
+      manager.release(retainedTablet);
+      Assert.assertTrue(manager.tryResize(pendingTablet, 1));
+      Assert.assertEquals(1, pendingTablet.getMemoryUsageInBytes());
+      Assert.assertEquals(1, manager.getUsedMemorySizeInBytesOfTablets());
+    } finally {
+      manager.release(retainedTablet);
+      manager.release(pendingTablet);
+    }
+
+    Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
+  }
+
+  @Test
+  public void testTryResizeRejectsNegativeTargetWithoutChangingAccounting() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerResizeTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final PipeTabletMemoryBlock tablet = manager.forceAllocateForTabletWithRetry(10);
+
+    try {
+      Assert.assertFalse(manager.tryResize(tablet, -1));
+      Assert.assertEquals(10, tablet.getMemoryUsageInBytes());
+      Assert.assertEquals(10, manager.getUsedMemorySizeInBytes());
+      Assert.assertEquals(10, manager.getUsedMemorySizeInBytesOfTablets());
+    } finally {
+      manager.release(tablet);
     }
 
     Assert.assertEquals(0, manager.getUsedMemorySizeInBytes());
@@ -334,6 +390,36 @@ public class PipeMemoryManagerResizeTest {
               .orElseThrow();
       Assert.assertEquals(10, floatingInfo.getMemoryUsageInBytes());
       Assert.assertEquals(300, floatingInfo.getMaxMemorySizeInBytes());
+    } finally {
+      block.close();
+    }
+  }
+
+  @Test
+  public void testEnrichedEventAssignerDoesNotBuildCoreReportMessage() {
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock(
+                "PipeMemoryManagerAssignerTest",
+                null,
+                TOTAL_MEMORY_SIZE_IN_BYTES,
+                MemoryBlockType.DYNAMIC));
+    final EnrichedEvent event =
+        Mockito.mock(
+            EnrichedEvent.class,
+            invocation -> {
+              if ("coreReportMessage".equals(invocation.getMethod().getName())) {
+                throw new AssertionError("coreReportMessage must not be called");
+              }
+              return Mockito.RETURNS_DEFAULTS.answer(invocation);
+            });
+    final PipeMemoryBlock block =
+        manager.forceAllocate("metadata", 0, PipeMemoryBlockCategory.EVENT, event, null);
+
+    try {
+      block.setAssigner(event);
+      Mockito.verify(event, Mockito.never()).coreReportMessage();
+      Assert.assertTrue(block.getAssigner().contains(event.getClass().getSimpleName()));
     } finally {
       block.close();
     }
