@@ -49,45 +49,43 @@ public class ConfigNodeShutdownHook extends Thread {
   public void run() {
     LOGGER.info(ConfigNodeMessages.CONFIGNODE_EXITING);
 
-    boolean isLeader = getConfigNodeInstance().getConfigManager().getConsensusManager().isLeader();
-
     try {
       ConfigNode.getInstance().deactivate();
     } catch (IOException e) {
       LOGGER.error(ConfigNodeMessages.MEET_ERROR_WHEN_DEACTIVATE_CONFIGNODE, e);
     }
 
-    if (!isLeader) {
-      // Set and report shutdown to cluster ConfigNode-leader
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Unknown);
-      boolean isReportSuccess = false;
-      TEndPoint seedConfigNode = CONF.getSeedConfigNode();
-      for (int retry = 0; retry < SHUTDOWN_REPORT_RETRY_NUM; retry++) {
-        TSStatus result =
-            (TSStatus)
-                SyncConfigNodeClientPool.getInstance()
-                    .sendSyncRequestToConfigNodeWithRetry(
-                        seedConfigNode,
-                        new TConfigNodeLocation(
-                            CONF.getConfigNodeId(),
-                            new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                            new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
-                        CnToCnNodeRequestType.REPORT_CONFIG_NODE_SHUTDOWN);
+    // Set and report shutdown to the cluster ConfigNode-leader best-effort, regardless of
+    // leadership: a leader that just stepped down may still reach the newly elected leader via
+    // redirect. If no leader is reachable, the new leader will mark this node Unknown by
+    // heartbeat timeout instead.
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Stopped);
+    boolean isReportSuccess = false;
+    TEndPoint seedConfigNode = CONF.getSeedConfigNode();
+    for (int retry = 0; retry < SHUTDOWN_REPORT_RETRY_NUM; retry++) {
+      TSStatus result =
+          (TSStatus)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNodeWithRetry(
+                      seedConfigNode,
+                      new TConfigNodeLocation(
+                          CONF.getConfigNodeId(),
+                          new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                          new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
+                      CnToCnNodeRequestType.REPORT_CONFIG_NODE_SHUTDOWN);
 
-        if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          // Report success
-          isReportSuccess = true;
-          break;
-        } else if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          // Redirect
-          seedConfigNode = result.getRedirectNode();
-        }
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // Report success
+        isReportSuccess = true;
+        break;
+      } else if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        // Redirect
+        seedConfigNode = result.getRedirectNode();
       }
-      if (!isReportSuccess) {
-        LOGGER.error(
-            ConfigNodeMessages
-                .REPORTING_CONFIGNODE_SHUTDOWN_FAILED_THE_CLUSTER_WILL_STILL_TAKE_THE);
-      }
+    }
+    if (!isReportSuccess) {
+      LOGGER.error(
+          ConfigNodeMessages.REPORTING_CONFIGNODE_SHUTDOWN_FAILED_THE_CLUSTER_WILL_STILL_TAKE_THE);
     }
 
     if (LOGGER.isInfoEnabled()) {
@@ -97,9 +95,5 @@ public class ConfigNodeShutdownHook extends Thread {
           MemUtils.bytesCntToStr(
               Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
     }
-  }
-
-  protected ConfigNode getConfigNodeInstance() {
-    return ConfigNode.getInstance();
   }
 }

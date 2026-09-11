@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.subscription.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -777,8 +778,8 @@ public class ProcedureManager {
       removedDataNodesRegionSet.add(regionMigrationPlan.getRegionId());
     }
 
-    // 4. Check if there are any other unknown or readonly DataNodes in the consensus group that are
-    // not the remove DataNodes
+    // 4. Check if there are any other unknown, stopped or readonly DataNodes in the consensus
+    // group that are not the remove DataNodes
 
     for (TDataNodeLocation removeDataNode : dataNodeLocations) {
       Set<TDataNodeLocation> relatedDataNodes =
@@ -788,13 +789,14 @@ public class ProcedureManager {
       for (TDataNodeLocation relatedDataNode : relatedDataNodes) {
         NodeStatus nodeStatus =
             getConfigManager().getLoadManager().getNodeStatus(relatedDataNode.getDataNodeId());
-        if (nodeStatus == NodeStatus.Unknown || nodeStatus == NodeStatus.ReadOnly) {
+        // A Stopped node is handled like Unknown: it can not serve the consensus group either
+        if (nodeStatus == NodeStatus.Unknown
+            || nodeStatus == NodeStatus.Stopped
+            || nodeStatus == NodeStatus.ReadOnly) {
           failMessage =
               String.format(
-                  "Submit RemoveDataNodesProcedure failed, "
-                      + "because when there are other unknown or readonly nodes in the consensus group that are not remove nodes, "
-                      + "the remove operation cannot be performed for security reasons. "
-                      + "Please check the status of the node %s and ensure it is running.",
+                  ProcedureMessages
+                      .MESSAGE_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_WHEN_THERE_ARE_OTHER_UNKNOWN_STOPPED_OR_READONLY_NODES_IN_THE_CONSENSUS_GROUP_THAT_ARE_NOT_REMOVE_NODES_THE_REMOVE_OPERATION_CANNOT_BE_PERFORMED_FOR_SECURITY_REASONS_PLEASE_CHECK_THE_STATUS_OF_THE_NODE_ARG_AND_ENSURE_IT_IS_RUNNING_5063B3F6,
                   relatedDataNode.getDataNodeId());
         }
       }

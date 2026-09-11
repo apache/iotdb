@@ -111,15 +111,23 @@ public class RemoveDataNodeHandler {
             .size();
 
     int removedDataNodeSize =
-        (int)
-            removedDataNodes.stream()
-                .filter(
-                    x ->
-                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
-                            != NodeStatus.Unknown)
-                .count();
+        (int) removedDataNodes.stream().filter(this::isCountedInAvailableCapacity).count();
 
     return availableDatanodeSize - removedDataNodeSize >= NodeInfo.getMinimumDataNode();
+  }
+
+  /**
+   * Whether the specified DataNode currently occupies online capacity. Both this check and {@link
+   * #checkRegionReplication} subtract only the nodes that still occupy capacity from the available
+   * DataNode count: an Unknown or Stopped node is already down, so removing it must not consume the
+   * quota twice.
+   *
+   * @return true if the node is neither Unknown nor Stopped
+   */
+  private boolean isCountedInAvailableCapacity(final TDataNodeLocation dataNodeLocation) {
+    final NodeStatus status =
+        configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId());
+    return !NodeStatus.Unknown.equals(status) && !NodeStatus.Stopped.equals(status);
   }
 
   /**
@@ -234,7 +242,9 @@ public class RemoveDataNodeHandler {
     final List<TDataNodeConfiguration> availableDataNodes =
         configManager
             .getNodeManager()
-            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown)
+            // A Stopped node is handled like Unknown: it can still serve as a migration
+            // destination when the cluster is short of online nodes
+            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown, NodeStatus.Stopped)
             .stream()
             .filter(node -> !removedDataNodesSet.contains(node.getLocation().getDataNodeId()))
             .collect(Collectors.toList());
@@ -595,10 +605,7 @@ public class RemoveDataNodeHandler {
     int removedDataNodeSize =
         (int)
             removeDataNodePlan.getDataNodeLocations().stream()
-                .filter(
-                    x ->
-                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
-                            != NodeStatus.Unknown)
+                .filter(this::isCountedInAvailableCapacity)
                 .count();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
