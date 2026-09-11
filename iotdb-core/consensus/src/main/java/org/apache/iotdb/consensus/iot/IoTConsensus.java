@@ -108,7 +108,7 @@ public class IoTConsensus implements IConsensus {
   private final RegisterManager registerManager = new RegisterManager();
   private final UserDataTransferAuditHandler userDataTransferAuditHandler;
   private final UserDataTransferAuditClassifier userDataTransferAuditClassifier;
-  private volatile IoTConsensusConfig config;
+  private IoTConsensusConfig config;
 
   /**
    * Optional callback invoked after a new local peer is created via {@link #createLocalPeer}. Used
@@ -548,9 +548,6 @@ public class IoTConsensus implements IConsensus {
   @Override
   public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
     config = consensusConfig.getIotConsensusConfig();
-
-    IoTConsensusMemoryManager.getInstance()
-        .updateMaxMemoryRatioForQueue(config.getReplication().getMaxMemoryRatioForQueue());
 
     for (IoTConsensusServerImpl impl : stateMachineMap.values()) {
       impl.reloadConsensusConfig(config);

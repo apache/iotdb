@@ -17,26 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.binaryallocator;
+package org.apache.iotdb.db.exception.load;
 
-import org.apache.iotdb.commons.binaryallocator.arena.Arena;
+/** An invalid tree path cannot be repaired by converting the TsFile to tablets. */
+public class LoadAnalyzeInvalidPathException extends LoadAnalyzeException {
 
-import org.apache.tsfile.utils.PooledBinary;
-
-import java.lang.ref.PhantomReference;
-import java.lang.ref.ReferenceQueue;
-
-public class PooledBinaryPhantomReference extends PhantomReference<PooledBinary> {
-  public final byte[] byteArray;
-  public Arena.SlabRegion slabRegion;
-
-  public PooledBinaryPhantomReference(
-      PooledBinary referent,
-      ReferenceQueue<? super PooledBinary> q,
-      byte[] byteArray,
-      Arena.SlabRegion region) {
-    super(referent, q);
-    this.byteArray = byteArray;
-    this.slabRegion = region;
+  public LoadAnalyzeInvalidPathException(String message) {
+    super(message);
   }
 }

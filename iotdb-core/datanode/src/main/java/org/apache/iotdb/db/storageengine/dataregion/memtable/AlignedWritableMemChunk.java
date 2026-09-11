@@ -44,6 +44,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
+import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -690,7 +691,15 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       boolean[] timeDuplicateInfo,
       BitMap allValueColDeletedMap,
       int maxNumberOfPointsInPage) {
+    // No duplicate timestamps, deleted rows, or all-null rows need filtering, so avoid metadata
+    // checks.
     AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
+    boolean hasTimeDeleted = alignedWorkingListForFlush.getTimeColDeletedMap() != null;
+    if (timeDuplicateInfo == null && allValueColDeletedMap == null && !hasTimeDeleted) {
+      handleEncodingWithoutDeletedMeasurementsFastPath(ioTaskQueue, chunkRange);
+      return;
+    }
+
     List<TSDataType> dataTypes = alignedWorkingListForFlush.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {
@@ -837,6 +846,242 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
+    }
+  }
+
+  private void handleEncodingWithoutDeletedMeasurementsFastPath(
+      BlockingQueue<Object> ioTaskQueue, List<List<Integer>> chunkRange) {
+    AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
+    List<TSDataType> dataTypes = alignedWorkingListForFlush.getTsDataTypes();
+    // Sorting rearranges timestamps in place, so sorted row offsets map directly to these arrays.
+    List<long[]> timestamps = alignedWorkingListForFlush.getTimestamps();
+    List<List<Object>> values = alignedWorkingListForFlush.getValues();
+    List<List<BitMap>> bitMaps = alignedWorkingListForFlush.getBitMaps();
+    BitMap segmentMovedMap = alignedWorkingListForFlush.getSegmentMovedMap();
+    boolean[] nulls = new boolean[ARRAY_SIZE];
+    for (List<Integer> pageRange : chunkRange) {
+      AlignedChunkWriterImpl alignedChunkWriter =
+          new AlignedChunkWriterImpl(schemaList, encryptParameter);
+      for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum++) {
+        int pageStart = pageRange.get(pageNum * 2);
+        int pageEnd = pageRange.get(pageNum * 2 + 1);
+        for (int segmentStart = pageStart; segmentStart <= pageEnd; ) {
+          int arrayIndex = segmentStart / ARRAY_SIZE;
+          int arrayOffset = segmentStart % ARRAY_SIZE;
+          int segmentEnd = Math.min(pageEnd, (arrayIndex + 1) * ARRAY_SIZE - 1);
+          int pointsInSegment = segmentEnd - segmentStart + 1;
+          long[] timestampArray = timestamps.get(arrayIndex);
+          boolean segmentMoved = segmentMovedMap != null && segmentMovedMap.isMarked(arrayIndex);
+          for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+            TSDataType tsDataType = dataTypes.get(columnIndex);
+            ValueChunkWriter valueChunkWriter =
+                alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
+            List<Object> columnValues = values.get(columnIndex);
+            Object valueArray = columnValues == null ? null : columnValues.get(arrayIndex);
+            if (columnValues == null || (!segmentMoved && valueArray == null)) {
+              // An unmoved, unmaterialized segment is all null. A moved segment can reference
+              // non-null values in another array, unless the entire column is absent.
+              valueChunkWriter.getPageWriter().writeNull(pointsInSegment);
+            } else if (!segmentMoved) {
+              BitMap columnBitMap = null;
+              if (bitMaps != null && bitMaps.get(columnIndex) != null) {
+                columnBitMap = bitMaps.get(columnIndex).get(arrayIndex);
+              }
+              if (columnBitMap == null) {
+                writeValuesFromArray(
+                    valueChunkWriter,
+                    tsDataType,
+                    timestampArray,
+                    valueArray,
+                    nulls,
+                    arrayOffset,
+                    pointsInSegment);
+              } else {
+                writeValuesFromArray(
+                    valueChunkWriter,
+                    tsDataType,
+                    timestampArray,
+                    valueArray,
+                    columnBitMap,
+                    arrayOffset,
+                    pointsInSegment);
+              }
+            } else {
+              for (int sortedRowIndex = segmentStart;
+                  sortedRowIndex <= segmentEnd;
+                  sortedRowIndex++) {
+                int valueIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
+                int valueArrayIndex = valueIndex / ARRAY_SIZE;
+                int valueElementIndex = valueIndex % ARRAY_SIZE;
+                Object sourceValueArray = columnValues.get(valueArrayIndex);
+                boolean isNull =
+                    sourceValueArray == null
+                        || alignedWorkingListForFlush.isNullValue(valueIndex, columnIndex);
+                writeValueFromArray(
+                    valueChunkWriter,
+                    tsDataType,
+                    timestampArray[arrayOffset + sortedRowIndex - segmentStart],
+                    sourceValueArray,
+                    valueElementIndex,
+                    isNull);
+              }
+            }
+          }
+          alignedChunkWriter.write(timestampArray, pointsInSegment, arrayOffset);
+          segmentStart = segmentEnd + 1;
+        }
+      }
+      alignedChunkWriter.sealCurrentPage();
+      alignedChunkWriter.clearPageWriter();
+      try {
+        ioTaskQueue.put(alignedChunkWriter);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private void writeValueFromArray(
+      ValueChunkWriter valueChunkWriter,
+      TSDataType dataType,
+      long time,
+      Object valueArray,
+      int elementIndex,
+      boolean isNull) {
+    switch (dataType) {
+      case BOOLEAN ->
+          valueChunkWriter.write(
+              time,
+              !isNull && valueArray != null && ((boolean[]) valueArray)[elementIndex],
+              isNull);
+      case INT32, DATE ->
+          valueChunkWriter.write(
+              time, isNull || valueArray == null ? 0 : ((int[]) valueArray)[elementIndex], isNull);
+      case INT64, TIMESTAMP ->
+          valueChunkWriter.write(
+              time, isNull || valueArray == null ? 0 : ((long[]) valueArray)[elementIndex], isNull);
+      case FLOAT ->
+          valueChunkWriter.write(
+              time,
+              isNull || valueArray == null ? 0 : ((float[]) valueArray)[elementIndex],
+              isNull);
+      case DOUBLE ->
+          valueChunkWriter.write(
+              time,
+              isNull || valueArray == null ? 0 : ((double[]) valueArray)[elementIndex],
+              isNull);
+      case TEXT, STRING, BLOB, OBJECT ->
+          valueChunkWriter.write(
+              time,
+              isNull || valueArray == null ? null : ((Binary[]) valueArray)[elementIndex],
+              isNull);
+      case VECTOR, UNKNOWN -> throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
+    }
+  }
+
+  private void writeValuesFromArray(
+      ValueChunkWriter valueChunkWriter,
+      TSDataType dataType,
+      long[] timestamps,
+      Object valueArray,
+      boolean[] nulls,
+      int arrayOffset,
+      int pointsInSegment) {
+    switch (dataType) {
+      case BOOLEAN ->
+          valueChunkWriter.write(
+              timestamps, (boolean[]) valueArray, nulls, pointsInSegment, arrayOffset);
+      case INT32, DATE ->
+          valueChunkWriter.write(
+              timestamps, (int[]) valueArray, nulls, pointsInSegment, arrayOffset);
+      case INT64, TIMESTAMP ->
+          valueChunkWriter.write(
+              timestamps, (long[]) valueArray, nulls, pointsInSegment, arrayOffset);
+      case FLOAT ->
+          valueChunkWriter.write(
+              timestamps, (float[]) valueArray, nulls, pointsInSegment, arrayOffset);
+      case DOUBLE ->
+          valueChunkWriter.write(
+              timestamps, (double[]) valueArray, nulls, pointsInSegment, arrayOffset);
+      case TEXT, STRING, BLOB, OBJECT ->
+          valueChunkWriter.write(
+              timestamps, (Binary[]) valueArray, nulls, pointsInSegment, arrayOffset);
+      case VECTOR, UNKNOWN -> throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
+    }
+  }
+
+  private void writeValuesFromArray(
+      ValueChunkWriter valueChunkWriter,
+      TSDataType dataType,
+      long[] timestamps,
+      Object valueArray,
+      BitMap bitMap,
+      int arrayOffset,
+      int pointsInSegment) {
+    // Keep null detection in the bitmap so the page writer can skip encoding and statistics
+    // updates without materializing a temporary boolean array.
+    switch (dataType) {
+      case BOOLEAN ->
+          valueChunkWriter
+              .getPageWriter()
+              .write(
+                  timestamps,
+                  (boolean[]) valueArray,
+                  bitMap,
+                  arrayOffset,
+                  pointsInSegment,
+                  arrayOffset);
+      case INT32, DATE ->
+          valueChunkWriter
+              .getPageWriter()
+              .write(
+                  timestamps,
+                  (int[]) valueArray,
+                  bitMap,
+                  arrayOffset,
+                  pointsInSegment,
+                  arrayOffset);
+      case INT64, TIMESTAMP ->
+          valueChunkWriter
+              .getPageWriter()
+              .write(
+                  timestamps,
+                  (long[]) valueArray,
+                  bitMap,
+                  arrayOffset,
+                  pointsInSegment,
+                  arrayOffset);
+      case FLOAT ->
+          valueChunkWriter
+              .getPageWriter()
+              .write(
+                  timestamps,
+                  (float[]) valueArray,
+                  bitMap,
+                  arrayOffset,
+                  pointsInSegment,
+                  arrayOffset);
+      case DOUBLE ->
+          valueChunkWriter
+              .getPageWriter()
+              .write(
+                  timestamps,
+                  (double[]) valueArray,
+                  bitMap,
+                  arrayOffset,
+                  pointsInSegment,
+                  arrayOffset);
+      case TEXT, STRING, BLOB, OBJECT ->
+          valueChunkWriter
+              .getPageWriter()
+              .write(
+                  timestamps,
+                  (Binary[]) valueArray,
+                  bitMap,
+                  arrayOffset,
+                  pointsInSegment,
+                  arrayOffset);
+      case VECTOR, UNKNOWN -> throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
     }
   }
 
