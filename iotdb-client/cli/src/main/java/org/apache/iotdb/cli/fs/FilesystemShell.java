@@ -797,7 +797,7 @@ public class FilesystemShell {
 
   private static boolean isTextFile(FsPath path) {
     String fileName = path.getFileName();
-    return fileName.endsWith(".csv") || fileName.endsWith(".schema") || fileName.endsWith(".meta");
+    return fileName.endsWith(".csv") || fileName.endsWith(".meta");
   }
 
   private class FilesystemCompleter implements Completer {
