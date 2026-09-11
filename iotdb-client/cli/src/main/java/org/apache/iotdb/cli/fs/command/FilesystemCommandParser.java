@@ -132,6 +132,8 @@ public class FilesystemCommandParser {
         return FilesystemCommand.simple(type);
       case SCHEMA:
       case META:
+      case STATS:
+      case COUNT:
         return FilesystemCommand.path(type, args.path(false));
       case LS:
       case LL:
@@ -163,8 +165,6 @@ public class FilesystemCommandParser {
         return type == FilesystemCommand.Type.HEAD
             ? FilesystemCommand.head(readPath, limit)
             : FilesystemCommand.tail(readPath, limit);
-      case WC:
-        return FilesystemCommand.option(type, "-l", args.path(false));
       case GREP:
         // The first operand is a literal pattern and may be empty.
         args.paths(2, 2, true);

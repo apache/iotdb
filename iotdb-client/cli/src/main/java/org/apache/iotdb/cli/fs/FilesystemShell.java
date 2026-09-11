@@ -60,8 +60,8 @@ public class FilesystemShell {
   private static final int DEFAULT_READ_LIMIT = 20;
   private static final List<String> COMMANDS =
       Arrays.asList(
-          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "cat", "head", "tail", "wc", "grep", "find",
-          "less", "more", "file", "du", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join",
+          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "cat", "head", "tail", "grep", "find",
+          "less", "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join",
           "tree", "help", "exit", "quit", "tee");
 
   private final CliContext ctx;
@@ -118,6 +118,12 @@ public class FilesystemShell {
       case SCHEMA:
         printRows(provider.schema(resolve(command.getPath())));
         return true;
+      case STATS:
+        printRows(provider.stats(resolve(command.getPath())));
+        return true;
+      case COUNT:
+        printRows(provider.countRows(resolve(command.getPath())));
+        return true;
       case CAT:
         printSequentialReads(command.getPaths(), DEFAULT_READ_LIMIT);
         return true;
@@ -126,9 +132,6 @@ public class FilesystemShell {
         return true;
       case TAIL:
         printTail(command.getPath(), command.getLimit());
-        return true;
-      case WC:
-        printLineCount(command.getPath());
         return true;
       case GREP:
         printMatchingRows(command.getPath(), command.getPattern());
@@ -142,9 +145,6 @@ public class FilesystemShell {
         return true;
       case FILE:
         printFile(command.getPath());
-        return true;
-      case DU:
-        printDiskUsage(command.getPath());
         return true;
       case MKDIR:
         mkdir(command.getPath());
@@ -400,11 +400,6 @@ public class FilesystemShell {
     printRows(provider.tail(resolvedPath, limit));
   }
 
-  private void printLineCount(String path) throws SQLException {
-    FsPath resolvedPath = resolve(path);
-    ctx.getPrinter().println(provider.count(resolvedPath) + " " + resolvedPath);
-  }
-
   private void printMatchingRows(String path, String pattern) throws SQLException {
     FsPath resolvedPath = resolve(path);
     if (isTextFile(resolvedPath)) {
@@ -501,11 +496,6 @@ public class FilesystemShell {
     if (checkExists("file", node)) {
       ctx.getPrinter().println(resolvedPath + ": " + unixType(node.getType()));
     }
-  }
-
-  private void printDiskUsage(String path) throws SQLException {
-    FsPath resolvedPath = resolve(path);
-    ctx.getPrinter().println(provider.count(resolvedPath) + "\t" + resolvedPath);
   }
 
   private void mkdir(String path) throws SQLException {

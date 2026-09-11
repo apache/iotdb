@@ -42,6 +42,16 @@ public interface FilesystemSchemaProvider {
     throw new SQLException("Metadata is not supported for path: " + path);
   }
 
+  /** Return field value statistics for a table or timeseries path. */
+  default List<SqlRow> stats(FsPath path) throws SQLException {
+    throw new SQLException("Statistics are not supported for path: " + path);
+  }
+
+  /** Return logical row/entity/column counts for a table or timeseries path. */
+  default List<SqlRow> countRows(FsPath path) throws SQLException {
+    throw new SQLException("Counts are not supported for path: " + path);
+  }
+
   List<SqlRow> read(FsPath path, int limit) throws SQLException;
 
   default List<String> readLines(FsPath path, int limit) throws SQLException {

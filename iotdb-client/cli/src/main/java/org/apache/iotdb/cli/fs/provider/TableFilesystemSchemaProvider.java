@@ -130,6 +130,105 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   }
 
   @Override
+  public List<SqlRow> stats(FsPath path) throws SQLException {
+    TableFileRef file = tableFile(path);
+    List<SqlRow> result = new ArrayList<>();
+    for (SqlRow column : schema(path)) {
+      String name = column.get("ColumnName");
+      if (name == null || "time".equalsIgnoreCase(name)) {
+        continue;
+      }
+      String c = TableFilesystemSql.identifier(name);
+      String sql =
+          "SELECT COUNT(*) AS row_count, COUNT(" + c + ") AS non_null_count, "
+              + "MIN(time) AS min_time, MAX(time) AS max_time, MIN(" + c + ") AS min, "
+              + "MAX(" + c + ") AS max, FIRST_VALUE(" + c + ") AS first, "
+              + "LAST_VALUE(" + c + ") AS last, SUM(" + c + ") AS sum FROM " + file.toTablePath();
+      List<SqlRow> rows = executor.query(sql);
+      java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
+      values.put("model", "table");
+      values.put("object", file.table);
+      values.put("field", name);
+      values.put("data_type", column.get("DataType"));
+      values.put("non_null_count", scalar(rows, "non_null_count"));
+      values.put("null_count", difference(rows, "row_count", "non_null_count"));
+      values.put("min_time", scalar(rows, "min_time"));
+      values.put("max_time", scalar(rows, "max_time"));
+      values.put("min", scalar(rows, "min"));
+      values.put("max", scalar(rows, "max"));
+      values.put("first", scalar(rows, "first"));
+      values.put("last", scalar(rows, "last"));
+      values.put("sum", scalar(rows, "sum"));
+      values.put("stats_source", "iotdb");
+      result.add(new SqlRow(values));
+    }
+    return result;
+  }
+
+  @Override
+  public List<SqlRow> countRows(FsPath path) throws SQLException {
+    TableFileRef file = tableFile(path);
+    List<SqlRow> result = new ArrayList<>();
+    for (SqlRow column : schema(path)) {
+      String name = column.get("ColumnName");
+      if (name == null) {
+        continue;
+      }
+      String c = TableFilesystemSql.identifier(name);
+      List<SqlRow> rows =
+          executor.query(
+              "SELECT COUNT(*) AS row_count, COUNT(" + c + ") AS non_null_count FROM "
+                  + file.toTablePath());
+      java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
+      values.put("model", "table");
+      values.put("object", file.table);
+      values.put("column", name);
+      values.put("category", "field");
+      values.put("row_count", scalar(rows, "row_count"));
+      values.put("entity_count", scalar(rows, "row_count"));
+      values.put("non_null_count", scalar(rows, "non_null_count"));
+      values.put("null_count", "0");
+      values.put("min_time", "");
+      values.put("max_time", "");
+      values.put("time_source", "iotdb");
+      result.add(new SqlRow(values));
+    }
+    return result;
+  }
+
+  private TableFileRef tableFile(FsPath path) throws SQLException {
+    TableFileRef file = parseTableFile(path);
+    if (file.kind == TableFileKind.UNKNOWN && path.getSegments().size() == 2) {
+      file = new TableFileRef(path.getSegments().get(0), path.getSegments().get(1), TableFileKind.DATA_CSV);
+    }
+    if (file.kind != TableFileKind.DATA_CSV) {
+      throw new SQLException("Path is not a table: " + path);
+    }
+    ensureExists(path, file);
+    return file;
+  }
+
+  private static String scalar(List<SqlRow> rows, String key) {
+    return scalar(rows, key, "");
+  }
+
+  private static String scalar(List<SqlRow> rows, String key, String fallback) {
+    if (rows == null || rows.isEmpty()) {
+      return fallback;
+    }
+    String value = rows.get(0).get(key);
+    return value == null ? fallback : value;
+  }
+
+  private static String difference(List<SqlRow> rows, String left, String right) {
+    try {
+      return Long.toString(Long.parseLong(scalar(rows, left, "0")) - Long.parseLong(scalar(rows, right, "0")));
+    } catch (NumberFormatException e) {
+      return "";
+    }
+  }
+
+  @Override
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
     int depth = path.getSegments().size();
     TableFileRef file = parseTableFile(path);

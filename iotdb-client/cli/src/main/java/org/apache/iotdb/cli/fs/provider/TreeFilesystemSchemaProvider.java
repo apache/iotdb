@@ -88,6 +88,75 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
   }
 
   @Override
+  public List<SqlRow> stats(FsPath path) throws SQLException {
+    String measurement = path.getFileName();
+    FsPath devicePath = parent(path);
+    List<SqlRow> rows =
+        executor.query(
+            "SELECT COUNT(" + measurement + "), MIN_TIME(" + measurement + "), MAX_TIME("
+                + measurement + "), MIN_VALUE(" + measurement + "), MAX_VALUE(" + measurement
+                + "), FIRST_VALUE(" + measurement + "), LAST_VALUE(" + measurement + "), SUM("
+                + measurement + ") FROM " + toTreePath(devicePath));
+    String dataType = "";
+    List<SqlRow> schemaRows = schema(path);
+    if (!schemaRows.isEmpty()) {
+      dataType = schemaRows.get(0).get("DataType");
+    }
+    java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
+    values.put("model", "tree");
+    values.put("object", devicePath.toString());
+    values.put("field", measurement);
+    values.put("data_type", dataType);
+    String nonNull = firstValue(rows);
+    values.put("non_null_count", nonNull);
+    values.put("null_count", "0");
+    values.put("min_time", valueAt(rows, 1));
+    values.put("max_time", valueAt(rows, 2));
+    values.put("min", valueAt(rows, 3));
+    values.put("max", valueAt(rows, 4));
+    values.put("first", valueAt(rows, 5));
+    values.put("last", valueAt(rows, 6));
+    values.put("sum", valueAt(rows, 7));
+    values.put("stats_source", "iotdb");
+    return SqlRow.list(new SqlRow(values));
+  }
+
+  @Override
+  public List<SqlRow> countRows(FsPath path) throws SQLException {
+    String measurement = path.getFileName();
+    FsPath devicePath = parent(path);
+    List<SqlRow> rows =
+        executor.query("SELECT COUNT(" + measurement + ") FROM " + toTreePath(devicePath));
+    java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
+    values.put("model", "tree");
+    values.put("object", devicePath.toString());
+    values.put("column", measurement);
+    values.put("category", "field");
+    String count = firstValue(rows);
+    values.put("row_count", count);
+    values.put("entity_count", count);
+    values.put("non_null_count", count);
+    values.put("null_count", "0");
+    values.put("min_time", "");
+    values.put("max_time", "");
+    values.put("time_source", "iotdb");
+    return SqlRow.list(new SqlRow(values));
+  }
+
+  private static String firstValue(List<SqlRow> rows) {
+    return rows == null || rows.isEmpty() || rows.get(0).asMap().isEmpty()
+        ? ""
+        : rows.get(0).asMap().values().iterator().next();
+  }
+
+  private static String valueAt(List<SqlRow> rows, int index) {
+    if (rows == null || rows.isEmpty() || rows.get(0).asMap().size() <= index) {
+      return "";
+    }
+    return new ArrayList<>(rows.get(0).asMap().values()).get(index);
+  }
+
+  @Override
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
     String measurement = path.getFileName();
     FsPath devicePath = parent(path);

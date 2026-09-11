@@ -105,12 +105,19 @@ public final class FilesystemCommandHelp {
             CliMessages.MESSAGE_CURRENT_DIRECTORY_COUNT_IS_10_INCLUDING_ANY_SIDECAR_HEADER_6C7FD37F,
             CliMessages.MESSAGE_TAIL_N_5_DB1_TABLE1_CSV_E75ED46B));
     COMMANDS.put(
-        "wc",
+        "stats",
         new Entry(
-            CliMessages.MESSAGE_WC_L_PATH_062C2793,
-            CliMessages.MESSAGE_ROW_COUNT_AND_ABSOLUTE_PATH_49560C8C,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_L_IS_IMPLIED_5191D6B4,
-            CliMessages.MESSAGE_WC_L_DB1_TABLE1_CSV_40CA70C4));
+            "stats [path]",
+            "Field value statistics and null counts.",
+            "Current directory; reports every field for the selected object.",
+            "stats /db1/table1.csv"));
+    COMMANDS.put(
+        "count",
+        new Entry(
+            "count [path]",
+            "Logical row, entity and column counts.",
+            "Current directory; reports every column for the selected object.",
+            "count /db1/table1.csv"));
     COMMANDS.put(
         "grep",
         new Entry(
@@ -149,14 +156,6 @@ public final class FilesystemCommandHelp {
             CliMessages.MESSAGE_ABSOLUTE_PATH_AND_VIRTUAL_FILE_TYPE_C3A88F3C,
             CliMessages.MESSAGE_CURRENT_DIRECTORY_4B3788F6,
             CliMessages.MESSAGE_FILE_DB1_TABLE1_CSV_A4914994));
-    COMMANDS.put(
-        "du",
-        new Entry(
-            CliMessages.MESSAGE_DU_PATH_B7DB6302,
-            CliMessages
-                .MESSAGE_ROW_COUNT_AND_ABSOLUTE_PATH_SEPARATED_BY_A_TAB_THE_COUNT_IS_NOT_A_BYTE_SIZE_8624847B,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_4B3788F6,
-            CliMessages.MESSAGE_DU_DB1_TABLE1_CSV_03098463));
     COMMANDS.put(
         "mkdir",
         new Entry(
