@@ -123,10 +123,11 @@ public class TableFilesystemMutationProviderTest {
   }
 
   @Test
-  public void copySchemaCreatesTableLikeSource() throws SQLException {
-    provider.copy(FsPath.absolute("/db1/table1.schema"), FsPath.absolute("/db1/table2.schema"));
-
-    verify(executor).execute("CREATE TABLE db1.table2 LIKE db1.table1");
+  public void copySchemaPathsAreRejected() throws SQLException {
+    assertInvalidOperation(
+        () ->
+            provider.copy(
+                FsPath.absolute("/db1/table1.schema"), FsPath.absolute("/db1/table2.schema")));
   }
 
   @Test
