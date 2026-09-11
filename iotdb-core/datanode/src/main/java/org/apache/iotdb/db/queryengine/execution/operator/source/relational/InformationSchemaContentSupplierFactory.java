@@ -1151,6 +1151,7 @@ public class InformationSchemaContentSupplierFactory {
             location.getConfigNodeId(),
             NODE_TYPE_CONFIG_NODE,
             showClusterResp.getNodeStatus().get(location.getConfigNodeId()),
+            getNodeStatusReason(location.getConfigNodeId()),
             location.getInternalEndPoint().getIp(),
             location.getInternalEndPoint().getPort(),
             showClusterResp.getNodeVersionInfo().get(location.getConfigNodeId()));
@@ -1162,6 +1163,7 @@ public class InformationSchemaContentSupplierFactory {
             location.getDataNodeId(),
             NODE_TYPE_DATA_NODE,
             showClusterResp.getNodeStatus().get(location.getDataNodeId()),
+            getNodeStatusReason(location.getDataNodeId()),
             location.getInternalEndPoint().getIp(),
             location.getInternalEndPoint().getPort(),
             showClusterResp.getNodeVersionInfo().get(location.getDataNodeId()));
@@ -1173,16 +1175,26 @@ public class InformationSchemaContentSupplierFactory {
             location.getAiNodeId(),
             NODE_TYPE_AI_NODE,
             showClusterResp.getNodeStatus().get(location.getAiNodeId()),
+            getNodeStatusReason(location.getAiNodeId()),
             location.getInternalEndPoint().getIp(),
             location.getInternalEndPoint().getPort(),
             showClusterResp.getNodeVersionInfo().get(location.getAiNodeId()));
       }
     }
 
+    private String getNodeStatusReason(int nodeId) {
+      // The optional field is absent when the ConfigNode is an old version.
+      if (!showClusterResp.isSetNodeStatusReason()) {
+        return null;
+      }
+      return showClusterResp.getNodeStatusReason().get(nodeId);
+    }
+
     private void buildNodeTsBlock(
         int nodeId,
         String nodeType,
         String nodeStatus,
+        String nodeStatusReason,
         String internalAddress,
         int internalPort,
         TNodeVersionInfo versionInfo) {
@@ -1193,23 +1205,28 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[2].writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
       }
-
-      if (internalAddress == null) {
+      if (nodeStatusReason == null) {
         columnBuilders[3].appendNull();
       } else {
-        columnBuilders[3].writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
+        columnBuilders[3].writeBinary(new Binary(nodeStatusReason, TSFileConfig.STRING_CHARSET));
       }
-      columnBuilders[4].writeInt(internalPort);
-      if (versionInfo == null || versionInfo.getVersion() == null) {
-        columnBuilders[5].appendNull();
+
+      if (internalAddress == null) {
+        columnBuilders[4].appendNull();
       } else {
-        columnBuilders[5].writeBinary(
-            new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+        columnBuilders[4].writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
       }
-      if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      columnBuilders[5].writeInt(internalPort);
+      if (versionInfo == null || versionInfo.getVersion() == null) {
         columnBuilders[6].appendNull();
       } else {
         columnBuilders[6].writeBinary(
+            new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+      }
+      if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+        columnBuilders[7].appendNull();
+      } else {
+        columnBuilders[7].writeBinary(
             new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
       }
       resultBuilder.declarePosition();

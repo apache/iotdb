@@ -1589,7 +1589,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } else {
       try {
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
+        if (status == NodeStatus.ReadOnly) {
+          CommonDescriptor.getInstance()
+              .getConfig()
+              .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+        } else {
+          CommonDescriptor.getInstance().getConfig().setNodeStatus(status);
+        }
         tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } catch (Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());

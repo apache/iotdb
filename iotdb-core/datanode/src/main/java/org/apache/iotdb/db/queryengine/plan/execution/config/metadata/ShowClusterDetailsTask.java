@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -38,6 +37,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,6 +57,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
       TsBlockBuilder builder,
       int nodeId,
       String nodeStatus,
+      String nodeStatusReason,
+      boolean hasStatusReason,
       String internalAddress,
       int internalPort,
       int configConsensusPort,
@@ -71,35 +73,45 @@ public class ShowClusterDetailsTask implements IConfigTask {
     } else {
       builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
     }
+    if (hasStatusReason) {
+      if (nodeStatusReason == null) {
+        builder.getColumnBuilder(3).appendNull();
+      } else {
+        builder
+            .getColumnBuilder(3)
+            .writeBinary(new Binary(nodeStatusReason, TSFileConfig.STRING_CHARSET));
+      }
+    }
+    int offset = hasStatusReason ? 1 : 0;
     if (internalAddress == null) {
-      builder.getColumnBuilder(3).appendNull();
+      builder.getColumnBuilder(3 + offset).appendNull();
     } else {
       builder
-          .getColumnBuilder(3)
+          .getColumnBuilder(3 + offset)
           .writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
     }
-    builder.getColumnBuilder(4).writeInt(internalPort);
+    builder.getColumnBuilder(4 + offset).writeInt(internalPort);
     builder
-        .getColumnBuilder(5)
+        .getColumnBuilder(5 + offset)
         .writeBinary(
             new Binary(Integer.toString(configConsensusPort), TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(6).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(7).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(8).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(9).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(10).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(6 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(7 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(8 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(9 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(10 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
     if (versionInfo == null || versionInfo.getVersion() == null) {
-      builder.getColumnBuilder(11).appendNull();
+      builder.getColumnBuilder(11 + offset).appendNull();
     } else {
       builder
-          .getColumnBuilder(11)
+          .getColumnBuilder(11 + offset)
           .writeBinary(new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
     }
     if (versionInfo == null || versionInfo.getBuildInfo() == null) {
-      builder.getColumnBuilder(12).appendNull();
+      builder.getColumnBuilder(12 + offset).appendNull();
     } else {
       builder
-          .getColumnBuilder(12)
+          .getColumnBuilder(12 + offset)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
     builder.declarePosition();
@@ -109,6 +121,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
       TsBlockBuilder builder,
       int nodeId,
       String nodeStatus,
+      String nodeStatusReason,
+      boolean hasStatusReason,
       String internalAddress,
       int internalPort,
       TNodeVersionInfo versionInfo) {
@@ -123,33 +137,42 @@ public class ShowClusterDetailsTask implements IConfigTask {
     } else {
       builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
     }
-
+    if (hasStatusReason) {
+      if (nodeStatusReason == null) {
+        builder.getColumnBuilder(3).appendNull();
+      } else {
+        builder
+            .getColumnBuilder(3)
+            .writeBinary(new Binary(nodeStatusReason, TSFileConfig.STRING_CHARSET));
+      }
+    }
+    int offset = hasStatusReason ? 1 : 0;
     if (internalAddress == null) {
-      builder.getColumnBuilder(3).appendNull();
+      builder.getColumnBuilder(3 + offset).appendNull();
     } else {
       builder
-          .getColumnBuilder(3)
+          .getColumnBuilder(3 + offset)
           .writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
     }
-    builder.getColumnBuilder(4).writeInt(internalPort);
-    builder.getColumnBuilder(5).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(6).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(7).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(8).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(9).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
-    builder.getColumnBuilder(10).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(4 + offset).writeInt(internalPort);
+    builder.getColumnBuilder(5 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(6 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(7 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(8 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(9 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(10 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
     if (versionInfo == null || versionInfo.getVersion() == null) {
-      builder.getColumnBuilder(11).appendNull();
+      builder.getColumnBuilder(11 + offset).appendNull();
     } else {
       builder
-          .getColumnBuilder(11)
+          .getColumnBuilder(11 + offset)
           .writeBinary(new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
     }
     if (versionInfo == null || versionInfo.getBuildInfo() == null) {
-      builder.getColumnBuilder(12).appendNull();
+      builder.getColumnBuilder(12 + offset).appendNull();
     } else {
       builder
-          .getColumnBuilder(12)
+          .getColumnBuilder(12 + offset)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
     builder.declarePosition();
@@ -160,6 +183,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
       TsBlockBuilder builder,
       int nodeId,
       String nodeStatus,
+      String nodeStatusReason,
+      boolean hasStatusReason,
       String internalAddress,
       int internalPort,
       String rpcAddress,
@@ -178,45 +203,57 @@ public class ShowClusterDetailsTask implements IConfigTask {
     } else {
       builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
     }
+    if (hasStatusReason) {
+      if (nodeStatusReason == null) {
+        builder.getColumnBuilder(3).appendNull();
+      } else {
+        builder
+            .getColumnBuilder(3)
+            .writeBinary(new Binary(nodeStatusReason, TSFileConfig.STRING_CHARSET));
+      }
+    }
+    int offset = hasStatusReason ? 1 : 0;
     if (internalAddress == null) {
-      builder.getColumnBuilder(3).appendNull();
+      builder.getColumnBuilder(3 + offset).appendNull();
     } else {
       builder
-          .getColumnBuilder(3)
+          .getColumnBuilder(3 + offset)
           .writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
     }
-    builder.getColumnBuilder(4).writeInt(internalPort);
-    builder.getColumnBuilder(5).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(4 + offset).writeInt(internalPort);
+    builder.getColumnBuilder(5 + offset).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
     if (rpcAddress == null) {
-      builder.getColumnBuilder(6).appendNull();
+      builder.getColumnBuilder(6 + offset).appendNull();
     } else {
-      builder.getColumnBuilder(6).writeBinary(new Binary(rpcAddress, TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(6 + offset)
+          .writeBinary(new Binary(rpcAddress, TSFileConfig.STRING_CHARSET));
     }
     builder
-        .getColumnBuilder(7)
+        .getColumnBuilder(7 + offset)
         .writeBinary(new Binary(Integer.toString(rpcPort), TSFileConfig.STRING_CHARSET));
     builder
-        .getColumnBuilder(8)
+        .getColumnBuilder(8 + offset)
         .writeBinary(new Binary(Integer.toString(dataConsensusPort), TSFileConfig.STRING_CHARSET));
     builder
-        .getColumnBuilder(9)
+        .getColumnBuilder(9 + offset)
         .writeBinary(
             new Binary(Integer.toString(schemaConsensusPort), TSFileConfig.STRING_CHARSET));
     builder
-        .getColumnBuilder(10)
+        .getColumnBuilder(10 + offset)
         .writeBinary(new Binary(Integer.toString(mppPort), TSFileConfig.STRING_CHARSET));
     if (versionInfo == null || versionInfo.getVersion() == null) {
-      builder.getColumnBuilder(11).appendNull();
+      builder.getColumnBuilder(11 + offset).appendNull();
     } else {
       builder
-          .getColumnBuilder(11)
+          .getColumnBuilder(11 + offset)
           .writeBinary(new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
     }
     if (versionInfo == null || versionInfo.getBuildInfo() == null) {
-      builder.getColumnBuilder(12).appendNull();
+      builder.getColumnBuilder(12 + offset).appendNull();
     } else {
       builder
-          .getColumnBuilder(12)
+          .getColumnBuilder(12 + offset)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
     builder.declarePosition();
@@ -224,10 +261,18 @@ public class ShowClusterDetailsTask implements IConfigTask {
 
   public static void buildTSBlock(
       TShowClusterResp clusterNodeInfos, SettableFuture<ConfigTaskResult> future) {
+    boolean hasStatusReason =
+        clusterNodeInfos.getNodeStatusReason() != null
+            && clusterNodeInfos.getNodeStatusReason().values().stream()
+                .anyMatch(reason -> reason != null && !reason.isEmpty());
+    List<ColumnHeader> columnHeaders =
+        new ArrayList<>(ColumnHeaderConstant.showClusterDetailsColumnHeaders);
+    if (hasStatusReason) {
+      // insert after the Status column
+      columnHeaders.add(3, new ColumnHeader(ColumnHeaderConstant.STATUS_REASON, TSDataType.TEXT));
+    }
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showClusterDetailsColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
+        columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
     clusterNodeInfos
@@ -238,6 +283,10 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     builder,
                     e.getConfigNodeId(),
                     clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
+                    hasStatusReason
+                        ? clusterNodeInfos.getNodeStatusReason().get(e.getConfigNodeId())
+                        : null,
+                    hasStatusReason,
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
                     e.getConsensusEndPoint().getPort(),
@@ -251,6 +300,10 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     builder,
                     e.getDataNodeId(),
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
+                    hasStatusReason
+                        ? clusterNodeInfos.getNodeStatusReason().get(e.getDataNodeId())
+                        : null,
+                    hasStatusReason,
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
                     e.getClientRpcEndPoint().getIp(),
@@ -267,11 +320,15 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     builder,
                     e.getAiNodeId(),
                     clusterNodeInfos.getNodeStatus().get(e.getAiNodeId()),
+                    hasStatusReason
+                        ? clusterNodeInfos.getNodeStatusReason().get(e.getAiNodeId())
+                        : null,
+                    hasStatusReason,
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
                     clusterNodeInfos.getNodeVersionInfo().get(e.getAiNodeId())));
 
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterDetailsHeader();
+    DatasetHeader datasetHeader = new DatasetHeader(columnHeaders, true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 

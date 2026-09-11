@@ -1869,7 +1869,7 @@ public class TsFileProcessor {
                 tsFileResource.getTsFile().getAbsolutePath(),
                 e);
             DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-            CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+            CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
             try {
               logger.error(
                   StorageEngineMessages
@@ -2017,7 +2017,7 @@ public class TsFileProcessor {
               dataRegionName,
               tsFileResource.getTsFile().getAbsolutePath(),
               e);
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
           break;
         }
       }

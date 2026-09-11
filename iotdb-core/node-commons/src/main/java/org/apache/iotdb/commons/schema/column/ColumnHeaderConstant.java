@@ -86,6 +86,7 @@ public class ColumnHeaderConstant {
   public static final String NODE_ID = "NodeID";
   public static final String NODE_TYPE = "NodeType";
   public static final String STATUS = "Status";
+  public static final String STATUS_REASON = "StatusReason";
   public static final String INTERNAL_ADDRESS = "InternalAddress";
   public static final String INTERNAL_PORT = "InternalPort";
   public static final String CONFIG_CONSENSUS_PORT = "ConfigConsensusPort";
@@ -318,6 +319,7 @@ public class ColumnHeaderConstant {
 
   public static final String NODE_ID_TABLE_MODEL = "node_id";
   public static final String NODE_TYPE_TABLE_MODEL = "node_type";
+  public static final String STATUS_REASON_TABLE_MODEL = "status_reason";
   public static final String INTERNAL_PORT_TABLE_MODEL = "internal_port";
   public static final String BUILD_INFO_TABLE_MODEL = "build_info";
 

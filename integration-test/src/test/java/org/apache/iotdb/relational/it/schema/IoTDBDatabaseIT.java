@@ -680,6 +680,7 @@ public class IoTDBDatabaseIT {
                   "node_id,INT32,TAG,",
                   "node_type,STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,",
+                  "status_reason,STRING,ATTRIBUTE,",
                   "internal_address,STRING,ATTRIBUTE,",
                   "internal_port,INT32,ATTRIBUTE,",
                   "version,STRING,ATTRIBUTE,",

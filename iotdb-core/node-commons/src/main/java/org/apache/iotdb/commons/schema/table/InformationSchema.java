@@ -325,6 +325,9 @@ public class InformationSchema {
             ColumnHeaderConstant.STATUS.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(
+            ColumnHeaderConstant.STATUS_REASON_TABLE_MODEL, TSDataType.STRING));
+    nodesTable.addColumnSchema(
+        new AttributeColumnSchema(
             ColumnHeaderConstant.INTERNAL_ADDRESS_TABLE_MODEL, TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(

@@ -198,7 +198,6 @@ public class FolderManagerTest {
     NodeStatus originalStatus = commonConfig.getNodeStatus();
     String originalStatusReason = commonConfig.getStatusReason();
     commonConfig.setNodeStatus(NodeStatus.Running);
-    commonConfig.setStatusReason(null);
 
     try {
       new FolderManager(Collections.emptyList(), strategyType, false);
@@ -206,6 +205,26 @@ public class FolderManagerTest {
     } catch (DiskSpaceInsufficientException e) {
       assertEquals(NodeStatus.Running, commonConfig.getNodeStatus());
       assertEquals(null, commonConfig.getStatusReason());
+    } finally {
+      commonConfig.setNodeStatus(originalStatus);
+      commonConfig.setStatusReason(originalStatusReason);
+    }
+  }
+
+  @Test
+  public void testFolderManagerSetsReadOnlyWithDiskFullReasonWhenDiskFull() {
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    NodeStatus originalStatus = commonConfig.getNodeStatus();
+    String originalStatusReason = commonConfig.getStatusReason();
+    commonConfig.setNodeStatus(NodeStatus.Running);
+
+    try {
+      // All folders are exhausted, so the node must switch to ReadOnly with the DiskFull reason.
+      new FolderManager(Collections.emptyList(), strategyType, true);
+      fail("Expected DiskSpaceInsufficientException");
+    } catch (DiskSpaceInsufficientException e) {
+      assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+      assertEquals(NodeStatus.DISK_FULL, commonConfig.getStatusReason());
     } finally {
       commonConfig.setNodeStatus(originalStatus);
       commonConfig.setStatusReason(originalStatusReason);

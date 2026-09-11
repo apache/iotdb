@@ -536,25 +536,29 @@ public class LoadCache {
   }
 
   /**
-   * Safely get the specified Node's current status with reason.
+   * Safely get the specified Node's current status reason.
    *
    * @param nodeId The specified NodeId
-   * @return The specified Node's current status if the nodeCache contains it, Unknown otherwise
+   * @return The reason why the Node is in its current status, null if the node has no reason or the
+   *     cache doesn't exist
    */
-  public String getNodeStatusWithReason(int nodeId) {
-    return Optional.ofNullable(nodeCacheMap.get(nodeId))
-        .map(BaseNodeCache::getNodeStatusWithReason)
-        .orElseGet(() -> NodeStatus.Unknown.getStatus() + "(NoHeartbeat)");
+  public String getNodeStatusReason(int nodeId) {
+    BaseNodeCache nodeCache = nodeCacheMap.get(nodeId);
+    return nodeCache == null ? null : nodeCache.getNodeStatusReason();
   }
 
   /**
-   * Get all Node's current status with reason.
+   * Get all Nodes' current statistics in a single traversal. Each node's status and reason are read
+   * from the same immutable {@link NodeStatistics} snapshot, so a concurrent heartbeat update
+   * cannot produce a status/reason pair from different heartbeats.
    *
-   * @return Map<NodeId, NodeStatus with reason>
+   * @return Map<NodeId, NodeStatistics>
    */
-  public Map<Integer, String> getNodeStatusWithReason() {
+  public Map<Integer, NodeStatistics> getNodeStatisticsSnapshot() {
     return nodeCacheMap.entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getNodeStatusWithReason()));
+        .collect(
+            Collectors.toMap(
+                Map.Entry::getKey, e -> (NodeStatistics) e.getValue().getCurrentStatistics()));
   }
 
   /**
