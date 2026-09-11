@@ -51,6 +51,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
@@ -389,13 +390,17 @@ public class LogicalBackupSink implements PipeConnector {
     try {
       tsFile.consumeTabletInsertionEventsWithRetry(
           tablet -> {
-            requests.add(
-                PipeTransferTabletRawReqV2.toTPipeTransferReq(
-                    tablet.convertToTablet(),
-                    tablet.isAligned(),
-                    tablet.isTableModelEvent()
-                        ? tablet.getTableModelDatabaseName()
-                        : tablet.getTreeModelDatabaseName()));
+            try {
+              requests.add(
+                  PipeTransferTabletRawReqV2.toTPipeTransferReq(
+                      tablet.convertToTablet(),
+                      tablet.isAligned(),
+                      tablet.isTableModelEvent()
+                          ? tablet.getTableModelDatabaseName()
+                          : tablet.getTreeModelDatabaseName()));
+            } catch (final IOException e) {
+              throw new PipeException(e.getMessage(), e);
+            }
           },
           getClass().getName());
       if (!requests.isEmpty()) {
