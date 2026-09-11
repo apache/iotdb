@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKee
 import org.apache.iotdb.db.pipe.sink.protocol.airgap.IoTDBDataRegionAirGapSink;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.legacy.IoTDBLegacyPipeSink;
+import org.apache.iotdb.db.pipe.sink.protocol.logicalbackup.LogicalBackupSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
@@ -74,6 +75,9 @@ class PipeDataRegionSinkConstructor extends PipeSinkConstructor {
         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingSink::new);
     pluginConstructors.put(
         BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName(), WriteBackSink::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.LOGICAL_BACKUP_CONNECTOR.getPipePluginName(),
+        () -> new LogicalBackupSink("data"));
 
     pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBDataRegionAsyncSink::new);
@@ -96,6 +100,9 @@ class PipeDataRegionSinkConstructor extends PipeSinkConstructor {
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingSink::new);
     pluginConstructors.put(
         BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName(), WriteBackSink::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.LOGICAL_BACKUP_SINK.getPipePluginName(),
+        () -> new LogicalBackupSink("data"));
     pluginConstructors.put(
         BuiltinPipePlugin.SUBSCRIPTION_SINK.getPipePluginName(), DoNothingSink::new);
     pluginConstructors.put(

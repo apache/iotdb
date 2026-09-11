@@ -80,6 +80,55 @@ public class PipeSinkConstant {
   public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";
   public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_LOGICAL_BACKUP_DIR_KEY = "connector.dir";
+  public static final String SINK_LOGICAL_BACKUP_DIR_KEY = "sink.dir";
+  public static final String CONNECTOR_LOGICAL_BACKUP_ID_KEY = "connector.backup-id";
+  public static final String SINK_LOGICAL_BACKUP_ID_KEY = "sink.backup-id";
+  public static final String CONNECTOR_LOGICAL_BACKUP_RESUME_KEY = "connector.resume";
+  public static final String SINK_LOGICAL_BACKUP_RESUME_KEY = "sink.resume";
+  public static final String LOGICAL_BACKUP_RESUME_FAIL_IF_EXISTS = "fail-if-exists";
+  public static final String LOGICAL_BACKUP_RESUME_APPEND = "append";
+  public static final String LOGICAL_BACKUP_RESUME_NEW = "new";
+  public static final String LOGICAL_BACKUP_RESUME_DEFAULT_VALUE =
+      LOGICAL_BACKUP_RESUME_FAIL_IF_EXISTS;
+  public static final String CONNECTOR_LOGICAL_BACKUP_SEGMENT_SIZE_BYTES_KEY =
+      "connector.segment-size-bytes";
+  public static final String SINK_LOGICAL_BACKUP_SEGMENT_SIZE_BYTES_KEY = "sink.segment-size-bytes";
+  public static final long LOGICAL_BACKUP_SEGMENT_SIZE_BYTES_DEFAULT_VALUE = 256L * MB;
+  public static final String CONNECTOR_LOGICAL_BACKUP_MAX_RECORD_BYTES_KEY =
+      "connector.max-record-bytes";
+  public static final String SINK_LOGICAL_BACKUP_MAX_RECORD_BYTES_KEY = "sink.max-record-bytes";
+  public static final int LOGICAL_BACKUP_MAX_RECORD_BYTES_DEFAULT_VALUE = 64 * 1024 * 1024;
+  public static final String CONNECTOR_LOGICAL_BACKUP_FSYNC_POLICY_KEY = "connector.fsync-policy";
+  public static final String SINK_LOGICAL_BACKUP_FSYNC_POLICY_KEY = "sink.fsync-policy";
+  public static final String LOGICAL_BACKUP_FSYNC_ALWAYS = "always";
+  public static final String LOGICAL_BACKUP_FSYNC_BATCH = "batch";
+  public static final String LOGICAL_BACKUP_FSYNC_PERIODIC = "periodic";
+  public static final String LOGICAL_BACKUP_FSYNC_NONE = "none";
+  public static final String LOGICAL_BACKUP_FSYNC_POLICY_DEFAULT_VALUE =
+      LOGICAL_BACKUP_FSYNC_ALWAYS;
+  public static final String CONNECTOR_LOGICAL_BACKUP_FSYNC_BATCH_OPERATIONS_KEY =
+      "connector.fsync-batch-operations";
+  public static final String SINK_LOGICAL_BACKUP_FSYNC_BATCH_OPERATIONS_KEY =
+      "sink.fsync-batch-operations";
+  public static final int LOGICAL_BACKUP_FSYNC_BATCH_OPERATIONS_DEFAULT_VALUE = 1000;
+  public static final String CONNECTOR_LOGICAL_BACKUP_FSYNC_PERIOD_MS_KEY =
+      "connector.fsync-period-ms";
+  public static final String SINK_LOGICAL_BACKUP_FSYNC_PERIOD_MS_KEY = "sink.fsync-period-ms";
+  public static final long LOGICAL_BACKUP_FSYNC_PERIOD_MS_DEFAULT_VALUE = 1000;
+  public static final String CONNECTOR_LOGICAL_BACKUP_UNSUPPORTED_EVENT_KEY =
+      "connector.on-unsupported-event";
+  public static final String SINK_LOGICAL_BACKUP_UNSUPPORTED_EVENT_KEY =
+      "sink.on-unsupported-event";
+  public static final String LOGICAL_BACKUP_UNSUPPORTED_EVENT_FAIL = "fail";
+  public static final String LOGICAL_BACKUP_UNSUPPORTED_EVENT_SKIP = "skip";
+  public static final String LOGICAL_BACKUP_UNSUPPORTED_EVENT_DEFAULT_VALUE =
+      LOGICAL_BACKUP_UNSUPPORTED_EVENT_FAIL;
+  public static final String CONNECTOR_LOGICAL_BACKUP_INCLUDE_HEARTBEAT_KEY =
+      "connector.include-heartbeat";
+  public static final String SINK_LOGICAL_BACKUP_INCLUDE_HEARTBEAT_KEY = "sink.include-heartbeat";
+  public static final boolean LOGICAL_BACKUP_INCLUDE_HEARTBEAT_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_SERIALIZE_BY_REGION_KEY = "connector.serialize-by-region";
   public static final String SINK_SERIALIZE_BY_REGION_KEY = "sink.serialize-by-region";
   public static final boolean CONNECTOR_SERIALIZE_BY_REGION_DEFAULT_VALUE = false;
