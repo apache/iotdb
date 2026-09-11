@@ -1,5 +1,6 @@
 package com.timecho.iotdb.dataregion.compaction.selector.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -59,11 +60,16 @@ public class SharedStorageCompactionSelector implements ICrossSpaceSelector {
             .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
             .getOrDefault(timePartition, 0L);
     try {
-      if (SharedStorageCompactionUtils.isLeader(dataRegion, timePartition)
-          || !SharedStorageCompactionUtils.isAllFollowersSearchIndexConsumed(
-              dataRegion, timePartition)
-          || maxVersion <= lastVersion
+      if (maxVersion <= lastVersion
           || !canShareOneReplica(dataRegion, timePartition, seqFiles, unseqFiles)) {
+        return Collections.emptyList();
+      }
+      List<TRegionReplicaSet> dataRegionReplicaSet =
+          SharedStorageCompactionUtils.getDataRegionReplicaSet(dataRegion, timePartition);
+      if (dataRegionReplicaSet.isEmpty()
+          || SharedStorageCompactionUtils.isLeader(dataRegionReplicaSet)
+          || !SharedStorageCompactionUtils.isAllFollowersSearchIndexConsumed(
+              dataRegion, dataRegionReplicaSet)) {
         return Collections.emptyList();
       }
     } catch (Exception e) {
@@ -115,8 +121,13 @@ public class SharedStorageCompactionSelector implements ICrossSpaceSelector {
     TFetchLeaderRemoteReplicaResp resp =
         new TFetchLeaderRemoteReplicaResp(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
     try {
-      if (!SharedStorageCompactionUtils.isLeader(dataRegion, timePartition)
-          || !canShareOneReplica(dataRegion, timePartition, seqFiles, unseqFiles)) {
+      if (!canShareOneReplica(dataRegion, timePartition, seqFiles, unseqFiles)) {
+        return resp;
+      }
+      List<TRegionReplicaSet> dataRegionReplicaSet =
+          SharedStorageCompactionUtils.getDataRegionReplicaSet(dataRegion, timePartition);
+      if (dataRegionReplicaSet.isEmpty()
+          || !SharedStorageCompactionUtils.isLeader(dataRegionReplicaSet)) {
         return resp;
       }
     } catch (Exception e) {

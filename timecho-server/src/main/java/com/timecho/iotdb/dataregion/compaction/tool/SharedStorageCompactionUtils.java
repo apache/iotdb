@@ -53,19 +53,13 @@ public class SharedStorageCompactionUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(SharedStorageCompactionUtils.class);
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  public static boolean isLeader(DataRegion dataRegion, long timePartition) throws Exception {
-    return isLocal(
-        getDataRegionReplicaSet(dataRegion, timePartition)
-            .get(0)
-            .getDataNodeLocations()
-            .get(0)
-            .getInternalEndPoint());
+  public static boolean isLeader(List<TRegionReplicaSet> dataRegionReplicaSet) {
+    return isLocal(dataRegionReplicaSet.get(0).getDataNodeLocations().get(0).getInternalEndPoint());
   }
 
-  public static boolean isAllFollowersSearchIndexConsumed(DataRegion dataRegion, long timePartition)
-      throws Exception {
-    List<TDataNodeLocation> dataNodeLocations =
-        getDataRegionReplicaSet(dataRegion, timePartition).get(0).getDataNodeLocations();
+  public static boolean isAllFollowersSearchIndexConsumed(
+      DataRegion dataRegion, List<TRegionReplicaSet> dataRegionReplicaSet) {
+    List<TDataNodeLocation> dataNodeLocations = dataRegionReplicaSet.get(0).getDataNodeLocations();
     for (int i = 1; i < dataNodeLocations.size(); ++i) {
       TEndPoint endPoint = dataNodeLocations.get(i).getInternalEndPoint();
       if (isLocal(endPoint)) {
@@ -91,12 +85,15 @@ public class SharedStorageCompactionUtils {
   }
 
   @SuppressWarnings("OptionalGetWithoutIsPresent")
-  private static List<TRegionReplicaSet> getDataRegionReplicaSet(
-      DataRegion dataRegion, long timePartition) throws Exception {
+  public static List<TRegionReplicaSet> getDataRegionReplicaSet(
+      DataRegion dataRegion, long timePartition) {
     TsFileResource selectedResource =
         dataRegion.getTsFileManager().getAValidTsFileResourceForMigration(timePartition);
     if (selectedResource == null) {
-      throw new Exception("Cannot get data region replica set for empty time partition.");
+      // The time partition has no valid file, which can happen when its files are deleted
+      // concurrently. Return an empty replica set so callers can skip it without treating it
+      // as an error.
+      return Collections.emptyList();
     }
     IDeviceID deviceID = selectedResource.getDevices().iterator().next();
     List<TTimePartitionSlot> slotList =
@@ -127,6 +124,9 @@ public class SharedStorageCompactionUtils {
           dataRegion.getDataRegionIdString(),
           timePartition,
           e);
+      return Collections.emptyList();
+    }
+    if (regionReplicaSet.isEmpty()) {
       return Collections.emptyList();
     }
 
