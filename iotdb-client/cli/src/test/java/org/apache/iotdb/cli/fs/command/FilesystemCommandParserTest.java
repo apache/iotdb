@@ -141,15 +141,6 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
-  public void parseWcLineCountAndPath() {
-    FilesystemCommand command = FilesystemCommandParser.parse("wc -l /db1/table1.csv");
-
-    assertEquals(FilesystemCommand.Type.WC, command.getType());
-    assertEquals("/db1/table1.csv", command.getPath());
-    assertEquals("-l", command.getOption());
-  }
-
-  @Test
   public void parseGrepPatternAndPath() {
     FilesystemCommand command = FilesystemCommandParser.parse("grep spricoder /db1/table1.csv");
 
@@ -179,7 +170,9 @@ public class FilesystemCommandParserTest {
         FilesystemCommand.Type.FILE,
         FilesystemCommandParser.parse("file /db1/table1.csv").getType());
     assertEquals(
-        FilesystemCommand.Type.DU, FilesystemCommandParser.parse("du /db1/table1.csv").getType());
+        FilesystemCommand.Type.STATS, FilesystemCommandParser.parse("stats /db1/table1.csv").getType());
+    assertEquals(
+        FilesystemCommand.Type.COUNT, FilesystemCommandParser.parse("count /db1/table1.csv").getType());
   }
 
   @Test
@@ -459,13 +452,11 @@ public class FilesystemCommandParserTest {
         "stat a b",
         "head a b",
         "tail a b",
-        "wc a b",
         "grep pattern a b",
         "find a b",
         "less a b",
         "more a b",
         "file a b",
-        "du a b",
         "mkdir a b",
         "rmdir a b",
         "rm a b",
@@ -486,13 +477,11 @@ public class FilesystemCommandParserTest {
         "cat -x",
         "head -x",
         "tail -x",
-        "wc -c",
         "grep -i pattern path",
         "find -x",
         "less -x",
         "more -x",
         "file -x",
-        "du -x",
         "mkdir -p path",
         "rmdir -p path",
         "rm -f path",
@@ -507,7 +496,6 @@ public class FilesystemCommandParserTest {
         "ls -a -a",
         "head -n 1 -2 path",
         "tail -2 -n 1 path",
-        "wc -l -l",
         "find -name a -name b",
         "tree -L 1 -L 2",
         "rm -r -r path",
@@ -571,8 +559,8 @@ public class FilesystemCommandParserTest {
     assertEquals(FilesystemCommand.Type.HELP, FilesystemCommandParser.parse("--help").getType());
     for (String command :
         new String[] {
-          "pwd", "ls", "ll", "cd", "stat", "cat", "head", "tail", "wc", "grep", "find", "less",
-          "more", "file", "du", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join", "tee",
+          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "cat", "head", "tail", "grep", "find", "less",
+          "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join", "tee",
           "tree", "sql", "help", "exit", "quit"
         }) {
       FilesystemCommand help = FilesystemCommandParser.parse(command + " --help");

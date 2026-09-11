@@ -554,16 +554,6 @@ public class FilesystemShellTest {
   }
 
   @Test
-  public void executeWcLineCountPrintsCountAndPath() throws SQLException {
-    when(provider.count(FsPath.absolute("/db1/table1.csv"))).thenReturn(2L);
-
-    assertTrue(shell.execute("wc -l /db1/table1.csv"));
-
-    assertTrue(out.toString().contains("2 /db1/table1.csv"));
-    verify(provider).count(FsPath.absolute("/db1/table1.csv"));
-  }
-
-  @Test
   public void executeGrepFiltersCsvFileLines() throws SQLException {
     when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
         .thenReturn(Arrays.asList("Time,tag1,s1", "1,spricoder,42", "2,other,43"));
@@ -670,16 +660,6 @@ public class FilesystemShellTest {
     assertEquals("", out.toString());
     assertTrue(err.toString().contains("file: /db1/table1: No such file or directory"));
     verify(provider).describe(FsPath.absolute("/db1/table1"));
-  }
-
-  @Test
-  public void executeDuPrintsLogicalSizeAndPath() throws SQLException {
-    when(provider.count(FsPath.absolute("/db1/table1.csv"))).thenReturn(2L);
-
-    assertTrue(shell.execute("du /db1/table1.csv"));
-
-    assertTrue(out.toString().contains("2\t/db1/table1.csv"));
-    verify(provider).count(FsPath.absolute("/db1/table1.csv"));
   }
 
   @Test
