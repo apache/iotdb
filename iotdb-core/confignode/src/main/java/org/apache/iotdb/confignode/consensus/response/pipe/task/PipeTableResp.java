@@ -179,10 +179,10 @@ public class PipeTableResp implements DataSet {
     return Objects.equals(
         userName,
         sinkParameters.getStringByKeys(
-            PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
-            PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
-            PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
-            PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY));
+            PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+            PipeSinkConstant.SINK_IOTDB_USER_KEY,
+            PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+            PipeSinkConstant.SINK_IOTDB_USERNAME_KEY));
   }
 
   public TGetAllPipeInfoResp convertToTGetAllPipeInfoResp() throws IOException {
