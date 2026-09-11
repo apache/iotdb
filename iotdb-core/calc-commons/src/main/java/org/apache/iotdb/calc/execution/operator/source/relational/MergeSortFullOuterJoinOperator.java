@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.join.merge.comparator.JoinKeyComparator;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
 import org.apache.tsfile.block.column.Column;
@@ -32,7 +33,6 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
-import java.util.function.BiFunction;
 
 public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperator {
   private static final long INSTANCE_SIZE =
@@ -41,7 +41,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
   // stores last row matched join criteria, only used in outer join
   private TsBlock lastMatchedRightBlock = null;
   private final int[] lastMatchedBlockPositions;
-  private final List<BiFunction<Column, Integer, Column>> updateLastMatchedRowFunctions;
+  private final List<TypeServices.ColumnRowFunction> updateLastMatchedRowFunctions;
 
   public MergeSortFullOuterJoinOperator(
       CommonOperatorContext operatorContext,
@@ -53,7 +53,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
       int[] rightOutputSymbolIdx,
       List<JoinKeyComparator> joinKeyComparators,
       List<TSDataType> dataTypes,
-      List<BiFunction<Column, Integer, Column>> updateLastMatchedRowFunctions) {
+      List<TypeServices.ColumnRowFunction> updateLastMatchedRowFunctions) {
     super(
         operatorContext,
         leftChild,

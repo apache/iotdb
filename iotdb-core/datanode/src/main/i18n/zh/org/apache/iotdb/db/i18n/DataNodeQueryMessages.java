@@ -512,6 +512,18 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP 不支持 REGEXP/NOT REGEXP";
   public static final String GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER =
       "GroupByTime 过滤器不能存在于值过滤器中。";
+  public static final String EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC =
+      "\"%s\" 无法转换为 [%s]";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348 =
+      "不支持的数据类型 %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXBY_MINBY_ARG_DD30FAB1 =
+      "MaxBy/MinBy 不支持的数据类型：%s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_ARG_77E085EB =
+      "等值事件聚合不支持的数据类型：%s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_ARG_3D0F0388 =
+      "变化事件聚合不支持的数据类型：%s";
+  public static final String EXCEPTION_TIMESTAMP_IN_LIST_LITERAL_CAN_ONLY_BE_LONGLITERAL_DOUBLELITERAL_OR_GENERICLITERAL_ACTUAL_TYPE_ARG_D751BE79 =
+      "TIMESTAMP 的 IN 列表字面量只能是 LongLiteral、DoubleLiteral 或 GenericLiteral，实际类型为 %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL 可以下推";
   public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
@@ -1004,6 +1016,8 @@ public final class DataNodeQueryMessages {
       "意外的表达式：";
   public static final String FAILED_TO_FETCH_SUBQUERY_RESULT =
       "获取子查询结果失败。";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_ARG_D58CBB00 =
+      "标量子查询结果的数据类型不受支持：%s";
 
   // --- Plan / Relational / Planner / Iterative ---
 
@@ -1377,6 +1391,8 @@ public final class DataNodeQueryMessages {
       "获取 UDF 访问策略时发生错误";
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils 不应被实例化。";
+  public static final String EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_61F4E273 =
+      "状态窗口策略的数据类型无效。";
 
   // --- Execution / Exchange (additional) ---
 

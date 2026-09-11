@@ -29,7 +29,7 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 
 public class BinaryLeastColumnTransformer extends AbstractGreatestLeastColumnTransformer {
-  protected BinaryLeastColumnTransformer(
+  public BinaryLeastColumnTransformer(
       Type returnType, List<ColumnTransformer> columnTransformerList) {
     super(returnType, columnTransformerList);
   }

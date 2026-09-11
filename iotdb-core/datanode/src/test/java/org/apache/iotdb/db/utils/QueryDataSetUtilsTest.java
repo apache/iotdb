@@ -28,11 +28,16 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -48,6 +53,81 @@ public class QueryDataSetUtilsTest {
   private static final String BINARY_STR = "ty love zm";
 
   @Test
+  public void testReadTabletValues() throws IOException {
+    // Exercise the RPC length-prefixed binary format in both readers, including empty binaries.
+    TSDataType[] dataTypes = {
+      TSDataType.BOOLEAN,
+      TSDataType.INT32,
+      TSDataType.DATE,
+      TSDataType.INT64,
+      TSDataType.TIMESTAMP,
+      TSDataType.FLOAT,
+      TSDataType.DOUBLE,
+      TSDataType.TEXT,
+      TSDataType.BLOB,
+      TSDataType.STRING,
+      TSDataType.OBJECT
+    };
+    Object[] expected = {
+      new boolean[] {true, false},
+      new int[] {1, 2},
+      new int[] {20260721, 20260722},
+      new long[] {3L, 4L},
+      new long[] {5L, 6L},
+      new float[] {1.25F, 2.5F},
+      new double[] {3.75D, 4.5D},
+      new Binary[] {
+        new Binary("text-1", TSFileConfig.STRING_CHARSET),
+        new Binary("text-2", TSFileConfig.STRING_CHARSET)
+      },
+      new Binary[] {Binary.EMPTY_VALUE, new Binary(new byte[] {2})},
+      new Binary[] {
+        new Binary("string-1", TSFileConfig.STRING_CHARSET),
+        new Binary("string-2", TSFileConfig.STRING_CHARSET)
+      },
+      new Binary[] {
+        new Binary("object-1", TSFileConfig.STRING_CHARSET),
+        new Binary("object-2", TSFileConfig.STRING_CHARSET)
+      }
+    };
+
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (DataOutputStream stream = new DataOutputStream(byteArrayOutputStream)) {
+      for (int i = 0; i < dataTypes.length; i++) {
+        if (expected[i] instanceof Binary[] binaries) {
+          for (Binary binary : binaries) {
+            stream.writeInt(binary.getLength());
+            stream.write(binary.getValues());
+          }
+        } else if (expected[i] instanceof int[] integers) {
+          // DATE is an integer in tablet RPC, not the LocalDate[] used by the Type API.
+          for (int value : integers) {
+            stream.writeInt(value);
+          }
+        } else {
+          Type.fromTsDataType(dataTypes[i]).serializeArray(expected[i], 2, stream);
+        }
+      }
+    }
+    byte[] serializedValues = byteArrayOutputStream.toByteArray();
+
+    ByteBuffer buffer = ByteBuffer.wrap(serializedValues);
+    assertTrue(
+        Arrays.deepEquals(
+            expected,
+            QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, dataTypes.length, 2)));
+    assertFalse(buffer.hasRemaining());
+    try (DataInputStream stream = new DataInputStream(new ByteArrayInputStream(serializedValues))) {
+      assertTrue(
+          Arrays.deepEquals(
+              expected,
+              QueryDataSetUtils.readTabletValuesFromStream(
+                  stream, dataTypes, dataTypes.length, 2)));
+      assertEquals(-1, stream.read());
+    }
+  }
+
+  @Test
   public void testConvertTsBlockByFetchSize() throws IoTDBException, IOException {
 
     Pair<TSQueryDataSet, Boolean> res =
@@ -56,9 +136,32 @@ public class QueryDataSetUtilsTest {
     compareRes(res);
   }
 
+  @Test
+  public void testConvertTsBlockListByFetchSize() throws IOException {
+    TSQueryDataSet result = QueryDataSetUtils.convertTsBlockByFetchSize(List.of(buildTsBlock()));
+
+    assertEquals(Long.BYTES * 2, result.time.limit());
+    assertEquals(1L, result.time.getLong());
+    assertEquals(2L, result.time.getLong());
+    assertEquals(1, result.valueList.size());
+    assertEquals(1, result.bitmapList.size());
+    assertEquals(Byte.BYTES, result.valueList.get(0).limit());
+    assertEquals((byte) 1, result.valueList.get(0).get());
+    assertEquals((byte) 0x80, result.bitmapList.get(0).get());
+  }
+
   private IQueryExecution buildQueryExecution() throws IoTDBException, IOException {
     IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
     Mockito.when(queryExecution.getOutputValueColumnCount()).thenReturn(6);
+    TsBlock tsBlock = buildTsBlock();
+    Mockito.when(queryExecution.getBatchResult())
+        .thenReturn(Optional.of(tsBlock), Optional.empty());
+    Mockito.when(queryExecution.getByteBufferBatchResult())
+        .thenReturn(Optional.of(new TsBlockSerde().serialize(tsBlock)), Optional.empty());
+    return queryExecution;
+  }
+
+  private TsBlock buildTsBlock() {
     TsBlockBuilder builder =
         new TsBlockBuilder(
             Arrays.asList(
@@ -84,11 +187,7 @@ public class QueryDataSetUtilsTest {
     builder.getColumnBuilder(4).writeDouble(3.14d);
     builder.getColumnBuilder(5).appendNull();
     builder.declarePosition();
-    Mockito.when(queryExecution.getBatchResult())
-        .thenReturn(Optional.of(builder.build()), Optional.empty());
-    Mockito.when(queryExecution.getByteBufferBatchResult())
-        .thenReturn(Optional.of(new TsBlockSerde().serialize(builder.build())), Optional.empty());
-    return queryExecution;
+    return builder.build();
   }
 
   private void compareRes(Pair<TSQueryDataSet, Boolean> res) {

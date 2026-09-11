@@ -19,25 +19,36 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.util.function.Supplier;
+
 public class ExtremeAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ExtremeAccumulator.class);
-  private static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type in EXTREME: %s";
   private final TSDataType seriesDataType;
+  private final Type type;
   private final TsPrimitiveType extremeResult;
+  private final TypeServices.ColumnValueUpdater valueUpdater;
+  private final TypeServices.StatisticsValueUpdater statisticsValueUpdater;
   private boolean initResult;
 
   public ExtremeAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.extremeResult = TsPrimitiveType.getByType(seriesDataType);
+    this.type = Type.fromTsDataType(seriesDataType);
+    this.extremeResult = type.getTsPrimitiveType();
+    this.valueUpdater = TypeServices.EXTREME_COLUMN_VALUE_UPDATER_SERVICE.call(type);
+    this.statisticsValueUpdater = TypeServices.EXTREME_STATISTICS_VALUE_UPDATER_SERVICE.call(type);
   }
 
   @Override
@@ -52,29 +63,22 @@ public class ExtremeAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(arguments[0], mask);
-        return;
-      case INT64:
-        addLongInput(arguments[0], mask);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], mask);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
+    Column column = arguments[0];
+    int positionCount = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          initResult |= valueUpdater.update(extremeResult, column, i, initResult);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      for (int i = 0; i < positionCount; i++) {
+        int position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          initResult |= valueUpdater.update(extremeResult, column, position, initResult);
+        }
+      }
     }
   }
 
@@ -85,30 +89,7 @@ public class ExtremeAccumulator implements TableAccumulator {
         continue;
       }
 
-      switch (seriesDataType) {
-        case INT32:
-          updateIntResult(argument.getInt(i));
-          break;
-        case INT64:
-          updateLongResult(argument.getLong(i));
-          break;
-        case FLOAT:
-          updateFloatResult(argument.getFloat(i));
-          break;
-        case DOUBLE:
-          updateDoubleResult(argument.getDouble(i));
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-        case BOOLEAN:
-        case DATE:
-        case TIMESTAMP:
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
-      }
+      initResult |= valueUpdater.update(extremeResult, argument, i, initResult);
     }
   }
 
@@ -118,33 +99,18 @@ public class ExtremeAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-        updateIntResult(((Number) statistics[0].getMaxValue()).intValue());
-        updateIntResult(((Number) statistics[0].getMinValue()).intValue());
-        break;
-      case INT64:
-        updateLongResult(((Number) statistics[0].getMaxValue()).longValue());
-        updateLongResult(((Number) statistics[0].getMinValue()).longValue());
-        break;
-      case FLOAT:
-        updateFloatResult(((Number) statistics[0].getMaxValue()).floatValue());
-        updateFloatResult(((Number) statistics[0].getMinValue()).floatValue());
-        break;
-      case DOUBLE:
-        updateDoubleResult(((Number) statistics[0].getMaxValue()).doubleValue());
-        updateDoubleResult(((Number) statistics[0].getMinValue()).doubleValue());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
+    Supplier<RuntimeException> exceptionSupplier =
+        () ->
+            new UnSupportedDataTypeException(
+                String.format(
+                    CalcMessages.UNSUPPORTED_DATA_TYPE_IN_EXTREME_AGGREGATION, seriesDataType));
+    if (statisticsValueUpdater.update(
+        extremeResult, statistics[0].getMaxValue(), initResult, exceptionSupplier)) {
+      initResult = true;
+    }
+    if (statisticsValueUpdater.update(
+        extremeResult, statistics[0].getMinValue(), initResult, exceptionSupplier)) {
+      initResult = true;
     }
   }
 
@@ -155,30 +121,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-        columnBuilder.writeInt(extremeResult.getInt());
-        break;
-      case INT64:
-        columnBuilder.writeLong(extremeResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(extremeResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(extremeResult.getDouble());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
-    }
+    type.write(columnBuilder, extremeResult);
   }
 
   @Override
@@ -188,30 +131,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-        columnBuilder.writeInt(extremeResult.getInt());
-        break;
-      case INT64:
-        columnBuilder.writeLong(extremeResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(extremeResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(extremeResult.getDouble());
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(UNSUPPORTED_DATA_TYPE, seriesDataType));
-    }
+    type.write(columnBuilder, extremeResult);
   }
 
   @Override

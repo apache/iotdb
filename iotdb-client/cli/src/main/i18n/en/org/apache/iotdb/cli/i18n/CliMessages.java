@@ -50,6 +50,10 @@ public final class CliMessages {
   public static final String FAILED_TO_WRITE_DATA = "Failed to write data to file: {}";
   public static final String FAILED_TO_CREATE_FILE = "Failed to create file: {}";
 
+  // AbstractCli
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E =
+      "Unsupported data type: %s";
+
   // AbstractDataTool
   public static final String USE_HELP_FOR_MORE = "Use -help for more information";
 

@@ -20,17 +20,20 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.io.IOException;
 
+import static org.apache.iotdb.db.utils.TypeServices.Transformation.ROUND_TRANSFORMER_SERVICE;
+
 public class RoundFunctionTransformer extends UnaryTransformer {
+
   private final TSDataType targetDataType;
 
   protected int places;
@@ -49,35 +52,17 @@ public class RoundFunctionTransformer extends UnaryTransformer {
   @Override
   protected void transform(Column[] columns, ColumnBuilder builder)
       throws QueryProcessException, IOException {
-    switch (layerReaderDataType) {
-      case INT32:
-        transformInt(columns, builder);
-        return;
-      case INT64:
-        transformLong(columns, builder);
-        return;
-      case FLOAT:
-        transformFloat(columns, builder);
-        return;
-      case DOUBLE:
-        transformDouble(columns, builder);
-        return;
-      case TIMESTAMP:
-      case BOOLEAN:
-      case DATE:
-      case STRING:
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_S_EA03E121,
-                layerReaderDataType));
+    final Type type;
+    try {
+      type = Type.fromTsDataType(layerReaderDataType);
+    } catch (UnsupportedOperationException ignored) {
+      throw new UnsupportedOperationException(
+          String.format("Unsupported source dataType: %s", layerReaderDataType));
     }
+    ROUND_TRANSFORMER_SERVICE.call(type).transform(this, columns, builder);
   }
 
-  private void transformInt(Column[] columns, ColumnBuilder builder) {
+  public void transformInt(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
 
     int[] values = columns[0].getInts();
@@ -92,7 +77,7 @@ public class RoundFunctionTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformLong(Column[] columns, ColumnBuilder builder) {
+  public void transformLong(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
 
     long[] values = columns[0].getLongs();
@@ -107,7 +92,7 @@ public class RoundFunctionTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformFloat(Column[] columns, ColumnBuilder builder) {
+  public void transformFloat(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
 
     float[] values = columns[0].getFloats();
@@ -122,7 +107,7 @@ public class RoundFunctionTransformer extends UnaryTransformer {
     }
   }
 
-  private void transformDouble(Column[] columns, ColumnBuilder builder) {
+  public void transformDouble(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
 
     double[] values = columns[0].getDoubles();

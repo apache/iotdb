@@ -41,10 +41,9 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,6 +159,7 @@ public class ReadOnlyMemChunk {
   public void initChunkMetaFromTvLists(Filter globalTimeFilter) {
     // create chunk statistics
     Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
+    Type type = Type.fromTsDataType(dataType);
     timeValuePairIterator = createMemPointIterator(Ordering.ASC, globalTimeFilter);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     while (timeValuePairIterator.hasNextBatch()) {
@@ -169,58 +169,9 @@ public class ReadOnlyMemChunk {
 
       TsBlock tsBlock = timeValuePairIterator.nextBatch();
       if (!tsBlock.isEmpty()) {
-        switch (dataType) {
-          case BOOLEAN:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getBoolean(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getBoolean(i));
-            }
-            break;
-          case INT32:
-          case DATE:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getInt(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getInt(i));
-            }
-            break;
-          case INT64:
-          case TIMESTAMP:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getLong(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getLong(i));
-            }
-            break;
-          case FLOAT:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getFloat(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getFloat(i));
-            }
-            break;
-          case DOUBLE:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getDouble(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getDouble(i));
-            }
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-              long time = tsBlock.getTimeByIndex(i);
-              chunkStatistics.update(time, tsBlock.getColumn(0).getBinary(i));
-              pageStatistics.update(time, tsBlock.getColumn(0).getBinary(i));
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                    dataType));
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          type.update(chunkStatistics, tsBlock, 0, i);
+          type.update(pageStatistics, tsBlock, 0, i);
         }
       }
     }
@@ -331,41 +282,12 @@ public class ReadOnlyMemChunk {
   // read all data in memory chunk and write to tsblock
   private void writeValidValuesIntoTsBlock(TsBlockBuilder builder) throws IOException {
     MemPointIterator timeValuePairIterator = createMemPointIterator(Ordering.ASC, null);
+    Type type = Type.fromTsDataType(dataType);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
       builder.getTimeColumnBuilder().writeLong(tvPair.getTimestamp());
-      switch (dataType) {
-        case BOOLEAN:
-          builder.getColumnBuilder(0).writeBoolean(tvPair.getValue().getBoolean());
-          break;
-        case INT32:
-        case DATE:
-          if (builder.getColumnBuilder(0) instanceof BinaryColumnBuilder) {
-            ((BinaryColumnBuilder) builder.getColumnBuilder(0))
-                .writeDate(tvPair.getValue().getInt());
-          } else {
-            builder.getColumnBuilder(0).writeInt(tvPair.getValue().getInt());
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          builder.getColumnBuilder(0).writeLong(tvPair.getValue().getLong());
-          break;
-        case FLOAT:
-          builder.getColumnBuilder(0).writeFloat(tvPair.getValue().getFloat());
-          break;
-        case DOUBLE:
-          builder.getColumnBuilder(0).writeDouble(tvPair.getValue().getDouble());
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-          builder.getColumnBuilder(0).writeBinary(tvPair.getValue().getBinary());
-          break;
-        default:
-          break;
-      }
+      type.write(builder.getColumnBuilder(0), tvPair.getValue());
       builder.declarePosition();
     }
   }

@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -34,44 +32,7 @@ public class UDTFCommonDerivative extends UDTFDerivative {
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     long currentTime = row.getTime();
     double timeDelta = (double) currentTime - previousTime;
-    switch (dataType) {
-      case INT32:
-        int currentInt = row.getInt(0);
-        collector.putDouble(currentTime, (currentInt - previousInt) / timeDelta);
-        previousInt = currentInt;
-        break;
-      case INT64:
-        long currentLong = row.getLong(0);
-        collector.putDouble(currentTime, (currentLong - previousLong) / timeDelta);
-        previousLong = currentLong;
-        break;
-      case FLOAT:
-        float currentFloat = row.getFloat(0);
-        collector.putDouble(currentTime, (currentFloat - previousFloat) / timeDelta);
-        previousFloat = currentFloat;
-        break;
-      case DOUBLE:
-        double currentDouble = row.getDouble(0);
-        collector.putDouble(currentTime, (currentDouble - previousDouble) / timeDelta);
-        previousDouble = currentDouble;
-        break;
-      case DATE:
-      case BOOLEAN:
-      case TIMESTAMP:
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    derivativeOperator.apply(this, currentTime, row, collector, timeDelta);
     previousTime = currentTime;
   }
 }

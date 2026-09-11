@@ -28,7 +28,7 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 
 public class Int32LeastColumnTransformer extends AbstractGreatestLeastColumnTransformer {
-  protected Int32LeastColumnTransformer(
+  public Int32LeastColumnTransformer(
       Type returnType, List<ColumnTransformer> columnTransformerList) {
     super(returnType, columnTransformerList);
   }

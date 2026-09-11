@@ -27,9 +27,9 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -145,14 +145,15 @@ public abstract class BooleanTVList extends TVList {
   @Override
   public TimeValuePair getTimeValuePair(int index) {
     return new TimeValuePair(
-        getTime(index), TsPrimitiveType.getByType(TSDataType.BOOLEAN, getBoolean(index)));
+        getTime(index),
+        Type.fromTsDataType(TSDataType.BOOLEAN).getTsPrimitiveType(getBoolean(index)));
   }
 
   @Override
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
     return new TimeValuePair(
-        time, TsPrimitiveType.getByType(TSDataType.BOOLEAN, getBoolean(index)));
+        time, Type.fromTsDataType(TSDataType.BOOLEAN).getTsPrimitiveType(getBoolean(index)));
   }
 
   @Override

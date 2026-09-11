@@ -16,6 +16,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.CentralMomentAccumulator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -24,6 +25,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -40,6 +42,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
   private static final double EPSILON = 1e-12;
 
   private final TSDataType seriesDataType;
+  private final TypeServices.ColumnToDoubleConverter doubleValueConverter;
   private final CentralMomentAccumulator.MomentType momentType;
 
   private long count;
@@ -51,6 +54,15 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
   public TableCentralMomentAccumulator(
       TSDataType seriesDataType, CentralMomentAccumulator.MomentType momentType) {
     this.seriesDataType = seriesDataType;
+    this.doubleValueConverter =
+        TypeServices.NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+            .call(Type.fromTsDataType(seriesDataType))
+            .create(
+                () ->
+                    new UnSupportedDataTypeException(
+                        String.format(
+                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_CENTRAL_MOMENT_AGGREGATION,
+                            seriesDataType)));
     this.momentType = momentType;
   }
 
@@ -60,7 +72,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
         if (!arguments[0].isNull(i)) {
-          update(getDoubleValue(arguments[0], i));
+          update(doubleValueConverter.convert(arguments[0], i));
         }
       }
     } else {
@@ -68,29 +80,9 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
       for (int i = 0; i < positionCount; i++) {
         int position = selectedPositions[i];
         if (!arguments[0].isNull(position)) {
-          update(getDoubleValue(arguments[0], position));
+          update(doubleValueConverter.convert(arguments[0], position));
         }
       }
-    }
-  }
-
-  private double getDoubleValue(Column column, int position) {
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_CENTRALMOMENT_AGGREGATION_ARG_74B9A3A8,
-                seriesDataType));
     }
   }
 
@@ -239,7 +231,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
       return;
     }
 
-    double value = getDoubleValue(arguments[0], 0);
+    double value = doubleValueConverter.convert(arguments[0], 0);
     if (count == 1) {
       reset();
       return;

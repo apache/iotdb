@@ -24,13 +24,12 @@ import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
-import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.block.column.Column;
@@ -42,8 +41,8 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
-import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -59,6 +58,7 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -479,34 +479,11 @@ public abstract class AlignedTVList extends TVList {
         markNullValue(i, arrayIndex, elementIndex);
         continue;
       }
+      TSDataType dataType = dataTypes.get(i);
       Object valueArray = getOrCreateValueArray(i, arrayIndex, elementIndex);
-      switch (dataTypes.get(i)) {
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          ((Binary[]) valueArray)[elementIndex] = (Binary) columnValue;
-          memoryBinaryChunkSize[i] += getBinarySize((Binary) columnValue);
-          break;
-        case FLOAT:
-          ((float[]) valueArray)[elementIndex] = (float) columnValue;
-          break;
-        case INT32:
-        case DATE:
-          ((int[]) valueArray)[elementIndex] = (int) columnValue;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          ((long[]) valueArray)[elementIndex] = (long) columnValue;
-          break;
-        case DOUBLE:
-          ((double[]) valueArray)[elementIndex] = (double) columnValue;
-          break;
-        case BOOLEAN:
-          ((boolean[]) valueArray)[elementIndex] = (boolean) columnValue;
-          break;
-        default:
-          break;
+      Type.fromTsDataType(dataType).addValue(elementIndex, columnValue, valueArray);
+      if (dataType.isBinary()) {
+        memoryBinaryChunkSize[i] += getBinarySize((Binary) columnValue);
       }
     }
     if (indices != null) {
@@ -568,65 +545,70 @@ public abstract class AlignedTVList extends TVList {
       } else {
         validValueIndex = valueIndex;
       }
-      int arrayIndex = validValueIndex / ARRAY_SIZE;
-      int elementIndex = validValueIndex % ARRAY_SIZE;
       if (columnValues == null || isNullValue(validValueIndex, columnIndex)) {
         continue;
       }
-      switch (dataTypes.get(columnIndex)) {
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.TEXT, valueT);
-          break;
-        case FLOAT:
-          float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];
-          if (floatPrecision != null
-              && encodingList != null
-              && !Float.isNaN(valueF)
-              && (encodingList.get(columnIndex) == TSEncoding.RLE
-                  || encodingList.get(columnIndex) == TSEncoding.TS_2DIFF)) {
-            valueF = MathUtils.roundWithGivenPrecision(valueF, floatPrecision);
-          }
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.FLOAT, valueF);
-          break;
-        case INT32:
-        case DATE:
-          int valueI = ((int[]) columnValues.get(arrayIndex))[elementIndex];
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.INT32, valueI);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long valueL = ((long[]) columnValues.get(arrayIndex))[elementIndex];
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.INT64, valueL);
-          break;
-        case DOUBLE:
-          double valueD = ((double[]) columnValues.get(arrayIndex))[elementIndex];
-          if (floatPrecision != null
-              && encodingList != null
-              && !Double.isNaN(valueD)
-              && (encodingList.get(columnIndex) == TSEncoding.RLE
-                  || encodingList.get(columnIndex) == TSEncoding.TS_2DIFF)) {
-            valueD = MathUtils.roundWithGivenPrecision(valueD, floatPrecision);
-          }
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.DOUBLE, valueD);
-          break;
-        case BOOLEAN:
-          boolean valueB = ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
-          vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.BOOLEAN, valueB);
-          break;
-        default:
-          throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+      vector[columnIndex] =
+          getPrimitiveTypeByValueIndex(
+              validValueIndex,
+              columnIndex,
+              getPhysicalType(dataTypes.get(columnIndex)),
+              dataTypes.get(columnIndex),
+              dataTypes.get(columnIndex),
+              floatPrecision,
+              encodingList == null ? null : encodingList.get(columnIndex));
+    }
+    return Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector);
+  }
+
+  private static Type getPhysicalType(TSDataType dataType) {
+    if (dataType == TSDataType.DATE) {
+      return Type.fromTsDataType(TSDataType.INT32);
+    }
+    if (dataType == TSDataType.TIMESTAMP) {
+      return Type.fromTsDataType(TSDataType.INT64);
+    }
+    if (dataType.isBinary()) {
+      return Type.fromTsDataType(TSDataType.TEXT);
+    }
+    return Type.fromTsDataType(dataType);
+  }
+
+  private TsPrimitiveType getPrimitiveTypeByValueIndex(
+      int valueIndex,
+      int columnIndex,
+      Type resultType,
+      TSDataType sourceDataType,
+      TSDataType targetDataType,
+      Integer floatPrecision,
+      TSEncoding encoding) {
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
+    TsPrimitiveType value;
+    if (sourceDataType == targetDataType) {
+      value =
+          resultType.getValueAsTsPrimitiveType(
+              values.get(columnIndex).get(arrayIndex), elementIndex);
+    } else {
+      value =
+          resultType.getTsPrimitiveType(
+              targetDataType.castFromSingleValue(
+                  sourceDataType, getObjectByValueIndex(valueIndex, columnIndex)));
+    }
+    if (floatPrecision != null && encoding != null) {
+      if (value.getDataType() == TSDataType.FLOAT) {
+        value.setFloat(roundValueWithGivenPrecision(value.getFloat(), floatPrecision, encoding));
+      } else if (value.getDataType() == TSDataType.DOUBLE) {
+        value.setDouble(roundValueWithGivenPrecision(value.getDouble(), floatPrecision, encoding));
       }
     }
-    return TsPrimitiveType.getByType(TSDataType.VECTOR, vector);
+    return value;
   }
 
   public void extendColumn(TSDataType dataType) {
     List<Object> columnValue = new ArrayList<>(timestamps.size());
     for (int i = 0; i < timestamps.size(); i++) {
+      // New columns contain only implicit nulls until their first non-null write.
       columnValue.add(null);
     }
     if (bitMaps != null) {
@@ -647,28 +629,9 @@ public abstract class AlignedTVList extends TVList {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
-    switch (dataTypes.get(columnIndex)) {
-      case INT32:
-      case DATE:
-        return ((int[]) columnValues.get(arrayIndex))[elementIndex];
-      case INT64:
-      case TIMESTAMP:
-        return ((long[]) columnValues.get(arrayIndex))[elementIndex];
-      case FLOAT:
-        return ((float[]) columnValues.get(arrayIndex))[elementIndex];
-      case DOUBLE:
-        return ((double[]) columnValues.get(arrayIndex))[elementIndex];
-      case BOOLEAN:
-        return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
-      case STRING:
-      case BLOB:
-      case TEXT:
-      case OBJECT:
-        return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
-      default:
-        throw new IllegalArgumentException(
-            dataTypes.get(columnIndex) + StorageEngineMessages.IS_NOT_SUPPORTED);
-    }
+    return TypeServices.StorageEngine.ARRAY_VALUE_GETTER_SERVICE
+        .call(Type.fromTsDataType(dataTypes.get(columnIndex)))
+        .get(columnValues.get(arrayIndex), elementIndex);
   }
 
   /**
@@ -1007,45 +970,7 @@ public abstract class AlignedTVList extends TVList {
     if (value == null) {
       return null;
     }
-    switch (type) {
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] valueT = (Binary[]) value;
-        Binary[] cloneT = new Binary[valueT.length];
-        System.arraycopy(valueT, 0, cloneT, 0, valueT.length);
-        return cloneT;
-      case FLOAT:
-        float[] valueF = (float[]) value;
-        float[] cloneF = new float[valueF.length];
-        System.arraycopy(valueF, 0, cloneF, 0, valueF.length);
-        return cloneF;
-      case INT32:
-      case DATE:
-        int[] valueI = (int[]) value;
-        int[] cloneI = new int[valueI.length];
-        System.arraycopy(valueI, 0, cloneI, 0, valueI.length);
-        return cloneI;
-      case INT64:
-      case TIMESTAMP:
-        long[] valueL = (long[]) value;
-        long[] cloneL = new long[valueL.length];
-        System.arraycopy(valueL, 0, cloneL, 0, valueL.length);
-        return cloneL;
-      case DOUBLE:
-        double[] valueD = (double[]) value;
-        double[] cloneD = new double[valueD.length];
-        System.arraycopy(valueD, 0, cloneD, 0, valueD.length);
-        return cloneD;
-      case BOOLEAN:
-        boolean[] valueB = (boolean[]) value;
-        boolean[] cloneB = new boolean[valueB.length];
-        System.arraycopy(valueB, 0, cloneB, 0, valueB.length);
-        return cloneB;
-      default:
-        return null;
-    }
+    return Type.fromTsDataType(type).arrayCopyOf(value, Array.getLength(value));
   }
 
   /*
@@ -1354,45 +1279,18 @@ public abstract class AlignedTVList extends TVList {
       if (value[i] == null || !containsNonNullValue(bitMaps, results, i, idx, remaining)) {
         continue;
       }
-      Object valueArray = getOrCreateValueArray(i, arrayIndex, elementIndex);
-      switch (dataTypes.get(i)) {
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          Binary[] arrayT = (Binary[]) valueArray;
-          System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
+      Object targetArray = getOrCreateValueArray(i, arrayIndex, elementIndex);
+      System.arraycopy(value[i], idx, targetArray, elementIndex, remaining);
 
-          // update raw size of Text chunk
-          for (int i1 = 0; i1 < remaining; i1++) {
-            memoryBinaryChunkSize[i] +=
-                arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
-          }
-          break;
-        case FLOAT:
-          float[] arrayF = (float[]) valueArray;
-          System.arraycopy(value[i], idx, arrayF, elementIndex, remaining);
-          break;
-        case INT32:
-        case DATE:
-          int[] arrayI = (int[]) valueArray;
-          System.arraycopy(value[i], idx, arrayI, elementIndex, remaining);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long[] arrayL = (long[]) valueArray;
-          System.arraycopy(value[i], idx, arrayL, elementIndex, remaining);
-          break;
-        case DOUBLE:
-          double[] arrayD = (double[]) valueArray;
-          System.arraycopy(value[i], idx, arrayD, elementIndex, remaining);
-          break;
-        case BOOLEAN:
-          boolean[] arrayB = (boolean[]) valueArray;
-          System.arraycopy(value[i], idx, arrayB, elementIndex, remaining);
-          break;
-        default:
-          break;
+      if (dataTypes.get(i).isBinary()) {
+        Binary[] binaryValues = (Binary[]) targetArray;
+        // update raw size of Text chunk
+        for (int valueIndex = 0; valueIndex < remaining; valueIndex++) {
+          memoryBinaryChunkSize[i] +=
+              binaryValues[elementIndex + valueIndex] != null
+                  ? getBinarySize(binaryValues[elementIndex + valueIndex])
+                  : 0;
+        }
       }
     }
   }
@@ -1821,6 +1719,9 @@ public abstract class AlignedTVList extends TVList {
         lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
       }
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
+      TypeServices.ArrayValueColumnWriter valueWriter =
+          TypeServices.StorageEngine.ARRAY_VALUE_COLUMN_WRITER_SERVICE.call(
+              Type.fromTsDataType(dataTypes.get(columnIndex)));
       currentWriteRowIndex = 0;
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
         // skip empty row
@@ -1863,48 +1764,14 @@ public abstract class AlignedTVList extends TVList {
           continue;
         }
         hasAnyNonNullValue[currentWriteRowIndex++] = true;
-        switch (dataTypes.get(columnIndex)) {
-          case BOOLEAN:
-            valueBuilder.writeBoolean(getBooleanByValueIndex(originRowIndex, columnIndex));
-            break;
-          case INT32:
-            valueBuilder.writeInt(getIntByValueIndex(originRowIndex, columnIndex));
-            break;
-          case DATE:
-            if (valueBuilder instanceof BinaryColumnBuilder) {
-              ((BinaryColumnBuilder) valueBuilder)
-                  .writeDate(getIntByValueIndex(originRowIndex, columnIndex));
-            } else {
-              valueBuilder.writeInt(getIntByValueIndex(originRowIndex, columnIndex));
-            }
-            break;
-          case INT64:
-          case TIMESTAMP:
-            valueBuilder.writeLong(getLongByValueIndex(originRowIndex, columnIndex));
-            break;
-          case FLOAT:
-            valueBuilder.writeFloat(
-                roundValueWithGivenPrecision(
-                    getFloatByValueIndex(originRowIndex, columnIndex),
-                    floatPrecision,
-                    encodingList.get(columnIndex)));
-            break;
-          case DOUBLE:
-            valueBuilder.writeDouble(
-                roundValueWithGivenPrecision(
-                    getDoubleByValueIndex(originRowIndex, columnIndex),
-                    floatPrecision,
-                    encodingList.get(columnIndex)));
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            valueBuilder.writeBinary(getBinaryByValueIndex(originRowIndex, columnIndex));
-            break;
-          default:
-            break;
-        }
+        int arrayIndex = originRowIndex / ARRAY_SIZE;
+        int elementIndex = originRowIndex % ARRAY_SIZE;
+        valueWriter.write(
+            valueBuilder,
+            values.get(columnIndex).get(arrayIndex),
+            elementIndex,
+            floatPrecision,
+            encodingList.get(columnIndex));
       }
     }
     builder.declarePositions(validRowCount);
@@ -1973,41 +1840,11 @@ public abstract class AlignedTVList extends TVList {
     size += rowCount * Long.BYTES;
     // value
     for (int columnIndex = 0; columnIndex < values.size(); ++columnIndex) {
-      switch (dataTypes.get(columnIndex)) {
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-            int arrayIndex = rowIdx / ARRAY_SIZE;
-            Object valueArray = values.get(columnIndex).get(arrayIndex);
-            Binary value =
-                valueArray == null
-                    ? Binary.EMPTY_VALUE
-                    : ((Binary[]) valueArray)[rowIdx % ARRAY_SIZE];
-            size += ReadWriteIOUtils.sizeToWrite(value == null ? Binary.EMPTY_VALUE : value);
-          }
-          break;
-        case FLOAT:
-          size += rowCount * Float.BYTES;
-          break;
-        case INT32:
-        case DATE:
-          size += rowCount * Integer.BYTES;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          size += rowCount * Long.BYTES;
-          break;
-        case DOUBLE:
-          size += rowCount * Double.BYTES;
-          break;
-        case BOOLEAN:
-          size += rowCount * Byte.BYTES;
-          break;
-        default:
-          throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-      }
+      Type type = Type.fromTsDataType(dataTypes.get(columnIndex));
+      size +=
+          TypeServices.StorageEngine.SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE
+              .call(type)
+              .calculate(values.get(columnIndex), rowCount, ARRAY_SIZE);
     }
     // bitmap
     size += rowCount * dataTypes.size() * Byte.BYTES;
@@ -2035,56 +1872,16 @@ public abstract class AlignedTVList extends TVList {
     }
     // serialize value and bitmap by column
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
+      TypeServices.WALColumnWriter valueWriter =
+          TypeServices.StorageEngine.WAL_ARRAY_WRITER_SERVICE.call(
+              Type.fromTsDataType(dataTypes.get(columnIndex)));
       List<Object> columnValues = values.get(columnIndex);
       for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
         int arrayIndex = rowIndex / ARRAY_SIZE;
         int elementIndex = rowIndex % ARRAY_SIZE;
         Object valueArray = columnValues.get(arrayIndex);
         // value
-        switch (dataTypes.get(columnIndex)) {
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            Binary valueT =
-                valueArray == null ? Binary.EMPTY_VALUE : ((Binary[]) valueArray)[elementIndex];
-            // In some scenario, the Binary in AlignedTVList will be null if this field is empty in
-            // current row. We need to handle this scenario to get rid of NPE. See the similar issue
-            // here: https://github.com/apache/iotdb/pull/9884
-            // Furthermore, we use an empty Binary as a placeholder here. It won't lead to data
-            // error because whether this field is null or not is decided by the bitMap rather than
-            // the object's value here.
-            if (valueT != null) {
-              WALWriteUtils.write(valueT, buffer);
-            } else {
-              WALWriteUtils.write(Binary.EMPTY_VALUE, buffer);
-            }
-            break;
-          case FLOAT:
-            float valueF = valueArray == null ? 0 : ((float[]) valueArray)[elementIndex];
-            buffer.putFloat(valueF);
-            break;
-          case INT32:
-          case DATE:
-            int valueI = valueArray == null ? 0 : ((int[]) valueArray)[elementIndex];
-            buffer.putInt(valueI);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            long valueL = valueArray == null ? 0 : ((long[]) valueArray)[elementIndex];
-            buffer.putLong(valueL);
-            break;
-          case DOUBLE:
-            double valueD = valueArray == null ? 0 : ((double[]) valueArray)[elementIndex];
-            buffer.putDouble(valueD);
-            break;
-          case BOOLEAN:
-            boolean valueB = valueArray != null && ((boolean[]) valueArray)[elementIndex];
-            WALWriteUtils.write(valueB, buffer);
-            break;
-          default:
-            throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-        }
+        valueWriter.write(valueArray, buffer, elementIndex, elementIndex + 1);
         // bitmap
         WALWriteUtils.write(isNullValue(rowIndex, columnIndex), buffer);
       }
@@ -2121,76 +1918,17 @@ public abstract class AlignedTVList extends TVList {
     Object[] values = new Object[dataTypeNum];
     BitMap[] bitMaps = new BitMap[dataTypeNum];
     for (int columnIndex = 0; columnIndex < dataTypeNum; ++columnIndex) {
-      BitMap bitMap = BitMap.createBitMapDynamically(rowCount);
-      Object valuesOfOneColumn;
-      switch (dataTypes.get(columnIndex)) {
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          Binary[] binaryValues = new Binary[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            binaryValues[rowIndex] = ReadWriteIOUtils.readBinary(stream);
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = binaryValues;
-          break;
-        case FLOAT:
-          float[] floatValues = new float[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            floatValues[rowIndex] = stream.readFloat();
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = floatValues;
-          break;
-        case INT32:
-        case DATE:
-          int[] intValues = new int[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            intValues[rowIndex] = stream.readInt();
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = intValues;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long[] longValues = new long[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            longValues[rowIndex] = stream.readLong();
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = longValues;
-          break;
-        case DOUBLE:
-          double[] doubleValues = new double[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            doubleValues[rowIndex] = stream.readDouble();
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = doubleValues;
-          break;
-        case BOOLEAN:
-          boolean[] booleanValues = new boolean[rowCount];
-          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-            booleanValues[rowIndex] = ReadWriteIOUtils.readBool(stream);
-            if (ReadWriteIOUtils.readBool(stream)) {
-              bitMap.mark(rowIndex);
-            }
-          }
-          valuesOfOneColumn = booleanValues;
-          break;
-        default:
-          throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+      BitMap bitMap = new BitMap(rowCount);
+      Type type = Type.fromTsDataType(dataTypes.get(columnIndex));
+      Object valuesOfOneColumn =
+          TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.call(type).apply(rowCount);
+      TypeServices.DecodedArrayValueReader valueReader =
+          TypeServices.StorageEngine.DECODED_ARRAY_VALUE_READER_SERVICE.call(type);
+      for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+        valueReader.read(valuesOfOneColumn, rowIndex, stream);
+        if (ReadWriteIOUtils.readBool(stream)) {
+          bitMap.mark(rowIndex);
+        }
       }
       values[columnIndex] = valuesOfOneColumn;
       bitMaps[columnIndex] = bitMap;
@@ -2365,6 +2103,7 @@ public abstract class AlignedTVList extends TVList {
     private final int floatPrecision;
     private final List<TSEncoding> encodingList;
     private final boolean ignoreAllNullRows;
+    private final List<TypeServices.AlignedTVListChunkWriter> chunkValueWriters;
 
     // remember the selected index of last not-null value for each column during prepareNext phase
     private final int[] selectedIndices;
@@ -2406,6 +2145,13 @@ public abstract class AlignedTVList extends TVList {
       this.timeColumnDeletion = timeColumnDeletion;
       this.valueColumnsDeletionList = valueColumnsDeletionList;
       this.ignoreAllNullRows = ignoreAllNullRows;
+      this.chunkValueWriters =
+          dataTypeList.stream()
+              .map(
+                  dataType ->
+                      TypeServices.StorageEngine.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
+                          Type.fromTsDataType(dataType)))
+              .collect(Collectors.toList());
       this.selectedIndices = new int[dataTypeList.size()];
       timeDeleteCursor[0] =
           (timeColumnDeletion == null || scanOrder.isAscending())
@@ -2544,7 +2290,7 @@ public abstract class AlignedTVList extends TVList {
       TimeValuePair tvPair =
           new TimeValuePair(
               getTime(getScanOrderIndex(index)),
-              TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
+              Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector));
 
       next();
       return tvPair;
@@ -2560,7 +2306,8 @@ public abstract class AlignedTVList extends TVList {
         vector[columnIndex] = getPrimitiveTypeObject(selectedIndices[columnIndex], columnIndex);
       }
       return new TimeValuePair(
-          getTime(getScanOrderIndex(index)), TsPrimitiveType.getByType(TSDataType.VECTOR, vector));
+          getTime(getScanOrderIndex(index)),
+          Type.fromTsDataType(TSDataType.VECTOR).getTsPrimitiveType(vector));
     }
 
     public TsPrimitiveType getPrimitiveTypeObject(int rowIndex, int columnIndex) {
@@ -2576,46 +2323,20 @@ public abstract class AlignedTVList extends TVList {
       if (outer.isNullValue(valueIndex, validColumnIndex)) {
         return null;
       }
-      switch (dataTypeList.get(columnIndex)) {
-        case BOOLEAN:
-          return TsPrimitiveType.getByType(
-              TSDataType.BOOLEAN, getBooleanByValueIndex(valueIndex, validColumnIndex));
-        case INT32:
-          return TsPrimitiveType.getByType(
-              TSDataType.INT32, getIntByValueIndex(valueIndex, validColumnIndex));
-        case DATE:
-          return TsPrimitiveType.getByType(
-              TSDataType.DATE, getIntByValueIndex(valueIndex, validColumnIndex));
-        case INT64:
-        case TIMESTAMP:
-          return TsPrimitiveType.getByType(
-              TSDataType.INT64, getLongByValueIndex(valueIndex, validColumnIndex));
-        case FLOAT:
-          float valueF = getFloatByValueIndex(valueIndex, validColumnIndex);
-          if (encodingList != null) {
-            valueF =
-                roundValueWithGivenPrecision(valueF, floatPrecision, encodingList.get(columnIndex));
-          }
-          return TsPrimitiveType.getByType(TSDataType.FLOAT, valueF);
-        case DOUBLE:
-          double valueD = getDoubleByValueIndex(valueIndex, validColumnIndex);
-          if (encodingList != null) {
-            valueD =
-                roundValueWithGivenPrecision(valueD, floatPrecision, encodingList.get(columnIndex));
-          }
-          return TsPrimitiveType.getByType(TSDataType.DOUBLE, valueD);
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          return TsPrimitiveType.getByType(
-              TSDataType.TEXT, getBinaryByValueIndex(valueIndex, validColumnIndex));
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                  dataTypeList.get(columnIndex)));
-      }
+      TSDataType sourceDataType = dataTypes.get(validColumnIndex);
+      TSDataType targetDataType = dataTypeList.get(columnIndex);
+      Type resultType =
+          targetDataType == TSDataType.DATE
+              ? Type.fromTsDataType(targetDataType)
+              : getPhysicalType(targetDataType);
+      return getPrimitiveTypeByValueIndex(
+          valueIndex,
+          validColumnIndex,
+          resultType,
+          sourceDataType,
+          targetDataType,
+          floatPrecision,
+          encodingList == null ? null : encodingList.get(columnIndex));
     }
 
     @Override
@@ -2737,6 +2458,11 @@ public abstract class AlignedTVList extends TVList {
           lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
         }
         ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
+        TypeServices.ArrayValueColumnWriter valueWriter =
+            validColumnIndex < 0 || validColumnIndex >= dataTypes.size()
+                ? null
+                : TypeServices.StorageEngine.ARRAY_VALUE_COLUMN_WRITER_SERVICE.call(
+                    Type.fromTsDataType(dataTypes.get(validColumnIndex)));
         currentWriteRowIndex = 0;
         for (int sortedRowIndex = startIndex; sortedRowIndex < index; sortedRowIndex++) {
           // skip invalid rows
@@ -2811,7 +2537,7 @@ public abstract class AlignedTVList extends TVList {
             continue;
           }
           hasAnyNonNullValue[currentWriteRowIndex++] = true;
-          writeToColumn(validColumnIndex, valueBuilder, originRowIndex, columnIndex);
+          writeToColumn(validColumnIndex, valueBuilder, originRowIndex, columnIndex, valueWriter);
         }
       }
       builder.declarePositions(validRowCount);
@@ -2848,51 +2574,40 @@ public abstract class AlignedTVList extends TVList {
     }
 
     private void writeToColumn(
-        int validColumnIndex, ColumnBuilder valueBuilder, int originRowIndex, int columnIndex) {
-      switch (dataTypes.get(validColumnIndex)) {
-        case BOOLEAN:
-          valueBuilder.writeBoolean(getBooleanByValueIndex(originRowIndex, validColumnIndex));
-          break;
-        case INT32:
-          valueBuilder.writeInt(getIntByValueIndex(originRowIndex, validColumnIndex));
-          break;
-        case DATE:
-          if (valueBuilder instanceof BinaryColumnBuilder) {
-            ((BinaryColumnBuilder) valueBuilder)
-                .writeDate(getIntByValueIndex(originRowIndex, validColumnIndex));
-          } else {
-            valueBuilder.writeInt(getIntByValueIndex(originRowIndex, validColumnIndex));
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          valueBuilder.writeLong(getLongByValueIndex(originRowIndex, validColumnIndex));
-          break;
-        case FLOAT:
-          float valueF = getFloatByValueIndex(originRowIndex, validColumnIndex);
-          if (encodingList != null) {
-            valueF =
-                roundValueWithGivenPrecision(valueF, floatPrecision, encodingList.get(columnIndex));
-          }
-          valueBuilder.writeFloat(valueF);
-          break;
-        case DOUBLE:
-          double valueD = getDoubleByValueIndex(originRowIndex, validColumnIndex);
-          if (encodingList != null) {
-            valueD =
-                roundValueWithGivenPrecision(valueD, floatPrecision, encodingList.get(columnIndex));
-          }
-          valueBuilder.writeDouble(valueD);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          valueBuilder.writeBinary(getBinaryByValueIndex(originRowIndex, validColumnIndex));
-          break;
-        default:
-          break;
+        int validColumnIndex,
+        ColumnBuilder valueBuilder,
+        int originRowIndex,
+        int columnIndex,
+        TypeServices.ArrayValueColumnWriter valueWriter) {
+      int arrayIndex = originRowIndex / ARRAY_SIZE;
+      int elementIndex = originRowIndex % ARRAY_SIZE;
+      TSDataType sourceDataType = dataTypes.get(validColumnIndex);
+      TSDataType targetDataType = dataTypeList.get(columnIndex);
+      TSEncoding encoding = encodingList == null ? null : encodingList.get(columnIndex);
+      if (sourceDataType == targetDataType) {
+        valueWriter.write(
+            valueBuilder,
+            values.get(validColumnIndex).get(arrayIndex),
+            elementIndex,
+            floatPrecision,
+            encoding);
+        return;
       }
+
+      Type resultType =
+          targetDataType == TSDataType.DATE
+              ? Type.fromTsDataType(targetDataType)
+              : getPhysicalType(targetDataType);
+      TsPrimitiveType value =
+          getPrimitiveTypeByValueIndex(
+              originRowIndex,
+              validColumnIndex,
+              resultType,
+              sourceDataType,
+              targetDataType,
+              floatPrecision,
+              encoding);
+      Type.fromTsDataType(targetDataType).write(valueBuilder, value);
     }
 
     private TsBlock reBuildTsBlock(
@@ -3044,47 +2759,9 @@ public abstract class AlignedTVList extends TVList {
           }
 
           boolean isNull = outer.isNullValue(originRowIndex, validColumnIndex);
-          switch (dataTypeList.get(columnIndex)) {
-            case BOOLEAN:
-              valueChunkWriter.write(
-                  time,
-                  !isNull && getBooleanByValueIndex(originRowIndex, validColumnIndex),
-                  isNull);
-              break;
-            case INT32:
-            case DATE:
-              valueChunkWriter.write(
-                  time, isNull ? 0 : getIntByValueIndex(originRowIndex, validColumnIndex), isNull);
-              break;
-            case INT64:
-            case TIMESTAMP:
-              valueChunkWriter.write(
-                  time, isNull ? 0 : getLongByValueIndex(originRowIndex, validColumnIndex), isNull);
-              break;
-            case FLOAT:
-              valueChunkWriter.write(
-                  time,
-                  isNull ? 0 : getFloatByValueIndex(originRowIndex, validColumnIndex),
-                  isNull);
-              break;
-            case DOUBLE:
-              valueChunkWriter.write(
-                  time,
-                  isNull ? 0 : getDoubleByValueIndex(originRowIndex, validColumnIndex),
-                  isNull);
-              break;
-            case TEXT:
-            case BLOB:
-            case STRING:
-            case OBJECT:
-              valueChunkWriter.write(
-                  time,
-                  isNull ? null : getBinaryByValueIndex(originRowIndex, validColumnIndex),
-                  isNull);
-              break;
-            default:
-              break;
-          }
+          chunkValueWriters
+              .get(columnIndex)
+              .write(valueChunkWriter, time, outer, originRowIndex, validColumnIndex, isNull);
         }
       }
       probeNext = false;

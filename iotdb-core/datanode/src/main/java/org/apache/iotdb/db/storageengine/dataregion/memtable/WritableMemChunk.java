@@ -24,10 +24,10 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.MemPointIteratorFactory;
@@ -38,6 +38,7 @@ import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -45,8 +46,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -55,8 +54,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 
-import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
-
 public class WritableMemChunk extends AbstractWritableMemChunk {
 
   private IMeasurementSchema schema;
@@ -64,9 +61,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   private TVList list;
   private List<TVList> sortedList;
   private long sortedRowCount = 0;
+  private TypeServices.TVListObjectWriter rowWriter;
   private static final String UNSUPPORTED_TYPE = DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE;
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final int TVLIST_SORT_THRESHOLD = CONFIG.getTvListSortThreshold();
@@ -78,6 +74,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     this.schema = schema;
     this.list = TVList.newList(schema.getType());
     this.sortedList = new ArrayList<>();
+    this.rowWriter =
+        TypeServices.StorageEngine.TV_LIST_OBJECT_WRITER_SERVICE.call(
+            Type.fromTsDataType(schema.getType()));
     this.encryptParameter = EncryptUtils.getEncryptParameter();
   }
 
@@ -85,6 +84,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     this.schema = schema;
     this.list = TVList.newList(schema.getType());
     this.sortedList = new ArrayList<>();
+    this.rowWriter =
+        TypeServices.StorageEngine.TV_LIST_OBJECT_WRITER_SERVICE.call(
+            Type.fromTsDataType(schema.getType()));
     this.encryptParameter = encryptParameter;
   }
 
@@ -103,32 +105,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public void writeNonAlignedPoint(long insertTime, Object objectValue) {
-    switch (schema.getType()) {
-      case BOOLEAN:
-        putBoolean(insertTime, (boolean) objectValue);
-        break;
-      case INT32:
-      case DATE:
-        putInt(insertTime, (int) objectValue);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        putLong(insertTime, (long) objectValue);
-        break;
-      case FLOAT:
-        putFloat(insertTime, (float) objectValue);
-        break;
-      case DOUBLE:
-        putDouble(insertTime, (double) objectValue);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        putBinary(insertTime, (Binary) objectValue);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType().name());
-    }
+    rowWriter.write(list, insertTime, objectValue);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverTvList();
     }
@@ -143,39 +120,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   @Override
   public void writeNonAlignedTablet(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        putBooleans(times, boolValues, bitMap, start, end);
-        break;
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) valueList;
-        putInts(times, intValues, bitMap, start, end);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) valueList;
-        putLongs(times, longValues, bitMap, start, end);
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        putFloats(times, floatValues, bitMap, start, end);
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        putDoubles(times, doubleValues, bitMap, start, end);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        putBinaries(times, binaryValues, bitMap, start, end);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType.name());
-    }
+    TypeServices.StorageEngine.TV_LIST_ARRAY_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(list, times, valueList, bitMap, start, end);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverTvList();
     }
@@ -388,6 +335,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
     TSDataType tsDataType = schema.getType();
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
+    TypeServices.TVListChunkWriter valueWriter =
+        TypeServices.StorageEngine.TV_LIST_CHUNK_WRITER_SERVICE.call(
+            Type.fromTsDataType(tsDataType));
     long dataSizeInCurrentChunk = 0;
     int pointNumInCurrentChunk = 0;
     for (int sortedRowIndex = 0;
@@ -410,40 +360,8 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
         chunkWriterImpl.setLastPoint(true);
       }
 
-      switch (tsDataType) {
-        case BOOLEAN:
-          chunkWriterImpl.write(time, workingListForFlush.getBoolean(sortedRowIndex));
-          dataSizeInCurrentChunk += 8L + 1L;
-          break;
-        case INT32:
-        case DATE:
-          chunkWriterImpl.write(time, workingListForFlush.getInt(sortedRowIndex));
-          dataSizeInCurrentChunk += 8L + 4L;
-          break;
-        case INT64:
-        case TIMESTAMP:
-          chunkWriterImpl.write(time, workingListForFlush.getLong(sortedRowIndex));
-          dataSizeInCurrentChunk += 8L + 8L;
-          break;
-        case FLOAT:
-          chunkWriterImpl.write(time, workingListForFlush.getFloat(sortedRowIndex));
-          dataSizeInCurrentChunk += 8L + 4L;
-          break;
-        case DOUBLE:
-          chunkWriterImpl.write(time, workingListForFlush.getDouble(sortedRowIndex));
-          dataSizeInCurrentChunk += 8L + 8L;
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          Binary value = workingListForFlush.getBinary(sortedRowIndex);
-          chunkWriterImpl.write(time, value);
-          dataSizeInCurrentChunk += 8L + getBinarySize(value);
-          break;
-        default:
-          LOGGER.error(StorageEngineMessages.WRITABLE_MEM_CHUNK_UNSUPPORTED_TYPE, tsDataType);
-          break;
-      }
+      dataSizeInCurrentChunk +=
+          valueWriter.write(chunkWriterImpl, time, workingListForFlush, sortedRowIndex);
       pointNumInCurrentChunk++;
       if (pointNumInCurrentChunk > maxNumberOfPointsInChunk
           || dataSizeInCurrentChunk > targetChunkSize) {
@@ -548,6 +466,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   public static WritableMemChunk deserialize(DataInputStream stream) throws IOException {
     WritableMemChunk memChunk = new WritableMemChunk();
     memChunk.schema = MeasurementSchema.deserializeFrom(stream);
+    memChunk.rowWriter =
+        TypeServices.StorageEngine.TV_LIST_OBJECT_WRITER_SERVICE.call(
+            Type.fromTsDataType(memChunk.schema.getType()));
     int sortedListSize = stream.readInt();
     memChunk.sortedList = new ArrayList<>();
     for (int i = 0; i < sortedListSize; i++) {
@@ -562,6 +483,9 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
       throws IOException {
     WritableMemChunk memChunk = new WritableMemChunk();
     memChunk.schema = MeasurementSchema.deserializeFrom(stream);
+    memChunk.rowWriter =
+        TypeServices.StorageEngine.TV_LIST_OBJECT_WRITER_SERVICE.call(
+            Type.fromTsDataType(memChunk.schema.getType()));
     memChunk.list = TVList.deserialize(stream);
     return memChunk;
   }

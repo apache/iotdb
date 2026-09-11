@@ -34,82 +34,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return false;
   }
 
-  // Don't break in advance
   @Override
-  protected void addIntInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateIntFirstValue(column[1].getInt(i), column[0].getLong(i));
-      }
-    }
-  }
-
-  @Override
-  protected void addLongInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateLongFirstValue(column[1].getLong(i), column[0].getLong(i));
-      }
-    }
-  }
-
-  @Override
-  protected void addFloatInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateFloatFirstValue(column[1].getFloat(i), column[0].getLong(i));
-      }
-    }
-  }
-
-  @Override
-  protected void addDoubleInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateDoubleFirstValue(column[1].getDouble(i), column[0].getLong(i));
-      }
-    }
-  }
-
-  @Override
-  protected void addBooleanInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateBooleanFirstValue(column[1].getBoolean(i), column[0].getLong(i));
-      }
-    }
-  }
-
-  @Override
-  protected void addBinaryInput(Column[] column, BitMap bitMap) {
-    int count = column[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!column[1].isNull(i)) {
-        updateBinaryFirstValue(column[1].getBinary(i), column[0].getLong(i));
-      }
-    }
+  public void addInput(final Column[] columns, final BitMap bitMap) {
+    // Do not stop after the first value because the input is in descending time order.
+    addInputWithStrategy(columns, bitMap, false, true);
   }
 }

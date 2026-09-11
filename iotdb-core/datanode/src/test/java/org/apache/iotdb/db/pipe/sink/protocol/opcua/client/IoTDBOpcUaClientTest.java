@@ -25,8 +25,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -286,7 +286,8 @@ public class IoTDBOpcUaClientTest {
       final String measurement, final long timestamp, final long value) {
     return new Pair<>(
         new MeasurementSchema(measurement, TSDataType.INT64),
-        new TimeValuePair(timestamp, TsPrimitiveType.getByType(TSDataType.INT64, value)));
+        new TimeValuePair(
+            timestamp, Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(value)));
   }
 
   private static ArgumentMatcher<List<NodeId>> nodeIds(final String... identifiers) {

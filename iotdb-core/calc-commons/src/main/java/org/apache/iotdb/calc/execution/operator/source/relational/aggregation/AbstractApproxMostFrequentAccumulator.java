@@ -53,7 +53,7 @@ public abstract class AbstractApproxMostFrequentAccumulator<T> implements TableA
   @Override
   public void addStatistics(Statistics[] statistics) {
     throw new UnsupportedOperationException(
-        CalcMessages.EXCEPTION_APPROXMOSTFREQUENTACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS_DB1E218B);
+        CalcMessages.APPROX_MOST_FREQUENT_ACCUMULATOR_DOES_NOT_SUPPORT_STATISTICS);
   }
 
   @Override

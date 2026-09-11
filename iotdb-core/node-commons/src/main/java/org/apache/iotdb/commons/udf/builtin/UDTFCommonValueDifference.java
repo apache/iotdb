@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -32,44 +30,6 @@ public class UDTFCommonValueDifference extends UDTFValueDifference {
   @Override
   protected void doTransform(Row row, PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
-    long time = row.getTime();
-    switch (dataType) {
-      case INT32:
-        int currentInt = row.getInt(0);
-        collector.putInt(time, currentInt - previousInt);
-        previousInt = currentInt;
-        break;
-      case INT64:
-        long currentLong = row.getLong(0);
-        collector.putLong(time, currentLong - previousLong);
-        previousLong = currentLong;
-        break;
-      case FLOAT:
-        float currentFloat = row.getFloat(0);
-        collector.putFloat(time, currentFloat - previousFloat);
-        previousFloat = currentFloat;
-        break;
-      case DOUBLE:
-        double currentDouble = row.getDouble(0);
-        collector.putDouble(time, currentDouble - previousDouble);
-        previousDouble = currentDouble;
-        break;
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case TIMESTAMP:
-      case TEXT:
-      case BOOLEAN:
-      case DATE:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    valueDifferenceOperator.apply(this, row.getTime(), row, collector);
   }
 }

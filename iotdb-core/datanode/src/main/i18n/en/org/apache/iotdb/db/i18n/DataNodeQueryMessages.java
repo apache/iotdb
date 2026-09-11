@@ -531,6 +531,18 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP does not support REGEXP/NOT REGEXP";
   public static final String GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER =
       "GroupByTime filter cannot exist in value filter.";
+  public static final String EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC =
+      "\"%s\" cannot be cast to [%s]";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348 =
+      "Unsupported data type %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXBY_MINBY_ARG_DD30FAB1 =
+      "Unsupported data type in MaxBy/MinBy: %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_ARG_77E085EB =
+      "Unsupported data type in equal event aggregation : %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_ARG_3D0F0388 =
+      "Unsupported data type in variation event aggregation : %s";
+  public static final String EXCEPTION_TIMESTAMP_IN_LIST_LITERAL_CAN_ONLY_BE_LONGLITERAL_DOUBLELITERAL_OR_GENERICLITERAL_ACTUAL_TYPE_ARG_D751BE79 =
+      "TIMESTAMP IN-list literal can only be LongLiteral, DoubleLiteral, or GenericLiteral; actual type: %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL can be pushed down";
   public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
@@ -1023,6 +1035,8 @@ public final class DataNodeQueryMessages {
       "Unexpected expression: ";
   public static final String FAILED_TO_FETCH_SUBQUERY_RESULT =
       "Failed to Fetch Subquery Result.";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_ARG_D58CBB00 =
+      "Unsupported data type for scalar subquery result: %s";
 
   // --- Plan / Relational / Planner / Iterative ---
 
@@ -1396,6 +1410,8 @@ public final class DataNodeQueryMessages {
       "Error occurred during getting UDF access strategy";
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils should not be instantiated.";
+  public static final String EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_61F4E273 =
+      "The data type of the state window strategy is not valid.";
 
   // --- Execution / Exchange (additional) ---
 
