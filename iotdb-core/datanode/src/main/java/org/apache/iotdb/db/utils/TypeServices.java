@@ -2725,6 +2725,41 @@ public class TypeServices {
                       .setChecked(true);
             };
 
+    public static final TypeService<SourceColumnToTabletValueWriter>
+        SOURCE_COLUMN_TO_TABLET_VALUE_WRITER_SERVICE =
+            type ->
+                switch (type.getTypeEnum()) {
+                  case BOOLEAN ->
+                      (sourceType, sourceColumn, sourceIndex, targetColumn, targetIndex) ->
+                          ((boolean[]) targetColumn)[targetIndex] =
+                              sourceType.getBoolean(sourceColumn, sourceIndex);
+                  case INT32, DATE ->
+                      (sourceType, sourceColumn, sourceIndex, targetColumn, targetIndex) ->
+                          ((int[]) targetColumn)[targetIndex] =
+                              sourceType.getInt(sourceColumn, sourceIndex);
+                  case INT64, TIMESTAMP ->
+                      (sourceType, sourceColumn, sourceIndex, targetColumn, targetIndex) ->
+                          ((long[]) targetColumn)[targetIndex] =
+                              sourceType.getLong(sourceColumn, sourceIndex);
+                  case FLOAT ->
+                      (sourceType, sourceColumn, sourceIndex, targetColumn, targetIndex) ->
+                          ((float[]) targetColumn)[targetIndex] =
+                              sourceType.getFloat(sourceColumn, sourceIndex);
+                  case DOUBLE ->
+                      (sourceType, sourceColumn, sourceIndex, targetColumn, targetIndex) ->
+                          ((double[]) targetColumn)[targetIndex] =
+                              sourceType.getDouble(sourceColumn, sourceIndex);
+                  case TEXT, BLOB, STRING ->
+                      (sourceType, sourceColumn, sourceIndex, targetColumn, targetIndex) ->
+                          ((Binary[]) targetColumn)[targetIndex] =
+                              sourceType.getBinary(sourceColumn, sourceIndex);
+                  case OBJECT, ROW, UNKNOWN, VECTOR ->
+                      (sourceType, sourceColumn, sourceIndex, targetColumn, targetIndex) -> {
+                        throw new UnSupportedDataTypeException(
+                            DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                      };
+                };
+
     public static final TypeService<IntFunction<Object>> TABLET_COLUMN_ALLOCATOR_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -2894,6 +2929,7 @@ public class TypeServices {
       VALUE_CHUNK_ARRAY_BATCH_WRITER_SERVICE.check();
       VALUE_CHUNK_ARRAY_BITMAP_WRITER_SERVICE.check();
       PRIMITIVE_ARRAY_ALLOCATOR_SERVICE.check();
+      SOURCE_COLUMN_TO_TABLET_VALUE_WRITER_SERVICE.check();
       TABLET_COLUMN_ALLOCATOR_SERVICE.check();
       EMPTY_TABLET_COLUMN_FACTORY_SERVICE.check();
       WINDOW_VALUE_ARRAY_BUILDER_SERVICE.check();
@@ -4163,6 +4199,16 @@ public class TypeServices {
   @FunctionalInterface
   public interface ArrayValueGetter {
     Object get(Object array, int index);
+  }
+
+  @FunctionalInterface
+  public interface SourceColumnToTabletValueWriter {
+    void write(
+        Type sourceType,
+        Column sourceColumn,
+        int sourceIndex,
+        Object targetColumn,
+        int targetIndex);
   }
 
   @FunctionalInterface

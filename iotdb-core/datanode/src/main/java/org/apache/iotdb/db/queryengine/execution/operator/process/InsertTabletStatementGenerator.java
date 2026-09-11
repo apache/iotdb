@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -71,7 +72,10 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     this.times = new long[rowLimit];
     this.columns = new Object[this.measurements.length];
     for (int i = 0; i < this.measurements.length; i++) {
-      columns[i] = Type.fromTsDataType(dataTypes[i]).createArray(rowLimit);
+      columns[i] =
+          TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+              .call(Type.fromTsDataType(dataTypes[i]))
+              .apply(rowLimit);
       if (dataTypes[i].isBinary()) {
         Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
       }
@@ -99,7 +103,12 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
       times = Arrays.copyOf(times, rowCount);
       for (int i = 0; i < columns.length; i++) {
         bitMaps[i] = bitMaps[i].getRegion(0, rowCount);
-        columns[i] = Type.fromTsDataType(dataTypes[i]).arrayCopyOf(columns[i], rowCount);
+        Object copiedColumn =
+            TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+                .call(Type.fromTsDataType(dataTypes[i]))
+                .apply(rowCount);
+        System.arraycopy(columns[i], 0, copiedColumn, 0, rowCount);
+        columns[i] = copiedColumn;
       }
     }
 
@@ -138,8 +147,14 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
   public abstract int processTsBlock(TsBlock tsBlock, int lastReadIndex);
 
   protected void processColumn(
-      Column valueColumn, Object columns, Type sourceTypeConvertor, int rowIndex) {
-    sourceTypeConvertor.setTo(valueColumn, rowIndex, columns, rowCount);
+      Column valueColumn,
+      Object columns,
+      TSDataType dataType,
+      Type sourceTypeConvertor,
+      int rowIndex) {
+    TypeServices.StorageEngine.SOURCE_COLUMN_TO_TABLET_VALUE_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(sourceTypeConvertor, valueColumn, rowIndex, columns, rowCount);
   }
 
   protected long sizeOf(Object[] arr, Class<?> clazz) {
