@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -60,7 +61,9 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
     super(pipeTaskMeta, sourceEvent);
     this.pattern = pattern;
 
-    if (insertNode instanceof RelationalInsertRowNode) {
+    if (insertNode instanceof RelationalInsertNumericRowNode numeric) {
+      parse(numeric);
+    } else if (insertNode instanceof RelationalInsertRowNode) {
       parse((RelationalInsertRowNode) insertNode);
     } else if (insertNode instanceof RelationalInsertTabletNode) {
       parse((RelationalInsertTabletNode) insertNode);

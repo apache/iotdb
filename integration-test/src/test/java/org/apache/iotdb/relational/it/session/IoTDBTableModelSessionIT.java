@@ -20,6 +20,7 @@
 package org.apache.iotdb.relational.it.session;
 
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.NumericRow;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -66,7 +67,7 @@ public class IoTDBTableModelSessionIT {
 
   @Test
   public void testNumericRowInsert() throws Exception {
-    // Exercise both table-session entry points, schema reordering and missing STRING columns.
+    // Exercise direct and pooled table sessions, schema reordering and missing STRING columns.
     // The same values must remain readable from MemTable and after flushing to TsFile.
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE numeric_rows");
@@ -94,16 +95,26 @@ public class IoTDBTableModelSessionIT {
         20260910,
         1234
       };
-      session.insert("readings", 1, names, types, values);
+      session.insert(
+          new NumericRow(
+              "readings",
+              1,
+              names,
+              types,
+              Collections.nCopies(types.size(), ColumnCategory.FIELD),
+              values,
+              new String[0]));
       try (ITableSessionPool pool = EnvFactory.getEnv().getTableSessionPool(1, "numeric_rows");
           ITableSession pooledSession = pool.getSession()) {
         pooledSession.insert(
-            "readings",
-            2,
-            names,
-            types,
-            Collections.nCopies(types.size(), ColumnCategory.FIELD),
-            values);
+            new NumericRow(
+                "readings",
+                2,
+                names,
+                types,
+                Collections.nCopies(types.size(), ColumnCategory.FIELD),
+                values,
+                new String[0]));
       }
       assertNumericRows(session);
       session.executeNonQueryStatement("FLUSH");
@@ -127,28 +138,44 @@ public class IoTDBTableModelSessionIT {
           Arrays.asList(
               ColumnCategory.FIELD, ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.TAG);
       session.insert(
-          "readings",
-          1,
-          names,
-          types,
-          categories,
-          new long[] {1, 10},
-          new String[] {"设备甲😀", "华北"});
+          new NumericRow(
+              "readings",
+              1,
+              names,
+              types,
+              categories,
+              new long[] {1, 10},
+              new String[] {"设备甲😀", "华北"}));
       try (ITableSessionPool pool = EnvFactory.getEnv().getTableSessionPool(1, "numeric_tag_rows");
           ITableSession pooled = pool.getSession()) {
         pooled.insert(
-            "readings",
-            1,
-            names,
-            types,
-            categories,
-            new long[] {0, 20},
-            new String[] {"设备乙", "华北"});
+            new NumericRow(
+                "readings",
+                1,
+                names,
+                types,
+                categories,
+                new long[] {0, 20},
+                new String[] {"设备乙", "华北"}));
       }
       session.insert(
-          "readings", 2, names, types, categories, new long[] {1, 30}, new String[] {"", null});
+          new NumericRow(
+              "readings",
+              2,
+              names,
+              types,
+              categories,
+              new long[] {1, 30},
+              new String[] {"", null}));
       session.insert(
-          "readings", 2, names, types, categories, new long[] {0, 40}, new String[] {null, null});
+          new NumericRow(
+              "readings",
+              2,
+              names,
+              types,
+              categories,
+              new long[] {0, 40},
+              new String[] {null, null}));
       assertNumericTagRows(session);
       session.executeNonQueryStatement("FLUSH");
       assertNumericTagRows(session);

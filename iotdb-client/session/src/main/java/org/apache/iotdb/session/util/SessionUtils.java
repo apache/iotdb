@@ -163,6 +163,80 @@ public class SessionUtils {
     return buffer;
   }
 
+  /** Encodes separate, densely packed FIELD and TAG arrays in the metadata column order. */
+  public static ByteBuffer getValueBuffer(
+      List<TSDataType> types,
+      long[] values,
+      List<String> measurements,
+      List<ColumnCategory> categories,
+      String[] tagValues)
+      throws IoTDBConnectionException {
+    if (types == null
+        || values == null
+        || measurements == null
+        || categories == null
+        || tagValues == null
+        || types.size() != measurements.size()
+        || types.size() != categories.size()) {
+      throw invalidNumericRowArguments();
+    }
+    int fieldCount = 0;
+    int tagCount = 0;
+    int length = types.size();
+    for (int i = 0; i < types.size(); i++) {
+      TSDataType type = types.get(i);
+      if (categories.get(i) == ColumnCategory.TAG && type == TSDataType.STRING) {
+        if (tagCount >= tagValues.length) {
+          throw invalidNumericRowArguments();
+        }
+        length += ReadWriteIOUtils.sizeToWrite(tagValues[tagCount++]);
+      } else if (categories.get(i) == ColumnCategory.FIELD && type != null) {
+        fieldCount++;
+        length +=
+            switch (type) {
+              case BOOLEAN -> Byte.BYTES;
+              case INT32, DATE, FLOAT -> Integer.BYTES;
+              case INT64, TIMESTAMP, DOUBLE -> Long.BYTES;
+              default -> throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + type);
+            };
+      } else {
+        throw new IllegalArgumentException(
+            SessionMessages
+                .EXCEPTION_NUMERIC_ROWS_SUPPORT_NUMERIC_FIELD_COLUMNS_AND_STRING_TAG_COLUMNS_ONLY_87159FFA);
+      }
+    }
+    if (fieldCount != values.length || tagCount != tagValues.length) {
+      throw invalidNumericRowArguments();
+    }
+    ByteBuffer buffer = ByteBuffer.allocate(length);
+    int fieldIndex = 0;
+    int tagIndex = 0;
+    for (int i = 0; i < types.size(); i++) {
+      TSDataType type = types.get(i);
+      ReadWriteIOUtils.write(type, buffer);
+      if (categories.get(i) == ColumnCategory.TAG) {
+        // A length of -1 represents a null TAG; an empty TAG has length zero.
+        ReadWriteIOUtils.write(tagValues[tagIndex++], buffer);
+      } else {
+        long value = values[fieldIndex++];
+        switch (type) {
+          case BOOLEAN -> buffer.put((byte) (value == 0 ? 0 : 1));
+          case INT32, DATE, FLOAT -> buffer.putInt((int) value);
+          case INT64, TIMESTAMP, DOUBLE -> buffer.putLong(value);
+          default -> throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + type);
+        }
+      }
+    }
+    buffer.flip();
+    return buffer;
+  }
+
+  private static IllegalArgumentException invalidNumericRowArguments() {
+    return new IllegalArgumentException(
+        SessionMessages
+            .EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233);
+  }
+
   public static int calculateLength(List<TSDataType> types, List<? extends Object> values)
       throws IoTDBConnectionException {
     int res = 0;

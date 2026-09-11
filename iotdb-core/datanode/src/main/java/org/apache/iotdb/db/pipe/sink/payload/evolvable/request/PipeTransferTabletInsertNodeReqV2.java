@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -56,7 +56,7 @@ public class PipeTransferTabletInsertNodeReqV2 extends PipeTransferTabletInsertN
 
   @Override
   public InsertBaseStatement constructStatement() {
-    if (!(insertNode instanceof InsertRowNode
+    if (!(insertNode instanceof AbstractInsertRowNode
         || insertNode instanceof InsertTabletNode
         || insertNode instanceof InsertRowsNode)) {
       throw new UnsupportedOperationException(

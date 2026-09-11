@@ -71,6 +71,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -229,6 +230,12 @@ public class RegionWriteExecutor {
       } else {
         return schemaRegionConsensus.write(groupId, planNode);
       }
+    }
+
+    @Override
+    public RegionExecutionResult visitRelationalInsertNumericRow(
+        final RelationalInsertNumericRowNode node, final WritePlanNodeExecutionContext context) {
+      return executeDataInsert(node, context);
     }
 
     @Override

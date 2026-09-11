@@ -28,6 +28,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -44,6 +45,156 @@ import java.util.List;
 import static org.junit.Assert.assertThrows;
 
 public class SessionUtilsTest {
+
+  @Test
+  public void testNumericRowEncodingPreservesRawBits() throws IoTDBConnectionException {
+    List<TSDataType> types =
+        Arrays.asList(
+            TSDataType.BOOLEAN,
+            TSDataType.BOOLEAN,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.DATE,
+            TSDataType.TIMESTAMP);
+    // Noncanonical NaN payloads must survive encoding without a float/double round trip.
+    long[] values = {
+      0,
+      -7,
+      Integer.MIN_VALUE,
+      Long.MIN_VALUE,
+      0x7fc01234,
+      0x7ff8000000001234L,
+      20260910,
+      Long.MAX_VALUE
+    };
+    ByteBuffer actual =
+        SessionUtils.getValueBuffer(
+            types,
+            values,
+            Collections.nCopies(8, "s"),
+            Collections.nCopies(8, ColumnCategory.FIELD),
+            new String[0]);
+    ByteBuffer expected = ByteBuffer.allocate(46);
+    expected.put(TSDataType.BOOLEAN.serialize()).put((byte) 0);
+    expected.put(TSDataType.BOOLEAN.serialize()).put((byte) 1);
+    expected.put(TSDataType.INT32.serialize()).putInt(Integer.MIN_VALUE);
+    expected.put(TSDataType.INT64.serialize()).putLong(Long.MIN_VALUE);
+    expected.put(TSDataType.FLOAT.serialize()).putInt(0x7fc01234);
+    expected.put(TSDataType.DOUBLE.serialize()).putLong(0x7ff8000000001234L);
+    expected.put(TSDataType.DATE.serialize()).putInt(20260910);
+    expected.put(TSDataType.TIMESTAMP.serialize()).putLong(Long.MAX_VALUE);
+    expected.flip();
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testNumericRowRejectsInvalidValues() {
+    // Reject mismatched lengths, null types and every unsupported type before encoding.
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SessionUtils.getValueBuffer(
+                Collections.singletonList(TSDataType.INT64),
+                new long[0],
+                Collections.singletonList("s"),
+                Collections.singletonList(ColumnCategory.FIELD),
+                new String[0]));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SessionUtils.getValueBuffer(
+                Collections.singletonList(null),
+                new long[] {1},
+                Collections.singletonList("s"),
+                Collections.singletonList(ColumnCategory.FIELD),
+                new String[0]));
+    for (TSDataType type :
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.STRING,
+            TSDataType.BLOB,
+            TSDataType.OBJECT,
+            TSDataType.VECTOR,
+            TSDataType.UNKNOWN)) {
+      assertThrows(
+          IoTDBConnectionException.class,
+          () ->
+              SessionUtils.getValueBuffer(
+                  Collections.singletonList(type),
+                  new long[] {1},
+                  Collections.singletonList("s"),
+                  Collections.singletonList(ColumnCategory.FIELD),
+                  new String[0]));
+    }
+  }
+
+  @Test
+  public void testNumericRowWithSeparateTags() throws Exception {
+    // TAG strings, including null and empty, must not consume slots from the compact long[].
+    List<TSDataType> types =
+        Arrays.asList(
+            TSDataType.STRING,
+            TSDataType.DOUBLE,
+            TSDataType.STRING,
+            TSDataType.BOOLEAN,
+            TSDataType.STRING);
+    List<ColumnCategory> categories =
+        Arrays.asList(
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.TAG,
+            ColumnCategory.FIELD,
+            ColumnCategory.TAG);
+    ByteBuffer buffer =
+        SessionUtils.getValueBuffer(
+            types,
+            new long[] {0x7ff8000000001234L, -1},
+            Arrays.asList("a", "d", "b", "enabled", "c"),
+            categories,
+            new String[] {"设备😀", null, ""});
+    Assert.assertEquals(TSDataType.STRING.serialize(), buffer.get());
+    Assert.assertEquals("设备😀", ReadWriteIOUtils.readString(buffer));
+    Assert.assertEquals(TSDataType.DOUBLE.serialize(), buffer.get());
+    Assert.assertEquals(0x7ff8000000001234L, buffer.getLong());
+    Assert.assertEquals(TSDataType.STRING.serialize(), buffer.get());
+    Assert.assertEquals(-1, buffer.getInt());
+    Assert.assertEquals(TSDataType.BOOLEAN.serialize(), buffer.get());
+    Assert.assertEquals(1, buffer.get());
+    Assert.assertEquals(TSDataType.STRING.serialize(), buffer.get());
+    Assert.assertEquals(0, buffer.getInt());
+    Assert.assertFalse(buffer.hasRemaining());
+  }
+
+  @Test
+  public void testNumericRowRejectsInvalidTagArrays() {
+    // Mismatched per-category counts and ATTRIBUTE values must fail before sending the RPC.
+    List<TSDataType> types = Arrays.asList(TSDataType.STRING, TSDataType.INT64);
+    List<String> names = Arrays.asList("tag", "field");
+    List<ColumnCategory> categories = Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+    for (String[] tags : Arrays.asList(new String[0], new String[] {"a", "b"})) {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> SessionUtils.getValueBuffer(types, new long[] {1}, names, categories, tags));
+    }
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SessionUtils.getValueBuffer(types, new long[0], names, categories, new String[] {"a"}));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SessionUtils.getValueBuffer(types, new long[] {1}, names, categories, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SessionUtils.getValueBuffer(
+                types,
+                new long[] {1},
+                names,
+                Arrays.asList(ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD),
+                new String[] {"a"}));
+  }
 
   @Test
   public void testGetTimeBuffer() {

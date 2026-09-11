@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.NumericRow;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -60,6 +61,18 @@ public class TableSessionWrapper implements ITableSession {
   public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
     try {
       session.insertRelationalTablet(tablet);
+    } catch (IoTDBConnectionException e) {
+      sessionPool.cleanSessionAndMayThrowConnectionException(session);
+      closed.set(true);
+      session = null;
+      throw e;
+    }
+  }
+
+  @Override
+  public void insert(NumericRow row) throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      session.insertRelationalRecord(row);
     } catch (IoTDBConnectionException e) {
       sessionPool.cleanSessionAndMayThrowConnectionException(session);
       closed.set(true);

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -115,7 +115,7 @@ public abstract class TabletInsertionEventParser {
 
   //////////////////////////// parse ////////////////////////////
 
-  protected void parse(final InsertRowNode insertRowNode) {
+  protected void parse(final AbstractInsertRowNode insertRowNode) {
     final String[] originColumnNameStringList = insertRowNode.getMeasurements();
     final int originColumnSize =
         originColumnNameStringList == null ? 0 : originColumnNameStringList.length;
@@ -133,7 +133,8 @@ public abstract class TabletInsertionEventParser {
     final MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
     final TsTableColumnCategory[] originColumnCategories = insertRowNode.getColumnCategories();
     final TSDataType[] originValueDataTypes = insertRowNode.getDataTypes();
-    final Object[] originValues = insertRowNode.getValues();
+    // Read individual columns so numeric rows never need an Object[] row snapshot.
+    final int originValueCount = insertRowNode.getValueCount();
 
     generateColumnIndexMapper(
         originColumnNameStringList, originColumnIndex2FilteredColumnIndexMapperList);
@@ -147,8 +148,7 @@ public abstract class TabletInsertionEventParser {
                         originMeasurementSchemaList,
                         originValueDataTypes,
                         i)
-                    && originValues != null
-                    && i < originValues.length);
+                    && i < originValueCount);
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
@@ -170,7 +170,7 @@ public abstract class TabletInsertionEventParser {
                 : ColumnCategory.FIELD;
         this.valueColumnDataTypes[filteredColumnIndex] = originValueDataTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
-        if (Objects.isNull(originValues[i]) || Objects.isNull(originValueDataTypes[i])) {
+        if (insertRowNode.isNull(i) || Objects.isNull(originValueDataTypes[i])) {
           fillNullValue(
               originValueDataTypes[i],
               this.valueColumns,
@@ -180,7 +180,12 @@ public abstract class TabletInsertionEventParser {
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
-                  originValueDataTypes[i], originValues[i], rowIndexList, true, null, bitMap);
+                  originValueDataTypes[i],
+                  insertRowNode.getValue(i),
+                  rowIndexList,
+                  true,
+                  null,
+                  bitMap);
         }
         this.nullValueColumnBitmaps[filteredColumnIndex] = bitMap;
       }

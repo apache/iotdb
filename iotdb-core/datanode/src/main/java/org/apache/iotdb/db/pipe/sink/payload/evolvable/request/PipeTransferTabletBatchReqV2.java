@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -78,9 +79,12 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         continue;
       }
       if (statement.isWriteToTable()) {
-        if (statement instanceof InsertRowStatement) {
-          addTableModelInsertRowStatement(
-              tableModelDatabaseInsertRowStatementMap, (InsertRowStatement) statement);
+        if (statement instanceof InsertNumericRowStatement) {
+          // Keep numeric rows independent: grouping into InsertRowsStatement would box their
+          // values.
+          statements.add(statement);
+        } else if (statement instanceof InsertRowStatement row) {
+          addTableModelInsertRowStatement(tableModelDatabaseInsertRowStatementMap, row);
         } else if (statement instanceof InsertTabletStatement) {
           statements.add(statement);
         } else if (statement instanceof InsertRowsStatement) {

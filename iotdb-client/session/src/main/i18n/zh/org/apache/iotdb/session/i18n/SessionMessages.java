@@ -20,6 +20,8 @@
 package org.apache.iotdb.session.i18n;
 
 public final class SessionMessages {
+  public static final String EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233 = "数值行参数不能为 null；列元数据长度必须一致，FIELD 和 TAG 的数量必须分别与对应的值数组长度一致。";
+  public static final String EXCEPTION_NUMERIC_ROWS_SUPPORT_NUMERIC_FIELD_COLUMNS_AND_STRING_TAG_COLUMNS_ONLY_87159FFA = "数值行仅支持数值类型的 FIELD 列和 STRING 类型的 TAG 列。";
 
   // Session
   public static final String NODE_URLS_EMPTY = "nodeUrls 不能为空。";
@@ -284,4 +286,6 @@ public final class SessionMessages {
   public static final String EXCEPTION_RETRY_EXECUTE_STATEMENT_ARG_FAILED_ARG_TIMES_ARG_216C6873 = "在 %s 上重试执行语句失败 %d 次：%s";
   public static final String EXCEPTION_SESSIONPOOL_DOESN_T_SUPPORT_EXECUTING_ARG_DIRECTLY_B778F701 = "SessionPool 不支持直接执行 %s";
 
+  public static final String EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_AND_COLUMN_NAMES_TYPES_CATEGORIES_AND_VALUES_MUST_HAVE_EQUAL_LENGTHS_AB102B01 = "数值行参数不能为 null，列名、类型、类别和值的数量必须相同。";
+  public static final String EXCEPTION_NUMERIC_ROWS_SUPPORT_ONLY_FIELD_COLUMNS_DA7A8EE7 = "数值行仅支持 FIELD 列。";
 }

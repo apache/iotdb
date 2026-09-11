@@ -22,9 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
@@ -65,7 +65,7 @@ public abstract class WALEntry implements SerializedSize {
     this.value = value;
     if (value instanceof IMemTable) {
       this.type = WALEntryType.MEMORY_TABLE_SNAPSHOT;
-    } else if (value instanceof InsertRowNode) {
+    } else if (value instanceof AbstractInsertRowNode) {
       this.type = WALEntryType.INSERT_ROW_NODE;
     } else if (value instanceof InsertTabletNode) {
       this.type = WALEntryType.INSERT_TABLET_NODE;
@@ -121,7 +121,7 @@ public abstract class WALEntry implements SerializedSize {
         value = AbstractMemTable.Factory.createFromOldMemTableSnapshot(stream);
         break;
       case INSERT_ROW_NODE:
-        value = (InsertRowNode) PlanNodeType.deserializeFromWAL(stream);
+        value = (AbstractInsertRowNode) PlanNodeType.deserializeFromWAL(stream);
         break;
       case INSERT_TABLET_NODE:
         value = (InsertTabletNode) PlanNodeType.deserializeFromWAL(stream);

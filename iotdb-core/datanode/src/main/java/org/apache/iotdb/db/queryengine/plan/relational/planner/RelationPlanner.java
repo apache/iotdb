@@ -100,6 +100,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedW
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -130,11 +131,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.rowpat
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertNumericRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -1368,6 +1371,26 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     }
     return new RelationPlan(
         insertNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
+  }
+
+  @Override
+  public RelationPlan visitInsertNumericRow(InsertNumericRow node, Void context) {
+    InsertNumericRowStatement statement = node.getInnerTreeStatement();
+    String[] measurements = statement.getMeasurements();
+    MeasurementSchema[] schemas = statement.getMeasurementSchemas();
+    stayConsistent(measurements, schemas);
+    RelationalInsertNumericRowNode insert =
+        new RelationalInsertNumericRowNode(
+            idAllocator.genPlanNodeId(),
+            statement.getDevicePath(),
+            measurements,
+            statement.getDataTypes(),
+            schemas,
+            statement.getTime(),
+            statement.getNumericValues(),
+            statement.getColumnCategories());
+    insert.setFailedMeasurementNumber(statement.getFailedMeasurementNumber());
+    return new RelationPlan(insert, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
   @Override

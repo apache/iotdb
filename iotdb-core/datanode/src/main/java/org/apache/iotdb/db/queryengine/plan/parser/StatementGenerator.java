@@ -47,7 +47,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -70,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
+import org.apache.iotdb.db.utils.NumericRowValues;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.TabletDecoder;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
@@ -278,19 +281,38 @@ public class StatementGenerator {
     return queryStatement;
   }
 
-  public static InsertRowStatement createStatement(TSInsertRecordReq insertRecordReq)
+  public static InsertBaseStatement createStatement(TSInsertRecordReq insertRecordReq)
       throws IllegalPathException, QueryProcessException {
     final long startTime = System.nanoTime();
     // construct insert statement
-    InsertRowStatement insertStatement = new InsertRowStatement();
+    InsertBaseStatement insertStatement =
+        insertRecordReq.isIsNumericRow()
+            ? new InsertNumericRowStatement()
+            : new InsertRowStatement();
     insertStatement.setDevicePath(
-        DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
+        insertRecordReq.isIsWriteToTable()
+            ? new PartialPath(insertRecordReq.getPrefixPath(), false)
+            : DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
     TimestampPrecisionUtils.checkTimestampPrecision(insertRecordReq.getTimestamp());
-    insertStatement.setTime(insertRecordReq.getTimestamp());
+
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
-    insertStatement.fillValues(insertRecordReq.values);
-    if (insertRecordReq.isSetIsWriteToTable()) {
+    if (insertRecordReq.isIsNumericRow()) {
+      if (!insertRecordReq.isIsWriteToTable()) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
+      }
+      InsertNumericRowStatement numeric = (InsertNumericRowStatement) insertStatement;
+      numeric.setTime(insertRecordReq.getTimestamp());
+      numeric.fillValues(insertRecordReq.values);
+      insertStatement.setAligned(true);
+    } else {
+      InsertRowStatement row = (InsertRowStatement) insertStatement;
+      row.setTime(insertRecordReq.getTimestamp());
+      row.fillValues(insertRecordReq.values);
+    }
+    if (insertRecordReq.isIsWriteToTable()) {
       insertStatement.setWriteToTable(insertRecordReq.isIsWriteToTable());
       if (!insertRecordReq.isSetColumnCategoryies()
           || insertRecordReq.getColumnCategoryiesSize() != insertRecordReq.getMeasurementsSize()) {
@@ -304,6 +326,18 @@ public class StatementGenerator {
         columnCategories[i] =
             TsTableColumnCategory.fromTsFileColumnCategory(
                 ColumnCategory.values()[insertRecordReq.getColumnCategoryies().get(i).intValue()]);
+      }
+      if (insertRecordReq.isIsNumericRow()) {
+        for (int i = 0; i < columnCategories.length; i++) {
+          TSDataType type = insertStatement.getDataType(i);
+          if (!(columnCategories[i] == TsTableColumnCategory.TAG && type == TSDataType.STRING)
+              && !(columnCategories[i] == TsTableColumnCategory.FIELD
+                  && NumericRowValues.supports(type))) {
+            throw new IllegalArgumentException(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
+          }
+        }
       }
       insertStatement.setColumnCategories(columnCategories);
     }

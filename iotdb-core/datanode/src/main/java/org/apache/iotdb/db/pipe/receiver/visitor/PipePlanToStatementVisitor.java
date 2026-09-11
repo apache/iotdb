@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -82,6 +84,19 @@ public class PipePlanToStatementVisitor implements PlanVisitor<Object, Void> {
             DataNodePipeMessages
                 .PIPE_EXCEPTION_PIPEPLANTOSTATEMENTVISITOR_DOES_NOT_SUPPORT_VISITING_GENERAL_452AAA60,
             node));
+  }
+
+  @Override
+  public InsertNumericRowStatement visitRelationalInsertNumericRow(
+      final RelationalInsertNumericRowNode node, final Void context) {
+    InsertNumericRowStatement statement = new InsertNumericRowStatement();
+    statement.setDevicePath(node.getTargetPath());
+    statement.setTime(node.getTime());
+    statement.setMeasurements(node.getMeasurements());
+    statement.setDataTypes(node.getDataTypes());
+    statement.setNumericValues(node.getNumericValues());
+    statement.setColumnCategories(node.getColumnCategories());
+    return statement;
   }
 
   @Override

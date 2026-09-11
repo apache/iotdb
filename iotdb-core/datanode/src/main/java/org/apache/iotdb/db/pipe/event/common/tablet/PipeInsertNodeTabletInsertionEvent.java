@@ -46,10 +46,12 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertNumericRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -366,8 +368,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         return true;
       }
 
-      if (insertNode instanceof InsertRowNode) {
-        final long timestamp = ((InsertRowNode) insertNode).getTime();
+      if (insertNode instanceof AbstractInsertRowNode row) {
+        final long timestamp = row.getTime();
         return startTime <= timestamp && timestamp <= endTime;
       }
 
@@ -409,13 +411,14 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     try {
       final InsertNode insertNode = getInsertNode();
 
-      if (insertNode instanceof RelationalInsertRowNode
+      if (insertNode instanceof RelationalInsertNumericRowNode
+          || insertNode instanceof RelationalInsertRowNode
           || insertNode instanceof RelationalInsertTabletNode
           || insertNode instanceof RelationalInsertRowsNode) {
         return true;
       }
 
-      if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
+      if (insertNode instanceof AbstractInsertRowNode || insertNode instanceof InsertTabletNode) {
         final PartialPath devicePartialPath = insertNode.getTargetPath();
         return Objects.isNull(devicePartialPath)
             || treePattern.mayOverlapWithDevice(devicePartialPath.getIDeviceIDAsFullDevice());
@@ -539,6 +542,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
                     pipeTaskMeta, this, insertRowNode, treePattern, userEntity));
           }
           break;
+        case RELATIONAL_INSERT_NUMERIC_ROW:
         case RELATIONAL_INSERT_ROW:
         case RELATIONAL_INSERT_TABLET:
           eventParsers.add(

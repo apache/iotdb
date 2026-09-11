@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -403,6 +404,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitLoadFile(LoadTsFileStatement loadTsFileStatement, C context) {
     return visitStatement(loadTsFileStatement, context);
+  }
+
+  public R visitInsertNumericRow(InsertNumericRowStatement statement, C context) {
+    return visitInsertBase(statement, context);
   }
 
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
