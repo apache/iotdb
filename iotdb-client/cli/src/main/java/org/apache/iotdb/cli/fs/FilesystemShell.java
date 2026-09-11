@@ -113,10 +113,7 @@ public class FilesystemShell {
         return true;
       case META:
         FsPath metadataPath = resolve(command.getPath());
-        FsNode metadataNode = provider.describe(metadataPath);
-        if (checkExists("meta", metadataNode)) {
-          printRows(provider.meta(metadataPath));
-        }
+        printRows(provider.meta(metadataPath));
         return true;
       case SCHEMA:
         printRows(provider.schema(resolve(command.getPath())));
