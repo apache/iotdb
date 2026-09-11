@@ -135,6 +135,11 @@ public class FilesystemCommandParser {
       case STATS:
       case COUNT:
         return FilesystemCommand.path(type, args.path(false));
+      case WC:
+        if (args.has("-c")) {
+          return FilesystemCommand.option(type, "-c", args.path(false));
+        }
+        throw invalid("wc supports only -c");
       case LS:
       case LL:
         String listPath = args.path(false);
@@ -495,12 +500,15 @@ public class FilesystemCommandParser {
     }
 
     private boolean isFlag(String flag) {
-      return ("rm".equals(command) && "-r".equals(flag))
+      return ("wc".equals(command) && "-c".equals(flag))
+          || ("rm".equals(command) && "-r".equals(flag))
           || ("tee".equals(command) && "-a".equals(flag));
     }
 
     private boolean takesValue(String flag) {
       switch (command) {
+        case "wc":
+          return false;
         case "cat":
         case "head":
         case "tail":

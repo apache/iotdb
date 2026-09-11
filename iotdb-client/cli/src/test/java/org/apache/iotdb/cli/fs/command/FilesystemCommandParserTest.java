@@ -194,7 +194,7 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
-  public void parseLessMoreFileAndDu() {
+  public void parseLessMoreFileAndWc() {
     assertEquals(
         FilesystemCommand.Type.LESS,
         FilesystemCommandParser.parse("less /db1/table1.csv").getType());
@@ -210,6 +210,15 @@ public class FilesystemCommandParserTest {
     assertEquals(
         FilesystemCommand.Type.COUNT,
         FilesystemCommandParser.parse("count /db1/table1.csv").getType());
+    FilesystemCommand wc = FilesystemCommandParser.parse("wc -c /db1/table1.csv");
+    assertEquals(FilesystemCommand.Type.WC, wc.getType());
+    assertEquals("-c", wc.getOption());
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("du /db1/table1.csv").getType());
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("wc -l /db1/table1.csv").getType());
   }
 
   @Test

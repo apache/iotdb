@@ -35,6 +35,7 @@ public class FilesystemCommand {
     SCHEMA,
     STATS,
     COUNT,
+    WC,
     CAT,
     HEAD,
     TAIL,

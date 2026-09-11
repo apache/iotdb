@@ -61,7 +61,7 @@ public class FilesystemShell {
 
   private static final List<String> COMMANDS =
       Arrays.asList(
-          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "cat", "head",
+          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "wc", "cat", "head",
           "tail", "grep", "find", "less", "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut",
           "paste", "join", "tree", "help", "exit", "quit", "tee");
 
@@ -124,6 +124,9 @@ public class FilesystemShell {
         return true;
       case COUNT:
         printRows(provider.countRows(resolve(command.getPath())));
+        return true;
+      case WC:
+        printByteCount(command.getPath());
         return true;
       case CAT:
         printSequentialReads(command.getPaths(), command.getReadOptions());
@@ -436,6 +439,16 @@ public class FilesystemShell {
     for (String path : paths) {
       printReadable(path, options);
     }
+  }
+
+  private void printByteCount(String path) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    long bytes = 0;
+    for (String line : readableLines(resolvedPath, Integer.MAX_VALUE)) {
+      bytes += line.getBytes(StandardCharsets.UTF_8).length;
+      bytes += System.lineSeparator().getBytes(StandardCharsets.UTF_8).length;
+    }
+    ctx.getPrinter().println(bytes + " " + resolvedPath);
   }
 
   private void printReadable(String path, int limit) throws SQLException {

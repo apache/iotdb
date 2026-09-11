@@ -43,6 +43,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -539,6 +540,21 @@ public class FilesystemShellTest {
     assertTrue(out.toString().contains("Time,tag1,s1"));
     assertTrue(out.toString().contains("1,a,42"));
     verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 5);
+  }
+
+  @Test
+  public void executeWcCountsUtf8Bytes() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), Integer.MAX_VALUE))
+        .thenReturn(Arrays.asList("a,中", "xy"));
+
+    assertTrue(shell.execute("wc -c /db1/table1.csv"));
+
+    long expected =
+        "a,中".getBytes(StandardCharsets.UTF_8).length
+            + System.lineSeparator().getBytes(StandardCharsets.UTF_8).length
+            + "xy".getBytes(StandardCharsets.UTF_8).length
+            + System.lineSeparator().getBytes(StandardCharsets.UTF_8).length;
+    assertEquals(expected + " /db1/table1.csv" + System.lineSeparator(), out.toString());
   }
 
   @Test

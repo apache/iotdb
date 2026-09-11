@@ -119,6 +119,13 @@ public final class FilesystemCommandHelp {
             "Current directory; reports every column for the selected object.",
             "count /db1/table1.csv"));
     COMMANDS.put(
+        "wc",
+        new Entry(
+            "wc -c [path]",
+            "Count UTF-8 bytes in the readable virtual file.",
+            "Current directory; output is '<bytes> <path>'.",
+            "wc -c /db1/table1.csv"));
+    COMMANDS.put(
         "grep",
         new Entry(
             CliMessages.MESSAGE_GREP_PATTERN_PATH_3EF6BB72,
