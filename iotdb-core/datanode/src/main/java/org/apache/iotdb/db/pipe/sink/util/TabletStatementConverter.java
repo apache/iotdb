@@ -504,11 +504,11 @@ public class TabletStatementConverter {
       }
 
       final Type type = Type.fromTsDataType(types[i]);
+      final Type serializedArrayType =
+          types[i] == TSDataType.DATE ? Type.fromTsDataType(TSDataType.INT32) : type;
       values[i] =
           isValueColumnsNotNull
-              ? TypeServices.StorageEngine.RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE
-                  .call(type)
-                  .apply(byteBuffer, rowSize)
+              ? serializedArrayType.deserializeArray(byteBuffer, rowSize)
               : TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
                   .call(type)
                   .apply(rowSize);
