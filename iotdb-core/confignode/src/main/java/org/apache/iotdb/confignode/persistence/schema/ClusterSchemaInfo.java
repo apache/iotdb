@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -34,6 +36,7 @@ import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -1352,9 +1355,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                       })
                   .collect(Collectors.toList())
               : tableModelMTree
-                  .getAllUsingTablesUnderSpecificDatabase(
+                  .getAllTablesUnderSpecificDatabase(
                       getQualifiedDatabasePartialPath(plan.getDatabase()))
                   .stream()
+                  .filter(pair -> pair.getRight() != TableNodeStatus.PRE_CREATE)
+                  .map(Pair::getLeft)
                   .map(
                       tsTable ->
                           new TTableInfo(
@@ -1447,7 +1452,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
       return new DescTableResp(
           StatusUtils.OK,
-          tableModelMTree.getUsingTableSchema(databasePath, plan.getTableName()),
+          tableModelMTree.getTableSchemaForDesc(databasePath, plan.getTableName()),
           null,
           null);
     } catch (final MetadataException e) {
@@ -1552,6 +1557,35 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       return tableModelMTree.getTableAndStatusIfExists(
           getQualifiedDatabasePartialPath(database), tableName);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public TsTable getTableForColumnExtension(
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList)
+      throws MetadataException {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      final PartialPath databasePath = getQualifiedDatabasePartialPath(database);
+      final Optional<Pair<TsTable, TableNodeStatus>> tableAndStatus =
+          tableModelMTree.getTableAndStatusIfExists(databasePath, tableName);
+      if (!tableAndStatus.isPresent()) {
+        return null;
+      }
+      if (tableAndStatus.get().getRight() == TableNodeStatus.PRE_DELETE) {
+        throw new TableInDeletionException(database, tableName);
+      }
+      final TableSchemaDetails details =
+          tableModelMTree.getTableSchemaDetails(databasePath, tableName);
+      for (final TsTableColumnSchema column : columnSchemaList) {
+        if (details.preDeletedColumns.contains(column.getColumnName())) {
+          throw new ColumnInDeletionException(database, tableName, column.getColumnName());
+        }
+      }
+      return tableModelMTree.getTableSchemaForDataNode(databasePath, tableName);
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

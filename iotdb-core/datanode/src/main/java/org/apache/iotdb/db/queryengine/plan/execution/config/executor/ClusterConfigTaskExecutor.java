@@ -4819,6 +4819,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
+  public Set<String> getPreDeletedColumns(final String database, final String tableName) {
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TDescTableResp resp = configNodeClient.describeTable(database, tableName, true);
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(
+            getTableErrorMessage(resp.getStatus(), database), resp.getStatus().getCode());
+      }
+      return resp.isSetPreDeletedColumns() ? resp.getPreDeletedColumns() : Collections.emptySet();
+    } catch (final ClientManagerException | TException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   public SettableFuture<ConfigTaskResult> describeTable(
       final String database,

@@ -335,4 +335,8 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "Snapshot buffer size must not exceed %d bytes, but was %d.";
+  public static final String EXCEPTION_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROP_TABLE_IF_IT_IS_STUCK_7E22D78F =
+      "Table '%s.%s' is being deleted. Please wait for deletion to finish, or retry DROP TABLE if it is stuck.";
+  public static final String EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
+      "Column '%s' in table '%s.%s' is being deleted. Please wait for deletion to finish, or retry dropping the column if it is stuck.";
 }

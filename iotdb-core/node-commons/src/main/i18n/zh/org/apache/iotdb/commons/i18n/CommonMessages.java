@@ -232,4 +232,8 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_SNAPSHOT_BUFFER_SIZE_MUST_NOT_EXCEED_ARG_BYTES_BUT_WAS_ARG_D1DA6F7E =
           "快照缓冲区大小不得超过 %d 字节，但实际为 %d。";
+  public static final String EXCEPTION_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROP_TABLE_IF_IT_IS_STUCK_7E22D78F =
+      "表 '%s.%s' 正在删除中。请等待删除完成；如果删除一直未完成，请重试 DROP TABLE。";
+  public static final String EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
+      "列 '%s'（位于表 '%s.%s'）正在删除中。请等待删除完成；如果删除一直未完成，请重试删除该列。";
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
 import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -71,6 +72,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -83,11 +85,14 @@ public class TableHeaderSchemaValidator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TableHeaderSchemaValidator.class);
 
-  private final ClusterConfigTaskExecutor configTaskExecutor =
-      ClusterConfigTaskExecutor.getInstance();
+  private final ClusterConfigTaskExecutor configTaskExecutor;
 
   private TableHeaderSchemaValidator() {
-    // do nothing
+    this(ClusterConfigTaskExecutor.getInstance());
+  }
+
+  TableHeaderSchemaValidator(final ClusterConfigTaskExecutor configTaskExecutor) {
+    this.configTaskExecutor = configTaskExecutor;
   }
 
   private static class TableHeaderSchemaValidatorHolder {
@@ -213,6 +218,7 @@ public class TableHeaderSchemaValidator {
 
     boolean refreshed = false;
     boolean noField = true;
+    Set<String> preDeletedColumns = null;
     for (final ColumnSchema columnSchema : inputColumnList) {
       TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
       if (Objects.isNull(existingColumn)) {
@@ -225,6 +231,12 @@ public class TableHeaderSchemaValidator {
           existingColumn = table.getColumnSchema(columnSchema.getName());
         }
         if (Objects.isNull(existingColumn)) {
+          if (preDeletedColumns == null) {
+            preDeletedColumns =
+                configTaskExecutor.getPreDeletedColumns(database, tableSchema.getTableName());
+          }
+          checkColumnNotPreDeleted(
+              database, tableSchema.getTableName(), columnSchema.getName(), preDeletedColumns);
           // check arguments for column auto creation
           if (columnSchema.getColumnCategory() == null) {
             throw new SemanticException(
@@ -397,6 +409,7 @@ public class TableHeaderSchemaValidator {
     boolean refreshed = false;
     boolean noField = true;
     boolean hasAttribute = false;
+    Set<String> preDeletedColumns = null;
 
     // Track TAG column measurement indices for batch processing after validation loop
     // LinkedHashMap maintains insertion order, key is column name, value is measurement index
@@ -432,6 +445,12 @@ public class TableHeaderSchemaValidator {
         }
 
         if (Objects.isNull(existingColumn)) {
+          if (preDeletedColumns == null) {
+            preDeletedColumns =
+                configTaskExecutor.getPreDeletedColumns(database, measurementInfo.getTableName());
+          }
+          checkColumnNotPreDeleted(
+              database, measurementInfo.getTableName(), measurementName, preDeletedColumns);
           // Check arguments for column auto creation
           if (category == null) {
             throw new SemanticException(
@@ -536,6 +555,16 @@ public class TableHeaderSchemaValidator {
       }
 
       tagColumnHandler.handle(tagColumnIndexMap, existingTagColumnIndexMap);
+    }
+  }
+
+  private static void checkColumnNotPreDeleted(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final Set<String> preDeletedColumns) {
+    if (preDeletedColumns.contains(columnName)) {
+      throw new SemanticException(new ColumnInDeletionException(database, tableName, columnName));
     }
   }
 

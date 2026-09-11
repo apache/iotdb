@@ -1546,7 +1546,8 @@ public class ClusterSchemaManager {
       final List<TsTableColumnSchema> columnSchemaList,
       final boolean isTableView)
       throws MetadataException {
-    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+    final TsTable originalTable =
+        clusterSchemaInfo.getTableForColumnExtension(database, tableName, columnSchemaList);
 
     if (Objects.isNull(originalTable)) {
       return new Pair<>(
