@@ -65,6 +65,12 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
     super.setUp();
   }
 
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+  }
+
   @Test
   public void testAutoDropInHistoricalTransfer() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
