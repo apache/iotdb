@@ -553,6 +553,8 @@ public abstract class AlignedTVList extends TVList {
               validValueIndex,
               columnIndex,
               getPhysicalType(dataTypes.get(columnIndex)),
+              dataTypes.get(columnIndex),
+              dataTypes.get(columnIndex),
               floatPrecision,
               encodingList == null ? null : encodingList.get(columnIndex));
     }
@@ -576,12 +578,23 @@ public abstract class AlignedTVList extends TVList {
       int valueIndex,
       int columnIndex,
       Type resultType,
+      TSDataType sourceDataType,
+      TSDataType targetDataType,
       Integer floatPrecision,
       TSEncoding encoding) {
     int arrayIndex = valueIndex / ARRAY_SIZE;
     int elementIndex = valueIndex % ARRAY_SIZE;
-    TsPrimitiveType value =
-        resultType.getValueAsTsPrimitiveType(values.get(columnIndex).get(arrayIndex), elementIndex);
+    TsPrimitiveType value;
+    if (sourceDataType == targetDataType) {
+      value =
+          resultType.getValueAsTsPrimitiveType(
+              values.get(columnIndex).get(arrayIndex), elementIndex);
+    } else {
+      value =
+          resultType.getTsPrimitiveType(
+              targetDataType.castFromSingleValue(
+                  sourceDataType, getObjectByValueIndex(valueIndex, columnIndex)));
+    }
     if (floatPrecision != null && encoding != null) {
       if (value.getDataType() == TSDataType.FLOAT) {
         value.setFloat(roundValueWithGivenPrecision(value.getFloat(), floatPrecision, encoding));
@@ -2310,13 +2323,18 @@ public abstract class AlignedTVList extends TVList {
       if (outer.isNullValue(valueIndex, validColumnIndex)) {
         return null;
       }
-      TSDataType dataType = dataTypeList.get(columnIndex);
+      TSDataType sourceDataType = dataTypes.get(validColumnIndex);
+      TSDataType targetDataType = dataTypeList.get(columnIndex);
       Type resultType =
-          dataType == TSDataType.DATE ? Type.fromTsDataType(dataType) : getPhysicalType(dataType);
+          targetDataType == TSDataType.DATE
+              ? Type.fromTsDataType(targetDataType)
+              : getPhysicalType(targetDataType);
       return getPrimitiveTypeByValueIndex(
           valueIndex,
           validColumnIndex,
           resultType,
+          sourceDataType,
+          targetDataType,
           floatPrecision,
           encodingList == null ? null : encodingList.get(columnIndex));
     }
