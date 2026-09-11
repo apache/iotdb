@@ -123,7 +123,7 @@ function build_iotdb(){
     mvn clean package -pl distribution -P with-ainode -am -DskipTests
     if [[ ! -d ${iotdb_zip_path} ]]; then mkdir ${iotdb_zip_path}; fi
     cd ${iotdb_path}/distribution/target
-    cp apache-iotdb-${version}-all-bin.zip apache-iotdb-${version}-confignode-bin.zip apache-iotdb-${version}-datanode-bin.zip apache-iotdb-${version}-ainode-bin.zip ${iotdb_zip_path}/
+    cp apache-iotdb-${version}-all-bin.zip apache-iotdb-${version}-ainode-bin.zip ${iotdb_zip_path}/
     do_build=false
     echo "##### done #####"
 }
@@ -147,10 +147,10 @@ function main() {
     prepare_buildx
     case "$build_what" in
         confignode)
-            process_single
+            process_single all
             ;;
         datanode)
-            process_single
+            process_single all
             ;;
         ainode)
             process_single all

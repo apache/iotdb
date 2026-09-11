@@ -85,9 +85,6 @@
                         <configuration>
                             <descriptors>
                                 <descriptor>src/assembly/all.xml</descriptor>
-                                <descriptor>src/assembly/datanode.xml</descriptor>
-                                <descriptor>src/assembly/confignode.xml</descriptor>
-                                <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
                                 <descriptor>src/assembly/edge.xml</descriptor>
                             </descriptors>
@@ -119,9 +116,6 @@
                                     <directory>${project.build.directory}</directory>
                                     <includes>
                                         <include>apache-iotdb-${project.version}-all-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-datanode-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-cli-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-external-service-impl-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-edge-bin.zip</include>

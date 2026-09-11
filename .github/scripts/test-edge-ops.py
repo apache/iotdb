@@ -438,8 +438,6 @@ class AssemblyTest(unittest.TestCase):
             )
             for descriptor in (
                 "distribution/src/assembly/all.xml",
-                "distribution/src/assembly/datanode.xml",
-                "distribution/src/assembly/confignode.xml",
                 "iotdb-core/datanode/src/assembly/server.xml",
                 "iotdb-core/confignode/src/assembly/confignode.xml",
             ):
