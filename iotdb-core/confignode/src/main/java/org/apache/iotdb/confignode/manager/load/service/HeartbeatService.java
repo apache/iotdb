@@ -60,8 +60,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
- * HeartbeatService periodically sending heartbeat requests from ConfigNode-leader to all other
- * cluster Nodes.
+ * Periodically sends heartbeat requests from the ConfigNode leader to registered ConfigNodes,
+ * DataNodes, and AINodes, and updates the corresponding load information.
  */
 public class HeartbeatService {
 
@@ -135,7 +135,7 @@ public class HeartbeatService {
     }
   }
 
-  /** loop body of the heartbeat thread. */
+  /** Executes one leader heartbeat cycle. */
   private void heartbeatLoopBody() {
     // The consensusManager of configManager may not be fully initialized at this time
     Optional.ofNullable(getConsensusManager())
@@ -300,7 +300,7 @@ public class HeartbeatService {
   /**
    * Send heartbeat requests to all the Registered AINodes.
    *
-   * @param registeredAINodes DataNodes that registered in cluster
+   * @param registeredAINodes AINodes registered in the cluster
    */
   private void pingRegisteredAINodes(
       TAIHeartbeatReq heartbeatReq, List<TAINodeConfiguration> registeredAINodes) {

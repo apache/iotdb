@@ -171,7 +171,12 @@ public abstract class StatementVisitor<R, C> {
     return node.accept(this, context);
   }
 
-  /** Top Level Description */
+  /**
+   * Visits the root of the statement hierarchy.
+   *
+   * <p>Default visitor methods delegate to this method, allowing subclasses to handle only the
+   * statement types they need.
+   */
   public abstract R visitNode(StatementNode node, C context);
 
   public R visitStatement(Statement statement, C context) {
