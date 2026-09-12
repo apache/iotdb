@@ -40,3 +40,16 @@ Then, in your server:
 * Launch the IoTDB server.
 * Now IoTDB will use your implementation to parse the MQTT message.
 
+## Using publish metadata
+
+Custom formatters can override
+`formatMessage(io.moquette.interception.messages.InterceptPublishMessage message)`
+to access the client ID (`getClientID()`), username (`getUsername()`), QoS
+(`getQos()`), topic (`getTopicName()`) and payload (`getPayload()`). For example,
+the client ID can be included in the device path or tags of the returned messages.
+
+Existing implementations of `format(String, ByteBuf)` or `format(ByteBuf)` continue
+to work through the default `formatMessage` implementation. The broker releases
+the payload after handling the publication. A formatter must not release it;
+copy the needed data or retain and later release a separate reference if it must
+be used asynchronously.
