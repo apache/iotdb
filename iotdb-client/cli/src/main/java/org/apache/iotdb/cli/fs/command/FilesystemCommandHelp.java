@@ -20,6 +20,7 @@
 package org.apache.iotdb.cli.fs.command;
 
 import org.apache.iotdb.cli.i18n.CliMessages;
+import org.apache.iotdb.cli.i18n.FsHelpMessages;
 
 import java.io.PrintStream;
 import java.util.LinkedHashMap;
@@ -29,206 +30,99 @@ import java.util.Map;
 /** Command help follows the usage/result/default/examples layout of TsFile CLI. */
 public final class FilesystemCommandHelp {
   private static final Map<String, Entry> COMMANDS = new LinkedHashMap<>();
+  private static final String SCOPE = "[-d device | -t table] [-m column ...]";
+  private static final String FORMAT = "[-f table|ndjson|csv]";
+  private static final String READ =
+      SCOPE
+          + " "
+          + FORMAT
+          + " [--offset n] [--start time] [--end time]"
+          + " [--tag-filter tag op [value]] [--tag-match all|any]";
 
   static {
-    COMMANDS.put(
-        "pwd",
-        new Entry(
-            CliMessages.MESSAGE_PWD_9003D1DF,
-            CliMessages.MESSAGE_ABSOLUTE_VIRTUAL_WORKING_DIRECTORY_A179DC18,
-            CliMessages.MESSAGE_NO_OPTIONS_2420248A,
-            CliMessages.MESSAGE_PWD_9003D1DF));
-    COMMANDS.put(
-        "ls",
-        new Entry(
-            CliMessages.MESSAGE_LS_LAR_PATH_B103CAFF,
-            CliMessages
-                .MESSAGE_ENTRY_NAMES_L_ADDS_MODE_LINK_COUNT_OWNER_GROUP_AND_PLACEHOLDER_SIZE_A_INCLUDES_THE_CURRENT_AND_PARENT_DIRECTORIES_83802D00,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_R_PRINTS_THE_RECURSIVE_TREE_F35CB2DB,
-            CliMessages.MESSAGE_LS_LS_LA_DB1_0A5F54F4));
-    COMMANDS.put(
-        "ll",
-        new Entry(
-            CliMessages.MESSAGE_LL_LAR_PATH_60CAF30F,
-            CliMessages.MESSAGE_LONG_LISTING_AS_WITH_LS_L_1817C31A,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_4B3788F6,
-            CliMessages.MESSAGE_LL_A_DB1_13B82162));
-    COMMANDS.put(
-        "cd",
-        new Entry(
-            CliMessages.MESSAGE_CD_PATH_3F25118B,
-            CliMessages.MESSAGE_CHANGES_THE_VIRTUAL_WORKING_DIRECTORY_NO_OUTPUT_ON_SUCCESS_2F56A52C,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_4B3788F6,
-            CliMessages.MESSAGE_CD_DB1_CD_9B32B3E0));
-    COMMANDS.put(
-        "stat",
-        new Entry(
-            CliMessages.MESSAGE_STAT_PATH_09D48F35,
-            CliMessages.MESSAGE_PATH_VIRTUAL_FILE_TYPE_AND_AVAILABLE_METADATA_7EC74779,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_4B3788F6,
-            CliMessages.MESSAGE_STAT_DB1_TABLE1_CSV_411B4588));
-    COMMANDS.put(
-        "meta",
-        new Entry(
-            CliMessages.MESSAGE_META_PATH_USAGE,
-            CliMessages.MESSAGE_META_PATH_RESULT,
-            CliMessages.MESSAGE_META_PATH_DEFAULT,
-            CliMessages.MESSAGE_META_PATH_EXAMPLE));
-    COMMANDS.put(
+    add("pwd", "pwd", FsHelpMessages.PWD, "pwd");
+    add("ls", "ls [-laR] " + FORMAT + " [path]", FsHelpMessages.LS, "ls /\n  ls -la /db1");
+    add("ll", "ll [-aR] " + FORMAT + " [path]", FsHelpMessages.LL, "ll -a /db1");
+    add("cd", "cd [path | -]", FsHelpMessages.CD, "cd /db1\n  cd -");
+    add("stat", "stat [path]", FsHelpMessages.STAT, "stat /db1/table1.csv");
+    add("file", "file [path]", FsHelpMessages.FILE, "file /db1/table1.csv");
+    add(
         "schema",
-        new Entry(
-            CliMessages.MESSAGE_SCHEMA_PATH_USAGE,
-            CliMessages.MESSAGE_SCHEMA_PATH_RESULT,
-            CliMessages.MESSAGE_SCHEMA_PATH_DEFAULT,
-            CliMessages.MESSAGE_SCHEMA_PATH_EXAMPLE));
-    COMMANDS.put(
-        "cat",
-        new Entry(
-            CliMessages.MESSAGE_CAT_PATH_C889DFB2,
-            CliMessages
-                .MESSAGE_SIDECAR_TEXT_IS_PRINTED_UNCHANGED_DATA_ROWS_ARE_TAB_SEPARATED_WITHOUT_AN_ADDED_HEADER_2E8E51C3,
-            CliMessages
-                .MESSAGE_CURRENT_DIRECTORY_READS_AT_MOST_20_ROWS_FROM_EACH_PATH_IN_ORDER_9BD68A9A,
-            CliMessages.MESSAGE_CAT_DB1_TABLE1_CSV_CAT_REPORT_CSV_F9359B28));
-    COMMANDS.put(
-        "head",
-        new Entry(
-            CliMessages.MESSAGE_HEAD_N_COUNT_COUNT_PATH_2A61E54C,
-            CliMessages.MESSAGE_FIRST_COUNT_TEXT_LINES_OR_DATA_ROWS_8ABCCAD5,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_COUNT_IS_10_INCLUDING_ANY_SIDECAR_HEADER_6C7FD37F,
-            CliMessages.MESSAGE_HEAD_N_5_DB1_TABLE1_CSV_4DE75834));
-    COMMANDS.put(
-        "tail",
-        new Entry(
-            CliMessages.MESSAGE_TAIL_N_COUNT_COUNT_PATH_07ADC736,
-            CliMessages.MESSAGE_LAST_COUNT_TEXT_LINES_OR_DATA_ROWS_EF2CC0FC,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_COUNT_IS_10_INCLUDING_ANY_SIDECAR_HEADER_6C7FD37F,
-            CliMessages.MESSAGE_TAIL_N_5_DB1_TABLE1_CSV_E75ED46B));
-    COMMANDS.put(
+        "schema " + SCOPE + " " + FORMAT + " [path]",
+        FsHelpMessages.SCHEMA,
+        "schema /db1/table1.csv -f csv");
+    add("meta", "meta " + FORMAT + " [path]", FsHelpMessages.META, "meta /db1/table1.csv");
+    add(
         "stats",
-        new Entry(
-            "stats [path]",
-            "Field value statistics and null counts.",
-            "Current directory; reports every field for the selected object.",
-            "stats /db1/table1.csv"));
-    COMMANDS.put(
+        "stats " + SCOPE + " " + FORMAT + " [path]",
+        FsHelpMessages.STATS,
+        "stats /db1/table1.csv -m temperature");
+    add(
         "count",
-        new Entry(
-            "count [path]",
-            "Logical row, entity and column counts.",
-            "Current directory; reports every column for the selected object.",
-            "count /db1/table1.csv"));
-    COMMANDS.put(
-        "wc",
-        new Entry(
-            "wc -c [path]",
-            "Count UTF-8 bytes in the readable virtual file.",
-            "Current directory; output is '<bytes> <path>'.",
-            "wc -c /db1/table1.csv"));
-    COMMANDS.put(
+        "count " + SCOPE + " " + FORMAT + " [path]",
+        FsHelpMessages.COUNT,
+        "count /db1/table1.csv -f ndjson");
+    add(
+        "cat",
+        "cat [-n count] " + READ + " [path ...]",
+        FsHelpMessages.CAT,
+        "cat /db1/table1.csv -f csv\n  cat -- -report.csv");
+    add(
+        "head",
+        "head [-n count | -count] [path] " + READ,
+        FsHelpMessages.HEAD,
+        "head -n 5 /db1/table1.csv");
+    add(
+        "tail",
+        "tail [-n [+]count | -c [+]bytes] [-f] [--format table|ndjson|csv] [path]",
+        FsHelpMessages.TAIL,
+        "tail -n 5 /db1/table1.csv\n  tail -f /db1/table1.csv");
+    add("wc", "wc -c [path ...]", FsHelpMessages.WC, "wc -c /db1/table1.csv");
+    add(
         "grep",
-        new Entry(
-            CliMessages.MESSAGE_GREP_PATTERN_PATH_3EF6BB72,
-            CliMessages
-                .MESSAGE_LINES_CONTAINING_THE_LITERAL_PATTERN_REGULAR_EXPRESSIONS_ARE_NOT_USED_47F2D493,
-            CliMessages
-                .MESSAGE_BOTH_PATTERN_AND_PATH_ARE_REQUIRED_SEARCHES_AT_MOST_20_ROWS_0B801CE1,
-            CliMessages.MESSAGE_GREP_DEVICE_1_DB1_TABLE1_CSV_6B7DEB82));
-    COMMANDS.put(
+        "grep [-E | -F] [-i] [-v] [-n] <pattern> [path ...]",
+        FsHelpMessages.GREP,
+        "grep -E 'device[12]' /db1/table1.csv");
+    add(
         "find",
-        new Entry(
-            CliMessages.MESSAGE_FIND_PATH_NAME_PATTERN_D67E4643,
-            CliMessages
-                .MESSAGE_MATCHING_ABSOLUTE_PATHS_VISITED_RECURSIVELY_NAME_MATCHES_THE_EXACT_ENTRY_NAME_5B1560AA,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_INCLUDES_ALL_NAMES_IF_NAME_IS_OMITTED_B5541942,
-            CliMessages.MESSAGE_FIND_DB1_NAME_TABLE1_CSV_9B02F992));
-    COMMANDS.put(
-        "less",
-        new Entry(
-            CliMessages.MESSAGE_LESS_PATH_8196C183,
-            CliMessages.MESSAGE_TEXT_LINES_OR_DATA_ROWS_PRINTED_WITHOUT_INTERACTIVE_PAGING_6C652AEF,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_READS_AT_MOST_20_ROWS_29770E37,
-            CliMessages.MESSAGE_LESS_DB1_TABLE1_CSV_1C486298));
-    COMMANDS.put(
-        "more",
-        new Entry(
-            CliMessages.MESSAGE_MORE_PATH_75C477B2,
-            CliMessages.MESSAGE_TEXT_LINES_OR_DATA_ROWS_PRINTED_WITHOUT_INTERACTIVE_PAGING_6C652AEF,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_READS_AT_MOST_20_ROWS_29770E37,
-            CliMessages.MESSAGE_MORE_DB1_TABLE1_CSV_63580724));
-    COMMANDS.put(
-        "file",
-        new Entry(
-            CliMessages.MESSAGE_FILE_PATH_4928CBD2,
-            CliMessages.MESSAGE_ABSOLUTE_PATH_AND_VIRTUAL_FILE_TYPE_C3A88F3C,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_4B3788F6,
-            CliMessages.MESSAGE_FILE_DB1_TABLE1_CSV_A4914994));
-    COMMANDS.put(
-        "mkdir",
-        new Entry(
-            CliMessages.MESSAGE_MKDIR_PATH_76FAFA85,
-            CliMessages.MESSAGE_CREATES_A_TABLE_MODEL_DATABASE_NO_OUTPUT_ON_SUCCESS_DAE4AAC6,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_REQUIRES_FS_WRITE_MODE_ENABLED_5A485B47,
-            CliMessages.MESSAGE_MKDIR_DB1_FD8E7AF9));
-    COMMANDS.put(
-        "rmdir",
-        new Entry(
-            CliMessages.MESSAGE_RMDIR_PATH_A23525AE,
-            CliMessages
-                .MESSAGE_DROPS_A_TABLE_MODEL_DATABASE_AND_ITS_TABLES_NO_OUTPUT_ON_SUCCESS_1F281CFB,
-            CliMessages.MESSAGE_CURRENT_DIRECTORY_REQUIRES_FS_WRITE_MODE_ENABLED_5A485B47,
-            CliMessages.MESSAGE_RMDIR_DB1_40BDEEB7));
-    COMMANDS.put(
+        "find [path] [-name pattern] [-type f|d] [-maxdepth n]",
+        FsHelpMessages.FIND,
+        "find /db1 -name '*.csv'");
+    add("less", "less [path]", FsHelpMessages.PAGING, "less /db1/table1.csv");
+    add("more", "more [path]", FsHelpMessages.PAGING, "more /db1/table1.csv");
+    add("mkdir", "mkdir [-p] <path ...>", FsHelpMessages.MKDIR, "mkdir /db1");
+    add("rmdir", "rmdir <path ...>", FsHelpMessages.RMDIR, "rmdir /db1");
+    add(
         "rm",
-        new Entry(
-            CliMessages.MESSAGE_RM_R_PATH_B96CAAA7,
-            CliMessages
-                .MESSAGE_DROPS_THE_SELECTED_CSV_TABLE_R_DROPS_A_DATABASE_AND_ITS_TABLES_C499AA6A,
-            CliMessages.MESSAGE_PATH_IS_REQUIRED_REQUIRES_FS_WRITE_MODE_ENABLED_4429FD1C,
-            CliMessages.MESSAGE_RM_DB1_TABLE1_CSV_RM_R_DB1_5F30D7BC));
-    COMMANDS.put(
+        "rm [-r] [-f] [-i] <path ...>",
+        FsHelpMessages.RM,
+        "rm /db1/table1.csv\n  rm -r /db1");
+    add(
         "mv",
-        new Entry(
-            CliMessages.MESSAGE_MV_SOURCE_TARGET_A3FDF16A,
-            CliMessages
-                .MESSAGE_RENAMES_A_CSV_TABLE_WITHIN_THE_SAME_DATABASE_NO_OUTPUT_ON_SUCCESS_214800C4,
-            CliMessages.MESSAGE_BOTH_PATHS_ARE_REQUIRED_REQUIRES_FS_WRITE_MODE_ENABLED_0CF793C2,
-            CliMessages.MESSAGE_MV_DB1_TABLE1_CSV_DB1_TABLE2_CSV_E8D0CD22));
-    COMMANDS.put(
+        "mv [-i | -n | -f] <source ...> <target>",
+        FsHelpMessages.MV,
+        "mv /db1/table1.csv /db1/table2.csv");
+    add(
         "cp",
-        new Entry(
-            CliMessages.MESSAGE_CP_SOURCE_TARGET_AF9799A3,
-            CliMessages
-                .MESSAGE_COPIES_A_SCHEMA_TABLE_DEFINITION_USING_CREATE_TABLE_LIKE_NO_DATA_IS_COPIED_4B219F3F,
-            CliMessages.MESSAGE_BOTH_PATHS_ARE_REQUIRED_REQUIRES_FS_WRITE_MODE_ENABLED_0CF793C2,
-            CliMessages.MESSAGE_CP_DB1_TABLE1_SCHEMA_DB1_TABLE2_SCHEMA_DD111A6B));
-    COMMANDS.put(
+        "cp [-i | -n | -f] <source ...> <target>",
+        FsHelpMessages.CP,
+        "cp /db1/table1.csv /db2/table2.csv");
+    add(
         "cut",
-        new Entry(
-            CliMessages.MESSAGE_CUT_D_DELIMITER_F_FIELDS_PATH_9FE10722,
-            CliMessages
-                .MESSAGE_SELECTED_FIELDS_IN_SOURCE_ORDER_FIELDS_ACCEPT_COMMA_SEPARATED_POSITIVE_NUMBERS_AND_CLOSED_ASCENDING_RANGES_E5FF82DC,
-            CliMessages
-                .MESSAGE_TAB_DELIMITER_FIELDS_AND_PATH_ARE_REQUIRED_READS_AT_MOST_20_ROWS_46932C89,
-            CliMessages.MESSAGE_CUT_D_F1_3_5_DB1_TABLE1_CSV_D096FEBD));
-    COMMANDS.put(
+        "cut (-f fields [-d delimiter] [-s] | -b bytes | -c characters) [path ...]",
+        FsHelpMessages.CUT,
+        "cut -d, -f1-3,5 /db1/table1.csv");
+    add(
         "paste",
-        new Entry(
-            CliMessages.MESSAGE_PASTE_PATH_PATH_2EBAB7CB,
-            CliMessages
-                .MESSAGE_CORRESPONDING_LINES_JOINED_WITH_TABS_SHORTER_INPUTS_CONTRIBUTE_EMPTY_COLUMNS_A4A4DA9C,
-            CliMessages
-                .MESSAGE_AT_LEAST_ONE_PATH_IS_REQUIRED_READS_AT_MOST_20_ROWS_PER_PATH_2BF93D65,
-            CliMessages.MESSAGE_PASTE_DB1_TABLE1_CSV_DB1_TABLE2_CSV_35614E37));
-    COMMANDS.put(
+        "paste [-s] [-d delimiters] [path ...]",
+        FsHelpMessages.PASTE,
+        "paste /db1/table1.csv /db1/table2.csv");
+    add(
         "join",
-        new Entry(
-            CliMessages.MESSAGE_JOIN_T_DELIMITER_1_FIELD_2_FIELD_PATH1_PATH2_2425772D,
-            CliMessages
-                .MESSAGE_MATCHING_ROWS_JOINED_BY_KEY_FOLLOWED_BY_NON_KEY_FIELDS_FROM_EACH_INPUT_46F574EA,
-            CliMessages
-                .MESSAGE_WHITESPACE_DELIMITER_FIELD_1_IS_THE_KEY_READS_AT_MOST_20_ROWS_PER_INPUT_7C11E3C7,
-            CliMessages.MESSAGE_JOIN_T_1_2_2_1_DB1_TABLE1_CSV_DB1_TABLE2_CSV_7E3608F9));
+        "join [-t delimiter] [-1 field] [-2 field] [-a 1|2] [-v 1|2] [-e empty] [-o list] <path1>"
+            + " <path2>",
+        FsHelpMessages.JOIN,
+        "join -t, -1 2 -2 1 /db1/table1.csv /db1/table2.csv");
     COMMANDS.put(
         "write",
         new Entry(
@@ -240,55 +134,30 @@ public final class FilesystemCommandHelp {
                 .MESSAGE_REQUIRES_FS_WRITE_MODE_ENABLED_THE_TARGET_MUST_NOT_EXIST_CSV_REQUIRES_TIME_AND_EXACTLY_THE_DECLARED_COLUMNS_UNQUOTED_N_IS_NULL_TIME_MUST_STRICTLY_INCREASE_PER_TAG_DEVICE_LOCAL_PATHS_ARE_RELATIVE_TO_THE_PROCESS_WORKING_DIRECTORY_43E64C5C,
             CliMessages
                 .MESSAGE_WRITE_TABLE_SENSORS_TAG_SITE_STRING_FIELD_TEMPERATURE_DOUBLE_I_INPUT_CSV_O_OUTPUT_TSFILE_D9241DEC));
-    COMMANDS.put(
-        "tee",
-        new Entry(
-            CliMessages.MESSAGE_TEE_A_PATH_9071FE69,
-            CliMessages
-                .MESSAGE_APPENDS_STDIN_LINES_IN_BATCH_MODE_INTERACTIVELY_USE_WQ_TO_WRITE_OR_Q_TO_DISCARD_DD0C826A,
-            CliMessages.MESSAGE_A_AND_PATH_ARE_REQUIRED_REQUIRES_FS_WRITE_MODE_ENABLED_CA1D5E95,
-            CliMessages.MESSAGE_TEE_A_DB1_TABLE1_CSV_DEFFDD8A));
-    COMMANDS.put(
-        "tree",
-        new Entry(
-            CliMessages.MESSAGE_TREE_L_DEPTH_PATH_80213473,
-            CliMessages.MESSAGE_ENTRY_NAMES_WITH_INDENTATION_FOR_EACH_DIRECTORY_LEVEL_0A2D420E,
-            CliMessages
-                .MESSAGE_CURRENT_DIRECTORY_UNLIMITED_DEPTH_DEPTH_0_PRINTS_NO_DESCENDANTS_7B9643C9,
-            CliMessages.MESSAGE_TREE_L_2_DB1_4857586B));
-    COMMANDS.put(
-        "sql",
-        new Entry(
-            CliMessages.MESSAGE_SQL_STATEMENT_635619E5,
-            CliMessages
-                .MESSAGE_SQL_PASSTHROUGH_IS_NOT_SUPPORTED_IN_FILESYSTEM_MODE_USE_THE_DEFAULT_SQL_ACCESS_MODE_6B83ED75,
-            CliMessages.MESSAGE_THE_STATEMENT_IS_REQUIRED_AND_KEEPS_ITS_ORIGINAL_QUOTING_D8A652DF,
-            CliMessages.MESSAGE_SQL_SELECT_FROM_ROOT_SG_D1_74E0542D));
-    COMMANDS.put(
-        "help",
-        new Entry(
-            CliMessages.MESSAGE_HELP_COMMAND_D620EA8F,
-            CliMessages
-                .MESSAGE_GENERAL_HELP_OR_HELP_FOR_ONE_KNOWN_COMMAND_COMMAND_HELP_IS_EQUIVALENT_E6ADD9ED,
-            CliMessages.MESSAGE_GENERAL_HELP_HELP_MUST_BE_USED_WITHOUT_OTHER_ARGUMENTS_67857584,
-            CliMessages.MESSAGE_HELP_HELP_HEAD_HEAD_HELP_77DB2FED));
-    COMMANDS.put(
-        "exit",
-        new Entry(
-            CliMessages.MESSAGE_EXIT_F24F62EE,
-            CliMessages.MESSAGE_LEAVES_FILESYSTEM_MODE_QUIT_IS_AN_ALIAS_FOR_EXIT_B456121F,
-            CliMessages.MESSAGE_NO_OPTIONS_2420248A,
-            CliMessages.MESSAGE_EXIT_F24F62EE));
-    COMMANDS.put(
-        "quit",
-        new Entry(
-            CliMessages.MESSAGE_QUIT_DBD73C2B,
-            CliMessages.MESSAGE_LEAVES_FILESYSTEM_MODE_QUIT_IS_AN_ALIAS_FOR_EXIT_B456121F,
-            CliMessages.MESSAGE_NO_OPTIONS_2420248A,
-            CliMessages.MESSAGE_QUIT_DBD73C2B));
+    add("tee", "tee [-a] [path ...]", FsHelpMessages.TEE, "tee -a /db1/table1.csv");
+    add(
+        "export",
+        "export --type table|ndjson|csv (-d device ... | -t table ...) (-o file [--force] |"
+            + " --output-dir directory) [path]",
+        FsHelpMessages.EXPORT,
+        "export --type csv -t table1 -o table1.csv /db1");
+    add(
+        "sketch",
+        "sketch [-o file [--force]] <local.tsfile>",
+        FsHelpMessages.SKETCH,
+        "sketch ./output.tsfile");
+    add("tree", "tree [-L depth] [path]", FsHelpMessages.TREE, "tree -L 2 /db1");
+    add("sql", "sql <statement>", FsHelpMessages.SQL, "sql SELECT * FROM db1.table1");
+    add("help", "help [command]", FsHelpMessages.HELP, "help\n  head -h\n  head --help");
+    add("exit", "exit [status]", FsHelpMessages.EXIT, "exit 0");
+    add("quit", "quit [status]", FsHelpMessages.EXIT, "quit");
   }
 
   private FilesystemCommandHelp() {}
+
+  private static void add(String name, String usage, String[] description, String example) {
+    COMMANDS.put(name, new Entry(usage, description[0], description[1], example));
+  }
 
   public static void print(PrintStream out, String command) {
     if (command == null || command.isEmpty()) {
@@ -297,12 +166,11 @@ public final class FilesystemCommandHelp {
         out.println("  " + entry.usage);
       }
       out.println();
-      out.println(
-          CliMessages
-              .MESSAGE_QUOTE_PATHS_AND_PATTERNS_CONTAINING_SPACES_USE_BEFORE_OPERANDS_BEGINNING_WITH_COUNTS_USE_UNSIGNED_DECIMAL_INTEGERS_WITHOUT_LEADING_ZEROS_FIELDS_START_AT_1_OPTIONS_MAY_PRECEDE_OR_FOLLOW_PATHS_SINGLETON_OPTIONS_MUST_NOT_REPEAT_WRITES_REQUIRE_FS_WRITE_MODE_ENABLED_BATCH_OUTPUT_GOES_TO_STDOUT_ERRORS_GO_TO_STDERR_EXIT_STATUS_0_SUCCESS_1_USAGE_ERROR_2_INPUT_ERROR_3_RUNTIME_ERROR_832F0BFC);
+      out.println(FsHelpMessages.GENERAL);
       return;
     }
-    Entry entry = COMMANDS.get(command.toLowerCase(Locale.ROOT));
+    String name = command.toLowerCase(Locale.ROOT);
+    Entry entry = COMMANDS.get(name);
     if (entry == null) {
       out.println(String.format(CliMessages.MESSAGE_UNKNOWN_COMMAND_ARG_00157142, command));
       return;
@@ -314,6 +182,9 @@ public final class FilesystemCommandHelp {
             entry.result,
             entry.defaults,
             entry.examples));
+    if ("head".equals(name) || "cat".equals(name) || "export".equals(name)) {
+      out.println(FsHelpMessages.READ_OPTIONS);
+    }
   }
 
   private static final class Entry {

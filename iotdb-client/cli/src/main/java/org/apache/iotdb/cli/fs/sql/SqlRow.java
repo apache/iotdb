@@ -29,9 +29,15 @@ import java.util.Map;
 public class SqlRow {
 
   private final Map<String, String> values;
+  private final Map<String, String> dataTypes;
 
   public SqlRow(Map<String, String> values) {
+    this(values, Collections.emptyMap());
+  }
+
+  public SqlRow(Map<String, String> values, Map<String, String> dataTypes) {
     this.values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
+    this.dataTypes = Collections.unmodifiableMap(new LinkedHashMap<>(dataTypes));
   }
 
   public static SqlRow of(String... keyValues) {
@@ -55,5 +61,13 @@ public class SqlRow {
 
   public Map<String, String> asMap() {
     return values;
+  }
+
+  public String getDataType(String column) {
+    return dataTypes.get(column);
+  }
+
+  public Map<String, String> getDataTypes() {
+    return dataTypes;
   }
 }

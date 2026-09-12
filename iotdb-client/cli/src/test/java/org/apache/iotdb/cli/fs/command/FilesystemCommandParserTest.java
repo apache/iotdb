@@ -25,6 +25,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class FilesystemCommandParserTest {
 
@@ -311,12 +312,11 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
-  public void parseCutRequiresFieldsAndPath() {
+  public void parseCutRequiresSelectionAndDefaultsToStdin() {
     assertEquals(
         FilesystemCommand.Type.INVALID,
         FilesystemCommandParser.parse("cut -d, /db1/table1.csv").getType());
-    assertEquals(
-        FilesystemCommand.Type.INVALID, FilesystemCommandParser.parse("cut -f2,3").getType());
+    assertEquals("-", FilesystemCommandParser.parse("cut -f2,3").getPath());
   }
 
   @Test
@@ -329,11 +329,10 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
-  public void parseTeeRequiresAppendOptionAndPath() {
+  public void parseTeeAllowsOverwriteAndStandardOutputOnly() {
     assertEquals(
-        FilesystemCommand.Type.INVALID,
-        FilesystemCommandParser.parse("tee /db1/table1.csv").getType());
-    assertEquals(FilesystemCommand.Type.INVALID, FilesystemCommandParser.parse("tee -a").getType());
+        FilesystemCommand.Type.TEE, FilesystemCommandParser.parse("tee /db1/table1.csv").getType());
+    assertEquals(FilesystemCommand.Type.TEE, FilesystemCommandParser.parse("tee -a").getType());
     assertEquals(
         FilesystemCommand.Type.INVALID,
         FilesystemCommandParser.parse("tee -p /db1/table1.csv").getType());
@@ -385,11 +384,12 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
-  public void parseLsRecursiveAsTreeCommand() {
+  public void parseLsPreservesRecursiveAndDisplayFlags() {
     FilesystemCommand command = FilesystemCommandParser.parse("ls -R /db1");
 
-    assertEquals(FilesystemCommand.Type.TREE, command.getType());
+    assertEquals(FilesystemCommand.Type.LS, command.getType());
     assertEquals("/db1", command.getPath());
+    assertTrue(command.hasOption("-R"));
   }
 
   @Test
@@ -498,19 +498,10 @@ public class FilesystemCommandParserTest {
         "stat a b",
         "head a b",
         "tail a b",
-        "grep pattern a b",
         "find a b",
         "less a b",
         "more a b",
         "file a b",
-        "mkdir a b",
-        "rmdir a b",
-        "rm a b",
-        "rm -r a b",
-        "mv a b c",
-        "cp a b c",
-        "cut -f1 a b",
-        "tee -a a b",
         "tree a b");
   }
 
@@ -523,18 +514,13 @@ public class FilesystemCommandParserTest {
         "cat -x",
         "head -x",
         "tail -x",
-        "grep -i pattern path",
         "find -x",
         "less -x",
         "more -x",
         "file -x",
-        "mkdir -p path",
         "rmdir -p path",
-        "rm -f path",
-        "mv -f a b",
         "cp -r a b",
         "cut -x -f1 path",
-        "paste -d, a b",
         "join -x a b",
         "tee -p path",
         "tree -x",
@@ -560,11 +546,9 @@ public class FilesystemCommandParserTest {
           "+1", "-1", "01", "1x", "1.0", "\u0661", "2147483648", "999999999999999999999"
         }) {
       assertInvalid(
-          "head -n " + number + " path",
-          "tail -n " + number + " path",
-          "tree -L " + number,
-          "join -1 " + number + " a b",
-          "join -2 " + number + " a b");
+          "tree -L " + number, "join -1 " + number + " a b", "join -2 " + number + " a b");
+      if (!"+1".equals(number)) assertInvalid("tail -n " + number + " path");
+      assertInvalid("head -n " + number + " path");
     }
     assertEquals(0, FilesystemCommandParser.parse("head -n 0 path").getLimit());
     assertEquals(0, FilesystemCommandParser.parse("tree -L 0").getDepth());
@@ -597,8 +581,6 @@ public class FilesystemCommandParserTest {
           "1,",
           ",1",
           "1,,2",
-          "-2",
-          "2-",
           "3-1",
           "1-2-3",
           "1,0",
@@ -644,6 +626,95 @@ public class FilesystemCommandParserTest {
     assertEquals(FilesystemCommand.Type.SQL, command.getType());
     assertEquals("SELECT 'a b', '--help', '\\\\' FROM t", command.getStatement());
     assertInvalid("sql", "sql   ");
+  }
+
+  @Test
+  public void parseUnixFlagsAndStandardInput() {
+    FilesystemCommand grep = FilesystemCommandParser.parse("grep -Ein 'a|b' - second");
+    assertEquals(FilesystemCommand.Type.GREP, grep.getType());
+    assertTrue(grep.hasOption("-E"));
+    assertTrue(grep.hasOption("-i"));
+    assertTrue(grep.hasOption("-n"));
+    assertEquals(2, grep.getPaths().size());
+    assertEquals("-", FilesystemCommandParser.parse("grep pattern").getPath());
+    assertEquals("-", FilesystemCommandParser.parse("wc -c").getPath());
+    assertEquals(2, FilesystemCommandParser.parse("wc -c first second").getPaths().size());
+    assertEquals("-2,4-", FilesystemCommandParser.parse("cut -c-2,4-").getPattern());
+    assertTrue(FilesystemCommandParser.parse("cut -s -d, -f2-").hasOption("-s"));
+    assertTrue(FilesystemCommandParser.parse("paste -s -d, first second").hasOption("-s"));
+    assertInvalid("cut -b1 -f1", "cut -c1 -s", "grep -FE pattern");
+  }
+
+  @Test
+  public void parseTailFollowAndCountFromStart() {
+    FilesystemCommand tail = FilesystemCommandParser.parse("tail -f -c +12 --format csv table.csv");
+    assertEquals(FilesystemCommand.Type.TAIL, tail.getType());
+    assertEquals(12, tail.getLimit());
+    assertEquals("csv", tail.getFormat());
+    assertTrue(tail.hasOption("-f"));
+    assertTrue(tail.hasOption("--from-start"));
+    assertInvalid("tail -n2 -c3 table.csv");
+    assertEquals("/", FilesystemCommandParser.parse("cd").getPath());
+    assertEquals("-", FilesystemCommandParser.parse("cd -").getPath());
+    assertEquals(7, FilesystemCommandParser.parse("exit 7").getLimit());
+    assertEquals(FilesystemCommand.Type.HELP, FilesystemCommandParser.parse("-h").getType());
+    assertEquals("head", FilesystemCommandParser.parse("head -h").getPath());
+  }
+
+  @Test
+  public void parseStructuredMetadataAndExportOptions() {
+    FilesystemCommand metadata =
+        FilesystemCommandParser.parse("count -t sensors -m value -f csv /db");
+    assertEquals(FilesystemCommand.Type.COUNT, metadata.getType());
+    assertEquals("sensors", metadata.getTable());
+    assertEquals("value", metadata.getColumns().get(0));
+    assertEquals("csv", metadata.getFormat());
+    FilesystemCommand export =
+        FilesystemCommandParser.parse("export -t sensors --type ndjson -o out.json --force /db");
+    assertEquals(FilesystemCommand.Type.EXPORT, export.getType());
+    assertEquals("ndjson", export.getFormat());
+    assertEquals("out.json", export.optionValue("-o", ""));
+    assertTrue(export.hasOption("--force"));
+    assertEquals(
+        FilesystemCommand.Type.SKETCH,
+        FilesystemCommandParser.parse("sketch -o out.txt --force data.tsfile").getType());
+    assertEquals("csv", FilesystemCommandParser.parse("ls --format csv /db").getFormat());
+    assertInvalid(
+        "export --type csv -o out /db",
+        "export -t sensors -o out /db",
+        "sketch --force data.tsfile");
+    FilesystemCommand multiple =
+        FilesystemCommandParser.parse(
+            "export -t sensors -t meters --type csv --output-dir result /db");
+    assertEquals(2, multiple.getScopeValues("-t").size());
+    assertEquals("meters", multiple.getScopeValues("-t").get(1));
+    assertInvalid("export -t sensors -t meters --type csv -o result /db");
+  }
+
+  @Test
+  public void validateReadBoundsAndFindPredicates() {
+    assertInvalid("cat -n -1 /db/table.csv", "head -n -1 /db/table.csv");
+    assertInvalid("cat --start 20 --end 10 /db/table.csv", "head -n0 --offset 1 /db/table.csv");
+    FilesystemCommand find =
+        FilesystemCommandParser.parse("find /db -name '*.csv' -type f -maxdepth 2");
+    assertEquals(FilesystemCommand.Type.FIND, find.getType());
+    assertEquals("2", find.optionValue("-maxdepth", ""));
+    assertInvalid("find -type x", "find -maxdepth -1");
+  }
+
+  @Test
+  public void parseMutationAndJoinOptions() {
+    FilesystemCommand remove = FilesystemCommandParser.parse("rm -rf one two");
+    assertTrue(remove.hasOption("-r"));
+    assertTrue(remove.hasOption("-f"));
+    assertEquals(2, remove.getPaths().size());
+    assertTrue(FilesystemCommandParser.parse("mkdir -p -m755 /db").hasOption("-p"));
+    assertTrue(FilesystemCommandParser.parse("cp -n first second target").hasOption("-n"));
+    FilesystemCommand join = FilesystemCommandParser.parse("join -a1 -eNA -o0,1.2,2.2 a b");
+    assertEquals(FilesystemCommand.Type.JOIN, join.getType());
+    assertEquals("1", join.optionValue("-a", ""));
+    assertEquals("NA", join.optionValue("-e", ""));
+    assertInvalid("join -a3 a b", "join -o1.0 a b", "mkdir", "mkdir -m888 /db");
   }
 
   private static void assertInvalid(String... inputs) {

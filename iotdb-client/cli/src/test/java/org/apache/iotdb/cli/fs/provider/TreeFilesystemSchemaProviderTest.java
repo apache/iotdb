@@ -34,6 +34,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -120,6 +121,15 @@ public class TreeFilesystemSchemaProviderTest {
   }
 
   @Test
+  public void describeDeviceIsADirectoryEvenWhenShowTimeseriesUsesExactMatching()
+      throws SQLException {
+    when(executor.query("SHOW CHILD PATHS root.sg.d1"))
+        .thenReturn(SqlRow.list(SqlRow.of("ChildPaths", "root.sg.d1.s1")));
+    assertEquals(
+        FsNodeType.TREE_INTERNAL_PATH, provider.describe(FsPath.absolute("/root/sg/d1")).getType());
+  }
+
+  @Test
   public void schemaReturnsTimeseriesRows() throws SQLException {
     when(executor.query("SHOW TIMESERIES root.sg.d1.s1"))
         .thenReturn(
@@ -130,7 +140,9 @@ public class TreeFilesystemSchemaProviderTest {
     List<SqlRow> rows = provider.schema(FsPath.absolute("/root/sg/d1/s1"));
 
     assertEquals(1, rows.size());
-    assertEquals("INT32", rows.get(0).get("DataType"));
+    assertEquals("INT32", rows.get(0).get("data_type"));
+    assertEquals("root.sg.d1", rows.get(0).get("object"));
+    assertEquals("s1", rows.get(0).get("column"));
     verify(executor).query("SHOW TIMESERIES root.sg.d1.s1");
   }
 
@@ -167,13 +179,77 @@ public class TreeFilesystemSchemaProviderTest {
 
   @Test
   public void readTimeseriesSelectsMeasurementFromDevice() throws SQLException {
-    when(executor.query("SELECT s1 FROM root.sg.d1 LIMIT 10"))
-        .thenReturn(SqlRow.list(SqlRow.of("Time", "1", "s1", "42")));
+    mockTimeseries("s1", "INT32");
+    when(executor.query("SELECT s1 FROM root.sg.d1 ORDER BY time ASC LIMIT 10"))
+        .thenReturn(SqlRow.list(SqlRow.of("Time", "1", "root.sg.d1.s1", "42")));
 
     List<SqlRow> rows = provider.read(FsPath.absolute("/root/sg/d1/s1"), 10);
 
     assertEquals(1, rows.size());
     assertEquals("42", rows.get(0).get("s1"));
-    verify(executor).query("SELECT s1 FROM root.sg.d1 LIMIT 10");
+    assertEquals("1", rows.get(0).get("time"));
+    verify(executor).query("SELECT s1 FROM root.sg.d1 ORDER BY time ASC LIMIT 10");
+  }
+
+  @Test
+  public void countMeasurementUsesFullDeviceTimelineAndNullEntityCount() throws SQLException {
+    mockTimeseries("s1", "INT32");
+    when(executor.query("SELECT * FROM root.sg.d1 ORDER BY time ASC"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of("Time", "1", "root.sg.d1.s1", "42", "root.sg.d1.s2", null),
+                SqlRow.of("Time", "2", "root.sg.d1.s1", null, "root.sg.d1.s2", "other"),
+                SqlRow.of("Time", "3", "root.sg.d1.s1", "43", "root.sg.d1.s2", null)));
+    SqlRow row = provider.countRows(FsPath.absolute("/root/sg/d1/s1")).get(0);
+    assertEquals("root.sg.d1", row.get("object"));
+    assertEquals("FIELD", row.get("category"));
+    assertEquals("3", row.get("row_count"));
+    assertEquals("2", row.get("non_null_count"));
+    assertEquals("1", row.get("null_count"));
+    assertNull(row.get("entity_count"));
+    assertEquals("1", row.get("min_time"));
+    assertEquals("3", row.get("max_time"));
+  }
+
+  @Test
+  public void stringStatisticsAreTypeAwareAndUseNonNullTimeRange() throws SQLException {
+    mockTimeseries("s1", "STRING");
+    when(executor.query("SELECT * FROM root.sg.d1 ORDER BY time ASC"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of("Time", "1", "root.sg.d1.s1", null, "root.sg.d1.s2", "other"),
+                SqlRow.of("Time", "2", "root.sg.d1.s1", "z"),
+                SqlRow.of("Time", "3", "root.sg.d1.s1", "a")));
+    SqlRow row = provider.stats(FsPath.absolute("/root/sg/d1/s1")).get(0);
+    assertEquals("a", row.get("min"));
+    assertEquals("z", row.get("max"));
+    assertEquals("z", row.get("first"));
+    assertEquals("a", row.get("last"));
+    assertNull(row.get("sum"));
+    assertEquals("2", row.get("min_time"));
+    assertEquals("1", row.get("null_count"));
+  }
+
+  @Test
+  public void deviceReadAndUnlimitedTailUseAllMeasurements() throws SQLException {
+    when(executor.query("SHOW TIMESERIES root.sg.d1.**"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of("Timeseries", "root.sg.d1.s1", "DataType", "INT32"),
+                SqlRow.of("Timeseries", "root.sg.d1.s2", "DataType", "STRING")));
+    when(executor.query("SELECT * FROM root.sg.d1 ORDER BY time DESC"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of("Time", "2", "root.sg.d1.s1", "2"),
+                SqlRow.of("Time", "1", "root.sg.d1.s1", "1")));
+    assertEquals(3, provider.columns(FsPath.absolute("/root/sg/d1")).size());
+    List<SqlRow> rows = provider.tail(FsPath.absolute("/root/sg/d1"), -1);
+    assertEquals("1", rows.get(0).get("s1"));
+    assertEquals("2", rows.get(1).get("s1"));
+  }
+
+  private void mockTimeseries(String name, String type) throws SQLException {
+    when(executor.query("SHOW TIMESERIES root.sg.d1." + name))
+        .thenReturn(SqlRow.list(SqlRow.of("Timeseries", "root.sg.d1." + name, "DataType", type)));
   }
 }

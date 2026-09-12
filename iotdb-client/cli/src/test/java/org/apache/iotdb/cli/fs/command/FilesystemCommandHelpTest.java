@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cli.fs.command;
 
-import org.apache.iotdb.cli.i18n.CliMessages;
+import org.apache.iotdb.cli.i18n.FsHelpMessages;
 
 import org.junit.Test;
 
@@ -58,17 +58,15 @@ public class FilesystemCommandHelpTest {
   }
 
   @Test
-  public void helpDocumentsExactNameAndLiteralPatternBehavior() throws Exception {
-    assertTrue(
-        help("find")
-            .contains(
-                CliMessages
-                    .MESSAGE_MATCHING_ABSOLUTE_PATHS_VISITED_RECURSIVELY_NAME_MATCHES_THE_EXACT_ENTRY_NAME_5B1560AA));
-    assertTrue(
-        help("grep")
-            .contains(
-                CliMessages
-                    .MESSAGE_LINES_CONTAINING_THE_LITERAL_PATTERN_REGULAR_EXPRESSIONS_ARE_NOT_USED_47F2D493));
+  public void helpDocumentsMatchingAndDestructiveOperationContracts() throws Exception {
+    assertTrue(help("find").contains(FsHelpMessages.FIND[0]));
+    assertTrue(help("grep").contains(FsHelpMessages.GREP[0]));
+    assertTrue(help("rmdir").contains(FsHelpMessages.RMDIR[0]));
+    assertTrue(help("cp").contains("/db2/table2.csv"));
+    assertFalse(help("cp").contains(".schema"));
+    assertFalse(help("tee").contains(":wq"));
+    assertTrue(help("export").contains("--output-dir"));
+    assertTrue(help("sketch").contains("<local.tsfile>"));
   }
 
   private static String help(String command) throws Exception {

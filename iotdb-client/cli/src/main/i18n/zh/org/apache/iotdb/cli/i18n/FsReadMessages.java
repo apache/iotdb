@@ -17,18 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.cli.fs.sql;
+package org.apache.iotdb.cli.i18n;
 
-import java.sql.SQLException;
-import java.util.List;
+public final class FsReadMessages {
+  private FsReadMessages() {}
 
-public interface SqlExecutor {
-
-  List<SqlRow> query(String sql) throws SQLException;
-
-  void execute(String sql) throws SQLException;
-
-  default List<SqlRow> executeQueryOrUpdate(String sql) throws SQLException {
-    return query(sql);
-  }
+  public static final String INVALID_SCOPE = "请选择可读表、设备或时间序列，而不是目录 %s";
+  public static final String INVALID_DEVICE = "无效的树模型设备路径：%s";
+  public static final String TEXT_OPTIONS = "文本输入不支持数据对象选择、过滤或结构化输出格式";
 }

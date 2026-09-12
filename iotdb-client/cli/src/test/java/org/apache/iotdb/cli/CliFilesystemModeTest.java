@@ -245,11 +245,10 @@ public class CliFilesystemModeTest {
   }
 
   @Test
-  public void filesystemSqlPassthroughIsRejectedBeforeUsernamePasswordAndConnection()
-      throws Exception {
-    assertOfflineExit("sql SELECT * FROM root.sg.d1", FilesystemShell.USAGE_ERROR);
+  public void filesystemSqlRequiresConnection() {
+    assertNull(FilesystemShell.runOffline(ctx, "sql SELECT * FROM root.sg.d1"));
     assertEquals("", out.toString());
-    assertTrue(err.toString().contains("Unsupported filesystem command"));
+    assertEquals("", err.toString());
     assertNull(ctx.getLineReader());
   }
 

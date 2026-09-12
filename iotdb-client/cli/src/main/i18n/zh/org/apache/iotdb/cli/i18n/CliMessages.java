@@ -21,6 +21,38 @@ package org.apache.iotdb.cli.i18n;
 
 public final class CliMessages {
 
+  public static final String FS_DIRECTORY_NOT_EMPTY = "目录非空：%s";
+  public static final String FS_TREE_SUMMARY = "%d 个目录，%d 个文件";
+  public static final String FS_STAT_FILE = "文件：%s";
+  public static final String FS_STAT_TYPE = "类型：%s";
+  public static final String FS_STAT_SIZE = "大小：%d 字节";
+  public static final String FS_FILE_CSV = "CSV 文本";
+  public static final String FS_FILE_METADATA = "CSV 元数据文本";
+  public static final String FS_FILE_DIRECTORY = "目录";
+  public static final String FS_FILE_UNKNOWN = "未知";
+  public static final String FS_CSV_PARSE_FAILED = "CSV 输入解析失败";
+  public static final String MESSAGE_FS_INVALID_TIME_RANGE = "--start 不能大于 --end";
+  public static final String MESSAGE_FS_OFFSET_WITH_ZERO_LIMIT = "--offset 要求 limit 不为零";
+  public static final String FS_INVALID_WRITE_OPERATION = "此路径不支持该文件系统写入操作";
+  public static final String FS_WRITE_UNSUPPORTED = "不支持该文件系统写入操作";
+  public static final String FS_SAME_FILE = "源文件与目标文件相同：%s";
+  public static final String FS_SCOPE_MODEL = "选项 %s 不适用于 %s 模型";
+  public static final String FS_SCOPE_PATH = "对象 %s 与路径 %s 不匹配";
+  public static final String FS_UNKNOWN_FIELD = "未知 FIELD 列：%s";
+  public static final String FS_UNKNOWN_TAG = "未知 TAG 列：%s";
+  public static final String FS_INVALID_REGEX = "无效的正则表达式：%s";
+  public static final String MESSAGE_FS_INVALID_PATTERN = "无效的匹配模式：%s";
+  public static final String MESSAGE_FS_JOIN_UNSORTED = "join：输入 %s 未排序";
+  public static final String FS_CONFIRM_REPLACE = "%s：覆盖 %s？[y/N] ";
+  public static final String FS_CONFIRM_REMOVE = "rm：删除 %s？[y/N] ";
+  public static final String FS_EXPORT_TARGET = "export 单对象需要 -o，多对象需要 --output-dir";
+  public static final String FS_PIPE_SYNTAX = "无效的管道或重定向";
+  public static final String FS_FOLLOW_COMPOUND = "tail -f 不能用于管道或重定向";
+  public static final String FS_SQL_READONLY = "此 SQL 语句需要 --fs_write_mode enabled";
+  public static final String FS_INTERRUPTED = "命令已中断";
+  public static final String FS_FILE_EXISTS = "文件已存在：%s";
+  public static final String FS_VIRTUAL_MODE = "虚拟数据库对象不支持 Unix 权限模式";
+
   // CliContext
   public static final String EXITING_WITH_CODE = "正在退出，退出码 %d";
 

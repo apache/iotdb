@@ -21,7 +21,9 @@ package org.apache.iotdb.cli.fs.command;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FilesystemCommand {
 
@@ -54,6 +56,8 @@ public class FilesystemCommand {
     JOIN,
     TEE,
     WRITE,
+    EXPORT,
+    SKETCH,
     TREE,
     SQL,
     HELP,
@@ -80,6 +84,9 @@ public class FilesystemCommand {
   private final List<String> tagFilters;
   private final String tagMatch;
   private final WriteOptions writeOptions;
+  private final Map<String, String> options;
+  private final List<String> pathPatterns;
+  private final int errorStatus;
 
   private FilesystemCommand(
       Type type,
@@ -100,7 +107,10 @@ public class FilesystemCommand {
       String end,
       List<String> tagFilters,
       String tagMatch,
-      WriteOptions writeOptions) {
+      WriteOptions writeOptions,
+      Map<String, String> options,
+      List<String> pathPatterns,
+      int errorStatus) {
     this.type = type;
     this.path = path;
     this.paths = paths;
@@ -120,6 +130,9 @@ public class FilesystemCommand {
     this.tagFilters = Collections.unmodifiableList(new ArrayList<>(tagFilters));
     this.tagMatch = tagMatch;
     this.writeOptions = writeOptions;
+    this.options = Collections.unmodifiableMap(new LinkedHashMap<>(options));
+    this.pathPatterns = Collections.unmodifiableList(new ArrayList<>(pathPatterns));
+    this.errorStatus = errorStatus;
   }
 
   private static FilesystemCommand create(
@@ -151,7 +164,10 @@ public class FilesystemCommand {
         null,
         Collections.emptyList(),
         "all",
-        null);
+        null,
+        Collections.emptyMap(),
+        Collections.emptyList(),
+        1);
   }
 
   public static FilesystemCommand simple(Type type) {
@@ -222,7 +238,10 @@ public class FilesystemCommand {
         null,
         Collections.emptyList(),
         "all",
-        options);
+        options,
+        Collections.emptyMap(),
+        Collections.emptyList(),
+        1);
   }
 
   public WriteOptions getWriteOptions() {
@@ -231,6 +250,36 @@ public class FilesystemCommand {
 
   public static FilesystemCommand invalid(String errorMessage) {
     return create(Type.INVALID, "", Collections.emptyList(), -1, -1, "", "", "", errorMessage);
+  }
+
+  public static FilesystemCommand invalid(String errorMessage, int errorStatus) {
+    return new FilesystemCommand(
+        Type.INVALID,
+        "",
+        Collections.emptyList(),
+        -1,
+        -1,
+        "",
+        "",
+        "",
+        errorMessage,
+        "table",
+        "",
+        "",
+        Collections.emptyList(),
+        0,
+        null,
+        null,
+        Collections.emptyList(),
+        "all",
+        null,
+        Collections.emptyMap(),
+        Collections.emptyList(),
+        errorStatus);
+  }
+
+  public int getErrorStatus() {
+    return errorStatus;
   }
 
   public FilesystemCommand withReadOptions(
@@ -262,7 +311,10 @@ public class FilesystemCommand {
         end,
         tagFilters,
         tagMatch,
-        writeOptions);
+        writeOptions,
+        options,
+        pathPatterns,
+        errorStatus);
   }
 
   public FilesystemCommand withLimit(int newLimit) {
@@ -285,7 +337,116 @@ public class FilesystemCommand {
         end,
         tagFilters,
         tagMatch,
-        writeOptions);
+        writeOptions,
+        options,
+        pathPatterns,
+        errorStatus);
+  }
+
+  public FilesystemCommand withOptions(Map<String, String> newOptions) {
+    return new FilesystemCommand(
+        type,
+        path,
+        paths,
+        depth,
+        limit,
+        option,
+        pattern,
+        statement,
+        errorMessage,
+        format,
+        device,
+        table,
+        columns,
+        offset,
+        start,
+        end,
+        tagFilters,
+        tagMatch,
+        writeOptions,
+        newOptions,
+        pathPatterns,
+        errorStatus);
+  }
+
+  public FilesystemCommand withPaths(List<String> newPaths) {
+    return new FilesystemCommand(
+        type,
+        newPaths.isEmpty() ? "" : newPaths.get(0),
+        Collections.unmodifiableList(new ArrayList<>(newPaths)),
+        depth,
+        limit,
+        option,
+        pattern,
+        statement,
+        errorMessage,
+        format,
+        device,
+        table,
+        columns,
+        offset,
+        start,
+        end,
+        tagFilters,
+        tagMatch,
+        writeOptions,
+        options,
+        Collections.emptyList(),
+        errorStatus);
+  }
+
+  public FilesystemCommand withPathPatterns(List<String> patterns) {
+    return new FilesystemCommand(
+        type,
+        path,
+        paths,
+        depth,
+        limit,
+        option,
+        pattern,
+        statement,
+        errorMessage,
+        format,
+        device,
+        table,
+        columns,
+        offset,
+        start,
+        end,
+        tagFilters,
+        tagMatch,
+        writeOptions,
+        options,
+        patterns,
+        errorStatus);
+  }
+
+  public String getPathPattern(int index) {
+    return index < pathPatterns.size() ? pathPatterns.get(index) : null;
+  }
+
+  public Map<String, String> getOptions() {
+    return options;
+  }
+
+  public boolean hasOption(String flag) {
+    return options.containsKey(flag);
+  }
+
+  public String optionValue(String flag, String defaultValue) {
+    return options.getOrDefault(flag, defaultValue);
+  }
+
+  public List<String> getScopeValues(String flag) {
+    List<String> scopes = new ArrayList<>();
+    for (int i = 0; options.containsKey(flag + "." + i); i++) {
+      scopes.add(options.get(flag + "." + i));
+    }
+    if (scopes.isEmpty()) {
+      String scope = "-d".equals(flag) ? device : table;
+      if (!scope.isEmpty()) scopes.add(scope);
+    }
+    return Collections.unmodifiableList(scopes);
   }
 
   public Type getType() {

@@ -21,6 +21,7 @@ package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.sql.SqlExecutor;
+import org.apache.iotdb.cli.i18n.CliMessages;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -96,7 +97,7 @@ public class TableFilesystemMutationProviderTest {
     assertInvalidOperation(() -> provider.rmdir(FsPath.absolute("/")));
     assertInvalidOperation(() -> provider.rmdir(FsPath.absolute("/db1/table1.csv")));
     assertInvalidOperation(() -> provider.removeRecursive(FsPath.absolute("/")));
-    assertInvalidOperation(() -> provider.removeRecursive(FsPath.absolute("/db1/table1.csv")));
+    assertInvalidOperation(() -> provider.removeRecursive(FsPath.absolute("/db1/table1.meta")));
   }
 
   @Test
@@ -107,7 +108,7 @@ public class TableFilesystemMutationProviderTest {
   }
 
   @Test
-  public void moveRejectsUnsafeLevelsAndCrossDatabaseRename() throws SQLException {
+  public void moveRejectsUnsafeLevels() throws SQLException {
     assertInvalidOperation(() -> provider.move(FsPath.absolute("/db1"), FsPath.absolute("/db2")));
     assertInvalidOperation(
         () -> provider.move(FsPath.absolute("/db1/table1"), FsPath.absolute("/db1/table2")));
@@ -117,9 +118,6 @@ public class TableFilesystemMutationProviderTest {
                 FsPath.absolute("/db1/table1.schema"), FsPath.absolute("/db1/table2.schema")));
     assertInvalidOperation(
         () -> provider.move(FsPath.absolute("/db1/table1/s1"), FsPath.absolute("/db1/table1/s2")));
-    assertInvalidOperation(
-        () ->
-            provider.move(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db2/table1.csv")));
   }
 
   @Test
@@ -131,10 +129,9 @@ public class TableFilesystemMutationProviderTest {
   }
 
   @Test
-  public void copyRejectsNonSchemaPaths() throws SQLException {
+  public void copyRejectsInvalidPaths() throws SQLException {
     assertInvalidOperation(
-        () ->
-            provider.copy(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv")));
+        () -> provider.copy(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/")));
     assertInvalidOperation(
         () -> provider.copy(FsPath.absolute("/db1/table1.schema"), FsPath.absolute("/db1")));
   }
@@ -220,7 +217,7 @@ public class TableFilesystemMutationProviderTest {
       operation.run();
       fail();
     } catch (SQLException e) {
-      assertEquals("Invalid filesystem write operation for this path", e.getMessage());
+      assertEquals(CliMessages.FS_INVALID_WRITE_OPERATION, e.getMessage());
     }
   }
 

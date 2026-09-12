@@ -22,7 +22,9 @@ package org.apache.iotdb.cli.fs;
 import org.apache.iotdb.cli.fs.command.FilesystemCommand;
 import org.apache.iotdb.cli.fs.command.FilesystemCommandHelp;
 import org.apache.iotdb.cli.fs.command.FilesystemCommandParser;
+import org.apache.iotdb.cli.fs.command.FsShellWords;
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
@@ -34,21 +36,30 @@ import org.apache.iotdb.cli.fs.write.TsFileWriteExecutor;
 import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.CliContext;
 
+import org.jline.builtins.Less;
+import org.jline.builtins.Source;
 import org.jline.reader.Candidate;
 import org.jline.reader.Completer;
-import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.ParsedLine;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -58,13 +69,13 @@ public class FilesystemShell {
   public static final int USAGE_ERROR = 1;
   public static final int INPUT_ERROR = 2;
   public static final int RUNTIME_ERROR = 3;
-  private static final int DEFAULT_READ_LIMIT = 20;
 
   private static final List<String> COMMANDS =
       Arrays.asList(
           "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "wc", "cat", "head",
           "tail", "grep", "find", "less", "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut",
-          "paste", "join", "tree", "help", "exit", "quit", "tee", "write");
+          "paste", "join", "tree", "help", "exit", "quit", "tee", "write", "export", "sketch",
+          "sql");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
@@ -72,6 +83,9 @@ public class FilesystemShell {
   private final boolean writeEnabled;
   private int lastStatus = SUCCESS;
   private FsPath currentPath = FsPath.absolute("/");
+  private FsPath previousPath;
+  private byte[] standardInput;
+  private BufferedReader confirmationInput;
 
   public FilesystemShell(CliContext ctx, FilesystemSchemaProvider provider) {
     this(ctx, provider, new UnsupportedFilesystemMutationProvider(), false);
@@ -89,20 +103,20 @@ public class FilesystemShell {
   }
 
   public boolean execute(String input) throws SQLException {
-    return execute(FilesystemCommandParser.parse(input), false);
+    return executeInput(input, false);
   }
 
   private boolean execute(FilesystemCommand command, boolean nonInteractive) throws SQLException {
     lastStatus = SUCCESS;
+    standardInput = null;
+    confirmationInput = null;
     switch (command.getType()) {
       case PWD:
         ctx.getPrinter().println(currentPath.toString());
         return true;
       case LS:
-        printList(command.getPath(), isAllOption(command), false);
-        return true;
       case LL:
-        printList(command.getPath(), isAllOption(command), true);
+        printListing(command);
         return true;
       case CD:
         changeDirectory(command.getPath());
@@ -114,20 +128,13 @@ public class FilesystemShell {
         }
         return true;
       case META:
-        FsPath metadataPath = resolve(command.getPath());
-        printRows(provider.meta(metadataPath));
-        return true;
       case SCHEMA:
-        printRows(provider.schema(resolve(command.getPath())));
-        return true;
       case STATS:
-        printRows(provider.stats(resolve(command.getPath())));
-        return true;
       case COUNT:
-        printRows(provider.countRows(resolve(command.getPath())));
+        printMetadata(command);
         return true;
       case WC:
-        printByteCount(command.getPath());
+        printByteCounts(command);
         return true;
       case CAT:
         printSequentialReads(command.getPaths(), command.getReadOptions());
@@ -136,44 +143,43 @@ public class FilesystemShell {
         printHead(command);
         return true;
       case TAIL:
-        printTail(command);
+        printUnixTail(command, nonInteractive);
         return true;
       case GREP:
-        printMatchingRows(command.getPath(), command.getPattern());
+      case CUT:
+      case PASTE:
+      case JOIN:
+        try {
+          List<List<String>> inputs = new ArrayList<>();
+          for (String path : command.getPaths()) inputs.add(textLines(path));
+          lastStatus = UnixTextCommands.execute(command, inputs, ctx.getOut());
+        } catch (SQLException | IllegalArgumentException e) {
+          if (command.getType() != FilesystemCommand.Type.GREP) throw e;
+          reportError(2, e.getMessage());
+        }
         return true;
       case FIND:
-        printFind(resolve(command.getPath()), command.getPattern());
+        printFind(resolve(command.getPath()), command, 0);
         return true;
       case LESS:
       case MORE:
-        printReadable(command.getPath(), DEFAULT_READ_LIMIT);
+        page(command, nonInteractive);
         return true;
       case FILE:
         printFile(command.getPath());
         return true;
       case MKDIR:
-        mkdir(command.getPath());
+        makeDirectories(command);
         return true;
       case RMDIR:
-        rmdir(command.getPath());
+        for (String path : command.getPaths()) rmdir(path);
         return true;
       case RM:
-        remove(command.getPath(), command.getOption());
+        removePaths(command);
         return true;
       case MV:
-        move(command.getPaths());
-        return true;
       case CP:
-        copy(command.getPaths());
-        return true;
-      case CUT:
-        printCut(command.getPath(), command.getOption(), command.getPattern());
-        return true;
-      case PASTE:
-        printPaste(command.getPaths());
-        return true;
-      case JOIN:
-        printJoin(command.getPaths(), command.getOption(), command.getPattern());
+        transfer(command);
         return true;
       case WRITE:
         if (!writeEnabled) {
@@ -195,20 +201,29 @@ public class FilesystemShell {
         }
         return true;
       case TEE:
-        append(command.getPath(), nonInteractive);
+        tee(command, nonInteractive);
+        return true;
+      case EXPORT:
+        new FsLocalCommands(ctx.getOut(), provider).export(command, currentPath);
+        return true;
+      case SKETCH:
+        new FsLocalCommands(ctx.getOut(), provider).sketch(command);
         return true;
       case HELP:
         FilesystemCommandHelp.print(ctx.getOut(), command.getPath());
         return true;
       case EXIT:
+        lastStatus = command.getLimit();
         return false;
       case TREE:
         printTree(resolve(command.getPath()), command.getDepth());
         return true;
       case INVALID:
-        reportError(USAGE_ERROR, command.getErrorMessage());
+        reportError(command.getErrorStatus(), command.getErrorMessage());
         return true;
       case SQL:
+        executeSql(command.getStatement());
+        return true;
       default:
         reportError(
             USAGE_ERROR,
@@ -220,14 +235,16 @@ public class FilesystemShell {
   }
 
   public boolean executeNonInteractive(String input) throws SQLException {
-    return execute(FilesystemCommandParser.parse(input), true);
+    return executeInput(input, true);
   }
 
   /** Execute a command with separate result and diagnostic streams and a script exit status. */
   public int runNonInteractive(String input) {
     try {
       executeNonInteractive(input);
-    } catch (SQLException | IllegalArgumentException e) {
+    } catch (IllegalArgumentException e) {
+      reportError(USAGE_ERROR, e.getMessage());
+    } catch (SQLException e) {
       reportError(
           RUNTIME_ERROR,
           String.format(
@@ -245,15 +262,58 @@ public class FilesystemShell {
   }
 
   public static Integer runOffline(CliContext ctx, String input, boolean writeEnabled) {
+    FsCommandLine line;
+    try {
+      line = FsCommandLine.parse(input);
+    } catch (IllegalArgumentException e) {
+      return new FilesystemShell(ctx, null, null, writeEnabled).runNonInteractive(input);
+    }
+    if (line.compound()) {
+      for (String part : line.commands) {
+        FilesystemCommand command = FilesystemCommandParser.parse(part);
+        if (command.getType() == FilesystemCommand.Type.TAIL && command.hasOption("-f")) {
+          return new FilesystemShell(ctx, null, null, writeEnabled).runNonInteractive(input);
+        }
+      }
+      return null;
+    }
     FilesystemCommand command = FilesystemCommandParser.parse(input);
     switch (command.getType()) {
       case HELP:
       case INVALID:
-      case SQL:
+      case SKETCH:
       case EXIT:
       case PWD:
       case WRITE:
         return new FilesystemShell(ctx, null, null, writeEnabled).runNonInteractive(input);
+      case WC:
+      case GREP:
+      case CUT:
+      case PASTE:
+      case JOIN:
+      case CAT:
+      case HEAD:
+      case LESS:
+      case MORE:
+        if (command.getPaths().stream().allMatch("-"::equals)) {
+          return new FilesystemShell(ctx, null, null, writeEnabled).runNonInteractive(input);
+        }
+        return null;
+      case TAIL:
+        if (command.getPaths().stream().allMatch("-"::equals)
+            && !command.hasOption("--format")
+            && !command.hasOption("-m")
+            && !command.hasOption("--start")
+            && !command.hasOption("--end")
+            && !command.hasOption("--offset")
+            && !command.hasOption("--tag-filter")) {
+          return new FilesystemShell(ctx, null, null, writeEnabled).runNonInteractive(input);
+        }
+        return null;
+      case TEE:
+        return command.getPaths().isEmpty()
+            ? new FilesystemShell(ctx, null, null, writeEnabled).runNonInteractive(input)
+            : null;
       default:
         return null;
     }
@@ -286,41 +346,52 @@ public class FilesystemShell {
     if (!checkExists("tree", node)) {
       return;
     }
-    if (!isDirectory(node.getType())) {
-      ctx.getPrinter().println(node.getName());
-      return;
+    ctx.getPrinter().println(path.toString());
+    long[] counts = new long[2];
+    if (isDirectory(node.getType())) {
+      printTreeChildren(path, "", 0, depth, counts);
+    } else {
+      counts[1] = 1;
     }
-    printTreeChildren(path, 0, depth);
+    ctx.getPrinter().println();
+    ctx.getPrinter().println(String.format(CliMessages.FS_TREE_SUMMARY, counts[0], counts[1]));
   }
 
-  private void printTreeChildren(FsPath path, int currentDepth, int maxDepth) throws SQLException {
+  private void printTreeChildren(
+      FsPath path, String prefix, int currentDepth, int maxDepth, long[] counts)
+      throws SQLException {
     if (currentDepth >= maxDepth) {
       return;
     }
-    for (FsNode node : provider.list(path)) {
-      ctx.getPrinter().println(indent(currentDepth) + node.getName());
+    List<FsNode> children = provider.list(path);
+    for (int i = 0; i < children.size(); i++) {
+      FsNode node = children.get(i);
+      boolean last = i == children.size() - 1;
+      ctx.getPrinter().println(prefix + (last ? "`-- " : "|-- ") + node.getName());
       if (isDirectory(node.getType())) {
-        printTreeChildren(node.getPath(), currentDepth + 1, maxDepth);
+        counts[0]++;
+        printTreeChildren(
+            node.getPath(), prefix + (last ? "    " : "|   "), currentDepth + 1, maxDepth, counts);
+      } else {
+        counts[1]++;
       }
     }
   }
 
-  private static String indent(int depth) {
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < depth; i++) {
-      builder.append("  ");
-    }
-    return builder.toString();
-  }
-
   private void changeDirectory(String path) throws SQLException {
-    FsPath target = resolve(path);
+    if ("-".equals(path) && previousPath == null) {
+      throw new IllegalArgumentException(
+          String.format(CliMessages.FS_SCOPE_PATH, "-", currentPath));
+    }
+    FsPath target = "-".equals(path) ? previousPath : resolve(path);
     FsNode node = provider.describe(target);
     if (!checkExists("cd", node)) {
       return;
     }
     if (isDirectory(node.getType())) {
+      previousPath = currentPath;
       currentPath = target;
+      if ("-".equals(path)) ctx.getOut().println(currentPath);
     } else {
       reportError(
           INPUT_ERROR,
@@ -332,14 +403,6 @@ public class FilesystemShell {
     return currentPath.resolve(path);
   }
 
-  private List<FsPath> resolve(List<String> paths) {
-    List<FsPath> resolvedPaths = new ArrayList<>();
-    for (String path : paths) {
-      resolvedPaths.add(resolve(path));
-    }
-    return resolvedPaths;
-  }
-
   private void printList(String path, boolean all, boolean longListing) throws SQLException {
     FsPath resolvedPath = resolve(path);
     FsNode node = provider.describe(resolvedPath);
@@ -348,7 +411,7 @@ public class FilesystemShell {
     }
     if (!isDirectory(node.getType())) {
       if (longListing) {
-        ctx.getPrinter().println(longMode(node.getType()) + "  1 iotdb iotdb 0 " + node.getName());
+        printLongNode(node);
       } else {
         ctx.getPrinter().println(node.getName());
       }
@@ -373,90 +436,29 @@ public class FilesystemShell {
 
   private void printLongNodes(List<FsNode> nodes, boolean all) {
     if (all) {
-      ctx.getPrinter().println(longMode(FsNodeType.VIRTUAL_ROOT) + "  1 iotdb iotdb 0 .");
-      ctx.getPrinter().println(longMode(FsNodeType.VIRTUAL_ROOT) + "  1 iotdb iotdb 0 ..");
+      ctx.getPrinter().println(longMode(FsNodeType.VIRTUAL_ROOT) + " - - - - - .");
+      ctx.getPrinter().println(longMode(FsNodeType.VIRTUAL_ROOT) + " - - - - - ..");
     }
     for (FsNode node : nodes) {
-      ctx.getPrinter().println(longMode(node.getType()) + "  1 iotdb iotdb 0 " + node.getName());
+      printLongNode(node);
     }
   }
 
-  private void printNode(FsNode node) {
-    ctx.getPrinter().println("File: " + node.getPath());
-    ctx.getPrinter().println("Type: " + unixType(node.getType()));
+  private void printLongNode(FsNode node) {
+    String size = node.getMetadata().getOrDefault("size_bytes", "-");
+    ctx.getPrinter().println(longMode(node.getType()) + " - - - " + size + " - " + node.getName());
+  }
+
+  private void printNode(FsNode node) throws SQLException {
+    ctx.getPrinter().println(String.format(CliMessages.FS_STAT_FILE, node.getPath()));
+    ctx.getPrinter().println(String.format(CliMessages.FS_STAT_TYPE, unixType(node.getType())));
+    if (!isDirectory(node.getType())) {
+      ctx.getPrinter()
+          .println(
+              String.format(CliMessages.FS_STAT_SIZE, textBytes(node.getPath().toString()).length));
+    }
     for (Map.Entry<String, String> entry : node.getMetadata().entrySet()) {
       ctx.getPrinter().println(entry.getKey() + ": " + entry.getValue());
-    }
-  }
-
-  private void printRows(List<SqlRow> rows) {
-    for (SqlRow row : rows) {
-      ctx.getPrinter().println(joinValues(row));
-    }
-  }
-
-  private void printRows(List<SqlRow> rows, String format) {
-    if ("csv".equalsIgnoreCase(format)) {
-      if (!rows.isEmpty()) {
-        List<String> headers = new ArrayList<>();
-        for (String header : rows.get(0).asMap().keySet()) {
-          headers.add(csvValue(header));
-        }
-        ctx.getPrinter().println(String.join(",", headers));
-      }
-      for (SqlRow row : rows) {
-        List<String> values = new ArrayList<>();
-        for (String value : row.asMap().values()) {
-          values.add(csvValue(value));
-        }
-        ctx.getPrinter().println(String.join(",", values));
-      }
-    } else if ("ndjson".equalsIgnoreCase(format)) {
-      for (SqlRow row : rows) {
-        List<String> values = new ArrayList<>();
-        for (Map.Entry<String, String> e : row.asMap().entrySet()) {
-          values.add(jsonString(e.getKey()) + ":" + jsonValue(e.getKey(), e.getValue()));
-        }
-        ctx.getPrinter().println("{" + String.join(",", values) + "}");
-      }
-    } else {
-      printTableRows(rows);
-    }
-  }
-
-  private void printTableRows(List<SqlRow> rows) {
-    if (rows.isEmpty()) return;
-    List<String> headers = new ArrayList<>(rows.get(0).asMap().keySet());
-    List<Integer> widths = new ArrayList<>();
-    for (String header : headers) widths.add(header.length());
-    for (SqlRow row : rows) {
-      for (int i = 0; i < headers.size(); i++) {
-        String value = row.asMap().get(headers.get(i));
-        widths.set(i, Math.max(widths.get(i), value == null ? 0 : value.length()));
-      }
-    }
-    ctx.getPrinter().println(formatTableLine(headers, widths));
-    for (SqlRow row : rows) {
-      List<String> values = new ArrayList<>();
-      for (String header : headers) values.add(row.asMap().getOrDefault(header, ""));
-      ctx.getPrinter().println(formatTableLine(values, widths));
-    }
-  }
-
-  private static String formatTableLine(List<String> values, List<Integer> widths) {
-    StringBuilder line = new StringBuilder();
-    for (int i = 0; i < values.size(); i++) {
-      if (i > 0) line.append("  ");
-      String value = values.get(i) == null ? "" : values.get(i);
-      line.append(value);
-      for (int padding = value.length(); padding < widths.get(i); padding++) line.append(' ');
-    }
-    return line.toString();
-  }
-
-  private void printLines(List<String> lines) {
-    for (String line : lines) {
-      ctx.getPrinter().println(line);
     }
   }
 
@@ -466,334 +468,58 @@ public class FilesystemShell {
     }
   }
 
-  private void printByteCount(String path) throws SQLException {
-    FsPath resolvedPath = resolve(path);
-    long bytes = 0;
-    for (String line : readableLines(resolvedPath, Integer.MAX_VALUE)) {
-      bytes += line.getBytes(StandardCharsets.UTF_8).length;
-      bytes += System.lineSeparator().getBytes(StandardCharsets.UTF_8).length;
-    }
-    ctx.getPrinter().println(bytes + " " + resolvedPath);
-  }
-
-  private void printReadable(String path, int limit) throws SQLException {
-    printReadable(path, limit, "table");
-  }
-
-  private void printReadable(String path, int limit, String format) throws SQLException {
-    FsPath resolvedPath = resolve(path);
-    if (isTextFile(resolvedPath)) {
-      printLines(provider.readLines(resolvedPath, limit));
-      return;
-    }
-    printRows(provider.read(resolvedPath, limit), format);
-  }
-
   private void printHead(FilesystemCommand command) throws SQLException {
     printReadable(command.getPath(), command.getReadOptions());
   }
 
   private void printReadable(String path, ReadOptions options) throws SQLException {
     FsPath resolvedPath = resolve(path);
-    if (isTextFile(resolvedPath)) {
-      printLines(
-          provider.readLines(
-              resolvedPath,
-              options.getLimit() < 0 ? DEFAULT_READ_LIMIT : (int) options.getLimit()));
+    if ("-".equals(path) || resolvedPath.getFileName().endsWith(".meta")) {
+      FsRowReader.validateTextOptions(options);
+      byte[] bytes = textBytes(path);
+      int start = skipLines(bytes, 0, options.getOffset());
+      int end = options.getLimit() < 0 ? bytes.length : skipLines(bytes, start, options.getLimit());
+      ctx.getOut().write(bytes, start, end - start);
       return;
     }
-    List<SqlRow> rows = provider.read(resolvedPath, readLimit(options));
-    List<SqlRow> filtered = new ArrayList<>();
-    for (SqlRow row : rows) {
-      String time = valueIgnoreCase(row, "time");
-      if (options.getStart() != null && !withinLowerBound(time, options.getStart())) continue;
-      if (options.getEnd() != null && !withinUpperBound(time, options.getEnd())) continue;
-      if (!matchesTagFilters(row, options)) continue;
-      filtered.add(row);
-    }
-    filtered = projectColumns(filtered, options.getColumns());
-    long offset = Math.min(options.getOffset(), filtered.size());
-    List<SqlRow> result = filtered.subList((int) offset, filtered.size());
-    if (options.getLimit() >= 0 && result.size() > options.getLimit())
-      result = result.subList(0, (int) options.getLimit());
-    printRows(result, options.getFormat());
+    FsRowReader.Result result = new FsRowReader(provider).read(resolvedPath, options, false);
+    FsRowRenderer.print(ctx.getOut(), result.getColumns(), result.getRows(), options.getFormat());
   }
 
-  private static boolean withinLowerBound(String value, long bound) {
-    try {
-      return value != null && Long.parseLong(value) >= bound;
-    } catch (NumberFormatException e) {
-      return true;
+  private static int skipLines(byte[] bytes, int start, long count) {
+    long lines = 0;
+    while (start < bytes.length && lines < count) {
+      if (bytes[start++] == '\n') lines++;
     }
+    return start;
   }
 
-  private static boolean withinUpperBound(String value, long bound) {
-    try {
-      return value != null && Long.parseLong(value) <= bound;
-    } catch (NumberFormatException e) {
-      return true;
-    }
-  }
-
-  private void printTail(FilesystemCommand command) throws SQLException {
-    ReadOptions options = command.getReadOptions();
-    String path = command.getPath();
-    int limit = readLimit(options);
-    FsPath resolvedPath = resolve(path);
-    if (isTextFile(resolvedPath)) {
-      printLines(provider.tailLines(resolvedPath, limit));
-      return;
-    }
-    List<SqlRow> rows = provider.tail(resolvedPath, limit);
-    List<SqlRow> filtered = new ArrayList<>();
-    for (SqlRow row : rows) {
-      String time = valueIgnoreCase(row, "time");
-      if (options.getStart() != null && !withinLowerBound(time, options.getStart())) continue;
-      if (options.getEnd() != null && !withinUpperBound(time, options.getEnd())) continue;
-      if (!matchesTagFilters(row, options)) continue;
-      filtered.add(row);
-    }
-    filtered = projectColumns(filtered, options.getColumns());
-    long offset = Math.min(options.getOffset(), filtered.size());
-    List<SqlRow> result = filtered.subList((int) offset, filtered.size());
-    if (options.getLimit() >= 0 && result.size() > options.getLimit()) {
-      result = result.subList(0, (int) options.getLimit());
-    }
-    printRows(result, options.getFormat());
-  }
-
-  private static String csvValue(String value) {
-    if (value == null) {
-      return "\\N";
-    }
-    if (value.isEmpty()
-        || value.indexOf(',') >= 0
-        || value.indexOf('"') >= 0
-        || value.indexOf('\n') >= 0
-        || value.indexOf('\r') >= 0) {
-      return "\"" + value.replace("\"", "\"\"") + "\"";
-    }
-    return value;
-  }
-
-  private static String jsonString(String value) {
-    if (value == null) {
-      return "\"\"";
-    }
-    StringBuilder escaped = new StringBuilder(value.length() + 2);
-    for (int i = 0; i < value.length(); i++) {
-      char c = value.charAt(i);
-      switch (c) {
-        case '\\':
-          escaped.append("\\\\");
-          break;
-        case '"':
-          escaped.append("\\\"");
-          break;
-        case '\b':
-          escaped.append("\\b");
-          break;
-        case '\f':
-          escaped.append("\\f");
-          break;
-        case '\n':
-          escaped.append("\\n");
-          break;
-        case '\r':
-          escaped.append("\\r");
-          break;
-        case '\t':
-          escaped.append("\\t");
-          break;
-        default:
-          if (c < 0x20) {
-            escaped.append(String.format("\\u%04x", (int) c));
-          } else {
-            escaped.append(c);
-          }
-      }
-    }
-    return "\"" + escaped + "\"";
-  }
-
-  private static String jsonValue(String column, String value) {
-    if (value == null) return "null";
-    // IoTDB exposes timestamps as decimal values; keep them strings for parity
-    // with TsFile-Cli's INT64/TIMESTAMP JSON representation.
-    if ("time".equalsIgnoreCase(column)) return jsonString(value);
-    if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value))
-      return value.toLowerCase();
-    if (value.matches("-?(?:0|[1-9]\\d*)")
-        || value.matches("-?(?:0|[1-9]\\d*)\\.[0-9]+(?:[eE][+-]?[0-9]+)?")
-        || value.matches("-?(?:0|[1-9]\\d*)(?:[eE][+-]?[0-9]+)")) return value;
-    return jsonString(value);
-  }
-
-  private static List<SqlRow> projectColumns(List<SqlRow> rows, List<String> columns) {
-    if (columns == null || columns.isEmpty()) return rows;
-    List<SqlRow> projected = new ArrayList<>();
-    for (SqlRow row : rows) {
-      Map<String, String> values = new LinkedHashMap<>();
-      for (Map.Entry<String, String> entry : row.asMap().entrySet()) {
-        if ("time".equalsIgnoreCase(entry.getKey())
-            || columns.stream().anyMatch(c -> c.equalsIgnoreCase(entry.getKey()))) {
-          values.put(entry.getKey(), entry.getValue());
-        }
-      }
-      projected.add(new SqlRow(values));
-    }
-    return projected;
-  }
-
-  private static boolean matchesTagFilters(SqlRow row, ReadOptions options) {
-    if (options.getTagFilters().isEmpty()) return true;
-    boolean any = "any".equalsIgnoreCase(options.getTagMatch());
-    boolean matched = !any;
-    for (String spec : options.getTagFilters()) {
-      String[] parts = spec.split("\\s+", 3);
-      if (parts.length < 2) continue;
-      String actual = valueIgnoreCase(row, parts[0]);
-      String op = parts[1].toLowerCase();
-      String expected = parts.length == 3 ? parts[2] : null;
-      boolean current;
-      switch (op) {
-        case "eq":
-          current = actual != null && actual.equals(expected);
-          break;
-        case "neq":
-          current = actual == null || !actual.equals(expected);
-          break;
-        case "is-null":
-          current = actual == null;
-          break;
-        case "not-null":
-          current = actual != null;
-          break;
-        case "regexp":
-          try {
-            current = actual != null && Pattern.matches(expected == null ? "" : expected, actual);
-          } catch (RuntimeException e) {
-            current = false;
-          }
-          break;
-        default:
-          current = false;
-      }
-      if (any) matched |= current;
-      else matched &= current;
-    }
-    return matched;
-  }
-
-  private static int readLimit(ReadOptions options) {
-    if (options.getLimit() < 0) return -1;
-    if (options.getStart() != null
-        || options.getEnd() != null
-        || !options.getTagFilters().isEmpty()) return -1;
-    long requested =
-        options.getOffset() > Integer.MAX_VALUE - options.getLimit()
-            ? Integer.MAX_VALUE
-            : options.getLimit() + options.getOffset();
-    return requested > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) requested;
-  }
-
-  private static String valueIgnoreCase(SqlRow row, String column) {
-    String value = row.get(column);
-    if (value != null) return value;
-    for (Map.Entry<String, String> entry : row.asMap().entrySet()) {
-      if (column.equalsIgnoreCase(entry.getKey())) return entry.getValue();
-    }
-    return null;
-  }
-
-  private void printMatchingRows(String path, String pattern) throws SQLException {
-    FsPath resolvedPath = resolve(path);
-    if (isTextFile(resolvedPath)) {
-      for (String line : provider.readLines(resolvedPath, DEFAULT_READ_LIMIT)) {
-        if (line.contains(pattern)) {
-          ctx.getPrinter().println(line);
-        }
-      }
-      return;
-    }
-    for (SqlRow row : provider.read(resolvedPath, DEFAULT_READ_LIMIT)) {
-      String line = joinValues(row);
-      if (line.contains(pattern)) {
-        ctx.getPrinter().println(line);
-      }
-    }
-  }
-
-  private void printCut(String path, String delimiter, String fields) throws SQLException {
-    FsPath resolvedPath = resolve(path);
-    for (String line : readableLines(resolvedPath, DEFAULT_READ_LIMIT)) {
-      ctx.getPrinter().println(cutLine(line, delimiter, fields));
-    }
-  }
-
-  private void printPaste(List<String> paths) throws SQLException {
-    List<List<String>> files = new ArrayList<>();
-    int maxLines = 0;
-    for (String path : paths) {
-      List<String> lines = readableLines(resolve(path), DEFAULT_READ_LIMIT);
-      files.add(lines);
-      maxLines = Math.max(maxLines, lines.size());
-    }
-    for (int i = 0; i < maxLines; i++) {
-      ctx.getPrinter().println(pasteLine(files, i));
-    }
-  }
-
-  private void printJoin(List<String> paths, String delimiter, String fields) throws SQLException {
-    int[] joinFields = joinFields(fields);
-    List<String> leftLines = readableLines(resolve(paths.get(0)), DEFAULT_READ_LIMIT);
-    List<String> rightLines = readableLines(resolve(paths.get(1)), DEFAULT_READ_LIMIT);
-    Map<String, List<String[]>> rightRows = joinRowsByKey(rightLines, delimiter, joinFields[1]);
-
-    for (String leftLine : leftLines) {
-      String[] left = splitJoinFields(leftLine, delimiter);
-      if (!hasField(left, joinFields[0])) {
-        continue;
-      }
-      List<String[]> matches = rightRows.get(left[joinFields[0] - 1]);
-      if (matches == null) {
-        continue;
-      }
-      for (String[] right : matches) {
-        ctx.getPrinter().println(joinLine(left, right, joinFields[0], joinFields[1], delimiter));
-      }
-    }
-  }
-
-  private List<String> readableLines(FsPath path, int limit) throws SQLException {
-    if (isTextFile(path)) {
-      return provider.readLines(path, limit);
-    }
-    List<String> lines = new ArrayList<>();
-    for (SqlRow row : provider.read(path, limit)) {
-      lines.add(joinValues(row));
-    }
-    return lines;
-  }
-
-  private void printFind(FsPath path, String pattern) throws SQLException {
+  private void printFind(FsPath path, FilesystemCommand command, int depth) throws SQLException {
     FsNode node = provider.describe(path);
     if (!checkExists("find", node)) {
       return;
     }
-    if (matchesFind(node, pattern)) {
+    String type = command.optionValue("-type", "");
+    boolean directory = isDirectory(node.getType());
+    if ((type.isEmpty() || ("d".equals(type) == directory))
+        && matchesFind(node, command.getPattern())) {
       ctx.getPrinter().println(path.toString());
     }
-    if (!isDirectory(node.getType())) {
+    if (!directory
+        || depth
+            >= Integer.parseInt(
+                command.optionValue("-maxdepth", Integer.toString(Integer.MAX_VALUE)))) {
       return;
     }
     for (FsNode child : provider.list(path)) {
-      printFind(child.getPath(), pattern);
+      printFind(child.getPath(), command, depth + 1);
     }
   }
 
   private static boolean matchesFind(FsNode node, String pattern) {
-    return pattern == null || pattern.isEmpty() || node.getName().equals(pattern);
+    return pattern == null
+        || pattern.isEmpty()
+        || UnixTextCommands.matchesName(node.getName(), pattern);
   }
 
   private void printFile(String path) throws SQLException {
@@ -832,89 +558,6 @@ public class FilesystemShell {
     mutationProvider.remove(resolvedPath);
   }
 
-  private void move(List<String> paths) throws SQLException {
-    FsPath source = resolve(paths.get(0));
-    FsPath target = resolve(paths.get(1));
-    if (!ensureWritable("mv", source)) {
-      return;
-    }
-    mutationProvider.move(source, target);
-  }
-
-  private void copy(List<String> paths) throws SQLException {
-    FsPath source = resolve(paths.get(0));
-    FsPath target = resolve(paths.get(1));
-    if (!ensureWritable("cp", source)) {
-      return;
-    }
-    mutationProvider.copy(source, target);
-  }
-
-  private void append(String path, boolean nonInteractive) throws SQLException {
-    FsPath resolvedPath = resolve(path);
-    if (!ensureWritable("tee", resolvedPath)) {
-      return;
-    }
-    if (nonInteractive || ctx.getLineReader() == null) {
-      mutationProvider.append(resolvedPath, readStandardInputLines());
-      return;
-    }
-    appendInteractive(resolvedPath);
-  }
-
-  private List<String> readStandardInputLines() throws SQLException {
-    List<String> lines = new ArrayList<>();
-    try {
-      BufferedReader reader =
-          new BufferedReader(new InputStreamReader(ctx.getIn(), StandardCharsets.UTF_8));
-      String line;
-      while ((line = reader.readLine()) != null) {
-        lines.add(line);
-      }
-      return lines;
-    } catch (IOException e) {
-      throw new SQLException(CliMessages.MESSAGE_FAILED_TO_READ_STANDARD_INPUT_3CB0AD1E, e);
-    }
-  }
-
-  private void appendInteractive(FsPath path) throws SQLException {
-    List<String> lines = new ArrayList<>();
-    while (true) {
-      String line;
-      try {
-        line = ctx.getLineReader().readLine("tee> ", null);
-      } catch (EndOfFileException e) {
-        if (!lines.isEmpty()) {
-          ctx.getErr()
-              .println(
-                  CliMessages.MESSAGE_TEE_USE_WQ_TO_WRITE_OR_Q_TO_QUIT_WITHOUT_WRITING_C46EFD2C);
-        }
-        return;
-      }
-      if (":wq".equals(line)) {
-        try {
-          mutationProvider.append(path, lines);
-          return;
-        } catch (SQLException e) {
-          ctx.getErr().println("tee: " + e.getMessage());
-          continue;
-        }
-      }
-      if (":q!".equals(line)) {
-        return;
-      }
-      if (":q".equals(line)) {
-        if (lines.isEmpty()) {
-          return;
-        }
-        ctx.getErr()
-            .println(CliMessages.MESSAGE_TEE_USE_WQ_TO_WRITE_OR_Q_TO_QUIT_WITHOUT_WRITING_C46EFD2C);
-        continue;
-      }
-      lines.add(line);
-    }
-  }
-
   private boolean ensureWritable(String command, FsPath path) {
     if (writeEnabled) {
       return true;
@@ -923,19 +566,6 @@ public class FilesystemShell {
         RUNTIME_ERROR,
         String.format(CliMessages.MESSAGE_ARG_ARG_READ_ONLY_FILE_SYSTEM_A86EB99C, command, path));
     return false;
-  }
-
-  private static String joinValues(SqlRow row) {
-    StringBuilder builder = new StringBuilder();
-    for (String value : row.asMap().values()) {
-      if (builder.length() > 0) {
-        builder.append('\t');
-      }
-      if (value != null) {
-        builder.append(value);
-      }
-    }
-    return builder.toString();
   }
 
   private static boolean isDirectory(FsNodeType type) {
@@ -949,155 +579,602 @@ public class FilesystemShell {
 
   private static String longMode(FsNodeType type) {
     if (isDirectory(type)) {
-      return "dr-xr-xr-x";
+      return "d---------";
     }
-    return "-r--r--r--";
+    return "----------";
   }
 
   private static String unixType(FsNodeType type) {
     if (isDirectory(type)) {
-      return "directory";
+      return CliMessages.FS_FILE_DIRECTORY;
     }
     if (type == FsNodeType.UNKNOWN) {
-      return "unknown";
+      return CliMessages.FS_FILE_UNKNOWN;
     }
-    return "regular file";
+    return type == FsNodeType.TABLE_META_FILE
+        ? CliMessages.FS_FILE_METADATA
+        : CliMessages.FS_FILE_CSV;
   }
 
-  private static boolean isAllOption(FilesystemCommand command) {
-    return "-a".equals(command.getOption());
-  }
-
-  private static String cutLine(String line, String delimiter, String fields) {
-    if (!line.contains(delimiter)) {
-      return line;
-    }
-    String[] values = line.split(Pattern.quote(delimiter), -1);
-    boolean[] selected = selectedFields(fields, values.length);
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < values.length; i++) {
-      if (!selected[i]) {
-        continue;
-      }
-      if (builder.length() > 0) {
-        builder.append(delimiter);
-      }
-      builder.append(values[i]);
-    }
-    return builder.toString();
-  }
-
-  private static String pasteLine(List<List<String>> files, int lineIndex) {
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < files.size(); i++) {
-      if (i > 0) {
-        builder.append('\t');
-      }
-      List<String> lines = files.get(i);
-      if (lineIndex < lines.size()) {
-        builder.append(lines.get(lineIndex));
+  private boolean executeInput(String input, boolean nonInteractive) throws SQLException {
+    lastStatus = SUCCESS;
+    FsCommandLine line = FsCommandLine.parse(input);
+    if (!line.compound())
+      return execute(expandPaths(FilesystemCommandParser.parse(input)), nonInteractive);
+    for (String part : line.commands) {
+      FilesystemCommand command = FilesystemCommandParser.parse(part);
+      if (command.getType() == FilesystemCommand.Type.TAIL && command.hasOption("-f")) {
+        throw new IllegalArgumentException(CliMessages.FS_FOLLOW_COMPOUND);
       }
     }
-    return builder.toString();
-  }
-
-  private static int[] joinFields(String fields) {
-    String[] values = fields.split(",", -1);
-    return new int[] {parsePositiveInt(values[0]), parsePositiveInt(values[1])};
-  }
-
-  private static Map<String, List<String[]>> joinRowsByKey(
-      List<String> lines, String delimiter, int keyField) {
-    Map<String, List<String[]>> rowsByKey = new LinkedHashMap<>();
-    for (String line : lines) {
-      String[] fields = splitJoinFields(line, delimiter);
-      if (!hasField(fields, keyField)) {
-        continue;
-      }
-      String key = fields[keyField - 1];
-      rowsByKey.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fields);
-    }
-    return rowsByKey;
-  }
-
-  private static String[] splitJoinFields(String line, String delimiter) {
-    if (delimiter.isEmpty()) {
-      String trimmed = line.trim();
-      if (trimmed.isEmpty()) {
-        return new String[0];
-      }
-      return trimmed.split("\\s+");
-    }
-    return line.split(Pattern.quote(delimiter), -1);
-  }
-
-  private static boolean hasField(String[] fields, int fieldNumber) {
-    return fieldNumber > 0 && fieldNumber <= fields.length;
-  }
-
-  private static String joinLine(
-      String[] left, String[] right, int leftKeyField, int rightKeyField, String delimiter) {
-    String outputDelimiter = delimiter.isEmpty() ? " " : delimiter;
-    List<String> output = new ArrayList<>();
-    output.add(left[leftKeyField - 1]);
-    addNonKeyFields(output, left, leftKeyField);
-    addNonKeyFields(output, right, rightKeyField);
-    return String.join(outputDelimiter, output);
-  }
-
-  private static void addNonKeyFields(List<String> output, String[] fields, int keyField) {
-    for (int i = 0; i < fields.length; i++) {
-      if (i != keyField - 1) {
-        output.add(fields[i]);
-      }
-    }
-  }
-
-  private static boolean[] selectedFields(String fields, int fieldCount) {
-    boolean[] selected = new boolean[fieldCount];
-    for (String field : fields.split(",")) {
-      selectField(field.trim(), selected);
-    }
-    return selected;
-  }
-
-  private static void selectField(String field, boolean[] selected) {
-    if (field.isEmpty()) {
-      return;
-    }
-    int dash = field.indexOf('-');
-    if (dash < 0) {
-      selectFieldNumber(field, selected);
-      return;
-    }
-    int start = parsePositiveInt(field.substring(0, dash));
-    int end = parsePositiveInt(field.substring(dash + 1));
-    if (start <= 0 || end <= 0 || start > end) {
-      return;
-    }
-    for (int i = start; i <= end && i <= selected.length; i++) {
-      selected[i - 1] = true;
-    }
-  }
-
-  private static void selectFieldNumber(String field, boolean[] selected) {
-    int fieldNumber = parsePositiveInt(field);
-    if (fieldNumber > 0 && fieldNumber <= selected.length) {
-      selected[fieldNumber - 1] = true;
-    }
-  }
-
-  private static int parsePositiveInt(String value) {
+    if (line.output != null && !ensureWritable(">", resolve(line.output))) return true;
     try {
-      return Integer.parseInt(value);
-    } catch (NumberFormatException e) {
-      return -1;
+      java.io.InputStream pipeInput =
+          line.input == null
+              ? ctx.getIn()
+              : new ByteArrayInputStream(Files.readAllBytes(Paths.get(line.input)));
+      byte[] result = new byte[0];
+      boolean continuing = true;
+      for (int i = 0; i < line.commands.size(); i++) {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        CliContext context =
+            new CliContext(
+                pipeInput,
+                new PrintStream(output, false, "UTF-8"),
+                ctx.getErr(),
+                org.apache.iotdb.cli.type.ExitType.EXCEPTION);
+        FilesystemShell stage =
+            new FilesystemShell(context, provider, mutationProvider, writeEnabled);
+        stage.currentPath = currentPath;
+        stage.previousPath = previousPath;
+        FilesystemCommand command = FilesystemCommandParser.parse(line.commands.get(i));
+        if ((i > 0 || line.input != null)
+            && (command.getType() == FilesystemCommand.Type.CAT
+                || command.getType() == FilesystemCommand.Type.HEAD
+                || command.getType() == FilesystemCommand.Type.TAIL)
+            && ".".equals(command.getPath()))
+          command = command.withPaths(Collections.singletonList("-"));
+        continuing = stage.execute(stage.expandPaths(command), true);
+        lastStatus = stage.lastStatus;
+        currentPath = stage.currentPath;
+        previousPath = stage.previousPath;
+        result = output.toByteArray();
+        pipeInput = new ByteArrayInputStream(result);
+      }
+      if (line.output != null) {
+        Path target = Paths.get(line.output);
+        Files.write(
+            target,
+            result,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.WRITE,
+            line.append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING);
+      } else ctx.getOut().write(result, 0, result.length);
+      return continuing;
+    } catch (IOException e) {
+      throw new SQLException(e.getMessage(), e);
     }
   }
 
-  private static boolean isTextFile(FsPath path) {
-    String fileName = path.getFileName();
-    return fileName.endsWith(".csv") || fileName.endsWith(".meta");
+  private FilesystemCommand expandPaths(FilesystemCommand command) throws SQLException {
+    if (provider == null
+        || command.getType() == FilesystemCommand.Type.WRITE
+        || command.getType() == FilesystemCommand.Type.SKETCH
+        || command.getType() == FilesystemCommand.Type.SQL) return command;
+    List<String> expanded = new ArrayList<>();
+    for (int i = 0; i < command.getPaths().size(); i++) {
+      String path = command.getPaths().get(i);
+      String pattern = command.getPathPattern(i);
+      if (pattern != null) {
+        List<FsPath> matches = new ArrayList<>();
+        FsPath globPath =
+            FsPath.absolute(FsShellWords.literalGlob(currentPath.toString())).resolve(pattern);
+        expandGlob(FsPath.absolute("/"), globPath.getSegments(), 0, matches);
+        matches.sort(java.util.Comparator.comparing(FsPath::toString));
+        if (matches.isEmpty()) expanded.add(path);
+        else for (FsPath match : matches) expanded.add(match.toString());
+      } else expanded.add(path);
+    }
+    if (expanded.size() > 1 && !acceptsMultiplePaths(command.getType())) {
+      throw new IllegalArgumentException(
+          String.format(
+              CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F,
+              command.getType().name().toLowerCase(Locale.ROOT),
+              expanded.get(1)));
+    }
+    if (command.getType() == FilesystemCommand.Type.JOIN && expanded.size() != 2) {
+      throw new IllegalArgumentException(
+          String.format(
+              CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F,
+              "join",
+              expanded.toString()));
+    }
+    return command.withPaths(expanded);
+  }
+
+  private static boolean acceptsMultiplePaths(FilesystemCommand.Type type) {
+    switch (type) {
+      case CAT:
+      case WC:
+      case GREP:
+      case CUT:
+      case PASTE:
+      case JOIN:
+      case CP:
+      case MV:
+      case RM:
+      case RMDIR:
+      case MKDIR:
+      case TEE:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private void expandGlob(FsPath base, List<String> segments, int index, List<FsPath> result)
+      throws SQLException {
+    if (index == segments.size()) {
+      result.add(base);
+      return;
+    }
+    String pattern = segments.get(index);
+    for (FsNode node : provider.list(base)) {
+      if ((!node.getName().startsWith(".") || pattern.startsWith("."))
+          && UnixTextCommands.matchesName(node.getName(), pattern)) {
+        if (index + 1 == segments.size() || isDirectory(node.getType()))
+          expandGlob(node.getPath(), segments, index + 1, result);
+      }
+    }
+  }
+
+  private void printMetadata(FilesystemCommand command) throws SQLException {
+    FsPath path =
+        new FsRowReader(provider).scope(resolve(command.getPath()), command.getReadOptions());
+    List<SqlRow> rows;
+    switch (command.getType()) {
+      case SCHEMA:
+        rows = provider.schema(path);
+        break;
+      case META:
+        rows = provider.meta(path);
+        break;
+      case STATS:
+        rows = provider.stats(path);
+        break;
+      default:
+        rows = provider.countRows(path);
+    }
+    String selectedName = command.getType() == FilesystemCommand.Type.STATS ? "field" : "column";
+    if (!command.getColumns().isEmpty()) {
+      for (String column : command.getColumns()) {
+        boolean found = false;
+        for (FsColumn field : provider.columns(path)) {
+          if (column.equalsIgnoreCase(field.getName())
+              && (command.getType() == FilesystemCommand.Type.SCHEMA
+                  || "FIELD".equalsIgnoreCase(field.getCategory())
+                  || (command.getType() == FilesystemCommand.Type.COUNT
+                      && "TAG".equalsIgnoreCase(field.getCategory())))) found = true;
+        }
+        if (!found)
+          throw new IllegalArgumentException(String.format(CliMessages.FS_UNKNOWN_FIELD, column));
+      }
+      List<SqlRow> selected = new ArrayList<>();
+      for (SqlRow row : rows) {
+        if (command.getColumns().stream().anyMatch(c -> c.equalsIgnoreCase(row.get(selectedName))))
+          selected.add(row);
+      }
+      rows = selected;
+    }
+    List<FsColumn> columns = rows.isEmpty() ? metadataColumns(command, path) : resultColumns(rows);
+    FsRowRenderer.print(ctx.getOut(), columns, rows, command.getFormat());
+  }
+
+  private List<FsColumn> metadataColumns(FilesystemCommand command, FsPath path)
+      throws SQLException {
+    List<String> names = new ArrayList<>();
+    switch (command.getType()) {
+      case SCHEMA:
+        names.addAll(
+            Arrays.asList(
+                "model", "object", "column", "category", "data_type", "encoding", "compression"));
+        break;
+      case COUNT:
+        names.addAll(
+            Arrays.asList(
+                "model",
+                "object",
+                "column",
+                "category",
+                "row_count",
+                "entity_count",
+                "non_null_count",
+                "null_count",
+                "min_time",
+                "max_time",
+                "time_source"));
+        break;
+      case STATS:
+        names.add("model");
+        names.add("object");
+        for (FsColumn column : provider.columns(path)) {
+          if ("TAG".equalsIgnoreCase(column.getCategory())) names.add("tag." + column.getName());
+        }
+        names.addAll(
+            Arrays.asList(
+                "field",
+                "data_type",
+                "non_null_count",
+                "null_count",
+                "min_time",
+                "max_time",
+                "min",
+                "max",
+                "first",
+                "last",
+                "sum",
+                "stats_source"));
+        break;
+      default:
+        break;
+    }
+    List<FsColumn> columns = new ArrayList<>();
+    for (String name : names) columns.add(new FsColumn(name, "FIELD", "STRING"));
+    return columns;
+  }
+
+  private static List<FsColumn> resultColumns(List<SqlRow> rows) {
+    List<FsColumn> columns = new ArrayList<>();
+    if (rows.isEmpty()) return columns;
+    SqlRow row = rows.get(0);
+    for (String name : row.asMap().keySet()) {
+      String type = row.getDataType(name);
+      columns.add(new FsColumn(name, "FIELD", type == null ? "STRING" : type));
+    }
+    return columns;
+  }
+
+  private byte[] inputBytes() throws SQLException {
+    if (standardInput == null) {
+      try {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int length;
+        while ((length = ctx.getIn().read(buffer)) >= 0) bytes.write(buffer, 0, length);
+        standardInput = bytes.toByteArray();
+      } catch (IOException e) {
+        throw new SQLException(CliMessages.MESSAGE_FAILED_TO_READ_STANDARD_INPUT_3CB0AD1E, e);
+      }
+    }
+    return standardInput;
+  }
+
+  private byte[] textBytes(String path) throws SQLException {
+    if ("-".equals(path)) return inputBytes();
+    FsPath resolved = resolve(path);
+    if (resolved.getFileName().endsWith(".meta")) {
+      List<String> lines = provider.readLines(resolved, -1);
+      return (lines.isEmpty() ? "" : String.join("\n", lines) + "\n")
+          .getBytes(StandardCharsets.UTF_8);
+    }
+    ReadOptions options =
+        new ReadOptions(
+            "csv",
+            "",
+            "",
+            Collections.emptyList(),
+            -1,
+            0,
+            null,
+            null,
+            Collections.emptyList(),
+            "all");
+    FsRowReader.Result result = new FsRowReader(provider).read(resolved, options, false);
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    FsRowRenderer.print(new PrintStream(bytes), result.getColumns(), result.getRows(), "csv");
+    return bytes.toByteArray();
+  }
+
+  private List<String> textLines(String path) throws SQLException {
+    List<String> lines = new ArrayList<>();
+    try (BufferedReader reader =
+        new BufferedReader(
+            new InputStreamReader(
+                new ByteArrayInputStream(textBytes(path)), StandardCharsets.UTF_8))) {
+      String line;
+      while ((line = reader.readLine()) != null) lines.add(line);
+    } catch (IOException e) {
+      throw new SQLException(CliMessages.MESSAGE_FAILED_TO_READ_STANDARD_INPUT_3CB0AD1E, e);
+    }
+    return lines;
+  }
+
+  private void printByteCounts(FilesystemCommand command) throws SQLException {
+    long total = 0;
+    for (String path : command.getPaths()) {
+      long bytes = textBytes(path).length;
+      total += bytes;
+      ctx.getOut().println(bytes + ("-".equals(path) ? "" : " " + resolve(path)));
+    }
+    if (command.getPaths().size() > 1) ctx.getOut().println(total + " total");
+  }
+
+  private void page(FilesystemCommand command, boolean nonInteractive) throws SQLException {
+    byte[] bytes = textBytes(command.getPath());
+    if (nonInteractive
+        || ctx.getLineReader() == null
+        || "dumb".equals(ctx.getLineReader().getTerminal().getType())) {
+      ctx.getOut().write(bytes, 0, bytes.length);
+      return;
+    }
+    Less pager = new Less(ctx.getLineReader().getTerminal(), Paths.get("."));
+    pager.quitAtFirstEof = command.getType() == FilesystemCommand.Type.MORE;
+    try {
+      pager.run(
+          new Source.InputStreamSource(new ByteArrayInputStream(bytes), true, command.getPath()));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new SQLException(CliMessages.FS_INTERRUPTED, e);
+    } catch (IOException e) {
+      throw new SQLException(e.getMessage(), e);
+    }
+  }
+
+  private void printUnixTail(FilesystemCommand command, boolean nonInteractive)
+      throws SQLException {
+    boolean text =
+        "-".equals(command.getPath()) || resolve(command.getPath()).getFileName().endsWith(".meta");
+    if (text) FsRowReader.validateTextOptions(command.getReadOptions());
+    if (text && command.hasOption("--offset")) {
+      throw new IllegalArgumentException(
+          String.format(
+              CliMessages.EXCEPTION_ARG_UNSUPPORTED_OPTION_ARG_33DE669D, "tail", "--offset"));
+    }
+    if ((command.hasOption("-f") || command.hasOption("-c") || command.hasOption("--from-start"))
+        && (command.hasOption("--format")
+            || command.hasOption("-m")
+            || command.hasOption("--start")
+            || command.hasOption("--end")
+            || command.hasOption("--offset")
+            || command.hasOption("--tag-filter")
+            || command.hasOption("-d")
+            || command.hasOption("-t"))) {
+      throw new IllegalArgumentException(
+          String.format(
+              CliMessages.EXCEPTION_ARG_UNSUPPORTED_OPTION_ARG_33DE669D,
+              "tail",
+              "-f/-c/+N with query options"));
+    }
+    if (!text
+        && (command.hasOption("--format")
+            || command.hasOption("-d")
+            || command.hasOption("-t")
+            || command.hasOption("-m")
+            || command.hasOption("--start")
+            || command.hasOption("--end")
+            || command.hasOption("--offset")
+            || command.hasOption("--tag-filter"))) {
+      FsRowReader.Result result =
+          new FsRowReader(provider)
+              .read(resolve(command.getPath()), command.getReadOptions(), true);
+      FsRowRenderer.print(ctx.getOut(), result.getColumns(), result.getRows(), command.getFormat());
+      return;
+    }
+    byte[] snapshot = textBytes(command.getPath());
+    outputTail(snapshot, command);
+    if (!command.hasOption("-f") || "-".equals(command.getPath())) return;
+    org.jline.terminal.Terminal terminal =
+        ctx.getLineReader() == null ? null : ctx.getLineReader().getTerminal();
+    java.util.concurrent.atomic.AtomicBoolean interrupted =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    org.jline.terminal.Terminal.SignalHandler previous =
+        terminal == null
+            ? null
+            : terminal.handle(
+                org.jline.terminal.Terminal.Signal.INT, signal -> interrupted.set(true));
+    try {
+      while (!interrupted.get()
+          && !Thread.currentThread().isInterrupted()
+          && !ctx.getOut().checkError()) {
+        Thread.sleep(1000);
+        byte[] next = textBytes(command.getPath());
+        int offset =
+            next.length >= snapshot.length && startsWith(next, snapshot) ? snapshot.length : 0;
+        ctx.getOut().write(next, offset, next.length - offset);
+        ctx.getOut().flush();
+        snapshot = next;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } finally {
+      if (terminal != null) terminal.handle(org.jline.terminal.Terminal.Signal.INT, previous);
+    }
+  }
+
+  private static boolean startsWith(byte[] bytes, byte[] prefix) {
+    for (int i = 0; i < prefix.length; i++) if (bytes[i] != prefix[i]) return false;
+    return true;
+  }
+
+  private void outputTail(byte[] bytes, FilesystemCommand command) {
+    int count = command.getLimit();
+    int start;
+    if (command.hasOption("-c")) {
+      start =
+          command.hasOption("--from-start")
+              ? Math.max(0, count - 1)
+              : Math.max(0, bytes.length - count);
+    } else if (command.hasOption("--from-start")) {
+      start = 0;
+      for (int lines = 1; start < bytes.length && lines < count; start++)
+        if (bytes[start] == '\n') lines++;
+    } else {
+      start = bytes.length;
+      int lines = 0;
+      if (count > 0) {
+        for (int i = bytes.length - 1; i >= 0; i--) {
+          if (bytes[i] == '\n' && i != bytes.length - 1 && ++lines == count) break;
+          start = i;
+        }
+      }
+    }
+    start = Math.min(start, bytes.length);
+    ctx.getOut().write(bytes, start, bytes.length - start);
+  }
+
+  private void makeDirectories(FilesystemCommand command) throws SQLException {
+    if (command.hasOption("-m")) throw new IllegalArgumentException(CliMessages.FS_VIRTUAL_MODE);
+    for (String path : command.getPaths()) {
+      FsPath target = resolve(path);
+      if (command.hasOption("-p") && isDirectory(provider.describe(target).getType())) continue;
+      mkdir(path);
+    }
+  }
+
+  private void removePaths(FilesystemCommand command) throws SQLException {
+    for (String path : command.getPaths()) {
+      FsPath target = resolve(path);
+      if (command.hasOption("-f") && provider.describe(target).getType() == FsNodeType.UNKNOWN)
+        continue;
+      if (command.hasOption("-i") && !confirm(String.format(CliMessages.FS_CONFIRM_REMOVE, target)))
+        continue;
+      remove(path, command.hasOption("-r") ? "-r" : "");
+    }
+  }
+
+  private void transfer(FilesystemCommand command) throws SQLException {
+    List<String> paths = command.getPaths();
+    FsPath destination = resolve(paths.get(paths.size() - 1));
+    String operation = command.getType().name().toLowerCase(Locale.ROOT);
+    if (!ensureWritable(operation, destination)) return;
+    boolean directory = isDirectory(provider.describe(destination).getType());
+    if (paths.size() > 2 && !directory)
+      throw new SQLException(
+          String.format(
+              CliMessages.MESSAGE_ARG_ARG_NOT_A_DIRECTORY_CF18DCA5, operation, destination));
+    for (int i = 0; i + 1 < paths.size(); i++) {
+      FsPath source = resolve(paths.get(i));
+      FsPath target = directory ? destination.resolve(source.getFileName()) : destination;
+      if (source.equals(target))
+        throw new SQLException(String.format(CliMessages.FS_SAME_FILE, target));
+      boolean exists = provider.describe(target).getType() != FsNodeType.UNKNOWN;
+      if (exists && command.hasOption("-n")) continue;
+      if (exists
+          && command.hasOption("-i")
+          && !confirm(String.format(CliMessages.FS_CONFIRM_REPLACE, operation, target))) continue;
+      if (command.getType() == FilesystemCommand.Type.CP)
+        mutationProvider.copy(source, target, exists);
+      else mutationProvider.move(source, target, exists);
+    }
+  }
+
+  private boolean confirm(String prompt) throws SQLException {
+    ctx.getErr().print(prompt);
+    ctx.getErr().flush();
+    try {
+      String answer;
+      if (ctx.getLineReader() != null) {
+        answer = ctx.getLineReader().readLine();
+      } else {
+        if (confirmationInput == null) {
+          confirmationInput =
+              new BufferedReader(new InputStreamReader(ctx.getIn(), StandardCharsets.UTF_8));
+        }
+        answer = confirmationInput.readLine();
+      }
+      return "y".equalsIgnoreCase(answer) || "yes".equalsIgnoreCase(answer);
+    } catch (IOException e) {
+      throw new SQLException(e);
+    }
+  }
+
+  private void tee(FilesystemCommand command, boolean nonInteractive) throws SQLException {
+    for (String path : command.getPaths()) if (!ensureWritable("tee", resolve(path))) return;
+    if (!nonInteractive && ctx.getLineReader() != null) {
+      java.io.Reader reader = ctx.getLineReader().getTerminal().reader();
+      StringBuilder input = new StringBuilder();
+      char[] buffer = new char[8192];
+      try {
+        int length;
+        while ((length = reader.read(buffer)) >= 0) input.append(buffer, 0, length);
+        standardInput = input.toString().getBytes(StandardCharsets.UTF_8);
+      } catch (IOException e) {
+        throw new SQLException(CliMessages.MESSAGE_FAILED_TO_READ_STANDARD_INPUT_3CB0AD1E, e);
+      }
+    }
+    byte[] bytes = inputBytes();
+    List<String> lines = textLines("-");
+    for (String path : command.getPaths())
+      mutationProvider.write(resolve(path), lines, command.hasOption("-a"));
+    ctx.getOut().write(bytes, 0, bytes.length);
+  }
+
+  private void executeSql(String sql) throws SQLException {
+    if (!writeEnabled && !isReadOnlySql(sql))
+      throw new IllegalArgumentException(CliMessages.FS_SQL_READONLY);
+    List<SqlRow> rows = provider.executeSql(sql);
+    FsRowRenderer.print(ctx.getOut(), resultColumns(rows), rows, "table");
+  }
+
+  private static boolean isReadOnlySql(String sql) {
+    // A conservative gate also excludes SELECT INTO and additional statements.
+    String text = sql.trim();
+    if (text.endsWith(";")) text = text.substring(0, text.length() - 1);
+    return text.matches("(?is)^(SELECT|SHOW|DESC|DESCRIBE)\\s+.*")
+        && !text.contains(";")
+        && !text.contains("/*")
+        && !text.contains("--")
+        && !Pattern.compile("(?i)\\bINTO\\b").matcher(text).find();
+  }
+
+  private void printListing(FilesystemCommand command) throws SQLException {
+    boolean longListing = command.getType() == FilesystemCommand.Type.LL || command.hasOption("-l");
+    boolean all = command.hasOption("-a");
+    if (command.hasOption("-f")) {
+      FsPath path = resolve(command.getPath());
+      FsNode node = provider.describe(path);
+      if (!checkExists("ls", node)) return;
+      List<SqlRow> rows = new ArrayList<>();
+      collectListing(node, rows, command.hasOption("-R"));
+      FsRowRenderer.print(
+          ctx.getOut(),
+          Arrays.asList(
+              new FsColumn("model", "FIELD", "STRING"), new FsColumn("object", "FIELD", "STRING")),
+          rows,
+          command.getFormat());
+      return;
+    }
+    if (command.hasOption("-R")) {
+      recursiveList(resolve(command.getPath()), all, longListing);
+    } else printList(command.getPath(), all, longListing);
+  }
+
+  private void collectListing(FsNode parent, List<SqlRow> rows, boolean recursive)
+      throws SQLException {
+    List<FsNode> nodes =
+        isDirectory(parent.getType())
+            ? provider.list(parent.getPath())
+            : Collections.singletonList(parent);
+    for (FsNode node : nodes) {
+      String model = node.getType().name().startsWith("TREE_") ? "tree" : "table";
+      String object = node.getMetadata().get("table");
+      if (object == null) object = node.getPath().toString();
+      // A metadata sidecar describes the same table object as its CSV sibling.
+      if (node.getType() != FsNodeType.TABLE_META_FILE)
+        rows.add(SqlRow.of("model", model, "object", object));
+      if (recursive && isDirectory(node.getType())) collectListing(node, rows, true);
+    }
+  }
+
+  private void recursiveList(FsPath path, boolean all, boolean longListing) throws SQLException {
+    ctx.getOut().println(path + ":");
+    printList(path.toString(), all, longListing);
+    for (FsNode child : provider.list(path)) {
+      if (isDirectory(child.getType())) {
+        ctx.getOut().println();
+        recursiveList(child.getPath(), all, longListing);
+      }
+    }
   }
 
   private class FilesystemCompleter implements Completer {

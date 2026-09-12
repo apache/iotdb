@@ -17,18 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.cli.fs.sql;
+package org.apache.iotdb.cli.i18n;
 
-import java.sql.SQLException;
-import java.util.List;
+public final class FsLocalMessages {
+  private FsLocalMessages() {}
 
-public interface SqlExecutor {
-
-  List<SqlRow> query(String sql) throws SQLException;
-
-  void execute(String sql) throws SQLException;
-
-  default List<SqlRow> executeQueryOrUpdate(String sql) throws SQLException {
-    return query(sql);
-  }
+  public static final String UNSUPPORTED_TEXT_COMMAND = "不支持的文本命令：%s";
+  public static final String INCOMPLETE_TSFILE = "TsFile 文件不完整或无效：%s";
+  public static final String LOCAL_IO_FAILED = "%s 操作失败，路径 %s：%s";
 }

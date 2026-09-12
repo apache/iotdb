@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli.fs;
 
+import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
@@ -33,6 +34,8 @@ import org.jline.reader.Completer;
 import org.jline.reader.LineReader;
 import org.jline.reader.ParsedLine;
 import org.jline.reader.impl.DefaultParser;
+import org.jline.terminal.Terminal;
+import org.jline.utils.NonBlockingReader;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -43,16 +46,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
@@ -120,7 +128,7 @@ public class FilesystemShellTest {
 
   @Test
   public void batchQueryFailureUsesDiagnosticsAndRuntimeStatus() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
+    when(provider.read(FsPath.absolute("/db1/table1.csv"), -1))
         .thenThrow(new SQLException("query failed"));
     assertEquals(FilesystemShell.RUNTIME_ERROR, shell.runNonInteractive("cat /db1/table1.csv"));
     assertEquals("", out.toString());
@@ -191,8 +199,8 @@ public class FilesystemShellTest {
 
     assertTrue(shell.execute("ll /"));
 
-    assertTrue(out.toString().contains("dr-xr-xr-x"));
-    assertTrue(out.toString().contains("-r--r--r--"));
+    assertTrue(out.toString().contains("d---------"));
+    assertTrue(out.toString().contains("----------"));
     assertTrue(out.toString().contains("testtest"));
     verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
@@ -209,7 +217,7 @@ public class FilesystemShellTest {
 
     assertTrue(shell.execute("ls -l /"));
 
-    assertTrue(out.toString().contains("dr-xr-xr-x"));
+    assertTrue(out.toString().contains("d---------"));
     assertTrue(out.toString().contains("testtest"));
     verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
@@ -249,9 +257,9 @@ public class FilesystemShellTest {
 
     assertTrue(shell.execute("ll -a /"));
 
-    assertTrue(out.toString().contains("dr-xr-xr-x  1 iotdb iotdb 0 ."));
-    assertTrue(out.toString().contains("dr-xr-xr-x  1 iotdb iotdb 0 .."));
-    assertTrue(out.toString().contains("dr-xr-xr-x  1 iotdb iotdb 0 testtest"));
+    assertTrue(out.toString().contains("d--------- - - - - - ."));
+    assertTrue(out.toString().contains("d--------- - - - - - .."));
+    assertTrue(out.toString().contains("d--------- - - - - - testtest"));
     assertFalse(out.toString().contains("-a"));
     verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
@@ -279,10 +287,15 @@ public class FilesystemShellTest {
                 SqlRow.of("ColumnName", "tag1", "DataType", "STRING"),
                 SqlRow.of("ColumnName", "value", "DataType", "DOUBLE")));
 
-    assertTrue(shell.execute("schema /db1/table1"));
+    assertTrue(shell.execute("schema -f csv /db1/table1"));
 
     assertEquals(
-        "tag1\tSTRING" + System.lineSeparator() + "value\tDOUBLE" + System.lineSeparator(),
+        "ColumnName,DataType"
+            + System.lineSeparator()
+            + "tag1,STRING"
+            + System.lineSeparator()
+            + "value,DOUBLE"
+            + System.lineSeparator(),
         out.toString());
     verify(provider).schema(FsPath.absolute("/db1/table1"));
   }
@@ -307,9 +320,11 @@ public class FilesystemShellTest {
     when(provider.meta(FsPath.absolute("/db1/table1.csv")))
         .thenReturn(Arrays.asList(SqlRow.of("TableName", "table1", "Status", "USING")));
 
-    assertTrue(shell.execute("meta /db1/table1.csv"));
+    assertTrue(shell.execute("meta -f csv /db1/table1.csv"));
 
-    assertEquals("table1\tUSING" + System.lineSeparator(), out.toString());
+    assertEquals(
+        "TableName,Status" + System.lineSeparator() + "table1,USING" + System.lineSeparator(),
+        out.toString());
     verify(provider).meta(FsPath.absolute("/db1/table1.csv"));
   }
 
@@ -353,6 +368,9 @@ public class FilesystemShellTest {
   @Test
   public void executeWriteCommandsWhenEnabled() throws SQLException {
     shell = new FilesystemShell(shellContext(), provider, mutationProvider, true);
+    when(provider.describe(FsPath.absolute("/db1/table2.csv")))
+        .thenReturn(
+            new FsNode("table2.csv", FsPath.absolute("/db1/table2.csv"), FsNodeType.UNKNOWN));
 
     assertTrue(shell.execute("mkdir /db1"));
     assertTrue(shell.execute("rm /db1/table1.csv"));
@@ -361,12 +379,15 @@ public class FilesystemShellTest {
     verify(mutationProvider).mkdir(FsPath.absolute("/db1"));
     verify(mutationProvider).remove(FsPath.absolute("/db1/table1.csv"));
     verify(mutationProvider)
-        .move(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv"));
+        .move(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv"), false);
   }
 
   @Test
   public void executeStandardWriteCommandsWhenEnabled() throws SQLException {
     shell = new FilesystemShell(shellContext(), provider, mutationProvider, true);
+    when(provider.describe(FsPath.absolute("/db1/table2.csv")))
+        .thenReturn(
+            new FsNode("table2.csv", FsPath.absolute("/db1/table2.csv"), FsNodeType.UNKNOWN));
 
     assertTrue(shell.execute("rmdir /db1"));
     assertTrue(shell.execute("rm -r /db2"));
@@ -375,7 +396,7 @@ public class FilesystemShellTest {
     verify(mutationProvider).rmdir(FsPath.absolute("/db1"));
     verify(mutationProvider).removeRecursive(FsPath.absolute("/db2"));
     verify(mutationProvider)
-        .copy(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv"));
+        .copy(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv"), false);
   }
 
   @Test
@@ -395,29 +416,44 @@ public class FilesystemShellTest {
   }
 
   @Test
-  public void executeTeeReadsInteractiveBufferUntilWriteQuit() throws SQLException {
+  public void executeTeeReadsTerminalUntilEofAndEchoesInput() throws Exception {
     CliContext ctx = shellContext();
     ctx.setLineReader(lineReader);
     shell = new FilesystemShell(ctx, provider, mutationProvider, true);
-    when(lineReader.readLine("tee> ", null)).thenReturn("time,key,value", "1,spricoder,2.0", ":wq");
+    Terminal terminal = mock(Terminal.class);
+    when(lineReader.getTerminal()).thenReturn(terminal);
+    NonBlockingReader input = mock(NonBlockingReader.class);
+    StringReader source = new StringReader("time,key,value\n1,spricoder,2.0\n");
+    when(input.read(any(char[].class)))
+        .thenAnswer(invocation -> source.read((char[]) invocation.getArgument(0)));
+    when(terminal.reader()).thenReturn(input);
 
     assertTrue(shell.execute("tee -a /db1/table1.csv"));
 
     verify(mutationProvider)
-        .append(
-            FsPath.absolute("/db1/table1.csv"), Arrays.asList("time,key,value", "1,spricoder,2.0"));
+        .write(
+            FsPath.absolute("/db1/table1.csv"),
+            Arrays.asList("time,key,value", "1,spricoder,2.0"),
+            true);
+    assertEquals("time,key,value\n1,spricoder,2.0\n", out.toString());
   }
 
   @Test
-  public void executeTeeQuitWarnsBeforeDiscardingInteractiveBuffer() throws SQLException {
+  public void executeTeeReadFailureDoesNotWritePartialInput() throws Exception {
     CliContext ctx = shellContext();
     ctx.setLineReader(lineReader);
     shell = new FilesystemShell(ctx, provider, mutationProvider, true);
-    when(lineReader.readLine("tee> ", null)).thenReturn("time,key,value", ":q", ":q!");
-
-    assertTrue(shell.execute("tee -a /db1/table1.csv"));
-
-    assertTrue(err.toString().contains("tee: use :wq to write or :q! to quit without writing"));
+    Terminal terminal = mock(Terminal.class);
+    when(lineReader.getTerminal()).thenReturn(terminal);
+    NonBlockingReader input = mock(NonBlockingReader.class);
+    when(input.read(any(char[].class))).thenThrow(new IOException("input interrupted"));
+    when(terminal.reader()).thenReturn(input);
+    try {
+      shell.execute("tee -a /db1/table1.csv");
+      org.junit.Assert.fail("Expected input failure");
+    } catch (SQLException expected) {
+      assertTrue(expected.getCause() instanceof IOException);
+    }
     verifyZeroInteractions(mutationProvider);
   }
 
@@ -434,8 +470,10 @@ public class FilesystemShellTest {
     assertTrue(shell.executeNonInteractive("tee -a /db1/table1.csv"));
 
     verify(mutationProvider)
-        .append(
-            FsPath.absolute("/db1/table1.csv"), Arrays.asList("time,key,value", "1,spricoder,2.0"));
+        .write(
+            FsPath.absolute("/db1/table1.csv"),
+            Arrays.asList("time,key,value", "1,spricoder,2.0"),
+            true);
   }
 
   @Test
@@ -462,6 +500,8 @@ public class FilesystemShellTest {
 
   @Test
   public void executeLsRecursivePrintsChildren() throws SQLException {
+    when(provider.describe(FsPath.absolute("/db1")))
+        .thenReturn(new FsNode("db1", FsPath.absolute("/db1"), FsNodeType.TABLE_DATABASE));
     when(provider.describe(FsPath.absolute("/")))
         .thenReturn(new FsNode("/", FsPath.absolute("/"), FsNodeType.VIRTUAL_ROOT));
     when(provider.list(FsPath.absolute("/")))
@@ -478,8 +518,8 @@ public class FilesystemShellTest {
     assertTrue(out.toString().contains("db1"));
     assertTrue(out.toString().contains("table1.csv"));
     verify(provider).describe(FsPath.absolute("/"));
-    verify(provider).list(FsPath.absolute("/"));
-    verify(provider).list(FsPath.absolute("/db1"));
+    verify(provider, times(2)).list(FsPath.absolute("/"));
+    verify(provider, times(2)).list(FsPath.absolute("/db1"));
   }
 
   @Test
@@ -497,24 +537,22 @@ public class FilesystemShellTest {
 
   @Test
   public void executeCatPrintsCsvFileLines() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("Time,tag1,s1", "1,a,42"));
+    stubCsv("/db1/table1.csv", -1, "Time,tag1,s1", "1,a,42");
 
-    assertTrue(shell.execute("cat /db1/table1.csv"));
+    assertTrue(shell.execute("cat -f csv /db1/table1.csv"));
 
     assertTrue(out.toString().contains("Time,tag1,s1"));
     assertTrue(out.toString().contains("1,a,42"));
-    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
+    verify(provider).read(FsPath.absolute("/db1/table1.csv"), -1);
   }
 
   @Test
   public void executeCatReadsMultipleTextFilesSequentially() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("time,key", "1,a"));
-    when(provider.readLines(FsPath.absolute("/db1/table1.meta"), 20))
+    stubCsv("/db1/table1.csv", -1, "time,key", "1,a");
+    when(provider.readLines(FsPath.absolute("/db1/table1.meta"), -1))
         .thenReturn(Arrays.asList("TableName,Status", "table1,USING"));
 
-    assertTrue(shell.execute("cat /db1/table1.csv /db1/table1.meta"));
+    assertTrue(shell.execute("cat -f csv /db1/table1.csv /db1/table1.meta"));
 
     assertEquals(
         "time,key"
@@ -526,39 +564,43 @@ public class FilesystemShellTest {
             + "table1,USING"
             + System.lineSeparator(),
         out.toString());
-    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
-    verify(provider).readLines(FsPath.absolute("/db1/table1.meta"), 20);
+    verify(provider).read(FsPath.absolute("/db1/table1.csv"), -1);
+    verify(provider).readLines(FsPath.absolute("/db1/table1.meta"), -1);
   }
 
   @Test
   public void executeHeadReadsCsvFileLinesWithLimit() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 5))
-        .thenReturn(Arrays.asList("Time,tag1,s1", "1,a,42"));
+    stubCsv("/db1/table1.csv", 5, "Time,tag1,s1", "1,a,42");
 
-    assertTrue(shell.execute("head -n 5 /db1/table1.csv"));
+    assertTrue(shell.execute("head -n 5 -f csv /db1/table1.csv"));
 
     assertTrue(out.toString().contains("Time,tag1,s1"));
     assertTrue(out.toString().contains("1,a,42"));
-    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 5);
+    verify(provider).read(FsPath.absolute("/db1/table1.csv"), 5);
   }
 
   @Test
   public void executeWcCountsUtf8Bytes() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), Integer.MAX_VALUE))
-        .thenReturn(Arrays.asList("a,中", "xy"));
+    stubCsv("/db1/table1.csv", -1, "a,中", "xy");
 
     assertTrue(shell.execute("wc -c /db1/table1.csv"));
 
     long expected =
         "a,中".getBytes(StandardCharsets.UTF_8).length
             + System.lineSeparator().getBytes(StandardCharsets.UTF_8).length
-            + "xy".getBytes(StandardCharsets.UTF_8).length
+            + "xy,\\N".getBytes(StandardCharsets.UTF_8).length
             + System.lineSeparator().getBytes(StandardCharsets.UTF_8).length;
     assertEquals(expected + " /db1/table1.csv" + System.lineSeparator(), out.toString());
   }
 
   @Test
   public void executeHeadAppliesOffsetProjectionAndCsvHeader() throws SQLException {
+    when(provider.columns(FsPath.absolute("/db1/table1")))
+        .thenReturn(
+            Arrays.asList(
+                new FsColumn("Time", "TIME", "TIMESTAMP"),
+                new FsColumn("tag", "TAG", "STRING"),
+                new FsColumn("value", "FIELD", "INT32")));
     when(provider.read(FsPath.absolute("/db1/table1"), 3))
         .thenReturn(
             Arrays.asList(
@@ -569,11 +611,11 @@ public class FilesystemShellTest {
     assertTrue(shell.execute("head -n 2 --offset 1 -m value -f csv /db1/table1"));
 
     assertEquals(
-        "Time,value"
+        "Time,tag,value"
             + System.lineSeparator()
-            + "2,20"
+            + "2,south,20"
             + System.lineSeparator()
-            + "3,30"
+            + "3,north,30"
             + System.lineSeparator(),
         out.toString());
     verify(provider).read(FsPath.absolute("/db1/table1"), 3);
@@ -581,6 +623,12 @@ public class FilesystemShellTest {
 
   @Test
   public void executeCatFormatsNdjsonAndFiltersTags() throws SQLException {
+    when(provider.columns(FsPath.absolute("/db1/table1")))
+        .thenReturn(
+            Arrays.asList(
+                new FsColumn("Time", "TIME", "TIMESTAMP"),
+                new FsColumn("tag", "TAG", "STRING"),
+                new FsColumn("value", "FIELD", "INT32")));
     when(provider.read(FsPath.absolute("/db1/table1"), -1))
         .thenReturn(
             Arrays.asList(
@@ -589,47 +637,41 @@ public class FilesystemShellTest {
 
     assertTrue(shell.execute("cat --tag-filter tag eq north -m value -f ndjson /db1/table1"));
 
-    assertEquals("{\"Time\":\"1\",\"value\":10}" + System.lineSeparator(), out.toString());
+    assertEquals(
+        "{\"Time\":\"1\",\"tag\":\"north\",\"value\":10}" + System.lineSeparator(), out.toString());
     verify(provider).read(FsPath.absolute("/db1/table1"), -1);
   }
 
   @Test
   public void executeTailReadsCsvFileLinesWithLimit() throws SQLException {
-    when(provider.tailLines(FsPath.absolute("/db1/table1.csv"), 3))
-        .thenReturn(Arrays.asList("Time,tag1,s1", "2,b,43"));
+    stubCsv("/db1/table1.csv", -1, "Time,tag1,s1", "1,a,42", "2,b,43", "3,c,44", "4,d,45");
 
     assertTrue(shell.execute("tail -n 3 /db1/table1.csv"));
 
-    assertTrue(out.toString().contains("Time,tag1,s1"));
-    assertTrue(out.toString().contains("2,b,43"));
-    verify(provider).tailLines(FsPath.absolute("/db1/table1.csv"), 3);
+    assertEquals("2,b,43\n3,c,44\n4,d,45\n", out.toString());
+    verify(provider).read(FsPath.absolute("/db1/table1.csv"), -1);
   }
 
   @Test
   public void executeGrepFiltersCsvFileLines() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("Time,tag1,s1", "1,spricoder,42", "2,other,43"));
+    stubCsv("/db1/table1.csv", -1, "Time,tag1,s1", "1,spricoder,42", "2,other,43");
 
     assertTrue(shell.execute("grep spricoder /db1/table1.csv"));
 
     assertTrue(out.toString().contains("1,spricoder,42"));
     assertFalse(out.toString().contains("2,other,43"));
-    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
+    verify(provider).read(FsPath.absolute("/db1/table1.csv"), -1);
   }
 
   @Test
   public void executeGrepPrintsOnlyMatchingRows() throws SQLException {
-    when(provider.read(FsPath.absolute("/root/sg/d1/s1"), 20))
-        .thenReturn(
-            Arrays.asList(
-                SqlRow.of("Time", "1", "tag1", "spricoder", "s1", "42"),
-                SqlRow.of("Time", "2", "tag1", "other", "s1", "43")));
+    stubCsv("/root/sg/d1/s1", -1, "Time,tag1,s1", "1,spricoder,42", "2,other,43");
 
     assertTrue(shell.execute("grep spricoder /root/sg/d1/s1"));
 
-    assertTrue(out.toString().contains("1\tspricoder\t42"));
-    assertFalse(out.toString().contains("2\tother\t43"));
-    verify(provider).read(FsPath.absolute("/root/sg/d1/s1"), 20);
+    assertTrue(out.toString().contains("1,spricoder,42"));
+    assertFalse(out.toString().contains("2,other,43"));
+    verify(provider).read(FsPath.absolute("/root/sg/d1/s1"), -1);
   }
 
   @Test
@@ -660,27 +702,26 @@ public class FilesystemShellTest {
 
   @Test
   public void executeLessAndMoreReadMetaFileLines() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.meta"), 20))
+    when(provider.readLines(FsPath.absolute("/db1/table1.meta"), -1))
         .thenReturn(Arrays.asList("TableName,Status", "table1,USING"));
 
     assertTrue(shell.execute("less /db1/table1.meta"));
     assertTrue(shell.execute("more /db1/table1.meta"));
 
     assertTrue(out.toString().contains("table1,USING"));
-    verify(provider, times(2)).readLines(FsPath.absolute("/db1/table1.meta"), 20);
+    verify(provider, times(2)).readLines(FsPath.absolute("/db1/table1.meta"), -1);
   }
 
   @Test
   public void executeLessAndMoreReadCsvFileLines() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("Time,tag1,s1", "1,a,42"));
+    stubCsv("/db1/table1.csv", -1, "Time,tag1,s1", "1,a,42");
 
     assertTrue(shell.execute("less /db1/table1.csv"));
     assertTrue(shell.execute("more /db1/table1.csv"));
 
     assertTrue(out.toString().contains("Time,tag1,s1"));
     assertTrue(out.toString().contains("1,a,42"));
-    verify(provider, times(2)).readLines(FsPath.absolute("/db1/table1.csv"), 20);
+    verify(provider, times(2)).read(FsPath.absolute("/db1/table1.csv"), -1);
   }
 
   @Test
@@ -696,7 +737,7 @@ public class FilesystemShellTest {
     assertTrue(shell.execute("stat /db1/table1.csv"));
 
     assertTrue(out.toString().contains("File: /db1/table1.csv"));
-    assertTrue(out.toString().contains("Type: regular file"));
+    assertTrue(out.toString().contains("Type: CSV text"));
     assertTrue(out.toString().contains("table: table1"));
     assertFalse(out.toString().contains("TABLE_DATA_FILE"));
     verify(provider).describe(FsPath.absolute("/db1/table1.csv"));
@@ -716,10 +757,8 @@ public class FilesystemShellTest {
 
   @Test
   public void executePasteReadsMultipleTextFilesLineByLine() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("time,key", "1,a", "2,b"));
-    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
-        .thenReturn(Arrays.asList("time,value", "1,42"));
+    stubCsv("/db1/table1.csv", -1, "time,key", "1,a", "2,b");
+    stubCsv("/db1/table2.csv", -1, "time,value", "1,42");
 
     assertTrue(shell.execute("paste /db1/table1.csv /db1/table2.csv"));
 
@@ -731,58 +770,54 @@ public class FilesystemShellTest {
             + "2,b\t"
             + System.lineSeparator(),
         out.toString());
-    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
-    verify(provider).readLines(FsPath.absolute("/db1/table2.csv"), 20);
+    verify(provider).read(FsPath.absolute("/db1/table1.csv"), -1);
+    verify(provider).read(FsPath.absolute("/db1/table2.csv"), -1);
   }
 
   @Test
   public void executeJoinMatchesCsvRowsByFirstField() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("key,value", "a,10", "b,20", "c,30"));
-    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
-        .thenReturn(Arrays.asList("key,status", "a,ok", "b,bad", "d,missing"));
+    stubCsv("/db1/table1.csv", -1, "key,value", "s,10", "t,20", "u,30");
+    stubCsv("/db1/table2.csv", -1, "key,status", "s,ok", "t,bad", "v,missing");
 
     assertTrue(shell.execute("join -t, /db1/table1.csv /db1/table2.csv"));
 
     assertEquals(
         "key,value,status"
             + System.lineSeparator()
-            + "a,10,ok"
+            + "s,10,ok"
             + System.lineSeparator()
-            + "b,20,bad"
+            + "t,20,bad"
             + System.lineSeparator(),
         out.toString());
-    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
-    verify(provider).readLines(FsPath.absolute("/db1/table2.csv"), 20);
+    verify(provider).read(FsPath.absolute("/db1/table1.csv"), -1);
+    verify(provider).read(FsPath.absolute("/db1/table2.csv"), -1);
   }
 
   @Test
   public void executeJoinSupportsDifferentKeyFields() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("time,key,value", "1,a,10", "2,b,20"));
-    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
-        .thenReturn(Arrays.asList("key,status", "a,ok", "b,bad"));
+    stubCsv("/db1/table1.csv", -1, "time,key,value", "1,s,10", "2,t,20");
+    stubCsv("/db1/table2.csv", -1, "key,status", "s,ok", "t,bad");
 
     assertTrue(shell.execute("join -t, -1 2 -2 1 /db1/table1.csv /db1/table2.csv"));
 
     assertEquals(
         "key,time,value,status"
             + System.lineSeparator()
-            + "a,1,10,ok"
+            + "s,1,10,ok"
             + System.lineSeparator()
-            + "b,2,20,bad"
+            + "t,2,20,bad"
             + System.lineSeparator(),
         out.toString());
   }
 
   @Test
   public void executeJoinPrintsCartesianMatchesForDuplicateKeys() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
+    when(provider.readLines(FsPath.absolute("/db1/table1.meta"), -1))
         .thenReturn(Arrays.asList("a,10", "a,11"));
-    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
+    when(provider.readLines(FsPath.absolute("/db1/table2.meta"), -1))
         .thenReturn(Arrays.asList("a,ok", "a,good"));
 
-    assertTrue(shell.execute("join -t, /db1/table1.csv /db1/table2.csv"));
+    assertTrue(shell.execute("join -t, /db1/table1.meta /db1/table2.meta"));
 
     assertEquals(
         "a,10,ok"
@@ -798,37 +833,33 @@ public class FilesystemShellTest {
 
   @Test
   public void executeJoinSkipsRowsWithoutKeyOrMatch() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("a,10", "missing-key", "b,20"));
-    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
+    when(provider.readLines(FsPath.absolute("/db1/table1.meta"), -1))
+        .thenReturn(Arrays.asList("missing-key", "a,10", "b,20"));
+    when(provider.readLines(FsPath.absolute("/db1/table2.meta"), -1))
         .thenReturn(Arrays.asList("a,ok", "c,unused"));
 
-    assertTrue(shell.execute("join -t, -1 2 -2 1 /db1/table1.csv /db1/table2.csv"));
+    assertTrue(shell.execute("join -t, -1 2 -2 1 /db1/table1.meta /db1/table2.meta"));
 
     assertEquals("", out.toString());
   }
 
   @Test
-  public void executeJoinUsesReadableRowsForNonTextPath() throws SQLException {
-    when(provider.read(FsPath.absolute("/root/sg/d1/s1"), 20))
-        .thenReturn(
-            Arrays.asList(SqlRow.of("Time", "1", "s1", "10"), SqlRow.of("Time", "2", "s1", "20")));
-    when(provider.read(FsPath.absolute("/root/sg/d1/s2"), 20))
-        .thenReturn(
-            Arrays.asList(
-                SqlRow.of("Time", "1", "s2", "ok"), SqlRow.of("Time", "3", "s2", "skip")));
+  public void executeJoinRejectsUnsortedCsvFromTreeData() throws SQLException {
+    stubCsv("/root/sg/d1/s1", -1, "Time,s1", "1,10", "2,20");
+    stubCsv("/root/sg/d1/s2", -1, "Time,s2", "1,ok", "3,skip");
 
-    assertTrue(shell.execute("join /root/sg/d1/s1 /root/sg/d1/s2"));
-
-    assertEquals("1 10 ok" + System.lineSeparator(), out.toString());
-    verify(provider).read(FsPath.absolute("/root/sg/d1/s1"), 20);
-    verify(provider).read(FsPath.absolute("/root/sg/d1/s2"), 20);
+    assertEquals(
+        FilesystemShell.USAGE_ERROR,
+        shell.runNonInteractive("join -t, /root/sg/d1/s1 /root/sg/d1/s2"));
+    assertEquals("", out.toString());
+    assertTrue(err.toString().contains("not sorted"));
+    verify(provider).read(FsPath.absolute("/root/sg/d1/s1"), -1);
+    verify(provider).read(FsPath.absolute("/root/sg/d1/s2"), -1);
   }
 
   @Test
   public void executeCutSelectsCsvFieldsByNumber() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("time,key,value", "1,spricoder,2.0", "2,other,3.0"));
+    stubCsv("/db1/table1.csv", -1, "time,key,value", "1,spricoder,2.0", "2,other,3.0");
 
     assertTrue(shell.execute("cut -d, -f2,3 /db1/table1.csv"));
 
@@ -840,20 +871,19 @@ public class FilesystemShellTest {
             + "other,3.0"
             + System.lineSeparator(),
         out.toString());
-    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
+    verify(provider).read(FsPath.absolute("/db1/table1.csv"), -1);
   }
 
   @Test
   public void executeCutSelectsCsvFieldRange() throws SQLException {
-    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
-        .thenReturn(Arrays.asList("time,key,value", "1,spricoder,2.0"));
+    stubCsv("/db1/table1.csv", -1, "time,key,value", "1,spricoder,2.0");
 
     assertTrue(shell.execute("cut -d, -f1-2 /db1/table1.csv"));
 
     assertEquals(
         "time,key" + System.lineSeparator() + "1,spricoder" + System.lineSeparator(),
         out.toString());
-    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
+    verify(provider).read(FsPath.absolute("/db1/table1.csv"), -1);
   }
 
   @Test
@@ -884,6 +914,28 @@ public class FilesystemShellTest {
     List<Candidate> candidates = new ArrayList<>();
     completer.complete(null, parsedLine, candidates);
     return candidates.stream().map(Candidate::value).collect(Collectors.toList());
+  }
+
+  private void stubCsv(String path, int limit, String... lines) throws SQLException {
+    FsPath file = FsPath.absolute(path);
+    String[] headers = lines.length == 0 ? new String[0] : lines[0].split(",", -1);
+    List<FsColumn> columns = new ArrayList<>();
+    for (String header : headers) {
+      columns.add(new FsColumn(header, "FIELD", "STRING"));
+    }
+    if (headers.length > 0 && "time".equalsIgnoreCase(headers[0])) {
+      columns.set(0, new FsColumn(headers[0], "TIME", "TIMESTAMP"));
+    }
+    List<SqlRow> rows = new ArrayList<>();
+    for (int i = 1; i < lines.length; i++) {
+      String[] values = lines[i].split(",", -1);
+      Map<String, String> row = new LinkedHashMap<>();
+      for (int j = 0; j < headers.length; j++)
+        row.put(headers[j], j < values.length ? values[j] : null);
+      rows.add(new SqlRow(row));
+    }
+    when(provider.columns(file)).thenReturn(columns);
+    when(provider.read(file, limit)).thenReturn(rows);
   }
 
   private CliContext shellContext() {

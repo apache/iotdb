@@ -21,6 +21,41 @@ package org.apache.iotdb.cli.i18n;
 
 public final class CliMessages {
 
+  public static final String FS_DIRECTORY_NOT_EMPTY = "Directory not empty: %s";
+  public static final String FS_TREE_SUMMARY = "%d directories, %d files";
+  public static final String FS_STAT_FILE = "File: %s";
+  public static final String FS_STAT_TYPE = "Type: %s";
+  public static final String FS_STAT_SIZE = "Size: %d bytes";
+  public static final String FS_FILE_CSV = "CSV text";
+  public static final String FS_FILE_METADATA = "CSV metadata text";
+  public static final String FS_FILE_DIRECTORY = "directory";
+  public static final String FS_FILE_UNKNOWN = "unknown";
+  public static final String FS_CSV_PARSE_FAILED = "Failed to parse CSV input";
+  public static final String MESSAGE_FS_INVALID_TIME_RANGE = "--start must not exceed --end";
+  public static final String MESSAGE_FS_OFFSET_WITH_ZERO_LIMIT = "--offset requires a nonzero limit";
+  public static final String FS_INVALID_WRITE_OPERATION =
+      "Invalid filesystem write operation for this path";
+  public static final String FS_WRITE_UNSUPPORTED = "Filesystem write operation is not supported";
+  public static final String FS_SAME_FILE = "Source and destination are the same file: %s";
+  public static final String FS_SCOPE_MODEL = "Option %s is not valid for the %s model";
+  public static final String FS_SCOPE_PATH = "Object %s does not match path %s";
+  public static final String FS_UNKNOWN_FIELD = "Unknown FIELD column: %s";
+  public static final String FS_UNKNOWN_TAG = "Unknown TAG column: %s";
+  public static final String FS_INVALID_REGEX = "Invalid regular expression: %s";
+  public static final String MESSAGE_FS_INVALID_PATTERN = "Invalid pattern: %s";
+  public static final String MESSAGE_FS_JOIN_UNSORTED = "join: input %s is not sorted";
+  public static final String FS_CONFIRM_REPLACE = "%s: replace %s? [y/N] ";
+  public static final String FS_CONFIRM_REMOVE = "rm: remove %s? [y/N] ";
+  public static final String FS_EXPORT_TARGET =
+      "export requires -o for one object or --output-dir for multiple objects";
+  public static final String FS_PIPE_SYNTAX = "Invalid pipeline or redirection";
+  public static final String FS_FOLLOW_COMPOUND = "tail -f cannot be used in pipelines or redirections";
+  public static final String FS_SQL_READONLY = "This SQL statement requires --fs_write_mode enabled";
+  public static final String FS_INTERRUPTED = "Command interrupted";
+  public static final String FS_FILE_EXISTS = "File exists: %s";
+  public static final String FS_VIRTUAL_MODE =
+      "Virtual database objects do not support Unix permission modes";
+
   // CliContext
   public static final String EXITING_WITH_CODE = "Exiting with code %d";
 

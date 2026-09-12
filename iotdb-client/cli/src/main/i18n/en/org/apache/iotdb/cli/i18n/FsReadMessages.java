@@ -17,18 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.cli.fs.sql;
+package org.apache.iotdb.cli.i18n;
 
-import java.sql.SQLException;
-import java.util.List;
+public final class FsReadMessages {
+  private FsReadMessages() {}
 
-public interface SqlExecutor {
-
-  List<SqlRow> query(String sql) throws SQLException;
-
-  void execute(String sql) throws SQLException;
-
-  default List<SqlRow> executeQueryOrUpdate(String sql) throws SQLException {
-    return query(sql);
-  }
+  public static final String INVALID_SCOPE =
+      "Select a readable table, device or timeseries instead of directory %s";
+  public static final String INVALID_DEVICE = "Invalid tree device path: %s";
+  public static final String TEXT_OPTIONS =
+      "Text inputs do not support data selectors, filters or structured output formats";
 }

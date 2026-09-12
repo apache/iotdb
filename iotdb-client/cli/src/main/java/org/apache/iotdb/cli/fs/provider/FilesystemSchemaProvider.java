@@ -19,14 +19,29 @@
 
 package org.apache.iotdb.cli.fs.provider;
 
+import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.CliMessages;
 
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 
 public interface FilesystemSchemaProvider {
+
+  default String model() {
+    return null;
+  }
+
+  default List<FsColumn> columns(FsPath path) throws SQLException {
+    return Collections.emptyList();
+  }
+
+  default List<SqlRow> executeSql(String sql) throws SQLException {
+    throw new SQLException(CliMessages.NOT_SUPPORTED_YET);
+  }
 
   List<FsNode> list(FsPath path) throws SQLException;
 

@@ -20,10 +20,12 @@
 package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.CliMessages;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.csv.QuoteMode;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -38,11 +40,14 @@ import java.util.Set;
 class TableCsvAppendPlanner {
 
   private static final int INSERT_BATCH_SIZE = 1000;
-  private static final String INVALID_WRITE_OPERATION =
-      "Invalid filesystem write operation for this path";
   private static final String NULL_MARKER = "\\N";
   private static final CSVFormat CSV_FORMAT =
-      CSVFormat.DEFAULT.builder().setIgnoreEmptyLines(true).build();
+      CSVFormat.DEFAULT
+          .builder()
+          .setIgnoreEmptyLines(true)
+          .setNullString(NULL_MARKER)
+          .setQuoteMode(QuoteMode.ALL_NON_NULL)
+          .build();
 
   private TableCsvAppendPlanner() {}
 
@@ -77,7 +82,7 @@ class TableCsvAppendPlanner {
         return parser.getRecords();
       }
     } catch (IOException e) {
-      throw new SQLException("Failed to parse CSV input", e);
+      throw new SQLException(CliMessages.FS_CSV_PARSE_FAILED, e);
     }
   }
 
@@ -87,7 +92,7 @@ class TableCsvAppendPlanner {
       String name = row.get("ColumnName");
       String type = row.get("DataType");
       if (name != null && type != null) {
-        columns.add(new TableColumn(name, type));
+        columns.add(new TableColumn(name, type, row.get("Category")));
       }
     }
     return columns;
@@ -131,7 +136,7 @@ class TableCsvAppendPlanner {
       return false;
     }
     for (String value : record) {
-      if (!columnsByName.containsKey(value.toLowerCase(Locale.ROOT))) {
+      if (value == null || !columnsByName.containsKey(value.toLowerCase(Locale.ROOT))) {
         return false;
       }
     }
@@ -186,7 +191,7 @@ class TableCsvAppendPlanner {
       }
       return timestampValue(value);
     }
-    if (NULL_MARKER.equals(value)) {
+    if (value == null) {
       return "NULL";
     }
     if (column.isTextual() || column.isDateLike()) {
@@ -195,16 +200,51 @@ class TableCsvAppendPlanner {
     if (value.isEmpty()) {
       throw invalidOperation();
     }
-    return value;
+    try {
+      switch (column.type) {
+        case "INT32":
+          return Integer.toString(Integer.parseInt(value));
+        case "INT64":
+          return Long.toString(Long.parseLong(value));
+        case "FLOAT":
+          if (!Float.isFinite(Float.parseFloat(value))) {
+            throw invalidOperation();
+          }
+          return Float.toString(Float.parseFloat(value));
+        case "DOUBLE":
+          if (!Double.isFinite(Double.parseDouble(value))) {
+            throw invalidOperation();
+          }
+          return Double.toString(Double.parseDouble(value));
+        case "BOOLEAN":
+          if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
+            throw invalidOperation();
+          }
+          return value.toLowerCase(Locale.ROOT);
+        case "BLOB":
+          if (!value.matches("(?i)0x(?:[0-9a-f]{2})*")) {
+            throw invalidOperation();
+          }
+          return "X'" + value.substring(2) + "'";
+        default:
+          throw invalidOperation();
+      }
+    } catch (NumberFormatException e) {
+      throw invalidOperation();
+    }
   }
 
   private static boolean isNull(String value) {
     return value == null || value.isEmpty() || NULL_MARKER.equals(value);
   }
 
-  private static String timestampValue(String value) {
+  private static String timestampValue(String value) throws SQLException {
     if (value.matches("[-+]?\\d+")) {
-      return value;
+      try {
+        return Long.toString(Long.parseLong(value));
+      } catch (NumberFormatException e) {
+        throw invalidOperation();
+      }
     }
     return quote(value);
   }
@@ -249,7 +289,7 @@ class TableCsvAppendPlanner {
   }
 
   private static SQLException invalidOperation() {
-    return new SQLException(INVALID_WRITE_OPERATION);
+    return new SQLException(CliMessages.FS_INVALID_WRITE_OPERATION);
   }
 
   private static class ParsedCsv {
@@ -265,18 +305,21 @@ class TableCsvAppendPlanner {
   private static class TableColumn {
     private final String name;
     private final String type;
+    private final String category;
 
-    private TableColumn(String name, String type) {
+    private TableColumn(String name, String type, String category) {
       this.name = name;
       this.type = type.toUpperCase(Locale.ROOT);
+      this.category = category;
     }
 
     private boolean isTime() {
-      return "TIME".equalsIgnoreCase(name);
+      return "TIME".equalsIgnoreCase(category)
+          || (category == null && "TIME".equalsIgnoreCase(name));
     }
 
     private boolean isTextual() {
-      return type.contains("STRING") || type.contains("TEXT") || type.contains("BLOB");
+      return "STRING".equals(type) || "TEXT".equals(type);
     }
 
     private boolean isDateLike() {

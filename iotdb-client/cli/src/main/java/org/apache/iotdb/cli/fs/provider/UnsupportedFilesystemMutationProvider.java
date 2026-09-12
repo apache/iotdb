@@ -20,13 +20,12 @@
 package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.path.FsPath;
+import org.apache.iotdb.cli.i18n.CliMessages;
 
 import java.sql.SQLException;
 import java.util.List;
 
 public class UnsupportedFilesystemMutationProvider implements FilesystemMutationProvider {
-
-  private static final String UNSUPPORTED = "Filesystem write operation is not supported";
 
   @Override
   public void mkdir(FsPath path) throws SQLException {
@@ -64,6 +63,6 @@ public class UnsupportedFilesystemMutationProvider implements FilesystemMutation
   }
 
   private static SQLException unsupported() {
-    return new SQLException(UNSUPPORTED);
+    return new SQLException(CliMessages.FS_WRITE_UNSUPPORTED);
   }
 }

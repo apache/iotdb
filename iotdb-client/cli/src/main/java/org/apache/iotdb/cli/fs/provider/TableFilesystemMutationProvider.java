@@ -21,20 +21,29 @@ package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.sql.SqlExecutor;
+import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.CliMessages;
 
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
+import java.util.function.Supplier;
 
 public class TableFilesystemMutationProvider implements FilesystemMutationProvider {
 
-  private static final String INVALID_WRITE_OPERATION =
-      "Invalid filesystem write operation for this path";
   private static final String CSV_SUFFIX = ".csv";
 
   private final SqlExecutor executor;
+  private final Supplier<String> temporaryName;
 
   public TableFilesystemMutationProvider(SqlExecutor executor) {
+    this(executor, () -> "_fs_" + UUID.randomUUID().toString().replace("-", ""));
+  }
+
+  TableFilesystemMutationProvider(SqlExecutor executor, Supplier<String> temporaryName) {
     this.executor = executor;
+    this.temporaryName = temporaryName;
   }
 
   @Override
@@ -47,6 +56,14 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
 
   @Override
   public void rmdir(FsPath path) throws SQLException {
+    if (path.getSegments().size() != 1) {
+      throw invalidOperation();
+    }
+    if (!executor
+        .query("SHOW TABLES FROM " + TableFilesystemSql.identifier(path.getFileName()))
+        .isEmpty()) {
+      throw new SQLException(String.format(CliMessages.FS_DIRECTORY_NOT_EMPTY, path));
+    }
     dropDatabase(path);
   }
 
@@ -60,27 +77,68 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
 
   @Override
   public void removeRecursive(FsPath path) throws SQLException {
+    if (isDataFile(path)) {
+      remove(path);
+      return;
+    }
     dropDatabase(path);
   }
 
   @Override
   public void move(FsPath source, FsPath target) throws SQLException {
-    if (!isDataFile(source) || !isDataFile(target)) {
-      throw invalidOperation();
-    }
+    target = destination(source, target);
     if (!parent(source).equals(parent(target))) {
-      throw invalidOperation();
+      copy(source, target);
+      remove(source);
+      return;
     }
-    executor.execute(
-        "ALTER TABLE "
-            + toTablePath(source)
-            + " RENAME TO "
-            + TableFilesystemSql.identifier(tableName(target)));
+    rename(source, target);
   }
 
   @Override
   public void copy(FsPath source, FsPath target) throws SQLException {
-    throw invalidOperation();
+    target = destination(source, target);
+    List<SqlRow> schema = executor.query("DESC " + toTablePath(source) + " DETAILS");
+    String create = createTable(source, target, schema);
+    // CREATE without IF NOT EXISTS guarantees that a pre-existing target is never changed.
+    executor.execute(create);
+    try {
+      executor.execute(
+          "INSERT INTO "
+              + toTablePath(target)
+              + " ("
+              + TableFilesystemCopyPlanner.columns(schema)
+              + ") SELECT "
+              + TableFilesystemCopyPlanner.columns(schema)
+              + " FROM "
+              + toTablePath(source));
+    } catch (SQLException e) {
+      cleanup(target, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void copy(FsPath source, FsPath target, boolean replace) throws SQLException {
+    target = destination(source, target);
+    if (!replace || !tableExists(target)) {
+      copy(source, target);
+      return;
+    }
+    FsPath staged = temporaryPath(target);
+    copy(source, staged);
+    publish(staged, target);
+  }
+
+  @Override
+  public void move(FsPath source, FsPath target, boolean replace) throws SQLException {
+    target = destination(source, target);
+    if (!replace || !tableExists(target)) {
+      move(source, target);
+      return;
+    }
+    copy(source, target, true);
+    remove(source);
   }
 
   @Override
@@ -102,8 +160,125 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
     }
   }
 
+  @Override
+  public void write(FsPath path, List<String> lines, boolean append) throws SQLException {
+    if (append) {
+      append(path, lines);
+      return;
+    }
+    if (!isDataFile(path)) {
+      throw invalidOperation();
+    }
+    FsPath staged = temporaryPath(path);
+    List<SqlRow> schema = executor.query("DESC " + toTablePath(path) + " DETAILS");
+    List<String> statements =
+        TableCsvAppendPlanner.plan(
+            databaseName(staged),
+            tableName(staged),
+            schema,
+            lines == null ? Collections.emptyList() : lines);
+    String create = createTable(path, staged, schema);
+    executor.execute(create);
+    try {
+      for (String statement : statements) {
+        executor.execute(statement);
+      }
+    } catch (SQLException e) {
+      cleanup(staged, e);
+      throw e;
+    }
+    publish(staged, path);
+  }
+
+  private void publish(FsPath staged, FsPath path) throws SQLException {
+    FsPath backup = temporaryPath(path);
+    boolean originalRenamed = false;
+    boolean published = false;
+    try {
+      // Keep the original table until the replacement is populated and ready to publish.
+      rename(path, backup);
+      originalRenamed = true;
+      rename(staged, path);
+      published = true;
+      remove(backup);
+    } catch (SQLException e) {
+      if (originalRenamed && !published) {
+        try {
+          rename(backup, path);
+        } catch (SQLException rollbackFailure) {
+          e.addSuppressed(rollbackFailure);
+        }
+      }
+      if (!published) {
+        cleanup(staged, e);
+      }
+      throw e;
+    }
+  }
+
+  private boolean tableExists(FsPath path) throws SQLException {
+    for (SqlRow row :
+        executor.query("SHOW TABLES FROM " + TableFilesystemSql.identifier(databaseName(path)))) {
+      if (tableName(path).equalsIgnoreCase(row.get("TableName"))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private String createTable(FsPath source, FsPath target, List<SqlRow> schema)
+      throws SQLException {
+    SqlRow metadata = null;
+    for (SqlRow row :
+        executor.query(
+            "SHOW TABLES DETAILS FROM " + TableFilesystemSql.identifier(databaseName(source)))) {
+      if (tableName(source).equals(row.get("TableName"))) {
+        metadata = row;
+        break;
+      }
+    }
+    return TableFilesystemCopyPlanner.create(
+        databaseName(target), tableName(target), schema, metadata);
+  }
+
+  private static FsPath destination(FsPath source, FsPath target) throws SQLException {
+    if (!isDataFile(source)) {
+      throw invalidOperation();
+    }
+    if (target.getSegments().size() == 1) {
+      target = target.resolve(source.getFileName());
+    }
+    if (!isDataFile(target)) {
+      throw invalidOperation();
+    }
+    if (source.toString().equalsIgnoreCase(target.toString())) {
+      throw new SQLException(String.format(CliMessages.FS_SAME_FILE, source));
+    }
+    return target;
+  }
+
+  private FsPath temporaryPath(FsPath path) {
+    return parent(path).resolve(temporaryName.get() + CSV_SUFFIX);
+  }
+
+  private void rename(FsPath source, FsPath target) throws SQLException {
+    executor.execute(
+        "ALTER TABLE "
+            + toTablePath(source)
+            + " RENAME TO "
+            + TableFilesystemSql.identifier(tableName(target)));
+  }
+
+  private void cleanup(FsPath path, SQLException failure) {
+    try {
+      remove(path);
+    } catch (SQLException cleanupFailure) {
+      failure.addSuppressed(cleanupFailure);
+    }
+  }
+
   private static SQLException invalidOperation() {
-    return new SQLException(INVALID_WRITE_OPERATION);
+    return new SQLException(CliMessages.FS_INVALID_WRITE_OPERATION);
   }
 
   private void dropDatabase(FsPath path) throws SQLException {
@@ -122,7 +297,9 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
   }
 
   private static boolean isDataFile(FsPath path) {
-    return path.getSegments().size() == 2 && path.getFileName().endsWith(CSV_SUFFIX);
+    return path.getSegments().size() == 2
+        && path.getFileName().endsWith(CSV_SUFFIX)
+        && path.getFileName().length() > CSV_SUFFIX.length();
   }
 
   private static String tableName(FsPath path) {

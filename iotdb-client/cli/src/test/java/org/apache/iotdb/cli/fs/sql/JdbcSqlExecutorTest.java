@@ -31,6 +31,7 @@ import java.sql.Statement;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -77,5 +78,39 @@ public class JdbcSqlExecutorTest {
 
     verify(statement).execute("CREATE DATABASE db1");
     verify(statement).close();
+  }
+
+  @Test
+  public void queryPreservesTimestampPrecisionAndSqlNull() throws Exception {
+    when(connection.createStatement()).thenReturn(statement);
+    when(statement.executeQuery("SELECT * FROM t")).thenReturn(resultSet);
+    when(resultSet.getMetaData()).thenReturn(metaData);
+    when(metaData.getColumnCount()).thenReturn(1);
+    when(metaData.getColumnLabel(1)).thenReturn("time");
+    when(metaData.getColumnTypeName(1)).thenReturn("TIMESTAMP");
+    when(resultSet.next()).thenReturn(true, true, false);
+    when(resultSet.getLong(1)).thenReturn(9007199254740993L, 0L);
+    when(resultSet.wasNull()).thenReturn(false, true);
+    List<SqlRow> rows = new JdbcSqlExecutor(connection).query("SELECT * FROM t");
+    assertEquals("9007199254740993", rows.get(0).get("time"));
+    assertEquals("TIMESTAMP", rows.get(0).getDataType("time"));
+    assertNull(rows.get(1).get("time"));
+  }
+
+  @Test
+  public void arbitrarySqlSupportsResultSetsAndUpdates() throws Exception {
+    when(connection.createStatement()).thenReturn(statement);
+    when(statement.execute("SHOW DATABASES")).thenReturn(true);
+    when(statement.getResultSet()).thenReturn(resultSet);
+    when(resultSet.getMetaData()).thenReturn(metaData);
+    when(metaData.getColumnCount()).thenReturn(1);
+    when(metaData.getColumnLabel(1)).thenReturn("Database");
+    when(metaData.getColumnTypeName(1)).thenReturn("STRING");
+    when(resultSet.next()).thenReturn(true, false);
+    when(resultSet.getString(1)).thenReturn("db1");
+    JdbcSqlExecutor executor = new JdbcSqlExecutor(connection);
+    assertEquals("db1", executor.executeQueryOrUpdate("SHOW DATABASES").get(0).get("Database"));
+    assertEquals(0, executor.executeQueryOrUpdate("CREATE DATABASE db2").size());
+    verify(statement).execute("CREATE DATABASE db2");
   }
 }

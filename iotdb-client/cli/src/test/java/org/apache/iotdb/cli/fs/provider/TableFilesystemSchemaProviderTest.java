@@ -34,6 +34,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -97,14 +98,14 @@ public class TableFilesystemSchemaProviderTest {
   }
 
   @Test
-  public void bareTablePathIsNotDirectoryInSidecarModel() throws SQLException {
+  public void bareTablePathIsADataFileAlias() throws SQLException {
+    mockTableExists("db1", "table1");
     List<FsNode> children = provider.list(FsPath.absolute("/db1/table1"));
     FsNode node = provider.describe(FsPath.absolute("/db1/table1"));
 
     assertEquals(0, children.size());
     assertEquals("table1", node.getName());
-    assertEquals(FsNodeType.UNKNOWN, node.getType());
-    verifyZeroInteractions(executor);
+    assertEquals(FsNodeType.TABLE_DATA_FILE, node.getType());
   }
 
   @Test
@@ -139,33 +140,34 @@ public class TableFilesystemSchemaProviderTest {
   }
 
   @Test
-  public void readBareTableAndColumnPathsAreRejected() throws SQLException {
-    assertSqlError(
-        () -> provider.read(FsPath.absolute("/db1/table1"), 5),
-        "Path is not readable: /db1/table1");
+  public void readBareTableUsesDeterministicTimeOrder() throws SQLException {
+    mockTableExists("db1", "table1");
+    when(executor.query("SELECT * FROM db1.table1 ORDER BY time ASC LIMIT 5"))
+        .thenReturn(SqlRow.list(SqlRow.of("time", "1", "s1", "42")));
+    assertEquals("42", provider.read(FsPath.absolute("/db1/table1"), 5).get(0).get("s1"));
     assertSqlError(
         () -> provider.read(FsPath.absolute("/db1/table1/s1"), 5),
-        "Path is not readable: /db1/table1/s1");
+        "Path is not a table: /db1/table1/s1");
   }
 
   @Test
   public void readTableCsvReturnsCsvLinesWithHeader() throws SQLException {
     mockTableExists("db1", "table1");
-    when(executor.query("SELECT * FROM db1.table1 LIMIT 5"))
+    when(executor.query("SELECT * FROM db1.table1 ORDER BY time ASC LIMIT 5"))
         .thenReturn(SqlRow.list(SqlRow.of("Time", "1", "tag1", "a", "s1", "42")));
 
     List<String> lines = provider.readLines(FsPath.absolute("/db1/table1.csv"), 5);
 
     assertEquals("Time,tag1,s1", lines.get(0));
     assertEquals("1,a,42", lines.get(1));
-    verify(executor).query("SELECT * FROM db1.table1 LIMIT 5");
+    verify(executor).query("SELECT * FROM db1.table1 ORDER BY time ASC LIMIT 5");
   }
 
   @Test
   public void readTableCsvQuotesSpecialIdentifiers() throws SQLException {
     when(executor.query("SHOW TABLES FROM \"db-1\""))
         .thenReturn(SqlRow.list(SqlRow.of("TableName", "table-1")));
-    when(executor.query("SELECT * FROM \"db-1\".\"table-1\" LIMIT 5"))
+    when(executor.query("SELECT * FROM \"db-1\".\"table-1\" ORDER BY time ASC LIMIT 5"))
         .thenReturn(SqlRow.list(SqlRow.of("Time", "1", "tag1", "a")));
 
     List<String> lines = provider.readLines(FsPath.absolute("/db-1/table-1.csv"), 5);
@@ -173,7 +175,7 @@ public class TableFilesystemSchemaProviderTest {
     assertEquals("Time,tag1", lines.get(0));
     assertEquals("1,a", lines.get(1));
     verify(executor).query("SHOW TABLES FROM \"db-1\"");
-    verify(executor).query("SELECT * FROM \"db-1\".\"table-1\" LIMIT 5");
+    verify(executor).query("SELECT * FROM \"db-1\".\"table-1\" ORDER BY time ASC LIMIT 5");
   }
 
   @Test
@@ -186,7 +188,10 @@ public class TableFilesystemSchemaProviderTest {
     List<SqlRow> rows = provider.schema(FsPath.absolute("/db1/table1"));
 
     assertEquals(1, rows.size());
-    assertEquals("tag1", rows.get(0).get("ColumnName"));
+    assertEquals("tag1", rows.get(0).get("column"));
+    assertEquals("TAG", rows.get(0).get("category"));
+    assertEquals("table", rows.get(0).get("model"));
+    assertEquals("table1", rows.get(0).get("object"));
     verify(executor).query("DESC db1.table1 DETAILS");
   }
 
@@ -198,7 +203,7 @@ public class TableFilesystemSchemaProviderTest {
 
     List<SqlRow> rows = provider.schema(FsPath.absolute("/db1/table1.csv"));
 
-    assertEquals("s1", rows.get(0).get("ColumnName"));
+    assertEquals("s1", rows.get(0).get("column"));
     verify(executor).query("DESC db1.table1 DETAILS");
   }
 
@@ -304,6 +309,108 @@ public class TableFilesystemSchemaProviderTest {
         "Path does not exist: /db1/table1.csv");
 
     verify(executor, times(2)).query("SHOW TABLES FROM db1");
+  }
+
+  @Test
+  public void countUsesRealTagTuplesNullCountsAndTimeRange() throws SQLException {
+    mockStatisticsTable();
+    List<SqlRow> counts = provider.countRows(FsPath.absolute("/db1/table1.csv"));
+    assertEquals(3, counts.size());
+    assertEquals("TAG", counts.get(0).get("category"));
+    assertEquals("3", counts.get(0).get("entity_count"));
+    assertEquals("4", counts.get(0).get("row_count"));
+    assertEquals("1", counts.get(0).get("null_count"));
+    assertEquals("2", counts.get(1).get("non_null_count"));
+    assertEquals("2", counts.get(1).get("null_count"));
+    assertEquals("1", counts.get(1).get("min_time"));
+    assertEquals("4", counts.get(1).get("max_time"));
+    assertEquals("scan", counts.get(1).get("time_source"));
+    assertEquals("INT64", counts.get(1).getDataType("entity_count"));
+  }
+
+  @Test
+  public void statsGroupByTagAndPreserveLargeIntegersAndBooleanRules() throws SQLException {
+    mockStatisticsTable();
+    List<SqlRow> stats = provider.stats(FsPath.absolute("/db1/table1"));
+    assertEquals(6, stats.size());
+    SqlRow first = stats.get(0);
+    assertEquals("a", first.get("tag.tag1"));
+    assertEquals("s1", first.get("field"));
+    assertEquals("9007199254740993", first.get("min"));
+    assertEquals("9007199254740993", first.get("max"));
+    assertNull(first.get("sum"));
+    assertEquals("1", first.get("null_count"));
+    assertEquals("1", first.get("min_time"));
+    assertEquals("INT64", first.getDataType("min"));
+    SqlRow booleanStats = stats.get(1);
+    assertNull(booleanStats.get("min"));
+    assertNull(booleanStats.get("max"));
+    assertEquals("true", booleanStats.get("first"));
+    assertEquals("false", booleanStats.get("last"));
+    assertEquals("1", booleanStats.get("sum"));
+    assertNull(stats.get(4).get("tag.tag1"));
+    assertNull(stats.get(4).get("min"));
+    assertEquals("4", stats.get(4).get("min_time"));
+  }
+
+  @Test
+  public void emptyTableCountsAreZeroAndTimestampsRemainNull() throws SQLException {
+    mockStatisticsTable();
+    when(executor.query("SELECT * FROM db1.table1 ORDER BY time ASC, tag1 ASC NULLS LAST"))
+        .thenReturn(SqlRow.list());
+    List<SqlRow> counts = provider.countRows(FsPath.absolute("/db1/table1"));
+    assertEquals("0", counts.get(0).get("row_count"));
+    assertEquals("0", counts.get(0).get("entity_count"));
+    assertNull(counts.get(0).get("min_time"));
+    assertNull(counts.get(0).get("time_source"));
+    assertEquals(0, provider.stats(FsPath.absolute("/db1/table1")).size());
+  }
+
+  @Test
+  public void unlimitedTailOmitsLimitAndReturnsAscendingTimeAndTags() throws SQLException {
+    mockStatisticsTable();
+    when(executor.query("SELECT * FROM db1.table1 ORDER BY time DESC, tag1 DESC NULLS FIRST"))
+        .thenReturn(SqlRow.list(SqlRow.of("time", "2"), SqlRow.of("time", "1")));
+    List<SqlRow> rows = provider.tail(FsPath.absolute("/db1/table1"), -1);
+    assertEquals("1", rows.get(0).get("time"));
+    assertEquals("2", rows.get(1).get("time"));
+  }
+
+  @Test
+  public void csvTextRetainsEmptySchemaAndDistinguishesNullMarker() throws SQLException {
+    mockTableExists("db1", "table1");
+    when(executor.query("DESC db1.table1 DETAILS"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of("ColumnName", "time", "DataType", "TIMESTAMP", "Category", "TIME"),
+                SqlRow.of("ColumnName", "s1", "DataType", "STRING", "Category", "FIELD")));
+    when(executor.query("SELECT * FROM db1.table1 ORDER BY time ASC")).thenReturn(SqlRow.list());
+    assertEquals("time,s1", provider.readLines(FsPath.absolute("/db1/table1.csv"), -1).get(0));
+    when(executor.query("SELECT * FROM db1.table1 ORDER BY time ASC"))
+        .thenReturn(
+            SqlRow.list(SqlRow.of("time", "1", "s1", null), SqlRow.of("time", "2", "s1", "\\N")));
+    List<String> lines = provider.readLines(FsPath.absolute("/db1/table1.csv"), -1);
+    assertEquals("1,\\N", lines.get(1));
+    assertEquals("2,\"\\N\"", lines.get(2));
+  }
+
+  private void mockStatisticsTable() throws SQLException {
+    mockTableExists("db1", "table1");
+    when(executor.query("DESC db1.table1 DETAILS"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of("ColumnName", "time", "DataType", "TIMESTAMP", "Category", "TIME"),
+                SqlRow.of("ColumnName", "tag1", "DataType", "STRING", "Category", "TAG"),
+                SqlRow.of("ColumnName", "s1", "DataType", "INT64", "Category", "FIELD"),
+                SqlRow.of("ColumnName", "flag", "DataType", "BOOLEAN", "Category", "FIELD"),
+                SqlRow.of("ColumnName", "attr", "DataType", "STRING", "Category", "ATTRIBUTE")));
+    when(executor.query("SELECT * FROM db1.table1 ORDER BY time ASC, tag1 ASC NULLS LAST"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of("time", "1", "tag1", "a", "s1", "9007199254740993", "flag", "true"),
+                SqlRow.of("time", "2", "tag1", "a", "s1", null, "flag", "false"),
+                SqlRow.of("time", "3", "tag1", "", "s1", "-7", "flag", null),
+                SqlRow.of("time", "4", "tag1", null, "s1", null, "flag", null)));
   }
 
   private static void assertSqlError(SqlOperation operation, String message) throws SQLException {

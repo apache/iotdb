@@ -19,17 +19,24 @@
 
 package org.apache.iotdb.cli.fs.provider;
 
+import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.sql.SqlExecutor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.FsReadMessages;
+
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.parser.PathNodesGenerator;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
@@ -40,6 +47,16 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
 
   public TreeFilesystemSchemaProvider(SqlExecutor executor) {
     this.executor = executor;
+  }
+
+  @Override
+  public String model() {
+    return "tree";
+  }
+
+  @Override
+  public List<SqlRow> executeSql(String sql) throws SQLException {
+    return executor.executeQueryOrUpdate(sql);
   }
 
   @Override
@@ -65,18 +82,65 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
       return new FsNode(path.getFileName(), path, FsNodeType.TREE_DATABASE);
     }
     List<SqlRow> rows = executor.query("SHOW TIMESERIES " + toTreePath(path));
-    if (rows.isEmpty()) {
-      return new FsNode(path.getFileName(), path, FsNodeType.UNKNOWN);
+    for (SqlRow row : rows) {
+      if (toTreePath(path).equals(row.get("Timeseries"))) {
+        return new FsNode(path.getFileName(), path, FsNodeType.TREE_TIMESERIES, row.asMap());
+      }
     }
-    return new FsNode(path.getFileName(), path, FsNodeType.TREE_TIMESERIES, rows.get(0).asMap());
+    if (!rows.isEmpty() || !listChildPaths(path).isEmpty()) {
+      return new FsNode(path.getFileName(), path, FsNodeType.TREE_INTERNAL_PATH);
+    }
+    return new FsNode(path.getFileName(), path, FsNodeType.UNKNOWN);
   }
 
   @Override
   public List<SqlRow> schema(FsPath path) throws SQLException {
-    if (path.isRoot()) {
-      throw new SQLException("Path is not a schema object: " + path);
+    List<SqlRow> result = new ArrayList<>();
+    for (SqlRow row : rawSchema(path)) {
+      Path series = new Path(row.get("Timeseries"), true);
+      result.add(FsStatistics.schema(model(), series.getDeviceString(), column(row)));
     }
-    return executor.query("SHOW TIMESERIES " + toTreePath(path));
+    return result;
+  }
+
+  private List<SqlRow> rawSchema(FsPath path) throws SQLException {
+    String scope = path.isRoot() ? ROOT + ".**" : toTreePath(path);
+    List<SqlRow> rows = executor.query("SHOW TIMESERIES " + scope);
+    if (rows.isEmpty() && !path.isRoot()) {
+      rows = executor.query("SHOW TIMESERIES " + scope + ".**");
+    }
+    return rows;
+  }
+
+  private static FsColumn column(SqlRow row) {
+    Path series = new Path(row.get("Timeseries"), true);
+    return new FsColumn(
+        series.getMeasurement(),
+        "FIELD",
+        row.get("DataType"),
+        row.get("Encoding"),
+        row.get("Compression"));
+  }
+
+  @Override
+  public List<FsColumn> columns(FsPath path) throws SQLException {
+    List<FsColumn> columns = new ArrayList<>();
+    columns.add(new FsColumn("time", "TIME", "TIMESTAMP"));
+    List<SqlRow> schema = rawSchema(path);
+    boolean multipleDevices = multipleDevices(schema);
+    for (SqlRow row : schema) {
+      FsColumn column = column(row);
+      columns.add(
+          multipleDevices
+              ? new FsColumn(
+                  row.get("Timeseries"),
+                  column.getCategory(),
+                  column.getDataType(),
+                  column.getEncoding(),
+                  column.getCompression())
+              : column);
+    }
+    return columns;
   }
 
   @Override
@@ -89,125 +153,101 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
 
   @Override
   public List<SqlRow> stats(FsPath path) throws SQLException {
-    String measurement = path.getFileName();
-    FsPath devicePath = parent(path);
-    List<SqlRow> rows =
-        executor.query(
-            "SELECT COUNT("
-                + measurement
-                + "), MIN_TIME("
-                + measurement
-                + "), MAX_TIME("
-                + measurement
-                + "), MIN_VALUE("
-                + measurement
-                + "), MAX_VALUE("
-                + measurement
-                + "), FIRST_VALUE("
-                + measurement
-                + "), LAST_VALUE("
-                + measurement
-                + "), SUM("
-                + measurement
-                + ") FROM "
-                + toTreePath(devicePath));
-    String dataType = "";
-    List<SqlRow> schemaRows = schema(path);
-    if (!schemaRows.isEmpty()) {
-      dataType = schemaRows.get(0).get("DataType");
-    }
-    java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
-    values.put("model", "tree");
-    values.put("object", devicePath.toString());
-    values.put("field", measurement);
-    values.put("data_type", dataType);
-    String nonNull = firstValue(rows);
-    values.put("non_null_count", nonNull);
-    values.put("null_count", "0");
-    values.put("min_time", valueAt(rows, 1));
-    values.put("max_time", valueAt(rows, 2));
-    values.put("min", valueAt(rows, 3));
-    values.put("max", valueAt(rows, 4));
-    values.put("first", valueAt(rows, 5));
-    values.put("last", valueAt(rows, 6));
-    values.put("sum", valueAt(rows, 7));
-    values.put("stats_source", "iotdb");
-    return SqlRow.list(new SqlRow(values));
+    return collectStatistics(path, false);
   }
 
   @Override
   public List<SqlRow> countRows(FsPath path) throws SQLException {
-    String measurement = path.getFileName();
-    FsPath devicePath = parent(path);
-    List<SqlRow> rows =
-        executor.query("SELECT COUNT(" + measurement + ") FROM " + toTreePath(devicePath));
-    java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
-    values.put("model", "tree");
-    values.put("object", devicePath.toString());
-    values.put("column", measurement);
-    values.put("category", "field");
-    String count = firstValue(rows);
-    values.put("row_count", count);
-    values.put("entity_count", count);
-    values.put("non_null_count", count);
-    values.put("null_count", "0");
-    values.put("min_time", "");
-    values.put("max_time", "");
-    values.put("time_source", "iotdb");
-    return SqlRow.list(new SqlRow(values));
+    return collectStatistics(path, true);
   }
 
-  private static String firstValue(List<SqlRow> rows) {
-    return rows == null || rows.isEmpty() || rows.get(0).asMap().isEmpty()
-        ? ""
-        : rows.get(0).asMap().values().iterator().next();
-  }
-
-  private static String valueAt(List<SqlRow> rows, int index) {
-    if (rows == null || rows.isEmpty() || rows.get(0).asMap().size() <= index) {
-      return "";
+  private List<SqlRow> collectStatistics(FsPath path, boolean count) throws SQLException {
+    Map<String, List<FsColumn>> devices = new LinkedHashMap<>();
+    for (SqlRow row : rawSchema(path)) {
+      Path series = new Path(row.get("Timeseries"), true);
+      devices
+          .computeIfAbsent(series.getDeviceString(), ignored -> new ArrayList<>())
+          .add(column(row));
     }
-    return new ArrayList<>(rows.get(0).asMap().values()).get(index);
+    List<SqlRow> result = new ArrayList<>();
+    for (Map.Entry<String, List<FsColumn>> device : devices.entrySet()) {
+      // The union of every measurement's timestamps is the device timeline,
+      // including timestamps where the selected measurement is NULL.
+      List<SqlRow> rows =
+          normalize(
+              executor.query("SELECT * FROM " + device.getKey() + " ORDER BY time ASC"), true);
+      result.addAll(
+          count
+              ? FsStatistics.count(model(), device.getKey(), device.getValue(), rows)
+              : FsStatistics.stats(model(), device.getKey(), device.getValue(), rows));
+    }
+    return result;
   }
 
   @Override
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
-    String measurement = path.getFileName();
-    FsPath devicePath = parent(path);
-    return executor.query(
-        "SELECT "
-            + measurement
-            + " FROM "
-            + toTreePath(devicePath)
-            + (limit < 0 ? "" : " LIMIT " + limit));
+    return read(path, limit, false);
   }
 
   @Override
   public List<SqlRow> tail(FsPath path, int limit) throws SQLException {
-    String measurement = path.getFileName();
-    FsPath devicePath = parent(path);
-    List<SqlRow> rows =
-        executor.query(
-            "SELECT "
-                + measurement
-                + " FROM "
-                + toTreePath(devicePath)
-                + " ORDER BY time DESC LIMIT "
-                + limit);
-    Collections.reverse(rows);
+    return read(path, limit, true);
+  }
+
+  private List<SqlRow> read(FsPath path, int limit, boolean descending) throws SQLException {
+    if (path.isRoot()) {
+      throw new SQLException(String.format(FsReadMessages.INVALID_SCOPE, path));
+    }
+    List<SqlRow> schema = rawSchema(path);
+    String scope = toTreePath(path);
+    boolean measurement = schema.size() == 1 && scope.equals(schema.get(0).get("Timeseries"));
+    String sql =
+        "SELECT "
+            + (measurement ? identifier(path.getFileName()) : "*")
+            + " FROM "
+            + (measurement ? toTreePath(parent(path)) : scope)
+            + " ORDER BY time "
+            + (descending ? "DESC" : "ASC")
+            + (limit < 0 ? "" : " LIMIT " + limit);
+    List<SqlRow> rows = normalize(executor.query(sql), !multipleDevices(schema));
+    if (descending) {
+      Collections.reverse(rows);
+    }
     return rows;
+  }
+
+  private static boolean multipleDevices(List<SqlRow> schema) {
+    Set<String> devices = new LinkedHashSet<>();
+    for (SqlRow row : schema) {
+      devices.add(new Path(row.get("Timeseries"), true).getDeviceString());
+    }
+    return devices.size() > 1;
+  }
+
+  private static List<SqlRow> normalize(List<SqlRow> rows, boolean shortNames) {
+    List<SqlRow> result = new ArrayList<>();
+    for (SqlRow row : rows) {
+      Map<String, String> cells = new LinkedHashMap<>();
+      Map<String, String> types = new LinkedHashMap<>();
+      for (Map.Entry<String, String> entry : row.asMap().entrySet()) {
+        String name = entry.getKey();
+        String normalized =
+            "time".equalsIgnoreCase(name)
+                ? "time"
+                : shortNames && name.startsWith("root.")
+                    ? new Path(name, true).getMeasurement()
+                    : name;
+        cells.put(normalized, entry.getValue());
+        types.put(normalized, row.getDataType(name));
+      }
+      result.add(new SqlRow(cells, types));
+    }
+    return result;
   }
 
   @Override
   public long count(FsPath path) throws SQLException {
-    String measurement = path.getFileName();
-    FsPath devicePath = parent(path);
-    List<SqlRow> rows =
-        executor.query("SELECT COUNT(" + measurement + ") FROM " + toTreePath(devicePath));
-    if (rows.isEmpty() || rows.get(0).asMap().isEmpty()) {
-      return 0;
-    }
-    return Long.parseLong(rows.get(0).asMap().values().iterator().next());
+    return read(path, -1).size();
   }
 
   private List<FsNode> listTreeRoots() throws SQLException {
@@ -278,13 +318,19 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
       if (builder.length() > 0) {
         builder.append('.');
       }
-      builder.append(segment);
+      builder.append(identifier(segment));
     }
     return builder.toString();
   }
 
   private static FsPath fromTreePath(String treePath) {
-    return FsPath.absolute("/" + treePath.replace('.', '/'));
+    return FsPath.absolute("/" + String.join("/", PathNodesGenerator.splitPathToNodes(treePath)));
+  }
+
+  private static String identifier(String value) {
+    return value.matches("[A-Za-z_][A-Za-z0-9_]*") || value.matches("`(?:[^`]|``)+`")
+        ? value
+        : "`" + value.replace("`", "``") + "`";
   }
 
   private static FsPath parent(FsPath path) {

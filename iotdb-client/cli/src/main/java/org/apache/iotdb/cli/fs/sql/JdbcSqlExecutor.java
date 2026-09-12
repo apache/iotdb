@@ -25,6 +25,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,18 +42,44 @@ public class JdbcSqlExecutor implements SqlExecutor {
   public List<SqlRow> query(String sql) throws SQLException {
     try (Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery(sql)) {
-      ResultSetMetaData metaData = resultSet.getMetaData();
-      int columnCount = metaData.getColumnCount();
-      List<SqlRow> rows = new ArrayList<>();
-      while (resultSet.next()) {
-        Map<String, String> values = new LinkedHashMap<>();
-        for (int column = 1; column <= columnCount; column++) {
-          values.put(metaData.getColumnLabel(column), resultSet.getString(column));
-        }
-        rows.add(new SqlRow(values));
-      }
-      return rows;
+      return readRows(resultSet);
     }
+  }
+
+  @Override
+  public List<SqlRow> executeQueryOrUpdate(String sql) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      if (!statement.execute(sql)) {
+        return Collections.emptyList();
+      }
+      try (ResultSet resultSet = statement.getResultSet()) {
+        return readRows(resultSet);
+      }
+    }
+  }
+
+  private static List<SqlRow> readRows(ResultSet resultSet) throws SQLException {
+    ResultSetMetaData metaData = resultSet.getMetaData();
+    int columnCount = metaData.getColumnCount();
+    Map<String, String> dataTypes = new LinkedHashMap<>();
+    for (int column = 1; column <= columnCount; column++) {
+      dataTypes.put(metaData.getColumnLabel(column), metaData.getColumnTypeName(column));
+    }
+    List<SqlRow> rows = new ArrayList<>();
+    while (resultSet.next()) {
+      Map<String, String> values = new LinkedHashMap<>();
+      for (int column = 1; column <= columnCount; column++) {
+        String name = metaData.getColumnLabel(column);
+        if ("TIMESTAMP".equalsIgnoreCase(dataTypes.get(name))) {
+          long timestamp = resultSet.getLong(column);
+          values.put(name, resultSet.wasNull() ? null : Long.toString(timestamp));
+        } else {
+          values.put(name, resultSet.getString(column));
+        }
+      }
+      rows.add(new SqlRow(values, dataTypes));
+    }
+    return rows;
   }
 
   @Override
