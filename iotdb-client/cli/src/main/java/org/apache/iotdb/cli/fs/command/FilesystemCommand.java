@@ -53,6 +53,7 @@ public class FilesystemCommand {
     PASTE,
     JOIN,
     TEE,
+    WRITE,
     TREE,
     SQL,
     HELP,
@@ -78,6 +79,7 @@ public class FilesystemCommand {
   private final String end;
   private final List<String> tagFilters;
   private final String tagMatch;
+  private final WriteOptions writeOptions;
 
   private FilesystemCommand(
       Type type,
@@ -97,7 +99,8 @@ public class FilesystemCommand {
       String start,
       String end,
       List<String> tagFilters,
-      String tagMatch) {
+      String tagMatch,
+      WriteOptions writeOptions) {
     this.type = type;
     this.path = path;
     this.paths = paths;
@@ -116,6 +119,7 @@ public class FilesystemCommand {
     this.end = end;
     this.tagFilters = Collections.unmodifiableList(new ArrayList<>(tagFilters));
     this.tagMatch = tagMatch;
+    this.writeOptions = writeOptions;
   }
 
   private static FilesystemCommand create(
@@ -146,7 +150,8 @@ public class FilesystemCommand {
         null,
         null,
         Collections.emptyList(),
-        "all");
+        "all",
+        null);
   }
 
   public static FilesystemCommand simple(Type type) {
@@ -197,6 +202,33 @@ public class FilesystemCommand {
     return create(Type.SQL, "", Collections.emptyList(), -1, -1, "", "", statement, "");
   }
 
+  public static FilesystemCommand write(WriteOptions options) {
+    return new FilesystemCommand(
+        Type.WRITE,
+        options.getOutput(),
+        Collections.emptyList(),
+        -1,
+        -1,
+        "",
+        "",
+        "",
+        "",
+        "table",
+        "",
+        options.getTable(),
+        Collections.emptyList(),
+        0,
+        null,
+        null,
+        Collections.emptyList(),
+        "all",
+        options);
+  }
+
+  public WriteOptions getWriteOptions() {
+    return writeOptions;
+  }
+
   public static FilesystemCommand invalid(String errorMessage) {
     return create(Type.INVALID, "", Collections.emptyList(), -1, -1, "", "", "", errorMessage);
   }
@@ -229,7 +261,8 @@ public class FilesystemCommand {
         start,
         end,
         tagFilters,
-        tagMatch);
+        tagMatch,
+        writeOptions);
   }
 
   public FilesystemCommand withLimit(int newLimit) {
@@ -251,7 +284,8 @@ public class FilesystemCommand {
         start,
         end,
         tagFilters,
-        tagMatch);
+        tagMatch,
+        writeOptions);
   }
 
   public Type getType() {

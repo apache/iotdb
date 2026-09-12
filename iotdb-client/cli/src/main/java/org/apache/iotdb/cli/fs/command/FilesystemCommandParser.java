@@ -100,6 +100,14 @@ public class FilesystemCommandParser {
       return FilesystemCommand.path(FilesystemCommand.Type.HELP, command);
     }
     try {
+      if ("write".equals(command)) {
+        if (tokens.contains("--help")) {
+          return FilesystemCommand.invalid(
+              CliMessages
+                  .MESSAGE_USE_HELP_COMMAND_OR_COMMAND_HELP_WITHOUT_OTHER_ARGUMENTS_3EED45E5);
+        }
+        return FilesystemCommand.write(WriteCommandParser.parse(tokens));
+      }
       return parseCommand(command, new Arguments(command, tokens));
     } catch (IllegalArgumentException e) {
       return FilesystemCommand.invalid(e.getMessage());

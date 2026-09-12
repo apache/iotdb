@@ -30,6 +30,7 @@ import org.apache.iotdb.cli.fs.provider.FilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.provider.UnsupportedFilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.fs.write.TsFileWriteExecutor;
 import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.CliContext;
 
@@ -63,7 +64,7 @@ public class FilesystemShell {
       Arrays.asList(
           "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "wc", "cat", "head",
           "tail", "grep", "find", "less", "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut",
-          "paste", "join", "tree", "help", "exit", "quit", "tee");
+          "paste", "join", "tree", "help", "exit", "quit", "tee", "write");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
@@ -174,6 +175,25 @@ public class FilesystemShell {
       case JOIN:
         printJoin(command.getPaths(), command.getOption(), command.getPattern());
         return true;
+      case WRITE:
+        if (!writeEnabled) {
+          reportError(
+              RUNTIME_ERROR,
+              String.format(
+                  CliMessages.MESSAGE_ARG_ARG_READ_ONLY_FILE_SYSTEM_A86EB99C,
+                  "write",
+                  command.getWriteOptions().getOutput()));
+        } else {
+          TsFileWriteExecutor writer = new TsFileWriteExecutor();
+          lastStatus =
+              !nonInteractive && ctx.getLineReader() != null
+                  ? writer.run(
+                      command.getWriteOptions(),
+                      ctx.getLineReader().getTerminal().reader(),
+                      ctx.getErr())
+                  : writer.run(command.getWriteOptions(), ctx.getIn(), ctx.getErr());
+        }
+        return true;
       case TEE:
         append(command.getPath(), nonInteractive);
         return true;
@@ -219,8 +239,12 @@ public class FilesystemShell {
     return lastStatus;
   }
 
-  /** Returns null when a command needs a connection; handles help and usage before login. */
+  /** Returns null when a command needs a connection; handles local commands before login. */
   public static Integer runOffline(CliContext ctx, String input) {
+    return runOffline(ctx, input, false);
+  }
+
+  public static Integer runOffline(CliContext ctx, String input, boolean writeEnabled) {
     FilesystemCommand command = FilesystemCommandParser.parse(input);
     switch (command.getType()) {
       case HELP:
@@ -228,7 +252,8 @@ public class FilesystemShell {
       case SQL:
       case EXIT:
       case PWD:
-        return new FilesystemShell(ctx, null).runNonInteractive(input);
+      case WRITE:
+        return new FilesystemShell(ctx, null, null, writeEnabled).runNonInteractive(input);
       default:
         return null;
     }

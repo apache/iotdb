@@ -26,16 +26,25 @@ import org.apache.iotdb.jdbc.IoTDBConnection;
 
 import org.jline.reader.LineReader;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -47,6 +56,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class CliFilesystemModeTest {
+
+  @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Mock private IoTDBConnection connection;
   @Mock private Statement statement;
@@ -147,6 +158,85 @@ public class CliFilesystemModeTest {
   }
 
   @Test
+  public void filesystemWriteCreatesLocalFileBeforeUsernamePasswordAndConnection()
+      throws Exception {
+    Path output = temporaryFolder.getRoot().toPath().resolve("output with spaces.tsfile");
+    ByteArrayInputStream input =
+        new ByteArrayInputStream("time,value\n1,42\n".getBytes(StandardCharsets.UTF_8));
+    ctx = new CliContext(input, new PrintStream(out), new PrintStream(err), ExitType.EXCEPTION);
+
+    assertOfflineExit(
+        "write --table sensors --field value INT64 --stdin -o '" + output + "'",
+        FilesystemShell.SUCCESS,
+        "--fs_write_mode",
+        "enabled");
+
+    assertTrue(Files.exists(output));
+    byte[] fileBytes = Files.readAllBytes(output);
+    assertTrue(fileBytes.length > 12);
+    assertEquals("TsFile", new String(fileBytes, 0, 6, StandardCharsets.US_ASCII));
+    assertEquals(
+        "TsFile", new String(fileBytes, fileBytes.length - 6, 6, StandardCharsets.US_ASCII));
+    assertEquals("", out.toString());
+    assertEquals("", err.toString());
+    assertEquals(0, input.available());
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
+  public void filesystemWriteReadsLocalCsvBeforeUsernamePasswordAndConnection() throws Exception {
+    Path input = temporaryFolder.getRoot().toPath().resolve("input with spaces.csv");
+    Path output = temporaryFolder.getRoot().toPath().resolve("sensors.tsfile");
+    Files.write(input, "value,time\n42,1\n".getBytes(StandardCharsets.UTF_8));
+
+    assertOfflineExit(
+        "write --table sensors --field value INT64 -i '" + input + "' -o '" + output + "'",
+        FilesystemShell.SUCCESS,
+        "--fs_write_mode",
+        "enabled");
+
+    assertTrue(Files.size(output) > 12);
+    assertEquals("", out.toString());
+    assertEquals("", err.toString());
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
+  public void filesystemReadOnlyWriteRejectsBeforeConsumingInputOrConnecting() throws Exception {
+    Path output = temporaryFolder.getRoot().toPath().resolve("sensors.tsfile");
+    byte[] csv = "time,value\n1,42\n".getBytes(StandardCharsets.UTF_8);
+    ByteArrayInputStream input = new ByteArrayInputStream(csv);
+    ctx = new CliContext(input, new PrintStream(out), new PrintStream(err), ExitType.EXCEPTION);
+
+    assertOfflineExit(
+        "write --table sensors --field value INT64 --stdin -o '" + output + "'",
+        FilesystemShell.RUNTIME_ERROR);
+
+    assertFalse(Files.exists(output));
+    assertEquals(csv.length, input.available());
+    assertEquals("", out.toString());
+    assertTrue(err.toString().contains("Read-only file system"));
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
+  public void filesystemWriteMissingInputFailsWithoutConnecting() throws Exception {
+    Path input = temporaryFolder.getRoot().toPath().resolve("missing.csv");
+    Path output = temporaryFolder.getRoot().toPath().resolve("sensors.tsfile");
+
+    assertOfflineExit(
+        "write --table sensors --field value INT64 -i '" + input + "' -o '" + output + "'",
+        FilesystemShell.INPUT_ERROR,
+        "--fs_write_mode",
+        "enabled");
+
+    assertFalse(Files.exists(output));
+    assertEquals("", out.toString());
+    assertTrue(err.size() > 0);
+    assertNull(ctx.getLineReader());
+  }
+
+  @Test
   public void filesystemExitRunsBeforeUsernamePasswordAndConnection() throws Exception {
     assertOfflineExit("exit", FilesystemShell.SUCCESS);
     assertEquals("", out.toString());
@@ -205,15 +295,20 @@ public class CliFilesystemModeTest {
     assertFalse(out.toString().contains("head -n 5 /db1/table1.csv"));
   }
 
-  private void assertOfflineExit(String command, int status) throws Exception {
+  private void assertOfflineExit(String command, int status, String... options) throws Exception {
+    List<String> arguments = new ArrayList<>(Arrays.asList("--access_mode", "filesystem"));
+    arguments.addAll(Arrays.asList(options));
+    arguments.add("-e");
+    arguments.add(command);
     try {
-      Cli.runCli(ctx, new String[] {"--access_mode", "filesystem", "-e", command});
+      Cli.runCli(ctx, arguments.toArray(new String[0]));
       fail("Expected CLI exit");
     } catch (RuntimeException e) {
       assertEquals("Exiting with code " + status, e.getMessage());
     } finally {
       AbstractCli.hasExecuteSQL = false;
       AbstractCli.setAccessMode(AbstractCli.ACCESS_MODE_SQL);
+      AbstractCli.setFsWriteMode(AbstractCli.FS_WRITE_MODE_DISABLED);
     }
   }
 

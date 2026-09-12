@@ -100,7 +100,8 @@ public class Cli extends AbstractCli {
     }
 
     if (ACCESS_MODE_FILESYSTEM.equals(accessMode) && hasExecuteSQL) {
-      Integer offlineStatus = FilesystemShell.runOffline(ctx, execute);
+      Integer offlineStatus =
+          FilesystemShell.runOffline(ctx, execute, FS_WRITE_MODE_ENABLED.equals(fsWriteMode));
       if (offlineStatus != null) {
         ctx.exit(offlineStatus);
         return;
