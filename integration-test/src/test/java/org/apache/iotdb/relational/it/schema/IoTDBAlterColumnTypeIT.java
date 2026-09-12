@@ -2517,7 +2517,7 @@ public class IoTDBAlterColumnTypeIT {
 
   private static void accumulatorQueryTestForDateType(ITableSession session, TSDataType newType)
       throws StatementExecutionException, IoTDBConnectionException {
-    log.info("Test the result that after transfered newType:");
+    log.info("Test the result that after transferred newType:");
 
     SessionDataSet dataSet =
         session.executeQueryStatement(

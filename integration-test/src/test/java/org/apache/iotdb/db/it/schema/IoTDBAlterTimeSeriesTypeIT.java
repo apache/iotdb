@@ -3324,7 +3324,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
   private static void accumulatorQueryTestForDateType(ISession session, TSDataType newType)
       throws StatementExecutionException, IoTDBConnectionException {
-    log.info("Test the result that after transfered newType:");
+    log.info("Test the result that after transferred newType:");
 
     SessionDataSet dataSet = null;
     RowRecord rec = null;
