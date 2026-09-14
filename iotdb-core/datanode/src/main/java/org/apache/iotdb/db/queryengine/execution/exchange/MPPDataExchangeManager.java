@@ -179,27 +179,35 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         SinkChannel sinkChannel = (SinkChannel) (sinkHandle.getChannel(req.getIndex()));
         if (req.isSetOffset()) {
           int remainingPayloadSize =
-              IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getMppDataExchangeMaxPayloadSizeInBytes();
+              IoTDBDescriptor.getInstance().getConfig().getMppDataExchangeMaxPayloadSizeInBytes();
           int offset = req.getOffset();
           for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
             try {
-              ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
+              ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i).asReadOnlyBuffer();
               int blockOffset = i == req.getStartSequenceId() ? offset : 0;
-              int remainingBlockSize = serializedTsBlock.remaining() - blockOffset;
+              int serializedTsBlockSize = serializedTsBlock.remaining();
+              if (blockOffset < 0 || blockOffset > serializedTsBlockSize) {
+                throw new IllegalArgumentException(
+                    String.format(
+                        DataNodeQueryMessages.EXCEPTION_INVALID_ARG_ARG_2946DBE5,
+                        "serialized TsBlock",
+                        "fragment range"));
+              }
+              int remainingBlockSize = serializedTsBlockSize - blockOffset;
               if (remainingBlockSize <= remainingPayloadSize) {
-                resp.addToTsBlocks(
-                    sinkChannel.getSerializedTsBlockFragment(
-                        i, blockOffset, remainingBlockSize));
+                ByteBuffer fragment = serializedTsBlock.duplicate();
+                fragment.position(blockOffset);
+                fragment.limit(blockOffset + remainingBlockSize);
+                resp.addToTsBlocks(fragment.slice());
                 remainingPayloadSize -= remainingBlockSize;
                 if (remainingPayloadSize == 0) {
                   break;
                 }
               } else {
-                resp.addToTsBlocks(
-                    sinkChannel.getSerializedTsBlockFragment(
-                        i, blockOffset, remainingPayloadSize));
+                ByteBuffer fragment = serializedTsBlock.duplicate();
+                fragment.position(blockOffset);
+                fragment.limit(blockOffset + remainingPayloadSize);
+                resp.addToTsBlocks(fragment.slice());
                 resp.setOffset(blockOffset + remainingPayloadSize);
                 break;
               }

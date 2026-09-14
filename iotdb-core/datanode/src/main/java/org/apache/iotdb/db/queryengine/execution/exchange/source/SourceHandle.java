@@ -651,8 +651,7 @@ public class SourceHandle implements ISourceHandle {
           boolean transferAttemptRecorded = false;
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
-            TGetDataBlockResponse resp =
-                getDataBlockWithFragments(client, req, fetchProgress);
+            TGetDataBlockResponse resp = getDataBlockWithFragments(client, req, fetchProgress);
             int tsBlockNum = resp.getTsBlocks().size();
             if (tsBlockNum != endSequenceId - startSequenceId) {
               recordTransferAttempt(
@@ -838,7 +837,9 @@ public class SourceHandle implements ISourceHandle {
         }
 
         if (nextSequenceId > endSequenceId
-            || (!lastBlockIsFragment && nextSequenceId == endSequenceId && partialTsBlock != null)) {
+            || (!lastBlockIsFragment
+                && nextSequenceId == endSequenceId
+                && partialTsBlock != null)) {
           throw new TException(
               DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
         }

@@ -3427,8 +3427,7 @@ public class IoTDBConfig {
     return mppDataExchangeMaxPayloadSizeInBytes;
   }
 
-  public void setMppDataExchangeMaxPayloadSizeInBytes(
-      int mppDataExchangeMaxPayloadSizeInBytes) {
+  public void setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes) {
     this.mppDataExchangeMaxPayloadSizeInBytes =
         Math.max(1, Math.min(mppDataExchangeMaxPayloadSizeInBytes, thriftMaxFrameSize - 1024));
   }
