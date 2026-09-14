@@ -3070,6 +3070,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "mpp_data_exchange_keep_alive_time_in_ms",
                 Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))));
+    conf.setMppDataExchangeMaxPayloadSizeInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "mpp_data_exchange_max_payload_size_in_bytes",
+                Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes()))));
 
     conf.setPartitionCacheSize(
         Integer.parseInt(

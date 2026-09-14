@@ -51,6 +51,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -640,6 +641,8 @@ public class SourceHandle implements ISourceHandle {
                 startSequenceId,
                 endSequenceId,
                 indexOfUpstreamSinkHandle);
+        DataBlockFetchProgress fetchProgress =
+            new DataBlockFetchProgress(startSequenceId, endSequenceId);
         int attempt = 0;
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
@@ -648,7 +651,8 @@ public class SourceHandle implements ISourceHandle {
           boolean transferAttemptRecorded = false;
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
-            TGetDataBlockResponse resp = client.getDataBlock(req);
+            TGetDataBlockResponse resp =
+                getDataBlockWithFragments(client, req, fetchProgress);
             int tsBlockNum = resp.getTsBlocks().size();
             if (tsBlockNum != endSequenceId - startSequenceId) {
               recordTransferAttempt(
@@ -765,6 +769,98 @@ public class SourceHandle implements ISourceHandle {
                   reservedBytes);
         }
         sourceHandleListener.onFailure(SourceHandle.this, t);
+      }
+    }
+
+    private TGetDataBlockResponse getDataBlockWithFragments(
+        SyncDataNodeMPPDataExchangeServiceClient client,
+        TGetDataBlockRequest request,
+        DataBlockFetchProgress fetchProgress)
+        throws TException {
+      while (!fetchProgress.isFinished()) {
+        TGetDataBlockRequest fragmentRequest = request.deepCopy();
+        fragmentRequest.setStartSequenceId(fetchProgress.nextSequenceId);
+        fragmentRequest.setOffset(fetchProgress.offset);
+        TGetDataBlockResponse response = client.getDataBlock(fragmentRequest);
+        if (response.getTsBlocks().isEmpty()) {
+          return response;
+        }
+        fetchProgress.addResponse(response);
+      }
+      return new TGetDataBlockResponse(fetchProgress.tsBlocks);
+    }
+
+    private class DataBlockFetchProgress {
+      private final int endSequenceId;
+      private final List<ByteBuffer> tsBlocks;
+      private int nextSequenceId;
+      private long offset;
+      private ByteArrayOutputStream partialTsBlock;
+
+      private DataBlockFetchProgress(int startSequenceId, int endSequenceId) {
+        this.nextSequenceId = startSequenceId;
+        this.endSequenceId = endSequenceId;
+        this.tsBlocks = new ArrayList<>(endSequenceId - startSequenceId);
+      }
+
+      private boolean isFinished() {
+        return nextSequenceId == endSequenceId && partialTsBlock == null;
+      }
+
+      private void addResponse(TGetDataBlockResponse response) throws TException {
+        List<ByteBuffer> responseBlocks = response.getTsBlocks();
+        boolean lastBlockIsFragment = response.isSetOffset();
+        int blockIndex = 0;
+
+        if (partialTsBlock != null) {
+          appendFragment(responseBlocks.get(blockIndex++));
+          if (lastBlockIsFragment && blockIndex == responseBlocks.size()) {
+            updateOffset(response.getOffset());
+            return;
+          }
+          tsBlocks.add(ByteBuffer.wrap(partialTsBlock.toByteArray()));
+          partialTsBlock = null;
+          offset = 0;
+          nextSequenceId++;
+        }
+
+        int lastCompleteBlockIndex =
+            lastBlockIsFragment ? responseBlocks.size() - 1 : responseBlocks.size();
+        while (blockIndex < lastCompleteBlockIndex) {
+          tsBlocks.add(responseBlocks.get(blockIndex++));
+          nextSequenceId++;
+        }
+
+        if (lastBlockIsFragment) {
+          partialTsBlock = new ByteArrayOutputStream();
+          appendFragment(responseBlocks.get(blockIndex));
+          updateOffset(response.getOffset());
+        }
+
+        if (nextSequenceId > endSequenceId
+            || (!lastBlockIsFragment && nextSequenceId == endSequenceId && partialTsBlock != null)) {
+          throw new TException(
+              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
+        }
+      }
+
+      private void appendFragment(ByteBuffer fragment) throws TException {
+        ByteBuffer duplicate = fragment.duplicate();
+        if (!duplicate.hasRemaining()) {
+          throw new TException(
+              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
+        }
+        byte[] bytes = new byte[duplicate.remaining()];
+        duplicate.get(bytes);
+        partialTsBlock.writeBytes(bytes);
+      }
+
+      private void updateOffset(long nextOffset) throws TException {
+        if (nextOffset <= offset || nextOffset != partialTsBlock.size()) {
+          throw new TException(
+              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
+        }
+        offset = nextOffset;
       }
     }
   }

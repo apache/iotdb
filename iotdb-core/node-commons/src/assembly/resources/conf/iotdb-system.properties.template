@@ -1194,6 +1194,11 @@ mpp_data_exchange_max_pool_size=10
 # Datatype: int
 mpp_data_exchange_keep_alive_time_in_ms=1000
 
+# The maximum payload size of one MPP data exchange RPC response
+# effectiveMode: restart
+# Datatype: int, Unit: byte
+mpp_data_exchange_max_payload_size_in_bytes=8388608
+
 # The max execution time of a DriverTask
 # effectiveMode: restart
 # Datatype: int, Unit: ms

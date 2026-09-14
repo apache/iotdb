@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
@@ -176,6 +177,40 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         }
         // index of the channel must be a SinkChannel
         SinkChannel sinkChannel = (SinkChannel) (sinkHandle.getChannel(req.getIndex()));
+        if (req.isSetOffset()) {
+          int remainingPayloadSize =
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getMppDataExchangeMaxPayloadSizeInBytes();
+          long offset = req.getOffset();
+          for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
+            try {
+              ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
+              long blockOffset = i == req.getStartSequenceId() ? offset : 0L;
+              long remainingBlockSize = serializedTsBlock.remaining() - blockOffset;
+              if (remainingBlockSize <= remainingPayloadSize) {
+                resp.addToTsBlocks(
+                    sinkChannel.getSerializedTsBlockFragment(
+                        i, blockOffset, Math.toIntExact(remainingBlockSize)));
+                remainingPayloadSize -= Math.toIntExact(remainingBlockSize);
+                if (remainingPayloadSize == 0) {
+                  break;
+                }
+              } else {
+                resp.addToTsBlocks(
+                    sinkChannel.getSerializedTsBlockFragment(
+                        i, blockOffset, remainingPayloadSize));
+                resp.setOffset(blockOffset + remainingPayloadSize);
+                break;
+              }
+            } catch (GetTsBlockFromClosedOrAbortedChannelException e) {
+              return new TGetDataBlockResponse(new ArrayList<>());
+            } catch (IllegalArgumentException | IllegalStateException | IOException e) {
+              throw new TException(e);
+            }
+          }
+          return resp;
+        }
         for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
           try {
             ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);

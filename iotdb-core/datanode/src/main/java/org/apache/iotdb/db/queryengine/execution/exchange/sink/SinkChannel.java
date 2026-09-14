@@ -96,6 +96,10 @@ public class SinkChannel implements ISinkChannel {
   private final LinkedHashMap<Integer, Pair<TsBlock, Long>> sequenceIdToTsBlock =
       new LinkedHashMap<>();
 
+  /** Serialized blocks are cached so fragmented requests do not serialize the same block again. */
+  private final LinkedHashMap<Integer, ByteBuffer> sequenceIdToSerializedTsBlock =
+      new LinkedHashMap<>();
+
   // size for current TsBlock to reserve and free
   private long currentTsBlockSize;
 
@@ -305,6 +309,7 @@ public class SinkChannel implements ISinkChannel {
       return false;
     }
     sequenceIdToTsBlock.clear();
+    sequenceIdToSerializedTsBlock.clear();
     if (blocked != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
     }
@@ -335,6 +340,7 @@ public class SinkChannel implements ISinkChannel {
       return false;
     }
     sequenceIdToTsBlock.clear();
+    sequenceIdToSerializedTsBlock.clear();
     if (blocked != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
     }
@@ -407,6 +413,10 @@ public class SinkChannel implements ISinkChannel {
       throw new GetTsBlockFromClosedOrAbortedChannelException(
           DataNodeQueryMessages.SINKCHANNEL_IS_ABORTED_OR_CLOSED);
     }
+    ByteBuffer serializedTsBlock = sequenceIdToSerializedTsBlock.get(sequenceId);
+    if (serializedTsBlock != null) {
+      return serializedTsBlock.duplicate();
+    }
     Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
     if (pair == null || pair.left == null) {
       LOGGER.warn(
@@ -416,7 +426,26 @@ public class SinkChannel implements ISinkChannel {
       throw new IllegalStateException(
           DataNodeQueryMessages.THE_DATA_BLOCK_DOESN_T_EXIST_SEQUENCE_ID + sequenceId);
     }
-    return serde.serialize(pair.left);
+    serializedTsBlock = serde.serialize(pair.left);
+    sequenceIdToSerializedTsBlock.put(sequenceId, serializedTsBlock.asReadOnlyBuffer());
+    return serializedTsBlock.duplicate();
+  }
+
+  public synchronized ByteBuffer getSerializedTsBlockFragment(
+      int sequenceId, long offset, int maxBytes) throws IOException {
+    ByteBuffer serializedTsBlock = getSerializedTsBlock(sequenceId);
+    if (offset < 0 || offset > serializedTsBlock.remaining() || maxBytes <= 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_ARG_ARG_2946DBE5,
+              "serialized TsBlock",
+              "fragment range"));
+    }
+    int length = (int) Math.min(maxBytes, serializedTsBlock.remaining() - offset);
+    ByteBuffer fragment = serializedTsBlock.duplicate();
+    fragment.position(Math.toIntExact(offset));
+    fragment.limit(Math.toIntExact(offset + length));
+    return fragment.slice();
   }
 
   public void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {
@@ -439,6 +468,7 @@ public class SinkChannel implements ISinkChannel {
         freedBytes += entry.getValue().right;
         bufferRetainedSizeInBytes -= entry.getValue().right;
         iterator.remove();
+        sequenceIdToSerializedTsBlock.remove(entry.getKey());
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(DataNodeQueryMessages.ACK_TSBLOCK, entry.getKey());
         }
