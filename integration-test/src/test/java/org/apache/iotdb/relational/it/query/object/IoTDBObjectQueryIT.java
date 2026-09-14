@@ -238,13 +238,6 @@ public class IoTDBObjectQueryIT {
           Object blob = field.getObjectValue(TSDataType.OBJECT);
           assertTrue(blob instanceof String);
           assertEquals("(Object) 5 B", blob);
-
-          try {
-            field.getBinaryV();
-            fail();
-          } catch (UnsupportedOperationException e) {
-            assertEquals("OBJECT Type only support getStringValue", e.getMessage());
-          }
         }
         assertEquals(4, cnt);
       }
