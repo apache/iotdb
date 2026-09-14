@@ -184,7 +184,7 @@
         <thrift.version>0.24.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.4.1-260806-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.4.1-260914-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
         <!-- 签名证书默认配置（可用 -D 参数覆盖）。生产请改为安全位置及强密码 -->
