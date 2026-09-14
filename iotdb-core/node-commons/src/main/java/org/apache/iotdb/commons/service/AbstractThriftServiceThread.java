@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.i18n.ServiceMessages;
@@ -66,9 +67,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
 
   private TTransportFactory transportFactory;
 
-  // currently, we can reuse the ProtocolFactory instance.
-  private static TCompactProtocol.Factory compactProtocolFactory = new TCompactProtocol.Factory();
-  private static TBinaryProtocol.Factory binaryProtocolFactory = new TBinaryProtocol.Factory();
+  // Thrift uses -1 as the sentinel for an unlimited string length.
+  private static final long THRIFT_NO_STRING_LENGTH_LIMIT = -1;
 
   private void initProtocolFactory(boolean compress) {
     protocolFactory = getProtocolFactory(compress);
@@ -79,10 +79,12 @@ public abstract class AbstractThriftServiceThread extends Thread {
   }
 
   public static TProtocolFactory getProtocolFactory(boolean compress) {
+    int containerLengthLimit =
+        CommonDescriptor.getInstance().getConfig().getThriftContainerLengthLimit();
     if (compress) {
-      return compactProtocolFactory;
+      return new TCompactProtocol.Factory(THRIFT_NO_STRING_LENGTH_LIMIT, containerLengthLimit);
     } else {
-      return binaryProtocolFactory;
+      return new TBinaryProtocol.Factory(THRIFT_NO_STRING_LENGTH_LIMIT, containerLengthLimit);
     }
   }
 

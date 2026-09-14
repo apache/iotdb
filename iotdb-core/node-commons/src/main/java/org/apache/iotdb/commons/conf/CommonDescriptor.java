@@ -134,6 +134,14 @@ public class CommonDescriptor {
                     String.valueOf(config.isRpcThriftCompressionEnabled()))
                 .trim()));
 
+    config.setThriftContainerLengthLimit(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "thrift_container_length_limit",
+                    String.valueOf(config.getThriftContainerLengthLimit()))
+                .trim()));
+
     config.setCnConnectionTimeoutInMS(
         Integer.parseInt(
             properties

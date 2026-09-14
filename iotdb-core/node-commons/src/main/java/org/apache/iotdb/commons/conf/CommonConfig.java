@@ -163,6 +163,9 @@ public class CommonConfig {
   /** Whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
 
+  /** Maximum number of elements allowed in a Thrift container. */
+  private int thriftContainerLengthLimit = RpcUtils.THRIFT_DEFAULT_CONTAINER_LENGTH_LIMIT;
+
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
   private int maxIdleClientNumForEachNode = DefaultProperty.MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE;
@@ -755,6 +758,17 @@ public class CommonConfig {
 
   public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
     isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
+  }
+
+  public int getThriftContainerLengthLimit() {
+    return thriftContainerLengthLimit;
+  }
+
+  public void setThriftContainerLengthLimit(int thriftContainerLengthLimit) {
+    this.thriftContainerLengthLimit =
+        thriftContainerLengthLimit > 0
+            ? thriftContainerLengthLimit
+            : RpcUtils.THRIFT_DEFAULT_CONTAINER_LENGTH_LIMIT;
   }
 
   public int getMaxClientNumForEachNode() {
