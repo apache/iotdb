@@ -773,6 +773,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserAny
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
               checkGlobalOrAnyStatus(
@@ -796,6 +800,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserAll
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
           if (privilegeType.isRelationalPrivilege()) {
             status =
@@ -824,6 +832,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserDBPriv
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
               checkDatabaseStatus(
@@ -850,6 +862,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserTBPriv
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
               checkTableStatus(
@@ -878,6 +894,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     || plan.getType() == ConfigPhysicalPlanType.RRevokeUserSysPri
                 ? ((AuthorPlan) plan).getUserName()
                 : ((AuthorPlan) plan).getRoleName();
+        status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
               checkGlobalStatus(
