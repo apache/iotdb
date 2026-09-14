@@ -28,86 +28,103 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.service.TypeService;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Type-specific operations shared by library UDFs. */
 public final class TypeServices {
 
+  private static <T> TypeService<T> cached(TypeService<T> service) {
+    Map<Object, T> cache = new ConcurrentHashMap<>();
+    return type -> cache.computeIfAbsent(type.getTypeEnum(), ignored -> service.call(type));
+  }
+
   public static final TypeService<NumericRowReader> NUMERIC_ROW_READER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 -> row -> row.getInt(0);
-            case INT64 -> row -> row.getLong(0);
-            case FLOAT -> row -> row.getFloat(0);
-            case DOUBLE -> row -> row.getDouble(0);
-            default ->
-                row -> {
-                  throw new NoNumberException();
-                };
-          };
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> row -> row.getInt(0);
+                case INT64 -> row -> row.getLong(0);
+                case FLOAT -> row -> row.getFloat(0);
+                case DOUBLE -> row -> row.getDouble(0);
+                default ->
+                    row -> {
+                      throw new NoNumberException();
+                    };
+              });
 
   public static final TypeService<IndexedNumericRowReader> INDEXED_NUMERIC_ROW_READER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 -> Row::getInt;
-            case INT64 -> Row::getLong;
-            case FLOAT -> Row::getFloat;
-            case DOUBLE -> Row::getDouble;
-            default ->
-                (row, index) -> {
-                  throw new NoNumberException();
-                };
-          };
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> Row::getInt;
+                case INT64 -> Row::getLong;
+                case FLOAT -> Row::getFloat;
+                case DOUBLE -> Row::getDouble;
+                default ->
+                    (row, index) -> {
+                      throw new NoNumberException();
+                    };
+              });
 
   public static final TypeService<NumericRowWriter> NUMERIC_ROW_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 -> (row, collector) -> collector.putInt(row.getTime(), row.getInt(0));
-            case INT64 -> (row, collector) -> collector.putLong(row.getTime(), row.getLong(0));
-            case FLOAT -> (row, collector) -> collector.putFloat(row.getTime(), row.getFloat(0));
-            case DOUBLE -> (row, collector) -> collector.putDouble(row.getTime(), row.getDouble(0));
-            default ->
-                (row, collector) -> {
-                  throw new NoNumberException();
-                };
-          };
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> (row, collector) -> collector.putInt(row.getTime(), row.getInt(0));
+                case INT64 -> (row, collector) -> collector.putLong(row.getTime(), row.getLong(0));
+                case FLOAT ->
+                    (row, collector) -> collector.putFloat(row.getTime(), row.getFloat(0));
+                case DOUBLE ->
+                    (row, collector) -> collector.putDouble(row.getTime(), row.getDouble(0));
+                default ->
+                    (row, collector) -> {
+                      throw new NoNumberException();
+                    };
+              });
 
   public static final TypeService<RowValueReader> ROW_VALUE_READER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 -> row -> row.getInt(0);
-            case INT64 -> row -> row.getLong(0);
-            case FLOAT -> row -> row.getFloat(0);
-            case DOUBLE -> row -> row.getDouble(0);
-            case BOOLEAN -> row -> row.getBoolean(0);
-            case TEXT -> row -> row.getString(0);
-            default -> row -> 0;
-          };
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> row -> row.getInt(0);
+                case INT64 -> row -> row.getLong(0);
+                case FLOAT -> row -> row.getFloat(0);
+                case DOUBLE -> row -> row.getDouble(0);
+                case BOOLEAN -> row -> row.getBoolean(0);
+                case TEXT -> row -> row.getString(0);
+                default -> row -> 0;
+              });
 
   public static final TypeService<RowValueWriter> ROW_VALUE_WRITER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 -> (collector, time, value) -> collector.putInt(time, (Integer) value);
-            case INT64 -> (collector, time, value) -> collector.putLong(time, (Long) value);
-            case FLOAT -> (collector, time, value) -> collector.putFloat(time, (Float) value);
-            case DOUBLE -> (collector, time, value) -> collector.putDouble(time, (Double) value);
-            case BOOLEAN -> (collector, time, value) -> collector.putBoolean(time, (Boolean) value);
-            default -> (collector, time, value) -> {};
-          };
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> (collector, time, value) -> collector.putInt(time, (Integer) value);
+                case INT64 -> (collector, time, value) -> collector.putLong(time, (Long) value);
+                case FLOAT -> (collector, time, value) -> collector.putFloat(time, (Float) value);
+                case DOUBLE ->
+                    (collector, time, value) -> collector.putDouble(time, (Double) value);
+                case BOOLEAN ->
+                    (collector, time, value) -> collector.putBoolean(time, (Boolean) value);
+                default -> (collector, time, value) -> {};
+              });
 
   public static final TypeService<ColumnNumericReader> COLUMN_NUMERIC_READER_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32 -> Column::getInt;
-            case INT64 -> Column::getLong;
-            case FLOAT -> Column::getFloat;
-            case DOUBLE -> Column::getDouble;
-            case BOOLEAN -> (column, index) -> column.getBoolean(index) ? 1.0D : 0.0D;
-            default ->
-                (column, index) -> {
-                  throw new IllegalArgumentException(
-                      "Unsupported data type: " + type.getTypeEnum());
-                };
-          };
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> Column::getInt;
+                case INT64 -> Column::getLong;
+                case FLOAT -> Column::getFloat;
+                case DOUBLE -> Column::getDouble;
+                case BOOLEAN -> (column, index) -> column.getBoolean(index) ? 1.0D : 0.0D;
+                default ->
+                    (column, index) -> {
+                      throw new IllegalArgumentException(
+                          "Unsupported data type: " + type.getTypeEnum());
+                    };
+              });
 
   private static final IndexedNumericRowReader[] INDEXED_NUMERIC_ROW_READERS =
       new IndexedNumericRowReader[Type.values().length];

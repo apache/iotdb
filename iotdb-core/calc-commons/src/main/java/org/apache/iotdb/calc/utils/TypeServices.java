@@ -156,7 +156,9 @@ import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
@@ -169,6 +171,16 @@ import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtil
 import static org.apache.iotdb.calc.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
 
 public class TypeServices {
+
+  /**
+   * Wraps a type service whose result is immutable/stateless and can therefore be shared for all
+   * instances of the same data type. Type objects are intentionally reduced to their enum here: all
+   * services wrapped with this helper dispatch only on {@code getTypeEnum()}.
+   */
+  private static <T> TypeService<T> cached(final TypeService<T> service) {
+    final Map<Object, T> cache = new ConcurrentHashMap<>();
+    return type -> cache.computeIfAbsent(type.getTypeEnum(), ignored -> service.call(type));
+  }
 
   private static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();
   private static final IdentityFill IDENTITY_FILL = new IdentityFill();
@@ -244,112 +256,118 @@ public class TypeServices {
           };
 
   public static final TypeService<BooleanFunction<JoinKeyComparator>> JOIN_KEY_COMPARATOR_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE ->
-                ascending ->
-                    ascending
-                        ? AscIntTypeJoinKeyComparator.getInstance()
-                        : DescIntTypeJoinKeyComparator.getInstance();
-            case INT64, TIMESTAMP ->
-                ascending ->
-                    ascending
-                        ? AscLongTypeJoinKeyComparator.getInstance()
-                        : DescLongTypeJoinKeyComparator.getInstance();
-            case FLOAT ->
-                ascending ->
-                    ascending
-                        ? AscFloatTypeJoinKeyComparator.getInstance()
-                        : DescFloatTypeJoinKeyComparator.getInstance();
-            case DOUBLE ->
-                ascending ->
-                    ascending
-                        ? AscDoubleTypeJoinKeyComparator.getInstance()
-                        : DescDoubleTypeJoinKeyComparator.getInstance();
-            case BOOLEAN ->
-                ascending ->
-                    ascending
-                        ? AscBooleanTypeJoinKeyComparator.getInstance()
-                        : DescBooleanTypeJoinKeyComparator.getInstance();
-            case STRING, BLOB, TEXT ->
-                ascending ->
-                    ascending
-                        ? AscBinaryTypeJoinKeyComparator.getInstance()
-                        : DescBinaryTypeJoinKeyComparator.getInstance();
-            case OBJECT, ROW, UNKNOWN, VECTOR ->
-                ascending -> {
-                  throw new UnsupportedOperationException(
-                      CalcMessages.UNSUPPORTED_DATA_TYPE + type);
-                };
-          };
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32, DATE ->
+                    ascending ->
+                        ascending
+                            ? AscIntTypeJoinKeyComparator.getInstance()
+                            : DescIntTypeJoinKeyComparator.getInstance();
+                case INT64, TIMESTAMP ->
+                    ascending ->
+                        ascending
+                            ? AscLongTypeJoinKeyComparator.getInstance()
+                            : DescLongTypeJoinKeyComparator.getInstance();
+                case FLOAT ->
+                    ascending ->
+                        ascending
+                            ? AscFloatTypeJoinKeyComparator.getInstance()
+                            : DescFloatTypeJoinKeyComparator.getInstance();
+                case DOUBLE ->
+                    ascending ->
+                        ascending
+                            ? AscDoubleTypeJoinKeyComparator.getInstance()
+                            : DescDoubleTypeJoinKeyComparator.getInstance();
+                case BOOLEAN ->
+                    ascending ->
+                        ascending
+                            ? AscBooleanTypeJoinKeyComparator.getInstance()
+                            : DescBooleanTypeJoinKeyComparator.getInstance();
+                case STRING, BLOB, TEXT ->
+                    ascending ->
+                        ascending
+                            ? AscBinaryTypeJoinKeyComparator.getInstance()
+                            : DescBinaryTypeJoinKeyComparator.getInstance();
+                case OBJECT, ROW, UNKNOWN, VECTOR ->
+                    ascending -> {
+                      throw new UnsupportedOperationException(
+                          CalcMessages.UNSUPPORTED_DATA_TYPE + type);
+                    };
+              });
 
   public static final TypeService<IntFunction<Comparator<SortKey>>> MERGE_SORT_COMPARATOR_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case INT32, DATE ->
-                index ->
-                    Comparator.comparingInt(
-                        sortKey -> type.getInt(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-            case INT64, TIMESTAMP ->
-                index ->
-                    Comparator.comparingLong(
-                        sortKey ->
-                            type.getLong(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-            case FLOAT ->
-                index ->
-                    Comparator.comparingDouble(
-                        sortKey ->
-                            type.getFloat(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-            case DOUBLE ->
-                index ->
-                    Comparator.comparingDouble(
-                        sortKey ->
-                            type.getDouble(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-            case TEXT, STRING, BLOB, OBJECT ->
-                index ->
-                    Comparator.comparing(
-                        sortKey ->
-                            type.getBinary(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-            case BOOLEAN ->
-                index ->
-                    Comparator.comparing(
-                        sortKey ->
-                            type.getBoolean(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
-            // TypeService.check() must be able to build a strategy for every enum value.
-            case ROW, UNKNOWN, VECTOR ->
-                index -> {
-                  throw new IllegalArgumentException(
-                      String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, type));
-                };
-          };
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32, DATE ->
+                    index ->
+                        Comparator.comparingInt(
+                            sortKey ->
+                                type.getInt(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+                case INT64, TIMESTAMP ->
+                    index ->
+                        Comparator.comparingLong(
+                            sortKey ->
+                                type.getLong(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+                case FLOAT ->
+                    index ->
+                        Comparator.comparingDouble(
+                            sortKey ->
+                                type.getFloat(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+                case DOUBLE ->
+                    index ->
+                        Comparator.comparingDouble(
+                            sortKey ->
+                                type.getDouble(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+                case TEXT, STRING, BLOB, OBJECT ->
+                    index ->
+                        Comparator.comparing(
+                            sortKey ->
+                                type.getBinary(sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+                case BOOLEAN ->
+                    index ->
+                        Comparator.comparing(
+                            sortKey ->
+                                type.getBoolean(
+                                    sortKey.tsBlock.getColumn(index), sortKey.rowIndex));
+                // TypeService.check() must be able to build a strategy for every enum value.
+                case ROW, UNKNOWN, VECTOR ->
+                    index -> {
+                      throw new IllegalArgumentException(
+                          String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, type));
+                    };
+              });
 
   public static final TypeService<Integer> MEMORY_USAGE_OF_ONE_MERGE_SORT_KEY_SERVICE =
-      type ->
-          switch (type.getTypeEnum()) {
-            case BOOLEAN -> 1;
-            case INT32, FLOAT, DATE -> 4;
-            case INT64, DOUBLE, TIMESTAMP -> 8;
-            case TEXT, STRING, BLOB, OBJECT -> 16;
-            case ROW, UNKNOWN, VECTOR ->
-                throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type)
-                    .setChecked(true);
-          };
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case BOOLEAN -> 1;
+                case INT32, FLOAT, DATE -> 4;
+                case INT64, DOUBLE, TIMESTAMP -> 8;
+                case TEXT, STRING, BLOB, OBJECT -> 16;
+                case ROW, UNKNOWN, VECTOR ->
+                    throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + type)
+                        .setChecked(true);
+              });
 
   public static final TypeService<IntUnaryOperator>
       MEMORY_USAGE_OF_ONE_SERIALIZABLE_ROW_FIELD_SERVICE =
-          type ->
-              switch (type.getTypeEnum()) {
-                case INT32, DATE -> ignored -> ReadWriteIOUtils.INT_LEN;
-                case INT64, TIMESTAMP -> ignored -> ReadWriteIOUtils.LONG_LEN;
-                case FLOAT -> ignored -> ReadWriteIOUtils.FLOAT_LEN;
-                case DOUBLE -> ignored -> ReadWriteIOUtils.DOUBLE_LEN;
-                case BOOLEAN -> ignored -> ReadWriteIOUtils.BOOLEAN_LEN;
-                case TEXT, BLOB, STRING, OBJECT ->
-                    byteArrayLength ->
-                        MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLength;
-                case ROW, UNKNOWN, VECTOR ->
-                    throw new UnSupportedDataTypeException(type.toString()).setChecked(true);
-              };
+          cached(
+              type ->
+                  switch (type.getTypeEnum()) {
+                    case INT32, DATE -> ignored -> ReadWriteIOUtils.INT_LEN;
+                    case INT64, TIMESTAMP -> ignored -> ReadWriteIOUtils.LONG_LEN;
+                    case FLOAT -> ignored -> ReadWriteIOUtils.FLOAT_LEN;
+                    case DOUBLE -> ignored -> ReadWriteIOUtils.DOUBLE_LEN;
+                    case BOOLEAN -> ignored -> ReadWriteIOUtils.BOOLEAN_LEN;
+                    case TEXT, BLOB, STRING, OBJECT ->
+                        byteArrayLength ->
+                            MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLength;
+                    case ROW, UNKNOWN, VECTOR ->
+                        throw new UnSupportedDataTypeException(type.toString()).setChecked(true);
+                  });
 
   public static final TypeService<ValueFillFactory> VALUE_FILL_SERVICE =
       type ->
