@@ -182,17 +182,17 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               IoTDBDescriptor.getInstance()
                   .getConfig()
                   .getMppDataExchangeMaxPayloadSizeInBytes();
-          long offset = req.getOffset();
+          int offset = req.getOffset();
           for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
             try {
               ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
-              long blockOffset = i == req.getStartSequenceId() ? offset : 0L;
-              long remainingBlockSize = serializedTsBlock.remaining() - blockOffset;
+              int blockOffset = i == req.getStartSequenceId() ? offset : 0;
+              int remainingBlockSize = serializedTsBlock.remaining() - blockOffset;
               if (remainingBlockSize <= remainingPayloadSize) {
                 resp.addToTsBlocks(
                     sinkChannel.getSerializedTsBlockFragment(
-                        i, blockOffset, Math.toIntExact(remainingBlockSize)));
-                remainingPayloadSize -= Math.toIntExact(remainingBlockSize);
+                        i, blockOffset, remainingBlockSize));
+                remainingPayloadSize -= remainingBlockSize;
                 if (remainingPayloadSize == 0) {
                   break;
                 }

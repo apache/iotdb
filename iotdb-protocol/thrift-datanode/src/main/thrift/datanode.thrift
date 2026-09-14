@@ -91,13 +91,13 @@ struct TGetDataBlockRequest {
   // Index of upstream SinkChannel
   4: required i32 index
   // Optional byte range for fetching one serialized TsBlock in fragments.
-  5: optional i64 offset
+  5: optional i32 offset
 }
 
 struct TGetDataBlockResponse {
   1: required list<binary> tsBlocks
   // The start offset of the next fragment. It is set only when the last element in tsBlocks is a fragment.
-  2: optional i64 offset
+  2: optional i32 offset
 }
 
 struct TAcknowledgeDataBlockEvent {

@@ -794,7 +794,7 @@ public class SourceHandle implements ISourceHandle {
       private final int endSequenceId;
       private final List<ByteBuffer> tsBlocks;
       private int nextSequenceId;
-      private long offset;
+      private int offset;
       private ByteArrayOutputStream partialTsBlock;
 
       private DataBlockFetchProgress(int startSequenceId, int endSequenceId) {
@@ -855,7 +855,7 @@ public class SourceHandle implements ISourceHandle {
         partialTsBlock.writeBytes(bytes);
       }
 
-      private void updateOffset(long nextOffset) throws TException {
+      private void updateOffset(int nextOffset) throws TException {
         if (nextOffset <= offset || nextOffset != partialTsBlock.size()) {
           throw new TException(
               DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);

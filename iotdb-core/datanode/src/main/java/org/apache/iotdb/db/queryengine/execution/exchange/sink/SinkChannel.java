@@ -432,7 +432,7 @@ public class SinkChannel implements ISinkChannel {
   }
 
   public synchronized ByteBuffer getSerializedTsBlockFragment(
-      int sequenceId, long offset, int maxBytes) throws IOException {
+      int sequenceId, int offset, int maxBytes) throws IOException {
     ByteBuffer serializedTsBlock = getSerializedTsBlock(sequenceId);
     if (offset < 0 || offset > serializedTsBlock.remaining() || maxBytes <= 0) {
       throw new IllegalArgumentException(
@@ -441,10 +441,10 @@ public class SinkChannel implements ISinkChannel {
               "serialized TsBlock",
               "fragment range"));
     }
-    int length = (int) Math.min(maxBytes, serializedTsBlock.remaining() - offset);
+    int length = Math.min(maxBytes, serializedTsBlock.remaining() - offset);
     ByteBuffer fragment = serializedTsBlock.duplicate();
-    fragment.position(Math.toIntExact(offset));
-    fragment.limit(Math.toIntExact(offset + length));
+    fragment.position(offset);
+    fragment.limit(offset + length);
     return fragment.slice();
   }
 
