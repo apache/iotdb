@@ -40,6 +40,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeSyncClientManager;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatch;
@@ -662,7 +663,11 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     final int readFileBufferSize = getReadFileBufferSize(file);
     try (final PipeTsFileMemoryBlock ignored =
             PipeDataNodeResourceManager.memory()
-                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+                .forceAllocateForTsFileWithRetry(
+                    IoTDBDataRegionSyncSink.class.getSimpleName(),
+                    readFileBufferSize,
+                    PipeMemoryBlockCategory.SINK,
+                    IoTDBDataRegionSyncSink.class.getSimpleName());
         final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;

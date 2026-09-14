@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -41,12 +42,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 
 public class PipeMemoryManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryManager.class);
+
+  public static final String FLOATING_MEMORY_BLOCK_NAME = "FloatingMemory";
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
@@ -57,6 +61,9 @@ public class PipeMemoryManager {
   private final IMemoryBlock memoryBlock;
 
   private final LongSupplier floatingMemoryUsageSupplier;
+
+  private final long floatingMemoryAllocationTime = System.currentTimeMillis();
+  private volatile long floatingMemoryMaxUsageInBytes;
 
   private static final double EXCEED_PROTECT_THRESHOLD = 0.95;
 
@@ -76,7 +83,14 @@ public class PipeMemoryManager {
   private final ArrayDeque<PipeIdentity> waitingTsFileParserPipeOrder = new ArrayDeque<>();
   private PipeIdentity lastAdmittedWaitingTsFileParserPipe;
 
-  // Only non-zero memory blocks will be added to this set.
+  // Keep zero-sized diagnostic blocks observable while their owner is alive without extending the
+  // owner's lifetime. Some parser APIs create temporary zero-sized event blocks that are normally
+  // reclaimed by GC rather than explicitly closed.
+  private final Set<PipeMemoryBlock> memoryBlocks = Collections.newSetFromMap(new WeakHashMap<>());
+
+  // Keep blocks with a non-zero direct allocation strongly reachable until the allocation is
+  // released. This preserves accounting and parent cascade semantics even though the diagnostic
+  // registry above is weak.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
   private final Set<PipeMemoryBlock> shrinkableBlocks = new HashSet<>();
   private final Set<PipeMemoryBlock> expandableBlocks = new HashSet<>();
@@ -503,29 +517,114 @@ public class PipeMemoryManager {
     return true;
   }
 
-  public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
+  public synchronized PipeMemoryBlock forceAllocate(final String name, final long sizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocate(name, sizeInBytes, PipeMemoryBlockCategory.OTHER, null, null);
+  }
+
+  /**
+   * Backward-compatible allocation entry point for callers that do not provide a diagnostic name.
+   * Such blocks intentionally fall back to the generic category and a null assigner.
+   */
+  @Deprecated
+  public synchronized PipeMemoryBlock forceAllocate(final long sizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocate(PipeMemoryBlock.class.getSimpleName(), sizeInBytes);
+  }
+
+  /**
+   * Allocate a named block with explicit diagnostic metadata. The maximum size recorded for the
+   * block is its lifetime high-water mark; it is not a new hard limit.
+   */
+  public synchronized PipeMemoryBlock forceAllocate(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlockCategory category,
+      final Object assigner,
+      final PipeMemoryBlock parent)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       // No need to calculate the tablet size, skip it to save time
-      return new PipeMemoryBlock(0);
+      return registerMemoryBlock(name, 0, PipeMemoryBlockType.NORMAL, category, assigner, parent);
     }
 
     if (sizeInBytes == 0) {
-      return registerMemoryBlock(0);
+      return registerMemoryBlock(name, 0, PipeMemoryBlockType.NORMAL, category, assigner, parent);
     }
 
-    return forceAllocateWithRetry(sizeInBytes, PipeMemoryBlockType.NORMAL);
+    return forceAllocateWithRetry(
+        name, sizeInBytes, PipeMemoryBlockType.NORMAL, category, assigner, parent);
   }
 
-  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(long tabletSizeInBytes)
+  /** Convenience overload for callers that only need a category and an assigner. */
+  public synchronized PipeMemoryBlock forceAllocate(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlockCategory category,
+      final Object assigner)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocate(name, sizeInBytes, category, assigner, null);
+  }
+
+  /** Allocate a child block using the supplied event block as its accounting parent. */
+  public synchronized PipeMemoryBlock forceAllocate(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlock parent,
+      final Object assigner)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocate(
+        name,
+        sizeInBytes,
+        parent == null ? PipeMemoryBlockCategory.OTHER : PipeMemoryBlockCategory.EVENT_CHILD,
+        assigner,
+        parent);
+  }
+
+  public synchronized PipeMemoryBlock forceAllocate(
+      final PipeMemoryBlock parent, final String name, final long sizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocate(name, sizeInBytes, PipeMemoryBlockCategory.EVENT_CHILD, null, parent);
+  }
+
+  /** Allocate a child block and charge its bytes through the parent to the global pool. */
+  public synchronized PipeMemoryBlock forceAllocateChild(
+      final PipeMemoryBlock parent, final String name, final long sizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocate(parent, name, sizeInBytes);
+  }
+
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
+      final String name, final long tabletSizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTabletWithRetry(
+        name, tabletSizeInBytes, PipeMemoryBlockCategory.TABLET, null, null);
+  }
+
+  /** Backward-compatible tablet allocation entry point without diagnostic metadata. */
+  @Deprecated
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(final long tabletSizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTabletWithRetry(
+        PipeTabletMemoryBlock.class.getSimpleName(), tabletSizeInBytes);
+  }
+
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
+      final String name,
+      final long tabletSizeInBytes,
+      final PipeMemoryBlockCategory category,
+      final Object assigner,
+      final PipeMemoryBlock parent)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       // No need to calculate the tablet size, skip it to save time
-      return new PipeTabletMemoryBlock(0);
+      return (PipeTabletMemoryBlock)
+          registerMemoryBlock(name, 0, PipeMemoryBlockType.TABLET, category, assigner, parent);
     }
 
     if (tabletSizeInBytes == 0) {
-      return (PipeTabletMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TABLET);
+      return (PipeTabletMemoryBlock)
+          registerMemoryBlock(name, 0, PipeMemoryBlockType.TABLET, category, assigner, parent);
     }
 
     for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
@@ -557,20 +656,74 @@ public class PipeMemoryManager {
     synchronized (this) {
       final PipeTabletMemoryBlock block =
           (PipeTabletMemoryBlock)
-              forceAllocateWithRetry(tabletSizeInBytes, PipeMemoryBlockType.TABLET);
-      usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
+              forceAllocateWithRetry(
+                  name, tabletSizeInBytes, PipeMemoryBlockType.TABLET, category, assigner, parent);
       return block;
     }
   }
 
-  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(long tsFileSizeInBytes)
+  /** Convenience overload for a root tablet block with explicit diagnostic metadata. */
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
+      final String name,
+      final long tabletSizeInBytes,
+      final PipeMemoryBlockCategory category,
+      final Object assigner)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTabletWithRetry(name, tabletSizeInBytes, category, assigner, null);
+  }
+
+  /** Allocate a tablet/parser child block using the supplied event block as its parent. */
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
+      final String name,
+      final long tabletSizeInBytes,
+      final PipeMemoryBlock parent,
+      final Object assigner)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTabletWithRetry(
+        name,
+        tabletSizeInBytes,
+        parent == null ? PipeMemoryBlockCategory.TABLET : PipeMemoryBlockCategory.EVENT_CHILD,
+        assigner,
+        parent);
+  }
+
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(
+      final PipeMemoryBlock parent, final String name, final long tabletSizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTabletWithRetry(
+        name, tabletSizeInBytes, PipeMemoryBlockCategory.EVENT_CHILD, null, parent);
+  }
+
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
+      final String name, final long tsFileSizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTsFileWithRetry(
+        name, tsFileSizeInBytes, PipeMemoryBlockCategory.TS_FILE, null, null);
+  }
+
+  /** Backward-compatible TsFile allocation entry point without diagnostic metadata. */
+  @Deprecated
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(final long tsFileSizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTsFileWithRetry(
+        PipeTsFileMemoryBlock.class.getSimpleName(), tsFileSizeInBytes);
+  }
+
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
+      final String name,
+      final long tsFileSizeInBytes,
+      final PipeMemoryBlockCategory category,
+      final Object assigner,
+      final PipeMemoryBlock parent)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      return new PipeTsFileMemoryBlock(0);
+      return (PipeTsFileMemoryBlock)
+          registerMemoryBlock(name, 0, PipeMemoryBlockType.TS_FILE, category, assigner, parent);
     }
 
     if (tsFileSizeInBytes == 0) {
-      return (PipeTsFileMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TS_FILE);
+      return (PipeTsFileMemoryBlock)
+          registerMemoryBlock(name, 0, PipeMemoryBlockType.TS_FILE, category, assigner, parent);
     }
 
     for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
@@ -602,21 +755,53 @@ public class PipeMemoryManager {
     synchronized (this) {
       final PipeTsFileMemoryBlock block =
           (PipeTsFileMemoryBlock)
-              forceAllocateWithRetry(tsFileSizeInBytes, PipeMemoryBlockType.TS_FILE);
-      usedMemorySizeInBytesOfTsFiles += block.getMemoryUsageInBytes();
+              forceAllocateWithRetry(
+                  name, tsFileSizeInBytes, PipeMemoryBlockType.TS_FILE, category, assigner, parent);
       return block;
     }
   }
 
+  /** Convenience overload for a root TsFile block with explicit diagnostic metadata. */
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
+      final String name,
+      final long tsFileSizeInBytes,
+      final PipeMemoryBlockCategory category,
+      final Object assigner)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTsFileWithRetry(name, tsFileSizeInBytes, category, assigner, null);
+  }
+
+  /** Allocate a TsFile/parser child block using the supplied event block as its parent. */
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
+      final String name,
+      final long tsFileSizeInBytes,
+      final PipeMemoryBlock parent,
+      final Object assigner)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTsFileWithRetry(
+        name,
+        tsFileSizeInBytes,
+        parent == null ? PipeMemoryBlockCategory.TS_FILE : PipeMemoryBlockCategory.EVENT_CHILD,
+        assigner,
+        parent);
+  }
+
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(
+      final PipeMemoryBlock parent, final String name, final long tsFileSizeInBytes)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForTsFileWithRetry(
+        name, tsFileSizeInBytes, PipeMemoryBlockCategory.EVENT_CHILD, null, parent);
+  }
+
   public PipeModelFixedMemoryBlock forceAllocateForModelFixedMemoryBlock(
-      long fixedSizeInBytes, PipeMemoryBlockType type)
+      final String name, final long fixedSizeInBytes, final PipeMemoryBlockType type)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      return new PipeModelFixedMemoryBlock(Long.MAX_VALUE, new ThresholdAllocationStrategy());
+      return (PipeModelFixedMemoryBlock) registerMemoryBlock(name, Long.MAX_VALUE, type);
     }
 
     if (fixedSizeInBytes == 0) {
-      return (PipeModelFixedMemoryBlock) registerMemoryBlock(0, type);
+      return (PipeModelFixedMemoryBlock) registerMemoryBlock(name, 0, type);
     }
 
     for (int i = 1, size = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries(); i <= size; i++) {
@@ -637,34 +822,47 @@ public class PipeMemoryManager {
 
     synchronized (this) {
       if (getFreeMemorySizeInBytes() < fixedSizeInBytes) {
-        return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(getFreeMemorySizeInBytes(), type);
+        return (PipeModelFixedMemoryBlock)
+            forceAllocateWithRetry(name, getFreeMemorySizeInBytes(), type);
       }
 
-      return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(fixedSizeInBytes, type);
+      return (PipeModelFixedMemoryBlock) forceAllocateWithRetry(name, fixedSizeInBytes, type);
     }
   }
 
-  private PipeMemoryBlock forceAllocateWithRetry(long sizeInBytes, PipeMemoryBlockType type)
+  /** Backward-compatible fixed-block allocation entry point without a diagnostic name. */
+  @Deprecated
+  public PipeModelFixedMemoryBlock forceAllocateForModelFixedMemoryBlock(
+      final long fixedSizeInBytes, final PipeMemoryBlockType type)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateForModelFixedMemoryBlock(
+        PipeModelFixedMemoryBlock.class.getSimpleName(), fixedSizeInBytes, type);
+  }
+
+  private PipeMemoryBlock forceAllocateWithRetry(
+      final String name, final long sizeInBytes, final PipeMemoryBlockType type)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocateWithRetry(
+        name, sizeInBytes, type, PipeMemoryBlockCategory.fromType(type), null, null);
+  }
+
+  private PipeMemoryBlock forceAllocateWithRetry(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlockType type,
+      final PipeMemoryBlockCategory category,
+      final Object assigner,
+      final PipeMemoryBlock parent)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      switch (type) {
-        case TABLET:
-          return new PipeTabletMemoryBlock(sizeInBytes);
-        case TS_FILE:
-          return new PipeTsFileMemoryBlock(sizeInBytes);
-        case BATCH:
-        case WAL:
-          return new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
-        default:
-          return new PipeMemoryBlock(sizeInBytes);
-      }
+      return registerMemoryBlock(name, sizeInBytes, type, category, assigner, parent);
     }
 
     final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
     for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
       if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
           >= sizeInBytes) {
-        return registerMemoryBlock(sizeInBytes, type);
+        return registerMemoryBlock(name, sizeInBytes, type, category, assigner, parent);
       }
 
       try {
@@ -720,7 +918,9 @@ public class PipeMemoryManager {
       return;
     }
 
-    final long sizeInBytes = targetSize - block.getMemoryUsageInBytes();
+    final long sizeInBytes =
+        Math.max(Math.max(0, targetSize), getChildMemoryUsageInBytes(block))
+            - block.getMemoryUsageInBytes();
     final int memoryAllocateMaxRetries = PIPE_CONFIG.getPipeMemoryAllocateMaxRetries();
     for (int i = 1; i <= memoryAllocateMaxRetries; i++) {
       try {
@@ -749,33 +949,28 @@ public class PipeMemoryManager {
   }
 
   private boolean tryResizeInternal(final PipeMemoryBlock block, final long targetSize) {
+    // Parent blocks expose an aggregate usage. Do not let a direct resize reduce that aggregate
+    // below the bytes still owned by live children.
+    final long normalizedTargetSize =
+        Math.max(Math.max(0, targetSize), getChildMemoryUsageInBytes(block));
+
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      block.setMemoryUsageInBytes(targetSize);
+      adjustMemoryUsageHierarchy(block, normalizedTargetSize - block.getMemoryUsageInBytes());
       return true;
     }
 
     final long oldSize = block.getMemoryUsageInBytes();
-    if (oldSize >= targetSize) {
-      final long releasedSize = oldSize - targetSize;
-      memoryBlock.release(releasedSize);
-      if (block instanceof PipeTabletMemoryBlock) {
-        usedMemorySizeInBytesOfTablets -= releasedSize;
+    if (oldSize >= normalizedTargetSize) {
+      final long releasedSize = oldSize - normalizedTargetSize;
+      if (releasedSize > 0) {
+        releaseMemoryForBlock(block, releasedSize);
+        notifyNextTsFileParserMemoryReservationInternal();
+        this.notifyAll();
       }
-      if (block instanceof PipeTsFileMemoryBlock) {
-        usedMemorySizeInBytesOfTsFiles -= releasedSize;
-      }
-      block.setMemoryUsageInBytes(targetSize);
-
-      if (targetSize == 0) {
-        allocatedBlocks.remove(block);
-      }
-
-      notifyNextTsFileParserMemoryReservationInternal();
-      this.notifyAll();
       return true;
     }
 
-    final long sizeInBytes = targetSize - oldSize;
+    final long sizeInBytes = normalizedTargetSize - oldSize;
     // Dynamically resized data-structure blocks must obey the same admission thresholds as blocks
     // allocated with a non-zero initial size. Otherwise they can exhaust the pool and prevent
     // downstream consumers from allocating the memory needed to release them.
@@ -786,17 +981,7 @@ public class PipeMemoryManager {
     }
 
     memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
-    if (oldSize == 0) {
-      // Zero-sized blocks are registered lazily on their first successful expansion.
-      allocatedBlocks.add(block);
-    }
-    if (block instanceof PipeTabletMemoryBlock) {
-      usedMemorySizeInBytesOfTablets += sizeInBytes;
-    }
-    if (block instanceof PipeTsFileMemoryBlock) {
-      usedMemorySizeInBytesOfTsFiles += sizeInBytes;
-    }
-    block.setMemoryUsageInBytes(targetSize);
+    adjustMemoryUsageHierarchy(block, sizeInBytes);
     return true;
   }
 
@@ -810,41 +995,110 @@ public class PipeMemoryManager {
    *     usedThreshold}. Will return a memory block otherwise.
    */
   public synchronized PipeMemoryBlock forceAllocateIfSufficient(
-      long sizeInBytes, float usedThreshold) {
+      final String name, final long sizeInBytes, final float usedThreshold) {
+    return forceAllocateIfSufficient(
+        name, sizeInBytes, usedThreshold, PipeMemoryBlockCategory.OTHER, null, null);
+  }
+
+  /** Backward-compatible threshold allocation entry point without a diagnostic name. */
+  @Deprecated
+  public synchronized PipeMemoryBlock forceAllocateIfSufficient(
+      final long sizeInBytes, final float usedThreshold) {
+    return forceAllocateIfSufficient(
+        PipeMemoryBlock.class.getSimpleName(), sizeInBytes, usedThreshold);
+  }
+
+  /**
+   * Allocate a block subject to a usage threshold while retaining diagnostic metadata.
+   *
+   * <p>The threshold applies to the actual global pool charge. A parent, when supplied, receives
+   * the same allocation as an aggregate value but is not charged a second time.
+   */
+  public synchronized PipeMemoryBlock forceAllocateIfSufficient(
+      final String name,
+      final long sizeInBytes,
+      final float usedThreshold,
+      final PipeMemoryBlockCategory category,
+      final Object assigner,
+      final PipeMemoryBlock parent) {
     if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
       return null;
     }
 
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      return new PipeMemoryBlock(sizeInBytes);
+      return registerMemoryBlock(
+          name, sizeInBytes, PipeMemoryBlockType.NORMAL, category, assigner, parent);
     }
 
     if (sizeInBytes == 0) {
-      return registerMemoryBlock(0);
+      return registerMemoryBlock(name, 0, PipeMemoryBlockType.NORMAL, category, assigner, parent);
     }
 
     if ((float) (memoryBlock.getUsedMemoryInBytes() + sizeInBytes)
         <= getTotalNonFloatingMemorySizeInBytes() * usedThreshold) {
-      return forceAllocate(sizeInBytes);
+      return forceAllocate(name, sizeInBytes, category, assigner, parent);
     }
 
     return null;
   }
 
-  public synchronized PipeMemoryBlock tryAllocate(long sizeInBytes) {
-    return tryAllocate(sizeInBytes, currentSize -> currentSize * 2 / 3);
+  public synchronized PipeMemoryBlock tryAllocate(final String name, final long sizeInBytes) {
+    return tryAllocate(
+        name,
+        sizeInBytes,
+        currentSize -> currentSize * 2 / 3,
+        PipeMemoryBlockCategory.OTHER,
+        null,
+        null);
+  }
+
+  /** Backward-compatible gradual allocation entry point without a diagnostic name. */
+  @Deprecated
+  public synchronized PipeMemoryBlock tryAllocate(final long sizeInBytes) {
+    return tryAllocate(PipeMemoryBlock.class.getSimpleName(), sizeInBytes);
   }
 
   public synchronized PipeMemoryBlock tryAllocate(
-      long sizeInBytes, LongUnaryOperator customAllocateStrategy) {
+      final String name, final long sizeInBytes, final LongUnaryOperator customAllocateStrategy) {
+    return tryAllocate(
+        name, sizeInBytes, customAllocateStrategy, PipeMemoryBlockCategory.OTHER, null, null);
+  }
+
+  /** Backward-compatible gradual allocation entry point without a diagnostic name. */
+  @Deprecated
+  public synchronized PipeMemoryBlock tryAllocate(
+      final long sizeInBytes, final LongUnaryOperator customAllocateStrategy) {
+    return tryAllocate(PipeMemoryBlock.class.getSimpleName(), sizeInBytes, customAllocateStrategy);
+  }
+
+  /** Convenience overload using the default gradual-allocation strategy. */
+  public synchronized PipeMemoryBlock tryAllocate(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlockCategory category,
+      final Object assigner) {
+    return tryAllocate(
+        name, sizeInBytes, currentSize -> currentSize * 2 / 3, category, assigner, null);
+  }
+
+  /** Try to allocate a block with explicit diagnostic metadata. */
+  public synchronized PipeMemoryBlock tryAllocate(
+      final String name,
+      final long sizeInBytes,
+      final LongUnaryOperator customAllocateStrategy,
+      final PipeMemoryBlockCategory category,
+      final Object assigner,
+      final PipeMemoryBlock parent) {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      return new PipeMemoryBlock(sizeInBytes);
+      return registerMemoryBlock(
+          name, sizeInBytes, PipeMemoryBlockType.NORMAL, category, assigner, parent);
     }
 
     if (sizeInBytes == 0
         || getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
             >= sizeInBytes) {
-      return registerMemoryBlock(sizeInBytes);
+      return registerMemoryBlock(
+          name, sizeInBytes, PipeMemoryBlockType.NORMAL, category, assigner, parent);
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
@@ -859,7 +1113,8 @@ public class PipeMemoryManager {
             memoryBlock.getUsedMemoryInBytes(),
             sizeInBytes,
             sizeToAllocateInBytes);
-        return registerMemoryBlock(sizeToAllocateInBytes);
+        return registerMemoryBlock(
+            name, sizeToAllocateInBytes, PipeMemoryBlockType.NORMAL, category, assigner, parent);
       }
 
       sizeToAllocateInBytes =
@@ -875,74 +1130,234 @@ public class PipeMemoryManager {
           memoryBlock.getUsedMemoryInBytes(),
           sizeInBytes,
           sizeToAllocateInBytes);
-      return registerMemoryBlock(sizeToAllocateInBytes);
+      return registerMemoryBlock(
+          name, sizeToAllocateInBytes, PipeMemoryBlockType.NORMAL, category, assigner, parent);
     } else {
       LOGGER.warn(
           DataNodePipeMessages.TRYALLOCATE_FAILED_TO_ALLOCATE_MEMORY_TOTAL_MEMORY,
           getTotalNonFloatingMemorySizeInBytes(),
           memoryBlock.getUsedMemoryInBytes(),
           sizeInBytes);
-      return registerMemoryBlock(0);
+      return registerMemoryBlock(name, 0, PipeMemoryBlockType.NORMAL, category, assigner, parent);
     }
   }
 
   public synchronized boolean tryAllocate(
       PipeMemoryBlock block, long memoryInBytesNeededToBeAllocated) {
-    if (!PIPE_MEMORY_MANAGEMENT_ENABLED || block == null || block.isReleased()) {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED
+        || block == null
+        || block.isReleased()
+        || memoryInBytesNeededToBeAllocated <= 0) {
       return false;
     }
 
-    if (getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
-        >= memoryInBytesNeededToBeAllocated) {
-      memoryBlock.forceAllocateWithoutLimitation(memoryInBytesNeededToBeAllocated);
-      if (block.getMemoryUsageInBytes() == 0) {
-        allocatedBlocks.add(block);
-      }
-      if (block instanceof PipeTabletMemoryBlock) {
-        usedMemorySizeInBytesOfTablets += memoryInBytesNeededToBeAllocated;
-      }
-      if (block instanceof PipeTsFileMemoryBlock) {
-        usedMemorySizeInBytesOfTsFiles += memoryInBytesNeededToBeAllocated;
-      }
-      block.setMemoryUsageInBytes(block.getMemoryUsageInBytes() + memoryInBytesNeededToBeAllocated);
-      return true;
-    }
-
-    return false;
+    return reserveMemoryForBlock(block, memoryInBytesNeededToBeAllocated);
   }
 
-  private PipeMemoryBlock registerMemoryBlock(long sizeInBytes) {
-    return registerMemoryBlock(sizeInBytes, PipeMemoryBlockType.NORMAL);
+  private PipeMemoryBlock registerMemoryBlock(final String name, final long sizeInBytes) {
+    return registerMemoryBlock(name, sizeInBytes, PipeMemoryBlockType.NORMAL);
   }
 
-  private PipeMemoryBlock registerMemoryBlock(long sizeInBytes, PipeMemoryBlockType type) {
+  private synchronized PipeMemoryBlock registerMemoryBlock(
+      final String name, final long sizeInBytes, final PipeMemoryBlockType type) {
+    return registerMemoryBlock(
+        name, sizeInBytes, type, PipeMemoryBlockCategory.fromType(type), null, null);
+  }
+
+  private synchronized PipeMemoryBlock registerMemoryBlock(
+      final String name,
+      final long sizeInBytes,
+      final PipeMemoryBlockType type,
+      final PipeMemoryBlockCategory category,
+      final Object assigner,
+      final PipeMemoryBlock parent) {
+    // Never link blocks owned by another manager (or an already released parent). Such a link
+    // would make release charge the wrong global pool and could leave an orphaned accounting
+    // chain. Falling back to a root block keeps the allocation observable and safe.
+    final PipeMemoryBlock normalizedParent =
+        parent != null && parent.getPipeMemoryManager() == this && !parent.isReleased()
+            ? parent
+            : null;
+    final PipeMemoryBlockCategory normalizedCategory =
+        inferCategory(name, type, category, normalizedParent);
     final PipeMemoryBlock returnedMemoryBlock;
     switch (type) {
       case TABLET:
-        returnedMemoryBlock = new PipeTabletMemoryBlock(sizeInBytes);
+        returnedMemoryBlock =
+            new PipeTabletMemoryBlock(
+                this,
+                name,
+                0,
+                normalizedCategory,
+                PipeMemoryBlock.snapshotAssigner(assigner),
+                normalizedParent);
         break;
       case TS_FILE:
-        returnedMemoryBlock = new PipeTsFileMemoryBlock(sizeInBytes);
+        returnedMemoryBlock =
+            new PipeTsFileMemoryBlock(
+                this,
+                name,
+                0,
+                normalizedCategory,
+                PipeMemoryBlock.snapshotAssigner(assigner),
+                normalizedParent);
         break;
       case BATCH:
       case WAL:
         returnedMemoryBlock =
-            new PipeModelFixedMemoryBlock(sizeInBytes, new ThresholdAllocationStrategy());
+            new PipeModelFixedMemoryBlock(
+                this,
+                name,
+                0,
+                new ThresholdAllocationStrategy(),
+                normalizedCategory,
+                PipeMemoryBlock.snapshotAssigner(assigner),
+                normalizedParent);
         break;
       default:
-        returnedMemoryBlock = new PipeMemoryBlock(sizeInBytes);
+        returnedMemoryBlock =
+            new PipeMemoryBlock(
+                this,
+                name,
+                0,
+                normalizedCategory,
+                PipeMemoryBlock.snapshotAssigner(assigner),
+                normalizedParent);
         break;
     }
 
-    // For memory block whose size is 0, we do not need to add it to the allocated blocks now.
-    // It's good for performance and will not trigger concurrent issues.
-    // If forceResize is called on it, we will add it to the allocated blocks.
+    memoryBlocks.add(returnedMemoryBlock);
+
+    // Zero-sized blocks do not participate in memory accounting until they are resized. For a
+    // child block, the same bytes are charged once through the root block while every ancestor is
+    // updated for diagnostics.
     if (sizeInBytes > 0) {
-      memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
-      allocatedBlocks.add(returnedMemoryBlock);
+      if (!reserveMemoryForBlock(returnedMemoryBlock, sizeInBytes)) {
+        // Callers normally check availability before registering. Keep the block observable even
+        // if a concurrent allocation wins the race; it starts at zero and can be resized later.
+        returnedMemoryBlock.setMemoryUsageInBytes(0);
+      }
     }
 
     return returnedMemoryBlock;
+  }
+
+  private static PipeMemoryBlockCategory inferCategory(
+      final String name,
+      final PipeMemoryBlockType type,
+      final PipeMemoryBlockCategory requestedCategory,
+      final PipeMemoryBlock parent) {
+    if (parent != null) {
+      return requestedCategory == null || requestedCategory == PipeMemoryBlockCategory.OTHER
+          ? PipeMemoryBlockCategory.EVENT_CHILD
+          : requestedCategory;
+    }
+    if (requestedCategory != null && requestedCategory != PipeMemoryBlockCategory.OTHER) {
+      return requestedCategory;
+    }
+    final String normalizedName = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
+    if (normalizedName.contains("parser")) {
+      return PipeMemoryBlockCategory.PARSER;
+    }
+    if (normalizedName.contains("receiver")) {
+      return PipeMemoryBlockCategory.RECEIVER;
+    }
+    if (normalizedName.contains("sink")) {
+      return PipeMemoryBlockCategory.SINK;
+    }
+    if (normalizedName.contains("cache") || normalizedName.contains("logger")) {
+      return PipeMemoryBlockCategory.CACHE;
+    }
+    if (normalizedName.contains("subscription")) {
+      return PipeMemoryBlockCategory.SUBSCRIPTION;
+    }
+    if (normalizedName.contains("event")) {
+      return PipeMemoryBlockCategory.EVENT;
+    }
+    return PipeMemoryBlockCategory.fromType(type);
+  }
+
+  private boolean reserveMemoryForBlock(final PipeMemoryBlock block, final long sizeInBytes) {
+    if (sizeInBytes <= 0 || block == null || block.isReleased()) {
+      return sizeInBytes == 0 && block != null && !block.isReleased();
+    }
+    if (PIPE_MEMORY_MANAGEMENT_ENABLED
+        && getTotalNonFloatingMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+            < sizeInBytes) {
+      return false;
+    }
+    if (PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
+    }
+    adjustMemoryUsageHierarchy(block, sizeInBytes);
+    return true;
+  }
+
+  private void adjustMemoryUsageHierarchy(final PipeMemoryBlock block, final long delta) {
+    PipeMemoryBlock current = block;
+    while (current != null) {
+      current.setMemoryUsageInBytes(safeAdd(current.getMemoryUsageInBytes(), delta));
+      current = current.getParentBlock();
+    }
+
+    if (PIPE_MEMORY_MANAGEMENT_ENABLED && delta > 0) {
+      allocatedBlocks.add(block);
+    } else if (PIPE_MEMORY_MANAGEMENT_ENABLED
+        && delta < 0
+        && getDirectMemoryUsageInBytes(block) == 0) {
+      allocatedBlocks.remove(block);
+    }
+
+    if (block instanceof PipeTabletMemoryBlock) {
+      usedMemorySizeInBytesOfTablets = safeAdd(usedMemorySizeInBytesOfTablets, delta);
+    }
+    if (block instanceof PipeTsFileMemoryBlock) {
+      usedMemorySizeInBytesOfTsFiles = safeAdd(usedMemorySizeInBytesOfTsFiles, delta);
+    }
+  }
+
+  /** Saturating add keeps diagnostic counters valid even for the unbounded disabled-mode block. */
+  private static long safeAdd(final long value, final long delta) {
+    if (delta > 0 && value > Long.MAX_VALUE - delta) {
+      return Long.MAX_VALUE;
+    }
+    if (delta < 0 && value < Long.MIN_VALUE - delta) {
+      return Long.MIN_VALUE;
+    }
+    return value + delta;
+  }
+
+  private boolean releaseMemoryForBlock(
+      final PipeMemoryBlock block, final long requestedSizeInBytes) {
+    if (block == null || block.isReleased()) {
+      return false;
+    }
+    // A parent row reports an aggregate usage. Only bytes owned directly by that row may be
+    // released here; descendants are released through their own blocks (or by release(parent)'s
+    // cascade). This prevents a parent resize from stealing a child's global reservation.
+    final long directMemoryUsageInBytes = getDirectMemoryUsageInBytes(block);
+    final long sizeInBytes = Math.min(Math.max(0, requestedSizeInBytes), directMemoryUsageInBytes);
+    if (sizeInBytes <= 0) {
+      return false;
+    }
+    if (PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      memoryBlock.release(sizeInBytes);
+    }
+    adjustMemoryUsageHierarchy(block, -sizeInBytes);
+    return true;
+  }
+
+  private static long getDirectMemoryUsageInBytes(final PipeMemoryBlock block) {
+    final long childUsageInBytes = getChildMemoryUsageInBytes(block);
+    return Math.max(0, block.getMemoryUsageInBytes() - childUsageInBytes);
+  }
+
+  private static long getChildMemoryUsageInBytes(final PipeMemoryBlock block) {
+    long childUsageInBytes = 0;
+    for (final PipeMemoryBlock child : block.getChildrenSnapshot()) {
+      childUsageInBytes = safeAdd(childUsageInBytes, child.getMemoryUsageInBytes());
+    }
+    return Math.max(0, childUsageInBytes);
   }
 
   // Single-threaded logic
@@ -980,7 +1395,7 @@ public class PipeMemoryManager {
 
     if (LOGGER.isDebugEnabled()) {
       final long blockSum =
-          allocatedBlocks.stream().mapToLong(PipeMemoryBlock::getMemoryUsageInBytes).sum();
+          allocatedBlocks.stream().mapToLong(PipeMemoryManager::getDirectMemoryUsageInBytes).sum();
       if (blockSum != memoryBlock.getUsedMemoryInBytes()) {
         LOGGER.debug(
             DataNodePipeMessages
@@ -990,9 +1405,9 @@ public class PipeMemoryManager {
       }
 
       final long tabletBlockSum =
-          allocatedBlocks.stream()
+          memoryBlocks.stream()
               .filter(PipeTabletMemoryBlock.class::isInstance)
-              .mapToLong(PipeMemoryBlock::getMemoryUsageInBytes)
+              .mapToLong(PipeMemoryManager::getDirectMemoryUsageInBytes)
               .sum();
       if (tabletBlockSum != usedMemorySizeInBytesOfTablets) {
         LOGGER.debug(
@@ -1002,9 +1417,9 @@ public class PipeMemoryManager {
       }
 
       final long tsFileBlockSum =
-          allocatedBlocks.stream()
+          memoryBlocks.stream()
               .filter(PipeTsFileMemoryBlock.class::isInstance)
-              .mapToLong(PipeMemoryBlock::getMemoryUsageInBytes)
+              .mapToLong(PipeMemoryManager::getDirectMemoryUsageInBytes)
               .sum();
       if (tsFileBlockSum != usedMemorySizeInBytesOfTsFiles) {
         LOGGER.debug(
@@ -1024,18 +1439,23 @@ public class PipeMemoryManager {
   }
 
   public synchronized void release(PipeMemoryBlock block) {
-    if (!PIPE_MEMORY_MANAGEMENT_ENABLED || block == null || block.isReleased()) {
+    if (block == null || block.isReleased()) {
       return;
     }
 
+    // A parent owns the lifetime of its descendants. Release children first so their bytes are
+    // removed from the parent aggregate before the parent itself is released.
+    for (final PipeMemoryBlock child : block.getChildrenSnapshot()) {
+      release(child);
+    }
+    // A cascaded release does not invoke each child's close() method. Remove every released block
+    // from the shrink/expand registries here so the periodic maintenance task cannot touch it.
+    shrinkableBlocks.remove(block);
+    expandableBlocks.remove(block);
+    memoryBlocks.remove(block);
+    releaseMemoryForBlock(block, block.getMemoryUsageInBytes());
     allocatedBlocks.remove(block);
-    memoryBlock.release(block.getMemoryUsageInBytes());
-    if (block instanceof PipeTabletMemoryBlock) {
-      usedMemorySizeInBytesOfTablets -= block.getMemoryUsageInBytes();
-    }
-    if (block instanceof PipeTsFileMemoryBlock) {
-      usedMemorySizeInBytesOfTsFiles -= block.getMemoryUsageInBytes();
-    }
+    block.removeFromParent();
     block.markAsReleased();
 
     notifyNextTsFileParserMemoryReservationInternal();
@@ -1043,18 +1463,11 @@ public class PipeMemoryManager {
   }
 
   public synchronized boolean release(PipeMemoryBlock block, long sizeInBytes) {
-    if (!PIPE_MEMORY_MANAGEMENT_ENABLED || block == null || block.isReleased()) {
+    // Keep the historical disabled-mode behavior: dynamic shrink callbacks do not participate in
+    // memory management when the feature is turned off. A full close still removes diagnostics.
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED || !releaseMemoryForBlock(block, sizeInBytes)) {
       return false;
     }
-
-    memoryBlock.release(sizeInBytes);
-    if (block instanceof PipeTabletMemoryBlock) {
-      usedMemorySizeInBytesOfTablets -= sizeInBytes;
-    }
-    if (block instanceof PipeTsFileMemoryBlock) {
-      usedMemorySizeInBytesOfTsFiles -= sizeInBytes;
-    }
-    block.setMemoryUsageInBytes(block.getMemoryUsageInBytes() - sizeInBytes);
 
     notifyNextTsFileParserMemoryReservationInternal();
     this.notifyAll();
@@ -1099,11 +1512,146 @@ public class PipeMemoryManager {
   }
 
   private long getUsedFloatingMemorySizeInBytes() {
-    return Math.max(0, floatingMemoryUsageSupplier.getAsLong());
+    final long usageInBytes = Math.max(0, floatingMemoryUsageSupplier.getAsLong());
+    floatingMemoryMaxUsageInBytes = Math.max(floatingMemoryMaxUsageInBytes, usageInBytes);
+    return usageInBytes;
   }
 
   public long getTotalMemorySizeInBytes() {
     return memoryBlock.getTotalMemorySizeInBytes();
+  }
+
+  public synchronized List<PipeMemoryBlockInfo> getPipeMemoryBlockInfoList() {
+    final List<PipeMemoryBlockInfo> memoryBlockInfoList = new ArrayList<>();
+    memoryBlocks.forEach(
+        block ->
+            memoryBlockInfoList.add(
+                new PipeMemoryBlockInfo(
+                    block.getBlockId(),
+                    block.getName(),
+                    block.getCategory().name(),
+                    block.getMemoryUsageInBytes(),
+                    block.getMaxMemorySizeInBytes(),
+                    block.getAllocationTimeInMillis(),
+                    block.getAssigner(),
+                    block.getParentBlockId(),
+                    block.getHierarchyLevel(),
+                    block.getAccountedMemoryUsageInBytes())));
+    final long floatingMemoryUsageInBytes = getUsedFloatingMemorySizeInBytes();
+    floatingMemoryMaxUsageInBytes =
+        Math.max(floatingMemoryMaxUsageInBytes, floatingMemoryUsageInBytes);
+    memoryBlockInfoList.add(
+        new PipeMemoryBlockInfo(
+            0,
+            FLOATING_MEMORY_BLOCK_NAME,
+            PipeMemoryBlockCategory.FLOATING.name(),
+            floatingMemoryUsageInBytes,
+            floatingMemoryMaxUsageInBytes,
+            floatingMemoryAllocationTime,
+            "PipeMemoryManager",
+            null,
+            0,
+            floatingMemoryUsageInBytes));
+    memoryBlockInfoList.sort(
+        Comparator.comparing(PipeMemoryBlockInfo::getName)
+            .thenComparingLong(PipeMemoryBlockInfo::getMemoryUsageInBytes)
+            .thenComparingLong(PipeMemoryBlockInfo::getBlockId));
+    return memoryBlockInfoList;
+  }
+
+  public static final class PipeMemoryBlockInfo {
+
+    private final long blockId;
+    private final String name;
+    private final String category;
+    private final long memoryUsageInBytes;
+    private final long maxMemorySizeInBytes;
+    private final long allocationTime;
+    private final String assigner;
+    private final Long parentBlockId;
+    private final int hierarchyLevel;
+    private final long accountedMemoryUsageInBytes;
+
+    private PipeMemoryBlockInfo(
+        final long blockId,
+        final String name,
+        final String category,
+        final long memoryUsageInBytes,
+        final long maxMemorySizeInBytes,
+        final long allocationTime,
+        final String assigner,
+        final Long parentBlockId,
+        final int hierarchyLevel,
+        final long accountedMemoryUsageInBytes) {
+      this.blockId = blockId;
+      this.name = name;
+      this.category = category;
+      this.memoryUsageInBytes = memoryUsageInBytes;
+      this.maxMemorySizeInBytes = maxMemorySizeInBytes;
+      this.allocationTime = allocationTime;
+      this.assigner = assigner;
+      this.parentBlockId = parentBlockId;
+      this.hierarchyLevel = hierarchyLevel;
+      this.accountedMemoryUsageInBytes = accountedMemoryUsageInBytes;
+    }
+
+    private PipeMemoryBlockInfo(final String name, final long memoryUsageInBytes) {
+      this(
+          0,
+          name,
+          PipeMemoryBlockCategory.OTHER.name(),
+          memoryUsageInBytes,
+          memoryUsageInBytes,
+          System.currentTimeMillis(),
+          null,
+          null,
+          0,
+          memoryUsageInBytes);
+    }
+
+    public long getBlockId() {
+      return blockId;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public String getCategory() {
+      return category;
+    }
+
+    public long getMemoryUsageInBytes() {
+      return memoryUsageInBytes;
+    }
+
+    public long getMaxMemorySizeInBytes() {
+      return maxMemorySizeInBytes;
+    }
+
+    public long getAllocationTime() {
+      return allocationTime;
+    }
+
+    public long getAllocationTimeInMillis() {
+      return allocationTime;
+    }
+
+    public String getAssigner() {
+      return assigner;
+    }
+
+    public Long getParentBlockId() {
+      return parentBlockId;
+    }
+
+    public int getHierarchyLevel() {
+      return hierarchyLevel;
+    }
+
+    public long getAccountedMemoryUsageInBytes() {
+      return accountedMemoryUsageInBytes;
+    }
   }
 
   private static class PipeIdentity {
