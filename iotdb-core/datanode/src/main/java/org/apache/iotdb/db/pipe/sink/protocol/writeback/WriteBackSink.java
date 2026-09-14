@@ -492,7 +492,9 @@ public class WriteBackSink implements PipeConnector {
               dataBaseName,
               null,
               pipeInsertNodeTabletInsertionEvent.getUserName(),
-              pipeInsertNodeTabletInsertionEvent.toString());
+              pipeInsertNodeTabletInsertionEvent.toString(),
+              pipeInsertNodeTabletInsertionEvent.getPipeName(),
+              pipeInsertNodeTabletInsertionEvent.getCreationTime());
         }
       }
     }
@@ -535,7 +537,9 @@ public class WriteBackSink implements PipeConnector {
               dataBaseName,
               null,
               pipeRawTabletInsertionEvent.getUserName(),
-              pipeRawTabletInsertionEvent.toString());
+              pipeRawTabletInsertionEvent.toString(),
+              pipeRawTabletInsertionEvent.getPipeName(),
+              pipeRawTabletInsertionEvent.getCreationTime());
         }
       }
       return;
@@ -555,7 +559,9 @@ public class WriteBackSink implements PipeConnector {
             ? null
             : pipeRawTabletInsertionEvent.getTreeModelDatabaseName(),
         pipeRawTabletInsertionEvent.getUserName(),
-        pipeRawTabletInsertionEvent.toString());
+        pipeRawTabletInsertionEvent.toString(),
+        pipeRawTabletInsertionEvent.getPipeName(),
+        pipeRawTabletInsertionEvent.getCreationTime());
   }
 
   private boolean shouldWriteBackRawTabletAsObjectTablets(
@@ -572,7 +578,9 @@ public class WriteBackSink implements PipeConnector {
       final String dataBaseName,
       final String sourceTreeModelDatabaseName,
       final String userName,
-      final String eventDescription)
+      final String eventDescription,
+      final String pipeName,
+      final long creationTime)
       throws PipeException {
     final InsertTabletStatement insertTabletStatement =
         PipeTransferTabletRawReqV2.toTPipeTransferRawReq(tablet, isAligned, dataBaseName)
