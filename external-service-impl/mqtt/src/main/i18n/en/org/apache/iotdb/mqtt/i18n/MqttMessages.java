@@ -32,6 +32,9 @@ public final class MqttMessages {
   public static final String ON_PUBLISH_EXCEPTION =
       "onPublish execution exception, msg is [{}], error is ";
   public static final String PROCESS_RESULT = "process result: {}";
+  public static final String LOG_SESSION_NOT_FOUND_FOR_CLIENT_ARG_D85FA415 =
+      "Session not found for client {}";
+  public static final String MESSAGE_SESSION_NOT_FOUND_5829881D = "Session not found";
 
   // --- MQTTService ---
   public static final String SERVER_START_EXCEPTION = "Exception while starting server";

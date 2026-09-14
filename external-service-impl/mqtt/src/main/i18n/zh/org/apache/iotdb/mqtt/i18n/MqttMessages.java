@@ -32,6 +32,9 @@ public final class MqttMessages {
   public static final String ON_PUBLISH_EXCEPTION =
       "onPublish 执行异常，消息为 [{}]，错误：";
   public static final String PROCESS_RESULT = "处理结果：{}";
+  public static final String LOG_SESSION_NOT_FOUND_FOR_CLIENT_ARG_D85FA415 =
+      "未找到客户端 {} 的会话";
+  public static final String MESSAGE_SESSION_NOT_FOUND_5829881D = "未找到会话";
 
   // --- MQTTService ---
   public static final String SERVER_START_EXCEPTION = "启动服务器时发生异常";

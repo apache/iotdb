@@ -357,6 +357,13 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       rowsStatement.setInsertRowStatementList(statements);
 
       MqttClientSession session = clientIdToSessionMap.get(clientId);
+      if (session == null) {
+        LOG.warn(MqttMessages.LOG_SESSION_NOT_FOUND_FOR_CLIENT_ARG_D85FA415, clientId);
+        return new ExecutionResult(
+            null,
+            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                .setMessage(MqttMessages.MESSAGE_SESSION_NOT_FOUND_5829881D));
+      }
 
       // Check privilege
       TSStatus status =
