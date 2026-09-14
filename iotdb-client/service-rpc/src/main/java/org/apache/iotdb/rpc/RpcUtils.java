@@ -60,9 +60,6 @@ public class RpcUtils {
    */
   public static final int THRIFT_FRAME_MAX_SIZE = 536870912;
 
-  /** Default maximum number of elements allowed in a Thrift container. */
-  public static final int THRIFT_DEFAULT_CONTAINER_LENGTH_LIMIT = 100_000;
-
   /**
    * if resizeIfNecessary is called continuously with a small size for more than
    * MAX_BUFFER_OVERSIZE_TIME times, we will shrink the buffer to reclaim space.

@@ -245,7 +245,9 @@ public class TElasticFramedTransport extends TTransport {
     TLS_REQUEST(RpcMessages.FRAME_ERROR_TLS_REQUEST),
     NEGATIVE_FRAME_SIZE(RpcMessages.FRAME_ERROR_NEGATIVE_FRAME_SIZE),
     FRAME_SIZE_EXCEEDED(RpcMessages.FRAME_ERROR_FRAME_SIZE_EXCEEDED),
-    STRING_LENGTH_EXCEEDED(RpcMessages.FRAME_ERROR_STRING_LENGTH_EXCEEDED);
+    STRING_LENGTH_EXCEEDED(RpcMessages.FRAME_ERROR_STRING_LENGTH_EXCEEDED),
+    INSUFFICIENT_FRAME_DATA(
+        RpcMessages.EXCEPTION_REQUIRED_READ_SIZE_ARG_EXCEEDS_REMAINING_FRAME_SIZE_ARG_ARG_9C0541EE);
 
     private final String messageFormat;
 
@@ -255,7 +257,9 @@ public class TElasticFramedTransport extends TTransport {
 
     void throwException(long size, String remoteInfo, int maxSize) throws TTransportException {
       String message =
-          (this == FRAME_SIZE_EXCEEDED || this == STRING_LENGTH_EXCEEDED)
+          (this == FRAME_SIZE_EXCEEDED
+                  || this == STRING_LENGTH_EXCEEDED
+                  || this == INSUFFICIENT_FRAME_DATA)
               ? String.format(messageFormat, size, maxSize, remoteInfo)
               : String.format(messageFormat, size, remoteInfo);
       throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
@@ -308,18 +312,32 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void checkReadBytesAvailable(long numBytes) throws TTransportException {
+    // RPC messages are flushed as complete frames. Container checks pass their minimum encoded
+    // size here, before generated code allocates the container. Compare it with actual buffered
+    // data, not just the configured frame cap. Use readBuffer directly because copyBinary makes
+    // this transport's getBytesRemainingInBuffer() return -1.
+    int remaining = readBuffer.getBytesRemainingInBuffer();
+    FrameError error;
+    int limit;
     if (numBytes >= thriftMaxFrameSize) {
-      SocketAddress remoteAddress = null;
-      if (underlying instanceof TSocket) {
-        remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
-      }
-      String remoteInfo =
-          (remoteAddress == null)
-              ? RpcMessages.EMPTY_MESSAGE
-              : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
-      close();
-      FrameError.STRING_LENGTH_EXCEEDED.throwException(numBytes, remoteInfo, thriftMaxFrameSize);
+      error = FrameError.STRING_LENGTH_EXCEEDED;
+      limit = thriftMaxFrameSize;
+    } else if (numBytes > remaining) {
+      error = FrameError.INSUFFICIENT_FRAME_DATA;
+      limit = remaining;
+    } else {
+      return;
     }
+    SocketAddress remoteAddress = null;
+    if (underlying instanceof TSocket) {
+      remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+    }
+    String remoteInfo =
+        (remoteAddress == null)
+            ? RpcMessages.EMPTY_MESSAGE
+            : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
+    close();
+    error.throwException(numBytes, remoteInfo, limit);
   }
 
   @Override

@@ -563,12 +563,6 @@ dn_rpc_max_concurrent_client_num=1000
 # Datatype: int
 dn_thrift_max_frame_size=0
 
-# Maximum number of elements allowed in a Thrift container during RPC decoding.
-# A non-positive value uses the default value of 100000.
-# effectiveMode: restart
-# Datatype: int
-thrift_container_length_limit=100000
-
 # thrift init buffer size
 # effectiveMode: restart
 # Datatype: int
