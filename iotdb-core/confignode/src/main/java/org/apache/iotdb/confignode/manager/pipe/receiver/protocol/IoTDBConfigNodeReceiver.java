@@ -775,7 +775,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 : ((AuthorPlan) plan).getRoleName();
         status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
+          return new Pair<>(plan, status);
         }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
@@ -802,7 +802,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 : ((AuthorPlan) plan).getRoleName();
         status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
+          return new Pair<>(plan, status);
         }
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
           if (privilegeType.isRelationalPrivilege()) {
@@ -834,7 +834,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 : ((AuthorPlan) plan).getRoleName();
         status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
+          return new Pair<>(plan, status);
         }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
@@ -864,7 +864,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 : ((AuthorPlan) plan).getRoleName();
         status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
+          return new Pair<>(plan, status);
         }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
@@ -896,7 +896,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 : ((AuthorPlan) plan).getRoleName();
         status = checkGlobalStatus(userEntity, PrivilegeType.SECURITY, entityName, false);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
+          return new Pair<>(plan, status);
         }
         for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
           status =
