@@ -21,12 +21,22 @@ package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolException;
 import org.apache.thrift.protocol.TType;
+import org.apache.thrift.transport.TMemoryBuffer;
 import org.apache.thrift.transport.TMemoryInputTransport;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
 
 public class AbstractThriftServiceThreadTest {
 
@@ -52,6 +62,42 @@ public class AbstractThriftServiceThreadTest {
     } finally {
       config.setThriftContainerLengthLimit(originalLimit);
     }
+  }
+
+  @Test
+  public void testGeneratedRequestRejectsOversizedByteList() throws TException {
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    int originalLimit = config.getThriftContainerLengthLimit();
+    try {
+      config.setThriftContainerLengthLimit(1);
+
+      Assert.assertThrows(
+          TProtocolException.class,
+          () ->
+              new TSInsertRecordReq()
+                  .read(
+                      AbstractThriftServiceThread.getProtocolFactory(false)
+                          .getProtocol(new TMemoryInputTransport(serializeRequest(false)))));
+      Assert.assertThrows(
+          TProtocolException.class,
+          () ->
+              new TSInsertRecordReq()
+                  .read(
+                      AbstractThriftServiceThread.getProtocolFactory(true)
+                          .getProtocol(new TMemoryInputTransport(serializeRequest(true)))));
+    } finally {
+      config.setThriftContainerLengthLimit(originalLimit);
+    }
+  }
+
+  private static byte[] serializeRequest(boolean compact) throws TException {
+    TSInsertRecordReq request =
+        new TSInsertRecordReq(1, "root.sg.d", Collections.emptyList(), ByteBuffer.allocate(0), 1)
+            .setColumnCategoryies(Arrays.asList((byte) 0, (byte) 1));
+    TMemoryBuffer buffer = new TMemoryBuffer(128);
+    TProtocol protocol = compact ? new TCompactProtocol(buffer) : new TBinaryProtocol(buffer);
+    request.write(protocol);
+    return Arrays.copyOf(buffer.getArray(), buffer.length());
   }
 
   private static byte[] binaryListHeader(int size) {
