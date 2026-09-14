@@ -157,7 +157,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
         batch.getPipeName(),
         batch.getCreationTime(),
         planNode.toString());
-    LOGGER.info("Successfully transferred batched schema events, batch size {}.", batch.size());
+    LOGGER.debug("Successfully transferred batched schema events, batch size {}.", batch.size());
   }
 
   private void doTransfer(
@@ -278,7 +278,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
           true);
     }
 
-    LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tagLogSnapshotFile);
+    LOGGER.debug("Successfully transferred file {} and {}.", mTreeSnapshotFile, tagLogSnapshotFile);
   }
 
   @Override
