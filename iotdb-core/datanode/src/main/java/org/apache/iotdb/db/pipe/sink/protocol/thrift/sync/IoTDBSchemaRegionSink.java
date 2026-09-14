@@ -178,7 +178,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
         pipeSchemaRegionWritePlanEvent.getPipeName(),
         pipeSchemaRegionWritePlanEvent.getCreationTime(),
         pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
-    LOGGER.info(
+    LOGGER.debug(
         DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_SCHEMA_EVENT, pipeSchemaRegionWritePlanEvent);
   }
 
@@ -190,7 +190,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
         batch.getPipeName(),
         batch.getCreationTime(),
         planNode.toString());
-    LOGGER.info(
+    LOGGER.debug(
         DataNodePipeMessages
             .MESSAGE_SUCCESSFULLY_TRANSFERRED_BATCHED_SCHEMA_EVENTS_BATCH_SIZE_ARG_CF2E881C,
         batch.size());
@@ -343,7 +343,7 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
           true);
     }
 
-    LOGGER.info(
+    LOGGER.debug(
         DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE_AND,
         mTreeSnapshotFile,
         tagLogSnapshotFile,
