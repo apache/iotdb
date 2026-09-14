@@ -381,6 +381,14 @@ public class DataRegion implements IDataRegionForQuery {
   private ILastFlushTimeMap lastFlushTimeMap;
 
   /**
+   * The latest successfully written Object time for each measurement of each device in each time
+   * partition. It avoids scanning all TsFileResources for monotonically increasing Object writes
+   * while still detecting overwrites across unclosed TsFileProcessors.
+   */
+  private final Map<Long, Map<IDeviceID, Map<String, Long>>> latestObjectTimeForEachSeries =
+      new ConcurrentHashMap<>();
+
+  /**
    * Record the insertWriteLock in SG is being hold by which method, it will be empty string if no
    * one holds the insertWriteLock.
    */
@@ -2490,6 +2498,7 @@ public class DataRegion implements IDataRegionForQuery {
       this.workUnsequenceTsFileProcessors.clear();
       this.tsFileManager.clear();
       lastFlushTimeMap.clearFlushedTime();
+      latestObjectTimeForEachSeries.clear();
       TimePartitionManager.getInstance()
           .removeTimePartitionInfo(new DataRegionId(Integer.parseInt(dataRegionIdString)));
     } catch (InterruptedException e) {
@@ -4484,73 +4493,135 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("writeObject");
     final boolean isGeneratedByPipe = objectNode.isGeneratedByPipe();
     try {
-      String relativeTmpPathString =
-          ObjectPathNaming.toTempRelativePath(
-              objectNode.getFilePathString(), objectNode.getFilePath().getTime());
-      String objectFileDir = null;
-      File objectTmpFile = null;
-      for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
-        File tmpFile = FSFactoryProducer.getFSFactory().getFile(objectDir, relativeTmpPathString);
-        if (tmpFile.exists()) {
-          objectFileDir = objectDir;
-          objectTmpFile = tmpFile;
-          break;
-        }
-      }
-      if (objectTmpFile == null) {
-        objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
-        objectTmpFile =
-            FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
-      }
-      try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
-        writer.write(
-            objectNode.isGeneratedByRemoteConsensusLeader(),
-            objectNode.getOffset(),
-            objectNode.getContent());
-      }
-      if (objectNode.isEOF()) {
-        long time = objectNode.getFilePath().getTime();
-        long timePartition = TimePartitionUtils.getTimePartitionId(time);
+      long time = objectNode.getFilePath().getTime();
+      long timePartition = 0;
+      long lastFlushTime = Long.MIN_VALUE;
+      boolean isSequence = false;
+      TsFileProcessor tsFileProcessor = null;
+      boolean writeDirectlyToFinalFile = objectNode.isEOF() && objectNode.getOffset() == 0;
+      if (writeDirectlyToFinalFile) {
+        timePartition = TimePartitionUtils.getTimePartitionId(time);
         initFlushTimeMap(timePartition);
-        boolean isSequence =
-            config.isEnableSeparateData()
-                && time
-                    > lastFlushTimeMap.getFlushedTime(
-                        timePartition, objectNode.getFilePath().getDeviceID());
-        TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartition, isSequence);
-        if (!objectNode.getFilePath().hasTsFileVersion() && tsFileProcessor != null) {
+        lastFlushTime =
+            lastFlushTimeMap.getFlushedTime(timePartition, objectNode.getFilePath().getDeviceID());
+        isSequence = config.isEnableSeparateData() && time > lastFlushTime;
+        tsFileProcessor =
+            (isSequence ? workSequenceTsFileProcessors : workUnsequenceTsFileProcessors)
+                .get(timePartition);
+        if (tsFileProcessor == null) {
+          tsFileProcessor = getOrCreateTsFileProcessor(timePartition, isSequence);
+        }
+        if (!objectNode.getFilePath().hasTsFileVersion()) {
           objectNode.setFilePath(
               objectNode
                   .getFilePath()
                   .withTsFileVersion(tsFileProcessor.getTsFileResource().getVersion()));
         }
-        File objectFile =
+      }
+      String relativeTmpPathString =
+          ObjectPathNaming.toTempRelativePath(objectNode.getFilePathString(), time);
+      String objectFileDir = null;
+      File objectTmpFile = null;
+      File objectFile = null;
+      for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
+        File tmpFile = FSFactoryProducer.getFSFactory().getFile(objectDir, relativeTmpPathString);
+        if (tmpFile.exists()) {
+          objectFileDir = objectDir;
+          objectTmpFile = tmpFile;
+          writeDirectlyToFinalFile = false;
+          break;
+        }
+        if (writeDirectlyToFinalFile) {
+          File finalFile =
+              FSFactoryProducer.getFSFactory().getFile(objectDir, objectNode.getFilePathString());
+          if (finalFile.exists()) {
+            objectFileDir = objectDir;
+            objectTmpFile = tmpFile;
+            objectFile = finalFile;
+            writeDirectlyToFinalFile = false;
+            break;
+          }
+        }
+      }
+      if (objectFileDir == null) {
+        objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
+      }
+      if (writeDirectlyToFinalFile) {
+        objectFile =
             FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePathString());
-        if (objectFile.exists()) {
-          String relativeBackPathString =
-              ObjectPathNaming.toBackRelativePath(objectNode.getFilePathString(), time);
-          File objectBackFile =
-              FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeBackPathString);
-          Files.move(
-              objectFile.toPath(), objectBackFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-          Files.move(
-              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-          long objectBackFileLength = objectBackFile.length();
-          FileMetrics.getInstance().decreaseObjectFileNum(databaseName, dataRegionIdString, 1);
-          FileMetrics.getInstance()
-              .decreaseObjectFileSize(databaseName, dataRegionIdString, objectBackFileLength);
-          TableDiskUsageIndex.getInstance()
-              .writeObjectDelta(
-                  databaseName,
-                  Integer.parseInt(dataRegionIdString),
-                  timePartition,
-                  objectNode.getFilePath().getDeviceID().getTableName(),
-                  -objectBackFileLength,
-                  -1);
-          Files.delete(objectBackFile.toPath());
-        } else {
-          Files.move(
-              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      } else if (objectTmpFile == null) {
+        objectTmpFile =
+            FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
+      }
+      File fileToWrite = writeDirectlyToFinalFile ? objectFile : objectTmpFile;
+      try (ObjectWriter writer = new ObjectWriter(fileToWrite)) {
+        writer.write(
+            objectNode.isGeneratedByRemoteConsensusLeader(),
+            objectNode.getOffset(),
+            objectNode.getContent());
+      } catch (Exception e) {
+        if (writeDirectlyToFinalFile) {
+          try {
+            Files.deleteIfExists(objectFile.toPath());
+          } catch (IOException deleteException) {
+            e.addSuppressed(deleteException);
+          }
+        }
+        throw e;
+      }
+      if (objectNode.isEOF()) {
+        if (tsFileProcessor == null) {
+          timePartition = TimePartitionUtils.getTimePartitionId(time);
+          initFlushTimeMap(timePartition);
+          lastFlushTime =
+              lastFlushTimeMap.getFlushedTime(
+                  timePartition, objectNode.getFilePath().getDeviceID());
+          isSequence = config.isEnableSeparateData() && time > lastFlushTime;
+          tsFileProcessor =
+              (isSequence ? workSequenceTsFileProcessors : workUnsequenceTsFileProcessors)
+                  .get(timePartition);
+          if (tsFileProcessor == null) {
+            tsFileProcessor = getOrCreateTsFileProcessor(timePartition, isSequence);
+          }
+          if (!objectNode.getFilePath().hasTsFileVersion()) {
+            objectNode.setFilePath(
+                objectNode
+                    .getFilePath()
+                    .withTsFileVersion(tsFileProcessor.getTsFileResource().getVersion()));
+          }
+        }
+        if (!writeDirectlyToFinalFile) {
+          if (objectFile == null) {
+            objectFile =
+                FSFactoryProducer.getFSFactory()
+                    .getFile(objectFileDir, objectNode.getFilePathString());
+          }
+          if (objectFile.exists()) {
+            String relativeBackPathString =
+                ObjectPathNaming.toBackRelativePath(objectNode.getFilePathString(), time);
+            File objectBackFile =
+                FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeBackPathString);
+            Files.move(
+                objectFile.toPath(), objectBackFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Files.move(
+                objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            long objectBackFileLength = objectBackFile.length();
+            FileMetrics.getInstance().decreaseObjectFileNum(databaseName, dataRegionIdString, 1);
+            FileMetrics.getInstance()
+                .decreaseObjectFileSize(databaseName, dataRegionIdString, objectBackFileLength);
+            TableDiskUsageIndex.getInstance()
+                .writeObjectDelta(
+                    databaseName,
+                    Integer.parseInt(dataRegionIdString),
+                    timePartition,
+                    objectNode.getFilePath().getDeviceID().getTableName(),
+                    -objectBackFileLength,
+                    -1);
+            Files.delete(objectBackFile.toPath());
+          } else {
+            Files.move(
+                objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          }
         }
         final TableSchema tableSchemaForObjectRow =
             resolveTableDefinitionForTsFileAndObjectWrite(
@@ -4562,7 +4633,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (isGeneratedByPipe) {
           valueNode.markAsGeneratedByPipe();
         }
-        if (!insertAndRemoveObjectOnException(valueNode, objectFile)) {
+        if (!insertAndRemoveObjectOnException(valueNode, objectNode.getFilePath())) {
           // insertion failed, skip following metric update
           return;
         }
@@ -4582,7 +4653,8 @@ public class DataRegion implements IDataRegionForQuery {
                 tableName,
                 fileLength,
                 1);
-        deleteOlderObjectVersions(objectNode.getFilePath(), timePartition, tableName);
+        deleteOlderObjectVersionsIfNecessary(
+            objectNode.getFilePath(), timePartition, tableName, lastFlushTime);
       }
       getWALNode()
           .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
@@ -4601,27 +4673,52 @@ public class DataRegion implements IDataRegionForQuery {
    * If its metadata row cannot be inserted, keeping the file would leave an object file that is not
    * reachable from TsFile metadata.
    */
-  private boolean insertAndRemoveObjectOnException(RelationalInsertRowNode node, File objectFile) {
+  private boolean insertAndRemoveObjectOnException(
+      RelationalInsertRowNode node, IObjectPath objectPath) {
     try {
       insert(node);
       return true;
     } catch (OutOfTTLException e) {
       // Out-of-TTL records are expected to be ignored, but the installed object file must be
       // removed.
-      if (!org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(objectFile)) {
-        logger.warn(
-            StorageEngineMessages.FAILED_TO_DELETE_OBJECT_FILE_ON_TSFILE_INSERTION_FAILURE,
-            objectFile.getAbsolutePath());
-      }
+      deleteUnregisteredObjectPath(objectPath);
     } catch (WriteProcessException e) {
-      logger.warn(StorageEngineMessages.CANNOT_INSERT_TSFILE_RECORD_FOR_OBJECT_FILE, objectFile, e);
-      if (!org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(objectFile)) {
-        logger.warn(
-            StorageEngineMessages.FAILED_TO_DELETE_OBJECT_FILE_ON_TSFILE_INSERTION_FAILURE,
-            objectFile.getAbsolutePath());
-      }
+      logger.warn(StorageEngineMessages.CANNOT_INSERT_TSFILE_RECORD_FOR_OBJECT_FILE, objectPath, e);
+      deleteUnregisteredObjectPath(objectPath);
     }
     return false;
+  }
+
+  private void deleteUnregisteredObjectPath(IObjectPath objectPath) {
+    String relative = objectPath.toString();
+    String tmpRelative = ObjectPathNaming.toTempRelativePath(relative, objectPath.getTime());
+    String backRelative = ObjectPathNaming.toBackRelativePath(relative, objectPath.getTime());
+    // TierManager returns object folders from hot to cold. Delete in that order so a concurrent
+    // migration can observe that its source disappeared and remove the destination it just copied.
+    for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
+      deleteUnregisteredObjectFileWithRetry(fsFactory.getFile(objectDir, relative));
+      deleteUnregisteredObjectFileWithRetry(fsFactory.getFile(objectDir, tmpRelative));
+      deleteUnregisteredObjectFileWithRetry(fsFactory.getFile(objectDir, backRelative));
+    }
+  }
+
+  private void deleteUnregisteredObjectFileWithRetry(File objectFile) {
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (!objectFile.exists() || fsFactory.deleteIfExists(objectFile)) {
+          return;
+        }
+      } catch (IOException e) {
+        if (attempt == 1) {
+          DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+        }
+      }
+    }
+    if (objectFile.exists()) {
+      logger.warn(
+          StorageEngineMessages.FAILED_TO_DELETE_OBJECT_FILE_ON_TSFILE_INSERTION_FAILURE,
+          objectFile.getAbsolutePath());
+    }
   }
 
   /**
@@ -4632,60 +4729,85 @@ public class DataRegion implements IDataRegionForQuery {
       IObjectPath newPath, long timePartition, String tableName) {
     long time = newPath.getTime();
     long newVersion = newPath.getTsFileVersion();
-    Path parentRel = newPath.getPath().getParent();
-    if (parentRel == null) {
+
+    Pair<List<TsFileResource>, List<TsFileResource>> resources =
+        tsFileManager.getTsFileListSnapshot(timePartition);
+    Set<Long> olderVersions =
+        findOverlappingOlderObjectVersions(resources.left, newPath.getDeviceID(), time, newVersion);
+    olderVersions.addAll(
+        findOverlappingOlderObjectVersions(
+            resources.right, newPath.getDeviceID(), time, newVersion));
+    if (olderVersions.isEmpty()) {
       return;
     }
+
+    String relativePath = newPath.toString();
+    // Do not stop after the first deletion. Migration copies before deleting its source, so the
+    // same version may temporarily exist on multiple tiers; historical data may also contain more
+    // than one older version.
     for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
-      File parent = fsFactory.getFile(objectDir, parentRel.toString());
-      File[] children = listObjectSiblings(parent);
-      if (children == null) {
-        continue;
-      }
-      for (File stale : children) {
-        String name = ObjectPathNaming.baseFileName(stale.getPath());
-        if (!ObjectTypeUtils.isObjectCandidate(name)) {
-          continue;
-        }
-        if (ObjectPathNaming.parseTime(name) != time) {
-          continue;
-        }
-        long version = ObjectPathNaming.parseVersion(name);
-        boolean older =
-            version == ObjectPathNaming.LEGACY_VERSION
-                || (newVersion != ObjectPathNaming.LEGACY_VERSION && version < newVersion);
-        if (!older) {
-          continue;
-        }
-        try {
-          if (name.endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX) && stale.exists()) {
-            ObjectTypeUtils.deleteObjectPath(
-                databaseName, dataRegionId.getId(), timePartition, tableName, stale);
-          } else {
-            fsFactory.deleteIfExists(stale);
-          }
-        } catch (IOException e) {
-          objectDeletionLogger.error(StorageEngineMessages.FAILED_TO_REMOVE_OBJECT_FILE, stale, e);
-        }
+      deleteOlderObjectVersionIfExists(
+          fsFactory.getFile(objectDir, ObjectPathNaming.toLegacyRelativePath(relativePath, time)),
+          timePartition,
+          tableName);
+      for (long olderVersion : olderVersions) {
+        deleteOlderObjectVersionIfExists(
+            fsFactory.getFile(
+                objectDir, ObjectPathNaming.withTsFileVersion(relativePath, time, olderVersion)),
+            timePartition,
+            tableName);
       }
     }
   }
 
-  /**
-   * List {@code .bin}/{@code .tmp}/{@code .back} siblings of an object column directory. Local dirs
-   * use {@code File.listFiles()}; OBJECT_STORAGE lists once with an empty suffix (matches all keys
-   * under the prefix) because {@code OSFile.listFiles} is unsupported and a non-empty suffix would
-   * re-list the same prefix three times.
-   */
-  private File[] listObjectSiblings(File parent) {
-    if (parent == null) {
-      return null;
+  private void deleteOlderObjectVersionsIfNecessary(
+      IObjectPath newPath, long timePartition, String tableName, long lastFlushTime) {
+    Map<IDeviceID, Map<String, Long>> latestObjectTimeInPartition =
+        latestObjectTimeForEachSeries.computeIfAbsent(
+            timePartition, ignored -> new ConcurrentHashMap<>());
+    IDeviceID deviceID = newPath.getDeviceID();
+    long time = newPath.getTime();
+    Map<String, Long> latestObjectTimeForDevice =
+        latestObjectTimeInPartition.computeIfAbsent(deviceID, ignored -> new ConcurrentHashMap<>());
+    String measurement = newPath.getMeasurement();
+    Long latestObjectTime = latestObjectTimeForDevice.get(measurement);
+
+    if (mayHaveOlderObjectVersion(time, lastFlushTime, latestObjectTime)) {
+      deleteOlderObjectVersions(newPath, timePartition, tableName);
     }
-    if (FSUtils.getFSType(parent) == FSType.LOCAL) {
-      return parent.listFiles();
+    latestObjectTimeForDevice.merge(measurement, time, Math::max);
+  }
+
+  static boolean mayHaveOlderObjectVersion(long time, long lastFlushTime, Long latestObjectTime) {
+    return time <= lastFlushTime || latestObjectTime == null || time <= latestObjectTime;
+  }
+
+  static Set<Long> findOverlappingOlderObjectVersions(
+      Collection<TsFileResource> resources, IDeviceID deviceID, long time, long newVersion) {
+    Set<Long> versions = new HashSet<>();
+    for (TsFileResource resource : resources) {
+      long version = resource.getVersion();
+      if (version >= newVersion || resource.definitelyNotContains(deviceID)) {
+        continue;
+      }
+      Optional<Long> startTime = resource.getStartTime(deviceID);
+      Optional<Long> endTime = resource.getEndTime(deviceID);
+      if (startTime.isPresent()
+          && endTime.isPresent()
+          && startTime.get() <= time
+          && time <= endTime.get()) {
+        versions.add(version);
+      }
     }
-    // Empty suffix → endsWith("") is always true; one ListObjects covers .bin/.tmp/.back.
-    return fsFactory.listFilesBySuffix(parent.getPath(), "");
+    return versions;
+  }
+
+  private void deleteOlderObjectVersionIfExists(
+      File objectFile, long timePartition, String tableName) {
+    if (objectFile.exists()) {
+      ObjectTypeUtils.deleteObjectPath(
+          databaseName, dataRegionId.getId(), timePartition, tableName, objectFile);
+    }
   }
 
   /**
@@ -6042,6 +6164,7 @@ public class DataRegion implements IDataRegionForQuery {
   /* Be careful, the thread that calls this method may not hold the write lock!!*/
   public void degradeFlushTimeMap(long timePartitionId) {
     lastFlushTimeMap.degradeLastFlushTime(timePartitionId);
+    latestObjectTimeForEachSeries.remove(timePartitionId);
   }
 
   public long getMemCost() {

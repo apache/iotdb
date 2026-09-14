@@ -92,6 +92,22 @@ public class ObjectFileMigrationUtilsTest {
   }
 
   @Test
+  public void testDeleteDestinationWhenSourceWasDeletedDuringMigration() throws Exception {
+    String relativePath = "9" + File.separator + "tbl" + File.separator + "deleted.bin";
+    File srcObject =
+        new File(HOT_DIR, IoTDBConstant.OBJECT_FOLDER_NAME + File.separator + relativePath);
+    File destObject =
+        new File(COLD_DIR, IoTDBConstant.OBJECT_FOLDER_NAME + File.separator + relativePath);
+    Files.createDirectories(destObject.getParentFile().toPath());
+    Files.write(destObject.toPath(), "copied".getBytes(StandardCharsets.UTF_8));
+
+    File result = ObjectFileMigrationUtils.migrateObjectFile(srcObject, relativePath, 1);
+
+    assertEquals(null, result);
+    assertFalse(destObject.exists());
+  }
+
+  @Test
   public void testObjectMigrationTaskDeletesSource() throws Exception {
     String relativePath = "9" + File.separator + "tbl" + File.separator + "2.bin";
     File srcObject =

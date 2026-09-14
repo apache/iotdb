@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.IObjectPath;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -110,11 +112,13 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -2144,12 +2148,13 @@ public class DataRegionTest {
       throws Exception {
     final DataRegion spiedDataRegion = Mockito.spy(dataRegion);
     final RelationalInsertRowNode node = Mockito.mock(RelationalInsertRowNode.class);
-    final File objectFile = createObjectFileForTest("object-insert-success.bin");
+    final IObjectPath objectPath = createObjectPathForTest(1);
+    final List<File> objectFiles = createObjectFilesForTest(objectPath);
     Mockito.doNothing().when(spiedDataRegion).insert(node);
 
-    Assert.assertTrue(invokeInsertAndRemoveObjectOnException(spiedDataRegion, node, objectFile));
+    Assert.assertTrue(invokeInsertAndRemoveObjectOnException(spiedDataRegion, node, objectPath));
 
-    Assert.assertTrue(objectFile.exists());
+    Assert.assertTrue(objectFiles.stream().allMatch(File::exists));
   }
 
   @Test
@@ -2157,47 +2162,87 @@ public class DataRegionTest {
       throws Exception {
     final DataRegion spiedDataRegion = Mockito.spy(dataRegion);
     final RelationalInsertRowNode node = Mockito.mock(RelationalInsertRowNode.class);
-    final File objectFile = createObjectFileForTest("object-insert-write-failure.bin");
+    final IObjectPath objectPath = createObjectPathForTest(2);
+    final List<File> objectFiles = createObjectFilesForTest(objectPath);
     Mockito.doThrow(new WriteProcessException("mock object insert failure"))
         .when(spiedDataRegion)
         .insert(node);
 
-    Assert.assertFalse(invokeInsertAndRemoveObjectOnException(spiedDataRegion, node, objectFile));
+    Assert.assertFalse(invokeInsertAndRemoveObjectOnException(spiedDataRegion, node, objectPath));
 
-    Assert.assertFalse(objectFile.exists());
+    Assert.assertTrue(objectFiles.stream().noneMatch(File::exists));
   }
 
   @Test
   public void testInsertAndRemoveObjectOnExceptionRemovesObjectFileWhenOutOfTTL() throws Exception {
     final DataRegion spiedDataRegion = Mockito.spy(dataRegion);
     final RelationalInsertRowNode node = Mockito.mock(RelationalInsertRowNode.class);
-    final File objectFile = createObjectFileForTest("object-insert-out-of-ttl.bin");
+    final IObjectPath objectPath = createObjectPathForTest(3);
+    final List<File> objectFiles = createObjectFilesForTest(objectPath);
     Mockito.doThrow(new OutOfTTLException(1, 2)).when(spiedDataRegion).insert(node);
 
-    Assert.assertFalse(invokeInsertAndRemoveObjectOnException(spiedDataRegion, node, objectFile));
+    Assert.assertFalse(invokeInsertAndRemoveObjectOnException(spiedDataRegion, node, objectPath));
 
-    Assert.assertFalse(objectFile.exists());
+    Assert.assertTrue(objectFiles.stream().noneMatch(File::exists));
+  }
+
+  @Test
+  public void testFindOverlappingOlderObjectVersions() {
+    IDeviceID objectDevice =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table1", "device1"});
+    TsFileResource overlapping = Mockito.mock(TsFileResource.class);
+    TsFileResource nonOverlapping = Mockito.mock(TsFileResource.class);
+
+    Mockito.when(overlapping.getVersion()).thenReturn(1L);
+    Mockito.when(overlapping.getStartTime(objectDevice)).thenReturn(Optional.of(10L));
+    Mockito.when(overlapping.getEndTime(objectDevice)).thenReturn(Optional.of(30L));
+    Mockito.when(nonOverlapping.getVersion()).thenReturn(2L);
+    Mockito.when(nonOverlapping.getStartTime(objectDevice)).thenReturn(Optional.of(21L));
+    Mockito.when(nonOverlapping.getEndTime(objectDevice)).thenReturn(Optional.of(40L));
+
+    Assert.assertEquals(
+        Collections.singleton(1L),
+        DataRegion.findOverlappingOlderObjectVersions(
+            Arrays.asList(overlapping, nonOverlapping), objectDevice, 20L, 3L));
+  }
+
+  @Test
+  public void testMayHaveOlderObjectVersion() {
+    Assert.assertTrue(DataRegion.mayHaveOlderObjectVersion(100, Long.MIN_VALUE, null));
+    Assert.assertFalse(DataRegion.mayHaveOlderObjectVersion(101, 100, 100L));
+    Assert.assertTrue(DataRegion.mayHaveOlderObjectVersion(100, 99, 100L));
+    Assert.assertTrue(DataRegion.mayHaveOlderObjectVersion(100, 100, 99L));
   }
 
   private static boolean invokeInsertAndRemoveObjectOnException(
-      DataRegion dataRegion, RelationalInsertRowNode node, File objectFile) throws Exception {
+      DataRegion dataRegion, RelationalInsertRowNode node, IObjectPath objectPath)
+      throws Exception {
     final Method method =
         DataRegion.class.getDeclaredMethod(
-            "insertAndRemoveObjectOnException", RelationalInsertRowNode.class, File.class);
+            "insertAndRemoveObjectOnException", RelationalInsertRowNode.class, IObjectPath.class);
     method.setAccessible(true);
-    return (boolean) method.invoke(dataRegion, node, objectFile);
+    return (boolean) method.invoke(dataRegion, node, objectPath);
   }
 
-  private static File createObjectFileForTest(String fileName) throws IOException {
-    final File file = new File(TestConstant.OUTPUT_DATA_DIR, fileName);
-    if (!file.getParentFile().exists()) {
-      assertTrue(file.getParentFile().mkdirs());
+  private static IObjectPath createObjectPathForTest(long time) {
+    return IObjectPath.Factory.FACTORY
+        .create(
+            0,
+            time,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table1", "device1"}),
+            "object")
+        .withTsFileVersion(1);
+  }
+
+  private static List<File> createObjectFilesForTest(IObjectPath objectPath) throws IOException {
+    final List<File> files = new ArrayList<>();
+    for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
+      final File file = new File(objectDir, objectPath.toString());
+      Files.createDirectories(file.getParentFile().toPath());
+      Files.createFile(file.toPath());
+      files.add(file);
     }
-    if (file.exists()) {
-      assertTrue(file.delete());
-    }
-    assertTrue(file.createNewFile());
-    return file;
+    return files;
   }
 
   private interface TsFileProcessorSupplier {

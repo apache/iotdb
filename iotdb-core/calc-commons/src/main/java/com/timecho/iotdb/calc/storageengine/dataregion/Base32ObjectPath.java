@@ -41,6 +41,7 @@ public class Base32ObjectPath implements IObjectPath {
   private final IDeviceID deviceID;
   private final String measurement;
   private final Path path;
+  private final long tsFileVersion;
   private int serializedSize = -1;
 
   private static final Deserializer DESERIALIZER =
@@ -81,6 +82,7 @@ public class Base32ObjectPath implements IObjectPath {
             BaseEncoding.base32().omitPadding().decode(more[more.length - 2]),
             StandardCharsets.UTF_8);
     timestamp = ObjectPathNaming.parseTime(more[more.length - 1]);
+    tsFileVersion = ObjectPathNaming.parseVersion(more[more.length - 1]);
     path = Paths.get(first, more);
   }
 
@@ -105,6 +107,7 @@ public class Base32ObjectPath implements IObjectPath {
                 .decode(path.getName(path.getNameCount() - 2).toString()),
             StandardCharsets.UTF_8);
     timestamp = ObjectPathNaming.parseTime(path.getFileName().toString());
+    tsFileVersion = ObjectPathNaming.parseVersion(path.getFileName().toString());
     this.path = path;
   }
 
@@ -131,6 +134,16 @@ public class Base32ObjectPath implements IObjectPath {
     this.timestamp = time;
     this.deviceID = iDeviceID;
     this.measurement = measurement;
+    this.tsFileVersion = ObjectPathNaming.LEGACY_VERSION;
+  }
+
+  private Base32ObjectPath(
+      long timestamp, IDeviceID deviceID, String measurement, Path path, long tsFileVersion) {
+    this.timestamp = timestamp;
+    this.deviceID = deviceID;
+    this.measurement = measurement;
+    this.path = path;
+    this.tsFileVersion = tsFileVersion;
   }
 
   @Override
@@ -224,6 +237,26 @@ public class Base32ObjectPath implements IObjectPath {
   @Override
   public Path getPath() {
     return path;
+  }
+
+  @Override
+  public IObjectPath withTsFileVersion(long version) {
+    return new Base32ObjectPath(
+        timestamp,
+        deviceID,
+        measurement,
+        path.resolveSibling(ObjectPathNaming.toVersionedFileName(timestamp, version)),
+        version);
+  }
+
+  @Override
+  public boolean hasTsFileVersion() {
+    return tsFileVersion != ObjectPathNaming.LEGACY_VERSION;
+  }
+
+  @Override
+  public long getTsFileVersion() {
+    return tsFileVersion;
   }
 
   public static Factory getFACTORY() {

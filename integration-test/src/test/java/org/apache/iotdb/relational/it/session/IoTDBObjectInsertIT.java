@@ -740,7 +740,7 @@ public class IoTDBObjectInsertIT {
                           + convertPathString("file")
                           + File.separator
                           + "0.bin");
-              if (objectFile.exists()) {
+              if (objectBinExists(objectFile.getParentFile(), objectFile.getName())) {
                 return true;
               }
             }

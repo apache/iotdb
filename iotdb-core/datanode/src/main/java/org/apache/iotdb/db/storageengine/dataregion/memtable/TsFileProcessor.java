@@ -114,7 +114,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
@@ -220,7 +219,7 @@ public class TsFileProcessor {
   private final List<FlushListener> flushListeners = new ArrayList<>();
 
   /** OBJECT {@code .bin} paths written into this unsealed processor (cleared on close). */
-  private final Set<IObjectPath> objectPaths = ConcurrentHashMap.newKeySet();
+  private final Set<IObjectPath> objectPaths = new HashSet<>();
 
   private final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
       QueryExecutionMetricSet.getInstance();

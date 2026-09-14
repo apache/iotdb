@@ -70,6 +70,9 @@ public class ObjectMigrationTask implements Runnable {
       }
       MIGRATION_METRICS.recordMigrationCause(cause);
       File destFile = ObjectFileMigrationUtils.migrateObjectFile(srcFile, relativePath, destTier);
+      if (destFile == null) {
+        return;
+      }
       boolean toLocal = FSUtils.isLocal(destFile.getAbsolutePath());
       MIGRATION_METRICS.recordMigrationFileSize(destTier, toLocal, destFile.length());
       long taskTimeCost = System.nanoTime() - taskStartTime;

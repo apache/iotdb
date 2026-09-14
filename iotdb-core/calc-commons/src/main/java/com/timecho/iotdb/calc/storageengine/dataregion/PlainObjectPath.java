@@ -40,6 +40,7 @@ public class PlainObjectPath implements IObjectPath {
   private final long timestamp;
   private final String measurement;
   private final String filePath;
+  private final long tsFileVersion;
 
   private static final Deserializer DESERIALIZER =
       new Deserializer() {
@@ -76,6 +77,7 @@ public class PlainObjectPath implements IObjectPath {
     deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
     measurement = path.getName(path.getNameCount() - 2).toString();
     timestamp = ObjectPathNaming.parseTime(path.getFileName().toString());
+    tsFileVersion = ObjectPathNaming.parseVersion(path.getFileName().toString());
   }
 
   public PlainObjectPath(Path path) {
@@ -92,6 +94,7 @@ public class PlainObjectPath implements IObjectPath {
     deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
     measurement = path.getName(path.getNameCount() - 2).toString();
     timestamp = ObjectPathNaming.parseTime(path.getFileName().toString());
+    tsFileVersion = ObjectPathNaming.parseVersion(path.getFileName().toString());
   }
 
   public PlainObjectPath(int regionId, long time, IDeviceID iDeviceID, String measurement) {
@@ -115,6 +118,16 @@ public class PlainObjectPath implements IObjectPath {
     this.timestamp = time;
     this.measurement = measurement;
     this.filePath = relativePathString.toString();
+    this.tsFileVersion = ObjectPathNaming.LEGACY_VERSION;
+  }
+
+  private PlainObjectPath(
+      IDeviceID deviceID, long timestamp, String measurement, String filePath, long tsFileVersion) {
+    this.deviceID = deviceID;
+    this.timestamp = timestamp;
+    this.measurement = measurement;
+    this.filePath = filePath;
+    this.tsFileVersion = tsFileVersion;
   }
 
   @Override
@@ -179,6 +192,26 @@ public class PlainObjectPath implements IObjectPath {
   @Override
   public Path getPath() {
     return Paths.get(filePath);
+  }
+
+  @Override
+  public IObjectPath withTsFileVersion(long version) {
+    return new PlainObjectPath(
+        deviceID,
+        timestamp,
+        measurement,
+        ObjectPathNaming.withTsFileVersion(filePath, timestamp, version),
+        version);
+  }
+
+  @Override
+  public boolean hasTsFileVersion() {
+    return tsFileVersion != ObjectPathNaming.LEGACY_VERSION;
+  }
+
+  @Override
+  public long getTsFileVersion() {
+    return tsFileVersion;
   }
 
   public static Factory getFACTORY() {

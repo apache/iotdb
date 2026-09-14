@@ -82,7 +82,7 @@ public final class ObjectFileMigrationUtils {
    * Copy {@code srcFile} to {@code destTier} under the same relative path if absent, then delete
    * the source (like TsFile migration).
    *
-   * @return destination file
+   * @return destination file, or {@code null} if the source was deleted concurrently
    */
   public static File migrateObjectFile(File srcFile, String relativePath, int destTier)
       throws IOException, DiskSpaceInsufficientException {
@@ -104,10 +104,30 @@ public final class ObjectFileMigrationUtils {
               TimechoServerMessages.EXCEPTION_OBJECT_DESTINATION_MISSING_AFTER_COPY_ARG_57B61C6C,
               destFile));
     }
+    if (!srcFile.exists()) {
+      // The source may be deleted by a concurrent metadata-insertion rollback while the copy is in
+      // progress. The rollback deletes tiers from hot to cold, so remove the destination copied
+      // after its cold-tier check to avoid leaving an object without metadata.
+      deleteIfExistsWithRetry(destFile);
+      return null;
+    }
     // Same as TsFile migration: source can be removed after a successful move.
-    if (srcFile.exists() && !srcFile.equals(destFile)) {
+    if (!srcFile.equals(destFile)) {
       FS_FACTORY.deleteIfExists(srcFile);
     }
     return destFile;
+  }
+
+  private static void deleteIfExistsWithRetry(File file) throws IOException {
+    IOException lastException = null;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        FS_FACTORY.deleteIfExists(file);
+        return;
+      } catch (IOException e) {
+        lastException = e;
+      }
+    }
+    throw lastException;
   }
 }

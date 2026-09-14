@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.calc.utils;
 
+import com.timecho.iotdb.calc.storageengine.dataregion.Base32ObjectPath;
+import com.timecho.iotdb.calc.storageengine.dataregion.PlainObjectPath;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class ObjectPathNamingTest {
@@ -52,6 +56,9 @@ public class ObjectPathNamingTest {
     String relative = "9/tbl/tag/col/123.bin";
     assertTrue(ObjectPathNaming.withTsFileVersion(relative, 123L, 4L).endsWith("123_4.bin"));
     assertTrue(ObjectPathNaming.toTempRelativePath(relative, 123L).endsWith("123.bin.tmp"));
+    assertEquals(
+        "9\\tbl\\tag\\col\\123_4.bin",
+        ObjectPathNaming.withTsFileVersion("9\\tbl\\tag\\col\\123.bin", 123L, 4L));
   }
 
   @Test
@@ -64,5 +71,23 @@ public class ObjectPathNamingTest {
         "1/tbl/col/123_7.bin",
         ObjectPathNaming.relativize(
             "os://bucket/dn/object", "os://bucket/dn/object/1/tbl/col/123_7.bin"));
+  }
+
+  @Test
+  public void addVersionWithoutRebuildingMetadata() {
+    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table", "device"});
+    for (IObjectPath path :
+        new IObjectPath[] {
+          new PlainObjectPath(1, 123, device, "object"),
+          new Base32ObjectPath(1, 123, device, "object")
+        }) {
+      assertFalse(path.hasTsFileVersion());
+      IObjectPath versioned = path.withTsFileVersion(456);
+      assertSame(device, versioned.getDeviceID());
+      assertEquals(path.getMeasurement(), versioned.getMeasurement());
+      assertEquals(path.getTime(), versioned.getTime());
+      assertTrue(versioned.hasTsFileVersion());
+      assertEquals(456, versioned.getTsFileVersion());
+    }
   }
 }

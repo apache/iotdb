@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.calc.utils;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 /**
  * OBJECT {@code .bin} filename helpers.
  *
@@ -99,10 +96,7 @@ public final class ObjectPathNaming {
 
   /** Replace the filename of {@code relativePath} with {@code {time}_{version}.bin}. */
   public static String withTsFileVersion(String relativePath, long time, long tsFileVersion) {
-    Path path = Paths.get(relativePath);
-    Path parent = path.getParent();
-    String fileName = toVersionedFileName(time, tsFileVersion);
-    return parent == null ? fileName : parent.resolve(fileName).toString();
+    return siblingRelativePath(relativePath, toVersionedFileName(time, tsFileVersion));
   }
 
   /** {@code {parent}/{time}.bin.tmp} for chunked writes (tmp never carries a version). */
@@ -149,9 +143,10 @@ public final class ObjectPathNaming {
   }
 
   private static String siblingRelativePath(String relativePath, String siblingFileName) {
-    Path path = Paths.get(relativePath);
-    Path parent = path.getParent();
-    return parent == null ? siblingFileName : parent.resolve(siblingFileName).toString();
+    int separator = Math.max(relativePath.lastIndexOf('/'), relativePath.lastIndexOf('\\'));
+    return separator < 0
+        ? siblingFileName
+        : relativePath.substring(0, separator + 1) + siblingFileName;
   }
 
   /**
