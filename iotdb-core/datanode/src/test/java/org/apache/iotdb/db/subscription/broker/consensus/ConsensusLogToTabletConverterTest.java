@@ -33,6 +33,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterMatcher;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -50,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 public class ConsensusLogToTabletConverterTest {
 
@@ -253,6 +257,30 @@ public class ConsensusLogToTabletConverterTest {
   }
 
   @Test
+  public void testConvertRelationalInsertTabletFiltersRowsBeforeColumns() throws Exception {
+    final ConsensusLogToTabletConverter converter =
+        createConverterWithTagFilter("id1 IN (\"id:10\", \"id:12\")", "m1");
+
+    final List<Tablet> tablets = converter.convert(StatementTestUtils.genInsertTabletNode(3, 10));
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals(2, tablet.getRowSize());
+    Assert.assertArrayEquals(new long[] {10L, 12L}, tablet.getTimestamps());
+    Assert.assertEquals("id:10", toUtf8(((Binary[]) tablet.getValues()[0])[0]));
+    Assert.assertEquals("id:12", toUtf8(((Binary[]) tablet.getValues()[0])[1]));
+    Assert.assertArrayEquals(new double[] {10.0, 12.0}, (double[]) tablet.getValues()[1], 0.0);
+  }
+
+  @Test
+  public void testConvertRelationalInsertRowReturnsEmptyWhenTagDoesNotMatch() throws Exception {
+    final ConsensusLogToTabletConverter converter =
+        createConverterWithTagFilter("id1 = \"missing\"", "m1");
+
+    Assert.assertTrue(converter.convert(StatementTestUtils.genInsertRowNode(7)).isEmpty());
+  }
+
+  @Test
   public void testConvertInsertRowsOfOneDeviceNodeGroupsRowsWithSameSchema()
       throws IllegalPathException {
     final ConsensusLogToTabletConverter converter = createTreeConverter();
@@ -334,6 +362,19 @@ public class ConsensusLogToTabletConverterTest {
         null,
         new TablePattern(true, DATABASE_NAME, StatementTestUtils.tableName()),
         ColumnFilterMatcher.ofSelectedColumnNames(new HashSet<>(Arrays.asList(selectedColumns))),
+        DATABASE_NAME);
+  }
+
+  private static ConsensusLogToTabletConverter createConverterWithTagFilter(
+      final String tagFilter, final String... selectedColumns) throws Exception {
+    final TopicConfig topicConfig =
+        new TopicConfig(
+            Map.of("__system.sql-dialect", "table", TopicConstant.TAG_FILTER_KEY, tagFilter));
+    return new ConsensusLogToTabletConverter(
+        null,
+        new TablePattern(true, DATABASE_NAME, StatementTestUtils.tableName()),
+        ColumnFilterMatcher.ofSelectedColumnNames(new HashSet<>(Arrays.asList(selectedColumns))),
+        TagFilterMatcher.fromTopicConfig(topicConfig),
         DATABASE_NAME);
   }
 

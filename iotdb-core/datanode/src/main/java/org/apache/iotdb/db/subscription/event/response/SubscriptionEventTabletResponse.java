@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
-import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -95,11 +94,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
     this.commitContext = commitContext;
     this.rootCommitContext = rootCommitContext;
-    this.columnFilterMatcher =
-        SubscriptionAgent.broker()
-            .getColumnFilterMatcher(
-                queue.getTopicName(),
-                SubscriptionAgent.consumer().isTableModel(queue.getConsumerGroupId()));
+    this.columnFilterMatcher = batch.getColumnFilterMatcher();
 
     init();
   }
