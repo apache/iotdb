@@ -44,3 +44,6 @@ void TableSession::open(bool enableRPCCompression) {
 void TableSession::close() {
   session_->close();
 }
+void TableSession::setSslConfig(const SslConfig& sslConfig) {
+  session_->setSslConfig(sslConfig);
+}
