@@ -27,15 +27,26 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -196,6 +207,80 @@ public class MemTableFlushTaskTest {
 
     assertTrue(memChunk.isColumnMappingBuilt());
     assertFalse(ioTaskQueue.isEmpty());
+  }
+
+  @Test
+  public void testAlignedFlushKeepsValuesAlignedAfterTimeDeletion() throws IOException {
+    // Deleted rows must be omitted from both time and value pages, including after sorting.
+    checkAlignedFlushAfterTimeDeletion(false);
+  }
+
+  @Test
+  public void testAlignedFlushKeepsValuesAlignedAfterTimeAndColumnDeletion() throws IOException {
+    // Removing the first measurement also exercises the remapped value-column encoding path.
+    checkAlignedFlushAfterTimeDeletion(true);
+  }
+
+  private void checkAlignedFlushAfterTimeDeletion(boolean removeColumn) throws IOException {
+    for (int pageSize : new int[] {2, 100}) {
+      List<IMeasurementSchema> schemas =
+          Arrays.asList(
+              new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN),
+              new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, false);
+      String alignedFilePath =
+          TestConstant.OUTPUT_DATA_DIR.concat("testAlignedTimeDeletion" + pageSize + ".tsfile");
+      try {
+        for (int time : new int[] {4, 1, 6, 2, 5, 3}) {
+          memChunk.putAlignedRow(time, new Object[] {time, time * 10L});
+        }
+        memChunk.deleteTime(2, 2);
+        memChunk.deleteTime(6, 6);
+        if (removeColumn) {
+          memChunk.removeColumn("s0");
+        }
+        memChunk.sortTvListForFlush();
+
+        BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+        // Cover a single page and boundaries between pages and chunks.
+        memChunk.encodeWorkingAlignedTVList(ioTaskQueue, pageSize + 1, pageSize);
+        try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
+          alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
+          Object task;
+          while ((task = ioTaskQueue.poll()) != null) {
+            if (task instanceof IChunkWriter chunkWriter) {
+              chunkWriter.writeToFileWriter(alignedWriter);
+            }
+          }
+          alignedWriter.endChunkGroup();
+          alignedWriter.endFile();
+        }
+
+        try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(alignedFilePath);
+            TsFileReader fileReader = new TsFileReader(sequenceReader)) {
+          List<Path> paths = new ArrayList<>();
+          paths.add(new Path("root.d", "s1", false));
+          if (!removeColumn) {
+            paths.add(new Path("root.d", "s0", false));
+          }
+          QueryDataSet dataSet = fileReader.query(QueryExpression.create(paths, null));
+          for (int time : new int[] {1, 3, 4, 5}) {
+            assertTrue(dataSet.hasNext());
+            RowRecord row = dataSet.next();
+            assertEquals(time, row.getTimestamp());
+            assertEquals(TSDataType.INT64, row.getFields().get(0).getDataType());
+            assertEquals(time * 10L, row.getFields().get(0).getLongV());
+            if (!removeColumn) {
+              assertEquals(TSDataType.INT32, row.getFields().get(1).getDataType());
+              assertEquals(time, row.getFields().get(1).getIntV());
+            }
+          }
+          assertFalse(dataSet.hasNext());
+        }
+      } finally {
+        memChunk.release();
+      }
+    }
   }
 
   private TrackingAlignedWritableMemChunk createTrackingAlignedMemChunk() {

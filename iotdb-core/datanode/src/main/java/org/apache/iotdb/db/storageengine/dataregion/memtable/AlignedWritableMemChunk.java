@@ -713,6 +713,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
                     alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
               continue;
             }
+            // Keep value pages aligned with the time page when an entire timestamp is deleted.
+            if (alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)) {
+              continue;
+            }
             // skip time duplicated rows
             long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
             if (Objects.nonNull(timeDuplicateInfo)) {
@@ -869,6 +873,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             if (allValueColDeletedMap != null
                 && allValueColDeletedMap.isMarked(
                     alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
+              continue;
+            }
+            // Keep value pages aligned with the time page when an entire timestamp is deleted.
+            if (alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)) {
               continue;
             }
             // skip time duplicated rows
