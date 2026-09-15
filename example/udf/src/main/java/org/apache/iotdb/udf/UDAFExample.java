@@ -29,6 +29,8 @@ import org.apache.iotdb.udf.api.type.Type;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -71,7 +73,7 @@ public class UDAFExample implements UDAF {
     }
   }
 
-  private Type dataType;
+  private ColumnNumericReader valueReader;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -82,7 +84,10 @@ public class UDAFExample implements UDAF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDAFConfigurations configurations) {
-    dataType = parameters.getDataType(0);
+    valueReader =
+        COLUMN_NUMERIC_READER_SERVICE.call(
+            org.apache.tsfile.read.common.type.Type.fromTsDataType(
+                TSDataType.getTsDataType(parameters.getDataType(0).getType())));
     configurations.setOutputDataType(Type.DOUBLE);
   }
 
@@ -95,28 +100,15 @@ public class UDAFExample implements UDAF {
   public void addInput(State state, Column[] columns, BitMap bitMap) {
     AvgState avgState = (AvgState) state;
 
-    switch (dataType) {
-      case INT32:
-        addIntInput(avgState, columns, bitMap);
-        return;
-      case INT64:
-        addLongInput(avgState, columns, bitMap);
-        return;
-      case FLOAT:
-        addFloatInput(avgState, columns, bitMap);
-        return;
-      case DOUBLE:
-        addDoubleInput(avgState, columns, bitMap);
-        return;
-      case TEXT:
-      case BOOLEAN:
-      case TIMESTAMP:
-      case STRING:
-      case BLOB:
-      case DATE:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", dataType));
+    int count = columns[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
+        continue;
+      }
+      if (!columns[0].isNull(i)) {
+        avgState.count++;
+        avgState.sum += valueReader.read(columns[0], i);
+      }
     }
   }
 
@@ -149,55 +141,21 @@ public class UDAFExample implements UDAF {
     avgState.sum -= avgRhs.sum;
   }
 
-  private void addIntInput(AvgState state, Column[] columns, BitMap bitMap) {
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[0].isNull(i)) {
-        state.count++;
-        state.sum += columns[0].getInt(i);
-      }
-    }
-  }
+  private static final TypeService<ColumnNumericReader> COLUMN_NUMERIC_READER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 -> Column::getInt;
+            case INT64 -> Column::getLong;
+            case FLOAT -> Column::getFloat;
+            case DOUBLE -> Column::getDouble;
+            default ->
+                (column, index) -> {
+                  throw new UnSupportedDataTypeException("Unsupported data type: " + type);
+                };
+          };
 
-  private void addLongInput(AvgState avgState, Column[] columns, BitMap bitMap) {
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[0].isNull(i)) {
-        avgState.count++;
-        avgState.sum += columns[0].getLong(i);
-      }
-    }
-  }
-
-  private void addFloatInput(AvgState avgState, Column[] columns, BitMap bitMap) {
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[0].isNull(i)) {
-        avgState.count++;
-        avgState.sum += columns[0].getFloat(i);
-      }
-    }
-  }
-
-  private void addDoubleInput(AvgState avgState, Column[] columns, BitMap bitMap) {
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[0].isNull(i)) {
-        avgState.count++;
-        avgState.sum += columns[0].getDouble(i);
-      }
-    }
+  @FunctionalInterface
+  private interface ColumnNumericReader {
+    double read(Column column, int index);
   }
 }

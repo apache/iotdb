@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wr
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
@@ -43,6 +42,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
@@ -177,49 +177,18 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void writeDataPoint(
       long timestamp, TsPrimitiveType value, IChunkWriter chunkWriter, int subTaskId) {
-    long writtenPointTotalSize = 0;
+    long writtenPointTotalSize;
     if (chunkWriter instanceof ChunkWriterImpl) {
       ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
-      switch (chunkWriterImpl.getDataType()) {
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          chunkWriterImpl.write(timestamp, value.getBinary());
-          writtenPointTotalSize += value.getBinary().getLength();
-          break;
-        case DOUBLE:
-          chunkWriterImpl.write(timestamp, value.getDouble());
-          break;
-        case BOOLEAN:
-          chunkWriterImpl.write(timestamp, value.getBoolean());
-          break;
-        case INT64:
-        case TIMESTAMP:
-          chunkWriterImpl.write(timestamp, value.getLong());
-          break;
-        case INT32:
-        case DATE:
-          chunkWriterImpl.write(timestamp, value.getInt());
-          break;
-        case FLOAT:
-          chunkWriterImpl.write(timestamp, value.getFloat());
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              StorageEngineMessages.UNKNOWN_DATA_TYPE + chunkWriterImpl.getDataType());
-      }
+      Type.fromTsDataType(chunkWriterImpl.getDataType()).write(chunkWriterImpl, timestamp, value);
+      writtenPointTotalSize = Long.BYTES + estimateWrittenValueSize(value);
     } else {
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
       alignedChunkWriter.write(timestamp, value.getVector());
-      if (hasVariableLengthTypeArray[subTaskId]) {
-        writtenPointTotalSize = estimateWrittenPointTotalSize(value);
-      }
+      writtenPointTotalSize = estimateWrittenPointTotalSize(value);
     }
     chunkPointNumArray[subTaskId]++;
-    if (hasVariableLengthTypeArray[subTaskId]) {
-      writtenPointTotalSizeArray[subTaskId] += writtenPointTotalSize;
-    }
+    writtenPointTotalSizeArray[subTaskId] += writtenPointTotalSize;
   }
 
   private long estimateWrittenPointTotalSize(TsPrimitiveType value) {
@@ -229,30 +198,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       if (tsPrimitiveType == null) {
         continue;
       }
-      TSDataType dataType = tsPrimitiveType.getDataType();
-      switch (dataType) {
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          size += tsPrimitiveType.getBinary().getLength();
-          break;
-        case DOUBLE:
-        case INT64:
-        case TIMESTAMP:
-          size += Long.BYTES;
-          break;
-        case INT32:
-        case DATE:
-        case FLOAT:
-          size += Integer.BYTES;
-          break;
-        case BOOLEAN:
-          size += 1;
-          break;
-        default:
-          break;
-      }
+      size += estimateWrittenValueSize(tsPrimitiveType);
     }
     return size;
   }
@@ -263,35 +209,27 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     Column[] columns = tsBlock.getValueColumns();
     for (Column column : columns) {
       TSDataType dataType = column.getDataType();
+      Type type = Type.fromTsDataType(dataType);
       if (dataType.isBinary()) {
         for (int j = 0; j < pointCount; j++) {
           if (column.isNull(j)) {
             continue;
           }
-          size += column.getBinary(j).getLength();
+          // The checkpoint estimate historically excludes the binary length prefix.
+          size += type.calcTypeSize(type.getObject(column, j)) - Integer.BYTES;
         }
         continue;
       }
       // This is only used as a checkpoint estimate, so fixed-width values use count directly.
-      switch (dataType) {
-        case DOUBLE:
-        case INT64:
-        case TIMESTAMP:
-          size += (long) Long.BYTES * pointCount;
-          break;
-        case INT32:
-        case DATE:
-        case FLOAT:
-          size += (long) Integer.BYTES * pointCount;
-          break;
-        case BOOLEAN:
-          size += pointCount;
-          break;
-        default:
-          break;
-      }
+      size += type.estimateValueSize() * pointCount;
     }
     return size;
+  }
+
+  private long estimateWrittenValueSize(TsPrimitiveType value) {
+    int valueSize = Type.fromTsDataType(value.getDataType()).calcTypeSize(value);
+    // The checkpoint estimate historically excludes the binary length prefix.
+    return value.getDataType().isBinary() ? valueSize - Integer.BYTES : valueSize;
   }
 
   @SuppressWarnings("squid:S2445")

@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -29,6 +30,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -40,11 +42,15 @@ import java.nio.charset.StandardCharsets;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Utils.serializeTimeValueWithNull;
 
-public class LastAccumulator implements TableAccumulator {
+public class LastAccumulator implements TableAccumulator, TypeServices.LastValueUpdater {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LastAccumulator.class);
   protected final TSDataType seriesDataType;
+  protected final Type type;
+  private final TypeServices.PrimitiveColumnValueSetter valueSetter;
+  private final TypeServices.StatisticsValueSetter statisticsValueSetter;
+  private final TypeServices.LastValueDeserializer valueDeserializer;
   protected TsPrimitiveType lastValue;
   protected long maxTime = Long.MIN_VALUE;
   protected boolean initResult = false;
@@ -52,7 +58,11 @@ public class LastAccumulator implements TableAccumulator {
 
   public LastAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.lastValue = TsPrimitiveType.getByType(seriesDataType);
+    this.type = Type.fromTsDataType(seriesDataType);
+    this.lastValue = type.getTsPrimitiveType();
+    this.valueSetter = TypeServices.PRIMITIVE_COLUMN_VALUE_SETTER_SERVICE.call(type);
+    this.statisticsValueSetter = TypeServices.STATISTICS_VALUE_SETTER_SERVICE.call(type);
+    this.valueDeserializer = TypeServices.LAST_VALUE_DESERIALIZER_SERVICE.call(type);
   }
 
   public boolean hasInitResult() {
@@ -80,35 +90,7 @@ public class LastAccumulator implements TableAccumulator {
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
     // arguments[0] is value column, arguments[1] is time column
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(arguments[0], arguments[1], mask);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(arguments[0], arguments[1], mask);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], arguments[1], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], arguments[1], mask);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        addBinaryInput(arguments[0], arguments[1], mask);
-        return;
-      case BOOLEAN:
-        addBooleanInput(arguments[0], arguments[1], mask);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_LAST_ARG_37F52124, seriesDataType));
-    }
+    addInput(arguments[0], arguments[1], mask);
   }
 
   @Override
@@ -129,69 +111,7 @@ public class LastAccumulator implements TableAccumulator {
       long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
       boolean isOrderTimeNull = BytesUtils.bytesToBool(bytes, Long.BYTES);
       int offset = Long.BYTES + 1;
-
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          int intVal = BytesUtils.bytesToInt(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateIntLastValue(intVal, time);
-          } else {
-            updateIntNullTimeValue(intVal);
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long longVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          if (!isOrderTimeNull) {
-            updateLongLastValue(longVal, time);
-          } else {
-            updateLongNullTimeValue(longVal);
-          }
-          break;
-        case FLOAT:
-          float floatVal = BytesUtils.bytesToFloat(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateFloatLastValue(floatVal, time);
-          } else {
-            updateFloatNullTimeValue(floatVal);
-          }
-          break;
-        case DOUBLE:
-          double doubleVal = BytesUtils.bytesToDouble(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateDoubleLastValue(doubleVal, time);
-          } else {
-            updateDoubleNullTimeValue(doubleVal);
-          }
-          break;
-        case TEXT:
-        case BLOB:
-        case OBJECT:
-        case STRING:
-          int length = BytesUtils.bytesToInt(bytes, offset);
-          offset += Integer.BYTES;
-          Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-          if (!isOrderTimeNull) {
-            updateBinaryLastValue(binaryVal, time);
-          } else {
-            updateBinaryNullTimeValue(binaryVal);
-          }
-          break;
-        case BOOLEAN:
-          boolean boolVal = BytesUtils.bytesToBool(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateBooleanLastValue(boolVal, time);
-          } else {
-            updateBooleanNullTimeValue(boolVal);
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_LAST_AGGREGATION_ARG_2FCF5ADA,
-                  seriesDataType));
-      }
+      valueDeserializer.deserialize(bytes, offset, time, isOrderTimeNull, this);
     }
   }
 
@@ -222,41 +142,87 @@ public class LastAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(lastValue.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(lastValue.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(lastValue.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(lastValue.getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        columnBuilder.writeBinary(lastValue.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(lastValue.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_LAST_AGGREGATION_ARG_B3F2EE42,
-                seriesDataType));
-    }
+    type.write(columnBuilder, lastValue);
   }
 
   @Override
   public boolean hasFinalResult() {
     return false;
+  }
+
+  private void addInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int selectPositionCount = mask.getSelectedPositionCount();
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
+      }
+
+      if (!timeColumn.isNull(position)) {
+        if (checkAndUpdateLastTime(timeColumn.getLong(position))) {
+          valueSetter.set(lastValue, valueColumn, position);
+        }
+      } else if (checkAndUpdateNullTime()) {
+        valueSetter.set(lastValue, valueColumn, position);
+      }
+    }
+  }
+
+  @Override
+  public void updateInt(int value, long time, boolean isOrderTimeNull) {
+    if (isOrderTimeNull) {
+      updateIntNullTimeValue(value);
+    } else {
+      updateIntLastValue(value, time);
+    }
+  }
+
+  @Override
+  public void updateLong(long value, long time, boolean isOrderTimeNull) {
+    if (isOrderTimeNull) {
+      updateLongNullTimeValue(value);
+    } else {
+      updateLongLastValue(value, time);
+    }
+  }
+
+  @Override
+  public void updateFloat(float value, long time, boolean isOrderTimeNull) {
+    if (isOrderTimeNull) {
+      updateFloatNullTimeValue(value);
+    } else {
+      updateFloatLastValue(value, time);
+    }
+  }
+
+  @Override
+  public void updateDouble(double value, long time, boolean isOrderTimeNull) {
+    if (isOrderTimeNull) {
+      updateDoubleNullTimeValue(value);
+    } else {
+      updateDoubleLastValue(value, time);
+    }
+  }
+
+  @Override
+  public void updateBinary(Binary value, long time, boolean isOrderTimeNull) {
+    if (isOrderTimeNull) {
+      updateBinaryNullTimeValue(value);
+    } else {
+      updateBinaryLastValue(value, time);
+    }
+  }
+
+  @Override
+  public void updateBoolean(boolean value, long time, boolean isOrderTimeNull) {
+    if (isOrderTimeNull) {
+      updateBooleanNullTimeValue(value);
+    } else {
+      updateBooleanLastValue(value, time);
+    }
   }
 
   @Override
@@ -265,54 +231,22 @@ public class LastAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntLastValue(
-            ((Number) statistics[0].getLastValue()).intValue(), statistics[0].getEndTime());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongLastValue(
-            ((Number) statistics[0].getLastValue()).longValue(), statistics[0].getEndTime());
-        break;
-      case FLOAT:
-        updateFloatLastValue(
-            ((Number) statistics[0].getLastValue()).floatValue(), statistics[0].getEndTime());
-        break;
-      case DOUBLE:
-        updateDoubleLastValue(
-            ((Number) statistics[0].getLastValue()).doubleValue(), statistics[0].getEndTime());
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        if (statistics[0] instanceof DateStatistics) {
-          updateBinaryLastValue(
-              new Binary(
-                  TSDataType.getDateStringValue((Integer) statistics[0].getLastValue()),
-                  StandardCharsets.UTF_8),
-              statistics[0].getEndTime());
-        } else {
-          if (statistics[0].getLastValue() instanceof Binary) {
-            updateBinaryLastValue(
-                (Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
-          } else {
-            updateBinaryLastValue(
-                new Binary(String.valueOf(statistics[0].getLastValue()), StandardCharsets.UTF_8),
-                statistics[0].getEndTime());
-          }
-        }
-        break;
-      case BOOLEAN:
-        updateBooleanLastValue((boolean) statistics[0].getLastValue(), statistics[0].getEndTime());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_LAST_AGGREGATION_ARG_2FCF5ADA,
-                seriesDataType));
+    Object value = statistics[0].getLastValue();
+    if (statistics[0] instanceof DateStatistics
+        && (seriesDataType == TSDataType.TEXT
+            || seriesDataType == TSDataType.STRING
+            || seriesDataType == TSDataType.BLOB
+            || seriesDataType == TSDataType.OBJECT)) {
+      value = new Binary(TSDataType.getDateStringValue((Integer) value), StandardCharsets.UTF_8);
+    }
+    if (checkAndUpdateLastTime(statistics[0].getEndTime())) {
+      statisticsValueSetter.set(
+          lastValue,
+          value,
+          () ->
+              new UnSupportedDataTypeException(
+                  String.format(
+                      CalcMessages.UNSUPPORTED_DATA_TYPE_IN_LAST_AGGREGATION, seriesDataType)));
     }
   }
 

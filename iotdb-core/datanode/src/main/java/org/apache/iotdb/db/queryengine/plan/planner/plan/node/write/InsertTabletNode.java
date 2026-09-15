@@ -46,6 +46,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.BitMapUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -53,13 +54,11 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -80,7 +79,6 @@ import static org.apache.iotdb.db.utils.CommonUtils.getTTLLowerBound;
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
-  private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   protected long[] times; // times should be sorted. It is done in the session API.
 
@@ -420,31 +418,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           || forSplit && !hasColumnForSplit(i)) {
         continue;
       }
-      switch (dataTypes[i]) {
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          values[i] = new Binary[rowSize];
-          break;
-        case FLOAT:
-          values[i] = new float[rowSize];
-          break;
-        case INT32:
-        case DATE:
-          values[i] = new int[rowSize];
-          break;
-        case TIMESTAMP:
-        case INT64:
-          values[i] = new long[rowSize];
-          break;
-        case DOUBLE:
-          values[i] = new double[rowSize];
-          break;
-        case BOOLEAN:
-          values[i] = new boolean[rowSize];
-          break;
-      }
+      values[i] =
+          TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+              .call(Type.fromTsDataType(dataTypes[i]))
+              .apply(rowSize);
     }
     return values;
   }
@@ -631,26 +608,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private int serializedColumnSize(final TSDataType dataType, final Object column) {
-    return switch (dataType) {
-      case BOOLEAN -> rowCount * Byte.BYTES;
-      case INT32, DATE -> rowCount * Integer.BYTES;
-      case INT64, TIMESTAMP -> rowCount * Long.BYTES;
-      case FLOAT -> rowCount * Float.BYTES;
-      case DOUBLE -> rowCount * Double.BYTES;
-      case TEXT, BLOB, STRING, OBJECT -> serializedBinaryColumnSize((Binary[]) column);
-      case VECTOR, UNKNOWN ->
-          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
-    };
-  }
-
-  private int serializedBinaryColumnSize(final Binary[] binaryValues) {
-    int size = 0;
-    for (int i = 0; i < rowCount; i++) {
-      final Binary binary = binaryValues[i];
-      final byte[] values = binary == null ? null : binary.getValues();
-      size += values == null ? Integer.BYTES : Integer.BYTES + values.length;
-    }
-    return size;
+    return TypeServices.StorageEngine.INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .size(column, rowCount);
   }
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */
@@ -792,108 +752,16 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void serializeColumn(TSDataType dataType, Object column, ByteBuffer buffer) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(intValues[j], buffer);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(longValues[j], buffer);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(floatValues[j], buffer);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(doubleValues[j], buffer);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), buffer);
-        }
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
-            ReadWriteIOUtils.write(binaryValues[j], buffer);
-          } else {
-            ReadWriteIOUtils.write(0, buffer);
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
-    }
+    TypeServices.StorageEngine.RAW_ARRAY_BYTE_BUFFER_SERIALIZER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .serialize(column, rowCount, buffer);
   }
 
   private void serializeColumn(TSDataType dataType, Object column, DataOutputStream stream)
       throws IOException {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(intValues[j], stream);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(longValues[j], stream);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(floatValues[j], stream);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(doubleValues[j], stream);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
-        }
-        break;
-      case STRING:
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
-            ReadWriteIOUtils.write(binaryValues[j], stream);
-          } else {
-            ReadWriteIOUtils.write(0, stream);
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
-    }
+    TypeServices.StorageEngine.RAW_ARRAY_OUTPUT_STREAM_SERIALIZER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .serialize(column, rowCount, stream);
   }
 
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
@@ -1032,36 +900,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private int getColumnSize(TSDataType dataType, Object column, int start, int end) {
-    int size = 0;
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        size += Integer.BYTES * (end - start);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        size += Long.BYTES * (end - start);
-        break;
-      case FLOAT:
-        size += Float.BYTES * (end - start);
-        break;
-      case DOUBLE:
-        size += Double.BYTES * (end - start);
-        break;
-      case BOOLEAN:
-        size += Byte.BYTES * (end - start);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = start; j < end; j++) {
-          size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
-        }
-        break;
-    }
-    return size;
+    return TypeServices.StorageEngine.INSERT_TABLET_SERIALIZED_COLUMN_SIZE_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .size(column, start, end);
   }
 
   /**
@@ -1235,57 +1076,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void serializeColumn(
-      TSDataType dataType, Object column, IWALByteBufferView buffer, int start, int end) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.putInt(intValues[j]);
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.putLong(longValues[j]);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.putFloat(floatValues[j]);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.putDouble(doubleValues[j]);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) column;
-        for (int j = start; j < end; j++) {
-          buffer.put(BytesUtils.boolToByte(boolValues[j]));
-        }
-        break;
-      case STRING:
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = start; j < end; j++) {
-          if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
-            buffer.putInt(binaryValues[j].getLength());
-            buffer.put(binaryValues[j].getValues());
-          } else {
-            buffer.putInt(0);
-          }
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
-    }
+      TSDataType dataType, Object array, IWALByteBufferView buffer, int start, int end) {
+    TypeServices.StorageEngine.WAL_ARRAY_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(array, buffer, start, end);
   }
 
   /** Deserialize from wal */
@@ -1408,44 +1202,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < columns.length; i++) {
       final TSDataType dataType = getDataType(i);
       if (dataType != null) {
-        switch (dataType) {
-          case INT32:
-          case DATE:
-            if (!Arrays.equals((int[]) this.columns[i], (int[]) columns[i])) {
-              return false;
-            }
-            break;
-          case INT64:
-          case TIMESTAMP:
-            if (!Arrays.equals((long[]) this.columns[i], (long[]) columns[i])) {
-              return false;
-            }
-            break;
-          case FLOAT:
-            if (!Arrays.equals((float[]) this.columns[i], (float[]) columns[i])) {
-              return false;
-            }
-            break;
-          case DOUBLE:
-            if (!Arrays.equals((double[]) this.columns[i], (double[]) columns[i])) {
-              return false;
-            }
-            break;
-          case BOOLEAN:
-            if (!Arrays.equals((boolean[]) this.columns[i], (boolean[]) columns[i])) {
-              return false;
-            }
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
-              return false;
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
+        if (!Type.fromTsDataType(dataType).arrayEquals(this.columns[i], columns[i], rowCount)) {
+          return false;
         }
       } else if (!Objects.equals(this.columns[i], columns[i])) {
         return false;
@@ -1537,43 +1295,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private TimeValuePair composeTimeValuePair(final int measurementIndex, final int rowIndex) {
-    TsPrimitiveType value;
-    switch (dataTypes[measurementIndex]) {
-      case INT32:
-      case DATE:
-        int[] intValues = (int[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsInt(intValues[rowIndex]);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsLong(longValues[rowIndex]);
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsFloat(floatValues[rowIndex]);
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsDouble(doubleValues[rowIndex]);
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBoolean(boolValues[rowIndex]);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        Binary[] binaryValues = (Binary[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBinary(binaryValues[rowIndex]);
-        break;
-      case OBJECT:
-        return null;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
+    final TSDataType dataType = dataTypes[measurementIndex];
+    if (dataType == TSDataType.OBJECT) {
+      return null;
     }
-    return new TimeValuePair(times[rowIndex], value);
+    return new TimeValuePair(
+        times[rowIndex],
+        Type.fromTsDataType(dataType)
+            .getValueAsTsPrimitiveType(columns[measurementIndex], rowIndex));
   }
 
   public IDeviceID getDeviceID(int rowIdx) {

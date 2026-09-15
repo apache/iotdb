@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.multi;
 
-import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
 
 import java.util.List;
 
@@ -60,52 +59,12 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
 
   public static ColumnTransformer getGreatestColumnTransformer(
       Type type, List<ColumnTransformer> columnTransformers) {
-    TypeEnum typeEnum = type.getTypeEnum();
-    switch (typeEnum) {
-      case BOOLEAN:
-        return new BooleanGreatestColumnTransformer(type, columnTransformers);
-      case INT32:
-      case DATE:
-        return new Int32GreatestColumnTransformer(type, columnTransformers);
-      case INT64:
-      case TIMESTAMP:
-        return new Int64GreatestColumnTransformer(type, columnTransformers);
-      case FLOAT:
-        return new FloatGreatestColumnTransformer(type, columnTransformers);
-      case DOUBLE:
-        return new DoubleGreatestColumnTransformer(type, columnTransformers);
-      case STRING:
-      case TEXT:
-        return new BinaryGreatestColumnTransformer(type, columnTransformers);
-      default:
-        throw new UnsupportedOperationException(
-            String.format(CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E, typeEnum));
-    }
+    return TypeServices.GREATEST_COLUMN_TRANSFORMER_SERVICE.call(type).apply(columnTransformers);
   }
 
   public static ColumnTransformer getLeastColumnTransformer(
       Type type, List<ColumnTransformer> columnTransformers) {
-    TypeEnum typeEnum = type.getTypeEnum();
-    switch (typeEnum) {
-      case BOOLEAN:
-        return new BooleanLeastColumnTransformer(type, columnTransformers);
-      case INT32:
-      case DATE:
-        return new Int32LeastColumnTransformer(type, columnTransformers);
-      case INT64:
-      case TIMESTAMP:
-        return new Int64LeastColumnTransformer(type, columnTransformers);
-      case FLOAT:
-        return new FloatLeastColumnTransformer(type, columnTransformers);
-      case DOUBLE:
-        return new DoubleLeastColumnTransformer(type, columnTransformers);
-      case STRING:
-      case TEXT:
-        return new BinaryLeastColumnTransformer(type, columnTransformers);
-      default:
-        throw new UnsupportedOperationException(
-            String.format(CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E, typeEnum));
-    }
+    return TypeServices.LEAST_COLUMN_TRANSFORMER_SERVICE.call(type).apply(columnTransformers);
   }
 
   @Override

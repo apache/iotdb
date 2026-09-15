@@ -27,6 +27,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
@@ -37,6 +38,7 @@ import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -701,6 +703,12 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
 
     List<TSDataType> dataTypes = alignedWorkingListForFlush.getTsDataTypes();
+    List<TypeServices.AlignedTVListChunkWriter> valueWriters = new ArrayList<>(dataTypes.size());
+    for (TSDataType dataType : dataTypes) {
+      valueWriters.add(
+          TypeServices.StorageEngine.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
+              Type.fromTsDataType(dataType)));
+    }
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {
       AlignedChunkWriterImpl alignedChunkWriter =
@@ -712,7 +720,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
               && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
             lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
           }
-          TSDataType tsDataType = dataTypes.get(columnIndex);
+          TypeServices.AlignedTVListChunkWriter valueWriter = valueWriters.get(columnIndex);
+          ValueChunkWriter valueChunkWriter =
+              alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
           for (int sortedRowIndex = pageRange.get(pageNum * 2);
               sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
               sortedRowIndex++) {
@@ -754,68 +764,13 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             }
 
             boolean isNull = alignedWorkingListForFlush.isNullValue(originRowIndex, columnIndex);
-            switch (tsDataType) {
-              case BOOLEAN:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    !isNull
-                        && alignedWorkingListForFlush.getBooleanByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case INT32:
-              case DATE:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getIntByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case INT64:
-              case TIMESTAMP:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getLongByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case FLOAT:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getFloatByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case DOUBLE:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getDoubleByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              case TEXT:
-              case STRING:
-              case BLOB:
-              case OBJECT:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? null
-                        : alignedWorkingListForFlush.getBinaryByValueIndex(
-                            originRowIndex, columnIndex),
-                    isNull);
-                break;
-              default:
-                break;
-            }
+            valueWriter.write(
+                valueChunkWriter,
+                time,
+                alignedWorkingListForFlush,
+                originRowIndex,
+                columnIndex,
+                isNull);
           }
           alignedChunkWriter.nextColumn();
         }
@@ -948,35 +903,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       Object valueArray,
       int elementIndex,
       boolean isNull) {
-    switch (dataType) {
-      case BOOLEAN ->
-          valueChunkWriter.write(
-              time,
-              !isNull && valueArray != null && ((boolean[]) valueArray)[elementIndex],
-              isNull);
-      case INT32, DATE ->
-          valueChunkWriter.write(
-              time, isNull || valueArray == null ? 0 : ((int[]) valueArray)[elementIndex], isNull);
-      case INT64, TIMESTAMP ->
-          valueChunkWriter.write(
-              time, isNull || valueArray == null ? 0 : ((long[]) valueArray)[elementIndex], isNull);
-      case FLOAT ->
-          valueChunkWriter.write(
-              time,
-              isNull || valueArray == null ? 0 : ((float[]) valueArray)[elementIndex],
-              isNull);
-      case DOUBLE ->
-          valueChunkWriter.write(
-              time,
-              isNull || valueArray == null ? 0 : ((double[]) valueArray)[elementIndex],
-              isNull);
-      case TEXT, STRING, BLOB, OBJECT ->
-          valueChunkWriter.write(
-              time,
-              isNull || valueArray == null ? null : ((Binary[]) valueArray)[elementIndex],
-              isNull);
-      case VECTOR, UNKNOWN -> throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
-    }
+    TypeServices.StorageEngine.VALUE_CHUNK_ARRAY_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(valueChunkWriter, time, valueArray, elementIndex, isNull);
   }
 
   private void writeValuesFromArray(
@@ -987,27 +916,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       boolean[] nulls,
       int arrayOffset,
       int pointsInSegment) {
-    switch (dataType) {
-      case BOOLEAN ->
-          valueChunkWriter.write(
-              timestamps, (boolean[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case INT32, DATE ->
-          valueChunkWriter.write(
-              timestamps, (int[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case INT64, TIMESTAMP ->
-          valueChunkWriter.write(
-              timestamps, (long[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case FLOAT ->
-          valueChunkWriter.write(
-              timestamps, (float[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case DOUBLE ->
-          valueChunkWriter.write(
-              timestamps, (double[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case TEXT, STRING, BLOB, OBJECT ->
-          valueChunkWriter.write(
-              timestamps, (Binary[]) valueArray, nulls, pointsInSegment, arrayOffset);
-      case VECTOR, UNKNOWN -> throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
-    }
+    TypeServices.StorageEngine.VALUE_CHUNK_ARRAY_BATCH_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(valueChunkWriter, timestamps, valueArray, nulls, arrayOffset, pointsInSegment);
   }
 
   private void writeValuesFromArray(
@@ -1018,71 +929,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       BitMap bitMap,
       int arrayOffset,
       int pointsInSegment) {
-    // Keep null detection in the bitmap so the page writer can skip encoding and statistics
-    // updates without materializing a temporary boolean array.
-    switch (dataType) {
-      case BOOLEAN ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (boolean[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case INT32, DATE ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (int[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case INT64, TIMESTAMP ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (long[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case FLOAT ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (float[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case DOUBLE ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (double[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case TEXT, STRING, BLOB, OBJECT ->
-          valueChunkWriter
-              .getPageWriter()
-              .write(
-                  timestamps,
-                  (Binary[]) valueArray,
-                  bitMap,
-                  arrayOffset,
-                  pointsInSegment,
-                  arrayOffset);
-      case VECTOR, UNKNOWN -> throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
-    }
+    TypeServices.StorageEngine.VALUE_CHUNK_ARRAY_BITMAP_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(valueChunkWriter, timestamps, valueArray, bitMap, arrayOffset, pointsInSegment);
   }
 
   private void handleEncodingWithDeletedMeasurements(
@@ -1107,6 +956,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
           }
           TSDataType tsDataType = activeSchemaList.get(columnIndex).getType();
+          TypeServices.AlignedTVListColumnWriter columnWriter =
+              TypeServices.StorageEngine.ALIGNED_TV_LIST_COLUMN_WRITER_SERVICE.call(
+                  Type.fromTsDataType(tsDataType));
           for (int sortedRowIndex = pageRange.get(pageNum * 2);
               sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
               sortedRowIndex++) {
@@ -1153,68 +1005,13 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             boolean isNull =
                 tvListColumnIndex < 0
                     || alignedWorkingListForFlush.isNullValue(originRowIndex, tvListColumnIndex);
-            switch (tsDataType) {
-              case BOOLEAN:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    !isNull
-                        && alignedWorkingListForFlush.getBooleanByValueIndex(
-                            originRowIndex, tvListColumnIndex),
-                    isNull);
-                break;
-              case INT32:
-              case DATE:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getIntByValueIndex(
-                            originRowIndex, tvListColumnIndex),
-                    isNull);
-                break;
-              case INT64:
-              case TIMESTAMP:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getLongByValueIndex(
-                            originRowIndex, tvListColumnIndex),
-                    isNull);
-                break;
-              case FLOAT:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getFloatByValueIndex(
-                            originRowIndex, tvListColumnIndex),
-                    isNull);
-                break;
-              case DOUBLE:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? 0
-                        : alignedWorkingListForFlush.getDoubleByValueIndex(
-                            originRowIndex, tvListColumnIndex),
-                    isNull);
-                break;
-              case TEXT:
-              case STRING:
-              case BLOB:
-              case OBJECT:
-                alignedChunkWriter.writeByColumn(
-                    time,
-                    isNull
-                        ? null
-                        : alignedWorkingListForFlush.getBinaryByValueIndex(
-                            originRowIndex, tvListColumnIndex),
-                    isNull);
-                break;
-              default:
-                break;
-            }
+            columnWriter.write(
+                alignedChunkWriter,
+                time,
+                alignedWorkingListForFlush,
+                originRowIndex,
+                tvListColumnIndex,
+                isNull);
           }
           alignedChunkWriter.nextColumn();
         }

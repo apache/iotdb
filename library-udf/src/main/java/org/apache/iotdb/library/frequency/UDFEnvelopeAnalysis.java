@@ -20,6 +20,8 @@
 package org.apache.iotdb.library.frequency;
 
 import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+import org.apache.iotdb.library.util.NoNumberException;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -46,6 +48,7 @@ public class UDFEnvelopeAnalysis implements UDTF {
   private String timestampPrecision;
   private final DoubleArrayList signals = new DoubleArrayList();
   private final LongArrayList timestamps = new LongArrayList();
+  private TypeServices.NumericRowReader valueReader;
   private static final String TIMESTAMP_PRECISION = "timestampPrecision";
   private static final String FREQUENCY = "frequency";
   private static final String AMPLIFICATION = "amplification";
@@ -60,11 +63,12 @@ public class UDFEnvelopeAnalysis implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
             x -> (double) x > 0,
-            "The param 'frequency' must > 0.",
+            LibraryUdfMessages.EXCEPTION_THE_PARAM_FREQUENCY_MUST_BE_GREATER_THAN_0_45820CF9,
             validator.getParameters().getDoubleOrDefault(FREQUENCY, Double.MAX_VALUE))
         .validate(
             x -> (int) x >= 1,
-            "The param 'amplification' must >= 1.",
+            LibraryUdfMessages
+                .EXCEPTION_THE_PARAM_AMPLIFICATION_MUST_BE_GREATER_THAN_OR_EQUAL_TO_1_D64050EB,
             validator.getParameters().getIntOrDefault(AMPLIFICATION, 1));
   }
 
@@ -75,11 +79,14 @@ public class UDFEnvelopeAnalysis implements UDTF {
     frequency = parameters.getDoubleOrDefault(FREQUENCY, Double.MAX_VALUE);
     amplification = parameters.getIntOrDefault(AMPLIFICATION, 1);
     timestampPrecision = parameters.getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
+    valueReader =
+        TypeServices.NUMERIC_ROW_READER_SERVICE.call(
+            TypeServices.toReadType(parameters.getDataType(0)));
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    signals.add(getValueAsDouble(row, 0));
+    signals.add(valueReader.read(row));
     if (timestamps.size() < 10) {
       timestamps.add(row.getTime());
     }
@@ -213,32 +220,14 @@ public class UDFEnvelopeAnalysis implements UDTF {
   }
 
   public double getValueAsDouble(Row row, int index) throws IOException {
-    double ans;
-    switch (row.getDataType(index)) {
-      case INT32:
-        ans = row.getInt(index);
-        break;
-      case INT64:
-        ans = row.getLong(index);
-        break;
-      case FLOAT:
-        ans = row.getFloat(index);
-        break;
-      case DOUBLE:
-        ans = row.getDouble(index);
-        break;
-      case TEXT:
-      case STRING:
-      case BOOLEAN:
-      case BLOB:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UDFOutputSeriesDataTypeNotValidException(
-            index,
-            LibraryUdfMessages.EXCEPTION_FAIL_TO_GET_DATA_TYPE_IN_ROW_8CD82629 + row.getTime());
+    try {
+      return TypeServices.NUMERIC_ROW_READER_SERVICE
+          .call(TypeServices.toReadType(row.getDataType(index)))
+          .read(row);
+    } catch (NoNumberException e) {
+      throw new UDFOutputSeriesDataTypeNotValidException(
+          index, LibraryUdfMessages.FAIL_TO_GET_DATA_TYPE_IN_ROW + row.getTime());
     }
-    return ans;
   }
 
   public static double calculateFrequencyByTimeUnit(long time, String timeUnit) {

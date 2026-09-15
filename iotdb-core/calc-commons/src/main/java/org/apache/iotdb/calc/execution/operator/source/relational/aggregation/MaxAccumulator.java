@@ -20,18 +20,19 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.nio.charset.StandardCharsets;
+import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -39,12 +40,18 @@ public class MaxAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MaxAccumulator.class);
   private final TSDataType seriesDataType;
+  private final Type type;
+  private final TypeServices.ColumnValueUpdater valueUpdater;
+  private final TypeServices.StatisticsValueUpdater statisticsValueUpdater;
   private final TsPrimitiveType maxResult;
   private boolean initResult;
 
   public MaxAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.maxResult = TsPrimitiveType.getByType(seriesDataType);
+    this.type = Type.fromTsDataType(seriesDataType);
+    this.maxResult = type.getTsPrimitiveType();
+    this.valueUpdater = TypeServices.MAX_COLUMN_VALUE_UPDATER_SERVICE.call(type);
+    this.statisticsValueUpdater = TypeServices.MAX_STATISTICS_VALUE_UPDATER_SERVICE.call(type);
   }
 
   @Override
@@ -63,35 +70,7 @@ public class MaxAccumulator implements TableAccumulator {
         arguments.length == 1,
         CalcMessages.EXCEPTION_ARGUMENT_OF_MAX_SHOULD_BE_ONE_COLUMN_FC251F55);
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(arguments[0], mask);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(arguments[0], mask);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], mask);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-        addBinaryInput(arguments[0], mask);
-        return;
-      case BOOLEAN:
-        addBooleanInput(arguments[0], mask);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
-                seriesDataType));
-    }
+    addInput(arguments[0], mask);
   }
 
   @Override
@@ -101,34 +80,8 @@ public class MaxAccumulator implements TableAccumulator {
         continue;
       }
 
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          updateIntMaxValue(argument.getInt(i));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          updateLongMaxValue(argument.getLong(i));
-          break;
-        case FLOAT:
-          updateFloatMaxValue(argument.getFloat(i));
-          break;
-        case DOUBLE:
-          updateDoubleMaxValue(argument.getDouble(i));
-          break;
-        case STRING:
-        case TEXT:
-        case BLOB:
-          updateBinaryMaxValue(argument.getBinary(i));
-          break;
-        case BOOLEAN:
-          updateBooleanMaxValue(argument.getBoolean(i));
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
-                  seriesDataType));
+      if (valueUpdater.update(maxResult, argument, i, initResult)) {
+        initResult = true;
       }
     }
   }
@@ -140,35 +93,7 @@ public class MaxAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(maxResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(maxResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(maxResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(maxResult.getDouble());
-        break;
-      case STRING:
-      case TEXT:
-      case BLOB:
-        columnBuilder.writeBinary(maxResult.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(maxResult.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
-                seriesDataType));
-    }
+    type.write(columnBuilder, maxResult);
   }
 
   @Override
@@ -177,35 +102,7 @@ public class MaxAccumulator implements TableAccumulator {
       columnBuilder.appendNull();
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(maxResult.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(maxResult.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(maxResult.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(maxResult.getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        columnBuilder.writeBinary(maxResult.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(maxResult.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
-                seriesDataType));
-    }
+    type.write(columnBuilder, maxResult);
   }
 
   @Override
@@ -218,43 +115,14 @@ public class MaxAccumulator implements TableAccumulator {
     if (statistics == null || statistics[0] == null) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntMaxValue(((Number) statistics[0].getMaxValue()).intValue());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongMaxValue(((Number) statistics[0].getMaxValue()).longValue());
-        break;
-      case FLOAT:
-        updateFloatMaxValue(((Number) statistics[0].getMaxValue()).floatValue());
-        break;
-      case DOUBLE:
-        updateDoubleMaxValue(((Number) statistics[0].getMaxValue()).doubleValue());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        if (statistics[0] instanceof BinaryStatistics) {
-          updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
-        } else {
-          if (statistics[0].getMaxValue() instanceof Binary) {
-            updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
-          } else {
-            updateBinaryMaxValue(
-                new Binary(String.valueOf(statistics[0].getMaxValue()), StandardCharsets.UTF_8));
-          }
-        }
-        break;
-      case BOOLEAN:
-        updateBooleanMaxValue((boolean) statistics[0].getMaxValue());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
-                seriesDataType));
+    Supplier<RuntimeException> exceptionSupplier =
+        () ->
+            new UnSupportedDataTypeException(
+                String.format(
+                    CalcMessages.UNSUPPORTED_DATA_TYPE_IN_MAX_AGGREGATION, seriesDataType));
+    if (statisticsValueUpdater.update(
+        maxResult, statistics[0].getMaxValue(), initResult, exceptionSupplier)) {
+      initResult = true;
     }
   }
 
@@ -262,6 +130,26 @@ public class MaxAccumulator implements TableAccumulator {
   public void reset() {
     initResult = false;
     this.maxResult.reset();
+  }
+
+  private void addInput(Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i) && valueUpdater.update(maxResult, valueColumn, i, initResult)) {
+          initResult = true;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      for (int i = 0; i < positionCount; i++) {
+        int position = selectedPositions[i];
+        if (!valueColumn.isNull(position)
+            && valueUpdater.update(maxResult, valueColumn, position, initResult)) {
+          initResult = true;
+        }
+      }
+    }
   }
 
   private void addIntInput(Column valueColumn, AggregationMask mask) {

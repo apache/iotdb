@@ -91,6 +91,7 @@ public final class JdbcMessages {
 
   // IoTDBAbstractDatabaseMetadata
   public static final String NO_DATA_TYPE_MATCHED = "没有匹配的数据类型：{}";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E = "不支持的数据类型：%s";
   public static final String GET_READ_ONLY_ERROR = "获取只读模式错误：{}";
   public static final String CANNOT_GET_READ_ONLY_MODE = "无法获取只读模式";
   public static final String GET_SYSTEM_FUNCTIONS_ERROR = "获取系统函数错误：{}";

@@ -20,10 +20,12 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 
 public final class RateFunctionValidation {
 
@@ -44,28 +46,18 @@ public final class RateFunctionValidation {
 
   public static double readValue(
       Column column, int position, TSDataType valueDataType, RateFunctionType functionType) {
-    double value;
-    switch (valueDataType) {
-      case INT32:
-        value = column.getInt(position);
-        break;
-      case INT64:
-        value = column.getLong(position);
-        break;
-      case FLOAT:
-        value = column.getFloat(position);
-        break;
-      case DOUBLE:
-        value = column.getDouble(position);
-        break;
-      default:
-        throw new SemanticException(
-            String.format(
-                CalcMessages
-                    .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D,
-                functionType.getFunctionName(),
-                valueDataType));
-    }
+    double value =
+        TypeServices.AGGREGATION_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+            .call(Type.fromTsDataType(valueDataType))
+            .create(
+                () ->
+                    new SemanticException(
+                        String.format(
+                            CalcMessages
+                                .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D,
+                            functionType.getFunctionName(),
+                            valueDataType)))
+            .convert(column, position);
 
     if (!Double.isFinite(value)) {
       throw new SemanticException(

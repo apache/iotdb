@@ -33,6 +33,7 @@ import static org.apache.iotdb.rpc.stmt.PreparedParameterSerde.serialize;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /** Unit tests for {@link PreparedParameterSerde}. */
@@ -123,5 +124,16 @@ public class PreparedParameterSerdeTest {
     buffer.putInt(-1);
     buffer.flip();
     deserialize(buffer);
+  }
+
+  @Test
+  public void testUnsupportedType() {
+    ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES + Integer.BYTES);
+    buffer.putInt(1);
+    TSDataType.DATE.serializeTo(buffer);
+    buffer.putInt(20240801);
+    buffer.flip();
+
+    assertThrows(IllegalArgumentException.class, () -> deserialize(buffer));
   }
 }

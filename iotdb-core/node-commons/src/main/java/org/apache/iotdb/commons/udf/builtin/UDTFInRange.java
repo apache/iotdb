@@ -29,19 +29,18 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
 
 public class UDTFInRange implements UDTF {
-  protected TSDataType dataType;
   protected double upper;
   protected double lower;
+  private TypeServices.NumericRowReader rowReader;
+  private TypeServices.NumericColumnReader columnReader;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -62,46 +61,20 @@ public class UDTFInRange implements UDTF {
       throws MetadataException {
     upper = parameters.getDouble("upper");
     lower = parameters.getDouble("lower");
-    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    org.apache.tsfile.read.common.type.Type type =
+        UDFDataTypeTransformer.transformUDFDataTypeToReadType(parameters.getDataType(0));
+    rowReader = TypeServices.NUMERIC_ROW_READER_SERVICE.call(type);
+    columnReader = TypeServices.NUMERIC_COLUMN_READER_SERVICE.call(type);
     configurations
         .setAccessStrategy(new MappableRowByRowAccessStrategy())
         .setOutputDataType(Type.BOOLEAN);
   }
 
   @Override
-  public void transform(Row row, PointCollector collector)
-      throws UDFInputSeriesDataTypeNotValidException, IOException {
+  public void transform(Row row, PointCollector collector) throws IOException {
     long time = row.getTime();
-    switch (dataType) {
-      case INT32:
-        collector.putBoolean(time, row.getInt(0) >= lower && upper >= row.getInt(0));
-        break;
-      case INT64:
-        collector.putBoolean(time, row.getLong(0) >= lower && upper >= row.getLong(0));
-        break;
-      case FLOAT:
-        collector.putBoolean(time, row.getFloat(0) >= lower && upper >= row.getFloat(0));
-        break;
-      case DOUBLE:
-        collector.putBoolean(time, row.getDouble(0) >= lower && upper >= row.getDouble(0));
-        break;
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      case DATE:
-      case STRING:
-      case TIMESTAMP:
-      case BOOLEAN:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    double value = rowReader.read(row);
+    collector.putBoolean(time, value >= lower && upper >= value);
   }
 
   @Override
@@ -109,124 +82,21 @@ public class UDTFInRange implements UDTF {
     if (row.isNull(0)) {
       return null;
     }
-    switch (dataType) {
-      case INT32:
-        return row.getInt(0) >= lower && upper >= row.getInt(0);
-      case INT64:
-        return row.getLong(0) >= lower && upper >= row.getLong(0);
-      case FLOAT:
-        return row.getFloat(0) >= lower && upper >= row.getFloat(0);
-      case DOUBLE:
-        return row.getDouble(0) >= lower && upper >= row.getDouble(0);
-      case TIMESTAMP:
-      case BOOLEAN:
-      case DATE:
-      case STRING:
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    double value = rowReader.read(row);
+    return value >= lower && upper >= value;
   }
 
   @Override
   public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
-    switch (dataType) {
-      case INT32:
-        transformInt(columns, builder);
-        return;
-      case INT64:
-        transformLong(columns, builder);
-        return;
-      case FLOAT:
-        transformFloat(columns, builder);
-        return;
-      case DOUBLE:
-        transformDouble(columns, builder);
-        return;
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      case DATE:
-      case STRING:
-      case BOOLEAN:
-      case TIMESTAMP:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
-  }
-
-  private void transformInt(Column[] columns, ColumnBuilder builder) {
-    int[] inputs = columns[0].getInts();
-    boolean[] isNulls = columns[0].isNull();
-
-    int count = columns[0].getPositionCount();
+    Column column = columns[0];
+    boolean[] isNulls = column.isNull();
+    int count = column.getPositionCount();
     for (int i = 0; i < count; i++) {
       if (isNulls[i]) {
         builder.appendNull();
       } else {
-        boolean res = inputs[i] >= lower && upper >= inputs[i];
-        builder.writeBoolean(res);
-      }
-    }
-  }
-
-  private void transformLong(Column[] columns, ColumnBuilder builder) {
-    long[] inputs = columns[0].getLongs();
-    boolean[] isNulls = columns[0].isNull();
-
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (isNulls[i]) {
-        builder.appendNull();
-      } else {
-        boolean res = inputs[i] >= lower && upper >= inputs[i];
-        builder.writeBoolean(res);
-      }
-    }
-  }
-
-  private void transformFloat(Column[] columns, ColumnBuilder builder) {
-    float[] inputs = columns[0].getFloats();
-    boolean[] isNulls = columns[0].isNull();
-
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (isNulls[i]) {
-        builder.appendNull();
-      } else {
-        boolean res = inputs[i] >= lower && upper >= inputs[i];
-        builder.writeBoolean(res);
-      }
-    }
-  }
-
-  private void transformDouble(Column[] columns, ColumnBuilder builder) {
-    double[] inputs = columns[0].getDoubles();
-    boolean[] isNulls = columns[0].isNull();
-
-    int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (isNulls[i]) {
-        builder.appendNull();
-      } else {
-        boolean res = inputs[i] >= lower && upper >= inputs[i];
-        builder.writeBoolean(res);
+        double value = columnReader.read(column, i);
+        builder.writeBoolean(value >= lower && upper >= value);
       }
     }
   }

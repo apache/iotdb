@@ -20,8 +20,8 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.IPointReader;
-import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 
@@ -66,12 +66,14 @@ public class AscFakedSeriesReader implements IPointReader {
   @Override
   public TimeValuePair nextTimeValuePair() {
     if (initWithTimeList) {
-      return new TimeValuePair(timestamps[index++], TsPrimitiveType.getByType(DATA_TYPE, value));
+      return new TimeValuePair(
+          timestamps[index++], Type.fromTsDataType(DATA_TYPE).getTsPrimitiveType(value));
     } else {
       long time = startTime;
       startTime += interval;
       index++;
-      return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, time % modValue));
+      return new TimeValuePair(
+          time, Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(time % modValue));
     }
   }
 

@@ -48,6 +48,22 @@ import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 public class AlignedTVListTest {
 
   @Test
+  public void testExtendColumnRetainsImplicitNullsOnFirstWrite() {
+    AlignedTVList list =
+        AlignedTVList.newAlignedList(new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+    list.putAlignedValue(0, new Object[] {null});
+    list.putAlignedValue(1, new Object[] {1L});
+    list.extendColumn(TSDataType.INT32);
+    Assert.assertNull(list.getValues().get(1).get(0));
+    list.putAlignedValue(2, new Object[] {2L, 7});
+    Assert.assertTrue(list.isNullValue(0, 0));
+    Assert.assertTrue(list.isNullValue(0, 1));
+    Assert.assertTrue(list.isNullValue(1, 1));
+    Assert.assertEquals(7, list.getIntByValueIndex(2, 1));
+    list.clear();
+  }
+
+  @Test
   public void testValueListArrayMemCostExcludesLazyBitmapAndNullPlaceholder() {
     long expected = (long) ARRAY_SIZE * Long.BYTES + NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF;
 
@@ -513,6 +529,7 @@ public class AlignedTVListTest {
 
   @Test
   public void testNullPrimitiveArrayCanBeClonedAndSerialized() throws IOException {
+    // Entirely null blocks must remain lazy during cloning and retain WAL placeholders.
     AlignedTVList tvList =
         AlignedTVList.newAlignedList(Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     for (int i = 0; i <= ARRAY_SIZE; i++) {
@@ -530,6 +547,7 @@ public class AlignedTVListTest {
     WALByteBufferForTest walBuffer =
         new WALByteBufferForTest(ByteBuffer.allocate(tvList.serializedSize()));
     tvList.serializeToWAL(walBuffer);
+    Assert.assertEquals(tvList.serializedSize(), walBuffer.getBuffer().position());
     AlignedTVList deserializedTvList =
         AlignedTVList.deserialize(
             new DataInputStream(new ByteArrayInputStream(walBuffer.getBuffer().array())));
@@ -538,6 +556,53 @@ public class AlignedTVListTest {
     Assert.assertEquals("[null, null]", deserializedTvList.getAlignedValue(0).toString());
     Assert.assertEquals(
         "[value, 1]", deserializedTvList.getAlignedValue(ARRAY_SIZE + 1).toString());
+  }
+
+  @Test
+  public void testNullBlocksSerializeForAllScalarTypes() throws IOException {
+    // Cover every WAL scalar writer with an unmaterialized block and a later real value.
+    List<TSDataType> dataTypes =
+        Arrays.asList(
+            TSDataType.BOOLEAN,
+            TSDataType.INT32,
+            TSDataType.DATE,
+            TSDataType.INT64,
+            TSDataType.TIMESTAMP,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.TEXT,
+            TSDataType.STRING,
+            TSDataType.BLOB,
+            TSDataType.OBJECT);
+    Binary binary = new Binary("value", TSFileConfig.STRING_CHARSET);
+    Object[] rowValues = {true, 7, 20260908, 9L, 10L, 1.25F, 2.5D, binary, binary, binary, binary};
+    AlignedTVList list = AlignedTVList.newAlignedList(dataTypes);
+    for (int row = 0; row <= ARRAY_SIZE; row++) {
+      list.putAlignedValue(row, new Object[dataTypes.size()]);
+    }
+    list.putAlignedValue(ARRAY_SIZE + 1L, rowValues);
+    AlignedTVList cloned = list.clone();
+    for (int column = 0; column < dataTypes.size(); column++) {
+      Assert.assertNull(cloned.getValues().get(column).get(0));
+    }
+
+    WALByteBufferForTest buffer =
+        new WALByteBufferForTest(ByteBuffer.allocate(list.serializedSize()));
+    list.serializeToWAL(buffer);
+    Assert.assertEquals(list.serializedSize(), buffer.getBuffer().position());
+    DataInputStream stream =
+        new DataInputStream(new ByteArrayInputStream(buffer.getBuffer().array()));
+    AlignedTVList restored = AlignedTVList.deserialize(stream);
+    Assert.assertEquals(-1, stream.read());
+    Assert.assertEquals(list.rowCount(), restored.rowCount());
+    for (int row = 0; row <= ARRAY_SIZE; row++) {
+      for (int column = 0; column < dataTypes.size(); column++) {
+        Assert.assertTrue(restored.isNullValue(row, column));
+      }
+    }
+    Assert.assertEquals(
+        list.getAlignedValue(ARRAY_SIZE + 1).toString(),
+        restored.getAlignedValue(ARRAY_SIZE + 1).toString());
   }
 
   @Test

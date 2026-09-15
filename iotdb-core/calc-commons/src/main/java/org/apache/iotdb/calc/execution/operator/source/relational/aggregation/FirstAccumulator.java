@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -29,12 +30,13 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -45,6 +47,9 @@ public class FirstAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(FirstAccumulator.class);
   protected final TSDataType seriesDataType;
+  protected final Type type;
+  private final TypeServices.PrimitiveColumnValueSetter valueSetter;
+  private final TypeServices.StatisticsValueSetter statisticsValueSetter;
   protected TsPrimitiveType firstValue;
   protected long minTime = Long.MAX_VALUE;
   protected boolean initResult = false;
@@ -53,7 +58,10 @@ public class FirstAccumulator implements TableAccumulator {
 
   public FirstAccumulator(TSDataType seriesDataType, boolean canFinishAfterInit) {
     this.seriesDataType = seriesDataType;
-    this.firstValue = TsPrimitiveType.getByType(seriesDataType);
+    this.type = Type.fromTsDataType(seriesDataType);
+    this.firstValue = type.getTsPrimitiveType();
+    this.valueSetter = TypeServices.PRIMITIVE_COLUMN_VALUE_SETTER_SERVICE.call(type);
+    this.statisticsValueSetter = TypeServices.STATISTICS_VALUE_SETTER_SERVICE.call(type);
     this.canFinishAfterInit = canFinishAfterInit;
   }
 
@@ -70,35 +78,7 @@ public class FirstAccumulator implements TableAccumulator {
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
     // arguments[0] is value column, arguments[1] is time column
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(arguments[0], arguments[1], mask);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(arguments[0], arguments[1], mask);
-        return;
-      case FLOAT:
-        addFloatInput(arguments[0], arguments[1], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(arguments[0], arguments[1], mask);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        addBinaryInput(arguments[0], arguments[1], mask);
-        return;
-      case BOOLEAN:
-        addBooleanInput(arguments[0], arguments[1], mask);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_ARG_D5B6C6F9, seriesDataType));
-    }
+    addInput(arguments[0], arguments[1], mask);
   }
 
   @Override
@@ -115,72 +95,14 @@ public class FirstAccumulator implements TableAccumulator {
         continue;
       }
 
-      byte[] bytes = argument.getBinary(i).getValues();
-      long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
-      boolean isTimeNull = BytesUtils.bytesToBool(bytes, 8);
-      int offset = 9;
-
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          int intVal = BytesUtils.bytesToInt(bytes, offset);
-          if (!isTimeNull) {
-            updateIntFirstValue(intVal, time);
-          } else {
-            updateIntNullTimeValue(intVal);
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long longVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          if (!isTimeNull) {
-            updateLongFirstValue(longVal, time);
-          } else {
-            updateLongNullTimeValue(longVal);
-          }
-          break;
-        case FLOAT:
-          float floatVal = BytesUtils.bytesToFloat(bytes, offset);
-          if (!isTimeNull) {
-            updateFloatFirstValue(floatVal, time);
-          } else {
-            updateFloatNullTimeValue(floatVal);
-          }
-          break;
-        case DOUBLE:
-          double doubleVal = BytesUtils.bytesToDouble(bytes, offset);
-          if (!isTimeNull) {
-            updateDoubleFirstValue(doubleVal, time);
-          } else {
-            updateDoubleNullTimeValue(doubleVal);
-          }
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          int length = BytesUtils.bytesToInt(bytes, offset);
-          offset += Integer.BYTES;
-          Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-          if (!isTimeNull) {
-            updateBinaryFirstValue(binaryVal, time);
-          } else {
-            updateBinaryNullTimeValue(binaryVal);
-          }
-          break;
-        case BOOLEAN:
-          boolean boolVal = BytesUtils.bytesToBool(bytes, offset);
-          if (!isTimeNull) {
-            updateBooleanFirstValue(boolVal, time);
-          } else {
-            updateBooleanNullTimeValue(boolVal);
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_B2D27BB9,
-                  seriesDataType));
+      ByteBuffer buffer = ByteBuffer.wrap(argument.getBinary(i).getValues());
+      long time = buffer.getLong();
+      boolean isTimeNull = buffer.get() != 0;
+      TsPrimitiveType value = type.deserialize(buffer);
+      if (!isTimeNull) {
+        updateFirstValue(value, time);
+      } else {
+        updateNullTimeValue(value);
       }
     }
   }
@@ -214,36 +136,7 @@ public class FirstAccumulator implements TableAccumulator {
       return;
     }
 
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(firstValue.getInt());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(firstValue.getLong());
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(firstValue.getFloat());
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(firstValue.getDouble());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        columnBuilder.writeBinary(firstValue.getBinary());
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(firstValue.getBoolean());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_2652C363,
-                seriesDataType));
-    }
+    type.write(columnBuilder, firstValue);
   }
 
   @Override
@@ -251,60 +144,51 @@ public class FirstAccumulator implements TableAccumulator {
     return canFinishAfterInit && initResult;
   }
 
+  private void addInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int selectPositionCount = mask.getSelectedPositionCount();
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
+      }
+
+      if (!timeColumn.isNull(position)) {
+        if (checkAndUpdateFirstTime(timeColumn.getLong(position))) {
+          valueSetter.set(firstValue, valueColumn, position);
+        }
+        if (canFinishAfterInit) {
+          return;
+        }
+      } else if (checkAndUpdateNullTime()) {
+        valueSetter.set(firstValue, valueColumn, position);
+      }
+    }
+  }
+
   @Override
   public void addStatistics(Statistics[] statistics) {
     if (statistics == null || statistics[0] == null) {
       return;
     }
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        updateIntFirstValue(
-            ((Number) statistics[0].getFirstValue()).intValue(), statistics[0].getStartTime());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        updateLongFirstValue(
-            ((Number) statistics[0].getFirstValue()).longValue(), statistics[0].getStartTime());
-        break;
-      case FLOAT:
-        updateFloatFirstValue(
-            ((Number) statistics[0].getFirstValue()).floatValue(), statistics[0].getStartTime());
-        break;
-      case DOUBLE:
-        updateDoubleFirstValue(
-            ((Number) statistics[0].getFirstValue()).doubleValue(), statistics[0].getStartTime());
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        if (statistics[0] instanceof DateStatistics) {
-          updateBinaryFirstValue(
-              new Binary(
-                  TSDataType.getDateStringValue((Integer) statistics[0].getFirstValue()),
-                  StandardCharsets.UTF_8),
-              statistics[0].getStartTime());
-        } else {
-          if (statistics[0].getFirstValue() instanceof Binary) {
-            updateBinaryFirstValue(
-                (Binary) statistics[0].getFirstValue(), statistics[0].getStartTime());
-          } else {
-            updateBinaryFirstValue(
-                new Binary(String.valueOf(statistics[0].getFirstValue()), StandardCharsets.UTF_8),
-                statistics[0].getStartTime());
-          }
-        }
-        break;
-      case BOOLEAN:
-        updateBooleanFirstValue(
-            (boolean) statistics[0].getFirstValue(), statistics[0].getStartTime());
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_B2D27BB9,
-                seriesDataType));
+    Object value = statistics[0].getFirstValue();
+    if (statistics[0] instanceof DateStatistics
+        && (seriesDataType == TSDataType.TEXT
+            || seriesDataType == TSDataType.STRING
+            || seriesDataType == TSDataType.BLOB
+            || seriesDataType == TSDataType.OBJECT)) {
+      value = new Binary(TSDataType.getDateStringValue((Integer) value), StandardCharsets.UTF_8);
+    }
+    if (checkAndUpdateFirstTime(statistics[0].getStartTime())) {
+      statisticsValueSetter.set(
+          firstValue,
+          value,
+          () ->
+              new UnSupportedDataTypeException(
+                  String.format(
+                      CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_AGGREGATION, seriesDataType)));
     }
   }
 
@@ -331,6 +215,18 @@ public class FirstAccumulator implements TableAccumulator {
       return true;
     }
     return false;
+  }
+
+  private void updateFirstValue(TsPrimitiveType value, long curTime) {
+    if (checkAndUpdateFirstTime(curTime)) {
+      firstValue.copy(value);
+    }
+  }
+
+  private void updateNullTimeValue(TsPrimitiveType value) {
+    if (checkAndUpdateNullTime()) {
+      firstValue.copy(value);
+    }
   }
 
   /**

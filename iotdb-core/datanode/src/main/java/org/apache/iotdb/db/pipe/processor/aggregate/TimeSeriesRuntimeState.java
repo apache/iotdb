@@ -25,8 +25,12 @@ import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSer
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
+import org.apache.iotdb.db.utils.TypeServices;
+import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.type.Binary;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -61,6 +65,7 @@ public class TimeSeriesRuntimeState {
 
   // Variables to avoid "new" operation
   private final List<WindowOutput> outputList = new ArrayList<>();
+  private TypeServices.Pipe.AggregateRowValueUpdater rowValueUpdater;
 
   public TimeSeriesRuntimeState(
       final Map<String, AggregatedResultOperator> aggregatorOutputName2OperatorMap,
@@ -72,6 +77,22 @@ public class TimeSeriesRuntimeState {
     this.intermediateResultName2OperatorSupplierMap = intermediateResultName2OperatorSupplierMap;
     this.systemParameters = systemParameters;
     this.windowingProcessor = windowingProcessor;
+  }
+
+  public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
+      final long timestamp,
+      final Row row,
+      final int columnIndex,
+      final long outputMinReportIntervalMilliseconds)
+      throws IOException {
+    if (rowValueUpdater == null) {
+      rowValueUpdater =
+          TypeServices.Pipe.AGGREGATE_ROW_VALUE_UPDATER_SERVICE.call(
+              Type.fromTsDataType(
+                  TSDataType.getTsDataType(row.getDataType(columnIndex).getType())));
+    }
+    return rowValueUpdater.update(
+        this, timestamp, row, columnIndex, outputMinReportIntervalMilliseconds);
   }
 
   // The following "updateWindows" are the same except for the input value types
