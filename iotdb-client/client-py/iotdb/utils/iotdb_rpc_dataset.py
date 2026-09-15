@@ -18,18 +18,19 @@
 
 # for package
 import logging
-from typing import Optional
+from collections import deque
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
-import pandas as pd
-from thrift.transport import TTransport
-
-from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperationReq
-from iotdb.tsfile.utils.date_utils import parse_int_to_date
+from iotdb.thrift.rpc.IClientRPCService import TSCloseOperationReq, TSFetchResultsReq
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 from iotdb.utils.exception import IoTDBConnectionException
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils.rpc_utils import verify_success, convert_to_timestamp
+from iotdb.utils.rpc_utils import verify_success
+from thrift.transport import TTransport
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 logger = logging.getLogger("IoTDB")
 TIMESTAMP_STR = "Time"
@@ -122,11 +123,13 @@ class IoTDBRpcDataSet(object):
         self.__zone_id = zone_id
         self.__time_precision = time_precision
         self.__df_buffer = None  # Buffer for streaming DataFrames
+        self.__row_buffer = deque()
 
     def close(self):
         if self.__is_closed:
             return
         self.__df_buffer = None  # Clean up streaming DataFrame buffer
+        self.__row_buffer.clear()
         if self.__client is not None:
             try:
                 status = self.__client.closeOperation(
@@ -148,18 +151,78 @@ class IoTDBRpcDataSet(object):
             self.__client = None
 
     def next(self):
-        if not self.has_cached_data_frame:
-            self.construct_one_data_frame()
-        if self.has_cached_data_frame:
-            return True
-        if self.__empty_resultSet:
-            return False
-        if self.__more_data and self.fetch_results():
-            self.construct_one_data_frame()
-            return True
-        return False
+        return bool(self.__row_buffer) or self._fill_row_buffer()
+
+    def _pop_row(self):
+        if not self.next():
+            return None
+        return self.__row_buffer.popleft()
+
+    def _pop_rows(self, max_rows=None):
+        rows = []
+        while max_rows is None or len(rows) < max_rows:
+            if not self.__row_buffer and not self._fill_row_buffer():
+                break
+            remaining = (
+                len(self.__row_buffer)
+                if max_rows is None
+                else min(len(self.__row_buffer), max_rows - len(rows))
+            )
+            rows.extend(self.__row_buffer.popleft() for _ in range(remaining))
+        return rows
+
+    def _fill_row_buffer(self):
+        while not self.__row_buffer:
+            while self.__query_result is not None and self.__query_result_index < len(
+                self.__query_result
+            ):
+                block = self.__query_result[self.__query_result_index]
+                self.__query_result[self.__query_result_index] = None
+                self.__query_result_index += 1
+                self.__row_buffer.extend(self._deserialize_rows(block))
+                if self.__row_buffer:
+                    return True
+            if self.__empty_resultSet or not self.__more_data:
+                return False
+            if not self.fetch_results():
+                return False
+        return True
+
+    def _deserialize_rows(self, serialized_block):
+        time_array, column_arrays, null_indicators, row_count = deserialize(
+            memoryview(serialized_block)
+        )
+        columns = []
+        if not self.ignore_timestamp:
+            columns.append(time_array.tolist())
+        for location in self.__column_index_2_tsblock_column_index_list:
+            if location < 0:
+                continue
+            columns.append(
+                self._expand_column(
+                    column_arrays[location],
+                    null_indicators[location],
+                    row_count,
+                    self.__data_type_for_tsblock_column[location],
+                )
+            )
+        return list(zip(*columns)) if columns else [tuple() for _ in range(row_count)]
+
+    @staticmethod
+    def _expand_column(values, nulls, row_count, data_type):
+        source = values.tolist() if hasattr(values, "tolist") else list(values)
+        if nulls is None:
+            return source
+        if data_type == TSDataType.BOOLEAN and len(source) == row_count:
+            return [
+                None if nulls[index] else source[index] for index in range(row_count)
+            ]
+        source_values = iter(source)
+        return [None if is_null else next(source_values) for is_null in nulls]
 
     def construct_one_data_frame(self):
+        import pandas as pd
+
         if self.has_cached_data_frame or self.__query_result is None:
             return
         result = {}
@@ -233,7 +296,7 @@ class IoTDBRpcDataSet(object):
             self.has_cached_data_frame = True
 
     def has_cached_result(self):
-        return self.has_cached_data_frame
+        return bool(self.__row_buffer) or self.has_cached_data_frame
 
     def _has_next_result_set(self):
         if (self.__query_result is not None) and (
@@ -253,12 +316,14 @@ class IoTDBRpcDataSet(object):
         """
         return self.__df_buffer is not None and len(self.__df_buffer) > 0
 
-    def next_dataframe(self) -> Optional[pd.DataFrame]:
+    def next_dataframe(self) -> Optional["pd.DataFrame"]:
         """
         Get the next DataFrame from the result set with exactly fetch_size rows.
         The last DataFrame may have fewer rows.
         :return: the next DataFrame with fetch_size rows, or None if no more data
         """
+        import pandas as pd
+
         # Accumulate data until we have at least fetch_size rows or no more data
         while True:
             buffer_len = 0 if self.__df_buffer is None else len(self.__df_buffer)
@@ -308,6 +373,10 @@ class IoTDBRpcDataSet(object):
         return self._build_dataframe(result)
 
     def _process_buffer(self):
+        import pandas as pd
+        from iotdb.tsfile.utils.date_utils import parse_int_to_date
+        from iotdb.utils.rpc_utils import convert_to_timestamp
+
         result = {}
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
             result[i] = []
@@ -407,6 +476,8 @@ class IoTDBRpcDataSet(object):
         return result
 
     def _build_dataframe(self, result):
+        import pandas as pd
+
         for k, v in result.items():
             if v is None or len(v) < 1 or v[0] is None:
                 result[k] = []

@@ -16,16 +16,17 @@
 # under the License.
 #
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from iotdb.utils.Field import Field
+from iotdb.utils.iotdb_rpc_dataset import IoTDBRpcDataSet
 
 # for package
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils.iotdb_rpc_dataset import IoTDBRpcDataSet
 from iotdb.utils.RowRecord import RowRecord
 
-import pandas as pd
+if TYPE_CHECKING:
+    import pandas as pd
 
 logger = logging.getLogger("IoTDB")
 
@@ -109,14 +110,14 @@ class SessionDataSet(object):
         return self.iotdb_rpc_data_set.next()
 
     def next(self):
-        if not self.iotdb_rpc_data_set.has_cached_data_frame:
-            if not self.has_next():
-                return None
+        if not self.has_next():
+            return None
         return self.construct_row_record_from_data_frame()
 
     def construct_row_record_from_data_frame(self):
-        df = self.iotdb_rpc_data_set.data_frame
-        row = df.iloc[self.row_index].to_list()
+        row = self.iotdb_rpc_data_set._pop_row()
+        if row is None:
+            return None
         if self.iotdb_rpc_data_set.ignore_timestamp:
             for field, value in zip(self.__field_list, row):
                 field.value = value
@@ -133,12 +134,6 @@ class SessionDataSet(object):
                 row[0],
                 self.__field_list,
             )
-        self.row_index += 1
-        if self.row_index == len(df):
-            self.row_index = 0
-            self.iotdb_rpc_data_set.has_cached_data_frame = False
-            self.iotdb_rpc_data_set.data_frame = None
-
         return row_record
 
     def close_operation_handle(self):
@@ -153,7 +148,7 @@ class SessionDataSet(object):
         rpc_ds = self.iotdb_rpc_data_set
         return rpc_ds._has_buffered_data() or rpc_ds._has_next_result_set()
 
-    def next_df(self) -> Optional[pd.DataFrame]:
+    def next_df(self) -> Optional["pd.DataFrame"]:
         """
         Get the next DataFrame from the result set.
         Each returned DataFrame contains exactly fetch_size rows,
@@ -162,11 +157,11 @@ class SessionDataSet(object):
         """
         return self.iotdb_rpc_data_set.next_dataframe()
 
-    def todf(self) -> pd.DataFrame:
+    def todf(self) -> "pd.DataFrame":
         return result_set_to_pandas(self)
 
 
-def result_set_to_pandas(result_set: SessionDataSet) -> pd.DataFrame:
+def result_set_to_pandas(result_set: SessionDataSet) -> "pd.DataFrame":
     """
     Transforms a SessionDataSet from IoTDB to a Pandas Data Frame
     Each Field from IoTDB is a column in Pandas

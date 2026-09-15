@@ -17,10 +17,6 @@
 #
 import logging
 
-import pandas as pd
-from pandas._libs import OutOfBoundsDatetime
-from tzlocal import get_localzone_name
-
 from iotdb.thrift.common.ttypes import TSStatus
 from iotdb.utils.exception import RedirectException, StatementExecutionException
 
@@ -78,6 +74,10 @@ def verify_success_with_redirection_for_multi_devices(status: TSStatus, devices:
 
 
 def convert_to_timestamp(time: int, precision: str, timezone: str):
+    import pandas as pd
+    from pandas._libs import OutOfBoundsDatetime
+    from tzlocal import get_localzone_name
+
     try:
         ts = pd.Timestamp(time, unit=precision, tz=timezone)
     except OutOfBoundsDatetime:
@@ -116,7 +116,7 @@ unit_map = {
 }
 
 
-def isoformat(ts: pd.Timestamp, unit: str):
+def isoformat(ts, unit: str):
     if unit not in unit_map:
         raise ValueError(f"Unsupported unit: {unit}")
     try:
@@ -134,7 +134,7 @@ def isoformat(ts: pd.Timestamp, unit: str):
         return _isoformat_from_components(ts, unit)
 
 
-def _isoformat_from_components(ts: pd.Timestamp, unit: str) -> str:
+def _isoformat_from_components(ts, unit: str) -> str:
     base = (
         f"{ts.year:04d}-{ts.month:02d}-{ts.day:02d}"
         f"T{ts.hour:02d}:{ts.minute:02d}:{ts.second:02d}"
