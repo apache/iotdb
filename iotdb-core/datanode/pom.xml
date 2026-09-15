@@ -420,25 +420,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <!-- generate sources from fmpp -->
-                <groupId>org.apache.drill.tools</groupId>
-                <artifactId>drill-fmpp-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>generate-fmpp</id>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <phase>generate-sources</phase>
-                        <configuration>
-                            <config>${project.build.directory}/codegen/config.fmpp</config>
-                            <output>${project.build.directory}/generated-sources/freemarker</output>
-                            <templates>${project.build.directory}/codegen/templates</templates>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
                 <executions>
@@ -450,7 +431,6 @@
                         <phase>generate-sources</phase>
                         <configuration>
                             <sources>
-                                <source>${project.build.directory}/generated-sources/freemarker</source>
                                 <source>${project.basedir}/src/main/i18n/${i18n.locale}</source>
                             </sources>
                         </configuration>
