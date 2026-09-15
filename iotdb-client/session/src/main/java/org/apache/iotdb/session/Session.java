@@ -2890,18 +2890,49 @@ public class Session implements ISession {
     List<ColumnCategory> columnCategories = row.getColumnCategories();
     long[] values = row.getValues();
     String[] tagValues = row.getTagValues();
+    if (measurements == null
+        || types == null
+        || columnCategories == null
+        || values == null
+        || tagValues == null
+        || measurements.size() != types.size()
+        || measurements.size() != columnCategories.size()) {
+      throw new IllegalArgumentException(
+          SessionMessages
+              .EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233);
+    }
+    // Keep wire metadata aligned with the compact payload: TAG columns precede FIELD columns.
+    List<String> rpcMeasurements = new ArrayList<>(measurements.size());
+    List<TSDataType> rpcTypes = new ArrayList<>(types.size());
+    List<ColumnCategory> rpcColumnCategories = new ArrayList<>(columnCategories.size());
+    for (int pass = 0; pass < 2; pass++) {
+      ColumnCategory category = pass == 0 ? ColumnCategory.TAG : ColumnCategory.FIELD;
+      for (int i = 0; i < columnCategories.size(); i++) {
+        if (columnCategories.get(i) == category) {
+          rpcMeasurements.add(measurements.get(i));
+          rpcTypes.add(types.get(i));
+          rpcColumnCategories.add(category);
+        }
+      }
+    }
+    if (rpcMeasurements.size() != measurements.size()) {
+      throw new IllegalArgumentException(
+          SessionMessages
+              .EXCEPTION_NUMERIC_ROWS_SUPPORT_NUMERIC_FIELD_COLUMNS_AND_STRING_TAG_COLUMNS_ONLY_87159FFA);
+    }
     ByteBuffer valueBuffer =
-        SessionUtils.getValueBuffer(types, values, measurements, columnCategories, tagValues);
+        SessionUtils.getValueBuffer(
+            rpcTypes, values, rpcMeasurements, rpcColumnCategories, tagValues);
     TSInsertRecordReq request = new TSInsertRecordReq();
     request.setPrefixPath(tableName);
     request.setTimestamp(timestamp);
-    request.setMeasurements(measurements);
+    request.setMeasurements(rpcMeasurements);
     request.setValues(valueBuffer);
     request.setIsWriteToTable(true);
     request.setIsNumericRow(true);
     request.setIsAligned(true);
     request.setColumnCategoryies(
-        columnCategories.stream()
+        rpcColumnCategories.stream()
             .map(category -> (byte) category.ordinal())
             .collect(Collectors.toList()));
     String[] deviceSegments = new String[tagValues.length + 1];

@@ -77,14 +77,17 @@ public class SessionUtilsTest {
             Collections.nCopies(8, ColumnCategory.FIELD),
             new String[0]);
     ByteBuffer expected = ByteBuffer.allocate(46);
-    expected.put(TSDataType.BOOLEAN.serialize()).put((byte) 0);
-    expected.put(TSDataType.BOOLEAN.serialize()).put((byte) 1);
-    expected.put(TSDataType.INT32.serialize()).putInt(Integer.MIN_VALUE);
-    expected.put(TSDataType.INT64.serialize()).putLong(Long.MIN_VALUE);
-    expected.put(TSDataType.FLOAT.serialize()).putInt(0x7fc01234);
-    expected.put(TSDataType.DOUBLE.serialize()).putLong(0x7ff8000000001234L);
-    expected.put(TSDataType.DATE.serialize()).putInt(20260910);
-    expected.put(TSDataType.TIMESTAMP.serialize()).putLong(Long.MAX_VALUE);
+    for (TSDataType type : types) {
+      expected.put(type.serialize());
+    }
+    expected.put((byte) 0);
+    expected.put((byte) 1);
+    expected.putInt(Integer.MIN_VALUE);
+    expected.putLong(Long.MIN_VALUE);
+    expected.putInt(0x7fc01234);
+    expected.putLong(0x7ff8000000001234L);
+    expected.putInt(20260910);
+    expected.putLong(Long.MAX_VALUE);
     expected.flip();
     Assert.assertEquals(expected, actual);
   }
@@ -154,16 +157,14 @@ public class SessionUtilsTest {
             Arrays.asList("a", "d", "b", "enabled", "c"),
             categories,
             new String[] {"设备😀", null, ""});
-    Assert.assertEquals(TSDataType.STRING.serialize(), buffer.get());
+    for (TSDataType type : types) {
+      Assert.assertEquals(type.serialize(), buffer.get());
+    }
     Assert.assertEquals("设备😀", ReadWriteIOUtils.readString(buffer));
-    Assert.assertEquals(TSDataType.DOUBLE.serialize(), buffer.get());
+    Assert.assertNull(ReadWriteIOUtils.readString(buffer));
+    Assert.assertEquals("", ReadWriteIOUtils.readString(buffer));
     Assert.assertEquals(0x7ff8000000001234L, buffer.getLong());
-    Assert.assertEquals(TSDataType.STRING.serialize(), buffer.get());
-    Assert.assertEquals(-1, buffer.getInt());
-    Assert.assertEquals(TSDataType.BOOLEAN.serialize(), buffer.get());
     Assert.assertEquals(1, buffer.get());
-    Assert.assertEquals(TSDataType.STRING.serialize(), buffer.get());
-    Assert.assertEquals(0, buffer.getInt());
     Assert.assertFalse(buffer.hasRemaining());
   }
 

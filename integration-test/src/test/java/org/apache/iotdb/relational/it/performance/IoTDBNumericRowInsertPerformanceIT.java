@@ -48,14 +48,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Manual end-to-end benchmark for the numeric table-row API and relational {@link Tablet} writes.
  *
  * <p>Enable this test with {@code -Diotdb.numeric.row.insert.perf.enabled=true}. The timed region
- * includes the Session call and server write confirmation. Schema creation and client-side input
- * preparation are outside the timed region. By default both APIs write one row per request; set
- * {@code iotdb.numeric.row.insert.perf.tablet.row.count} to compare against batched Tablet writes.
+ * includes the concurrent Session calls and server write confirmations. Schema creation and
+ * client-side input preparation are outside the timed region. By default 16 client sessions write
+ * one row per request; set {@code iotdb.numeric.row.insert.perf.client.count} or {@code
+ * iotdb.numeric.row.insert.perf.tablet.row.count} to vary concurrency or Tablet batching.
  *
  * <p>Results are written to {@code target/numeric-row-insert-performance.properties}. Percentiles
  * describe elapsed time per complete round, not individual RPC latency. See the adjacent README for
@@ -69,13 +74,15 @@ public class IoTDBNumericRowInsertPerformanceIT {
   private static final String ENABLED_PROPERTY = PROPERTY_PREFIX + "enabled";
   private static final String ROW_COUNT_PROPERTY = PROPERTY_PREFIX + "row.count";
   private static final String COLUMN_COUNT_PROPERTY = PROPERTY_PREFIX + "column.count";
+  private static final String CLIENT_COUNT_PROPERTY = PROPERTY_PREFIX + "client.count";
   private static final String TABLET_ROW_COUNT_PROPERTY = PROPERTY_PREFIX + "tablet.row.count";
   private static final String WARMUP_ROUND_COUNT_PROPERTY = PROPERTY_PREFIX + "warmup.round.count";
   private static final String ROUND_COUNT_PROPERTY = PROPERTY_PREFIX + "round.count";
   private static final String RESULT_PATH_PROPERTY = PROPERTY_PREFIX + "result.path";
 
   private static final int ROW_COUNT = Integer.getInteger(ROW_COUNT_PROPERTY, 10_000);
-  private static final int COLUMN_COUNT = Integer.getInteger(COLUMN_COUNT_PROPERTY, 8);
+  private static final int COLUMN_COUNT = Integer.getInteger(COLUMN_COUNT_PROPERTY, 100);
+  private static final int CLIENT_COUNT = Integer.getInteger(CLIENT_COUNT_PROPERTY, 16);
   private static final int TABLET_ROW_COUNT = Integer.getInteger(TABLET_ROW_COUNT_PROPERTY, 1);
   private static final int WARMUP_ROUND_COUNT = Integer.getInteger(WARMUP_ROUND_COUNT_PROPERTY, 1);
   private static final int ROUND_COUNT = Integer.getInteger(ROUND_COUNT_PROPERTY, 5);
@@ -119,27 +126,41 @@ public class IoTDBNumericRowInsertPerformanceIT {
     final long[] numericRowElapsedNanos = new long[ROUND_COUNT];
     final long[] tabletElapsedNanos = new long[ROUND_COUNT];
 
-    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      session.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
-      session.executeNonQueryStatement("USE " + DATABASE);
+    final List<ITableSession> sessions = new ArrayList<>(CLIENT_COUNT);
+    final ExecutorService executor = Executors.newFixedThreadPool(CLIENT_COUNT);
+    try {
+      final ITableSession setupSession = EnvFactory.getEnv().getTableSessionConnection();
+      setupSession.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
+      setupSession.executeNonQueryStatement("USE " + DATABASE);
+      sessions.add(setupSession);
+      for (int client = 1; client < CLIENT_COUNT; client++) {
+        final ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
+        session.executeNonQueryStatement("USE " + DATABASE);
+        sessions.add(session);
+      }
 
       final int totalRoundCount = WARMUP_ROUND_COUNT + ROUND_COUNT;
       for (int round = 0; round < totalRoundCount; round++) {
-        final NumericRowWorkload numericRowWorkload = prepareNumericRowWorkload(session, round);
-        final TabletWorkload tabletWorkload = prepareTabletWorkload(session, round);
+        final List<NumericRowWorkload> numericRowWorkloads =
+            prepareNumericRowWorkloads(setupSession, round);
+        final List<TabletWorkload> tabletWorkloads = prepareTabletWorkloads(setupSession, round);
 
         final long numericRowNanos;
         final long tabletNanos;
         // Alternate execution order so one path does not consistently receive a warmer server.
         if ((round & 1) == 0) {
-          numericRowNanos = executeNumericRowWorkload(session, numericRowWorkload);
-          tabletNanos = executeTabletWorkload(session, tabletWorkload);
+          numericRowNanos = executeNumericRowWorkload(sessions, numericRowWorkloads, executor);
+          tabletNanos = executeTabletWorkload(sessions, tabletWorkloads, executor);
         } else {
-          tabletNanos = executeTabletWorkload(session, tabletWorkload);
-          numericRowNanos = executeNumericRowWorkload(session, numericRowWorkload);
+          tabletNanos = executeTabletWorkload(sessions, tabletWorkloads, executor);
+          numericRowNanos = executeNumericRowWorkload(sessions, numericRowWorkloads, executor);
         }
-        assertRowCount(session, numericRowWorkload.tableName);
-        assertRowCount(session, tabletWorkload.tableName);
+        for (NumericRowWorkload workload : numericRowWorkloads) {
+          assertRowCount(setupSession, workload.tableName);
+        }
+        for (TabletWorkload workload : tabletWorkloads) {
+          assertRowCount(setupSession, workload.tableName);
+        }
 
         if (round >= WARMUP_ROUND_COUNT) {
           final int measuredRound = round - WARMUP_ROUND_COUNT;
@@ -147,77 +168,136 @@ public class IoTDBNumericRowInsertPerformanceIT {
           tabletElapsedNanos[measuredRound] = tabletNanos;
         }
       }
+    } finally {
+      executor.shutdownNow();
+      for (ITableSession session : sessions) {
+        session.close();
+      }
     }
 
     final BenchmarkResult result = new BenchmarkResult(numericRowElapsedNanos, tabletElapsedNanos);
     writeResult(result);
   }
 
-  private static NumericRowWorkload prepareNumericRowWorkload(ITableSession session, int round)
-      throws Exception {
-    final String tableName = "numeric_row_" + round;
-    createTable(session, tableName);
-    final long startTimestamp = (long) round * ROW_COUNT;
-    final NumericRow[] rows = new NumericRow[ROW_COUNT];
-    final String[] tagValues = new String[0];
-    for (int row = 0; row < ROW_COUNT; row++) {
-      rows[row] =
-          new NumericRow(
-              tableName,
-              startTimestamp + row,
-              columnNames,
-              dataTypes,
-              columnCategories,
-              createRawValues(startTimestamp + row),
-              tagValues);
+  private static List<NumericRowWorkload> prepareNumericRowWorkloads(
+      ITableSession session, int round) throws Exception {
+    final List<NumericRowWorkload> workloads = new ArrayList<>(CLIENT_COUNT);
+    for (int client = 0; client < CLIENT_COUNT; client++) {
+      final String tableName = "numeric_row_" + round + "_" + client;
+      createTable(session, tableName);
+      final long startTimestamp = ((long) round * CLIENT_COUNT + client) * ROW_COUNT;
+      final NumericRow[] rows = new NumericRow[ROW_COUNT];
+      final String[] tagValues = new String[0];
+      for (int row = 0; row < ROW_COUNT; row++) {
+        rows[row] =
+            new NumericRow(
+                tableName,
+                startTimestamp + row,
+                columnNames,
+                dataTypes,
+                columnCategories,
+                createRawValues(startTimestamp + row),
+                tagValues);
+      }
+      workloads.add(new NumericRowWorkload(tableName, rows));
     }
-    return new NumericRowWorkload(tableName, rows);
+    return workloads;
   }
 
-  private static TabletWorkload prepareTabletWorkload(ITableSession session, int round)
+  private static List<TabletWorkload> prepareTabletWorkloads(ITableSession session, int round)
       throws Exception {
-    final String tableName = "tablet_" + round;
-    createTable(session, tableName);
-    final long startTimestamp = (long) round * ROW_COUNT;
-    final List<Tablet> tablets = new ArrayList<>((ROW_COUNT - 1) / TABLET_ROW_COUNT + 1);
-    for (int rowStart = 0; rowStart < ROW_COUNT; ) {
-      final int rowCount = Math.min(TABLET_ROW_COUNT, ROW_COUNT - rowStart);
-      final Tablet tablet =
-          new Tablet(tableName, columnNames, dataTypes, columnCategories, rowCount);
-      for (int row = 0; row < rowCount; row++) {
-        final int rowIndex = tablet.getRowSize();
-        final long timestamp = startTimestamp + rowStart + row;
-        final long[] values = createRawValues(timestamp);
-        tablet.addTimestamp(rowIndex, timestamp);
-        for (int column = 0; column < COLUMN_COUNT; column++) {
-          tablet.addValue(
-              columnNames.get(column),
-              rowIndex,
-              toTabletValue(dataTypes.get(column), values[column]));
+    final List<TabletWorkload> workloads = new ArrayList<>(CLIENT_COUNT);
+    for (int client = 0; client < CLIENT_COUNT; client++) {
+      final String tableName = "tablet_" + round + "_" + client;
+      createTable(session, tableName);
+      final long startTimestamp = ((long) round * CLIENT_COUNT + client) * ROW_COUNT;
+      final List<Tablet> tablets = new ArrayList<>((ROW_COUNT - 1) / TABLET_ROW_COUNT + 1);
+      for (int rowStart = 0; rowStart < ROW_COUNT; ) {
+        final int rowCount = Math.min(TABLET_ROW_COUNT, ROW_COUNT - rowStart);
+        final Tablet tablet =
+            new Tablet(tableName, columnNames, dataTypes, columnCategories, rowCount);
+        for (int row = 0; row < rowCount; row++) {
+          final int rowIndex = tablet.getRowSize();
+          final long timestamp = startTimestamp + rowStart + row;
+          final long[] values = createRawValues(timestamp);
+          tablet.addTimestamp(rowIndex, timestamp);
+          for (int column = 0; column < COLUMN_COUNT; column++) {
+            tablet.addValue(
+                columnNames.get(column),
+                rowIndex,
+                toTabletValue(dataTypes.get(column), values[column]));
+          }
         }
+        tablets.add(tablet);
+        rowStart += rowCount;
       }
-      tablets.add(tablet);
-      rowStart += rowCount;
+      workloads.add(new TabletWorkload(tableName, tablets));
     }
-    return new TabletWorkload(tableName, tablets);
+    return workloads;
   }
 
   private static long executeNumericRowWorkload(
-      ITableSession session, NumericRowWorkload numericRowWorkload) throws Exception {
+      List<ITableSession> sessions, List<NumericRowWorkload> workloads, ExecutorService executor)
+      throws Exception {
+    return executeConcurrently(
+        sessions,
+        workloads,
+        executor,
+        (session, workload) -> {
+          for (NumericRow row : workload.rows) {
+            session.insert(row);
+          }
+        });
+  }
+
+  private static long executeTabletWorkload(
+      List<ITableSession> sessions, List<TabletWorkload> workloads, ExecutorService executor)
+      throws Exception {
+    return executeConcurrently(
+        sessions,
+        workloads,
+        executor,
+        (session, workload) -> {
+          for (Tablet tablet : workload.tablets) {
+            session.insert(tablet);
+          }
+        });
+  }
+
+  private static <T> long executeConcurrently(
+      List<ITableSession> sessions,
+      List<T> workloads,
+      ExecutorService executor,
+      WorkloadWriter<T> writer)
+      throws Exception {
+    final CountDownLatch ready = new CountDownLatch(CLIENT_COUNT);
+    final CountDownLatch start = new CountDownLatch(1);
+    final List<Future<?>> futures = new ArrayList<>(CLIENT_COUNT);
+    for (int client = 0; client < CLIENT_COUNT; client++) {
+      final ITableSession session = sessions.get(client);
+      final T workload = workloads.get(client);
+      futures.add(
+          executor.submit(
+              () -> {
+                ready.countDown();
+                start.await();
+                writer.write(session, workload);
+                return null;
+              }));
+    }
+    ready.await();
     final long startNanos = System.nanoTime();
-    for (final NumericRow row : numericRowWorkload.rows) {
-      session.insert(row);
+    start.countDown();
+    for (Future<?> future : futures) {
+      future.get();
     }
     return System.nanoTime() - startNanos;
   }
 
-  private static long executeTabletWorkload(ITableSession session, TabletWorkload tabletWorkload)
-      throws Exception {
-    final long startNanos = System.nanoTime();
-    for (final Tablet tablet : tabletWorkload.tablets) {
-      session.insert(tablet);
-    }
-    return System.nanoTime() - startNanos;
+  @FunctionalInterface
+  private interface WorkloadWriter<T> {
+
+    void write(ITableSession session, T workload) throws Exception;
   }
 
   private static void createTable(ITableSession session, String tableName) throws Exception {
@@ -301,6 +381,7 @@ public class IoTDBNumericRowInsertPerformanceIT {
   private static void assertValidConfiguration() {
     Assert.assertTrue(ROW_COUNT > 0);
     Assert.assertTrue(COLUMN_COUNT > 0);
+    Assert.assertTrue(CLIENT_COUNT > 0);
     Assert.assertTrue(TABLET_ROW_COUNT > 0);
     Assert.assertTrue(WARMUP_ROUND_COUNT >= 0);
     Assert.assertTrue(ROUND_COUNT > 0);
@@ -318,17 +399,18 @@ public class IoTDBNumericRowInsertPerformanceIT {
         Integer.toString(Runtime.getRuntime().availableProcessors()));
     properties.setProperty(
         "client.max.heap.bytes", Long.toString(Runtime.getRuntime().maxMemory()));
-    properties.setProperty("client.count", "1");
+    properties.setProperty("client.count", Integer.toString(CLIENT_COUNT));
     properties.setProperty("row.count", Integer.toString(ROW_COUNT));
     properties.setProperty("column.count", Integer.toString(COLUMN_COUNT));
     properties.setProperty("tablet.row.count", Integer.toString(TABLET_ROW_COUNT));
     properties.setProperty("warmup.round.count", Integer.toString(WARMUP_ROUND_COUNT));
     properties.setProperty("round.count", Integer.toString(ROUND_COUNT));
     properties.setProperty("column.types", join(dataTypes));
-    properties.setProperty("numeric.row.requests.per.round", Integer.toString(ROW_COUNT));
+    properties.setProperty(
+        "numeric.row.requests.per.round", Integer.toString(CLIENT_COUNT * ROW_COUNT));
     properties.setProperty(
         "insert.tablet.requests.per.round",
-        Integer.toString((ROW_COUNT - 1) / TABLET_ROW_COUNT + 1));
+        Integer.toString(CLIENT_COUNT * ((ROW_COUNT - 1) / TABLET_ROW_COUNT + 1)));
     properties.setProperty("numeric.row.round.elapsed.nanos", join(result.numericRowElapsedNanos));
     properties.setProperty("insert.tablet.round.elapsed.nanos", join(result.tabletElapsedNanos));
     properties.setProperty(
@@ -430,7 +512,7 @@ public class IoTDBNumericRowInsertPerformanceIT {
     }
 
     private double numericRowRowsPerSecond() {
-      return ROW_COUNT * 1_000_000_000.0D / numericRowP50Nanos();
+      return CLIENT_COUNT * ROW_COUNT * 1_000_000_000.0D / numericRowP50Nanos();
     }
 
     private double numericRowValuesPerSecond() {
@@ -446,7 +528,7 @@ public class IoTDBNumericRowInsertPerformanceIT {
     }
 
     private double tabletRowsPerSecond() {
-      return ROW_COUNT * 1_000_000_000.0D / tabletP50Nanos();
+      return CLIENT_COUNT * ROW_COUNT * 1_000_000_000.0D / tabletP50Nanos();
     }
 
     private double tabletValuesPerSecond() {

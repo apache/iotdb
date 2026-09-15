@@ -194,23 +194,47 @@ public class SessionTest {
   public void testNumericTableRowWithTagsRequest() throws Exception {
     // The NumericRow entry point must forward the TAG payload and metadata with numeric flags.
     ITableSession tableSession = new TableSession((Session) session);
-    List<String> names = Arrays.asList("tag", "enabled");
-    List<TSDataType> types = Arrays.asList(TSDataType.STRING, TSDataType.BOOLEAN);
-    List<ColumnCategory> categories = Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+    List<String> names = Arrays.asList("enabled", "tag", "value", "region");
+    List<TSDataType> types =
+        Arrays.asList(TSDataType.BOOLEAN, TSDataType.STRING, TSDataType.DOUBLE, TSDataType.STRING);
+    List<ColumnCategory> categories =
+        Arrays.asList(
+            ColumnCategory.FIELD, ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.TAG);
+    List<String> rpcNames = Arrays.asList("tag", "region", "enabled", "value");
+    List<TSDataType> rpcTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.BOOLEAN, TSDataType.DOUBLE);
+    List<ColumnCategory> rpcCategories =
+        Arrays.asList(
+            ColumnCategory.TAG, ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
     tableSession.insert(
         new NumericRow(
-            "readings", 123L, names, types, categories, new long[] {1}, new String[] {"device"}));
+            "readings",
+            123L,
+            names,
+            types,
+            categories,
+            new long[] {1, Double.doubleToRawLongBits(2.5)},
+            new String[] {"device", "cn"}));
     ArgumentCaptor<TSInsertRecordReq> captor = ArgumentCaptor.forClass(TSInsertRecordReq.class);
     Mockito.verify(sessionConnection).insertRecord(captor.capture());
     TSInsertRecordReq request = captor.getValue();
     Assert.assertTrue(request.isIsNumericRow());
     Assert.assertTrue(request.isIsWriteToTable());
     assertEquals(
-        Arrays.asList((byte) ColumnCategory.TAG.ordinal(), (byte) ColumnCategory.FIELD.ordinal()),
+        Arrays.asList(
+            (byte) ColumnCategory.TAG.ordinal(),
+            (byte) ColumnCategory.TAG.ordinal(),
+            (byte) ColumnCategory.FIELD.ordinal(),
+            (byte) ColumnCategory.FIELD.ordinal()),
         request.getColumnCategoryies());
+    assertEquals(rpcNames, request.getMeasurements());
     assertEquals(
         SessionUtils.getValueBuffer(
-            types, new long[] {1}, names, categories, new String[] {"device"}),
+            rpcTypes,
+            new long[] {1, Double.doubleToRawLongBits(2.5)},
+            rpcNames,
+            rpcCategories,
+            new String[] {"device", "cn"}),
         request.bufferForValues());
   }
 

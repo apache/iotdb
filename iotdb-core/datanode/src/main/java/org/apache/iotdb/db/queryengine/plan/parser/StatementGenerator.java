@@ -305,7 +305,6 @@ public class StatementGenerator {
       }
       InsertNumericRowStatement numeric = (InsertNumericRowStatement) insertStatement;
       numeric.setTime(insertRecordReq.getTimestamp());
-      numeric.fillValues(insertRecordReq.values);
       insertStatement.setAligned(true);
     } else {
       InsertRowStatement row = (InsertRowStatement) insertStatement;
@@ -327,7 +326,9 @@ public class StatementGenerator {
             TsTableColumnCategory.fromTsFileColumnCategory(
                 ColumnCategory.values()[insertRecordReq.getColumnCategoryies().get(i).intValue()]);
       }
+      insertStatement.setColumnCategories(columnCategories);
       if (insertRecordReq.isIsNumericRow()) {
+        ((InsertNumericRowStatement) insertStatement).fillValues(insertRecordReq.values);
         for (int i = 0; i < columnCategories.length; i++) {
           TSDataType type = insertStatement.getDataType(i);
           if (!(columnCategories[i] == TsTableColumnCategory.TAG && type == TSDataType.STRING)
@@ -339,7 +340,6 @@ public class StatementGenerator {
           }
         }
       }
-      insertStatement.setColumnCategories(columnCategories);
     }
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;

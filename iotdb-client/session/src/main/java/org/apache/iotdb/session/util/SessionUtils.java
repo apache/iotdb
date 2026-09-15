@@ -211,13 +211,20 @@ public class SessionUtils {
     ByteBuffer buffer = ByteBuffer.allocate(length);
     int fieldIndex = 0;
     int tagIndex = 0;
+    for (TSDataType type : types) {
+      ReadWriteIOUtils.write(type, buffer);
+    }
+    tagIndex = 0;
     for (int i = 0; i < types.size(); i++) {
       TSDataType type = types.get(i);
-      ReadWriteIOUtils.write(type, buffer);
-      if (categories.get(i) == ColumnCategory.TAG) {
-        // A length of -1 represents a null TAG; an empty TAG has length zero.
+      if (categories.get(i) == ColumnCategory.TAG && type == TSDataType.STRING) {
         ReadWriteIOUtils.write(tagValues[tagIndex++], buffer);
-      } else {
+      }
+    }
+    fieldIndex = 0;
+    for (int i = 0; i < types.size(); i++) {
+      TSDataType type = types.get(i);
+      if (categories.get(i) == ColumnCategory.FIELD) {
         long value = values[fieldIndex++];
         switch (type) {
           case BOOLEAN -> buffer.put((byte) (value == 0 ? 0 : 1));

@@ -36,9 +36,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.NumericRowValues;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -87,7 +89,6 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
 
   /** RPC cells carry typed primitive FIELD bits or a length-prefixed STRING TAG. */
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
-    numericValues = new NumericRowValues(measurements.length);
     dataTypes = new TSDataType[measurements.length];
     for (int i = 0; i < dataTypes.length; i++) {
       byte type = buffer.get();
@@ -95,7 +96,41 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
         throw new QueryProcessException(DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + type);
       }
       dataTypes[i] = TSDataType.values()[type];
-      numericValues.read(i, dataTypes[i], buffer);
+      if (columnCategories[i] == TsTableColumnCategory.TAG && dataTypes[i] != TSDataType.STRING) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
+      }
+      if (columnCategories[i] == TsTableColumnCategory.FIELD
+          && !NumericRowValues.supports(dataTypes[i])) {
+        if (dataTypes[i] == TSDataType.STRING) {
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
+        }
+        throw new UnSupportedDataTypeException(
+            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + dataTypes[i]);
+      }
+    }
+    int tagCount = countTagColumns(columnCategories);
+    numericValues = new NumericRowValues(tagCount, measurements.length - tagCount);
+    ColumnCategory[] categories = new ColumnCategory[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      categories[i] =
+          columnCategories[i] == TsTableColumnCategory.TAG
+              ? ColumnCategory.TAG
+              : ColumnCategory.FIELD;
+    }
+    numericValues.setColumnCategories(categories);
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (columnCategories[i] == TsTableColumnCategory.TAG) {
+        numericValues.read(i, dataTypes[i], buffer);
+      }
+    }
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (columnCategories[i] == TsTableColumnCategory.FIELD) {
+        numericValues.read(i, dataTypes[i], buffer);
+      }
     }
   }
 
@@ -208,35 +243,59 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
     for (int i = 0; i < mapping.length; i++) {
       mapping[i] = i < pos ? i : i == pos ? -1 : i - 1;
     }
-    numericValues = numericValues.remap(mapping);
+    numericValues = numericValues.remap(mapping, countTagColumns(columnCategories));
     deviceID = null;
   }
 
   @Override
   public void swapColumn(int src, int target) {
     super.swapColumn(src, target);
-    numericValues.swap(src, target);
+    int[] newToOld = new int[measurements.length];
+    for (int i = 0; i < newToOld.length; i++) {
+      newToOld[i] = i;
+    }
+    newToOld[src] = target;
+    newToOld[target] = src;
+    numericValues = numericValues.remap(newToOld, countTagColumns(columnCategories));
     deviceID = null;
   }
 
   @Override
   public void rebuildArraysAfterExpansion(int[] mapping, String[] newMeasurements) {
     super.rebuildArraysAfterExpansion(mapping, newMeasurements);
-    numericValues = numericValues.remap(mapping);
+    numericValues = numericValues.remap(mapping, countTagColumns(columnCategories));
     deviceID = null;
   }
 
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     numericValues =
-        numericValues.remap(columnsToKeep.stream().mapToInt(Integer::intValue).toArray());
+        numericValues.remap(
+            columnsToKeep.stream().mapToInt(Integer::intValue).toArray(),
+            countTagColumns(columnCategories));
     deviceID = null;
   }
 
   @Override
   public void setColumnCategories(TsTableColumnCategory[] categories) {
     super.setColumnCategories(categories);
+    if (numericValues != null) {
+      ColumnCategory[] compactCategories = new ColumnCategory[categories.length];
+      for (int i = 0; i < categories.length; i++) {
+        compactCategories[i] =
+            categories[i] == TsTableColumnCategory.TAG ? ColumnCategory.TAG : ColumnCategory.FIELD;
+      }
+      numericValues.setColumnCategories(compactCategories);
+    }
     deviceID = null;
+  }
+
+  private static int countTagColumns(TsTableColumnCategory[] categories) {
+    int count = 0;
+    while (count < categories.length && categories[count] == TsTableColumnCategory.TAG) {
+      count++;
+    }
+    return count;
   }
 
   public IDeviceID getTableDeviceID() {

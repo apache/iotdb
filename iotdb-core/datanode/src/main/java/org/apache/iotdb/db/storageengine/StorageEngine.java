@@ -1199,8 +1199,8 @@ public class StorageEngine implements IService {
     return () -> {
       if (!isReadyForNonReadWriteFunctions()) {
         return;
-    }
-    for (DataRegion dataRegion : dataRegionMap.values()) {
+      }
+      for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
           dataRegion.compactFileTimeIndexCache();
         }
