@@ -633,6 +633,12 @@ service IClientRPCService {
 
   common.TSStatus insertRecord(1:TSInsertRecordReq req);
 
+  TSPrepareNumericRowResp prepareNumericRow(1:TSPrepareNumericRowReq req);
+
+  common.TSStatus executePreparedNumericRow(1:TSExecutePreparedNumericRowReq req);
+
+  common.TSStatus closePreparedNumericRow(1:i64 sessionId, 2:i64 preparedId);
+
   common.TSStatus insertStringRecord(1:TSInsertStringRecordReq req);
 
   common.TSStatus insertTablet(1:TSInsertTabletReq req);
@@ -707,4 +713,26 @@ service IClientRPCService {
 
   /** For other node's call */
   common.TSStatus testConnectionEmptyRPC();
+}
+
+struct TSPrepareNumericRowReq {
+  1: required i64 sessionId
+  2: required string tableName
+  3: required list<string> measurements
+  4: required list<i32> dataTypes
+  5: required list<byte> columnCategories
+}
+
+struct TSPrepareNumericRowResp {
+  1: required common.TSStatus status
+  2: optional i64 preparedId
+}
+
+struct TSExecutePreparedNumericRowReq {
+  1: required i64 sessionId
+  2: required i64 preparedId
+  3: required i64 timestamp
+  4: required binary values
+  // Length-prefixed UTF-8 TAGs; length -1 represents a null TAG.
+  5: required binary tagValues
 }
