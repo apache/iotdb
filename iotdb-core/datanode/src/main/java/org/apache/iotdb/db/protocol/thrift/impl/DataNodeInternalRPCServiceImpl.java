@@ -410,6 +410,13 @@ import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PR
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
+/**
+ * Implements the internal DataNode RPC surface used for fragment execution, region lifecycle,
+ * schema/data operations, load, consensus-related coordination, and cluster maintenance.
+ *
+ * <p>Internal requests may arrive during startup, shutdown, migration, or recovery, so methods must
+ * document their readiness checks and idempotency behavior where it is not obvious.
+ */
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeInternalRPCServiceImpl.class);

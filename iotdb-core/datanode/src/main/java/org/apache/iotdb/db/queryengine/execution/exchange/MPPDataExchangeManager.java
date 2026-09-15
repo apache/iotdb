@@ -88,6 +88,13 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_SERVER;
 
+/**
+ * Manages local and remote source/sink handles used to exchange TsBlocks between MPP fragments.
+ *
+ * <p>The manager processes data-block fetch, acknowledgement, close, and end-of-stream events. Late
+ * events are expected after downstream cancellation and must be ignored without leaking handles or
+ * corrupting completion state.
+ */
 public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MPPDataExchangeManager.class);
@@ -299,10 +306,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                 : (SourceHandle) sourceHandleMap.get(e.getTargetPlanNodeId());
 
         if (sourceHandle == null || sourceHandle.isAborted() || sourceHandle.isFinished()) {
-          // In some scenario, when the SourceHandle sends the data block ACK event, its upstream
-          // may
-          // have already been stopped. For example, in the read whit LimitOperator, the downstream
-          // FragmentInstance may be finished, although the upstream is still working.
+          // A downstream fragment may finish early, for example when a LimitOperator has produced
+          // enough
+          // rows, while its upstream fragment is still sending events. Ignore late events for the
+          // finished
+          // or aborted SourceHandle.
           if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
                 DataNodeQueryMessages

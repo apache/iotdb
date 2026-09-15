@@ -149,11 +149,13 @@ public class StorageEngine implements IService {
   private final ConcurrentHashMap<DataRegionId, DataRegion> deletingDataRegionMap =
       new ConcurrentHashMap<>();
 
-  /** number of ready data region */
+  /** Number of data regions that have completed the initial local recovery phase. */
   private AtomicInteger readyDataRegionNum;
 
+  /** True when recovered data regions can serve ordinary reads and writes. */
   private final AtomicBoolean isReadyForReadAndWrite = new AtomicBoolean();
 
+  /** True when non-read/write services may proceed with their initialization. */
   private final AtomicBoolean isReadyForNonReadWriteFunctions = new AtomicBoolean();
 
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
@@ -317,6 +319,10 @@ public class StorageEngine implements IService {
     return localDataRegionInfo;
   }
 
+  /**
+   * Initializes storage directories, recovers data regions and WALs, starts timed services, and
+   * waits until the read/write readiness barrier is satisfied.
+   */
   @Override
   public void start() throws StartupException {
     recoverDataRegionNum = 0;
@@ -801,8 +807,8 @@ public class StorageEngine implements IService {
     }
   }
 
-  // When registering a new region, the coordinator needs to register the corresponding region with
-  // the local storage before adding the corresponding consensusGroup to the consensus layer
+  // Create the local DataRegion before the coordinator adds the corresponding consensus group, so
+  // consensus requests cannot arrive before the region and its lock are available.
   public void createDataRegion(DataRegionId regionId, String databaseName)
       throws DataRegionException {
     makeSureNoOldRegion(regionId);
@@ -892,10 +898,10 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * run the runnable if the region is absent. if the region is present, do nothing.
+   * Runs the action only when the specified DataRegion is absent.
    *
-   * <p>we don't use computeIfAbsent because we don't want to create a new region if the region is
-   * absent, we just want to run the runnable in a synchronized way.
+   * <p>Uses computeIfAbsent to serialize the absence check and action; returning null keeps the map
+   * unchanged.
    *
    * @return true if the region is absent and the runnable is run. false if the region is present.
    */
@@ -912,10 +918,10 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * run the consumer if the region is present. if the region is absent, do nothing.
+   * Run the consumer if the region is present. if the region is absent, do nothing.
    *
-   * <p>we don't use computeIfPresent because we don't want to remove the region if the consumer
-   * returns null, we just want to run the consumer in a synchronized way.
+   * <p>Uses computeIfPresent to serialize consumer invocation and returns the existing region so it
+   * remains in the map.
    *
    * @return true if the region is present and the consumer is run. false if the region is absent.
    */
@@ -947,7 +953,12 @@ public class StorageEngine implements IService {
     return dataRegionMap.size();
   }
 
-  /** This method is not thread-safe */
+  /**
+   * Replaces a local DataRegion while loading a snapshot.
+   *
+   * <p>This method is not thread-safe and may be called only while external region access is
+   * quiesced by the snapshot-loading protocol.
+   */
   public DataRegion setDataRegionForSnapshotLoad(
       DataRegionId regionId, Supplier<DataRegion> newRegionSupplier) {
     if (dataRegionMap.containsKey(regionId)) {
