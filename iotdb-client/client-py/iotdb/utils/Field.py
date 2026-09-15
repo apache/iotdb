@@ -16,18 +16,12 @@
 # under the License.
 #
 
-import numpy as np
-from iotdb.tsfile.utils.date_utils import parse_int_to_date
+# for package
 from iotdb.utils.IoTDBConstants import TSDataType
-
-
-def _is_missing(value):
-    if value is None:
-        return True
-    value_type = type(value)
-    return value_type.__name__ == "NAType" and value_type.__module__.startswith(
-        "pandas."
-    )
+from iotdb.tsfile.utils.date_utils import parse_int_to_date
+from iotdb.utils.rpc_utils import convert_to_timestamp, isoformat
+import numpy as np
+import pandas as pd
 
 
 class Field(object):
@@ -76,7 +70,7 @@ class Field(object):
         return self.__data_type
 
     def is_null(self):
-        return self.__data_type is None or _is_missing(self.value)
+        return self.__data_type is None or self.value is None or self.value is pd.NA
 
     def set_bool_value(self, value: bool):
         self.value = value
@@ -84,7 +78,11 @@ class Field(object):
     def get_bool_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.BOOLEAN or _is_missing(self.value):
+        if (
+            self.__data_type != TSDataType.BOOLEAN
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return self.value
 
@@ -97,7 +95,8 @@ class Field(object):
         if (
             self.__data_type != TSDataType.INT32
             and self.__data_type != TSDataType.DATE
-            or _is_missing(self.value)
+            or self.value is None
+            or self.value is pd.NA
         ):
             return None
         return np.int32(self.value)
@@ -111,7 +110,8 @@ class Field(object):
         if (
             self.__data_type != TSDataType.INT64
             and self.__data_type != TSDataType.TIMESTAMP
-            or _is_missing(self.value)
+            or self.value is None
+            or self.value is pd.NA
         ):
             return None
         return np.int64(self.value)
@@ -122,7 +122,11 @@ class Field(object):
     def get_float_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.FLOAT or _is_missing(self.value):
+        if (
+            self.__data_type != TSDataType.FLOAT
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return np.float32(self.value)
 
@@ -132,7 +136,11 @@ class Field(object):
     def get_double_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.DOUBLE or _is_missing(self.value):
+        if (
+            self.__data_type != TSDataType.DOUBLE
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return np.float64(self.value)
 
@@ -146,7 +154,8 @@ class Field(object):
             self.__data_type != TSDataType.TEXT
             and self.__data_type != TSDataType.STRING
             and self.__data_type != TSDataType.BLOB
-            or _is_missing(self.value)
+            or self.value is None
+            or self.value is pd.NA
         ):
             return None
         return self.value
@@ -154,21 +163,27 @@ class Field(object):
     def get_timestamp_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.TIMESTAMP or _is_missing(self.value):
+        if (
+            self.__data_type != TSDataType.TIMESTAMP
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
-        from iotdb.utils.rpc_utils import convert_to_timestamp
-
         return convert_to_timestamp(self.value, self.__precision, self.__timezone)
 
     def get_date_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.DATE or _is_missing(self.value):
+        if (
+            self.__data_type != TSDataType.DATE
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return parse_int_to_date(self.value)
 
     def get_string_value(self):
-        if self.__data_type is None or _is_missing(self.value):
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             return "None"
         # TEXT, STRING
         if self.__data_type == 5 or self.__data_type == 11:
@@ -178,8 +193,6 @@ class Field(object):
             return str(hex(int.from_bytes(self.value, byteorder="big")))
         # TIMESTAMP
         elif self.__data_type == 8:
-            from iotdb.utils.rpc_utils import convert_to_timestamp, isoformat
-
             return isoformat(
                 convert_to_timestamp(self.value, self.__precision, self.__timezone),
                 self.__precision,
@@ -195,7 +208,7 @@ class Field(object):
         """
         :param data_type: TSDataType
         """
-        if self.__data_type is None or _is_missing(self.value):
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             return None
         if data_type == 0:
             return bool(self.value)
@@ -208,8 +221,6 @@ class Field(object):
         elif data_type == 4:
             return np.float64(self.value)
         elif data_type == 8:
-            from iotdb.utils.rpc_utils import convert_to_timestamp
-
             return convert_to_timestamp(self.value, self.__precision, self.__timezone)
         elif data_type == 9:
             return parse_int_to_date(self.value)
@@ -226,7 +237,7 @@ class Field(object):
         :param value: field value corresponding to the data type
         :param data_type: TSDataType
         """
-        if _is_missing(value):
+        if value is None or value is pd.NA:
             return None
         field = Field(data_type, value)
         return field

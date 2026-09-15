@@ -19,18 +19,17 @@
 # for package
 import logging
 from collections import deque
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import numpy as np
+import pandas as pd
 from iotdb.thrift.rpc.IClientRPCService import TSCloseOperationReq, TSFetchResultsReq
+from iotdb.tsfile.utils.date_utils import parse_int_to_date
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 from iotdb.utils.exception import IoTDBConnectionException
 from iotdb.utils.IoTDBConstants import TSDataType
-from iotdb.utils.rpc_utils import verify_success
+from iotdb.utils.rpc_utils import convert_to_timestamp, verify_success
 from thrift.transport import TTransport
-
-if TYPE_CHECKING:
-    import pandas as pd
 
 logger = logging.getLogger("IoTDB")
 TIMESTAMP_STR = "Time"
@@ -221,8 +220,6 @@ class IoTDBRpcDataSet(object):
         return [None if is_null else next(source_values) for is_null in nulls]
 
     def construct_one_data_frame(self):
-        import pandas as pd
-
         if self.has_cached_data_frame or self.__query_result is None:
             return
         result = {}
@@ -316,14 +313,12 @@ class IoTDBRpcDataSet(object):
         """
         return self.__df_buffer is not None and len(self.__df_buffer) > 0
 
-    def next_dataframe(self) -> Optional["pd.DataFrame"]:
+    def next_dataframe(self) -> Optional[pd.DataFrame]:
         """
         Get the next DataFrame from the result set with exactly fetch_size rows.
         The last DataFrame may have fewer rows.
         :return: the next DataFrame with fetch_size rows, or None if no more data
         """
-        import pandas as pd
-
         # Accumulate data until we have at least fetch_size rows or no more data
         while True:
             buffer_len = 0 if self.__df_buffer is None else len(self.__df_buffer)
@@ -373,10 +368,6 @@ class IoTDBRpcDataSet(object):
         return self._build_dataframe(result)
 
     def _process_buffer(self):
-        import pandas as pd
-        from iotdb.tsfile.utils.date_utils import parse_int_to_date
-        from iotdb.utils.rpc_utils import convert_to_timestamp
-
         result = {}
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
             result[i] = []
@@ -476,8 +467,6 @@ class IoTDBRpcDataSet(object):
         return result
 
     def _build_dataframe(self, result):
-        import pandas as pd
-
         for k, v in result.items():
             if v is None or len(v) < 1 or v[0] is None:
                 result[k] = []
