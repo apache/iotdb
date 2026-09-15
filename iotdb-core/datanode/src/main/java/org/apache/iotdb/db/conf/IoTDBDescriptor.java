@@ -2268,6 +2268,7 @@ public class IoTDBDescriptor {
                       "enable_topk_runtime_filter"))));
 
       loadTableQueryDeviceEntryBatchSize(properties);
+      loadMppDataExchangeMaxPayloadSize(properties);
 
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
@@ -3070,11 +3071,7 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "mpp_data_exchange_keep_alive_time_in_ms",
                 Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))));
-    conf.setMppDataExchangeMaxPayloadSizeInBytes(
-        Integer.parseInt(
-            properties.getProperty(
-                "mpp_data_exchange_max_payload_size_in_bytes",
-                Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes()))));
+    loadMppDataExchangeMaxPayloadSize(properties);
 
     conf.setPartitionCacheSize(
         Integer.parseInt(
@@ -3086,6 +3083,34 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "driver_task_execution_time_slice_in_ms",
                 Integer.toString(commonConfig.getDriverTaskExecutionTimeSliceInMs()))));
+  }
+
+  private void loadMppDataExchangeMaxPayloadSize(TrimProperties properties) {
+    int configuredSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "mpp_data_exchange_max_payload_size_in_bytes",
+                Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes())));
+    int defaultSize = 4 * 1024 * 1024;
+    if (configuredSize <= 0) {
+      LOGGER.warn(
+          DataNodeMiscMessages
+              .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2,
+          configuredSize,
+          defaultSize);
+      configuredSize = defaultSize;
+    }
+    int maxAllowedSize = Math.max(1, conf.getThriftMaxFrameSize() - 1024);
+    if (configuredSize > maxAllowedSize) {
+      LOGGER.warn(
+          DataNodeMiscMessages
+              .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC,
+          configuredSize,
+          maxAllowedSize,
+          maxAllowedSize);
+      configuredSize = maxAllowedSize;
+    }
+    conf.setMppDataExchangeMaxPayloadSizeInBytes(configuredSize);
   }
 
   /** Get default encode algorithm by data type */

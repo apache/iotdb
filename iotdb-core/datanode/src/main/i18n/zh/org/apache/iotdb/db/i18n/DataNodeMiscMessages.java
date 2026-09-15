@@ -1468,5 +1468,11 @@ public final class DataNodeMiscMessages {
   public static final String
       LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA =
           "table_query_device_entry_batch_size_in_bytes（%d）超过最大 RPC payload（dn_thrift_max_frame_size %d 减去 1024 字节），将使用 %d 作为生效值";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2 =
+          "mpp_data_exchange_max_payload_size_in_bytes（%d）不是正数，将使用默认值 %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC =
+          "mpp_data_exchange_max_payload_size_in_bytes（%d）超过允许的最大值 %d，将使用 %d";
 
 }
