@@ -183,7 +183,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           int offset = req.getOffset();
           for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
             try {
-              ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i).asReadOnlyBuffer();
+              ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
               int blockOffset = i == req.getStartSequenceId() ? offset : 0;
               int serializedTsBlockSize = serializedTsBlock.remaining();
               if (blockOffset < 0 || blockOffset > serializedTsBlockSize) {
@@ -209,6 +209,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                 fragment.limit(blockOffset + remainingPayloadSize);
                 resp.addToTsBlocks(fragment.slice());
                 resp.setOffset(blockOffset + remainingPayloadSize);
+                if (blockOffset == 0) {
+                  resp.setTotalLength(serializedTsBlockSize);
+                }
                 break;
               }
             } catch (GetTsBlockFromClosedOrAbortedChannelException e) {

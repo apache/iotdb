@@ -98,6 +98,8 @@ struct TGetDataBlockResponse {
   1: required list<binary> tsBlocks
   // The start offset of the next fragment. It is set only when the last element in tsBlocks is a fragment.
   2: optional i32 offset
+  // Total serialized length of the TsBlock when the response starts its first fragment.
+  3: optional i32 totalLength
 }
 
 struct TAcknowledgeDataBlockEvent {

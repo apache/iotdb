@@ -47,11 +47,11 @@ import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_CALLER;
@@ -794,7 +795,7 @@ public class SourceHandle implements ISourceHandle {
       private final List<ByteBuffer> tsBlocks;
       private int nextSequenceId;
       private int offset;
-      private ByteArrayOutputStream partialTsBlock;
+      private PublicBAOS partialTsBlock;
 
       private DataBlockFetchProgress(int startSequenceId, int endSequenceId) {
         this.nextSequenceId = startSequenceId;
@@ -806,7 +807,7 @@ public class SourceHandle implements ISourceHandle {
         return nextSequenceId == endSequenceId && partialTsBlock == null;
       }
 
-      private void addResponse(TGetDataBlockResponse response) throws TException {
+      private void addResponse(TGetDataBlockResponse response) {
         List<ByteBuffer> responseBlocks = response.getTsBlocks();
         boolean lastBlockIsFragment = response.isSetOffset();
         int blockIndex = 0;
@@ -817,7 +818,7 @@ public class SourceHandle implements ISourceHandle {
             updateOffset(response.getOffset());
             return;
           }
-          tsBlocks.add(ByteBuffer.wrap(partialTsBlock.toByteArray()));
+          tsBlocks.add(ByteBuffer.wrap(partialTsBlock.getBuf()));
           partialTsBlock = null;
           offset = 0;
           nextSequenceId++;
@@ -831,36 +832,20 @@ public class SourceHandle implements ISourceHandle {
         }
 
         if (lastBlockIsFragment) {
-          partialTsBlock = new ByteArrayOutputStream();
+          checkArgument(response.isSetTotalLength(), "xxx");
+          partialTsBlock = new PublicBAOS(response.getTotalLength());
           appendFragment(responseBlocks.get(blockIndex));
           updateOffset(response.getOffset());
         }
-
-        if (nextSequenceId > endSequenceId
-            || (!lastBlockIsFragment
-                && nextSequenceId == endSequenceId
-                && partialTsBlock != null)) {
-          throw new TException(
-              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
-        }
       }
 
-      private void appendFragment(ByteBuffer fragment) throws TException {
-        ByteBuffer duplicate = fragment.duplicate();
-        if (!duplicate.hasRemaining()) {
-          throw new TException(
-              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
-        }
-        byte[] bytes = new byte[duplicate.remaining()];
-        duplicate.get(bytes);
-        partialTsBlock.writeBytes(bytes);
+      private void appendFragment(ByteBuffer fragment) {
+        checkArgument(fragment.hasRemaining(), "xxx");
+        partialTsBlock.writeBytes(fragment.array());
       }
 
-      private void updateOffset(int nextOffset) throws TException {
-        if (nextOffset <= offset || nextOffset != partialTsBlock.size()) {
-          throw new TException(
-              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
-        }
+      private void updateOffset(int nextOffset) {
+        checkArgument(nextOffset > offset && nextOffset == partialTsBlock.size(), "xxx");
         offset = nextOffset;
       }
     }

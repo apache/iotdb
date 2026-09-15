@@ -427,7 +427,8 @@ public class SinkChannel implements ISinkChannel {
           DataNodeQueryMessages.THE_DATA_BLOCK_DOESN_T_EXIST_SEQUENCE_ID + sequenceId);
     }
     serializedTsBlock = serde.serialize(pair.left);
-    sequenceIdToSerializedTsBlock.put(sequenceId, serializedTsBlock.asReadOnlyBuffer());
+    sequenceIdToSerializedTsBlock.put(sequenceId, serializedTsBlock);
+    pair.left = null;
     return serializedTsBlock.duplicate();
   }
 
