@@ -579,8 +579,12 @@ public class IoTDBJDBCDataSet {
     return getTimestamp(findColumn(columnName));
   }
 
-  public int findColumn(String columnName) {
-    return columnOrdinalMap.get(columnName);
+  public int findColumn(String columnName) throws StatementExecutionException {
+    Integer ordinal = columnOrdinalMap.get(columnName);
+    if (ordinal == null) {
+      throw new StatementExecutionException(RpcMessages.UNKNOWN_COLUMN_NAME + columnName);
+    }
+    return ordinal;
   }
 
   public String getValueByName(String columnName) throws StatementExecutionException {
