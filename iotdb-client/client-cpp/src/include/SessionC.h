@@ -131,6 +131,14 @@ TsStatus ts_session_open_with_compression(CSession* session, bool enableRPCCompr
 
 TsStatus ts_session_close(CSession* session);
 
+/**
+ * Enables TLS for a tree-model session. Pass NULL for both client certificate and private key
+ * to use one-way TLS; pass PEM paths for both to use mutual TLS.
+ */
+TsStatus ts_session_set_ssl_config(CSession* session, const char* trustCertFilePath,
+                                   const char* clientCertificateFilePath,
+                                   const char* clientPrivateKeyFilePath);
+
 /* ============================================================
  *  Session Lifecycle  —  Table Model
  * ============================================================ */
@@ -147,6 +155,13 @@ void ts_table_session_destroy(CTableSession* session);
 TsStatus ts_table_session_open(CTableSession* session);
 
 TsStatus ts_table_session_close(CTableSession* session);
+
+/** Creates and opens a TLS or mutual-TLS table-model session. */
+CTableSession* ts_table_session_new_with_ssl(const char* host, int rpcPort, const char* username,
+                                             const char* password, const char* database,
+                                             const char* trustCertFilePath,
+                                             const char* clientCertificateFilePath,
+                                             const char* clientPrivateKeyFilePath);
 
 /* ============================================================
  *  Timezone

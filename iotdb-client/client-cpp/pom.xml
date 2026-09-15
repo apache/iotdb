@@ -34,7 +34,7 @@
         The C++ client build is now driven entirely by the top-level
         CMakeLists.txt in this directory. Maven only:
           1. Runs cmake configure + build (cmake-maven-plugin)
-          2. Optionally starts/stops an IoTDB server (process-exec-maven-plugin)
+          2. Runs plain/TLS/mTLS integration-test phases (exec-maven-plugin)
           3. Packages the produced install tree (maven-assembly-plugin)
 
         Everything else - thrift download, code generation, Boost/m4/flex/bison
@@ -50,7 +50,7 @@
         <iotdb.deps.dir>${project.basedir}/third-party</iotdb.deps.dir>
         <iotdb.offline>OFF</iotdb.offline>
         <with.ssl>ON</with.ssl>
-        <iotdb.openssl.from.source>OFF</iotdb.openssl.from.source>
+        <iotdb.openssl.from.source>ON</iotdb.openssl.from.source>
         <iotdb.cxx11.abi/>
         <!-- Switched to OFF by the .skipTests profile below. -->
         <build.tests>ON</build.tests>
@@ -63,6 +63,7 @@
         <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
         <client.cpp.package.name>iotdb-session-cpp-${project.version}-${client.cpp.package.classifier}</client.cpp.package.name>
         <client.cpp.ci.build.id>${env.GITHUB_RUN_ID}</client.cpp.ci.build.id>
+        <iotdb.dist.root>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin</iotdb.dist.root>
     </properties>
     <dependencies>
         <dependency>
@@ -144,51 +145,30 @@
                         <goals>
                             <goal>test</goal>
                         </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <config>${cmake.build.type}</config>
-                            <projectDirectory>${cmake.project.dir}</projectDirectory>
-                            <skipTests>${maven.test.skip}</skipTests>
-                        </configuration>
+                        <phase>none</phase>
                     </execution>
                 </executions>
             </plugin>
-            <!-- Start a local IoTDB server before integration-test, stop it after. -->
             <plugin>
-                <groupId>com.bazaarvoice.maven.plugins</groupId>
-                <artifactId>process-exec-maven-plugin</artifactId>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>start-iotdb</id>
+                        <id>run-cpp-it-phases</id>
                         <goals>
-                            <goal>start</goal>
+                            <goal>exec</goal>
                         </goals>
-                        <phase>pre-integration-test</phase>
+                        <phase>integration-test</phase>
                         <configuration>
                             <skip>${ctest.skip.tests}</skip>
-                            <name>iotdb-server</name>
-                            <waitForInterrupt>false</waitForInterrupt>
-                            <waitAfterLaunch>45</waitAfterLaunch>
-                            <processLogFile>${cmake.project.dir}/test.log</processLogFile>
+                            <executable>python</executable>
                             <arguments>
-                                <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.start.script}</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>stop-iotdb</id>
-                        <goals>
-                            <goal>stop-all</goal>
-                        </goals>
-                        <phase>post-integration-test</phase>
-                        <configuration>
-                            <skip>${ctest.skip.tests}</skip>
-                            <name>iotdb-server</name>
-                            <waitForInterrupt>false</waitForInterrupt>
-                            <waitAfterLaunch>5</waitAfterLaunch>
-                            <processLogFile>${cmake.project.dir}/stop.log</processLogFile>
-                            <arguments>
-                                <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.stop.script}</argument>
+                                <argument>${project.basedir}/test/scripts/run_cpp_it_phases.py</argument>
+                                <argument>${cmake.project.dir}</argument>
+                                <argument>${iotdb.dist.root}</argument>
+                                <argument>${project.basedir}/test/fixtures</argument>
+                                <argument>--config</argument>
+                                <argument>${cmake.build.type}</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -275,8 +255,6 @@
                 </os>
             </activation>
             <properties>
-                <iotdb.start.script>start-standalone.sh</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
                 <client.cpp.package.classifier>linux-x86_64-glibc2.28</client.cpp.package.classifier>
             </properties>
@@ -291,8 +269,6 @@
                 </os>
             </activation>
             <properties>
-                <iotdb.start.script>start-standalone.sh</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
                 <client.cpp.package.classifier>linux-aarch64-glibc2.28</client.cpp.package.classifier>
             </properties>
@@ -306,8 +282,6 @@
                 </os>
             </activation>
             <properties>
-                <iotdb.start.script>start-standalone.sh</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>mac</os.suffix>
                 <client.cpp.package.classifier>macos-x86_64</client.cpp.package.classifier>
             </properties>
@@ -321,8 +295,6 @@
                 </os>
             </activation>
             <properties>
-                <iotdb.start.script>start-standalone.sh</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>mac</os.suffix>
                 <client.cpp.package.classifier>macos-aarch64</client.cpp.package.classifier>
             </properties>
@@ -335,8 +307,6 @@
                 </os>
             </activation>
             <properties>
-                <iotdb.start.script>windows/start-standalone.bat</iotdb.start.script>
-                <iotdb.stop.script>windows/stop-standalone.bat</iotdb.stop.script>
                 <os.suffix>win</os.suffix>
                 <client.cpp.package.classifier>windows-x86_64-msvc14.3</client.cpp.package.classifier>
             </properties>
