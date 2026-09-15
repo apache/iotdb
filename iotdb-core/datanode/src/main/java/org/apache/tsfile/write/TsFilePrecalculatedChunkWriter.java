@@ -113,7 +113,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
         chunkLength);
 
     if (isFirstChunkOfGroup) {
-      checkOffsetMismatch("chunk group header", chunkGroupHeaderOffset, currentPos, device, chunk);
+      chunkGroupHeaderOffset = alignToOffset(chunkGroupHeaderOffset, device, chunk);
       new ChunkGroupHeader(device).serializeTo(stream);
       currentPos = out.getPosition();
       LOGGER.info(
@@ -126,7 +126,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
           currentPos - chunkGroupHeaderOffset);
     }
 
-    checkOffsetMismatch("chunk", chunkOffset, currentPos, device, chunk);
+    chunkOffset = alignToOffset(chunkOffset, device, chunk);
     chunk.getHeader().serializeTo(stream);
     out.write(chunk.getData().duplicate());
 
@@ -160,33 +160,40 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
         .add(metadata);
   }
 
-  private void checkOffsetMismatch(
-      final String positionType,
-      final long expectedOffset,
-      final long actualOffset,
-      final IDeviceID device,
-      final Chunk chunk)
+  private long alignToOffset(final long expectedOffset, final IDeviceID device, final Chunk chunk)
       throws IOException {
-    if (expectedOffset != actualOffset) {
-      LOGGER.error(
-          "Precalculated offset mismatch: file={}, positionType={}, device={}, measurement={}, "
-              + "expectedOffset={}, actualOffset={}, delta={}",
+    final long currentOffset = out.getPosition();
+    if (currentOffset < expectedOffset) {
+      long remaining = expectedOffset - currentOffset;
+      while (remaining > 0) {
+        final int step = (int) Math.min(Integer.MAX_VALUE, remaining);
+        out.write(new byte[step]);
+        remaining -= step;
+      }
+      LOGGER.warn(
+          "Filled physical hole before writing chunk: file={}, device={}, measurement={}, "
+              + "expectedOffset={}, actualOffset={}, fillBytes={}",
           getFileForLog(),
-          positionType,
           device,
           chunk.getHeader().getMeasurementID(),
           expectedOffset,
-          actualOffset,
-          actualOffset - expectedOffset);
-      throw new IOException(
-          String.format(
-              "Precalculated %s offset mismatch for %s/%s: expected=%d, actual=%d",
-              positionType,
-              device,
-              chunk.getHeader().getMeasurementID(),
-              expectedOffset,
-              actualOffset));
+          currentOffset,
+          expectedOffset - currentOffset);
+      return expectedOffset;
     }
+    if (currentOffset > expectedOffset) {
+      LOGGER.warn(
+          "Precalculated offset is behind actual file position; using actual position: file={}, "
+              + "device={}, measurement={}, expectedOffset={}, actualOffset={}, delta={}",
+          getFileForLog(),
+          device,
+          chunk.getHeader().getMeasurementID(),
+          expectedOffset,
+          currentOffset,
+          currentOffset - expectedOffset);
+      return currentOffset;
+    }
+    return expectedOffset;
   }
 
   @Override

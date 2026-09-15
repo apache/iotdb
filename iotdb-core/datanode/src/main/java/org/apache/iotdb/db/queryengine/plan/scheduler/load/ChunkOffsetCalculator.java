@@ -15,7 +15,9 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
+import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.BytesUtils;
 
@@ -54,7 +56,7 @@ public final class ChunkOffsetCalculator {
 
     final long chunkOffset = nextOffset;
     final long chunkLength =
-        chunk.getHeader().getSerializedSize() + (long) chunk.getData().remaining();
+        getChunkHeaderSize(chunk.getHeader()) + (long) chunk.getData().remaining();
     final boolean firstChunkOfGroup = nextChunkIndex == 0;
     final ChunkLayout layout =
         new ChunkLayout(
@@ -115,8 +117,18 @@ public final class ChunkOffsetCalculator {
   }
 
   private int getChunkGroupHeaderSize(final IDeviceID device) {
+    final IDeviceID normalizedDevice =
+        device instanceof StringArrayDeviceID ? device : new StringArrayDeviceID(device.toString());
     try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-      return new ChunkGroupHeader(device).serializeTo(output);
+      return new ChunkGroupHeader(normalizedDevice).serializeTo(output);
+    } catch (final IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private int getChunkHeaderSize(final ChunkHeader chunkHeader) {
+    try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+      return chunkHeader.serializeTo(output);
     } catch (final IOException e) {
       throw new IllegalStateException(e);
     }

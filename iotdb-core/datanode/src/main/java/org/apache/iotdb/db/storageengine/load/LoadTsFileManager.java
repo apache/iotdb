@@ -59,6 +59,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
+import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -449,6 +450,7 @@ public class LoadTsFileManager {
     private final File taskDir;
     private Map<DataPartitionInfo, TsFilePrecalculatedChunkWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, TsFileResource> dataPartition2Resource;
+    private Map<DataPartitionInfo, LoadTsFileProgress> dataPartition2Progress;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
     private boolean isClosed;
     private boolean isPrepared;
@@ -457,6 +459,7 @@ public class LoadTsFileManager {
       this.taskDir = taskDir;
       this.dataPartition2Writer = new HashMap<>();
       this.dataPartition2Resource = new HashMap<>();
+      this.dataPartition2Progress = new HashMap<>();
       this.dataPartition2ModificationFile = new HashMap<>();
       this.isClosed = false;
       this.isPrepared = false;
@@ -492,8 +495,10 @@ public class LoadTsFileManager {
 
         final TsFilePrecalculatedChunkWriter writer = new TsFilePrecalculatedChunkWriter(newTsFile);
         final TsFileResource resource = new TsFileResource(newTsFile);
+        final LoadTsFileProgress progress = new LoadTsFileProgress(newTsFile);
         dataPartition2Writer.put(partitionInfo, writer);
         dataPartition2Resource.put(partitionInfo, resource);
+        dataPartition2Progress.put(partitionInfo, progress);
       }
       final TsFilePrecalculatedChunkWriter writer = dataPartition2Writer.get(partitionInfo);
       final ChunkData.ChunkLayout layout = chunkData.getChunkLayout();
@@ -504,6 +509,8 @@ public class LoadTsFileManager {
       final List<Chunk> chunks = chunkData.getChunks();
       for (int i = 0; i < chunks.size(); i++) {
         final Chunk chunk = chunks.get(i);
+        final long chunkLength =
+            getChunkHeaderSerializedSize(chunk.getHeader()) + (long) chunk.getData().remaining();
         writer.writeChunk(
             chunkData.getDevice(),
             chunkData.isAligned(),
@@ -511,10 +518,17 @@ public class LoadTsFileManager {
             layout.firstChunkOfGroup() && i == 0,
             chunk,
             chunkOffset);
-        chunkOffset += chunk.getHeader().getSerializedSize() + (long) chunk.getData().remaining();
-      }
-      if (chunkOffset != layout.offset() + layout.length()) {
-        throw new IOException("Chunk layout length does not match encoded chunks");
+        chunkOffset += chunkLength;
+        dataPartition2Progress
+            .get(partitionInfo)
+            .recordChunk(
+                chunkData.getDevice().toString(),
+                chunkData.isAligned(),
+                layout.chunkGroupHeaderOffset(),
+                chunkOffset - chunkLength,
+                layout.firstChunkOfGroup() && i == 0,
+                chunk,
+                chunkOffset);
       }
     }
 
@@ -548,6 +562,14 @@ public class LoadTsFileManager {
       }
     }
 
+    private int getChunkHeaderSerializedSize(final ChunkHeader chunkHeader) {
+      try (java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream()) {
+        return chunkHeader.serializeTo(output);
+      } catch (IOException e) {
+        throw new IllegalStateException(e);
+      }
+    }
+
     private void flush() throws IOException {
       for (TsFilePrecalculatedChunkWriter writer : dataPartition2Writer.values()) {
         writer.getOutput().flush();
@@ -571,6 +593,11 @@ public class LoadTsFileManager {
       for (final Map.Entry<DataPartitionInfo, TsFilePrecalculatedChunkWriter> entry :
           dataPartition2Writer.entrySet()) {
         final TsFilePrecalculatedChunkWriter writer = entry.getValue();
+        final LoadTsFileProgress progress = dataPartition2Progress.get(entry.getKey());
+        if (progress != null && progress.exists() && !progress.isReady(writer.getFile().length())) {
+          throw new LoadFileException(
+              "Staged LOAD TsFile is not contiguous yet: " + writer.getFile().getAbsolutePath());
+        }
         writer.close();
 
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
@@ -745,6 +772,22 @@ public class LoadTsFileManager {
           }
         }
       }
+      if (dataPartition2Progress != null) {
+        for (final LoadTsFileProgress progress : dataPartition2Progress.values()) {
+          try {
+            final Path progressPath = progress.getProgressFile().toPath();
+            if (Files.exists(progressPath)) {
+              RetryUtils.retryOnException(
+                  () -> {
+                    Files.delete(progressPath);
+                    return null;
+                  });
+            }
+          } catch (IOException e) {
+            LOGGER.warn(MESSAGE_DELETE_FAIL, progress.getProgressFile().getAbsolutePath(), e);
+          }
+        }
+      }
       try {
         RetryUtils.retryOnException(
             () -> {
@@ -758,6 +801,7 @@ public class LoadTsFileManager {
       }
       dataPartition2Writer = null;
       dataPartition2Resource = null;
+      dataPartition2Progress = null;
       dataPartition2ModificationFile = null;
       isClosed = true;
     }
