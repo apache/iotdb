@@ -193,12 +193,12 @@ class IoTDBRpcDataSet(object):
         )
         columns = []
         if not self.ignore_timestamp:
-            columns.append(time_array.tolist())
+            columns.append(iter(time_array.tolist()))
         for location in self.__column_index_2_tsblock_column_index_list:
             if location < 0:
                 continue
             columns.append(
-                self._expand_column(
+                self._column_values(
                     column_arrays[location],
                     null_indicators[location],
                     row_count,
@@ -208,16 +208,16 @@ class IoTDBRpcDataSet(object):
         return list(zip(*columns)) if columns else [tuple() for _ in range(row_count)]
 
     @staticmethod
-    def _expand_column(values, nulls, row_count, data_type):
+    def _column_values(values, nulls, row_count, data_type):
         source = values.tolist() if hasattr(values, "tolist") else list(values)
         if nulls is None:
-            return source
+            return iter(source)
         if data_type == TSDataType.BOOLEAN and len(source) == row_count:
-            return [
-                None if nulls[index] else source[index] for index in range(row_count)
-            ]
+            return (
+                None if nulls[index] else value for index, value in enumerate(source)
+            )
         source_values = iter(source)
-        return [None if is_null else next(source_values) for is_null in nulls]
+        return (None if is_null else next(source_values) for is_null in nulls)
 
     def construct_one_data_frame(self):
         if self.has_cached_data_frame or self.__query_result is None:

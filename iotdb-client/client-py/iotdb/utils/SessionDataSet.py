@@ -110,9 +110,9 @@ class SessionDataSet(object):
     def next(self):
         if not self.has_next():
             return None
-        return self.construct_row_record_from_data_frame()
+        return self._construct_row_record()
 
-    def construct_row_record_from_data_frame(self):
+    def _construct_row_record(self):
         row = self.iotdb_rpc_data_set._pop_row()
         if row is None:
             return None
@@ -133,6 +133,9 @@ class SessionDataSet(object):
                 self.__field_list,
             )
         return row_record
+
+    def construct_row_record_from_data_frame(self):
+        return self._construct_row_record()
 
     def close_operation_handle(self):
         self.iotdb_rpc_data_set.close()
