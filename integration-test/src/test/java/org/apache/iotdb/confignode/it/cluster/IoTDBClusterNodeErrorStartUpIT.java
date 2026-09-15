@@ -212,15 +212,35 @@ public class IoTDBClusterNodeErrorStartUpIT {
           dataNodeRestartResp.getStatus().getCode());
       Assert.assertTrue(dataNodeRestartResp.getStatus().getMessage().contains("whose nodeId="));
 
-      // Shutdown and check
+      // Shutdown and check. A gracefully stopped node is reported as Stopped by its shutdown
+      // hook. A ConfigNode that was the leader at shutdown time can not report itself to another
+      // leader, so it may remain Unknown on the newly elected leader.
       EnvFactory.getEnv().shutdownConfigNode(1);
       EnvFactory.getEnv().shutdownDataNode(0);
       EnvFactory.getEnv()
           .ensureNodeStatus(
-              Arrays.asList(
-                  EnvFactory.getEnv().getConfigNodeWrapper(1),
-                  EnvFactory.getEnv().getDataNodeWrapper(0)),
-              Arrays.asList(NodeStatus.Unknown, NodeStatus.Unknown));
+              Arrays.asList(EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Arrays.asList(NodeStatus.Stopped));
+      boolean isConfigNodeDown = false;
+      for (int retry = 0; retry < 30; retry++) {
+        TShowClusterResp showClusterResp = client.showCluster();
+        for (TConfigNodeLocation configNodeLocation : showClusterResp.getConfigNodeList()) {
+          if (configNodeLocation.getConsensusEndPoint().getPort()
+              == registeredConfigNodeWrapper.getConsensusPort()) {
+            String configNodeStatus =
+                showClusterResp.getNodeStatus().get(configNodeLocation.getConfigNodeId());
+            if (NodeStatus.Stopped.getStatus().equals(configNodeStatus)
+                || NodeStatus.Unknown.getStatus().equals(configNodeStatus)) {
+              isConfigNodeDown = true;
+            }
+          }
+        }
+        if (isConfigNodeDown) {
+          break;
+        }
+        Thread.sleep(1000);
+      }
+      Assert.assertTrue(isConfigNodeDown);
 
       /* Restart and updatePeer */
       // TODO: Delete this IT after enable modify internal TEndPoints

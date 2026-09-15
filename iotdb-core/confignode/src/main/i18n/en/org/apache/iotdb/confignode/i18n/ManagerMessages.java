@@ -469,8 +469,10 @@ public final class ManagerMessages {
       "Successfully transferred config region snapshot {}.";
   public static final String THERE_IS_NO_RUNNING_DATANODE_TO_EXECUTE_CQ =
       "There is no RUNNING DataNode to execute CQ {}";
-  public static final String THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The ConfigNode-{} will be shutdown soon, mark it as Unknown";
+  public static final String LOG_THE_CONFIGNODE_IS_REMOVING_SKIP_MARKING_IT_AS_STOPPED_41B041A3 =
+      "The ConfigNode-{} is Removing, skip marking it as Stopped";
+  public static final String LOG_THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_STOPPED_D2A64AFD =
+      "The ConfigNode-{} will be shutdown soon, mark it as Stopped";
   public static final String THE_CONFIG_REGION_AIR_GAP_CONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING =
       "The config region air gap connector does not support transferring single file piece bytes.";
   public static final String THE_CONFIG_REGION_SINK_DOES_NOT_SUPPORT_TRANSFERRING_SINGLE_FILE =
@@ -479,8 +481,10 @@ public final class ManagerMessages {
       "The config region snapshots %s cannot be parsed.";
   public static final String THE_DATABASE_DOESN_T_EXIST_MAYBE_IT_HAS_BEEN_PRE =
       "The Database: {} doesn't exist. Maybe it has been pre-deleted.";
-  public static final String THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
-      "The DataNode-{} will be shutdown soon, mark it as Unknown";
+  public static final String LOG_THE_DATANODE_IS_REMOVING_SKIP_MARKING_IT_AS_STOPPED_90F95D71 =
+      "The DataNode-{} is Removing, skip marking it as Stopped";
+  public static final String LOG_THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_STOPPED_05CF8A45 =
+      "The DataNode-{} will be shutdown soon, mark it as Stopped";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_GREEDYREGIONGROUPALLOCATOR_IS_YET =
       "The removeNodeReplicaSelect method of GreedyRegionGroupAllocator is yet to be implemented.";
   public static final String THE_REMOVENODEREPLICASELECT_METHOD_OF_PARTITEGRAPHPLACEMENTREGIONGROUPALLOCATOR =

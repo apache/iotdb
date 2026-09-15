@@ -111,6 +111,7 @@ public class ProcedureManagerTest {
   @BeforeClass
   public static void setUp() throws IOException {
     IManager CONFIG_MANAGER = new ConfigManager();
+    IManager CONFIG_MANAGER_SPY = spy(CONFIG_MANAGER);
     ProcedureManager procedureManager = CONFIG_MANAGER.getProcedureManager();
     PROCEDURE_MANAGER = spy(procedureManager);
 
@@ -130,6 +131,10 @@ public class ProcedureManagerTest {
     when(PROCEDURE_EXECUTOR.getProcedures()).thenReturn(procedureMap);
     when(PROCEDURE_MANAGER.getEnv()).thenReturn(ENV);
     when(ENV.getRemoveDataNodeHandler()).thenReturn(REMOVE_DATA_NODE_HANDLER);
+    // Inject the LoadManager spy into the call chain used by checkRemoveDataNodes, so that the
+    // node-status stubs below take effect on the production path
+    when(PROCEDURE_MANAGER.getConfigManager()).thenReturn(CONFIG_MANAGER_SPY);
+    when(CONFIG_MANAGER_SPY.getLoadManager()).thenReturn(LOAD_MANAGER);
   }
 
   @Test
@@ -197,6 +202,26 @@ public class ProcedureManagerTest {
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));
+    Assert.assertTrue(status.getMessage().contains("unknown"));
+  }
+
+  @Test
+  public void testCheckRemoveDataNodeWithAnotherStoppedDataNode() {
+    Set<TDataNodeLocation> relatedDataNodes = new HashSet<>();
+    relatedDataNodes.add(removeDataNodeLocationA);
+    relatedDataNodes.add(coordinatorDataNodeLocation);
+
+    when(REMOVE_DATA_NODE_HANDLER.getRelatedDataNodeLocations(removeDataNodeLocationA))
+        .thenReturn(relatedDataNodes);
+
+    when(LOAD_MANAGER.getNodeStatus(removeDataNodeLocationA.getDataNodeId()))
+        .thenReturn(NodeStatus.Running);
+    when(LOAD_MANAGER.getNodeStatus(coordinatorDataNodeLocation.getDataNodeId()))
+        .thenReturn(NodeStatus.Stopped);
+
+    TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
+    Assert.assertTrue(isFailed(status));
+    Assert.assertTrue(status.getMessage().contains("stopped"));
   }
 
   @Test

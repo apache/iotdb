@@ -579,15 +579,21 @@ public class ConfigManager implements IManager {
   public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Force updating the target DataNode's status to Unknown
-      getLoadManager()
-          .forceUpdateNodeCache(
-              NodeType.DataNode,
-              dataNodeLocation.getDataNodeId(),
-              new NodeHeartbeatSample(NodeStatus.Unknown));
-      LOGGER.info(
-          ManagerMessages.THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN,
-          dataNodeLocation.getDataNodeId());
+      int dataNodeId = dataNodeLocation.getDataNodeId();
+      if (NodeStatus.Removing.equals(getLoadManager().getNodeStatus(dataNodeId))) {
+        // Removing has the highest priority and can not be refreshed by the Stopped report
+        LOGGER.info(
+            ManagerMessages.LOG_THE_DATANODE_IS_REMOVING_SKIP_MARKING_IT_AS_STOPPED_90F95D71,
+            dataNodeId);
+      } else {
+        // Force updating the target DataNode's status to Stopped
+        getLoadManager()
+            .forceUpdateNodeCache(
+                NodeType.DataNode, dataNodeId, new NodeHeartbeatSample(NodeStatus.Stopped));
+        LOGGER.info(
+            ManagerMessages.LOG_THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_STOPPED_05CF8A45,
+            dataNodeId);
+      }
     }
     return status;
   }
@@ -1628,15 +1634,21 @@ public class ConfigManager implements IManager {
   public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Force updating the target ConfigNode's status to Unknown
-      getLoadManager()
-          .forceUpdateNodeCache(
-              NodeType.ConfigNode,
-              configNodeLocation.getConfigNodeId(),
-              new NodeHeartbeatSample(NodeStatus.Unknown));
-      LOGGER.info(
-          ManagerMessages.THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN,
-          configNodeLocation.getConfigNodeId());
+      int configNodeId = configNodeLocation.getConfigNodeId();
+      if (NodeStatus.Removing.equals(getLoadManager().getNodeStatus(configNodeId))) {
+        // Removing has the highest priority and can not be refreshed by the Stopped report
+        LOGGER.info(
+            ManagerMessages.LOG_THE_CONFIGNODE_IS_REMOVING_SKIP_MARKING_IT_AS_STOPPED_41B041A3,
+            configNodeId);
+      } else {
+        // Force updating the target ConfigNode's status to Stopped
+        getLoadManager()
+            .forceUpdateNodeCache(
+                NodeType.ConfigNode, configNodeId, new NodeHeartbeatSample(NodeStatus.Stopped));
+        LOGGER.info(
+            ManagerMessages.LOG_THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_STOPPED_D2A64AFD,
+            configNodeId);
+      }
     }
     return status;
   }

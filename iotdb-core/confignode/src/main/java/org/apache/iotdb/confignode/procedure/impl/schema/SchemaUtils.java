@@ -282,9 +282,13 @@ public class SchemaUtils {
       final ConfigManager configManager) {
     return configManager.getNodeManager().getRegisteredDataNodeLocations().entrySet().stream()
         .filter(
-            entry ->
-                configManager.getLoadManager().getNodeStatus(entry.getKey()) != NodeStatus.Unknown
-                    || !DataNodeContactTracker.getInstance().isDataNodeFenced(entry.getKey()))
+            entry -> {
+              final NodeStatus status =
+                  configManager.getLoadManager().getNodeStatus(entry.getKey());
+              // An Unknown or Stopped node that is additionally fenced is unreachable and skipped
+              return (status != NodeStatus.Unknown && status != NodeStatus.Stopped)
+                  || !DataNodeContactTracker.getInstance().isDataNodeFenced(entry.getKey());
+            })
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
