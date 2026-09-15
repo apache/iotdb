@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -37,6 +36,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.BytesUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,10 +58,21 @@ public class ShowDataNodesTask implements IConfigTask {
 
   public static void buildTSBlock(
       TShowDataNodesResp showDataNodesResp, SettableFuture<ConfigTaskResult> future) {
+    boolean hasStatusReason =
+        showDataNodesResp.getDataNodesInfoList() != null
+            && showDataNodesResp.getDataNodesInfoList().stream()
+                .anyMatch(
+                    dataNodeInfo ->
+                        dataNodeInfo.getStatusReason() != null
+                            && !dataNodeInfo.getStatusReason().isEmpty());
+    List<ColumnHeader> columnHeaders =
+        new ArrayList<>(ColumnHeaderConstant.showDataNodesColumnHeaders);
+    if (hasStatusReason) {
+      // insert after the Status column
+      columnHeaders.add(2, new ColumnHeader(ColumnHeaderConstant.STATUS_REASON, TSDataType.TEXT));
+    }
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showDataNodesColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
+        columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     if (showDataNodesResp.getDataNodesInfoList() != null) {
       for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
@@ -72,16 +83,25 @@ public class ShowDataNodesTask implements IConfigTask {
             .writeBinary(
                 BytesUtils.valueOf(
                     dataNodeInfo.getStatus() == null ? "" : dataNodeInfo.getStatus()));
-
-        builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(dataNodeInfo.getRpcAddresss()));
-        builder.getColumnBuilder(3).writeInt(dataNodeInfo.getRpcPort());
-        builder.getColumnBuilder(4).writeInt(dataNodeInfo.getDataRegionNum());
-
-        builder.getColumnBuilder(5).writeInt(dataNodeInfo.getSchemaRegionNum());
+        if (hasStatusReason) {
+          String statusReason = dataNodeInfo.getStatusReason();
+          if (statusReason == null) {
+            builder.getColumnBuilder(2).appendNull();
+          } else {
+            builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(statusReason));
+          }
+        }
+        int offset = hasStatusReason ? 1 : 0;
+        builder
+            .getColumnBuilder(2 + offset)
+            .writeBinary(BytesUtils.valueOf(dataNodeInfo.getRpcAddresss()));
+        builder.getColumnBuilder(3 + offset).writeInt(dataNodeInfo.getRpcPort());
+        builder.getColumnBuilder(4 + offset).writeInt(dataNodeInfo.getDataRegionNum());
+        builder.getColumnBuilder(5 + offset).writeInt(dataNodeInfo.getSchemaRegionNum());
         builder.declarePosition();
       }
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDataNodesHeader();
+    DatasetHeader datasetHeader = new DatasetHeader(columnHeaders, true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

@@ -70,7 +70,9 @@ public abstract class DirectoryStrategy {
     if (!hasSpace) {
       if (changeSystemStatusToReadOnly) {
         LOGGER.error(UtilMessages.DISK_SPACE_INSUFFICIENT_READ_ONLY);
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
       } else {
         if (LoggerPeriodicalLogReducer.shouldLog(
             UtilMessages.MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0)) {

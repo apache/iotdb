@@ -116,8 +116,7 @@ public class DataNodeShutdownHook extends Thread {
     ExternalRPCService.getInstance().stop();
 
     // Reject write operations to make sure all tsfiles will be sealed
-    CommonDescriptor.getInstance().getConfig().setStopping(true);
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    markNodeStopping();
     // Wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
 
@@ -210,6 +209,18 @@ public class DataNodeShutdownHook extends Thread {
             Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
 
     watcherThread.interrupt();
+  }
+
+  /**
+   * Mark the node as stopping: reject writes and record the ReadOnly reason, so that operators can
+   * distinguish an orderly shutdown (Stopping) from a disk-full or error triggered ReadOnly. The
+   * {@code ReadOnly(Stopping)} state is transient in the real shutdown sequence; extracting the
+   * transition keeps it unit-testable without racing the shutdown window.
+   */
+  static void markNodeStopping() {
+    CommonDescriptor.getInstance().getConfig().setStopping(true);
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.STOPPING);
   }
 
   private void triggerSnapshotForAllDataRegion() {

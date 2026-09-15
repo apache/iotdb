@@ -142,8 +142,9 @@ public class FolderManager {
       if (LoggerPeriodicalLogReducer.shouldLog(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY)) {
         logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
       }
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
     } else {
       logger.warn(UtilMessages.CANNOT_SELECT_FOLDER_BUT_DISK_HAS_SPACE, e);
     }

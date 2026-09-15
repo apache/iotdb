@@ -2581,8 +2581,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
-        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-        commonConfig.setStatusReason(NodeStatus.DISK_FULL);
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
       } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
           && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
         commonConfig.setNodeStatus(NodeStatus.Running);
@@ -2761,7 +2760,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
-      commonConfig.setNodeStatus(NodeStatus.parse(status));
+      NodeStatus nodeStatus = NodeStatus.parse(status);
+      if (nodeStatus == NodeStatus.ReadOnly) {
+        commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
+      } else {
+        commonConfig.setNodeStatus(nodeStatus);
+      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }

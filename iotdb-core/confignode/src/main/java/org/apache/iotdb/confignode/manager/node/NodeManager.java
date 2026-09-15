@@ -501,7 +501,7 @@ public class NodeManager {
     for (TAINodeConfiguration aiNodeConfiguration : getRegisteredAINodes()) {
       TAINodeInfo aiNodeInfo = new TAINodeInfo();
       aiNodeInfo.setAiNodeId(aiNodeConfiguration.getLocation().getAiNodeId());
-      aiNodeInfo.setStatus(getLoadManager().getNodeStatusWithReason(aiNodeInfo.getAiNodeId()));
+      aiNodeInfo.setStatus(getLoadManager().getNodeStatus(aiNodeInfo.getAiNodeId()).getStatus());
       aiNodeInfo.setInternalAddress(aiNodeConfiguration.getLocation().getInternalEndPoint().ip);
       aiNodeInfo.setInternalPort(aiNodeConfiguration.getLocation().getInternalEndPoint().port);
       aiNodeInfoList.add(aiNodeInfo);
@@ -720,7 +720,8 @@ public class NodeManager {
             TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
             int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
             dataNodeInfo.setDataNodeId(dataNodeId);
-            dataNodeInfo.setStatus(getLoadManager().getNodeStatusWithReason(dataNodeId));
+            dataNodeInfo.setStatus(getLoadManager().getNodeStatus(dataNodeId).getStatus());
+            dataNodeInfo.setStatusReason(getLoadManager().getNodeStatusReason(dataNodeId));
             dataNodeInfo.setRpcAddresss(
                 registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
             dataNodeInfo.setRpcPort(
@@ -856,7 +857,8 @@ public class NodeManager {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
-            info.setStatus(getLoadManager().getNodeStatusWithReason(configNodeId));
+            info.setStatus(getLoadManager().getNodeStatus(configNodeId).getStatus());
+            info.setStatusReason(getLoadManager().getNodeStatusReason(configNodeId));
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             info.setRoleType(

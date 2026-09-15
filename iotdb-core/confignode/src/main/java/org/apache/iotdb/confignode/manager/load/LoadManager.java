@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.service.EventService;
 import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
@@ -259,22 +260,24 @@ public class LoadManager {
   }
 
   /**
-   * Safely get the specified Node's current status with reason.
+   * Safely get the specified Node's current status reason.
    *
    * @param nodeId The specified NodeId
-   * @return The specified Node's current status if the nodeCache contains it, Unknown otherwise
+   * @return The reason why the Node is in its current status, null if the node has no reason or the
+   *     cache doesn't exist
    */
-  public String getNodeStatusWithReason(int nodeId) {
-    return loadCache.getNodeStatusWithReason(nodeId);
+  public String getNodeStatusReason(int nodeId) {
+    return loadCache.getNodeStatusReason(nodeId);
   }
 
   /**
-   * Get all Node's current status with reason.
+   * Get all Nodes' current statistics in a single traversal of the node cache, so that each node's
+   * status and reason come from the same statistics snapshot.
    *
-   * @return Map<NodeId, NodeStatus with reason>
+   * @return Map<NodeId, NodeStatistics>
    */
-  public Map<Integer, String> getNodeStatusWithReason() {
-    return loadCache.getNodeStatusWithReason();
+  public Map<Integer, NodeStatistics> getNodeStatisticsSnapshot() {
+    return loadCache.getNodeStatisticsSnapshot();
   }
 
   /**
