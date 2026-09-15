@@ -943,6 +943,11 @@ check_period_when_insert_blocked=50
 # Datatype: int
 io_task_queue_size_for_flushing=10
 
+# Whether flush sort, encoding and IO tasks run as a pipeline. If false, they run in one thread.
+# effectiveMode: restart
+# Datatype: bool
+enable_flush_sub_task_pipeline=true
+
 # If true, we will estimate each query's possible memory footprint before executing it and deny it if its estimated memory exceeds current free memory
 # effectiveMode: hot_reload
 # Datatype: bool

@@ -78,7 +78,7 @@ public class MemTableFlushTask {
 
   private final BlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
   private final BlockingQueue<Object> ioTaskQueue =
-      (SystemInfo.getInstance().isEncodingFasterThanIo())
+      (config.isEnableFlushSubTaskPipeline() && SystemInfo.getInstance().isEncodingFasterThanIo())
           ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
 
@@ -107,8 +107,10 @@ public class MemTableFlushTask {
     this.writer = writer;
     this.storageGroup = storageGroup;
     this.dataRegionId = dataRegionId;
-    this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
-    this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
+    this.encodingTaskFuture =
+        config.isEnableFlushSubTaskPipeline() ? SUB_TASK_POOL_MANAGER.submit(encodingTask) : null;
+    this.ioTaskFuture =
+        config.isEnableFlushSubTaskPipeline() ? SUB_TASK_POOL_MANAGER.submit(ioTask) : null;
 
     long MAX_NUMBER_OF_POINTS_IN_CHUNK = config.getTargetChunkPointNum();
     long TARGET_CHUNK_SIZE = config.getTargetChunkSize();
@@ -130,6 +132,10 @@ public class MemTableFlushTask {
   /** the function for flushing memtable. */
   @SuppressWarnings("squid:S3776")
   public void syncFlushMemTable() throws ExecutionException, InterruptedException {
+    if (!config.isEnableFlushSubTaskPipeline()) {
+      syncFlushMemTableInSingleThread();
+      return;
+    }
     long avgSeriesPointsNum =
         memTable.getSeriesNumber() == 0
             ? 0
@@ -231,6 +237,58 @@ public class MemTableFlushTask {
             MetricLevel.CORE,
             Tag.NAME.toString(),
             "flush");
+  }
+
+  private void syncFlushMemTableInSingleThread() throws ExecutionException, InterruptedException {
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    List<IDeviceID> deviceIDList = new ArrayList<>(memTableMap.keySet());
+    Collections.sort(deviceIDList);
+    for (IDeviceID deviceID : deviceIDList) {
+      IWritableMemChunkGroup group = memTableMap.get(deviceID);
+      if (group.isEmpty() || group.getMemChunkMap().isEmpty()) {
+        continue;
+      }
+      try {
+        writer.startChunkGroup(deviceID);
+      } catch (IOException e) {
+        throw new ExecutionException(e);
+      }
+      List<String> seriesInOrder = new ArrayList<>(group.getMemChunkMap().keySet());
+      Collections.sort(seriesInOrder);
+      for (String seriesId : seriesInOrder) {
+        IWritableMemChunk series = group.getMemChunkMap().get(seriesId);
+        if (series.count() == 0) {
+          continue;
+        }
+        series.sortTvListForFlush();
+        if (series instanceof AlignedWritableMemChunk && times == null) {
+          times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
+        }
+        series.encode(ioTaskQueue, encodeInfo, times);
+        Object message;
+        while ((message = ioTaskQueue.poll()) != null) {
+          if (message instanceof IChunkWriter) {
+            try {
+              ((IChunkWriter) message).writeToFileWriter(writer);
+            } catch (IOException e) {
+              throw new ExecutionException(e);
+            }
+          }
+        }
+      }
+      try {
+        writer.setMinPlanIndex(memTable.getMinPlanIndex());
+        writer.setMaxPlanIndex(memTable.getMaxPlanIndex());
+        writer.endChunkGroup();
+      } catch (IOException e) {
+        throw new ExecutionException(e);
+      }
+    }
+    try {
+      writer.writePlanIndices();
+    } catch (IOException e) {
+      throw new ExecutionException(e);
+    }
   }
 
   /** encoding task (second task of pipeline) */

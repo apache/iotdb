@@ -417,6 +417,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "io_task_queue_size_for_flushing",
                 Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
+    conf.setEnableFlushSubTaskPipeline(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_flush_sub_task_pipeline",
+                Boolean.toString(conf.isEnableFlushSubTaskPipeline()))));
 
     boolean enableWALCompression =
         Boolean.parseBoolean(properties.getProperty("enable_wal_compression", "true"));

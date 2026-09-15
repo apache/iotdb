@@ -869,6 +869,8 @@ public class IoTDBConfig {
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
 
+  private boolean enableFlushSubTaskPipeline = true;
+
   /** the number of data regions per user-defined database */
   private int dataRegionNum = 1;
 
@@ -3024,6 +3026,14 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
+  }
+
+  public boolean isEnableFlushSubTaskPipeline() {
+    return enableFlushSubTaskPipeline;
+  }
+
+  public void setEnableFlushSubTaskPipeline(boolean enableFlushSubTaskPipeline) {
+    this.enableFlushSubTaskPipeline = enableFlushSubTaskPipeline;
   }
 
   public boolean isEnableSeqSpaceCompaction() {
