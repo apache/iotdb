@@ -309,14 +309,10 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          # Pin openssl@3 (Apache-2.0): the default 'openssl' formula will move to
-          # OpenSSL 4.0, which drops the legacy TLS-method APIs Thrift still uses.
-          brew install boost openssl@3 llvm@17 bison
+          brew install boost llvm@17 bison
           ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
-          # Homebrew OpenSSL is keg-only, so point find_package(OpenSSL) at it.
-          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
           clang-format --version
           bison --version
       - name: Cache Maven packages
@@ -373,6 +369,22 @@ jobs:
           unzip -q -o "${PKG_TARBALL}" -d "${PKG_UNPACK}"
           PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
           test -n "${PKG_ROOT}"
+          OPENSSL_BUILD_INSTALL="${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target/build/_deps/openssl/install"
+          test -d "${OPENSSL_BUILD_INSTALL}"
+          rm -rf "${RUNNER_TEMP}/openssl-build-install-hidden"
+          mv "${OPENSSL_BUILD_INSTALL}" "${RUNNER_TEMP}/openssl-build-install-hidden"
+          SSL_DYLIB=$(find "${PKG_ROOT}/lib" -type f -name 'libssl*.dylib' -print -quit)
+          CRYPTO_DYLIB=$(find "${PKG_ROOT}/lib" -type f -name 'libcrypto*.dylib' -print -quit)
+          test -n "${SSL_DYLIB}"
+          test -n "${CRYPTO_DYLIB}"
+          otool -D "${SSL_DYLIB}" | grep -F "@rpath/$(basename "${SSL_DYLIB}")"
+          otool -D "${CRYPTO_DYLIB}" | grep -F "@rpath/$(basename "${CRYPTO_DYLIB}")"
+          otool -L "${SSL_DYLIB}" | grep -F "@rpath/$(basename "${CRYPTO_DYLIB}")"
+          if otool -L "${PKG_ROOT}/lib/libiotdb_session.dylib" "${SSL_DYLIB}" "${CRYPTO_DYLIB}" \
+              | grep -F "${GITHUB_WORKSPACE}"; then
+            echo "Packaged dylibs still reference the build workspace"
+            exit 1
+          fi
           EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
           cmake -S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" \
             -DCMAKE_BUILD_TYPE=Release \
@@ -419,7 +431,8 @@ jobs:
       - name: Install C++ dependencies (Windows)
         shell: pwsh
         run: |
-          choco install winflexbison3 -y --no-progress
+          choco install winflexbison3 strawberryperl -y --no-progress
+          echo 'C:\Strawberry\perl\bin' >> $env:GITHUB_PATH
           $boostArgs = @('install', '${{ matrix.boost_choco }}', '-y', '--no-progress')
           if ('${{ matrix.boost_choco_version }}' -ne '') {
             $boostArgs += @("--version=${{ matrix.boost_choco_version }}")
@@ -433,18 +446,6 @@ jobs:
             throw "Boost not found under C:\local after installing ${{ matrix.boost_choco }}"
           }
           echo $boostDir.FullName >> $env:GITHUB_PATH
-          # Use a pinned OpenSSL 3.x (Apache-2.0). 'choco install openssl' now
-          # installs OpenSSL 4.0, which removed the legacy TLS-method APIs that
-          # Apache Thrift's TSSLSocket still calls. The FireDaemon zip is a clean
-          # prebuilt OpenSSL 3.5.x that keeps them.
-          $sslZip = "$env:RUNNER_TEMP\openssl-3.5.3.zip"
-          $sslDir = "$env:RUNNER_TEMP\openssl-3"
-          curl.exe -L --fail --retry 3 -o $sslZip 'https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.3.zip'
-          Expand-Archive -Path $sslZip -DestinationPath $sslDir -Force
-          $sslPath = (Get-ChildItem $sslDir -Recurse -Directory -Filter 'x64' | Select-Object -First 1).FullName
-          if (-not $sslPath) { throw "OpenSSL x64 dir not found under $sslDir" }
-          echo "$sslPath\bin" >> $env:GITHUB_PATH
-          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
@@ -536,6 +537,7 @@ jobs:
           fi
           cmake "${CMAKE_ARGS[@]}"
           cmake --build "${EXAMPLE_BUILD}" --config Release
+          export PATH="${PKG_ROOT}/lib:${PATH}"
           ./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
           if [ "${RUNNER_OS}" = "Windows" ]; then
             WORKSPACE_BASE="$(cygpath -u "${GITHUB_WORKSPACE}")"

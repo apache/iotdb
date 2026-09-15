@@ -21,8 +21,10 @@
 #define IOTDB_ABSTRACTSESSIONBUILDER_H
 
 #include <string>
+#include <vector>
 
 #include "SessionConfig.h"
+#include "SslConfig.h"
 
 class AbstractSessionBuilder {
 public:
@@ -54,8 +56,19 @@ public:
   bool enableRedirections = DEFAULT_ENABLE_REDIRECTIONS;
   bool enableRPCCompression = DEFAULT_ENABLE_RPC_COMPRESSION;
   std::vector<std::string> nodeUrls;
+  // Kept for source compatibility with callers that configure builder fields directly.
   bool useSSL = false;
   std::string trustCertFilePath;
+  SslConfig sslConfig;
+
+  SslConfig getSslConfig() const {
+    SslConfig result = sslConfig;
+    result.useSsl = useSSL || result.useSsl;
+    if (result.trustCertFilePath.empty()) {
+      result.trustCertFilePath = trustCertFilePath;
+    }
+    return result;
+  }
 };
 
 #endif // IOTDB_ABSTRACTSESSIONBUILDER_H

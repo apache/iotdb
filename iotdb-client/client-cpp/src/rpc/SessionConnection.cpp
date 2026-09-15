@@ -19,6 +19,7 @@
 #include "SessionConnection.h"
 #include "SessionImpl.h"
 #include "RpcCommon.h"
+#include "RpcSslUtils.h"
 #include "common_types.h"
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TCompactProtocol.h>
@@ -46,7 +47,7 @@ SessionConnection::SessionConnection(Session::Impl* session_ptr, const TEndPoint
       sqlDialect(std::move(dialect)), database(std::move(db)) {
   this->zoneId = zoneId.empty() ? getSystemDefaultZoneId() : zoneId;
   endPointList.push_back(endpoint);
-  init(endPoint, session->useSSL_, session->trustCertFilePath_);
+  init(endPoint, session->sslConfig_);
 }
 
 void SessionConnection::close() {
@@ -92,12 +93,10 @@ SessionConnection::~SessionConnection() {
   }
 }
 
-void SessionConnection::init(const TEndPoint& endpoint, bool useSSL,
-                             const std::string& trustCertFilePath) {
-  if (useSSL) {
+void SessionConnection::init(const TEndPoint& endpoint, const SslConfig& sslConfig) {
+  if (sslConfig.useSsl) {
 #if WITH_SSL
-    socketFactory_->loadTrustedCertificates(trustCertFilePath.c_str());
-    socketFactory_->authenticate(false);
+    configureSslSocketFactory(socketFactory_, sslConfig);
     auto sslSocket = socketFactory_->createSocket(endPoint.ip, endPoint.port);
     sslSocket->setConnTimeout(connectionTimeoutInMs);
     transport = std::make_shared<TFramedTransport>(sslSocket);
@@ -332,7 +331,7 @@ bool SessionConnection::reconnect() {
         }
         tryHostNum++;
         try {
-          init(this->endPoint, this->session->useSSL_, this->session->trustCertFilePath_);
+          init(this->endPoint, this->session->sslConfig_);
           reconnect = true;
         } catch (const IoTDBConnectionException& e) {
           log_warn("The current node may have been down, connection exception: %s", e.what());

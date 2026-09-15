@@ -390,8 +390,7 @@ TEST_CASE("Session rejects SQL after close", "[sessionClose]") {
       builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
   localSession->open();
   localSession->close();
-  REQUIRE_THROWS_AS(localSession->executeNonQueryStatement("show databases"),
-                    IoTDBConnectionException);
+  REQUIRE_THROWS_AS(localSession->executeQueryStatement("SHOW VERSION"), IoTDBConnectionException);
 }
 
 TEST_CASE("Test insertTablet ", "[testInsertTablet]") {

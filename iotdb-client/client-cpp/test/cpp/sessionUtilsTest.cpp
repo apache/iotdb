@@ -25,6 +25,19 @@
 
 using namespace std;
 
+TEST_CASE("Session query rejects states without an open connection", "[utils]") {
+  SECTION("before open") {
+    Session session("127.0.0.1", 6667);
+    REQUIRE_THROWS_AS(session.executeQueryStatement("SHOW VERSION"), IoTDBConnectionException);
+  }
+
+  SECTION("after failed open") {
+    Session session("127.0.0.1", 1);
+    REQUIRE_THROWS_AS(session.open(), IoTDBException);
+    REQUIRE_THROWS_AS(session.executeQueryStatement("SHOW VERSION"), IoTDBConnectionException);
+  }
+}
+
 TEST_CASE("SessionUtils filterNullColumns keeps only non-null FIELD columns", "[utils]") {
   vector<pair<string, TSDataType::TSDataType>> schemas = {{"s1", TSDataType::INT32},
                                                           {"s2", TSDataType::INT64},
@@ -62,8 +75,9 @@ TEST_CASE("SessionUtils filterNullColumns returns original when nothing to drop"
   REQUIRE(filtered.get() == &tablet);
 }
 
-TEST_CASE("SessionUtils filterNullColumns returns nullptr when tree-model FIELD columns are all null",
-          "[utils]") {
+TEST_CASE(
+    "SessionUtils filterNullColumns returns nullptr when tree-model FIELD columns are all null",
+    "[utils]") {
   vector<pair<string, TSDataType::TSDataType>> schemas = {{"s1", TSDataType::INT32},
                                                           {"s2", TSDataType::INT64}};
   Tablet tablet("root.sg.d1", schemas, 1);
