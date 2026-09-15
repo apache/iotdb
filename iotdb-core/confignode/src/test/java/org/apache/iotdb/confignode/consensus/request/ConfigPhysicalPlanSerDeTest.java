@@ -147,6 +147,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
@@ -1714,6 +1715,20 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(alterColumnDataTypePlan.getType(), alterColumnDataTypePlan1.getType());
     Assert.assertEquals(
         alterColumnDataTypePlan.getNewType(), alterColumnDataTypePlan1.getNewType());
+  }
+
+  @Test
+  public void RollbackPreAlterTableColumnDataTypePlanTest() throws IOException {
+    final RollbackPreAlterColumnDataTypePlan rollbackPlan =
+        new RollbackPreAlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
+    final RollbackPreAlterColumnDataTypePlan rollbackPlan1 =
+        (RollbackPreAlterColumnDataTypePlan)
+            ConfigPhysicalPlan.Factory.create(rollbackPlan.serializeToByteBuffer());
+    Assert.assertEquals(rollbackPlan.getDatabase(), rollbackPlan1.getDatabase());
+    Assert.assertEquals(rollbackPlan.getTableName(), rollbackPlan1.getTableName());
+    Assert.assertEquals(rollbackPlan.getColumnName(), rollbackPlan1.getColumnName());
+    Assert.assertEquals(rollbackPlan.getType(), rollbackPlan1.getType());
+    Assert.assertEquals(rollbackPlan.getNewType(), rollbackPlan1.getNewType());
   }
 
   @Test
