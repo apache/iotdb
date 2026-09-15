@@ -283,6 +283,80 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
   }
 
   @Test
+  public void testTagFilteringAndAlterInConsensusQueue() throws Exception {
+    final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
+        ConsensusSubscriptionTableITSupport.newIdentifiers("table_filter_tags");
+    final String database = ids.getDatabase();
+    final String table = "t1";
+    final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD";
+    final String expectedColumnSignature =
+        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s2");
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(database, table, schema);
+      try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("use " + database);
+        session.executeNonQueryStatement(
+            "insert into " + table + "(tag1, s1, s2, time) values ('bootstrap', 0, 0.0, 0)");
+        session.executeNonQueryStatement("flush");
+      }
+
+      ConsensusSubscriptionTableITSupport.createConsensusTopic(
+          ids.getTopic(), database, table, "column_name = \"s2\"", "tag1 = \"keep\"");
+
+      consumer =
+          ConsensusSubscriptionTableITSupport.createConsumer(
+              ids.getConsumerId(), ids.getConsumerGroupId());
+      consumer.subscribe(ids.getTopic());
+
+      final Set<String> expectedBeforeAlter = new LinkedHashSet<>();
+      try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("use " + database);
+        for (int i = 1; i <= 5; i++) {
+          final long timestamp = 100L + i;
+          final String tag = i % 2 == 1 ? "keep" : "drop";
+          session.executeNonQueryStatement(
+              String.format(
+                  Locale.ROOT,
+                  "insert into %s(tag1, s1, s2, time) values ('%s', %d, %.1f, %d)",
+                  table,
+                  tag,
+                  i * 10L,
+                  i + 0.5d,
+                  timestamp));
+          if ("keep".equals(tag)) {
+            expectedBeforeAlter.add(
+                ConsensusSubscriptionTableITSupport.rowKey(database, table, timestamp));
+          }
+        }
+        session.executeNonQueryStatement("flush");
+      }
+
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords consumedBeforeAlter =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilContains(
+              consumer, expectedBeforeAlter, 50);
+      ConsensusSubscriptionTableITSupport.assertExactRowKeys(
+          expectedBeforeAlter, consumedBeforeAlter);
+      Assert.assertEquals(
+          Collections.singleton(expectedColumnSignature),
+          consumedBeforeAlter.getSeenColumnSignatures());
+
+      ConsensusSubscriptionTableITSupport.alterConsensusTopicTagFilter(
+          ids.getTopic(), "tag1 LIKE \"t1_tag_%\"");
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords consumedAfterAlter =
+          ConsensusSubscriptionTableITSupport.insertRowsAndPollUntilColumnSignature(
+              consumer, database, table, 200L, 3, true, false, expectedColumnSignature, 60);
+      Assert.assertTrue(consumedAfterAlter.getRowCount() > 0);
+      Assert.assertTrue(
+          consumedAfterAlter.getSeenColumnSignatures().contains(expectedColumnSignature));
+      ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
+    } finally {
+      ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
+    }
+  }
+
+  @Test
   public void testColumnFilteringComplexOperatorsInConsensusQueue() throws Exception {
     final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
         ConsensusSubscriptionTableITSupport.newIdentifiers("table_filter_complex_operators");

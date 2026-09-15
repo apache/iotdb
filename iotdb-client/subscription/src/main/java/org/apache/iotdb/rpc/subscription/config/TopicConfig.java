@@ -235,6 +235,23 @@ public class TopicConfig extends PipeParameters {
     return TopicConstant.COLUMN_FILTER_DEFAULT_VALUE.equalsIgnoreCase(getColumnFilter().trim());
   }
 
+  public Map<String, String> getAttributesWithSourceTagFilter() {
+    return Collections.singletonMap(TopicConstant.TAG_FILTER_KEY, getTagFilter());
+  }
+
+  public String getTagFilter() {
+    return getStringIgnoreCase(
+        TopicConstant.TAG_FILTER_KEY, TopicConstant.TAG_FILTER_DEFAULT_VALUE);
+  }
+
+  public boolean hasTagFilter() {
+    return containsKeyIgnoreCase(TopicConstant.TAG_FILTER_KEY);
+  }
+
+  public boolean isTagFilterTrivial() {
+    return TopicConstant.TAG_FILTER_DEFAULT_VALUE.equalsIgnoreCase(getTagFilter().trim());
+  }
+
   public Map<String, String> getAttributesWithSourceTimeRange() {
     final Map<String, String> attributesWithTimeRange = new HashMap<>();
 

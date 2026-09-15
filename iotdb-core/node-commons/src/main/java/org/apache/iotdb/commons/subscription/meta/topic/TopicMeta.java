@@ -37,6 +37,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -73,11 +74,11 @@ public class TopicMeta {
       final String topicName, final long creationTime, final Map<String, String> topicAttributes) {
     this.topicName = topicName;
     this.creationTime = creationTime;
-    this.config = new TopicConfig(topicAttributes);
+    this.config = new TopicConfig(canonicalizeTopicAttributes(topicAttributes));
     this.ownerEpoch = -1L;
     this.maxOwnerEpoch = -1L;
     this.ownerLastTransferTimeMs = -1L;
-    initOwnerFromTopicAttributes(topicAttributes);
+    initOwnerFromTopicAttributes(this.config.getAttribute());
 
     this.subscribedConsumerGroupIds = new HashSet<>();
   }
@@ -99,12 +100,18 @@ public class TopicMeta {
   }
 
   public TopicMeta deepCopyWithUpdatedAttributes(final Map<String, String> updatedAttributes) {
-    final Map<String, String> copiedAttributes = new HashMap<>(config.getAttribute());
+    final Map<String, String> copiedAttributes = canonicalizeTopicAttributes(config.getAttribute());
     if (Objects.nonNull(updatedAttributes)) {
-      copiedAttributes.putAll(updatedAttributes);
-      if ((updatedAttributes.containsKey(TopicConstant.OWNER_ID_KEY)
-              || updatedAttributes.containsKey(TopicConstant.OWNER_EPOCH_KEY))
-          && !updatedAttributes.containsKey(TopicConstant.OWNER_LEASE_DURATION_MS_KEY)) {
+      boolean ownerChanged = false;
+      boolean leaseUpdated = false;
+      for (final Map.Entry<String, String> entry : updatedAttributes.entrySet()) {
+        final String key = canonicalizeTopicAttributeKey(entry.getKey());
+        copiedAttributes.put(key, entry.getValue());
+        ownerChanged |=
+            TopicConstant.OWNER_ID_KEY.equals(key) || TopicConstant.OWNER_EPOCH_KEY.equals(key);
+        leaseUpdated |= TopicConstant.OWNER_LEASE_DURATION_MS_KEY.equals(key);
+      }
+      if (ownerChanged && !leaseUpdated) {
         copiedAttributes.remove(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
       }
     }
@@ -310,6 +317,7 @@ public class TopicMeta {
       final String value = ReadWriteIOUtils.readString(inputStream);
       topicMeta.config.getAttribute().put(key, value);
     }
+    canonicalizeTopicAttributesInPlace(topicMeta.config.getAttribute());
 
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
@@ -333,6 +341,7 @@ public class TopicMeta {
       final String value = ReadWriteIOUtils.readString(byteBuffer);
       topicMeta.config.getAttribute().put(key, value);
     }
+    canonicalizeTopicAttributesInPlace(topicMeta.config.getAttribute());
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
@@ -396,6 +405,74 @@ public class TopicMeta {
     }
   }
 
+  private static Map<String, String> canonicalizeTopicAttributes(
+      final Map<String, String> topicAttributes) {
+    final Map<String, String> canonicalAttributes = new HashMap<>();
+    if (Objects.isNull(topicAttributes)) {
+      return canonicalAttributes;
+    }
+    topicAttributes.forEach(
+        (key, value) -> canonicalAttributes.put(canonicalizeTopicAttributeKey(key), value));
+    return canonicalAttributes;
+  }
+
+  private static void canonicalizeTopicAttributesInPlace(final Map<String, String> attributes) {
+    final Map<String, String> canonicalAttributes = canonicalizeTopicAttributes(attributes);
+    attributes.clear();
+    attributes.putAll(canonicalAttributes);
+  }
+
+  private static String canonicalizeTopicAttributeKey(final String key) {
+    if (Objects.isNull(key)) {
+      return null;
+    }
+    final String normalizedKey = key.trim().toLowerCase(Locale.ROOT);
+    switch (normalizedKey) {
+      case TopicConstant.PATH_KEY:
+        return TopicConstant.PATH_KEY;
+      case TopicConstant.PATTERN_KEY:
+        return TopicConstant.PATTERN_KEY;
+      case TopicConstant.DATABASE_KEY:
+        return TopicConstant.DATABASE_KEY;
+      case TopicConstant.TABLE_KEY:
+        return TopicConstant.TABLE_KEY;
+      case TopicConstant.COLUMN_FILTER_KEY:
+        return TopicConstant.COLUMN_FILTER_KEY;
+      case TopicConstant.TAG_FILTER_KEY:
+        return TopicConstant.TAG_FILTER_KEY;
+      case TopicConstant.RETENTION_BYTES_KEY:
+        return TopicConstant.RETENTION_BYTES_KEY;
+      case TopicConstant.RETENTION_MS_KEY:
+        return TopicConstant.RETENTION_MS_KEY;
+      case TopicConstant.START_TIME_KEY:
+        return TopicConstant.START_TIME_KEY;
+      case TopicConstant.END_TIME_KEY:
+        return TopicConstant.END_TIME_KEY;
+      case TopicConstant.MODE_KEY:
+        return TopicConstant.MODE_KEY;
+      case TopicConstant.ORDER_MODE_KEY:
+        return TopicConstant.ORDER_MODE_KEY;
+      case TopicConstant.FORMAT_KEY:
+        return TopicConstant.FORMAT_KEY;
+      case TopicConstant.LOOSE_RANGE_KEY:
+        return TopicConstant.LOOSE_RANGE_KEY;
+      case TopicConstant.STRICT_KEY:
+        return TopicConstant.STRICT_KEY;
+      case TopicConstant.OWNER_ID_KEY:
+        return TopicConstant.OWNER_ID_KEY;
+      case TopicConstant.OWNER_EPOCH_KEY:
+        return TopicConstant.OWNER_EPOCH_KEY;
+      case TopicConstant.MAX_OWNER_EPOCH_KEY:
+        return TopicConstant.MAX_OWNER_EPOCH_KEY;
+      case TopicConstant.OWNER_LEASE_DURATION_MS_KEY:
+        return TopicConstant.OWNER_LEASE_DURATION_MS_KEY;
+      case "__system.sql-dialect":
+        return "__system.sql-dialect";
+      default:
+        return key;
+    }
+  }
+
   private void initOwnerFromTopicAttributes(final Map<String, String> topicAttributes) {
     final TopicConfig topicConfig = new TopicConfig(topicAttributes);
 
@@ -455,6 +532,8 @@ public class TopicMeta {
       extractorAttributes.putAll(config.getAttributesWithSourceDatabaseAndTableName());
       // column-filter is evaluated by subscription runtime on DataNode.
       extractorAttributes.putAll(config.getAttributesWithSourceColumnFilter());
+      // tag-filter is evaluated by subscription runtime on DataNode.
+      extractorAttributes.putAll(config.getAttributesWithSourceTagFilter());
     } else {
       // tree model: path or pattern
       extractorAttributes.putAll(config.getAttributesWithSourcePathOrPattern());

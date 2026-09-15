@@ -118,6 +118,78 @@ public final class DataNodeMiscMessages {
   public static final String COLUMN_FILTER_LIKE_PATTERN = "LIKE pattern";
   public static final String COLUMN_FILTER_LIKE_ESCAPE = "LIKE escape";
   public static final String COLUMN_FILTER_REGEXP_PATTERN = "REGEXP pattern";
+  public static final String EXCEPTION_INVALID_TAG_FILTER_ARG_E4B1C1C6 =
+      "Invalid tag-filter: %s";
+  public static final String EXCEPTION_TAG_FILTER_SHOULD_NOT_BE_EMPTY_507CA5B0 =
+      "tag-filter should not be empty";
+  public static final String
+      EXCEPTION_ONLY_AND_COMPARISONS_ARE_SUPPORTED_IN_TAG_FILTER_19946958 =
+          "only =, !=, and <> comparisons are supported in tag-filter";
+  public static final String EXCEPTION_LEFT_OPERAND_MUST_BE_A_TAG_COLUMN_F9D4548B =
+      "left operand must be a TAG column";
+  public static final String EXCEPTION_TAG_FILTER_EVALUATION_FAILED_ARG_1B239B2F =
+      "Tag-filter evaluation failed: %s";
+  public static final String EXCEPTION_TAG_FILTER_SCHEMA_BINDING_FAILED_ARG_7A5D2D47 =
+      "Tag-filter schema binding failed: %s";
+  public static final String EXCEPTION_TAG_FILTER_EXCEEDS_MAXIMUM_UTF_8_LENGTH_OF_ARG_BYTES_9C8400F2 =
+      "tag-filter exceeds maximum UTF-8 length of %s bytes";
+  public static final String EXCEPTION_TAG_FILTER_AST_DEPTH_EXCEEDS_MAXIMUM_OF_ARG_64C92731 =
+      "tag-filter AST depth exceeds maximum of %s";
+  public static final String EXCEPTION_TAG_FILTER_AST_NODE_COUNT_EXCEEDS_MAXIMUM_OF_ARG_40CCE694 =
+      "tag-filter AST node count exceeds maximum of %s";
+  public static final String EXCEPTION_TAG_FILTER_IN_LIST_EXCEEDS_MAXIMUM_OF_ARG_VALUES_07E7FC6C =
+      "tag-filter IN list exceeds maximum of %s values";
+  public static final String EXCEPTION_TAG_FILTER_REGEXP_PATTERN_EXCEEDS_MAXIMUM_LENGTH_OF_ARG_CHARACTERS_67590971 =
+      "tag-filter REGEXP pattern exceeds maximum length of %s characters";
+  public static final String EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728 =
+      "table schema is not available for tag-filter";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_ARG_F5300BEA =
+      "referenced TAG column is missing: %s";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_ARG_34D60881 =
+      "referenced column is not a TAG column: %s";
+  public static final String EXCEPTION_UNCOMPILED_LIKE_PREDICATE_01AEE439 =
+      "uncompiled LIKE predicate";
+  public static final String EXCEPTION_UNCOMPILED_REGEXP_PREDICATE_2B0DD646 =
+      "uncompiled REGEXP predicate";
+  public static final String EXCEPTION_MATCHER_IS_UNAVAILABLE_1A659D47 = "matcher is unavailable";
+  public static final String EXCEPTION_TABLET_SCHEMA_IS_MISSING_164075B0 = "tablet schema is missing";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMNS_ARE_INCOMPLETE_DCD09F3C =
+      "tablet value columns are incomplete";
+  public static final String EXCEPTION_FAILED_TO_EVALUATE_A_TABLET_ROW_7E4E94CE =
+      "failed to evaluate a tablet row";
+  public static final String EXCEPTION_TABLE_BINDING_IS_NOT_AVAILABLE_882C5F2F =
+      "table binding is not available";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_33FA34BC =
+      "referenced column is not a TAG column";
+  public static final String EXCEPTION_REFERENCED_COLUMN_CATEGORY_CHANGED_564594D8 =
+      "referenced column category changed";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_55E07377 =
+      "referenced TAG column is missing";
+  public static final String EXCEPTION_TABLET_MEASUREMENT_SCHEMA_IS_INCOMPLETE_6A813472 =
+      "tablet measurement schema is incomplete";
+  public static final String EXCEPTION_FAILED_TO_COMPACT_FILTERED_TABLET_5D4AD8AA =
+      "failed to compact filtered tablet";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORIES_ARE_MISSING_2C660532 =
+      "tablet column categories are missing";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORY_IS_MISSING_A812B500 =
+      "tablet column category is missing";
+  public static final String EXCEPTION_TABLET_TIMESTAMPS_ARE_INCOMPLETE_24F8CE6F =
+      "tablet timestamps are incomplete";
+  public static final String EXCEPTION_TABLET_BITMAPS_ARE_INCOMPLETE_7BBC8035 =
+      "tablet bitmaps are incomplete";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMN_IS_INCOMPLETE_845721FE =
+      "tablet value column is incomplete";
+  public static final String EXCEPTION_TREE_VIEW_PROJECTOR_IS_UNAVAILABLE_FOR_FILTERED_SUBSCRIPTION_DATA_B5F396A5 =
+      "Tree View projector is unavailable for filtered subscription data";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_IS_NOT_AVAILABLE_FOR_TAG_FILTER_1E023E3A =
+          "topic configuration is not available for tag-filter";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_CHANGED_WHILE_CAPTURING_TAG_FILTER_SNAPSHOT_984CEB1B =
+          "topic configuration changed while capturing tag-filter snapshot";
+  public static final String
+      LOG_SUBSCRIPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_TOPIC_ARG_E864C98F =
+      "Subscription: table schema is not available for tag-filter topic [{}]";
 
   public static final String CREATE_NEW_REGION_ERROR_FMT = "create new region %s error,  exception:%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "create new region %s succeed";
@@ -783,6 +855,14 @@ public final class DataNodeMiscMessages {
       "Subscription: failed to lazily refresh column-filter matcher for topic [{}]";
   public static final String SUBSCRIPTION_DROP_COLUMN_FILTER =
       "Subscription: dropped column-filter matcher for topic [{}]";
+  public static final String
+      LOG_SUBSCRIPTION_FAILED_TO_REFRESH_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_USE_EMPTY_MATCHER_TO_FAIL_CLOSED_3CB76D70 =
+          "Subscription: failed to refresh tag-filter matcher for topic [{}], use empty matcher to fail closed";
+  public static final String
+      LOG_SUBSCRIPTION_REFRESHED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_71598849 =
+          "Subscription: refreshed tag-filter matcher for topic [{}]";
+  public static final String LOG_SUBSCRIPTION_DROPPED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_9EA52458 =
+      "Subscription: dropped tag-filter matcher for topic [{}]";
   public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
       "Unsupported consensus subscription progress file version %s";
 
@@ -823,6 +903,8 @@ public final class DataNodeMiscMessages {
       "Exception occurred when sealing events from batch {}";
   public static final String EXCEPTION_CONSTRUCT_NEW_BATCH =
       "Exception occurred when construct new batch";
+  public static final String EXCEPTION_FAILED_TO_SEAL_SUBSCRIPTION_EVENT_BATCH_1FB7E92C =
+      "Failed to seal subscription event batch";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionPrefetchingQueue

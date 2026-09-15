@@ -118,6 +118,80 @@ public final class DataNodeMiscMessages {
   public static final String COLUMN_FILTER_LIKE_PATTERN = "LIKE 模式";
   public static final String COLUMN_FILTER_LIKE_ESCAPE = "LIKE 转义符";
   public static final String COLUMN_FILTER_REGEXP_PATTERN = "REGEXP 模式";
+  public static final String EXCEPTION_INVALID_TAG_FILTER_ARG_E4B1C1C6 =
+      "\u65e0\u6548\u7684 tag-filter\uff1a%s";
+  public static final String EXCEPTION_TAG_FILTER_SHOULD_NOT_BE_EMPTY_507CA5B0 =
+      "tag-filter \u4e0d\u5e94\u4e3a\u7a7a";
+  public static final String
+      EXCEPTION_ONLY_AND_COMPARISONS_ARE_SUPPORTED_IN_TAG_FILTER_19946958 =
+          "tag-filter \u4ec5\u652f\u6301 =\u3001!= \u548c <> \u6bd4\u8f83";
+  public static final String EXCEPTION_LEFT_OPERAND_MUST_BE_A_TAG_COLUMN_F9D4548B =
+      "\u5de6\u64cd\u4f5c\u6570\u5fc5\u987b\u662f TAG \u5217";
+  public static final String EXCEPTION_TAG_FILTER_EVALUATION_FAILED_ARG_1B239B2F =
+      "tag-filter \u6c42\u503c\u5931\u8d25\uff1a%s";
+  public static final String EXCEPTION_TAG_FILTER_SCHEMA_BINDING_FAILED_ARG_7A5D2D47 =
+      "tag-filter Schema \u7ed1\u5b9a\u5931\u8d25\uff1a%s";
+  public static final String EXCEPTION_TAG_FILTER_EXCEEDS_MAXIMUM_UTF_8_LENGTH_OF_ARG_BYTES_9C8400F2 =
+      "tag-filter \u8d85\u8fc7 UTF-8 \u6700\u5927\u957f\u5ea6 %s \u5b57\u8282";
+  public static final String EXCEPTION_TAG_FILTER_AST_DEPTH_EXCEEDS_MAXIMUM_OF_ARG_64C92731 =
+      "tag-filter AST \u6df1\u5ea6\u8d85\u8fc7\u6700\u5927\u503c %s";
+  public static final String EXCEPTION_TAG_FILTER_AST_NODE_COUNT_EXCEEDS_MAXIMUM_OF_ARG_40CCE694 =
+      "tag-filter AST \u8282\u70b9\u6570\u8d85\u8fc7\u6700\u5927\u503c %s";
+  public static final String EXCEPTION_TAG_FILTER_IN_LIST_EXCEEDS_MAXIMUM_OF_ARG_VALUES_07E7FC6C =
+      "tag-filter IN \u5217\u8868\u8d85\u8fc7\u6700\u5927\u503c %s";
+  public static final String EXCEPTION_TAG_FILTER_REGEXP_PATTERN_EXCEEDS_MAXIMUM_LENGTH_OF_ARG_CHARACTERS_67590971 =
+      "tag-filter REGEXP \u6a21\u5f0f\u8d85\u8fc7\u6700\u5927\u957f\u5ea6 %s \u5b57\u7b26";
+  public static final String EXCEPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_993AB728 =
+      "tag-filter \u6240\u9700\u8868\u7ed3\u6784\u4e0d\u53ef\u7528";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_ARG_F5300BEA =
+      "\u5f15\u7528\u7684 TAG \u5217\u4e0d\u5b58\u5728\uff1a%s";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_ARG_34D60881 =
+      "\u5f15\u7528\u7684\u5217\u4e0d\u662f TAG \u5217\uff1a%s";
+  public static final String EXCEPTION_UNCOMPILED_LIKE_PREDICATE_01AEE439 =
+      "LIKE \u8c13\u8bcd\u672a\u7f16\u8bd1";
+  public static final String EXCEPTION_UNCOMPILED_REGEXP_PREDICATE_2B0DD646 =
+      "REGEXP \u8c13\u8bcd\u672a\u7f16\u8bd1";
+  public static final String EXCEPTION_MATCHER_IS_UNAVAILABLE_1A659D47 =
+      "tag-filter \u5339\u914d\u5668\u4e0d\u53ef\u7528";
+  public static final String EXCEPTION_TABLET_SCHEMA_IS_MISSING_164075B0 =
+      "Tablet Schema \u7f3a\u5931";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMNS_ARE_INCOMPLETE_DCD09F3C =
+      "Tablet \u503c\u5217\u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_FAILED_TO_EVALUATE_A_TABLET_ROW_7E4E94CE =
+      "Tablet \u884c\u6c42\u503c\u5931\u8d25";
+  public static final String EXCEPTION_TABLE_BINDING_IS_NOT_AVAILABLE_882C5F2F =
+      "\u8868\u7ed1\u5b9a\u4e0d\u53ef\u7528";
+  public static final String EXCEPTION_REFERENCED_COLUMN_IS_NOT_A_TAG_COLUMN_33FA34BC =
+      "\u5f15\u7528\u7684\u5217\u4e0d\u662f TAG \u5217";
+  public static final String EXCEPTION_REFERENCED_COLUMN_CATEGORY_CHANGED_564594D8 =
+      "\u5f15\u7528\u5217\u7684\u7c7b\u522b\u5df2\u53d8\u66f4";
+  public static final String EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_55E07377 =
+      "\u5f15\u7528\u7684 TAG \u5217\u7f3a\u5931";
+  public static final String EXCEPTION_TABLET_MEASUREMENT_SCHEMA_IS_INCOMPLETE_6A813472 =
+      "Tablet \u6d4b\u91cf\u7ed3\u6784\u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_FAILED_TO_COMPACT_FILTERED_TABLET_5D4AD8AA =
+      "\u538b\u7f29\u8fc7\u6ee4\u540e\u7684 Tablet \u5931\u8d25";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORIES_ARE_MISSING_2C660532 =
+      "Tablet \u5217\u7c7b\u522b\u7f3a\u5931";
+  public static final String EXCEPTION_TABLET_COLUMN_CATEGORY_IS_MISSING_A812B500 =
+      "Tablet \u5217\u7c7b\u522b\u7f3a\u5931";
+  public static final String EXCEPTION_TABLET_TIMESTAMPS_ARE_INCOMPLETE_24F8CE6F =
+      "Tablet \u65f6\u95f4\u6233\u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_TABLET_BITMAPS_ARE_INCOMPLETE_7BBC8035 =
+      "Tablet bitmap \u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_TABLET_VALUE_COLUMN_IS_INCOMPLETE_845721FE =
+      "Tablet \u503c\u5217\u4e0d\u5b8c\u6574";
+  public static final String EXCEPTION_TREE_VIEW_PROJECTOR_IS_UNAVAILABLE_FOR_FILTERED_SUBSCRIPTION_DATA_B5F396A5 =
+      "\u8fc7\u6ee4\u8ba2\u9605\u6570\u636e\u7684 Tree View \u6295\u5f71\u5668\u4e0d\u53ef\u7528";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_IS_NOT_AVAILABLE_FOR_TAG_FILTER_1E023E3A =
+          "\u65e0\u6cd5\u83b7\u53d6 tag-filter \u7684 Topic \u914d\u7f6e";
+  public static final String
+      EXCEPTION_TOPIC_CONFIGURATION_CHANGED_WHILE_CAPTURING_TAG_FILTER_SNAPSHOT_984CEB1B =
+          "\u6355\u83b7 tag-filter \u5feb\u7167\u65f6 Topic \u914d\u7f6e\u53d1\u751f\u53d8\u5316";
+  public static final String
+      LOG_SUBSCRIPTION_TABLE_SCHEMA_IS_NOT_AVAILABLE_FOR_TAG_FILTER_TOPIC_ARG_E864C98F =
+      "\u8ba2\u9605：tag-filter Topic \u7684\u8868 Schema \u4e0d\u53ef\u7528 [{}]";
 
   public static final String CREATE_NEW_REGION_ERROR_FMT = "创建新 region %s 错误，异常：%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "创建新 region %s 成功";
@@ -783,6 +857,14 @@ public final class DataNodeMiscMessages {
       "\u8ba2\u9605\uff1a\u61d2\u52a0\u8f7d\u5237\u65b0\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668\u5931\u8d25";
   public static final String SUBSCRIPTION_DROP_COLUMN_FILTER =
       "\u8ba2\u9605\uff1a\u5220\u9664\u4e3b\u9898 [{}] \u7684 column-filter \u5339\u914d\u5668";
+  public static final String
+      LOG_SUBSCRIPTION_FAILED_TO_REFRESH_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_USE_EMPTY_MATCHER_TO_FAIL_CLOSED_3CB76D70 =
+          "\u8ba2\u9605\uff1a\u5237\u65b0\u4e3b\u9898 [{}] \u7684 tag-filter \u5339\u914d\u5668\u5931\u8d25\uff0c\u4f7f\u7528\u7a7a\u5339\u914d\u5668\u4ee5\u5b89\u5168\u5931\u8d25";
+  public static final String
+      LOG_SUBSCRIPTION_REFRESHED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_71598849 =
+          "\u8ba2\u9605\uff1a\u5df2\u5237\u65b0\u4e3b\u9898 [{}] \u7684 tag-filter \u5339\u914d\u5668";
+  public static final String LOG_SUBSCRIPTION_DROPPED_TAG_FILTER_MATCHER_FOR_TOPIC_ARG_9EA52458 =
+      "\u8ba2\u9605\uff1a\u5220\u9664\u4e3b\u9898 [{}] \u7684 tag-filter \u5339\u914d\u5668";
   public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
       "不支持的共识订阅进度文件版本 %s";
 
@@ -823,6 +905,8 @@ public final class DataNodeMiscMessages {
       "从批次 {} 封存事件时发生异常";
   public static final String EXCEPTION_CONSTRUCT_NEW_BATCH =
       "构造新批次时发生异常";
+  public static final String EXCEPTION_FAILED_TO_SEAL_SUBSCRIPTION_EVENT_BATCH_1FB7E92C =
+      "\u5c01\u5b58\u8ba2\u9605\u4e8b\u4ef6\u6279\u6b21\u5931\u8d25";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionPrefetchingQueue
