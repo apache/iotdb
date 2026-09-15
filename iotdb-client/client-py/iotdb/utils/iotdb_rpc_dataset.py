@@ -177,7 +177,6 @@ class IoTDBRpcDataSet(object):
                 self.__query_result
             ):
                 block = self.__query_result[self.__query_result_index]
-                # Mark the serialized block consumed so it can be released after decoding.
                 self.__query_result[self.__query_result_index] = None
                 self.__query_result_index += 1
                 self.__row_buffer.extend(self._deserialize_rows(block))
@@ -214,7 +213,6 @@ class IoTDBRpcDataSet(object):
         source = values.tolist() if hasattr(values, "tolist") else list(values)
         if nulls is None:
             return source
-        # Boolean blocks retain positional values; other nullable blocks omit nulls.
         if data_type == TSDataType.BOOLEAN and len(source) == row_count:
             return [
                 None if nulls[index] else source[index] for index in range(row_count)

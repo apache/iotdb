@@ -24,7 +24,6 @@ from iotdb.utils.IoTDBConstants import TSDataType
 def _is_missing(value):
     if value is None:
         return True
-    # Recognize pandas.NA without importing pandas on non-DataFrame paths.
     value_type = type(value)
     return value_type.__name__ == "NAType" and value_type.__module__.startswith(
         "pandas."

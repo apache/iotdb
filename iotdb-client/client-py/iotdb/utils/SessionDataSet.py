@@ -115,7 +115,6 @@ class SessionDataSet(object):
         return self.construct_row_record_from_data_frame()
 
     def construct_row_record_from_data_frame(self):
-        # Preserve the legacy RowRecord API while consuming the tuple row buffer.
         row = self.iotdb_rpc_data_set._pop_row()
         if row is None:
             return None
