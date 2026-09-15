@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckMaxClientNumResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckSessionNumReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -662,18 +663,18 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     if (role != null) {
       return role;
     } else {
-      TPermissionInfoResp permissionInfoResp = null;
+      TGetRoleResp roleResp = null;
       try (ConfigNodeClient configNodeClient =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        permissionInfoResp = configNodeClient.getRole(roleName);
+        roleResp = configNodeClient.getRole(roleName);
       } catch (ClientManagerException | TException e) {
         LOGGER.error(CONNECTERROR);
       }
-      if (permissionInfoResp != null
-          && permissionInfoResp.getStatus().getCode()
-              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        role = cacheRole(roleName, permissionInfoResp);
+      if (roleResp != null
+          && roleResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && roleResp.isSetRoleInfo()) {
+        role = cacheRole(roleResp.getRoleInfo());
         if (acceptCache) {
           iAuthorCache.putRoleCache(roleName, role);
         }
@@ -781,22 +782,21 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
     if (tPermissionInfoResp.isSetRoleInfo()) {
       for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
-        iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
+        iAuthorCache.putRoleCache(
+            roleName, cacheRole(tPermissionInfoResp.getRoleInfo().get(roleName)));
       }
     }
     return user;
   }
 
   /** Cache role. */
-  public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
-    TRoleResp resp = tPermissionInfoResp.getRoleInfo().get(roleName);
+  public Role cacheRole(TRoleResp resp) {
     Role role = new Role(resp.getName());
     role.setAnyScopePrivilegeSetInt(resp.getAnyScopeSet());
     role.setAnyScopePrivilegeGrantOptSetInt(resp.getAnyScopeGrantSet());
     role.loadDatabaseAndTablePrivilegeInfo(resp.getDbPrivilegeMap());
-    role.setSysPriGrantOptInt(
-        tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSetGrantOpt());
-    role.setSysPrivilegeSetInt(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSet());
+    role.setSysPriGrantOptInt(resp.getSysPriSetGrantOpt());
+    role.setSysPrivilegeSetInt(resp.getSysPriSet());
     try {
       role.loadTreePrivilegeInfo(resp.getPrivilegeList());
     } catch (MetadataException e) {
@@ -859,6 +859,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
     for (String roleName : user.getRoleSet()) {
       Role role = getRole(roleName);
+      if (role == null) {
+        continue;
+      }
       if (role.fetchAnyPrivilegeForSpecifiedDB(database) != null) {
         return role.fetchAnyPrivilegeForSpecifiedDB(database);
       }
@@ -878,6 +881,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
     for (String roleName : user.getRoleSet()) {
       Role role = getRole(roleName);
+      if (role == null) {
+        continue;
+      }
       if (role.fetchAnyPrivilegeForSpecifiedTable(database, tbName) != null) {
         return role.fetchAnyPrivilegeForSpecifiedTable(database, tbName);
       }

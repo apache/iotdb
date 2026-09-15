@@ -223,6 +223,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -1500,19 +1501,16 @@ public class ConfigManager implements IManager {
     return resp;
   }
 
-  public TPermissionInfoResp getRole(String roleName) {
+  public TGetRoleResp getRole(String roleName) {
     TSStatus status = confirmLeader();
-    TPermissionInfoResp resp = new TPermissionInfoResp();
+    TGetRoleResp resp = new TGetRoleResp();
+    resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
-        resp = permissionManager.getRole(roleName);
+        resp.setRoleInfo(permissionManager.getRole(roleName));
       } catch (AuthException e) {
-        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
-        resp.setStatus(status);
-        return resp;
+        resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
       }
-    } else {
-      resp.setStatus(status);
     }
     return resp;
   }

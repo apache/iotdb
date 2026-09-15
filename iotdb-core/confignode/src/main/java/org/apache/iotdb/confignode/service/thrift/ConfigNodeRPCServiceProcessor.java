@@ -182,6 +182,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -861,7 +862,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TPermissionInfoResp getRole(String roleName) {
+  public TGetRoleResp getRole(String roleName) {
     return configManager.getRole(roleName);
   }
 

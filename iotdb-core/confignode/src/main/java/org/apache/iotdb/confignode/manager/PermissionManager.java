@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -163,7 +164,7 @@ public class PermissionManager {
     return authorInfo.getUser(username);
   }
 
-  public TPermissionInfoResp getRole(String roleName) throws AuthException {
+  public TRoleResp getRole(String roleName) throws AuthException {
     return authorInfo.getRole(roleName);
   }
 

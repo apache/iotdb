@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckMaxClientNumResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 
 import java.util.Map;
 
@@ -76,7 +77,7 @@ public interface IAuthorPlanExecutor {
 
   TPermissionInfoResp getUser(String username) throws AuthException;
 
-  TPermissionInfoResp getRole(String roleName) throws AuthException;
+  TRoleResp getRole(String roleName) throws AuthException;
 
   String getUserName(long userId) throws AuthException;
 }

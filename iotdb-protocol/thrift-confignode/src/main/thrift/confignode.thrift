@@ -481,6 +481,11 @@ struct TPermissionInfoResp {
   6: optional i32 minSessionPerUser
 }
 
+struct TGetRoleResp {
+  1: required common.TSStatus status
+  2: optional TRoleResp roleInfo
+}
+
 struct TAuthizedPatternTreeResp {
   1: required common.TSStatus status
   2: optional string username
@@ -1752,7 +1757,7 @@ service IConfigNodeRPCService {
 
   TPermissionInfoResp getUser(string userName);
 
-  TPermissionInfoResp getRole(string roleName);
+  TGetRoleResp getRole(string roleName);
 
   // ======================================================
   // ConfigNode

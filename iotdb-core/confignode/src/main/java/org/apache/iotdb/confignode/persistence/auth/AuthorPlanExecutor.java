@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
@@ -886,16 +887,13 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
   }
 
   @Override
-  public TPermissionInfoResp getRole(String roleName) throws AuthException {
-    TPermissionInfoResp result;
+  public TRoleResp getRole(String roleName) throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role == null) {
       throw new AuthException(
-          TSStatusCode.ROLE_NOT_EXIST, String.format("No such role : %s", roleName));
+          TSStatusCode.ROLE_NOT_EXIST, String.format(AuthMessages.NO_SUCH_ROLE, roleName));
     }
-    result = getUserPermissionInfo(roleName, ModelType.ALL);
-    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    return result;
+    return role.getRoleInfo(ModelType.ALL);
   }
 
   @Override

@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 
@@ -236,14 +237,8 @@ public class AuthorInfo implements SnapshotProcessor {
     }
   }
 
-  public TPermissionInfoResp getRole(String roleName) {
-    try {
-      return authorPlanExecutor.getRole(roleName);
-    } catch (AuthException e) {
-      TPermissionInfoResp resp = new TPermissionInfoResp();
-      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
-      return resp;
-    }
+  public TRoleResp getRole(String roleName) throws AuthException {
+    return authorPlanExecutor.getRole(roleName);
   }
 
   public String getUserName(long userId) throws AuthException {

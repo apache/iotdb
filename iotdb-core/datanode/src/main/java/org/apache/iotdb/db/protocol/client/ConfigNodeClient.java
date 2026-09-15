@@ -136,6 +136,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -565,7 +566,7 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   }
 
   @Override
-  public TPermissionInfoResp getRole(String roleName) throws TException {
+  public TGetRoleResp getRole(String roleName) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getRole(roleName), resp -> !updateConfigNodeLeader(resp.status));
   }
