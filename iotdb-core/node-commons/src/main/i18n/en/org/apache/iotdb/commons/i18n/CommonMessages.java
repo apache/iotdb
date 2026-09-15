@@ -339,4 +339,6 @@ public final class CommonMessages {
       "Table '%s.%s' is being deleted. Please wait for deletion to finish, or retry DROP TABLE if it is stuck.";
   public static final String EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
       "Column '%s' in table '%s.%s' is being deleted. Please wait for deletion to finish, or retry dropping the column if it is stuck.";
+  public static final String EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55 =
+      "Column '%s' in table '%s.%s' is being altered. Please wait for alteration to finish, or retry altering the column if it is stuck.";
 }

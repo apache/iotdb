@@ -88,6 +88,13 @@ public class DataNodeTableCache implements ITableCache {
   private final Map<String, Map<String, Pair<TsTable, Long>>> specialStatusMap =
       new ConcurrentHashMap<>();
 
+  /**
+   * The cache entry replaced by the latest pre-update. It lets a rollback restore a schema that may
+   * already have been promoted from {@code specialStatusMap} by a concurrent fetch. A {@link
+   * NonCommittableTsTable} value means that the previous schema is unavailable after a restart.
+   */
+  private final Map<String, Map<String, TsTable>> previousTableMap = new ConcurrentHashMap<>();
+
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
   private final Semaphore fetchTableSemaphore =
       new Semaphore(
@@ -120,6 +127,7 @@ public class DataNodeTableCache implements ITableCache {
           TsTableInternalRPCUtil.deserializeTableInitializationInfo(tableInitializationBytes);
       final Map<String, List<TsTable>> usingMap = tableInfo.left;
       final Map<String, List<TsTable>> specialStatusMap = tableInfo.right;
+      previousTableMap.clear();
       usingMap.forEach(
           (key, value) ->
               databaseTableMap.put(
@@ -142,6 +150,19 @@ public class DataNodeTableCache implements ITableCache {
                               table -> new Pair<>(table, 0L),
                               (v1, v2) -> v2,
                               ConcurrentHashMap::new))));
+      specialStatusMap.forEach(
+          (key, value) ->
+              value.stream()
+                  .filter(NonCommittableTsTable.class::isInstance)
+                  .forEach(
+                      table ->
+                          previousTableMap
+                              .computeIfAbsent(
+                                  PathUtils.unQualifyDatabaseName(key),
+                                  database -> new ConcurrentHashMap<>())
+                              .put(
+                                  table.getTableName(),
+                                  new NonCommittableTsTable(table.getTableName()))));
       LOGGER.info(DataNodeSchemaMessages.INIT_TABLE_CACHE_SUCCESS);
     } finally {
       readWriteLock.writeLock().unlock();
@@ -184,6 +205,14 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
+      if (oldName == null && !(table instanceof PreDeleteTsTable)) {
+        final TsTable previousTable = getTableFromCache(database, table.getTableName());
+        if (previousTable != null) {
+          previousTableMap
+              .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+              .putIfAbsent(table.getTableName(), new TsTable(previousTable));
+        }
+      }
       specialStatusMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
           .compute(
@@ -240,12 +269,46 @@ public class DataNodeTableCache implements ITableCache {
       failIfMetadataLeaseFenced(LeaseFencedRetryPolicy.RETRY_UNTIL_SUCCESS);
       // if rollback the drop table procedure, do nothing,
       // wait for triggering the action of pull table from CN
-      final TsTable table = getTableFromSpecialStatusMap(database, tableName);
+      final Map<String, Pair<TsTable, Long>> databaseSpecialStatusMap =
+          specialStatusMap.get(database);
+      final Pair<TsTable, Long> tableStatusPair =
+          databaseSpecialStatusMap == null ? null : databaseSpecialStatusMap.get(tableName);
+      final TsTable table = tableStatusPair == null ? null : tableStatusPair.getLeft();
+      final TsTable previousTable =
+          previousTableMap.containsKey(database)
+              ? previousTableMap.get(database).get(tableName)
+              : null;
       if (table instanceof PreDeleteTsTable) {
+        removePreviousTable(database, tableName);
+        return;
+      }
+      // A null pending value with no saved previous schema means commit already consumed this
+      // update. A delayed rollback must not evict the committed table.
+      if (Objects.isNull(oldName) && table == null && previousTable == null) {
         return;
       }
       removeTableFromSpecialStatusMap(database, tableName);
+      removePreviousTable(database, tableName);
       LOGGER.info(DataNodeSchemaMessages.ROLLBACK_UPDATE_TABLE_SUCCESS, database, tableName);
+
+      // A table fetched while the update was pending can already be in databaseTableMap and the
+      // special entry can consequently have a null left value. Restore the snapshot captured at
+      // PRE_UPDATE time, or evict the entry so the next lookup must fetch the canonical CN schema.
+      if (Objects.isNull(oldName) && tableStatusPair != null) {
+        if (previousTable != null && !(previousTable instanceof NonCommittableTsTable)) {
+          databaseTableMap
+              .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+              .put(tableName, previousTable);
+        } else if (databaseTableMap.containsKey(database)) {
+          databaseTableMap.get(database).remove(tableName);
+        }
+        if (previousTable == null || previousTable instanceof NonCommittableTsTable) {
+          // The previous schema is unavailable after a restart or when this was a newly-created
+          // table. Keep a non-committable marker so getTable() fetches the canonical CN state
+          // instead of serving a stale entry or permanently treating the cache as already handled.
+          tableStatusPair.setLeft(new NonCommittableTsTable(tableName));
+        }
+      }
 
       // If rename table
       if (Objects.nonNull(oldName)) {
@@ -314,6 +377,15 @@ public class DataNodeTableCache implements ITableCache {
         });
   }
 
+  private void removePreviousTable(final String database, final String tableName) {
+    previousTableMap.computeIfPresent(
+        database,
+        (k, v) -> {
+          v.remove(tableName);
+          return v.isEmpty() ? null : v;
+        });
+  }
+
   @Override
   public void commitUpdateTable(
       String database, final String tableName, final @Nullable String oldName) {
@@ -331,6 +403,7 @@ public class DataNodeTableCache implements ITableCache {
         if (Objects.nonNull(oldName)) {
           removeTableFromSpecialStatusMap(database, oldName);
         }
+        removePreviousTable(database, tableName);
         return;
       }
       // Cannot be committed, consider:
@@ -360,6 +433,7 @@ public class DataNodeTableCache implements ITableCache {
         LOGGER.info(DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS, database, tableName);
       }
       removeTableFromSpecialStatusMap(database, tableName);
+      removePreviousTable(database, tableName);
       if (Objects.nonNull(oldName)) {
         removeTableFromSpecialStatusMap(database, oldName);
         LOGGER.info(DataNodeSchemaMessages.RENAME_OLD_TABLE_SUCCESS, database, oldName);
@@ -375,6 +449,7 @@ public class DataNodeTableCache implements ITableCache {
       databaseTableMap.get(database).remove(tableName);
     }
     removeTableFromSpecialStatusMap(database, tableName);
+    removePreviousTable(database, tableName);
     LOGGER.info(DataNodeSchemaMessages.COMMIT_DELETE_TABLE_SUCCESS, database, tableName);
   }
 
@@ -385,6 +460,7 @@ public class DataNodeTableCache implements ITableCache {
     try {
       databaseTableMap.remove(database);
       specialStatusMap.remove(database);
+      previousTableMap.remove(database);
       instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
@@ -402,6 +478,7 @@ public class DataNodeTableCache implements ITableCache {
     try {
       databaseTableMap.clear();
       specialStatusMap.clear();
+      previousTableMap.clear();
       instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();

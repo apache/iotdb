@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.table.ColumnInAlterException;
 import org.apache.iotdb.commons.exception.table.ColumnInDeletionException;
 import org.apache.iotdb.commons.exception.table.TableInDeletionException;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -33,6 +34,8 @@ import org.apache.iotdb.confignode.consensus.request.read.table.DescTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.FetchTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -40,6 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnD
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
@@ -152,6 +156,10 @@ public class TablePreDeleteTest {
     assertEquals(TSDataType.INT64, table.getColumnSchema("live").getDataType());
     assertFalse(basic.isSetPreDeletedColumns());
 
+    assertEquals(
+        TSDataType.INT64,
+        schemaInfo.getAllUsingTables().get(DATABASE).get(0).getColumnSchema("live").getDataType());
+
     final TDescTableResp details = describe(true);
     assertTrue(details.getPreDeletedColumns().containsAll(Arrays.asList("field", "attribute")));
     assertEquals(
@@ -207,6 +215,67 @@ public class TablePreDeleteTest {
             .tableColumnCheckForColumnExtension(
                 DATABASE, TABLE, new ArrayList<>(Collections.singletonList(field("field"))), false)
             .getLeft());
+  }
+
+  @Test
+  public void testPreAlterRejectsConflictingColumnOperations() throws Exception {
+    assertSuccess(
+        schemaInfo.preAlterColumnDataType(
+            new PreAlterColumnDataTypePlan(DATABASE, TABLE, "live", TSDataType.INT64)));
+    // Retrying the same target type is allowed so a stuck procedure can be resumed.
+    assertSuccess(
+        schemaInfo.preAlterColumnDataType(
+            new PreAlterColumnDataTypePlan(DATABASE, TABLE, "live", TSDataType.INT64)));
+
+    final TSStatus secondAlter =
+        schemaInfo.preAlterColumnDataType(
+            new PreAlterColumnDataTypePlan(DATABASE, TABLE, "live", TSDataType.FLOAT));
+    assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), secondAlter.getCode());
+    assertEquals(
+        new ColumnInAlterException(DATABASE, TABLE, "live").getMessage(), secondAlter.getMessage());
+
+    final TSStatus delete =
+        schemaInfo.preDeleteColumn(new PreDeleteColumnPlan(DATABASE, TABLE, "live"));
+    assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), delete.getCode());
+    assertEquals(
+        new ColumnInAlterException(DATABASE, TABLE, "live").getMessage(), delete.getMessage());
+
+    assertThrows(
+        ColumnInAlterException.class,
+        () ->
+            schemaManager.tableColumnCheckForColumnExtension(
+                DATABASE, TABLE, new ArrayList<>(Collections.singletonList(field("live"))), false));
+    assertEquals(
+        new ColumnInAlterException(DATABASE, TABLE, "live").getMessage(),
+        schemaInfo
+            .addTableColumn(
+                new AddTableColumnPlan(
+                    DATABASE, TABLE, Collections.singletonList(field("live")), false))
+            .getMessage());
+    assertEquals(
+        new ColumnInAlterException(DATABASE, TABLE, "live").getMessage(),
+        schemaInfo
+            .setTableColumnComment(
+                new SetTableColumnCommentPlan(DATABASE, TABLE, "live", "comment"))
+            .getMessage());
+    assertThrows(
+        ColumnInAlterException.class,
+        () ->
+            schemaManager.tableColumnCheckForColumnRenaming(
+                DATABASE, TABLE, "live", "renamed", false));
+  }
+
+  @Test
+  public void testSameTypePreAlterIsNotReportedAsCommittedUntilMarkerIsCleared() throws Exception {
+    assertSuccess(
+        schemaInfo.preAlterColumnDataType(
+            new PreAlterColumnDataTypePlan(DATABASE, TABLE, "live", TSDataType.INT32)));
+    assertFalse(schemaInfo.isColumnAlterCommitted(DATABASE, TABLE, "live", TSDataType.INT32));
+
+    assertSuccess(
+        schemaInfo.commitAlterColumnDataType(
+            new AlterColumnDataTypePlan(DATABASE, TABLE, "live", TSDataType.INT32)));
+    assertTrue(schemaInfo.isColumnAlterCommitted(DATABASE, TABLE, "live", TSDataType.INT32));
   }
 
   @Test

@@ -236,4 +236,6 @@ public final class CommonMessages {
       "表 '%s.%s' 正在删除中。请等待删除完成；如果删除一直未完成，请重试 DROP TABLE。";
   public static final String EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_DELETED_PLEASE_WAIT_FOR_DELETION_TO_FINISH_OR_RETRY_DROPPING_THE_COLUMN_IF_IT_IS_STUCK_875DAFFE =
       "列 '%s'（位于表 '%s.%s'）正在删除中。请等待删除完成；如果删除一直未完成，请重试删除该列。";
+  public static final String EXCEPTION_COLUMN_ARG_IN_TABLE_ARG_ARG_IS_BEING_ALTERED_PLEASE_WAIT_FOR_ALTERATION_TO_FINISH_OR_RETRY_ALTERING_THE_COLUMN_IF_IT_IS_STUCK_11155B55 =
+      "列 '%s'（位于表 '%s.%s'）正在修改中。请等待修改完成；如果修改一直未完成，请重试修改该列。";
 }
