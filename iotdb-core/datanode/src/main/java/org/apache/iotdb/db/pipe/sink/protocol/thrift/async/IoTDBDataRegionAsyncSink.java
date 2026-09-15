@@ -1271,6 +1271,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
   @Override
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    super.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
     discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
   }
 

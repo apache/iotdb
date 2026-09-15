@@ -56,6 +56,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -169,12 +170,29 @@ public class PipeDataNodeRuntimeAgent implements IService {
     return regionListenerManager.listener(schemaRegionId);
   }
 
+  public SchemaRegionListeningQueue schemaListenerIfPresent(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.listenerIfPresent(schemaRegionId);
+  }
+
+  public SchemaRegionListeningQueue schemaListenerForSnapshotLoad(
+      SchemaRegionId schemaRegionId, File snapshotDir) {
+    return regionListenerManager.listenerForSnapshotLoad(schemaRegionId, snapshotDir);
+  }
+
   public int increaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
     return regionListenerManager.increaseAndGetReferenceCount(schemaRegionId);
   }
 
   public int decreaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
     return regionListenerManager.decreaseAndGetReferenceCount(schemaRegionId);
+  }
+
+  public void cleanupSchemaListenerIfUnused(SchemaRegionId schemaRegionId) {
+    regionListenerManager.cleanupListenerIfUnused(schemaRegionId);
+  }
+
+  public void clearSchemaRegionState(SchemaRegionId schemaRegionId) {
+    regionListenerManager.clearSchemaRegionState(schemaRegionId);
   }
 
   public void notifySchemaLeaderReady(SchemaRegionId schemaRegionId) {
