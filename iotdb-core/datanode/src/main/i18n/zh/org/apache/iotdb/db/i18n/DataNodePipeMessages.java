@@ -2467,4 +2467,15 @@ public final class DataNodePipeMessages {
       "读取 OPC UA 服务器操作限制时被中断，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
   public static final String LOG_FAILED_TO_READ_OPC_UA_SERVER_OPERATION_LIMITS_USE_DEFAULTS_MAXNODESPERWRITE_ARG_MAXNODESPERNODEMANAGEMENT_ARG_65460871 =
       "读取 OPC UA 服务器操作限制失败，使用默认值：maxNodesPerWrite={}，maxNodesPerNodeManagement={}";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EVENT_POLICY_ARG_BF42E405 =
+      "不支持的逻辑备份事件策略：%s";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_RESUME_POLICY_ARG_583FCCF9 =
+      "不支持的逻辑备份恢复策略：%s";
+  public static final String EXCEPTION_UNSUPPORTED_PIPE_EVENT_FOR_LOGICAL_BACKUP_ARG_521AEE97 =
+      "逻辑备份不支持 Pipe 事件：%s";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_ID_MUST_RESOLVE_BELOW_THE_CONFIGURED_BACKUP_DIRECTORY_ARG_25BE4B22 =
+          "Pipe 逻辑备份 ID 必须解析到配置的备份目录下：%s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_DIRECTORY_MUST_NOT_BE_EMPTY_99DB3EDB =
+      "Pipe 逻辑备份目录不能为空";
 }

@@ -92,4 +92,61 @@ public final class CliMessages {
   public static final String LOG_INPUT_TIME_FORMAT_ARG_NOT_SUPPORTED_00172A7B = "不支持输入时间格式 {}，";
   public static final String LOG_PLEASE_INPUT_LIKE_YYYY_MM_DD_HH_MM_SS_SSS_9318BFC7 = "请输入类似 yyyy-MM-dd\\ HH:mm:ss.SSS 或 yyyy-MM-dd'T'HH:mm:ss.SSS 的格式%n";
 
+  // Pipe 逻辑备份工具
+  public static final String EXCEPTION_LOGICAL_BACKUP_COMMAND_FAILED_ARG_9973B0C0 =
+      "逻辑备份命令执行失败：%s";
+  public static final String EXCEPTION_UNKNOWN_LOGICAL_BACKUP_COMMAND_ARG_79275619 =
+      "未知的逻辑备份命令：%s";
+  public static final String EXCEPTION_OUTPUT_IS_REQUIRED_FOR_LOGICAL_BACKUP_EXPORT_603340B1 =
+      "逻辑备份导出必须指定 --output";
+  public static final String LOG_STREAM_ARG_ARG_RECORDS_ARG_COMMITTED_EVENT_GROUPS_DE6BBAD0 =
+      "流 %s：%d 条记录，%d 个已提交事件组";
+  public static final String
+      LOG_LOGICAL_BACKUP_VERIFIED_ARG_STREAMS_ARG_RECORDS_ARG_COMMITTED_EVENT_GROUPS_5210360B =
+          "逻辑备份校验通过：%d 个流，%d 条记录，%d 个已提交事件组";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_TARGET_MUST_NOT_BE_INSIDE_SOURCE_A499F994 =
+          "逻辑备份导出目标不能位于源目录内";
+  public static final String LOG_LOGICAL_BACKUP_EXPORTED_FROM_ARG_TO_ARG_B3E8D280 =
+      "逻辑备份已从 %s 导出到 %s";
+  public static final String LOG_DRY_RUN_COMPLETED_NO_DATA_WAS_WRITTEN_38AE244B =
+      "试运行完成，未写入数据";
+  public static final String
+      LOG_LOGICAL_BACKUP_IMPORT_COMPLETED_ARG_EVENT_GROUPS_CHECKPOINT_ARG_16F6A72D =
+          "逻辑备份导入完成：%d 个事件组，checkpoint 为 %s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_IS_REQUIRED_1E7449AA =
+      "逻辑备份选项 --%s 为必填项";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_PASSWORD_ENVIRONMENT_VARIABLE_IS_NOT_SET_616738A2 =
+          "未设置逻辑备份密码环境变量";
+  public static final String EXCEPTION_LOGICAL_BACKUP_HANDSHAKE_FAILED_ARG_7CDD4697 =
+      "逻辑备份握手失败：%s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_REQUEST_TYPE_ARG_FAILED_ARG_75EE2D11 =
+      "逻辑备份请求类型 %d 执行失败：%s";
+  public static final String
+      LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_4677380E =
+          "使用 --input 指定输入。导出还需要 --output；导入需要 --host 和 --port。请使用 --password-stdin 或 --password-env，避免密码出现在命令行中。";
+  public static final String
+      LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_RESTORE_STATS_BFF9FDC2 =
+          "pipe-logical-backup <inspect|verify|export|import|restore|stats>";
+  public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_ENTRY_IS_UNSAFE_ARG_3E548152 =
+      "逻辑备份归档项路径不安全：%s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_EXCEEDS_SAFETY_LIMIT_FFC54432 =
+      "逻辑备份归档超过安全限制";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_SOURCE_MUST_BE_A_DIRECTORY_OR_MANIFEST_ARG_0BBDE9F0 =
+          "逻辑备份导出源必须是目录或 manifest：%s";
+  public static final String
+      EXCEPTION_SPECIFY_EXACTLY_ONE_OF_PASSWORD_STDIN_AND_PASSWORD_ENV_FOR_LOGICAL_BACKUP_IMPORT_A96813D9 =
+          "逻辑备份导入必须且只能指定 --password-stdin 或 --password-env 中的一项";
+  public static final String EXCEPTION_NO_PASSWORD_WAS_READ_FROM_STANDARD_INPUT_6294AB8E =
+      "未能从标准输入读取密码";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_CHECKPOINT_DOES_NOT_MATCH_THE_SOURCE_OR_TARGET_ARG_B978184D =
+          "逻辑备份 checkpoint 与源备份或目标实例不匹配：%s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_CHECKPOINT_IS_INVALID_ARG_71E82F4C =
+      "逻辑备份 checkpoint 无效：%s";
+  public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EXPORT_FORMAT_ARG_A6D7DEB1 =
+      "不支持的逻辑备份导出格式：%s";
+
 }
