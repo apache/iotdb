@@ -4258,21 +4258,19 @@ public class ConsensusPrefetchingQueue {
   /**
    * Returns the queue-local lag used by metrics.
    *
-   * <p>Events that have already been materialized in memory are counted exactly. For data that is
-   * still only in WAL, the exact number is not tracked by this queue and computing it would require
-   * scanning WAL only for reporting. Therefore, unread WAL data is represented as one extra unit,
-   * so the metric shows that this queue is not caught up without turning lag reporting into another
-   * WAL reader.
+   * <p>Entries in the materialized lifecycle stages have already advanced the WAL cursor. Pending
+   * entries have not, so they overlap with the raw WAL search-index gap. Taking the maximum for the
+   * unmaterialized part avoids double-counting that overlap while still exposing a large unread WAL
+   * backlog instead of collapsing it to one unit.
    */
   public long getLag() {
-    final long queuedLag =
-        prefetchingQueue.size()
+    final long materializedLag =
+        (long) prefetchingQueue.size()
             + inFlightEvents.size()
-            + pendingEntries.size()
             + getRealtimeBufferedEntryCount()
             + lingerBatch.getEntryCount();
-    final boolean hasUnreadWalEntries = hasUnreadWalEntriesBehindCursor();
-    return queuedLag + (hasUnreadWalEntries ? 1 : 0);
+    final long unmaterializedLag = Math.max((long) pendingEntries.size(), getRawWalGap());
+    return materializedLag + unmaterializedLag;
   }
 
   // ======================== Stringify ========================
