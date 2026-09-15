@@ -206,7 +206,7 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
       case 2004:
         return ObjectNode.deserialize(buffer);
       case 2010:
-        return LoadTsFileConsensusNode.deserializeFromWAL(buffer);
+        return LoadTsFileConsensusNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException(DataNodeQueryMessages.INVALID_NODE_TYPE + nodeType);
     }

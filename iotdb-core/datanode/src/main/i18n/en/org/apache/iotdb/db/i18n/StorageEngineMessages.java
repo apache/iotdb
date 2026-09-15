@@ -526,6 +526,10 @@ public final class StorageEngineMessages {
   public static final String CANNOT_CREATE_TSFILE_FOR_WRITING = "Can not create TsFile {} for writing.";
   public static final String CLOSE_TSFILE_IO_WRITER_ERROR = "Close TsFileIOWriter {} error.";
   public static final String CLOSE_MODIFICATION_FILE_ERROR = "Close ModificationFile {} error.";
+  public static final String LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866 =
+      "Preparing LOAD TsFile {}: sealing staged resources.";
+  public static final String LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335 =
+      "Committing LOAD TsFile {}: loading prepared resources into DataRegion.";
   public static final String EXCEPTION_TABLE_ARG_ARG_DOES_NOT_EXIST_WHEN_APPLYING_LOAD_CHUNK_DATA_IT_MAY_HAVE_BEEN_DROPPED_AFTER_THE_LOAD_WAS_ANALYZED_DDB35F93 =
       "Table '%s.%s' does not exist when applying LOAD chunk data. It may have been dropped after the LOAD was analyzed.";
   public static final String TASK_DIR_NOT_EMPTY_SKIP_DELETE = "Task dir {} is not empty, skip deleting.";

@@ -78,19 +78,28 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
     switch (node.getOp()) {
       case BEGIN:
         return StatusUtils.OK;
-      case PREPARE:
-        return StatusUtils.OK;
       case PIECE:
         try {
-          dataRegion.writeLoadTsFilePiece(node.getLoadId(), node.getTsFileDataList());
+          dataRegion.writeLoadTsFilePiece(node);
           return StatusUtils.OK;
         } catch (final IOException | PageException e) {
           LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
           return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage());
         }
-      case ABORT:
-        dataRegion.rollbackLoadTsFile(node.getLoadId());
-        return StatusUtils.OK;
+      case PREPARE:
+        try {
+          final Map<TTimePartitionSlot, ProgressIndex> progressIndexes = new HashMap<>();
+          node.getTimePartition2ProgressIndex()
+              .forEach(
+                  (slot, bytes) ->
+                      progressIndexes.put(
+                          slot, ProgressIndexType.deserializeFrom(ByteBuffer.wrap(bytes))));
+          final boolean prepared = dataRegion.writeLoadTsFilePrepare(node, progressIndexes);
+          return prepared ? StatusUtils.OK : RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
+        } catch (final Exception e) {
+          LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
+          return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage());
+        }
       case COMMIT:
         try {
           final Map<TTimePartitionSlot, ProgressIndex> progressIndexes = new HashMap<>();
@@ -99,10 +108,16 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
                   (slot, bytes) ->
                       progressIndexes.put(
                           slot, ProgressIndexType.deserializeFrom(ByteBuffer.wrap(bytes))));
-          return dataRegion.commitLoadTsFile(
-                  node.getLoadId(), node.isGeneratedByPipe(), progressIndexes)
-              ? StatusUtils.OK
-              : RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
+          final boolean committed = dataRegion.writeLoadTsFileCommit(node, progressIndexes);
+          return committed ? StatusUtils.OK : RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
+        } catch (final Exception e) {
+          LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
+          return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage());
+        }
+      case ABORT:
+        try {
+          dataRegion.writeLoadTsFileAbort(node);
+          return StatusUtils.OK;
         } catch (final Exception e) {
           LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
           return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage());

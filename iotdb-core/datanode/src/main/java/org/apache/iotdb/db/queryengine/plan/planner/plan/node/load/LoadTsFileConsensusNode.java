@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -45,8 +46,10 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -240,6 +243,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
       int pieceCount,
       long totalBytes,
       long checksum,
+      boolean isGeneratedByPipe,
       Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
     final LoadTsFileConsensusNode node = new LoadTsFileConsensusNode(id);
     node.op = LoadTsFileConsensusOp.PREPARE;
@@ -248,6 +252,7 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     node.pieceCount = pieceCount;
     node.totalBytes = totalBytes;
     node.checksum = checksum;
+    node.isGeneratedByPipe = isGeneratedByPipe;
     node.timePartition2ProgressIndex =
         timePartition2ProgressIndex == null
             ? new HashMap<>()
@@ -651,8 +656,32 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
     if (ref.content != null) {
       return ref.content;
     }
-    throw new IllegalStateException(
-        DataNodeQueryMessages.EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2);
+    File file = new File(ref.relativePath);
+    if (!file.isAbsolute()) {
+      File[] bases =
+          java.util.Arrays.stream(IoTDBDescriptor.getInstance().getConfig().getLoadTsFileDirs())
+              .map(File::new)
+              .map(base -> new File(base, ref.relativePath))
+              .toArray(File[]::new);
+      for (File candidate : bases) {
+        if (candidate.isFile()) {
+          file = candidate;
+          break;
+        }
+      }
+    }
+    if (!file.isFile()) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_UNKNOWN_LOADTSFILECONSENSUSOP_ORDINAL_ARG_62848FC2);
+    }
+    try (RandomAccessFile input = new RandomAccessFile(file, "r")) {
+      byte[] content = new byte[Math.toIntExact(ref.size)];
+      input.seek(ref.offset);
+      input.readFully(content);
+      return content;
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   @Override

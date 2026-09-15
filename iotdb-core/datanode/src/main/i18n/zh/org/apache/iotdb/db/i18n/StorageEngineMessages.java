@@ -524,6 +524,10 @@ public final class StorageEngineMessages {
   public static final String CANNOT_CREATE_TSFILE_FOR_WRITING = "无法创建 TsFile {} 用于写入。";
   public static final String CLOSE_TSFILE_IO_WRITER_ERROR = "关闭 TsFileIOWriter {} 出错。";
   public static final String CLOSE_MODIFICATION_FILE_ERROR = "关闭修改文件 {} 出错。";
+  public static final String LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866 =
+      "正在准备 LOAD TsFile {}：封存暂存资源。";
+  public static final String LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335 =
+      "正在提交 LOAD TsFile {}：将已准备资源加载到 DataRegion。";
   public static final String EXCEPTION_TABLE_ARG_ARG_DOES_NOT_EXIST_WHEN_APPLYING_LOAD_CHUNK_DATA_IT_MAY_HAVE_BEEN_DROPPED_AFTER_THE_LOAD_WAS_ANALYZED_DDB35F93 =
       "应用 LOAD chunk 数据时表 '%s.%s' 不存在，可能在 LOAD 分析之后被删除了。";
   public static final String TASK_DIR_NOT_EMPTY_SKIP_DELETE = "任务目录 {} 非空，跳过删除。";

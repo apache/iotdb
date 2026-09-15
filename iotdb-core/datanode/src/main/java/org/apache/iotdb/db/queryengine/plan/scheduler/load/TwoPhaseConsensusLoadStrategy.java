@@ -54,17 +54,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p><b>Phase 1 (split &amp; stream).</b> {@link #execute(LoadSingleTsFileNode)} resets the
  * per-file state, assigns a fresh uuid to {@link LoadTsFileDispatcherImpl} (executor naming / log
  * correlation) and feeds the source TsFile through {@link TsFileSplitter} into {@link
- * TsFileSplitConsumer}. Every dispatched piece goes through {@code dispatchConsensusPiece}: the
- * first piece of a region sends BEGIN with a fresh per-region load id, then PIECE commands with a
- * monotonically increasing {@code pieceIndex}. Submission goes through {@link
- * LoadConsensusSubmitter} with bounded retries for transient failures only.
+ * TsFileSplitConsumer}. Every dispatched piece goes through {@code dispatchConsensusPiece}: each
+ * piece is submitted as PIECE directly with a fresh per-region load id and a monotonically
+ * increasing {@code pieceIndex}. Submission goes through {@link LoadConsensusSubmitter} with
+ * bounded retries for transient failures only.
  *
  * <p><b>Phase 2 (commit or abort).</b> If every region received all its pieces, each touched region
  * gets PREPARE (with the accumulated count/bytes) followed by COMMIT; otherwise every touched
  * region gets ABORT so the staged data is dropped.
  *
- * <p>Per-file state tracks the touched regions, their load ids, BEGIN state, piece counters and
- * pipe progress indexes.
+ * <p>Per-file state tracks the touched regions, their load ids, piece counters and pipe progress
+ * indexes.
  */
 public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
 
@@ -90,14 +90,13 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   private final String userName;
   private final boolean isGeneratedByPipe;
 
-  /** The source file being loaded, kept for the phase-two commands and BEGIN metadata. */
+  /** The source file being loaded, kept for the phase-two commands. */
   private LoadSingleTsFileNode currentNode;
 
   /** Regions touched by the current file; used to send ABORT/PREPARE+COMMIT in phase two. */
   private final Set<TRegionReplicaSet> allReplicaSets = new HashSet<>();
 
   private final Map<TConsensusGroupId, String> regionLoadIds = new ConcurrentHashMap<>();
-  private final Set<TConsensusGroupId> begunRegions = ConcurrentHashMap.newKeySet();
   private final Map<TConsensusGroupId, Long> regionPieceCounts = new ConcurrentHashMap<>();
   private final Map<TConsensusGroupId, Long> regionTotalBytes = new ConcurrentHashMap<>();
 
@@ -129,7 +128,6 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
     dispatcher.setUuid(UUID.randomUUID().toString());
     allReplicaSets.clear();
     regionLoadIds.clear();
-    begunRegions.clear();
     regionPieceCounts.clear();
     regionTotalBytes.clear();
     timePartitionSlotToProgressIndex.clear();
@@ -244,31 +242,6 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
     final String loadId =
         regionLoadIds.computeIfAbsent(regionId, ignored -> UUID.randomUUID().toString());
 
-    if (begunRegions.add(regionId)) {
-      final LoadTsFileConsensusNode begin =
-          LoadTsFileConsensusNode.begin(
-              new PlanNodeId("load-begin-" + loadId),
-              loadId,
-              pieceNode.getTsFile() == null ? null : pieceNode.getTsFile().getName(),
-              currentNode.isTableModel(),
-              currentNode.getDatabase(),
-              // The total piece count is only known after phase one; PREPARE carries the real
-              // count, BEGIN keeps the "unknown" sentinel so the two never disagree.
-              -1);
-      final TSStatus beginStatus = submitConsensusWithRetry(replicaSet, begin);
-      if (beginStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            DataNodeQueryMessages.DISPATCH_ONE_PIECE_TO_REPLICASET_ARG_ERROR_RESULT_STATUS_CODE_ARG
-                + DataNodeQueryMessages
-                    .RESULT_STATUS_MESSAGE_ARG_DISPATCH_PIECE_NODE_ERROR_PERCENT_NARG,
-            replicaSet,
-            TSStatusCode.representOf(beginStatus.getCode()).name(),
-            beginStatus.getMessage(),
-            pieceNode);
-        return false;
-      }
-    }
-
     final long pieceIndex = pieceNode.getPieceIndex();
     final LoadTsFileConsensusNode piece =
         LoadTsFileConsensusNode.piece(
@@ -338,6 +311,7 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
               Math.toIntExact(regionPieceCounts.getOrDefault(regionId, 0L)),
               regionTotalBytes.getOrDefault(regionId, 0L),
               0L,
+              isGeneratedByPipe,
               timePartition2ProgressIndex);
       final TSStatus prepareStatus = consensusSubmitter.submit(replicaSet, prepare);
       if (prepareStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

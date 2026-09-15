@@ -32,23 +32,23 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
@@ -83,11 +83,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -118,137 +116,14 @@ public class LoadTsFileManager {
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
   private final DataRegion dataRegion;
 
-  private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
-  private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
-
-  private final ActiveLoadAgent activeLoadAgent = new ActiveLoadAgent();
-
   public LoadTsFileManager(final DataRegion dataRegion) {
     this.dataRegion = Objects.requireNonNull(dataRegion);
-    registerCleanupTaskExecutor();
-    recover();
   }
 
-  public void start() {
-    activeLoadAgent.start();
-  }
+  public void start() {}
 
   public void stop() {
-    activeLoadAgent.stop();
-    synchronized (uuid2CleanupTask) {
-      uuid2CleanupTask.values().forEach(CleanupTask::cancel);
-      uuid2CleanupTask.clear();
-      cleanupTaskQueue.clear();
-    }
     new HashSet<>(uuid2WriterManager.keySet()).forEach(this::forceCloseWriterManager);
-  }
-
-  private long getCleanupTaskDelayInMs() {
-    return CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000L;
-  }
-
-  private void createCleanupTaskIfAbsent(final String uuid) {
-    synchronized (uuid2CleanupTask) {
-      if (uuid2CleanupTask.containsKey(uuid)) {
-        return;
-      }
-
-      final CleanupTask cleanupTask = new CleanupTask(uuid, getCleanupTaskDelayInMs());
-      uuid2CleanupTask.put(uuid, cleanupTask);
-      cleanupTaskQueue.add(cleanupTask);
-    }
-  }
-
-  private void rescheduleCleanupTask(final CleanupTask cleanupTask) {
-    synchronized (uuid2CleanupTask) {
-      if (uuid2CleanupTask.get(cleanupTask.uuid) != cleanupTask) {
-        return;
-      }
-
-      cleanupTaskQueue.remove(cleanupTask);
-      cleanupTask.resetScheduledTime();
-      cleanupTaskQueue.add(cleanupTask);
-    }
-  }
-
-  private void registerCleanupTaskExecutor() {
-    PipeDataNodeAgent.runtime()
-        .registerPeriodicalJob(
-            "LoadTsFileManager#cleanupTasks",
-            this::cleanupTasks,
-            CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() >> 2);
-  }
-
-  private void cleanupTasks() {
-    while (!cleanupTaskQueue.isEmpty()) {
-      synchronized (uuid2CleanupTask) {
-        if (cleanupTaskQueue.isEmpty()) {
-          continue;
-        }
-
-        final CleanupTask cleanupTask = cleanupTaskQueue.peek();
-        if (cleanupTask.scheduledTime <= System.currentTimeMillis()) {
-          if (cleanupTask.isLoadTaskRunning) {
-            cleanupTaskQueue.poll();
-            cleanupTask.resetScheduledTime();
-            cleanupTaskQueue.add(cleanupTask);
-            continue;
-          }
-
-          cleanupTask.run();
-
-          uuid2CleanupTask.remove(cleanupTask.uuid);
-          cleanupTaskQueue.poll();
-        } else {
-          final long waitTimeInMs = cleanupTask.scheduledTime - System.currentTimeMillis();
-          LOGGER.info(
-              StorageEngineMessages
-                  .STORAGE_LOG_NEXT_LOAD_CLEANUP_TASK_IS_NOT_READY_TO_RUN_WAIT_FOR_AT_LEAST_CBE0023F,
-              cleanupTask.uuid,
-              waitTimeInMs,
-              waitTimeInMs / 1000.0);
-          return;
-        }
-      }
-    }
-  }
-
-  private void recover() {
-    if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
-      synchronized (FOLDER_MANAGER) {
-        if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
-          LOAD_BASE_DIRS.set(CONFIG.getLoadTsFileDirs());
-        }
-      }
-    }
-
-    final File[] baseDirs =
-        Arrays.stream(LOAD_BASE_DIRS.get())
-            .map(File::new)
-            .map(this::getDataRegionLoadDir)
-            .toArray(File[]::new);
-    final File[] files =
-        Arrays.stream(baseDirs)
-            .filter(File::exists)
-            .flatMap(
-                dir -> {
-                  final File[] listedFiles = dir.listFiles();
-                  return listedFiles != null ? Arrays.stream(listedFiles) : Stream.empty();
-                })
-            .toArray(File[]::new);
-
-    Arrays.stream(files)
-        .parallel()
-        .forEach(
-            taskDir -> {
-              final String uuid = taskDir.getName();
-              final TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
-
-              uuid2WriterManager.put(uuid, writerManager);
-              writerManager.close();
-
-              createCleanupTaskIfAbsent(uuid);
-            });
   }
 
   public void writeToDataRegion(LoadTsFilePieceNode pieceNode, String uuid)
@@ -256,57 +131,107 @@ public class LoadTsFileManager {
     writePiece(uuid, pieceNode.getAllTsFileData());
   }
 
-  public void writePiece(final String uuid, final List<TsFileData> tsFileDataList)
-      throws IOException, PageException {
-    createCleanupTaskIfAbsent(uuid);
+  public List<LoadTsFileConsensusNode.PieceRef> writePiece(
+      final String uuid, final List<TsFileData> tsFileDataList) throws IOException, PageException {
+    final AtomicReference<Exception> exception = new AtomicReference<>();
+    final TsFileWriterManager writerManager =
+        uuid2WriterManager.computeIfAbsent(
+            uuid,
+            o -> {
+              try {
+                return getFolderManager()
+                    .getNextWithRetry(
+                        folder ->
+                            new TsFileWriterManager(
+                                new File(getDataRegionLoadDir(new File(folder)), uuid)));
+              } catch (DiskSpaceInsufficientException e) {
+                exception.set(e);
+                return null;
+              }
+            });
 
-    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
-    cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
-    try {
-      final AtomicReference<Exception> exception = new AtomicReference<>();
-      final TsFileWriterManager writerManager =
-          uuid2WriterManager.computeIfAbsent(
-              uuid,
-              o -> {
-                try {
-                  return getFolderManager()
-                      .getNextWithRetry(
-                          folder ->
-                              new TsFileWriterManager(
-                                  new File(getDataRegionLoadDir(new File(folder)), uuid)));
-                } catch (DiskSpaceInsufficientException e) {
-                  exception.set(e);
-                  return null;
-                }
-              });
+    if (exception.get() != null || writerManager == null) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .STORAGE_EXCEPTION_FAILED_TO_CREATE_TSFILEWRITERMANAGER_FOR_UUID_S_BECAUSE_A0D68950,
+              uuid),
+          exception.get());
+    }
 
-      if (exception.get() != null || writerManager == null) {
-        throw new IOException(
-            String.format(
-                StorageEngineMessages
-                    .STORAGE_EXCEPTION_FAILED_TO_CREATE_TSFILEWRITERMANAGER_FOR_UUID_S_BECAUSE_A0D68950,
-                uuid),
-            exception.get());
+    final Map<File, Long> previousLengths = snapshotFileLengths(writerManager.taskDir);
+    for (TsFileData tsFileData : tsFileDataList) {
+      switch (tsFileData.getType()) {
+        case CHUNK:
+          ChunkData chunkData = (ChunkData) tsFileData;
+          writerManager.write(
+              new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+          break;
+        case DELETION:
+          writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
+          break;
+        default:
+          throw new IOException(
+              StorageEngineMessages.UNSUPPORTED_TSFILE_DATA_TYPE + tsFileData.getType());
       }
+    }
+    writerManager.flush();
+    return createPieceRefs(writerManager.taskDir, previousLengths);
+  }
 
-      for (TsFileData tsFileData : tsFileDataList) {
-        switch (tsFileData.getType()) {
-          case CHUNK:
-            ChunkData chunkData = (ChunkData) tsFileData;
-            writerManager.write(
-                new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
-            break;
-          case DELETION:
-            writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
-            break;
-          default:
-            throw new IOException(
-                StorageEngineMessages.UNSUPPORTED_TSFILE_DATA_TYPE + tsFileData.getType());
+  public List<LoadTsFileConsensusNode.PieceRef> writePiece(final LoadTsFileConsensusNode node)
+      throws IOException, PageException {
+    final List<LoadTsFileConsensusNode.PieceRef> refs =
+        writePiece(node.getLoadId(), node.getTsFileDataList());
+    if (node.getPieceRefs().isEmpty()) {
+      final LoadTsFileConsensusNode walNode =
+          LoadTsFileConsensusNode.pieceRefs(
+              node.getPlanNodeId(),
+              node.getLoadId(),
+              node.getTsFileId(),
+              node.getPieceIndex(),
+              refs,
+              node.getChecksum(),
+              node.getDataSize(),
+              null);
+      walNode.setSearchIndex(node.getSearchIndex());
+      logLoadNodeToWAL(walNode);
+      dataRegion.insertSeparatorToWAL(node);
+    }
+    return refs;
+  }
+
+  private static Map<File, Long> snapshotFileLengths(final File taskDir) {
+    final Map<File, Long> result = new HashMap<>();
+    final File[] files = taskDir.listFiles();
+    if (files != null) {
+      for (File file : files) {
+        if (file.isFile()) {
+          result.put(file, file.length());
         }
       }
-    } finally {
-      cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
     }
+    return result;
+  }
+
+  private static List<LoadTsFileConsensusNode.PieceRef> createPieceRefs(
+      final File taskDir, final Map<File, Long> previousLengths) {
+    final List<LoadTsFileConsensusNode.PieceRef> refs = new java.util.ArrayList<>();
+    final File[] files = taskDir.listFiles();
+    if (files != null) {
+      for (File file : files) {
+        if (!file.isFile()) {
+          continue;
+        }
+        final long previousLength = previousLengths.getOrDefault(file, 0L);
+        final long size = file.length() - previousLength;
+        if (size > 0) {
+          refs.add(
+              new LoadTsFileConsensusNode.PieceRef(file.getAbsolutePath(), previousLength, size));
+        }
+      }
+    }
+    return refs;
   }
 
   private FolderManager getFolderManager() throws DiskSpaceInsufficientException {
@@ -344,6 +269,41 @@ public class LoadTsFileManager {
             + dataRegion.getDataRegionIdString());
   }
 
+  public boolean prepare(
+      final String uuid,
+      final int pieceCount,
+      final long totalBytes,
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    if (!uuid2WriterManager.containsKey(uuid)) {
+      return false;
+    }
+    LOGGER.info(
+        StorageEngineMessages.LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866,
+        uuid);
+    uuid2WriterManager.get(uuid).prepare(isGeneratedByPipe, timePartitionProgressIndexMap);
+    return true;
+  }
+
+  public boolean prepare(
+      final LoadTsFileConsensusNode node,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    if (!uuid2WriterManager.containsKey(node.getLoadId())) {
+      return false;
+    }
+    LOGGER.info(
+        StorageEngineMessages.LOG_PREPARING_LOAD_TSFILE_ARG_SEALING_STAGED_RESOURCES_1FDF1866,
+        node.getLoadId());
+    uuid2WriterManager
+        .get(node.getLoadId())
+        .prepare(node.isGeneratedByPipe(), timePartitionProgressIndexMap);
+    logLoadNodeToWAL(node);
+    dataRegion.insertSeparatorToWAL(node);
+    return true;
+  }
+
   public boolean loadAll(
       String uuid,
       boolean isGeneratedByPipe,
@@ -353,17 +313,30 @@ public class LoadTsFileManager {
       return false;
     }
 
-    createCleanupTaskIfAbsent(uuid);
+    LOGGER.info(
+        StorageEngineMessages
+            .LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335,
+        uuid);
+    uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe);
+    forceCloseWriterManager(uuid);
+    return true;
+  }
 
-    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
-    cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
-    try {
-      uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, timePartitionProgressIndexMap);
-    } finally {
-      cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
+  public boolean loadAll(
+      final LoadTsFileConsensusNode node,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    if (!uuid2WriterManager.containsKey(node.getLoadId())) {
+      return false;
     }
-
-    clean(uuid);
+    LOGGER.info(
+        StorageEngineMessages
+            .LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335,
+        node.getLoadId());
+    uuid2WriterManager.get(node.getLoadId()).loadAll(node.isGeneratedByPipe());
+    forceCloseWriterManager(node.getLoadId());
+    logLoadNodeToWAL(node);
+    dataRegion.insertSeparatorToWAL(node);
     return true;
   }
 
@@ -371,20 +344,36 @@ public class LoadTsFileManager {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
-    clean(uuid);
+    forceCloseWriterManager(uuid);
     return true;
   }
 
-  private void clean(String uuid) {
-    synchronized (uuid2CleanupTask) {
-      final CleanupTask cleanupTask = uuid2CleanupTask.remove(uuid);
-      if (cleanupTask != null) {
-        cleanupTask.cancel();
-        cleanupTaskQueue.remove(cleanupTask);
-      }
+  public boolean deleteAll(final LoadTsFileConsensusNode node) throws IOException {
+    if (!uuid2WriterManager.containsKey(node.getLoadId())) {
+      return false;
     }
+    forceCloseWriterManager(node.getLoadId());
+    logLoadNodeToWAL(node);
+    dataRegion.insertSeparatorToWAL(node);
+    return true;
+  }
 
-    forceCloseWriterManager(uuid);
+  private void logLoadNodeToWAL(final LoadTsFileConsensusNode node) throws IOException {
+    final AtomicReference<IOException> failure = new AtomicReference<>();
+    dataRegion
+        .getWALNode()
+        .ifPresent(
+            wal -> {
+              final WALFlushListener listener = wal.log(TsFileProcessor.MEMTABLE_NOT_EXIST, node);
+              if (listener.waitForResult() == WALFlushListener.Status.FAILURE) {
+                final Exception cause = listener.getCause();
+                failure.set(
+                    cause instanceof IOException ? (IOException) cause : new IOException(cause));
+              }
+            });
+    if (failure.get() != null) {
+      throw failure.get();
+    }
   }
 
   private void forceCloseWriterManager(String uuid) {
@@ -462,6 +451,7 @@ public class LoadTsFileManager {
     private Map<DataPartitionInfo, TsFileResource> dataPartition2Resource;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
     private boolean isClosed;
+    private boolean isPrepared;
 
     private TsFileWriterManager(File taskDir) {
       this.taskDir = taskDir;
@@ -469,15 +459,13 @@ public class LoadTsFileManager {
       this.dataPartition2Resource = new HashMap<>();
       this.dataPartition2ModificationFile = new HashMap<>();
       this.isClosed = false;
+      this.isPrepared = false;
 
-      clearDir(taskDir);
+      ensureDir(taskDir);
     }
 
-    private void clearDir(File dir) {
-      if (dir.exists()) {
-        FileUtils.deleteFileOrDirectoryWithRetry(dir);
-      }
-      if (dir.mkdirs()) {
+    private void ensureDir(File dir) {
+      if (!dir.exists() && dir.mkdirs()) {
         LOGGER.info(StorageEngineMessages.LOAD_TSFILE_DIR_CREATED, dir.getPath());
       }
     }
@@ -560,12 +548,21 @@ public class LoadTsFileManager {
       }
     }
 
-    private void loadAll(
+    private void flush() throws IOException {
+      for (TsFilePrecalculatedChunkWriter writer : dataPartition2Writer.values()) {
+        writer.getOutput().flush();
+      }
+    }
+
+    private void prepare(
         boolean isGeneratedByPipe,
         Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
         throws IOException, LoadFileException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
+      }
+      if (isPrepared) {
+        return;
       }
       for (final Map.Entry<DataPartitionInfo, ModificationFile> entry :
           dataPartition2ModificationFile.entrySet()) {
@@ -576,7 +573,6 @@ public class LoadTsFileManager {
         final TsFilePrecalculatedChunkWriter writer = entry.getValue();
         writer.close();
 
-        final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
         endTsFileResource(
@@ -584,6 +580,15 @@ public class LoadTsFileManager {
             tsFileResource,
             timePartitionProgressIndexMap.getOrDefault(
                 entry.getKey().getTimePartitionSlot(), MinimumProgressIndex.INSTANCE));
+      }
+      isPrepared = true;
+    }
+
+    private void loadAll(boolean isGeneratedByPipe) throws LoadFileException {
+      for (final Map.Entry<DataPartitionInfo, TsFileResource> entry :
+          dataPartition2Resource.entrySet()) {
+        final DataRegion dataRegion = entry.getKey().getDataRegion();
+        final TsFileResource tsFileResource = entry.getValue();
         dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe, false, Optional.empty());
 
         // Metrics
@@ -592,7 +597,10 @@ public class LoadTsFileManager {
             .ifPresent(
                 databaseName ->
                     updateWritePointCountMetrics(
-                        dataRegion, databaseName, getTsFileWritePointCount(writer), false));
+                        dataRegion,
+                        databaseName,
+                        getTsFileWritePointCount(dataPartition2Writer.get(entry.getKey())),
+                        false));
       }
     }
 
@@ -752,60 +760,6 @@ public class LoadTsFileManager {
       dataPartition2Resource = null;
       dataPartition2ModificationFile = null;
       isClosed = true;
-    }
-  }
-
-  private class CleanupTask implements Runnable, Comparable<CleanupTask> {
-
-    private final String uuid;
-
-    private final long delayInMs;
-    private long scheduledTime;
-
-    private volatile boolean isLoadTaskRunning = false;
-    private volatile boolean isCanceled = false;
-
-    private CleanupTask(String uuid, long delayInMs) {
-      this.uuid = uuid;
-      this.delayInMs = delayInMs;
-      resetScheduledTime();
-    }
-
-    public void markLoadTaskRunning() {
-      isLoadTaskRunning = true;
-      rescheduleCleanupTask(this);
-    }
-
-    public void markLoadTaskNotRunning() {
-      isLoadTaskRunning = false;
-      rescheduleCleanupTask(this);
-    }
-
-    public void resetScheduledTime() {
-      scheduledTime = System.currentTimeMillis() + delayInMs;
-    }
-
-    public void cancel() {
-      isCanceled = true;
-    }
-
-    @Override
-    public void run() {
-      if (isCanceled) {
-        LOGGER.info(StorageEngineMessages.LOAD_CLEANUP_TASK_CANCELED, uuid);
-      } else {
-        LOGGER.info(StorageEngineMessages.LOAD_CLEANUP_TASK_STARTS, uuid);
-        try {
-          forceCloseWriterManager(uuid);
-        } catch (Exception e) {
-          LOGGER.warn(StorageEngineMessages.LOAD_CLEANUP_TASK_ERROR, uuid, e);
-        }
-      }
-    }
-
-    @Override
-    public int compareTo(CleanupTask that) {
-      return Long.compare(this.scheduledTime, that.scheduledTime);
     }
   }
 
