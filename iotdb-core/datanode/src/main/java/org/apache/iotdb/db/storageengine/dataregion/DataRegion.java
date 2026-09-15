@@ -576,9 +576,68 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  public void writeLoadTsFilePiece(final String loadId, final List<TsFileData> tsFileDataList)
-      throws IOException, PageException {
-    getLoadTsFileManager().writePiece(loadId, tsFileDataList);
+  public List<
+          org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode
+              .PieceRef>
+      writeLoadTsFilePiece(final String loadId, final List<TsFileData> tsFileDataList)
+          throws IOException, PageException {
+    return getLoadTsFileManager().writePiece(loadId, tsFileDataList);
+  }
+
+  public List<
+          org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode
+              .PieceRef>
+      writeLoadTsFilePiece(
+          final org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode
+              node)
+          throws IOException, PageException {
+    return getLoadTsFileManager().writePiece(node);
+  }
+
+  public boolean writeLoadTsFilePrepare(
+      final String loadId,
+      final int pieceCount,
+      final long totalBytes,
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    return getLoadTsFileManager()
+        .prepare(loadId, pieceCount, totalBytes, isGeneratedByPipe, timePartitionProgressIndexMap);
+  }
+
+  public boolean writeLoadTsFilePrepare(
+      final org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode
+          node,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    return getLoadTsFileManager().prepare(node, timePartitionProgressIndexMap);
+  }
+
+  public boolean writeLoadTsFileCommit(
+      final String loadId,
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    return getLoadTsFileManager().loadAll(loadId, isGeneratedByPipe, timePartitionProgressIndexMap);
+  }
+
+  public boolean writeLoadTsFileCommit(
+      final org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode
+          node,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
+      throws IOException, LoadFileException {
+    return getLoadTsFileManager().loadAll(node, timePartitionProgressIndexMap);
+  }
+
+  public void writeLoadTsFileAbort(final String loadId) {
+    getLoadTsFileManager().deleteAll(loadId);
+  }
+
+  public void writeLoadTsFileAbort(
+      final org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode
+          node)
+      throws IOException {
+    getLoadTsFileManager().deleteAll(node);
   }
 
   public boolean commitLoadTsFile(
