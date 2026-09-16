@@ -638,9 +638,11 @@ public class SourceHandleTest {
                 for (int i = 0;
                     i < request.getEndSequenceId() - request.getStartSequenceId() - 1;
                     i++) {
-                  shortResponse.add(ByteBuffer.allocate(0));
+                  shortResponse.add(ByteBuffer.allocate(1));
                 }
-                return new TGetDataBlockResponse(shortResponse);
+                TGetDataBlockResponse response = new TGetDataBlockResponse(shortResponse);
+                response.setOffset(1);
+                return response;
               })
           .when(mockClient)
           .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
@@ -676,7 +678,7 @@ public class SourceHandleTest {
       Assert.fail(e.getMessage());
     }
     Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_000).times(1))
-        .onFailure(Mockito.eq(sourceHandle), Mockito.any(TException.class));
+        .onFailure(Mockito.eq(sourceHandle), Mockito.any(Throwable.class));
     Assert.assertFalse(blocked.isDone());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
 
