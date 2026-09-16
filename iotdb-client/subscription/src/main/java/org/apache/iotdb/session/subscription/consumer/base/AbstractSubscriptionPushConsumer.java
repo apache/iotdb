@@ -163,7 +163,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
     future[0] =
         SubscriptionExecutorServiceManager.submitAutoPollWorker(
             () -> {
-              if (isClosed()) {
+              if (isClosed() || isFenced()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
                   LOGGER.info(SubscriptionMessages.PUSH_CONSUMER_CANCEL_AUTO_POLL, this);
@@ -179,7 +179,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   class AutoPollWorker implements Runnable {
     @Override
     public void run() {
-      if (isClosed()) {
+      if (isClosed() || isFenced()) {
         return;
       }
 

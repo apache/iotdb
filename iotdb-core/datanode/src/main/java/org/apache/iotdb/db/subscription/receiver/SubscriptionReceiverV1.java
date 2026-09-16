@@ -121,11 +121,21 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final TPipeSubscribeResp SUBSCRIPTION_CONSUMER_FENCED_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_CONSUMER_FENCED,
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_CONSUMER_CONNECTION_WAS_FENCED_BECAUSE_A_NEWER_CONNECTION_WITH_THE_SAME_CONSUMER_ID_AND_CONSUMER_GROUP_ID_COMPLETED_THE_HANDSHAKE_THIS_CONSUMER_INSTANCE_CANNOT_BE_REUSED_CREATE_A_NEW_CONSUMER_INSTANCE_TO_RECONNECT_B0C2CCBE),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
   private volatile String authenticatedUsername;
   private volatile ConsumerConfig sharedConsumerConfig;
   private volatile boolean consumerInvalidated;
+  private volatile boolean consumerFenced;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
   private final AtomicLong inFlightRequestCount = new AtomicLong(0);
   private long consumerStateVersion;
@@ -135,8 +145,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   @Override
   public final TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
     final short reqType = req.getType();
-    beforeHandle(reqType);
+    final boolean isFencedRequest = beforeHandle(reqType);
     try {
+      if (isFencedRequest) {
+        return SUBSCRIPTION_CONSUMER_FENCED_RESP;
+      }
       if (PipeSubscribeRequestType.isValidatedRequestType(reqType)) {
         switch (PipeSubscribeRequestType.valueOf(reqType)) {
           case HANDSHAKE:
@@ -206,7 +219,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   @Override
   public void invalidateConsumer() {
-    clearSharedConsumerState();
+    synchronized (this) {
+      consumerFenced = true;
+      clearSharedConsumerState();
+    }
   }
 
   @Override
@@ -1340,17 +1356,23 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
-  private void beforeHandle(final short reqType) {
+  private boolean beforeHandle(final short reqType) {
     synchronized (this) {
+      final boolean isHandshake = PipeSubscribeRequestType.HANDSHAKE.getType() == reqType;
+      // A receiver fenced by a newer connection is terminal. In particular, do not allow the old
+      // connection to handshake again and reclaim the consumer identity. A normal disconnected
+      // receiver remains recoverable through the existing consumerInvalidated handshake path.
+      final boolean isFencedRequest = consumerFenced;
       if (consumerInvalidated) {
         consumerConfigThreadLocal.remove();
         pollTimerThreadLocal.remove();
-        if (PipeSubscribeRequestType.HANDSHAKE.getType() == reqType) {
+        if (isHandshake && !consumerFenced) {
           consumerInvalidated = false;
         }
       }
       inFlightRequestCount.incrementAndGet();
       lastActivityTimeMs = System.currentTimeMillis();
+      return isFencedRequest;
     }
   }
 

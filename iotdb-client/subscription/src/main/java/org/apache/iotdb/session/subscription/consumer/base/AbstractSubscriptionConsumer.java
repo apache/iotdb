@@ -24,6 +24,7 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionOwnerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
@@ -90,6 +91,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -123,6 +125,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private final AbstractSubscriptionProviders providers;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicReference<SubscriptionConsumerFencedException> fencedException =
+      new AtomicReference<>();
   // This variable indicates whether the consumer has ever been closed.
   private final AtomicBoolean isReleased = new AtomicBoolean(false);
 
@@ -296,6 +300,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// open & close ///////////////////////////////
 
   private void checkIfHasBeenClosed() throws SubscriptionException {
+    checkIfFenced();
     if (isReleased.get()) {
       final String errorMessage =
           String.format("%s has ever been closed, unsupported operation after closing.", this);
@@ -305,6 +310,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   private void checkIfOpened() throws SubscriptionException {
+    checkIfFenced();
     if (isClosed.get()) {
       final String errorMessage =
           String.format("%s is not yet open, please open the subscription consumer first.", this);
@@ -324,6 +330,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     providers.acquireWriteLock();
     try {
       providers.openProviders(this); // throw SubscriptionException
+    } catch (final SubscriptionException e) {
+      providers.closeProviders(!isFenced());
+      throw e;
     } finally {
       providers.releaseWriteLock();
     }
@@ -347,7 +356,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     // close subscription providers
     providers.acquireWriteLock();
     try {
-      providers.closeProviders();
+      providers.closeProviders(!isFenced());
     } finally {
       providers.releaseWriteLock();
     }
@@ -360,6 +369,21 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   boolean isClosed() {
     return isClosed.get();
+  }
+
+  boolean isFenced() {
+    return fencedException.get() != null;
+  }
+
+  void fence(final SubscriptionConsumerFencedException e) {
+    fencedException.compareAndSet(null, e);
+  }
+
+  void checkIfFenced() {
+    final SubscriptionConsumerFencedException e = fencedException.get();
+    if (e != null) {
+      throw e;
+    }
   }
 
   /////////////////////////////// subscribe & unsubscribe ///////////////////////////////
@@ -562,8 +586,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       provider.handshake();
     } catch (final Exception e) {
       try {
-        provider.close();
+        provider.closeSession();
       } catch (final Exception ignored) {
+      }
+      if (e instanceof SubscriptionConsumerFencedException) {
+        fence((SubscriptionConsumerFencedException) e);
+        throw (SubscriptionConsumerFencedException) e;
       }
       throw new SubscriptionConnectionException(
           String.format(
@@ -735,6 +763,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   protected List<SubscriptionMessage> multiplePoll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {
+    checkIfFenced();
     if (topicNames.isEmpty()) {
       return Collections.emptyList();
     }
@@ -831,6 +860,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private List<SubscriptionMessage> singlePoll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
+    checkIfFenced();
     if (topicNames.isEmpty()) {
       return Collections.emptyList();
     }
@@ -877,6 +907,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             }
           }
         } catch (final SubscriptionRuntimeCriticalException e) {
+          if (e instanceof SubscriptionConsumerFencedException) {
+            fence((SubscriptionConsumerFencedException) e);
+            throw e;
+          }
           LOGGER.warn(
               SubscriptionMessages
                   .LOG_SUBSCRIPTIONRUNTIMECRITICALEXCEPTION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_ARG_C96324AD,
@@ -975,6 +1009,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
       return pollFileInternal(commitContext, fileName, file, fileWriter, timer);
     } catch (final Exception e) {
+      if (e instanceof SubscriptionConsumerFencedException) {
+        fence((SubscriptionConsumerFencedException) e);
+        throw (SubscriptionConsumerFencedException) e;
+      }
       if (!(e instanceof SubscriptionPollTimeoutException)) {
         inFlightFilesCommitContextSet.remove(commitContext);
       }
@@ -1185,6 +1223,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     try {
       return pollTabletsInternal(response, timer);
     } catch (final Exception e) {
+      if (e instanceof SubscriptionConsumerFencedException) {
+        fence((SubscriptionConsumerFencedException) e);
+        throw (SubscriptionConsumerFencedException) e;
+      }
       // construct temporary message to nack
       nack(
           Collections.singletonList(
@@ -1324,6 +1366,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private List<SubscriptionPollResponse> pollInternal(
       final Set<String> topicNames, final long timeoutMs) throws SubscriptionException {
+    checkIfFenced();
     providers.acquireReadLock();
     try {
       final AbstractSubscriptionProvider provider = providers.getNextAvailableProvider();
@@ -1429,6 +1472,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private void commit(final Iterable<SubscriptionCommitContext> commitContexts, final boolean nack)
       throws SubscriptionException {
+    checkIfFenced();
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
     for (final SubscriptionCommitContext commitContext : commitContexts) {
@@ -1591,7 +1635,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                 nack,
                 dataNodeId));
       }
-      return provider.commit(subscriptionCommitContexts, nack);
+      try {
+        return provider.commit(subscriptionCommitContexts, nack);
+      } catch (final SubscriptionConsumerFencedException e) {
+        fence(e);
+        throw e;
+      }
     } finally {
       providers.releaseReadLock();
     }
@@ -1608,7 +1657,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     future[0] =
         SubscriptionExecutorServiceManager.submitHeartbeatWorker(
             () -> {
-              if (isClosed()) {
+              if (isClosed() || isFenced()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
                   LOGGER.info(SubscriptionMessages.CONSUMER_CANCEL_HEARTBEAT_WORKER, this);
@@ -1628,7 +1677,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     future[0] =
         SubscriptionExecutorServiceManager.submitEndpointsSyncer(
             () -> {
-              if (isClosed()) {
+              if (isClosed() || isFenced()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
                   LOGGER.info(SubscriptionMessages.CONSUMER_CANCEL_ENDPOINTS_SYNCER, this);
@@ -1710,6 +1759,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         subscribedTopics = provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
+        if (e instanceof SubscriptionConsumerFencedException) {
+          fence((SubscriptionConsumerFencedException) e);
+          throw (SubscriptionConsumerFencedException) e;
+        }
         if (e instanceof SubscriptionOwnerFencedException) {
           throw (SubscriptionOwnerFencedException) e;
         }
@@ -1751,6 +1804,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         subscribedTopics = provider.unsubscribe(topicNames);
         return;
       } catch (final Exception e) {
+        if (e instanceof SubscriptionConsumerFencedException) {
+          fence((SubscriptionConsumerFencedException) e);
+          throw (SubscriptionConsumerFencedException) e;
+        }
         if (e instanceof SubscriptionPipeTimeoutException) {
           // degrade exception to log for pipe timeout
           LOGGER.warn(e.getMessage());
@@ -1796,6 +1853,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       try {
         provider.seek(topicName, seekType, timestamp);
       } catch (final Exception e) {
+        if (e instanceof SubscriptionConsumerFencedException) {
+          fence((SubscriptionConsumerFencedException) e);
+          throw (SubscriptionConsumerFencedException) e;
+        }
         failedProviders.add(provider);
         if (Objects.isNull(firstFailure)) {
           firstFailure = e;
@@ -1837,6 +1898,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       try {
         provider.seekToTopicProgress(topicName, topicProgress);
       } catch (final Exception e) {
+        if (e instanceof SubscriptionConsumerFencedException) {
+          fence((SubscriptionConsumerFencedException) e);
+          throw (SubscriptionConsumerFencedException) e;
+        }
         failedProviders.add(provider);
         if (Objects.isNull(firstFailure)) {
           firstFailure = e;
@@ -1879,6 +1944,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       try {
         provider.seekAfterTopicProgress(topicName, topicProgress);
       } catch (final Exception e) {
+        if (e instanceof SubscriptionConsumerFencedException) {
+          fence((SubscriptionConsumerFencedException) e);
+          throw (SubscriptionConsumerFencedException) e;
+        }
         failedProviders.add(provider);
         if (Objects.isNull(firstFailure)) {
           firstFailure = e;
@@ -2149,6 +2218,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       try {
         return provider.heartbeat().getEndPoints();
       } catch (final Exception e) {
+        if (e instanceof SubscriptionConsumerFencedException) {
+          fence((SubscriptionConsumerFencedException) e);
+          throw (SubscriptionConsumerFencedException) e;
+        }
         LOGGER.warn(
             SubscriptionMessages
                 .LOG_ARG_FAILED_FETCH_ALL_ENDPOINTS_SUBSCRIPTION_PROVIDER_ARG_TRY_NEXT_25651CAD,

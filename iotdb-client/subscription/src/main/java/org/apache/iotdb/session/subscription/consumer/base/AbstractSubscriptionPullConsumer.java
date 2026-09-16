@@ -159,6 +159,12 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       return;
     }
 
+    if (isFenced()) {
+      isClosed.set(true);
+      super.close();
+      return;
+    }
+
     if (!processors.isEmpty()) {
       if (autoCommit) {
         final List<SubscriptionMessage> drainedMessages = drainProcessorPipeline();
@@ -626,7 +632,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     future[0] =
         SubscriptionExecutorServiceManager.submitAutoCommitWorker(
             () -> {
-              if (isClosed()) {
+              if (isClosed() || isFenced()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
                   LOGGER.info(SubscriptionMessages.PULL_CONSUMER_CANCEL_AUTO_COMMIT, this);
@@ -642,7 +648,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private class AutoCommitWorker implements Runnable {
     @Override
     public void run() {
-      if (isClosed()) {
+      if (isClosed() || isFenced()) {
         return;
       }
 
@@ -676,6 +682,9 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   private void commitAllUncommittedMessages() {
+    if (isFenced()) {
+      return;
+    }
     for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
         uncommittedCommitContexts.entrySet()) {
       try {

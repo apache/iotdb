@@ -20,8 +20,13 @@
 package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
@@ -29,9 +34,13 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 public class SubscriptionConsumerLifecycleTest {
@@ -92,6 +101,103 @@ public class SubscriptionConsumerLifecycleTest {
     Assert.assertTrue(consumer.closedStatesDuringClose.get(0));
   }
 
+  @Test
+  public void testFencedHeartbeatStopsBackgroundReconnect() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer();
+    final AbstractSubscriptionProviders providers = getProviders(consumer);
+    try {
+      consumer.open();
+      consumer.fenceOnHeartbeat = true;
+      providers.heartbeat(consumer);
+
+      Assert.assertTrue(consumer.isFenced());
+      providers.sync(consumer);
+      providers.heartbeat(consumer);
+      Assert.assertEquals(1, consumer.createdProviders.size());
+      try {
+        consumer.multiplePoll(Collections.singleton("topic"), 100L);
+        Assert.fail("The fenced consumer must not poll or reconnect");
+      } catch (final SubscriptionConsumerFencedException expected) {
+        Assert.assertEquals("consumer connection fenced", expected.getMessage());
+      }
+      consumer.close();
+      Assert.assertEquals(0, consumer.closeRequestCount);
+      Assert.assertEquals(1, consumer.sessionCloseCount);
+      Assert.assertEquals(1, consumer.closedStatesDuringClose.size());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testFencedDuringOpenClosesPartiallyOpenedProviders() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer();
+    consumer.fenceOnHeartbeat = true;
+    try {
+      consumer.open();
+      Assert.fail("The consumer must fail to open when its handshake is fenced");
+    } catch (final SubscriptionConsumerFencedException expected) {
+      Assert.assertTrue(consumer.isFenced());
+      Assert.assertEquals(1, consumer.createdProviders.size());
+      Assert.assertEquals(0, consumer.closeRequestCount);
+      Assert.assertEquals(1, consumer.sessionCloseCount);
+      Assert.assertEquals(1, consumer.closedStatesDuringClose.size());
+    }
+
+    try {
+      consumer.open();
+      Assert.fail("The fenced consumer must not retry the handshake");
+    } catch (final SubscriptionConsumerFencedException expected) {
+      Assert.assertEquals(1, consumer.createdProviders.size());
+    }
+  }
+
+  @Test
+  public void testFencedHandshakeClosesOpenedSession() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer();
+    consumer.fenceOnHandshake = true;
+
+    try {
+      consumer.open();
+      Assert.fail("The consumer must fail to open when its handshake is fenced");
+    } catch (final SubscriptionConsumerFencedException expected) {
+      Assert.assertTrue(consumer.isFenced());
+      Assert.assertEquals(1, consumer.createdProviders.size());
+      Assert.assertEquals(0, consumer.closeRequestCount);
+      Assert.assertEquals(1, consumer.sessionCloseCount);
+      Assert.assertEquals(1, consumer.closedStatesDuringClose.size());
+    }
+  }
+
+  @Test
+  public void testFencedTabletContinuationDoesNotSendNack() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer();
+    try {
+      consumer.open();
+      consumer.returnPartialTablets = true;
+      consumer.fenceOnPollTablets = true;
+
+      try {
+        consumer.multiplePoll(Collections.singleton("topic"), 1_000L);
+        Assert.fail("A fenced tablet continuation must fail the poll");
+      } catch (final SubscriptionConsumerFencedException expected) {
+        Assert.assertEquals("consumer connection fenced", expected.getMessage());
+      }
+
+      Assert.assertTrue(consumer.isFenced());
+      Assert.assertEquals(0, consumer.commitRequestCount);
+    } finally {
+      consumer.close();
+    }
+  }
+
+  private AbstractSubscriptionProviders getProviders(final AbstractSubscriptionConsumer consumer)
+      throws Exception {
+    final Field field = AbstractSubscriptionConsumer.class.getDeclaredField("providers");
+    field.setAccessible(true);
+    return (AbstractSubscriptionProviders) field.get(consumer);
+  }
+
   private static class TestPushConsumer extends AbstractSubscriptionPushConsumer {
 
     private final List<Boolean> closedStatesDuringHandshake = new ArrayList<>();
@@ -136,7 +242,14 @@ public class SubscriptionConsumerLifecycleTest {
           connectionTimeoutInMs,
           this::isClosed,
           closedStatesDuringHandshake,
-          closedStatesDuringClose);
+          closedStatesDuringClose,
+          () -> false,
+          () -> false,
+          () -> false,
+          () -> false,
+          () -> {},
+          () -> {},
+          () -> {});
     }
   }
 
@@ -144,6 +257,14 @@ public class SubscriptionConsumerLifecycleTest {
 
     private final List<Boolean> closedStatesDuringHandshake = new ArrayList<>();
     private final List<Boolean> closedStatesDuringClose = new ArrayList<>();
+    private final List<TestSubscriptionProvider> createdProviders = new ArrayList<>();
+    private boolean fenceOnHandshake;
+    private boolean fenceOnHeartbeat;
+    private boolean fenceOnPollTablets;
+    private boolean returnPartialTablets;
+    private int closeRequestCount;
+    private int sessionCloseCount;
+    private int commitRequestCount;
 
     private TestPullConsumer() {
       super(
@@ -170,21 +291,31 @@ public class SubscriptionConsumerLifecycleTest {
         final int thriftMaxFrameSize,
         final long heartbeatIntervalMs,
         final int connectionTimeoutInMs) {
-      return new TestSubscriptionProvider(
-          endPoint,
-          username,
-          password,
-          encryptedPassword,
-          consumerId,
-          consumerGroupId,
-          ownerId,
-          ownerEpoch,
-          thriftMaxFrameSize,
-          heartbeatIntervalMs,
-          connectionTimeoutInMs,
-          this::isClosed,
-          closedStatesDuringHandshake,
-          closedStatesDuringClose);
+      final TestSubscriptionProvider provider =
+          new TestSubscriptionProvider(
+              endPoint,
+              username,
+              password,
+              encryptedPassword,
+              consumerId,
+              consumerGroupId,
+              ownerId,
+              ownerEpoch,
+              thriftMaxFrameSize,
+              heartbeatIntervalMs,
+              connectionTimeoutInMs,
+              this::isClosed,
+              closedStatesDuringHandshake,
+              closedStatesDuringClose,
+              () -> fenceOnHandshake,
+              () -> fenceOnHeartbeat,
+              () -> fenceOnPollTablets,
+              () -> returnPartialTablets,
+              () -> closeRequestCount++,
+              () -> commitRequestCount++,
+              () -> sessionCloseCount++);
+      createdProviders.add(provider);
+      return provider;
     }
   }
 
@@ -193,6 +324,13 @@ public class SubscriptionConsumerLifecycleTest {
     private final BooleanSupplier consumerClosedSupplier;
     private final List<Boolean> closedStatesDuringHandshake;
     private final List<Boolean> closedStatesDuringClose;
+    private final BooleanSupplier fenceOnHandshake;
+    private final BooleanSupplier fenceOnHeartbeat;
+    private final BooleanSupplier fenceOnPollTablets;
+    private final BooleanSupplier returnPartialTablets;
+    private final Runnable closeRequest;
+    private final Runnable commitRequest;
+    private final Runnable sessionClose;
 
     private TestSubscriptionProvider(
         final TEndPoint endPoint,
@@ -208,7 +346,14 @@ public class SubscriptionConsumerLifecycleTest {
         final int connectionTimeoutInMs,
         final BooleanSupplier consumerClosedSupplier,
         final List<Boolean> closedStatesDuringHandshake,
-        final List<Boolean> closedStatesDuringClose) {
+        final List<Boolean> closedStatesDuringClose,
+        final BooleanSupplier fenceOnHandshake,
+        final BooleanSupplier fenceOnHeartbeat,
+        final BooleanSupplier fenceOnPollTablets,
+        final BooleanSupplier returnPartialTablets,
+        final Runnable closeRequest,
+        final Runnable commitRequest,
+        final Runnable sessionClose) {
       super(
           endPoint,
           username,
@@ -224,6 +369,13 @@ public class SubscriptionConsumerLifecycleTest {
       this.consumerClosedSupplier = consumerClosedSupplier;
       this.closedStatesDuringHandshake = closedStatesDuringHandshake;
       this.closedStatesDuringClose = closedStatesDuringClose;
+      this.fenceOnHandshake = fenceOnHandshake;
+      this.fenceOnHeartbeat = fenceOnHeartbeat;
+      this.fenceOnPollTablets = fenceOnPollTablets;
+      this.returnPartialTablets = returnPartialTablets;
+      this.closeRequest = closeRequest;
+      this.commitRequest = commitRequest;
+      this.sessionClose = sessionClose;
     }
 
     @Override
@@ -249,19 +401,64 @@ public class SubscriptionConsumerLifecycleTest {
     @Override
     synchronized void handshake() {
       closedStatesDuringHandshake.add(consumerClosedSupplier.getAsBoolean());
+      if (fenceOnHandshake.getAsBoolean()) {
+        throw new SubscriptionConsumerFencedException("consumer connection fenced");
+      }
       setAvailable();
     }
 
     @Override
     synchronized void close() {
       closedStatesDuringClose.add(consumerClosedSupplier.getAsBoolean());
+      closeRequest.run();
+      setUnavailable();
+    }
+
+    @Override
+    synchronized void closeSession() {
+      closedStatesDuringClose.add(consumerClosedSupplier.getAsBoolean());
+      sessionClose.run();
       setUnavailable();
     }
 
     @Override
     PipeSubscribeHeartbeatResp heartbeat(
         final List<SubscriptionCommitContext> processorBufferedCommitContexts) {
+      if (fenceOnHeartbeat.getAsBoolean()) {
+        throw new SubscriptionConsumerFencedException("consumer connection fenced");
+      }
       return new PipeSubscribeHeartbeatResp();
+    }
+
+    @Override
+    List<SubscriptionPollResponse> poll(
+        final Set<String> topicNames,
+        final long timeoutMs,
+        final Map<String, TopicProgress> progressByTopic) {
+      if (!returnPartialTablets.getAsBoolean()) {
+        return Collections.emptyList();
+      }
+      return Collections.singletonList(
+          new SubscriptionPollResponse(
+              SubscriptionPollResponseType.TABLETS.getType(),
+              new TabletsPayload(Collections.emptyMap(), 1),
+              new SubscriptionCommitContext(0, 0, "topic", CONSUMER_GROUP_ID, 0L)));
+    }
+
+    @Override
+    List<SubscriptionPollResponse> pollTablets(
+        final SubscriptionCommitContext commitContext, final int offset, final long timeoutMs) {
+      if (fenceOnPollTablets.getAsBoolean()) {
+        throw new SubscriptionConsumerFencedException("consumer connection fenced");
+      }
+      return Collections.emptyList();
+    }
+
+    @Override
+    CommitResult commit(
+        final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack) {
+      commitRequest.run();
+      return CommitResult.empty();
     }
   }
 }

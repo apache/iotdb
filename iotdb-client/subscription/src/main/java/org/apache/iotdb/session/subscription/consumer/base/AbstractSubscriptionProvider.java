@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionOwnerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
@@ -258,6 +259,15 @@ public abstract class AbstractSubscriptionProvider {
       closeInternal(); // throw SubscriptionException
     } finally {
       session.close(); // throw IoTDBConnectionException
+      setUnavailable();
+      isClosed.set(true);
+    }
+  }
+
+  synchronized void closeSession() throws IoTDBConnectionException {
+    try {
+      session.close();
+    } finally {
       setUnavailable();
       isClosed.set(true);
     }
@@ -647,6 +657,9 @@ public abstract class AbstractSubscriptionProvider {
           LOGGER.warn(errorMessage);
           throw new SubscriptionOwnerFencedException(errorMessage);
         }
+      case 1919: // SUBSCRIPTION_CONSUMER_FENCED
+        LOGGER.warn(status.message);
+        throw new SubscriptionConsumerFencedException(status.message);
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CONSUMER
