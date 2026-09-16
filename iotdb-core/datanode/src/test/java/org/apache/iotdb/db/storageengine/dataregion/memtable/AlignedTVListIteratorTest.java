@@ -863,7 +863,6 @@ public class AlignedTVListIteratorTest {
             Arrays.asList(0, 1, 2),
             getMeasurementSchema(),
             tvListMap,
-            Collections.emptyList(),
             Arrays.asList(
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
     chunk.sortTvLists();
@@ -907,7 +906,6 @@ public class AlignedTVListIteratorTest {
             Arrays.asList(0, 1, 2),
             getMeasurementSchema(),
             tvListMap,
-            Collections.emptyList(),
             Arrays.asList(
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
     chunk.sortTvLists();
