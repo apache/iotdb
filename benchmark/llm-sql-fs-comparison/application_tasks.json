@@ -1,0 +1,76 @@
+{
+  "design_version": "1.1",
+  "status": "executable_application_pilot",
+  "tasks": [
+    {
+      "id": "A1-TRIAGE",
+      "scenario": "A1",
+      "information": "discovery",
+      "public": {
+        "role": "工厂值班工程师",
+        "trigger": "循环水温度上升告警，需要在交接班前确认异常泵和现场检查顺序。",
+        "time_window": {"start": 1700000000000, "end": 1700001800000, "timezone": "UTC", "end_inclusive": true},
+        "goal": "分析 UTC 毫秒窗口 1700000000000（含）到 1700001800000（含）内的 30 分钟观测。找出温度超过 85°C 或振动 RMS 超过 7.5 mm/s 且泵处于 RUNNING 状态的泵。按泵合并连续异常区间（相邻采样间隔不超过 5 分钟），计算起止时间、温度峰值和振动峰值；按区间持续时间降序、温度峰值降序、泵编号升序、开始时间升序返回优先检查的前三个异常区间和证据时间点。报告数据质量中的缺测数和重复上报数。",
+        "rules": [
+          "按 pump_id 和 time 去重，upload_id 表示上报批次；同一时点的重复数据只计一次。",
+          "每台泵在闭区间内每 5 分钟应有一个采样点。missing 是缺失时点总数；duplicates 是原始行数减去去重后行数。",
+          "异常区间只连接满足异常条件的观测，相邻异常观测间隔超过 5 分钟时必须断开；区间端点为首末观测时间。",
+          "priority_pumps 每项表示一个异常区间，同一泵可出现多项；若不足三个区间就全部返回。evidence 与返回区间一一对应并保持同一顺序，每项 time 使用区间开始时间。"
+        ],
+        "answer_shape": {
+          "incident_window": {"start": "integer", "end": "integer"},
+          "priority_pumps": [{"pump_id": "string", "start": "integer", "end": "integer", "peak_temperature_c": "number", "peak_vibration_rms": "number"}],
+          "evidence": [{"pump_id": "string", "time": "integer"}],
+          "data_quality": {"missing": "integer", "duplicates": "integer"}
+        }
+      }
+    },
+    {
+      "id": "A2-COMPLIANCE",
+      "scenario": "A2",
+      "information": "discovery",
+      "public": {
+        "role": "物流质量专员",
+        "trigger": "跨时区药品运输批次 B-2047 需要在签收前完成温控合规复核。",
+        "time_window": {"start_local": "2023-11-16T10:00:00+08:00", "end_local": "2023-11-16T11:20:00+08:00", "start_utc_ms": 1700100000000, "end_utc_ms": 1700104800000, "timezone": "Asia/Shanghai", "end_inclusive": true},
+        "goal": "分析批次 B-2047 在运输窗口内的温度合规性。运输窗口是路线当地时间 Asia/Shanghai 的 2023-11-16 10:00:00（含）到 11:20:00（含），查询时必须转换为 UTC 毫秒时间。温度要求为 2°C（含）到 8°C（含）。找出每个运输箱的高温、低温区间，识别传感器离线时段；重复上报只计一次。返回需要人工复核的箱号及原因。",
+        "rules": [
+          "按 box_id 和 time 去重；高温是 temperature_c > 8，低温是 temperature_c < 2。status=OFFLINE 或温度为空的观测归入离线，不能视为合规。",
+          "同箱同类异常仅当相邻异常观测间隔不超过 10 分钟时合并；区间端点为首末观测时间。",
+          "compliance 只使用 COMPLIANT 或 NON_COMPLIANT；存在高温、低温或离线就返回 NON_COMPLIANT。kind 只使用 high 或 low。",
+          "excursions 按 box_id、kind、start 升序，offline_periods 按 box_id、start 升序，review_list 按 box_id、reason 升序。review_list 对每种原因各返回一项；reason 只使用 high_temperature、low_temperature、sensor_offline。"
+        ],
+        "answer_shape": {
+          "shipment_id": "string",
+          "compliance": "string",
+          "excursions": [{"box_id": "string", "kind": "string", "start": "integer", "end": "integer", "peak_c": "number"}],
+          "offline_periods": [{"box_id": "string", "start": "integer", "end": "integer"}],
+          "review_list": [{"box_id": "string", "reason": "string"}]
+        }
+      }
+    },
+    {
+      "id": "A3-ENERGY",
+      "scenario": "A3",
+      "information": "discovery",
+      "public": {
+        "role": "楼宇能源管理员",
+        "trigger": "每天早上需要找出昨天最值得检查的楼层，不能只按总用电量排序。",
+        "time_window": {"start": 1700200000000, "end": 1700282800000, "timezone": "UTC", "end_inclusive": true, "bucket": "1h"},
+        "goal": "分析 UTC 毫秒窗口 1700200000000（含）到 1700282800000（含）内的 24 个小时点，报表日期按窗口起始 UTC 日期计算。对每个楼层按小时检查有功功率，并读取同楼层同小时的历史基线观测比较绝对偏差。返回绝对异常最大的前三个楼层、异常小时、实际功率、基线和原因。电能累计值发生回退时用功率重建该小时用电量，并单独标记重建记录。楼层编号并列时按编号升序。",
+        "rules": [
+          "date 是窗口开始时刻的 UTC 日期，格式 YYYY-MM-DD。采样每小时一次，time 是该小时观测的时间标记；累计值回退发生在某个 time 时，重建该 time 对应的一小时。",
+          "基线来自数据库中的 baseline_power_kw 观测，按 floor_id 和 time 对齐；按每楼层最大的 abs(active_power_kw - baseline_power_kw) 选异常小时，同楼层并列时选择最早小时。",
+          "floor_ranking 按绝对偏差降序、floor_id 升序取三项；hourly_evidence 返回相同三项与顺序。偏差非零时 reason 使用 peak_power，偏差为零时使用 within_baseline。",
+          "同楼层相邻 energy_kwh 累计值下降时重建当前小时，用该小时 active_power_kw × 1 小时作为 energy_kwh。reconstructed_intervals 按 floor_id、time 升序输出重建数值。"
+        ],
+        "answer_shape": {
+          "date": "string",
+          "floor_ranking": [{"floor_id": "string", "anomaly_hour": "integer", "actual_power_kw": "number", "baseline_power_kw": "number", "reason": "string"}],
+          "hourly_evidence": [{"floor_id": "string", "anomaly_hour": "integer", "actual_power_kw": "number", "baseline_power_kw": "number", "reason": "string"}],
+          "reconstructed_intervals": [{"floor_id": "string", "time": "integer", "energy_kwh": "number"}]
+        }
+      }
+    }
+  ]
+}
