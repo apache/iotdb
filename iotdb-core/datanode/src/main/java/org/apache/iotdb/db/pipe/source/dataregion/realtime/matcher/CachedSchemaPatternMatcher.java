@@ -144,10 +144,6 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         return new Pair<>(matchedSources, findUnmatchedSources(matchedSources));
       }
 
-      final String tableModelDatabaseName =
-          event.getEvent() instanceof PipeInsertionEvent
-              ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
-              : null;
       // tableNames is also used for privilege checks on table-model TsFile events, so it must be
       // complete even after every source has already matched.
       final boolean isTableModelTsFileEvent =
@@ -165,6 +161,10 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         } else {
           final String tableName = deviceID.getTableName();
           if (tableNames.add(tableName) && matchedSources.size() < sources.size()) {
+            final String tableModelDatabaseName =
+                event.getEvent() instanceof PipeInsertionEvent
+                    ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
+                    : null;
             matchTableModelEvent(tableModelDatabaseName, tableName, matchedSources);
           }
         }
