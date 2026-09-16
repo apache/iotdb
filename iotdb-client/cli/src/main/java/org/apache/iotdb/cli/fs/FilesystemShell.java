@@ -570,6 +570,7 @@ public class FilesystemShell {
 
   private static boolean isDirectory(FsNodeType type) {
     return type == FsNodeType.VIRTUAL_ROOT
+        || type == FsNodeType.VIRTUAL_DIRECTORY
         || type == FsNodeType.TREE_ROOT
         || type == FsNodeType.TREE_DATABASE
         || type == FsNodeType.TREE_INTERNAL_PATH

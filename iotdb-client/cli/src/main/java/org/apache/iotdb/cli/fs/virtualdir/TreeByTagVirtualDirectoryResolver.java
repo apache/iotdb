@@ -17,19 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.cli.fs.node;
+package org.apache.iotdb.cli.fs.virtualdir;
 
-public enum FsNodeType {
-  VIRTUAL_ROOT,
-  VIRTUAL_DIRECTORY,
-  TREE_ROOT,
-  TREE_DATABASE,
-  TREE_INTERNAL_PATH,
-  TREE_DEVICE,
-  TREE_TIMESERIES,
-  TABLE_DATABASE,
-  TABLE_VIEW,
-  TABLE_DATA_FILE,
-  TABLE_META_FILE,
-  UNKNOWN
+import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.sql.SqlExecutor;
+import org.apache.iotdb.cli.i18n.FsVirtualMessages;
+
+public class TreeByTagVirtualDirectoryResolver extends TreeByMetadataVirtualDirectoryResolver {
+
+  static final String NAME = "by-tag";
+
+  public TreeByTagVirtualDirectoryResolver(
+      SqlExecutor executor, FilesystemSchemaProvider delegate) {
+    super(
+        NAME,
+        "Tags",
+        FsVirtualMessages.MESSAGE_BROWSE_TREE_TIMESERIES_GROUPED_BY_TAG_KEY_AND_VALUE_5C5893DA,
+        "tag-key",
+        "tag-value",
+        executor,
+        delegate);
+  }
 }

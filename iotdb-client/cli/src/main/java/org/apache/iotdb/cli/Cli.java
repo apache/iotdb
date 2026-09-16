@@ -27,6 +27,8 @@ import org.apache.iotdb.cli.fs.provider.TableFilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.provider.TreeFilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.provider.UnsupportedFilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.sql.JdbcSqlExecutor;
+import org.apache.iotdb.cli.fs.virtualdir.VirtualDirectoryResolvers;
+import org.apache.iotdb.cli.fs.virtualdir.VirtualDirectorySchemaProvider;
 import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
@@ -340,13 +342,20 @@ public class Cli extends AbstractCli {
 
   static FilesystemShell createFilesystemShell(CliContext ctx, IoTDBConnection connection) {
     JdbcSqlExecutor executor = new JdbcSqlExecutor(connection);
+    FilesystemSchemaProvider baseProvider;
     FilesystemSchemaProvider provider;
     FilesystemMutationProvider mutationProvider;
     if (Constant.TABLE_DIALECT.equalsIgnoreCase(connection.getSqlDialect())) {
-      provider = new TableFilesystemSchemaProvider(executor);
+      baseProvider = new TableFilesystemSchemaProvider(executor);
+      provider =
+          new VirtualDirectorySchemaProvider(
+              baseProvider, VirtualDirectoryResolvers.forTable(executor, baseProvider));
       mutationProvider = new TableFilesystemMutationProvider(executor);
     } else {
-      provider = new TreeFilesystemSchemaProvider(executor);
+      baseProvider = new TreeFilesystemSchemaProvider(executor);
+      provider =
+          new VirtualDirectorySchemaProvider(
+              baseProvider, VirtualDirectoryResolvers.forTree(executor, baseProvider));
       mutationProvider = new UnsupportedFilesystemMutationProvider();
     }
     return new FilesystemShell(
