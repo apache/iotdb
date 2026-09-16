@@ -21,10 +21,12 @@ package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.NumericRow;
+import org.apache.iotdb.isession.NumericRowPreparedStatement;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.TableSession;
 import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.write.record.Tablet;

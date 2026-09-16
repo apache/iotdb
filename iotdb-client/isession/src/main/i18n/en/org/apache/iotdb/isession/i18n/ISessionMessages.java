@@ -31,6 +31,8 @@ public final class ISessionMessages {
   public static final String NOT_DIRECT_CHILD_OF_TEMPLATE =
       "It is not a direct child of the template: ";
 
+  public static final String EXCEPTION_UNSUPPORTED_NUMERIC_TYPE_06DD3044 = "Unsupported numeric type";
+
   private ISessionMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
