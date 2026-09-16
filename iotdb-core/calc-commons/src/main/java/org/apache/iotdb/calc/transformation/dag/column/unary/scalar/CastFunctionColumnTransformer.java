@@ -35,6 +35,20 @@ public class CastFunctionColumnTransformer extends AbstractCastFunctionColumnTra
   }
 
   @Override
+  protected void doTransform(Column column, ColumnBuilder builder) {
+    if (!tryNumericBatchCast(column, builder, null, false)) {
+      super.doTransform(column, builder);
+    }
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder builder, boolean[] selection) {
+    if (!tryNumericBatchCast(column, builder, selection, false)) {
+      super.doTransform(column, builder, selection);
+    }
+  }
+
+  @Override
   protected void transform(Column column, ColumnBuilder columnBuilder, int i) {
     castSourceValue(column, columnBuilder, i);
   }

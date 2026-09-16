@@ -45,7 +45,7 @@ public class VarianceAccumulator implements Accumulator {
   }
 
   private final TSDataType seriesDataType;
-  private final TypeServices.ColumnToDoubleConverter doubleValueConverter;
+  private final TypeServices.NumericBatchReader doubleValueConverter;
 
   private final VarianceType varianceType;
 
@@ -56,7 +56,7 @@ public class VarianceAccumulator implements Accumulator {
   public VarianceAccumulator(TSDataType seriesDataType, VarianceType varianceType) {
     this.seriesDataType = seriesDataType;
     this.doubleValueConverter =
-        TypeServices.NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+        TypeServices.NUMERIC_BATCH_READER_SERVICE
             .call(Type.fromTsDataType(seriesDataType))
             .create(
                 () ->
@@ -70,19 +70,16 @@ public class VarianceAccumulator implements Accumulator {
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
     checkInputDataType();
-    int size = columns[0].getPositionCount();
-    for (int i = 0; i < size; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[1].isNull(i)) {
-        double value = doubleValueConverter.convert(columns[1], i);
-        count++;
-        double delta = value - mean;
-        mean += delta / count;
-        m2 += delta * (value - mean);
-      }
-    }
+    doubleValueConverter.read(
+        columns[1],
+        bitMap,
+        columns[0].getPositionCount(),
+        (position, value) -> {
+          count++;
+          double delta = value - mean;
+          mean += delta / count;
+          m2 += delta * (value - mean);
+        });
   }
 
   @Override

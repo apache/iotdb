@@ -66,6 +66,7 @@ public class TimeSeriesRuntimeState {
   // Variables to avoid "new" operation
   private final List<WindowOutput> outputList = new ArrayList<>();
   private TypeServices.Pipe.AggregateRowValueUpdater rowValueUpdater;
+  private TSDataType rowValueUpdaterDataType;
 
   public TimeSeriesRuntimeState(
       final Map<String, AggregatedResultOperator> aggregatorOutputName2OperatorMap,
@@ -85,11 +86,12 @@ public class TimeSeriesRuntimeState {
       final int columnIndex,
       final long outputMinReportIntervalMilliseconds)
       throws IOException {
-    if (rowValueUpdater == null) {
+    TSDataType dataType = TSDataType.getTsDataType(row.getDataType(columnIndex).getType());
+    // A recreated series can retain its path but change its input type.
+    if (rowValueUpdater == null || rowValueUpdaterDataType != dataType) {
       rowValueUpdater =
-          TypeServices.Pipe.AGGREGATE_ROW_VALUE_UPDATER_SERVICE.call(
-              Type.fromTsDataType(
-                  TSDataType.getTsDataType(row.getDataType(columnIndex).getType())));
+          TypeServices.Pipe.AGGREGATE_ROW_VALUE_UPDATER_SERVICE.call(Type.fromTsDataType(dataType));
+      rowValueUpdaterDataType = dataType;
     }
     return rowValueUpdater.update(
         this, timestamp, row, columnIndex, outputMinReportIntervalMilliseconds);

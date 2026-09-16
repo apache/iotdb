@@ -45,7 +45,7 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedVarianceAccumulator.class);
   private final TSDataType seriesDataType;
-  private final TypeServices.ColumnToDoubleConverter doubleValueConverter;
+  private final TypeServices.NumericBatchReader doubleValueConverter;
   private final VarianceAccumulator.VarianceType varianceType;
 
   private final LongBigArray counts = new LongBigArray();
@@ -56,7 +56,7 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
       TSDataType seriesDataType, VarianceAccumulator.VarianceType varianceType) {
     this.seriesDataType = seriesDataType;
     this.doubleValueConverter =
-        TypeServices.NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+        TypeServices.NUMERIC_BATCH_READER_SERVICE
             .call(Type.fromTsDataType(seriesDataType))
             .create(this::unsupportedDataTypeException);
     this.varianceType = varianceType;
@@ -178,36 +178,16 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
   }
 
   private void updateStateByAdd(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (column.isNull(i)) {
-          continue;
-        }
-
-        double value = doubleValueConverter.convert(column, i);
-        counts.increment(groupIds[i]);
-        double delta = value - means.get(groupIds[i]);
-        means.add(groupIds[i], delta / counts.get(groupIds[i]));
-        m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (column.isNull(position)) {
-          continue;
-        }
-
-        double value = doubleValueConverter.convert(column, position);
-        counts.increment(groupIds[position]);
-        double delta = value - means.get(groupIds[position]);
-        means.add(groupIds[position], delta / counts.get(groupIds[position]));
-        m2s.add(groupIds[position], delta * (value - means.get(groupIds[position])));
-      }
-    }
+    doubleValueConverter.read(
+        column,
+        mask,
+        (position, value) -> {
+          int groupId = groupIds[position];
+          counts.increment(groupId);
+          double delta = value - means.get(groupId);
+          means.add(groupId, delta / counts.get(groupId));
+          m2s.add(groupId, delta * (value - means.get(groupId)));
+        });
   }
 
   private void checkInputDataType() {

@@ -42,7 +42,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
   private static final double EPSILON = 1e-12;
 
   private final TSDataType seriesDataType;
-  private final TypeServices.ColumnToDoubleConverter doubleValueConverter;
+  private final TypeServices.NumericBatchReader doubleValueConverter;
   private final CentralMomentAccumulator.MomentType momentType;
 
   private long count;
@@ -55,7 +55,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
       TSDataType seriesDataType, CentralMomentAccumulator.MomentType momentType) {
     this.seriesDataType = seriesDataType;
     this.doubleValueConverter =
-        TypeServices.NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+        TypeServices.NUMERIC_BATCH_READER_SERVICE
             .call(Type.fromTsDataType(seriesDataType))
             .create(
                 () ->
@@ -68,22 +68,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!arguments[0].isNull(i)) {
-          update(doubleValueConverter.convert(arguments[0], i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      for (int i = 0; i < positionCount; i++) {
-        int position = selectedPositions[i];
-        if (!arguments[0].isNull(position)) {
-          update(doubleValueConverter.convert(arguments[0], position));
-        }
-      }
-    }
+    doubleValueConverter.read(arguments[0], mask, (position, value) -> update(value));
   }
 
   private void update(double value) {

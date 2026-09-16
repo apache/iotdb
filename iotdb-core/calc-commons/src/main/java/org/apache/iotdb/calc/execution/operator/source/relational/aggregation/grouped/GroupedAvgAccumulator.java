@@ -34,7 +34,6 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.utils.BytesUtils.doubleToBytes;
@@ -44,22 +43,14 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedAvgAccumulator.class);
   private final TSDataType argumentDataType;
-  private final TypeServices.ColumnToDoubleConverter valueConverter;
+  private final TypeServices.GroupedAvgInput inputStrategy;
   private final LongBigArray countValues = new LongBigArray();
   private final DoubleBigArray sumValues = new DoubleBigArray();
 
   public GroupedAvgAccumulator(TSDataType argumentDataType) {
     this.argumentDataType = argumentDataType;
     Type type = Type.fromTsDataType(argumentDataType);
-    this.valueConverter =
-        TypeServices.AGGREGATION_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
-            .call(type)
-            .create(
-                () ->
-                    new UnSupportedDataTypeException(
-                        String.format(
-                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG,
-                            argumentDataType)));
+    this.inputStrategy = TypeServices.GROUPED_AVG_INPUT_SERVICE.call(type);
   }
 
   @Override
@@ -78,7 +69,7 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
     checkArgument(
         arguments.length == 1,
         CalcMessages.EXCEPTION_ARGUMENT_OF_AVG_SHOULD_BE_ONE_COLUMN_82162B82);
-    addInput(groupIds, arguments[0], mask);
+    inputStrategy.addInput(groupIds, arguments[0], mask, sumValues, countValues);
   }
 
   @Override
@@ -120,31 +111,6 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
     longToBytes(countValues.get(groupId), bytes, 0);
     doubleToBytes(sumValues.get(groupId), bytes, Long.BYTES);
     return bytes;
-  }
-
-  private void addInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          countValues.increment(groupIds[i]);
-          sumValues.add(groupIds[i], valueConverter.convert(column, i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      int groupId;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        groupId = groupIds[position];
-        if (!column.isNull(position)) {
-          countValues.increment(groupId);
-          sumValues.add(groupId, valueConverter.convert(column, position));
-        }
-      }
-    }
   }
 
   @Override

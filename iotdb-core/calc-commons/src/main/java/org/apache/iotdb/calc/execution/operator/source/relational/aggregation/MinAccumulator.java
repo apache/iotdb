@@ -41,7 +41,7 @@ public class MinAccumulator implements TableAccumulator {
       RamUsageEstimator.shallowSizeOfInstance(MinAccumulator.class);
   private final TSDataType seriesDataType;
   private final Type type;
-  private final TypeServices.ColumnValueUpdater valueUpdater;
+  private final TypeServices.ColumnBatchUpdater valueUpdater;
   private final TypeServices.StatisticsValueUpdater statisticsValueUpdater;
   private final TsPrimitiveType minResult;
   private boolean initResult;
@@ -50,7 +50,7 @@ public class MinAccumulator implements TableAccumulator {
     this.seriesDataType = seriesDataType;
     this.type = Type.fromTsDataType(seriesDataType);
     this.minResult = type.getTsPrimitiveType();
-    this.valueUpdater = TypeServices.MIN_COLUMN_VALUE_UPDATER_SERVICE.call(type);
+    this.valueUpdater = TypeServices.MIN_COLUMN_BATCH_UPDATER_SERVICE.call(type);
     this.statisticsValueUpdater = TypeServices.MIN_STATISTICS_VALUE_UPDATER_SERVICE.call(type);
   }
 
@@ -75,15 +75,12 @@ public class MinAccumulator implements TableAccumulator {
 
   @Override
   public void addIntermediate(Column argument) {
-    for (int i = 0; i < argument.getPositionCount(); i++) {
-      if (argument.isNull(i)) {
-        continue;
-      }
-
-      if (valueUpdater.update(minResult, argument, i, initResult)) {
-        initResult = true;
-      }
-    }
+    initResult =
+        valueUpdater.update(
+            minResult,
+            argument,
+            AggregationMask.createSelectAll(argument.getPositionCount()),
+            initResult);
   }
 
   @Override
@@ -133,23 +130,7 @@ public class MinAccumulator implements TableAccumulator {
   }
 
   private void addInput(Column valueColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i) && valueUpdater.update(minResult, valueColumn, i, initResult)) {
-          initResult = true;
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      for (int i = 0; i < positionCount; i++) {
-        int position = selectedPositions[i];
-        if (!valueColumn.isNull(position)
-            && valueUpdater.update(minResult, valueColumn, position, initResult)) {
-          initResult = true;
-        }
-      }
-    }
+    initResult = valueUpdater.update(minResult, valueColumn, mask, initResult);
   }
 
   private void addIntInput(Column valueColumn, AggregationMask mask) {

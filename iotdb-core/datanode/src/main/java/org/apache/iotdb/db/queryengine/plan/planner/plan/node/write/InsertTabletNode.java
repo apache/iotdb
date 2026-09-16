@@ -57,7 +57,6 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
-import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -66,7 +65,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1183,60 +1181,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (dataType == null || column == null) {
       return Objects.hashCode(column);
     }
-    int hash = 1;
-    if (dataType == TSDataType.DATE && column instanceof LocalDate[] values) {
-      // DATE equality also accepts the equivalent integer representation.
-      for (int i = 0; i < rowCount; i++) {
-        hash =
-            31 * hash
-                + (values[i] == null
-                    ? DateUtils.EMPTY_DATE_INT
-                    : DateUtils.parseDateExpressionToInt(values[i]));
-      }
-      return hash;
-    }
-    switch (dataType) {
-      case INT32, DATE -> {
-        int[] values = (int[]) column;
-        for (int i = 0; i < rowCount; i++) {
-          hash = 31 * hash + Integer.hashCode(values[i]);
-        }
-      }
-      case INT64, TIMESTAMP -> {
-        long[] values = (long[]) column;
-        for (int i = 0; i < rowCount; i++) {
-          hash = 31 * hash + Long.hashCode(values[i]);
-        }
-      }
-      case FLOAT -> {
-        float[] values = (float[]) column;
-        for (int i = 0; i < rowCount; i++) {
-          hash = 31 * hash + Float.hashCode(values[i]);
-        }
-      }
-      case DOUBLE -> {
-        double[] values = (double[]) column;
-        for (int i = 0; i < rowCount; i++) {
-          hash = 31 * hash + Double.hashCode(values[i]);
-        }
-      }
-      case BOOLEAN -> {
-        boolean[] values = (boolean[]) column;
-        for (int i = 0; i < rowCount; i++) {
-          hash = 31 * hash + Boolean.hashCode(values[i]);
-        }
-      }
-      case TEXT, BLOB, STRING, OBJECT -> {
-        Object[] values = (Object[]) column;
-        for (int i = 0; i < rowCount; i++) {
-          hash = 31 * hash + Objects.hashCode(values[i]);
-        }
-      }
-      case VECTOR, UNKNOWN -> {
-        return Objects.hashCode(column);
-      }
-    }
-    return hash;
+    return TypeServices.StorageEngine.ARRAY_PREFIX_HASHER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .hash(column, rowCount);
   }
 
   @Override

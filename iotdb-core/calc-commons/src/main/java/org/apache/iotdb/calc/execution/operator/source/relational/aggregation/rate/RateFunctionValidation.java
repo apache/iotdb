@@ -44,6 +44,7 @@ public final class RateFunctionValidation {
     }
   }
 
+  // Keep validation inline on the scalar path so existing row loops retain their JIT shape.
   public static double readValue(
       Column column, int position, TSDataType valueDataType, RateFunctionType functionType) {
     double value =
@@ -76,6 +77,25 @@ public final class RateFunctionValidation {
               value));
     }
     return value;
+  }
+
+  public static void validateValue(double value, RateFunctionType functionType) {
+    if (!Double.isFinite(value)) {
+      throw new SemanticException(
+          String.format(
+              CalcMessages
+                  .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_NON_FINITE_VALUE_COL_ARG_AC2AAC62,
+              functionType.getFunctionName(),
+              value));
+    }
+    if (functionType.isCounter() && value < 0.0) {
+      throw new SemanticException(
+          String.format(
+              CalcMessages
+                  .EXCEPTION_THE_VALUE_COL_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_MUST_BE_A_NON_NEGATIVE_NUMBER_BUT_GOT_ARG_4D5B7D74,
+              functionType.getFunctionName(),
+              value));
+    }
   }
 
   public static long readRequiredTime(

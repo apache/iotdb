@@ -32,6 +32,7 @@ import java.time.ZoneId;
 public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnTransformer {
 
   private final ZoneId zoneId;
+  private final TypeServices.NumericCastBatch numericCastBatch;
   private final TypeServices.CastInputService castInputService;
   private final TypeServices.CastValueService castValueService;
 
@@ -39,6 +40,10 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
       Type returnType, ColumnTransformer childColumnTransformer, ZoneId zoneId) {
     super(returnType, childColumnTransformer);
     this.zoneId = zoneId;
+    this.numericCastBatch =
+        TypeServices.NUMERIC_CAST_BATCH_SERVICE
+            .call(childColumnTransformer.getType())
+            .call(returnType);
     this.castInputService = TypeServices.CAST_INPUT_SERVICE.call(childColumnTransformer.getType());
     this.castValueService = TypeServices.CAST_VALUE_SERVICE.call(returnType);
   }
@@ -63,6 +68,15 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
         columnBuilder.appendNull();
       }
     }
+  }
+
+  protected boolean tryNumericBatchCast(
+      Column column, ColumnBuilder builder, boolean[] selection, boolean tryCast) {
+    if (numericCastBatch == null) {
+      return false;
+    }
+    numericCastBatch.cast(column, builder, selection, tryCast);
+    return true;
   }
 
   protected abstract void transform(Column column, ColumnBuilder columnBuilder, int i);

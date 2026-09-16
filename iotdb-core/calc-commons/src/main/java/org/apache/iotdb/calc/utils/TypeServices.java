@@ -94,6 +94,8 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.FloatBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionType;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionValidation;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBooleanLiteralVisitor;
@@ -145,6 +147,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -535,7 +538,7 @@ public class TypeServices {
                 }
               } catch (DateTimeParseException e) {
                 throw new IoTDBRuntimeException(
-                    "Year must be between 1000 and 9999.",
+                    CalcMessages.EXCEPTION_YEAR_MUST_BETWEEN_1000_9999_8FBB94AA,
                     org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode(),
                     true);
               }
@@ -638,7 +641,10 @@ public class TypeServices {
                 }
               } catch (DateTimeParseException | NumberFormatException e) {
                 throw new SemanticException(
-                    String.format("Cannot cast %s to %s type", stringValue, type.getDisplayName()));
+                    String.format(
+                        CalcMessages.EXCEPTION_CANNOT_CAST_ARG_ARG_TYPE_8266A2C6,
+                        stringValue,
+                        type.getDisplayName()));
               }
             }
 
@@ -669,7 +675,10 @@ public class TypeServices {
                 }
               } catch (DateTimeParseException | NumberFormatException e) {
                 throw new SemanticException(
-                    String.format("Cannot cast %s to %s type", stringValue, type.getDisplayName()));
+                    String.format(
+                        CalcMessages.EXCEPTION_CANNOT_CAST_ARG_ARG_TYPE_8266A2C6,
+                        stringValue,
+                        type.getDisplayName()));
               }
             }
 
@@ -822,7 +831,10 @@ public class TypeServices {
                 };
               } catch (DateTimeParseException | NumberFormatException e) {
                 throw new SemanticException(
-                    String.format("Cannot cast %s to %s type", stringValue, type.getDisplayName()));
+                    String.format(
+                        CalcMessages.EXCEPTION_CANNOT_CAST_ARG_ARG_TYPE_8266A2C6,
+                        stringValue,
+                        type.getDisplayName()));
               }
             }
           };
@@ -2602,18 +2614,1676 @@ public class TypeServices {
                         };
               };
 
-  /** Numeric inputs supported by SUM, AVG and percentile aggregations. */
-  public static final TypeService<ColumnToDoubleConverterFactory>
+  @FunctionalInterface
+  public interface ColumnBatchUpdater {
+    boolean update(
+        TsPrimitiveType result, Column column, AggregationMask mask, boolean initialized);
+  }
+
+  // The strategy contains the scan itself, avoiding a polymorphic update call for every value.
+  public static final TypeService<ColumnBatchUpdater> MIN_COLUMN_BATCH_UPDATER_SERVICE =
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32, DATE ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          int value = column.getInt(position);
+                          if (!initialized || value < result.getInt()) {
+                            result.setInt(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case INT64, TIMESTAMP ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          long value = column.getLong(position);
+                          if (!initialized || value < result.getLong()) {
+                            result.setLong(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case FLOAT ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          float value = column.getFloat(position);
+                          if (!initialized || value < result.getFloat()) {
+                            result.setFloat(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case DOUBLE ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          double value = column.getDouble(position);
+                          if (!initialized || value < result.getDouble()) {
+                            result.setDouble(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case BOOLEAN ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          boolean value = column.getBoolean(position);
+                          if (!initialized || !value) {
+                            result.setBoolean(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case TEXT, STRING, BLOB ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          Binary value = column.getBinary(position);
+                          if (!initialized || value.compareTo(result.getBinary()) < 0) {
+                            result.setBinary(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case OBJECT, ROW, UNKNOWN, VECTOR ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          throw new UnSupportedDataTypeException(
+                              CalcMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                        }
+                      }
+                      return initialized;
+                    };
+              });
+
+  // The strategy contains the scan itself, avoiding a polymorphic update call for every value.
+  public static final TypeService<ColumnBatchUpdater> MAX_COLUMN_BATCH_UPDATER_SERVICE =
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32, DATE ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          int value = column.getInt(position);
+                          if (!initialized || value > result.getInt()) {
+                            result.setInt(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case INT64, TIMESTAMP ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          long value = column.getLong(position);
+                          if (!initialized || value > result.getLong()) {
+                            result.setLong(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case FLOAT ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          float value = column.getFloat(position);
+                          if (!initialized || value > result.getFloat()) {
+                            result.setFloat(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case DOUBLE ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          double value = column.getDouble(position);
+                          if (!initialized || value > result.getDouble()) {
+                            result.setDouble(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case BOOLEAN ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          boolean value = column.getBoolean(position);
+                          if (!initialized || value) {
+                            result.setBoolean(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case TEXT, STRING, BLOB ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          Binary value = column.getBinary(position);
+                          if (!initialized || value.compareTo(result.getBinary()) > 0) {
+                            result.setBinary(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case OBJECT, ROW, UNKNOWN, VECTOR ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          throw new UnSupportedDataTypeException(
+                              CalcMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                        }
+                      }
+                      return initialized;
+                    };
+              });
+
+  // The strategy contains the scan itself, avoiding a polymorphic update call for every value.
+  public static final TypeService<ColumnBatchUpdater> EXTREME_COLUMN_BATCH_UPDATER_SERVICE =
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          int value = column.getInt(position);
+                          int candidate = result.getInt();
+                          if (!initialized || compareExtreme(value, candidate) > 0) {
+                            result.setInt(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case INT64 ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          long value = column.getLong(position);
+                          long candidate = result.getLong();
+                          if (!initialized || compareExtreme(value, candidate) > 0) {
+                            result.setLong(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case FLOAT ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          float value = column.getFloat(position);
+                          float candidate = result.getFloat();
+                          float absValue = Math.abs(value);
+                          float absCandidate = Math.abs(candidate);
+                          if (!initialized
+                              || absValue > absCandidate
+                              || absValue == absCandidate && value > candidate) {
+                            result.setFloat(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case DOUBLE ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          double value = column.getDouble(position);
+                          double candidate = result.getDouble();
+                          double absValue = Math.abs(value);
+                          double absCandidate = Math.abs(candidate);
+                          if (!initialized
+                              || absValue > absCandidate
+                              || absValue == absCandidate && value > candidate) {
+                            result.setDouble(value);
+                            initialized = true;
+                          }
+                        }
+                      }
+                      return initialized;
+                    };
+                case BOOLEAN, DATE, TIMESTAMP, TEXT, STRING, BLOB, OBJECT, ROW, UNKNOWN, VECTOR ->
+                    (result, column, mask, initialized) -> {
+                      int count = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < count; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          throw new UnSupportedDataTypeException(
+                              CalcMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
+                        }
+                      }
+                      return initialized;
+                    };
+              });
+
+  /** Native numeric scans shared by moment/variance inputs, retaining logical column access. */
+  public static final TypeService<NumericBatchReaderFactory> NUMERIC_BATCH_READER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32, DATE ->
+                ignored ->
+                    new NumericBatchReader() {
+                      @Override
+                      public double convert(Column column, int position) {
+                        return column.getInt(position);
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, AggregationMask mask, NumericValueConsumer consumer) {
+                        int size = mask.getSelectedPositionCount();
+                        boolean selectAll = mask.isSelectAll();
+                        int[] positions = selectAll ? null : mask.getSelectedPositions();
+                        for (int i = 0; i < size; i++) {
+                          int position = selectAll ? i : positions[i];
+                          if (!column.isNull(position)) {
+                            consumer.accept(position, column.getInt(position));
+                          }
+                        }
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, BitMap bitMap, int size, NumericValueConsumer consumer) {
+                        for (int position = 0; position < size; position++) {
+                          if ((bitMap == null || bitMap.isMarked(position))
+                              && !column.isNull(position)) {
+                            consumer.accept(position, column.getInt(position));
+                          }
+                        }
+                      }
+                    };
+            case INT64, TIMESTAMP ->
+                ignored ->
+                    new NumericBatchReader() {
+                      @Override
+                      public double convert(Column column, int position) {
+                        return column.getLong(position);
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, AggregationMask mask, NumericValueConsumer consumer) {
+                        int size = mask.getSelectedPositionCount();
+                        boolean selectAll = mask.isSelectAll();
+                        int[] positions = selectAll ? null : mask.getSelectedPositions();
+                        for (int i = 0; i < size; i++) {
+                          int position = selectAll ? i : positions[i];
+                          if (!column.isNull(position)) {
+                            consumer.accept(position, column.getLong(position));
+                          }
+                        }
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, BitMap bitMap, int size, NumericValueConsumer consumer) {
+                        for (int position = 0; position < size; position++) {
+                          if ((bitMap == null || bitMap.isMarked(position))
+                              && !column.isNull(position)) {
+                            consumer.accept(position, column.getLong(position));
+                          }
+                        }
+                      }
+                    };
+            case FLOAT ->
+                ignored ->
+                    new NumericBatchReader() {
+                      @Override
+                      public double convert(Column column, int position) {
+                        return column.getFloat(position);
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, AggregationMask mask, NumericValueConsumer consumer) {
+                        int size = mask.getSelectedPositionCount();
+                        boolean selectAll = mask.isSelectAll();
+                        int[] positions = selectAll ? null : mask.getSelectedPositions();
+                        for (int i = 0; i < size; i++) {
+                          int position = selectAll ? i : positions[i];
+                          if (!column.isNull(position)) {
+                            consumer.accept(position, column.getFloat(position));
+                          }
+                        }
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, BitMap bitMap, int size, NumericValueConsumer consumer) {
+                        for (int position = 0; position < size; position++) {
+                          if ((bitMap == null || bitMap.isMarked(position))
+                              && !column.isNull(position)) {
+                            consumer.accept(position, column.getFloat(position));
+                          }
+                        }
+                      }
+                    };
+            case DOUBLE ->
+                ignored ->
+                    new NumericBatchReader() {
+                      @Override
+                      public double convert(Column column, int position) {
+                        return column.getDouble(position);
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, AggregationMask mask, NumericValueConsumer consumer) {
+                        int size = mask.getSelectedPositionCount();
+                        boolean selectAll = mask.isSelectAll();
+                        int[] positions = selectAll ? null : mask.getSelectedPositions();
+                        for (int i = 0; i < size; i++) {
+                          int position = selectAll ? i : positions[i];
+                          if (!column.isNull(position)) {
+                            consumer.accept(position, column.getDouble(position));
+                          }
+                        }
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, BitMap bitMap, int size, NumericValueConsumer consumer) {
+                        for (int position = 0; position < size; position++) {
+                          if ((bitMap == null || bitMap.isMarked(position))
+                              && !column.isNull(position)) {
+                            consumer.accept(position, column.getDouble(position));
+                          }
+                        }
+                      }
+                    };
+            case BOOLEAN, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                exceptionSupplier ->
+                    new NumericBatchReader() {
+                      @Override
+                      public double convert(Column column, int position) {
+                        throw exceptionSupplier.get();
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, AggregationMask mask, NumericValueConsumer consumer) {
+                        forEachSelectedPosition(
+                            column,
+                            mask,
+                            position -> {
+                              throw exceptionSupplier.get();
+                            });
+                      }
+
+                      @Override
+                      public void read(
+                          Column column, BitMap bitMap, int size, NumericValueConsumer consumer) {
+                        for (int position = 0; position < size; position++) {
+                          if ((bitMap == null || bitMap.isMarked(position))
+                              && !column.isNull(position)) {
+                            throw exceptionSupplier.get();
+                          }
+                        }
+                      }
+                    };
+          };
+
+  @FunctionalInterface
+  public interface NumericValueConsumer {
+    void accept(int position, double value);
+  }
+
+  public interface NumericBatchReader extends ColumnToDoubleConverter {
+    void read(Column column, AggregationMask mask, NumericValueConsumer consumer);
+
+    void read(Column column, BitMap bitMap, int size, NumericValueConsumer consumer);
+  }
+
+  @FunctionalInterface
+  public interface NumericBatchReaderFactory {
+    NumericBatchReader create(Supplier<? extends RuntimeException> exceptionSupplier);
+  }
+
+  /** Numeric cast pairs are selected outside the row loop; other casts keep their existing path. */
+  public static final TypeService<TypeService<NumericCastBatch>> NUMERIC_CAST_BATCH_SERVICE =
+      source ->
+          switch (source.getTypeEnum()) {
+            case INT32 ->
+                target ->
+                    switch (target.getTypeEnum()) {
+                      case INT32 ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeInt(column.getInt(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case INT64 ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeLong(column.getInt(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case FLOAT ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeFloat(column.getInt(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case DOUBLE ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeDouble(column.getInt(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case BOOLEAN,
+                          DATE,
+                          TIMESTAMP,
+                          TEXT,
+                          BLOB,
+                          STRING,
+                          OBJECT,
+                          ROW,
+                          UNKNOWN,
+                          VECTOR ->
+                          null;
+                    };
+            case INT64 ->
+                target ->
+                    switch (target.getTypeEnum()) {
+                      case INT32 ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeInt(
+                                      CastFunctionUtils.castLongToInt(column.getLong(i)));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case INT64 ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeLong(column.getLong(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case FLOAT ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeFloat(column.getLong(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case DOUBLE ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeDouble(column.getLong(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case BOOLEAN,
+                          DATE,
+                          TIMESTAMP,
+                          TEXT,
+                          BLOB,
+                          STRING,
+                          OBJECT,
+                          ROW,
+                          UNKNOWN,
+                          VECTOR ->
+                          null;
+                    };
+            case FLOAT ->
+                target ->
+                    switch (target.getTypeEnum()) {
+                      case INT32 ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeInt(
+                                      CastFunctionUtils.castFloatToInt(column.getFloat(i)));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case INT64 ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeLong(
+                                      CastFunctionUtils.castFloatToLong(column.getFloat(i)));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case FLOAT ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeFloat(column.getFloat(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case DOUBLE ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeDouble(column.getFloat(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case BOOLEAN,
+                          DATE,
+                          TIMESTAMP,
+                          TEXT,
+                          BLOB,
+                          STRING,
+                          OBJECT,
+                          ROW,
+                          UNKNOWN,
+                          VECTOR ->
+                          null;
+                    };
+            case DOUBLE ->
+                target ->
+                    switch (target.getTypeEnum()) {
+                      case INT32 ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeInt(
+                                      CastFunctionUtils.castDoubleToInt(column.getDouble(i)));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case INT64 ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeLong(
+                                      CastFunctionUtils.castDoubleToLong(column.getDouble(i)));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case FLOAT ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeFloat(
+                                      CastFunctionUtils.castDoubleToFloat(column.getDouble(i)));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case DOUBLE ->
+                          (column, builder, selection, tryCast) -> {
+                            for (int i = 0; i < column.getPositionCount(); i++) {
+                              if ((selection == null || selection[i]) && !column.isNull(i)) {
+                                try {
+                                  builder.writeDouble(column.getDouble(i));
+                                } catch (IoTDBRuntimeException e) {
+                                  if (!tryCast) {
+                                    throw e;
+                                  }
+                                  builder.appendNull();
+                                }
+                              } else {
+                                builder.appendNull();
+                              }
+                            }
+                          };
+                      case BOOLEAN,
+                          DATE,
+                          TIMESTAMP,
+                          TEXT,
+                          BLOB,
+                          STRING,
+                          OBJECT,
+                          ROW,
+                          UNKNOWN,
+                          VECTOR ->
+                          null;
+                    };
+            case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                target -> null;
+          };
+
+  @FunctionalInterface
+  public interface NumericCastBatch {
+    void cast(Column column, ColumnBuilder builder, boolean[] selection, boolean tryCast);
+  }
+
+  /** Rate readers select a native loop once per batch and preserve per-row validation order. */
+  public static final TypeService<RateInput> RATE_INPUT_SERVICE =
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 ->
+                    (column, mask, functionType, consumer) -> {
+                      int size = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < size; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          double value = column.getInt(position);
+                          RateFunctionValidation.validateValue(value, functionType);
+                          consumer.accept(position, value);
+                        }
+                      }
+                    };
+                case INT64 ->
+                    (column, mask, functionType, consumer) -> {
+                      int size = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < size; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          double value = column.getLong(position);
+                          RateFunctionValidation.validateValue(value, functionType);
+                          consumer.accept(position, value);
+                        }
+                      }
+                    };
+                case FLOAT ->
+                    (column, mask, functionType, consumer) -> {
+                      int size = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < size; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          double value = column.getFloat(position);
+                          RateFunctionValidation.validateValue(value, functionType);
+                          consumer.accept(position, value);
+                        }
+                      }
+                    };
+                case DOUBLE ->
+                    (column, mask, functionType, consumer) -> {
+                      int size = mask.getSelectedPositionCount();
+                      boolean selectAll = mask.isSelectAll();
+                      int[] positions = selectAll ? null : mask.getSelectedPositions();
+                      for (int i = 0; i < size; i++) {
+                        int position = selectAll ? i : positions[i];
+                        if (!column.isNull(position)) {
+                          double value = column.getDouble(position);
+                          RateFunctionValidation.validateValue(value, functionType);
+                          consumer.accept(position, value);
+                        }
+                      }
+                    };
+                case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                    (column, mask, functionType, consumer) ->
+                        forEachSelectedPosition(
+                            column,
+                            mask,
+                            position -> {
+                              throw new SemanticException(
+                                  String.format(
+                                      CalcMessages
+                                          .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D,
+                                      functionType.getFunctionName(),
+                                      type.getTypeEnum()));
+                            });
+              });
+
+  @FunctionalInterface
+  public interface RateInput {
+    void addInput(
+        Column column,
+        AggregationMask mask,
+        RateFunctionType functionType,
+        RateValueConsumer consumer);
+  }
+
+  @FunctionalInterface
+  public interface RateValueConsumer {
+    void accept(int position, double value);
+  }
+
+  /**
+   * Native AVG scans update state once per batch. Start from the existing sum to preserve the
+   * floating-point addition order across batches.
+   */
+  public static final TypeService<AvgInputStrategy> AVG_INPUT_STRATEGY_SERVICE =
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 ->
+                    new AvgInputStrategy(
+                        TypeServices::addIntAvgInput, TypeServices::removeIntAvgInput);
+                case INT64 ->
+                    new AvgInputStrategy(
+                        TypeServices::addLongAvgInput, TypeServices::removeLongAvgInput);
+                case FLOAT ->
+                    new AvgInputStrategy(
+                        TypeServices::addFloatAvgInput, TypeServices::removeFloatAvgInput);
+                case DOUBLE ->
+                    new AvgInputStrategy(
+                        TypeServices::addDoubleAvgInput, TypeServices::removeDoubleAvgInput);
+                case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                    new AvgInputStrategy(
+                        (state, column, mask) ->
+                            forEachSelectedPosition(
+                                column,
+                                mask,
+                                position -> {
+                                  throw new UnSupportedDataTypeException(
+                                      String.format(
+                                          CalcMessages.UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG,
+                                          type.getTypeEnum()));
+                                }),
+                        (state, column) ->
+                            forEachSelectedPosition(
+                                column,
+                                AggregationMask.createSelectAll(column.getPositionCount()),
+                                position -> {
+                                  throw new UnSupportedDataTypeException(
+                                      String.format(
+                                          CalcMessages.UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG,
+                                          type.getTypeEnum()));
+                                }));
+              });
+
+  public static final TypeService<GroupedSumInput> GROUPED_SUM_INPUT_SERVICE =
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> TypeServices::addGroupedIntSumInput;
+                case INT64 -> TypeServices::addGroupedLongSumInput;
+                case FLOAT -> TypeServices::addGroupedFloatSumInput;
+                case DOUBLE -> TypeServices::addGroupedDoubleSumInput;
+                case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                    (groupIds, column, mask, sums, states) ->
+                        forEachSelectedPosition(
+                            column,
+                            mask,
+                            position -> {
+                              throw new UnSupportedDataTypeException(
+                                  String.format(
+                                      CalcMessages.UNSUPPORTED_DATA_TYPE_IN_SUM_AGGREGATION,
+                                      type.getTypeEnum()));
+                            });
+              });
+
+  public static final TypeService<GroupedAvgInput> GROUPED_AVG_INPUT_SERVICE =
+      cached(
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> TypeServices::addGroupedIntAvgInput;
+                case INT64 -> TypeServices::addGroupedLongAvgInput;
+                case FLOAT -> TypeServices::addGroupedFloatAvgInput;
+                case DOUBLE -> TypeServices::addGroupedDoubleAvgInput;
+                case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
+                    (groupIds, column, mask, sums, states) ->
+                        forEachSelectedPosition(
+                            column,
+                            mask,
+                            position -> {
+                              throw new UnSupportedDataTypeException(
+                                  String.format(
+                                      CalcMessages.UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG,
+                                      type.getTypeEnum()));
+                            });
+              });
+
+  private static void addIntAvgInput(AvgState state, Column column, AggregationMask mask) {
+    double sum = state.getSumValue();
+    long count = state.getCountValue();
+    boolean initialized = false;
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          sum += column.getInt(i);
+          count++;
+          initialized = true;
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          sum += column.getInt(position);
+          count++;
+          initialized = true;
+        }
+      }
+    }
+    state.updateAvg(sum, count, initialized);
+  }
+
+  private static void removeIntAvgInput(AvgState state, Column column) {
+    double sum = state.getSumValue();
+    long count = state.getCountValue();
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        sum -= column.getInt(i);
+        count--;
+      }
+    }
+    state.updateAvg(sum, count, false);
+  }
+
+  private static void addGroupedIntSumInput(
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      DoubleBigArray sums,
+      BooleanBigArray states) {
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          int groupId = groupIds[i];
+          states.set(groupId, true);
+          sums.add(groupId, column.getInt(i));
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          // Group IDs are indexed by the logical input position, not the mask offset.
+          int groupId = groupIds[position];
+          states.set(groupId, true);
+          sums.add(groupId, column.getInt(position));
+        }
+      }
+    }
+  }
+
+  private static void addGroupedIntAvgInput(
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      DoubleBigArray sums,
+      LongBigArray states) {
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          int groupId = groupIds[i];
+          states.increment(groupId);
+          sums.add(groupId, column.getInt(i));
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          // Group IDs are indexed by the logical input position, not the mask offset.
+          int groupId = groupIds[position];
+          states.increment(groupId);
+          sums.add(groupId, column.getInt(position));
+        }
+      }
+    }
+  }
+
+  private static void addLongAvgInput(AvgState state, Column column, AggregationMask mask) {
+    double sum = state.getSumValue();
+    long count = state.getCountValue();
+    boolean initialized = false;
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          sum += column.getLong(i);
+          count++;
+          initialized = true;
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          sum += column.getLong(position);
+          count++;
+          initialized = true;
+        }
+      }
+    }
+    state.updateAvg(sum, count, initialized);
+  }
+
+  private static void removeLongAvgInput(AvgState state, Column column) {
+    double sum = state.getSumValue();
+    long count = state.getCountValue();
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        sum -= column.getLong(i);
+        count--;
+      }
+    }
+    state.updateAvg(sum, count, false);
+  }
+
+  private static void addGroupedLongSumInput(
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      DoubleBigArray sums,
+      BooleanBigArray states) {
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          int groupId = groupIds[i];
+          states.set(groupId, true);
+          sums.add(groupId, column.getLong(i));
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          // Group IDs are indexed by the logical input position, not the mask offset.
+          int groupId = groupIds[position];
+          states.set(groupId, true);
+          sums.add(groupId, column.getLong(position));
+        }
+      }
+    }
+  }
+
+  private static void addGroupedLongAvgInput(
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      DoubleBigArray sums,
+      LongBigArray states) {
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          int groupId = groupIds[i];
+          states.increment(groupId);
+          sums.add(groupId, column.getLong(i));
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          // Group IDs are indexed by the logical input position, not the mask offset.
+          int groupId = groupIds[position];
+          states.increment(groupId);
+          sums.add(groupId, column.getLong(position));
+        }
+      }
+    }
+  }
+
+  private static void addFloatAvgInput(AvgState state, Column column, AggregationMask mask) {
+    double sum = state.getSumValue();
+    long count = state.getCountValue();
+    boolean initialized = false;
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          sum += column.getFloat(i);
+          count++;
+          initialized = true;
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          sum += column.getFloat(position);
+          count++;
+          initialized = true;
+        }
+      }
+    }
+    state.updateAvg(sum, count, initialized);
+  }
+
+  private static void removeFloatAvgInput(AvgState state, Column column) {
+    double sum = state.getSumValue();
+    long count = state.getCountValue();
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        sum -= column.getFloat(i);
+        count--;
+      }
+    }
+    state.updateAvg(sum, count, false);
+  }
+
+  private static void addGroupedFloatSumInput(
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      DoubleBigArray sums,
+      BooleanBigArray states) {
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          int groupId = groupIds[i];
+          states.set(groupId, true);
+          sums.add(groupId, column.getFloat(i));
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          // Group IDs are indexed by the logical input position, not the mask offset.
+          int groupId = groupIds[position];
+          states.set(groupId, true);
+          sums.add(groupId, column.getFloat(position));
+        }
+      }
+    }
+  }
+
+  private static void addGroupedFloatAvgInput(
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      DoubleBigArray sums,
+      LongBigArray states) {
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          int groupId = groupIds[i];
+          states.increment(groupId);
+          sums.add(groupId, column.getFloat(i));
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          // Group IDs are indexed by the logical input position, not the mask offset.
+          int groupId = groupIds[position];
+          states.increment(groupId);
+          sums.add(groupId, column.getFloat(position));
+        }
+      }
+    }
+  }
+
+  private static void addDoubleAvgInput(AvgState state, Column column, AggregationMask mask) {
+    double sum = state.getSumValue();
+    long count = state.getCountValue();
+    boolean initialized = false;
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          sum += column.getDouble(i);
+          count++;
+          initialized = true;
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          sum += column.getDouble(position);
+          count++;
+          initialized = true;
+        }
+      }
+    }
+    state.updateAvg(sum, count, initialized);
+  }
+
+  private static void removeDoubleAvgInput(AvgState state, Column column) {
+    double sum = state.getSumValue();
+    long count = state.getCountValue();
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        sum -= column.getDouble(i);
+        count--;
+      }
+    }
+    state.updateAvg(sum, count, false);
+  }
+
+  private static void addGroupedDoubleSumInput(
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      DoubleBigArray sums,
+      BooleanBigArray states) {
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          int groupId = groupIds[i];
+          states.set(groupId, true);
+          sums.add(groupId, column.getDouble(i));
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          // Group IDs are indexed by the logical input position, not the mask offset.
+          int groupId = groupIds[position];
+          states.set(groupId, true);
+          sums.add(groupId, column.getDouble(position));
+        }
+      }
+    }
+  }
+
+  private static void addGroupedDoubleAvgInput(
+      int[] groupIds,
+      Column column,
+      AggregationMask mask,
+      DoubleBigArray sums,
+      LongBigArray states) {
+    int size = mask.getSelectedPositionCount();
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < size; i++) {
+        if (!column.isNull(i)) {
+          int groupId = groupIds[i];
+          states.increment(groupId);
+          sums.add(groupId, column.getDouble(i));
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < size; i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          // Group IDs are indexed by the logical input position, not the mask offset.
+          int groupId = groupIds[position];
+          states.increment(groupId);
+          sums.add(groupId, column.getDouble(position));
+        }
+      }
+    }
+  }
+
+  public interface AvgState {
+    double getSumValue();
+
+    long getCountValue();
+
+    void updateAvg(double sum, long count, boolean initialized);
+  }
+
+  @FunctionalInterface
+  private interface AvgBatchAdder {
+    void add(AvgState state, Column column, AggregationMask mask);
+  }
+
+  public static final class AvgInputStrategy {
+    private final AvgBatchAdder adder;
+    private final BiConsumer<AvgState, Column> remover;
+
+    private AvgInputStrategy(AvgBatchAdder adder, BiConsumer<AvgState, Column> remover) {
+      this.adder = adder;
+      this.remover = remover;
+    }
+
+    public void addInput(AvgState state, Column column, AggregationMask mask) {
+      adder.add(state, column, mask);
+    }
+
+    public void removeInput(AvgState state, Column column) {
+      remover.accept(state, column);
+    }
+  }
+
+  @FunctionalInterface
+  public interface GroupedSumInput {
+    void addInput(
+        int[] groupIds,
+        Column column,
+        AggregationMask mask,
+        DoubleBigArray sums,
+        BooleanBigArray initialized);
+  }
+
+  @FunctionalInterface
+  public interface GroupedAvgInput {
+    void addInput(
+        int[] groupIds,
+        Column column,
+        AggregationMask mask,
+        DoubleBigArray sums,
+        LongBigArray counts);
+  }
+
+  /** Numeric conversion and batch SUM strategies for aggregation inputs. */
+  public static final TypeService<AggregationNumericConverterFactory>
       AGGREGATION_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE =
           type ->
               switch (type.getTypeEnum()) {
-                case INT32, INT64, FLOAT, DOUBLE -> ignored -> type::getDouble;
+                case INT32 ->
+                    new AggregationNumericConverterFactory(
+                        ignored -> type::getDouble,
+                        new SumInputStrategy(
+                            TypeServices::addIntSumInput, TypeServices::removeIntSumInput));
+                case INT64 ->
+                    new AggregationNumericConverterFactory(
+                        ignored -> type::getDouble,
+                        new SumInputStrategy(
+                            TypeServices::addLongSumInput, TypeServices::removeLongSumInput));
+                case FLOAT ->
+                    new AggregationNumericConverterFactory(
+                        ignored -> type::getDouble,
+                        new SumInputStrategy(
+                            TypeServices::addFloatSumInput, TypeServices::removeFloatSumInput));
+                case DOUBLE ->
+                    new AggregationNumericConverterFactory(
+                        ignored -> type::getDouble,
+                        new SumInputStrategy(
+                            TypeServices::addDoubleSumInput, TypeServices::removeDoubleSumInput));
                 case BOOLEAN, DATE, TIMESTAMP, TEXT, BLOB, STRING, OBJECT, ROW, UNKNOWN, VECTOR ->
-                    exceptionSupplier ->
-                        (column, position) -> {
-                          throw exceptionSupplier.get();
-                        };
+                    new AggregationNumericConverterFactory(
+                        exceptionSupplier ->
+                            (column, position) -> {
+                              throw exceptionSupplier.get();
+                            },
+                        null);
               };
+
+  // Select a native loop once per batch. Keep the existing sum as the starting value so moving
+  // the loop does not regroup floating-point additions across batch boundaries.
+  private static void addIntSumInput(SumState state, Column column, AggregationMask mask) {
+    double sum = state.getSumValue();
+    boolean initialized = false;
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (!column.isNull(i)) {
+          initialized = true;
+          sum += column.getInt(i);
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < mask.getSelectedPositionCount(); i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          initialized = true;
+          sum += column.getInt(position);
+        }
+      }
+    }
+    state.updateSum(sum, initialized);
+  }
+
+  private static void removeIntSumInput(SumState state, Column column) {
+    double sum = state.getSumValue();
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        sum -= column.getInt(i);
+      }
+    }
+    state.updateSum(sum, false);
+  }
+
+  private static void addLongSumInput(SumState state, Column column, AggregationMask mask) {
+    double sum = state.getSumValue();
+    boolean initialized = false;
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (!column.isNull(i)) {
+          initialized = true;
+          sum += column.getLong(i);
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < mask.getSelectedPositionCount(); i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          initialized = true;
+          sum += column.getLong(position);
+        }
+      }
+    }
+    state.updateSum(sum, initialized);
+  }
+
+  private static void removeLongSumInput(SumState state, Column column) {
+    double sum = state.getSumValue();
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        sum -= column.getLong(i);
+      }
+    }
+    state.updateSum(sum, false);
+  }
+
+  private static void addFloatSumInput(SumState state, Column column, AggregationMask mask) {
+    double sum = state.getSumValue();
+    boolean initialized = false;
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (!column.isNull(i)) {
+          initialized = true;
+          sum += column.getFloat(i);
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < mask.getSelectedPositionCount(); i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          initialized = true;
+          sum += column.getFloat(position);
+        }
+      }
+    }
+    state.updateSum(sum, initialized);
+  }
+
+  private static void removeFloatSumInput(SumState state, Column column) {
+    double sum = state.getSumValue();
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        sum -= column.getFloat(i);
+      }
+    }
+    state.updateSum(sum, false);
+  }
+
+  private static void addDoubleSumInput(SumState state, Column column, AggregationMask mask) {
+    double sum = state.getSumValue();
+    boolean initialized = false;
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (!column.isNull(i)) {
+          initialized = true;
+          sum += column.getDouble(i);
+        }
+      }
+    } else {
+      int[] positions = mask.getSelectedPositions();
+      for (int i = 0; i < mask.getSelectedPositionCount(); i++) {
+        int position = positions[i];
+        if (!column.isNull(position)) {
+          initialized = true;
+          sum += column.getDouble(position);
+        }
+      }
+    }
+    state.updateSum(sum, initialized);
+  }
+
+  private static void removeDoubleSumInput(SumState state, Column column) {
+    double sum = state.getSumValue();
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        sum -= column.getDouble(i);
+      }
+    }
+    state.updateSum(sum, false);
+  }
 
   /** Numeric inputs supported by percentile aggregations, including TIMESTAMP. */
   public static final TypeService<ColumnToDoubleConverterFactory>
@@ -3075,12 +4745,20 @@ public class TypeServices {
     PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE.check();
     MODE_VALUE_SERVICE.check();
     NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE.check();
+    NUMERIC_BATCH_READER_SERVICE.check();
     AGGREGATION_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE.check();
+    RATE_INPUT_SERVICE.check();
+    AVG_INPUT_STRATEGY_SERVICE.check();
+    GROUPED_SUM_INPUT_SERVICE.check();
+    GROUPED_AVG_INPUT_SERVICE.check();
     PERCENTILE_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE.check();
     NUMERIC_RESULT_WRITER_SERVICE.check();
     MIN_COLUMN_VALUE_UPDATER_SERVICE.check();
+    MIN_COLUMN_BATCH_UPDATER_SERVICE.check();
     MAX_COLUMN_VALUE_UPDATER_SERVICE.check();
+    MAX_COLUMN_BATCH_UPDATER_SERVICE.check();
     EXTREME_COLUMN_VALUE_UPDATER_SERVICE.check();
+    EXTREME_COLUMN_BATCH_UPDATER_SERVICE.check();
     HYPER_LOG_LOG_COLUMN_ADDER_SERVICE.check();
     RANGE_FRAME_COMPARATOR_SERVICE.check();
     DEFAULT_ENCODING_BY_TYPE_SERVICE.check();
@@ -3088,6 +4766,7 @@ public class TypeServices {
     INTERMEDIATE_VALUE_WRITER_SERVICE.check();
     INTERMEDIATE_VALUE_INITIALIZER_SERVICE.check();
     CAST_INPUT_SERVICE.check();
+    NUMERIC_CAST_BATCH_SERVICE.check();
     CAST_VALUE_SERVICE.check();
     CAST_OBJECT_VALUE_SERVICE.check();
     CAST_OBJECT_INPUT_SERVICE.check();
@@ -3554,6 +5233,75 @@ public class TypeServices {
   @FunctionalInterface
   public interface ColumnToDoubleConverterFactory {
     ColumnToDoubleConverter create(Supplier<? extends RuntimeException> exceptionSupplier);
+  }
+
+  public interface SumState {
+    double getSumValue();
+
+    /** Replace the sum, retaining initialization from any earlier non-null input. */
+    void updateSum(double sum, boolean initialized);
+  }
+
+  @FunctionalInterface
+  private interface SumBatchAdder {
+    void add(SumState state, Column column, AggregationMask mask);
+  }
+
+  public static final class SumInputStrategy {
+    private final SumBatchAdder adder;
+    private final BiConsumer<SumState, Column> remover;
+
+    private SumInputStrategy(SumBatchAdder adder, BiConsumer<SumState, Column> remover) {
+      this.adder = adder;
+      this.remover = remover;
+    }
+
+    public void addInput(SumState state, Column column, AggregationMask mask) {
+      adder.add(state, column, mask);
+    }
+
+    public void removeInput(SumState state, Column column) {
+      remover.accept(state, column);
+    }
+  }
+
+  public static final class AggregationNumericConverterFactory
+      implements ColumnToDoubleConverterFactory {
+    private final ColumnToDoubleConverterFactory converterFactory;
+    private final SumInputStrategy sumInputStrategy;
+
+    private AggregationNumericConverterFactory(
+        ColumnToDoubleConverterFactory converterFactory, SumInputStrategy sumInputStrategy) {
+      this.converterFactory = converterFactory;
+      this.sumInputStrategy = sumInputStrategy;
+    }
+
+    @Override
+    public ColumnToDoubleConverter create(Supplier<? extends RuntimeException> exceptionSupplier) {
+      return converterFactory.create(exceptionSupplier);
+    }
+
+    public SumInputStrategy createSumInput(Supplier<? extends RuntimeException> exceptionSupplier) {
+      if (sumInputStrategy != null) {
+        return sumInputStrategy;
+      }
+      // Preserve deferred rejection: empty or all-null unsupported inputs never read a value.
+      return new SumInputStrategy(
+          (state, column, mask) ->
+              forEachSelectedPosition(
+                  column,
+                  mask,
+                  position -> {
+                    throw exceptionSupplier.get();
+                  }),
+          (state, column) -> {
+            for (int i = 0; i < column.getPositionCount(); i++) {
+              if (!column.isNull(i)) {
+                throw exceptionSupplier.get();
+              }
+            }
+          });
+    }
   }
 
   @FunctionalInterface

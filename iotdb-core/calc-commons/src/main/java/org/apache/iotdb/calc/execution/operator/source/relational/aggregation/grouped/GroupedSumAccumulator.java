@@ -29,7 +29,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -37,22 +36,14 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedSumAccumulator.class);
   private final TSDataType argumentDataType;
-  private final TypeServices.ColumnToDoubleConverter valueConverter;
+  private final TypeServices.GroupedSumInput inputStrategy;
   private final BooleanBigArray initResult = new BooleanBigArray();
   private final DoubleBigArray sumValues = new DoubleBigArray();
 
   public GroupedSumAccumulator(TSDataType argumentDataType) {
     this.argumentDataType = argumentDataType;
     Type type = Type.fromTsDataType(argumentDataType);
-    this.valueConverter =
-        TypeServices.AGGREGATION_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
-            .call(type)
-            .create(
-                () ->
-                    new UnSupportedDataTypeException(
-                        String.format(
-                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_SUM_AGGREGATION,
-                            argumentDataType)));
+    this.inputStrategy = TypeServices.GROUPED_SUM_INPUT_SERVICE.call(type);
   }
 
   @Override
@@ -71,7 +62,7 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
     checkArgument(
         arguments.length == 1,
         CalcMessages.EXCEPTION_ARGUMENT_OF_SUM_SHOULD_BE_ONE_COLUMN_D6E636D1);
-    addInput(groupIds, arguments[0], mask);
+    inputStrategy.addInput(groupIds, arguments[0], mask, sumValues, initResult);
   }
 
   @Override
@@ -91,29 +82,6 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
       columnBuilder.appendNull();
     } else {
       columnBuilder.writeDouble(sumValues.get(groupId));
-    }
-  }
-
-  private void addInput(int[] groupIds, Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult.set(groupIds[i], true);
-          sumValues.add(groupIds[i], valueConverter.convert(column, i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult.set(groupIds[position], true);
-          sumValues.add(groupIds[position], valueConverter.convert(column, position));
-        }
-      }
     }
   }
 

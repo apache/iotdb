@@ -35,6 +35,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -301,5 +303,16 @@ public class TypeServicesTest {
     return TypeServices.ValueConversion.PREPARED_PARAMETER_LITERAL_SERVICE
         .call(Type.fromTsDataType(type))
         .apply(value);
+  }
+
+  @Test
+  public void testOpcUaTabletDateUsesSupportedInstantConversion() {
+    LocalDate date = LocalDate.of(2026, 9, 9);
+    DateTime value =
+        (DateTime)
+            TypeServices.Pipe.OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE
+                .call(Type.fromTsDataType(TSDataType.DATE))
+                .get(new LocalDate[] {date}, 0);
+    assertEquals(date.atStartOfDay(ZoneId.systemDefault()).toInstant(), value.getJavaInstant());
   }
 }

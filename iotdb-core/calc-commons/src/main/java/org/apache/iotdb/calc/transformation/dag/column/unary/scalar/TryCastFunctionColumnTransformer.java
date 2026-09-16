@@ -36,6 +36,20 @@ public class TryCastFunctionColumnTransformer extends AbstractCastFunctionColumn
   }
 
   @Override
+  protected void doTransform(Column column, ColumnBuilder builder) {
+    if (!tryNumericBatchCast(column, builder, null, true)) {
+      super.doTransform(column, builder);
+    }
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder builder, boolean[] selection) {
+    if (!tryNumericBatchCast(column, builder, selection, true)) {
+      super.doTransform(column, builder, selection);
+    }
+  }
+
+  @Override
   protected void transform(Column column, ColumnBuilder columnBuilder, int i) {
     try {
       castSourceValue(column, columnBuilder, i);

@@ -39,7 +39,7 @@ public class ExtremeAccumulator implements TableAccumulator {
   private final TSDataType seriesDataType;
   private final Type type;
   private final TsPrimitiveType extremeResult;
-  private final TypeServices.ColumnValueUpdater valueUpdater;
+  private final TypeServices.ColumnBatchUpdater valueUpdater;
   private final TypeServices.StatisticsValueUpdater statisticsValueUpdater;
   private boolean initResult;
 
@@ -47,7 +47,7 @@ public class ExtremeAccumulator implements TableAccumulator {
     this.seriesDataType = seriesDataType;
     this.type = Type.fromTsDataType(seriesDataType);
     this.extremeResult = type.getTsPrimitiveType();
-    this.valueUpdater = TypeServices.EXTREME_COLUMN_VALUE_UPDATER_SERVICE.call(type);
+    this.valueUpdater = TypeServices.EXTREME_COLUMN_BATCH_UPDATER_SERVICE.call(type);
     this.statisticsValueUpdater = TypeServices.EXTREME_STATISTICS_VALUE_UPDATER_SERVICE.call(type);
   }
 
@@ -63,34 +63,17 @@ public class ExtremeAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    Column column = arguments[0];
-    int positionCount = mask.getSelectedPositionCount();
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult |= valueUpdater.update(extremeResult, column, i, initResult);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      for (int i = 0; i < positionCount; i++) {
-        int position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult |= valueUpdater.update(extremeResult, column, position, initResult);
-        }
-      }
-    }
+    initResult = valueUpdater.update(extremeResult, arguments[0], mask, initResult);
   }
 
   @Override
   public void addIntermediate(Column argument) {
-    for (int i = 0; i < argument.getPositionCount(); i++) {
-      if (argument.isNull(i)) {
-        continue;
-      }
-
-      initResult |= valueUpdater.update(extremeResult, argument, i, initResult);
-    }
+    initResult =
+        valueUpdater.update(
+            extremeResult,
+            argument,
+            AggregationMask.createSelectAll(argument.getPositionCount()),
+            initResult);
   }
 
   @Override

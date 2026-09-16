@@ -221,9 +221,9 @@ public class UDFEnvelopeAnalysis implements UDTF {
 
   public double getValueAsDouble(Row row, int index) throws IOException {
     try {
-      return TypeServices.NUMERIC_ROW_READER_SERVICE
+      return TypeServices.INDEXED_NUMERIC_ROW_READER_SERVICE
           .call(TypeServices.toReadType(row.getDataType(index)))
-          .read(row);
+          .read(row, index);
     } catch (NoNumberException e) {
       throw new UDFOutputSeriesDataTypeNotValidException(
           index, LibraryUdfMessages.FAIL_TO_GET_DATA_TYPE_IN_ROW + row.getTime());

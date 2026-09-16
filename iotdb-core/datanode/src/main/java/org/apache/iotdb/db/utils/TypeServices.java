@@ -2897,6 +2897,92 @@ public class TypeServices {
                           .setChecked(true);
                 };
 
+    @FunctionalInterface
+    public interface ArrayPrefixHasher {
+      int hash(Object column, int rowCount);
+    }
+
+    /** Hash active rows directly, matching tablet equality without copying backing arrays. */
+    public static final TypeService<ArrayPrefixHasher> ARRAY_PREFIX_HASHER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32 ->
+                  (column, rowCount) -> {
+                    int[] values = (int[]) column;
+                    int hash = 1;
+                    for (int i = 0; i < rowCount; i++) {
+                      hash = 31 * hash + Integer.hashCode(values[i]);
+                    }
+                    return hash;
+                  };
+              case INT64, TIMESTAMP ->
+                  (column, rowCount) -> {
+                    long[] values = (long[]) column;
+                    int hash = 1;
+                    for (int i = 0; i < rowCount; i++) {
+                      hash = 31 * hash + Long.hashCode(values[i]);
+                    }
+                    return hash;
+                  };
+              case FLOAT ->
+                  (column, rowCount) -> {
+                    float[] values = (float[]) column;
+                    int hash = 1;
+                    for (int i = 0; i < rowCount; i++) {
+                      hash = 31 * hash + Float.hashCode(values[i]);
+                    }
+                    return hash;
+                  };
+              case DOUBLE ->
+                  (column, rowCount) -> {
+                    double[] values = (double[]) column;
+                    int hash = 1;
+                    for (int i = 0; i < rowCount; i++) {
+                      hash = 31 * hash + Double.hashCode(values[i]);
+                    }
+                    return hash;
+                  };
+              case BOOLEAN ->
+                  (column, rowCount) -> {
+                    boolean[] values = (boolean[]) column;
+                    int hash = 1;
+                    for (int i = 0; i < rowCount; i++) {
+                      hash = 31 * hash + Boolean.hashCode(values[i]);
+                    }
+                    return hash;
+                  };
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (column, rowCount) -> {
+                    Object[] values = (Object[]) column;
+                    int hash = 1;
+                    for (int i = 0; i < rowCount; i++) {
+                      hash = 31 * hash + Objects.hashCode(values[i]);
+                    }
+                    return hash;
+                  };
+              case DATE ->
+                  (column, rowCount) -> {
+                    int hash = 1;
+                    if (column instanceof LocalDate[] values) {
+                      // DATE equality also accepts the equivalent integer representation.
+                      for (int i = 0; i < rowCount; i++) {
+                        hash =
+                            31 * hash
+                                + (values[i] == null
+                                    ? DateUtils.EMPTY_DATE_INT
+                                    : DateUtils.parseDateExpressionToInt(values[i]));
+                      }
+                    } else {
+                      int[] values = (int[]) column;
+                      for (int i = 0; i < rowCount; i++) {
+                        hash = 31 * hash + Integer.hashCode(values[i]);
+                      }
+                    }
+                    return hash;
+                  };
+              case ROW, VECTOR, UNKNOWN -> (column, rowCount) -> Objects.hashCode(column);
+            };
+
     public static final TypeService<ArrayValueGetter> ARRAY_VALUE_GETTER_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -2936,6 +3022,7 @@ public class TypeServices {
       RAW_ARRAY_BYTE_BUFFER_DESERIALIZER_SERVICE.check();
       RAW_ARRAY_INPUT_STREAM_DESERIALIZER_SERVICE.check();
       ARRAY_VALUE_GETTER_SERVICE.check();
+      ARRAY_PREFIX_HASHER_SERVICE.check();
       DECODED_VALUE_CHUNK_WRITER_SERVICE.check();
       SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE.check();
       ARRAY_VALUE_COLUMN_WRITER_SERVICE.check();
@@ -3545,9 +3632,14 @@ public class TypeServices {
                 switch (type.getTypeEnum()) {
                   case BOOLEAN -> (column, rowIndex) -> ((boolean[]) column)[rowIndex];
                   case INT32 -> (column, rowIndex) -> ((int[]) column)[rowIndex];
+                  // Milo calls Date.toInstant(), which java.sql.Date does not support.
                   case DATE ->
                       (column, rowIndex) ->
-                          new DateTime(Date.valueOf(((LocalDate[]) column)[rowIndex]));
+                          new DateTime(
+                              java.util.Date.from(
+                                  ((LocalDate[]) column)
+                                      [rowIndex].atStartOfDay(ZoneId.systemDefault())
+                                      .toInstant()));
                   case INT64 -> (column, rowIndex) -> ((long[]) column)[rowIndex];
                   case TIMESTAMP ->
                       (column, rowIndex) ->

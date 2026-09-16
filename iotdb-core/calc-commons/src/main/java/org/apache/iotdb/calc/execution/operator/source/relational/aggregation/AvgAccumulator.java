@@ -33,15 +33,14 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class AvgAccumulator implements TableAccumulator {
+public class AvgAccumulator implements TableAccumulator, TypeServices.AvgState {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AvgAccumulator.class);
   private final TSDataType argumentDataType;
-  private final TypeServices.ColumnToDoubleConverter valueConverter;
+  private final TypeServices.AvgInputStrategy inputStrategy;
   private long countValue;
   private double sumValue;
   private boolean initResult = false;
@@ -49,15 +48,7 @@ public class AvgAccumulator implements TableAccumulator {
   public AvgAccumulator(TSDataType argumentDataType) {
     this.argumentDataType = argumentDataType;
     Type type = Type.fromTsDataType(argumentDataType);
-    this.valueConverter =
-        TypeServices.AGGREGATION_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
-            .call(type)
-            .create(
-                () ->
-                    new UnSupportedDataTypeException(
-                        String.format(
-                            CalcMessages.UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG,
-                            argumentDataType)));
+    this.inputStrategy = TypeServices.AVG_INPUT_STRATEGY_SERVICE.call(type);
   }
 
   @Override
@@ -75,7 +66,7 @@ public class AvgAccumulator implements TableAccumulator {
     checkArgument(
         arguments.length == 1,
         CalcMessages.EXCEPTION_ARGUMENT_OF_AVG_SHOULD_BE_ONE_COLUMN_82162B82);
-    addInput(arguments[0], mask);
+    inputStrategy.addInput(this, arguments[0], mask);
   }
 
   @Override
@@ -83,7 +74,7 @@ public class AvgAccumulator implements TableAccumulator {
     checkArgument(
         arguments.length == 1,
         CalcMessages.EXCEPTION_ARGUMENT_OF_AVG_SHOULD_BE_ONE_COLUMN_82162B82);
-    removeInput(arguments[0]);
+    inputStrategy.removeInput(this, arguments[0]);
   }
 
   @Override
@@ -171,38 +162,20 @@ public class AvgAccumulator implements TableAccumulator {
     return bytes;
   }
 
-  private void addInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          initResult = true;
-          countValue++;
-          sumValue += valueConverter.convert(column, i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult = true;
-          countValue++;
-          sumValue += valueConverter.convert(column, position);
-        }
-      }
-    }
+  @Override
+  public double getSumValue() {
+    return sumValue;
   }
 
-  private void removeInput(Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        countValue--;
-        sumValue -= valueConverter.convert(column, i);
-      }
-    }
+  @Override
+  public long getCountValue() {
+    return countValue;
+  }
+
+  @Override
+  public void updateAvg(double sum, long count, boolean initialized) {
+    sumValue = sum;
+    countValue = count;
+    initResult |= initialized;
   }
 }
