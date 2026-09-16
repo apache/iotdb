@@ -1471,6 +1471,28 @@ public final class DataNodeMiscMessages {
 
   public static final String EXCEPTION_INVALID_PREPARED_NUMERIC_ROW_METADATA_OR_PAYLOAD_AECCCEAA =
       "预备数值行元数据或数据载荷无效";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_REQUEST_IS_NULL_5A9F9BA9 = "预备数值行请求为 null";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_DATABASE_IS_NULL_F2A2E0AC = "预备数值行数据库为 null";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TABLE_NAME_IS_NULL_OR_EMPTY_F2D38BE5 = "预备数值行表名为 null 或为空";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_MEASUREMENTS_ARE_NULL_830DE646 = "预备数值行 measurements 为 null";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_DATA_TYPES_ARE_NULL_7C15F477 = "预备数值行数据类型为 null";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_CATEGORIES_ARE_NULL_6F2EE1BE = "预备数值行列类别为 null";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_HAS_NO_COLUMNS_D4E40365 = "预备数值行没有列";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_METADATA_SIZE_MISMATCH_MEASUREMENTS_ARG_DATA_TYPES_ARG_CATEGORIES_ARG_23DAB34B = "预备数值行列元数据数量不匹配：measurements %d，数据类型 %d，列类别 %d";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_NAME_IS_NULL_OR_EMPTY_AT_INDEX_ARG_DEBDCFF8 = "预备数值行列名在下标 %d 处为 null 或为空";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_NAME_IS_DUPLICATED_AT_INDEX_ARG_ARG_73AAFECC = "预备数值行列名在下标 %d 处重复：%s";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_DATA_TYPE_IS_NULL_AT_INDEX_ARG_FB2A1FD6 = "预备数值行数据类型在下标 %d 处为 null";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_DATA_TYPE_ORDINAL_IS_INVALID_AT_INDEX_ARG_ARG_BB5059BB = "预备数值行数据类型序号在下标 %d 处无效：%d";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_CATEGORY_IS_NULL_AT_INDEX_ARG_3ED8315E = "预备数值行列类别在下标 %d 处为 null";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_COLUMN_IS_INVALID_AT_INDEX_ARG_CATEGORY_ARG_AND_TYPE_ARG_9DAEEA10 = "预备数值行列在下标 %d 处无效：类别 %d，类型 %s";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_HAS_NO_FIELD_COLUMNS_A76209AE = "预备数值行没有 FIELD 列";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TAG_BUFFER_IS_NULL_3FF27BF7 = "预备数值行 TAG 缓冲区为 null";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_BUFFER_IS_NULL_A928F919 = "预备数值行 FIELD 缓冲区为 null";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_BUFFER_SIZE_MISMATCH_EXPECTED_ARG_BYTES_BUT_GOT_ARG_B75D48C8 = "预备数值行 FIELD 缓冲区大小不匹配：期望 %d 字节，实际 %d 字节";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TAG_LENGTH_PREFIX_IS_INCOMPLETE_AT_INDEX_ARG_ARG_BYTES_REMAINING_6D342F3A = "预备数值行 TAG 长度前缀在下标 %d 处不完整：剩余 %d 字节";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TAG_LENGTH_IS_INVALID_AT_INDEX_ARG_LENGTH_ARG_ARG_BYTES_REMAINING_DEDD1E8F = "预备数值行 TAG 长度在下标 %d 处无效：长度 %d，剩余 %d 字节";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_TAG_BUFFER_HAS_ARG_TRAILING_BYTES_042CF4D2 = "预备数值行 TAG 缓冲区有 %d 个尾随字节";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_PAYLOAD_DECODING_FAILED_ARG_F87689DD = "预备数值行数据载荷解码失败：%s";
   public static final String EXCEPTION_PREPARED_NUMERIC_ROW_IS_CLOSED_OR_DOES_NOT_BELONG_TO_THIS_SESSION_5CC5C50A =
       "预备数值行已关闭或不属于当前会话";
 }
