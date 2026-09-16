@@ -931,9 +931,10 @@ public abstract class TVList implements WALEntryValue {
       int newIndex = getScanOrderIndex(indexInTVList);
       if (newIndex > index) {
         index = newIndex;
+        // If the cursor does not move, a duplicate-timestamp group prepared for the current
+        // position remains valid. Invalidate it only after the cursor actually advances.
+        probeNext = false;
       }
-
-      probeNext = false;
     }
 
     protected void prepareNext() {
