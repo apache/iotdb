@@ -47,6 +47,6 @@
         </fileSet>
     </fileSets>
     <componentDescriptors>
-        <componentDescriptor>common-files.xml</componentDescriptor>
+        <componentDescriptor>ainode-common-files.xml</componentDescriptor>
     </componentDescriptors>
 </assembly>

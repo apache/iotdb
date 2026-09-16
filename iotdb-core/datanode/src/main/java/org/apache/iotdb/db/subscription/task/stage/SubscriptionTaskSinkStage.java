@@ -65,6 +65,16 @@ public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
   }
 
   @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Subscription tasks do not have pipe receiver runtime sessions.
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    // Subscription tasks do not have pipe receiver runtime sessions.
+  }
+
+  @Override
   public void dropSubtask() throws PipeException {
     SubscriptionSinkSubtaskManager.instance()
         .deregister(pipeName, creationTime, regionId, sinkSubtaskId);
