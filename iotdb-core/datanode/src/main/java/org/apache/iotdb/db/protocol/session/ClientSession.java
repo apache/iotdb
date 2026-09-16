@@ -91,6 +91,25 @@ public class ClientSession extends IClientSession {
   }
 
   @Override
+  public boolean containsQueryId(Long statementId, long queryId) {
+    return containsQueryId(statementIdToQueryId, statementId, queryId);
+  }
+
+  public static boolean containsQueryId(
+      Map<Long, Set<Long>> statementIdToQueryId, Long statementId, long queryId) {
+    if (statementId == null) {
+      for (Set<Long> queryIds : statementIdToQueryId.values()) {
+        if (queryIds != null && queryIds.contains(queryId)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    Set<Long> queryIds = statementIdToQueryId.get(statementId);
+    return queryIds != null && queryIds.contains(queryId);
+  }
+
+  @Override
   public void removeQueryId(Long statementId, Long queryId) {
     removeQueryId(statementIdToQueryId, statementId, queryId);
   }
