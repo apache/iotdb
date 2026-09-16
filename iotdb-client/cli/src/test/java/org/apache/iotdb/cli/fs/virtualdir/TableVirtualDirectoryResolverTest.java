@@ -67,6 +67,27 @@ public class TableVirtualDirectoryResolverTest {
   }
 
   @Test
+  public void byDatabaseEscapesDatabaseAndChildNames() throws SQLException {
+    when(executor.query("SHOW DATABASES"))
+        .thenReturn(SqlRow.list(SqlRow.of("Database", "db name")));
+    when(delegate.list(FsPath.absolute("/db name")))
+        .thenReturn(
+            Arrays.asList(
+                new FsNode(
+                    "table name.csv",
+                    FsPath.absolute("/db name/table name.csv"),
+                    FsNodeType.TABLE_DATA_FILE)));
+
+    List<FsNode> databases = byDatabase.list(FsPath.absolute("/.virtual/by-database"));
+    List<FsNode> children = byDatabase.list(FsPath.absolute("/.virtual/by-database/db%20name"));
+
+    assertEquals("db%20name", databases.get(0).getName());
+    assertEquals("/.virtual/by-database/db%20name", databases.get(0).getPath().toString());
+    assertEquals(
+        "/.virtual/by-database/db%20name/table%20name.csv", children.get(0).getPath().toString());
+  }
+
+  @Test
   public void byDatabaseListsCanonicalChildrenUnderVirtualPath() throws SQLException {
     when(delegate.list(FsPath.absolute("/db1")))
         .thenReturn(
@@ -117,5 +138,26 @@ public class TableVirtualDirectoryResolverTest {
 
     assertEquals("1,42", lines.get(1));
     verify(delegate).readLines(FsPath.absolute("/db1/t1.csv"), 5);
+  }
+
+  @Test
+  public void byTableEscapesTableAndDatabaseNames() throws SQLException {
+    when(executor.query("SHOW DATABASES"))
+        .thenReturn(SqlRow.list(SqlRow.of("Database", "db name")));
+    when(executor.query("SHOW TABLES FROM \"db name\""))
+        .thenReturn(SqlRow.list(SqlRow.of("TableName", "table name")));
+    when(delegate.readLines(FsPath.absolute("/db name/table name.csv"), 5))
+        .thenReturn(Arrays.asList("Time,value", "1,42"));
+
+    List<FsNode> tables = byTable.list(FsPath.absolute("/.virtual/by-table"));
+    List<FsNode> databases = byTable.list(FsPath.absolute("/.virtual/by-table/table%20name"));
+    List<String> lines =
+        byTable.readLines(
+            FsPath.absolute("/.virtual/by-table/table%20name/db%20name/table%20name.csv"), 5);
+
+    assertEquals("table%20name", tables.get(0).getName());
+    assertEquals("db%20name", databases.get(0).getName());
+    assertEquals("1,42", lines.get(1));
+    verify(delegate).readLines(FsPath.absolute("/db name/table name.csv"), 5);
   }
 }

@@ -63,10 +63,13 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
       return listTableDirectories();
     }
     if (segments.size() == 1) {
-      return listDatabaseDirectories(path, segments.get(0));
+      return listDatabaseDirectories(path, VirtualDirectorySegments.decode(segments.get(0)));
     }
     if (segments.size() == 2) {
-      return listTableFiles(path, segments.get(0), segments.get(1));
+      return listTableFiles(
+          path,
+          VirtualDirectorySegments.decode(segments.get(0)),
+          VirtualDirectorySegments.decode(segments.get(1)));
     }
     return new ArrayList<>();
   }
@@ -78,12 +81,15 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
       return rootNode();
     }
     if (segments.size() == 1) {
-      return tableExistsInAnyDatabase(segments.get(0))
+      String table = VirtualDirectorySegments.decode(segments.get(0));
+      return tableExistsInAnyDatabase(table)
           ? VirtualDirectoryNodes.directory(segments.get(0), path, NAME, "", "table")
           : VirtualDirectoryPaths.unknown(path);
     }
     if (segments.size() == 2) {
-      return tableExists(segments.get(1), segments.get(0))
+      String table = VirtualDirectorySegments.decode(segments.get(0));
+      String database = VirtualDirectorySegments.decode(segments.get(1));
+      return tableExists(database, table)
           ? VirtualDirectoryNodes.directory(segments.get(1), path, NAME, "", "database")
           : VirtualDirectoryPaths.unknown(path);
     }
@@ -126,10 +132,11 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
     }
     List<FsNode> nodes = new ArrayList<>();
     for (String table : tables) {
+      String encodedTable = VirtualDirectorySegments.encode(table);
       nodes.add(
           VirtualDirectoryNodes.directory(
-              table,
-              VirtualDirectoryPaths.resolverRootPath(NAME).resolve(table),
+              encodedTable,
+              VirtualDirectoryPaths.resolverRootPath(NAME).resolve(encodedTable),
               NAME,
               "",
               "table"));
@@ -143,8 +150,10 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
       if (!tables(database).contains(table)) {
         continue;
       }
+      String encodedDatabase = VirtualDirectorySegments.encode(database);
       nodes.add(
-          VirtualDirectoryNodes.directory(database, path.resolve(database), NAME, "", "database"));
+          VirtualDirectoryNodes.directory(
+              encodedDatabase, path.resolve(encodedDatabase), NAME, "", "database"));
     }
     return nodes;
   }
@@ -159,7 +168,9 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
     for (String fileName : fileNames) {
       FsPath canonicalPath = FsPath.absolute("/" + database + "/" + fileName);
       FsNode node = delegate.describe(canonicalPath);
-      nodes.add(VirtualDirectoryNodes.rewrite(node, path.resolve(fileName), NAME));
+      nodes.add(
+          VirtualDirectoryNodes.rewrite(
+              node, path.resolve(VirtualDirectorySegments.encode(fileName)), NAME));
     }
     return nodes;
   }
@@ -206,11 +217,21 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
       throw new SQLException(
           String.format(FsVirtualMessages.EXCEPTION_PATH_IS_NOT_READABLE_ARG_4B338AD7, path));
     }
-    return canonicalTableFilePath(segments);
+    return canonicalTableFilePath(
+        VirtualDirectorySegments.decode(segments.get(0)),
+        VirtualDirectorySegments.decode(segments.get(1)),
+        VirtualDirectorySegments.decode(segments.get(2)));
   }
 
-  private static FsPath canonicalTableFilePath(List<String> segments) {
-    return FsPath.absolute("/" + segments.get(1) + "/" + segments.get(2));
+  private static FsPath canonicalTableFilePath(List<String> segments) throws SQLException {
+    return canonicalTableFilePath(
+        VirtualDirectorySegments.decode(segments.get(0)),
+        VirtualDirectorySegments.decode(segments.get(1)),
+        VirtualDirectorySegments.decode(segments.get(2)));
+  }
+
+  private static FsPath canonicalTableFilePath(String table, String database, String fileName) {
+    return FsPath.absolute("/" + database + "/" + fileName);
   }
 
   private static String identifier(String value) {

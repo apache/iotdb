@@ -64,7 +64,8 @@ public class ByDatabaseVirtualDirectoryResolver implements VirtualDirectoryResol
     }
     List<FsNode> nodes = new ArrayList<>();
     for (FsNode node : delegate.list(canonicalPath(segments))) {
-      nodes.add(VirtualDirectoryNodes.rewrite(node, path.resolve(node.getName()), NAME));
+      String encodedName = VirtualDirectorySegments.encode(node.getName());
+      nodes.add(VirtualDirectoryNodes.rewrite(node, path.resolve(encodedName), NAME));
     }
     return nodes;
   }
@@ -114,20 +115,22 @@ public class ByDatabaseVirtualDirectoryResolver implements VirtualDirectoryResol
       if (database == null) {
         continue;
       }
-      FsPath path = VirtualDirectoryPaths.resolverRootPath(NAME).resolve(database);
+      String encodedDatabase = VirtualDirectorySegments.encode(database);
+      FsPath path = VirtualDirectoryPaths.resolverRootPath(NAME).resolve(encodedDatabase);
       nodes.add(
           VirtualDirectoryNodes.directory(
-              database, path, NAME, canonicalDatabasePath(database).toString(), "database"));
+              encodedDatabase, path, NAME, canonicalDatabasePath(database).toString(), "database"));
     }
     return nodes;
   }
 
   private FsNode describeDatabase(String database) throws SQLException {
+    String decodedDatabase = VirtualDirectorySegments.decode(database);
     for (SqlRow row : executor.query("SHOW DATABASES")) {
-      if (database.equals(row.get("Database"))) {
+      if (decodedDatabase.equals(row.get("Database"))) {
         FsPath path = VirtualDirectoryPaths.resolverRootPath(NAME).resolve(database);
         return VirtualDirectoryNodes.directory(
-            database, path, NAME, canonicalDatabasePath(database).toString(), "database");
+            database, path, NAME, canonicalDatabasePath(decodedDatabase).toString(), "database");
       }
     }
     return VirtualDirectoryPaths.unknown(
@@ -144,13 +147,15 @@ public class ByDatabaseVirtualDirectoryResolver implements VirtualDirectoryResol
     return canonicalPath(segments);
   }
 
-  private FsPath canonicalPath(List<String> segments) {
+  private FsPath canonicalPath(List<String> segments) throws SQLException {
     if (segments.isEmpty()) {
       return FsPath.absolute("/");
     }
-    StringBuilder builder = new StringBuilder(canonicalDatabasePath(segments.get(0)).toString());
+    StringBuilder builder =
+        new StringBuilder(
+            canonicalDatabasePath(VirtualDirectorySegments.decode(segments.get(0))).toString());
     for (int i = 1; i < segments.size(); i++) {
-      builder.append('/').append(segments.get(i));
+      builder.append('/').append(VirtualDirectorySegments.decode(segments.get(i)));
     }
     return FsPath.absolute(builder.toString());
   }
