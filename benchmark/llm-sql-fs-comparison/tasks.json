@@ -1,0 +1,133 @@
+{
+  "design_version": "1.0",
+  "status": "design_only",
+  "model_visibility": "Only task.public plus rendered database context and known schema when permitted; never send this entire file.",
+  "shape_notation": "Strings name required JSON value types; a one-element array describes every item type, not the required array length. Objects require exactly the specified keys. Goal and private oracle determine array length and order.",
+  "shared_public_context": {
+    "database": "{database}",
+    "time_unit": "milliseconds",
+    "table_names": "Return logical table names without a database prefix or .csv/.meta suffix.",
+    "schema_categories": "Represent the implicit time column as name=time, type=TIMESTAMP, category=TIME; use TAG/FIELD for other columns."
+  },
+  "known_schema_public_context": {
+    "table": "{target_table}",
+    "columns": [
+      {"name":"time","type":"TIMESTAMP","category":"TIME"},
+      {"name":"device","type":"STRING","category":"TAG"},
+      {"name":"temperature","type":"DOUBLE","category":"FIELD"},
+      {"name":"humidity","type":"DOUBLE","category":"FIELD"},
+      {"name":"status","type":"BOOLEAN","category":"FIELD"}
+    ]
+  },
+  "private_fixture": {
+    "devices": 4,
+    "points_per_device": {"S":1000,"M":10000,"L":100000},
+    "logical_names": ["sample_17","sample_29","sample_43"],
+    "role_assignment": "Seeded permutation per pair; shared by both arms and validated before timing.",
+    "roles": {
+      "target": ["device","temperature","humidity","status"],
+      "decoy_a": ["device","temperature","status"],
+      "decoy_b": ["device","humidity","status"]
+    },
+    "rows": "Each table contains all d=0..3, p=0..N-1; time=p, device=device_d, temperature=20+d+p/100, humidity=40+(p mod 100)/10, status=(p mod 2 == 0). Decoys project their listed columns. No nulls.",
+    "numeric_comparison": {"abs_tol":0.000001,"rel_tol":0.00000001}
+  },
+  "tasks": [
+    {
+      "id": "K01", "information": "known_schema",
+      "public": {
+        "goal": "查询目标表中设备 device_2 在时间戳 731 的完整记录。",
+        "answer_shape": {"rows":[{"time":"integer","device":"string","temperature":"number","humidity":"number","status":"boolean"}]}
+      },
+      "private": {"oracle":"fixture_rows","device_indices":[2],"times":[731],"fields":["time","device","temperature","humidity","status"],"expected_rows":1,"evidence":"Relevant complete point record, not schema or unrelated data."}
+    },
+    {
+      "id": "K02", "information": "known_schema",
+      "public": {
+        "goal": "返回目标表中 device_1 在闭区间 [501,507] 的全部 temperature 和 humidity 记录，包含 time 和 device，按 time 升序。",
+        "answer_shape": {"rows":[{"time":"integer","device":"string","temperature":"number","humidity":"number"}]}
+      },
+      "private": {"oracle":"fixture_rows","device_indices":[1],"times_inclusive":[501,507],"fields":["time","device","temperature","humidity"],"order_by":["time"],"expected_rows":7,"evidence":"All rows in the requested interval."}
+    },
+    {
+      "id": "K03", "information": "known_schema",
+      "public": {
+        "goal": "查询目标表在时间戳 777 上 device_0 和 device_3 的 temperature，包含 time 和 device，按 device 名称升序。",
+        "answer_shape": {"rows":[{"time":"integer","device":"string","temperature":"number"}]}
+      },
+      "private": {"oracle":"fixture_rows","device_indices":[0,3],"times":[777],"fields":["time","device","temperature"],"order_by":["device"],"expected_rows":2,"evidence":"Records for both requested devices."}
+    },
+    {
+      "id": "K04", "information": "known_schema",
+      "public": {
+        "goal": "返回目标表中 device_2 最近 3 条完整记录，并按 time 升序返回。",
+        "answer_shape": {"rows":[{"time":"integer","device":"string","temperature":"number","humidity":"number","status":"boolean"}]}
+      },
+      "private": {"oracle":"fixture_rows","device_indices":[2],"times_formula":"N-3,N-2,N-1","fields":["time","device","temperature","humidity","status"],"order_by":["time"],"expected_rows":3,"evidence":"Latest rows from tail/descending query or a verified complete scan; not guessed from early samples."}
+    },
+    {
+      "id": "K05", "information": "known_schema",
+      "public": {
+        "goal": "检查整张目标表，返回总行数、不同 device 数、最早和最晚 time，以及 temperature 的非空数和空值数。",
+        "answer_shape": {"row_count":"integer","device_count":"integer","min_time":"integer","max_time":"integer","temperature_non_null":"integer","temperature_null":"integer"}
+      },
+      "private": {"oracle":"whole_table_audit","expected_formulas":{"row_count":"4*N","device_count":"4","min_time":"0","max_time":"N-1","temperature_non_null":"4*N","temperature_null":"0"},"evidence":"Whole-table aggregate/count statistics or complete data observations; head samples are insufficient."}
+    },
+    {
+      "id": "K06", "information": "known_schema",
+      "public": {
+        "goal": "对目标表每个 device 的全部 temperature 返回非空数 count、最小值 min、最大值 max、总和 sum、平均值 mean，按 device 名称升序。",
+        "answer_shape": {"devices":[{"device":"string","count":"integer","min":"number","max":"number","sum":"number","mean":"number"}]}
+      },
+      "private": {"oracle":"temperature_by_device","device_indices":[0,1,2,3],"expected_formulas":{"count":"N","min":"20+d","max":"20+d+(N-1)/100","sum":"N*(20+d)+N*(N-1)/200","mean":"20+d+(N-1)/200"},"expected_rows":4,"order_by":["device"],"evidence":"Whole-table per-device temperature aggregate/statistics, including sum/count if mean is calculated by the model."}
+    },
+    {
+      "id": "K07", "information": "known_schema",
+      "public": {
+        "goal": "对目标表每个 device 的全部记录，统计 status 为 true、false 和 null 的数量，按 device 名称升序。",
+        "answer_shape": {"devices":[{"device":"string","true_count":"integer","false_count":"integer","null_count":"integer"}]}
+      },
+      "private": {"oracle":"status_by_device","device_indices":[0,1,2,3],"expected_formulas":{"true_count":"ceil(N/2)","false_count":"floor(N/2)","null_count":"0"},"expected_rows":4,"order_by":["device"],"evidence":"Per-device status aggregates/statistics, not extrapolation from a few alternating values."}
+    },
+    {
+      "id": "K08", "information": "known_schema",
+      "public": {
+        "goal": "汇总目标表所有 device 的全部 humidity，返回非空数 count、最小值 min、最大值 max、总和 sum、平均值 mean。",
+        "answer_shape": {"count":"integer","min":"number","max":"number","sum":"number","mean":"number"}
+      },
+      "private": {"oracle":"humidity_global","expected_formulas":{"count":"4*N","min":"40","max":"49.9","sum":"4*N*44.95","mean":"44.95"},"precondition":"N is a multiple of 100, as in S/M/L.","evidence":"Global humidity aggregates, or all devices' humidity statistics correctly combined; the unweighted mean of arbitrary device means is not a general oracle rule."}
+    },
+    {
+      "id": "D01", "information": "discovery",
+      "public": {
+        "goal": "列出指定数据库中的全部真实数据表名，按名称升序；不要把虚拟元数据对象计为额外数据表。",
+        "answer_shape": {"tables":["string"]}
+      },
+      "private": {"oracle":"table_inventory","expected":["sample_17","sample_29","sample_43"],"evidence":"Actual complete table or virtual-file inventory; deduplicate .csv/.meta views of the same logical table."}
+    },
+    {
+      "id": "D02", "information": "discovery",
+      "public": {
+        "goal": "找到数据库中唯一同时拥有 device STRING TAG、temperature DOUBLE FIELD、humidity DOUBLE FIELD、status BOOLEAN FIELD 的表，返回实际表名和该表完整列定义（包括 time）。",
+        "answer_shape": {"table":"string","columns":[{"name":"string","type":"string","category":"string"}]}
+      },
+      "private": {"oracle":"target_schema","table_from":"private pair role assignment: target","columns_from":"known_schema_public_context.columns","unordered_arrays":["columns"],"evidence":"Schema of the returned table matching the target signature; table name alone is insufficient."}
+    },
+    {
+      "id": "D03", "information": "discovery",
+      "public": {
+        "goal": "找到数据库中唯一同时拥有 device STRING TAG、temperature DOUBLE FIELD、humidity DOUBLE FIELD、status BOOLEAN FIELD 的表，查询 device_2 在时间戳 731 的完整记录，并返回实际表名。",
+        "answer_shape": {"table":"string","rows":[{"time":"integer","device":"string","temperature":"number","humidity":"number","status":"boolean"}]}
+      },
+      "private": {"oracle":"discovery_and_point","table_from":"private pair role assignment: target","rows_from":"K01.private","evidence":"Target identification plus the complete requested point. The model can choose schema discovery or an equivalent query workflow."}
+    },
+    {
+      "id": "D04", "information": "discovery",
+      "public": {
+        "goal": "找到数据库中唯一同时拥有 device STRING TAG、temperature DOUBLE FIELD、humidity DOUBLE FIELD、status BOOLEAN FIELD 的表，返回实际表名、总行数、不同 device 数、最早和最晚 time、temperature 非空数和空值数。",
+        "answer_shape": {"table":"string","row_count":"integer","device_count":"integer","min_time":"integer","max_time":"integer","temperature_non_null":"integer","temperature_null":"integer"}
+      },
+      "private": {"oracle":"discovery_and_audit","table_from":"private pair role assignment: target","metrics_from":"K05.private","evidence":"Target signature and whole-table audit data; metadata or head samples alone are insufficient."}
+    }
+  ]
+}
