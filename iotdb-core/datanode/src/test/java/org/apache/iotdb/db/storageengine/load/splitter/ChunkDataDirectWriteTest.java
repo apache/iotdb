@@ -196,6 +196,7 @@ public class ChunkDataDirectWriteTest {
             chunk,
             layout.offset());
 
+        writer.getOutput().flush();
         assertEquals(layout.offset() + chunkLength, tsFile.length());
       }
     } finally {
