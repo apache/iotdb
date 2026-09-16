@@ -99,7 +99,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
   @Test
   public void testShowReceiversWithStoppedDataNode() throws Exception {
-    Assert.assertTrue(env.getDataNodeWrapperList().size() >= 3);
+    ensureDataNodeCount(3);
     createWriteBackPipe("root.show_receivers_ha", "show_receivers_ha_pipe");
 
     assertShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, "show_receivers_ha_pipe");
@@ -227,7 +227,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
   @Test
   public void testReceiverRuntimeClearedAfterDataNodeRestartAndCanReconnect() throws Exception {
-    Assert.assertTrue(env.getDataNodeWrapperList().size() >= 2);
+    ensureDataNodeCount(2);
     final int restartedDataNodeIndex = 0;
     final DataNodeWrapper restartedDataNode = env.getDataNodeWrapper(restartedDataNodeIndex);
     final int restartedDataNodeId = getDataNodeId(restartedDataNode);
@@ -648,6 +648,12 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       }
     }
     throw new AssertionError("Cannot find DataNodeId for " + targetDataNode.getIpAndPortString());
+  }
+
+  private void ensureDataNodeCount(final int dataNodeCount) {
+    while (env.getDataNodeWrapperList().size() < dataNodeCount) {
+      env.registerNewDataNode(true);
+    }
   }
 
   private static String getString(
