@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -50,7 +50,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private long firstEventProcessingTime = Long.MIN_VALUE;
 
   protected long totalBufferSize = 0;
-  private final PipeTabletMemoryBlock allocatedMemoryBlock;
+  private final PipeMemoryBlock allocatedMemoryBlock;
   private boolean shouldEmitOnMemoryPressure = false;
 
   protected volatile boolean isClosed = false;
@@ -63,8 +63,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
     // limit in buffer size
     this.maxBatchSizeInBytes = requestMaxBatchSizeInBytes;
-    this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocate(0);
     if (recordMetric != null) {
       this.recordMetric = recordMetric;
     } else {
