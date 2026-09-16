@@ -68,7 +68,9 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of SUM should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_SUM_SHOULD_BE_ONE_COLUMN_D6E636D1);
     addInput(groupIds, arguments[0], mask);
   }
 

@@ -3814,11 +3814,25 @@ public class Session implements ISession {
 
   private static int[] sortedIndex(int size, IntToLongFunction valueProvider) {
     int[] index = new int[size];
-    int[] scratch = new int[size];
     for (int i = 0; i < size; i++) {
       index[i] = i;
     }
-    sortIndexes(index, scratch, 0, size, valueProvider);
+    // A strictly descending input can be reversed without changing equal-timestamp order.
+    int descendingEnd = 1;
+    while (descendingEnd < size
+        && valueProvider.applyAsLong(index[descendingEnd - 1])
+            > valueProvider.applyAsLong(index[descendingEnd])) {
+      descendingEnd++;
+    }
+    if (descendingEnd == size) {
+      for (int left = 0, right = size - 1; left < right; left++, right--) {
+        int originalIndex = index[left];
+        index[left] = index[right];
+        index[right] = originalIndex;
+      }
+    } else if (size > 1) {
+      sortIndexes(index, new int[size], 0, size, valueProvider);
+    }
     return index;
   }
 
@@ -3827,9 +3841,29 @@ public class Session implements ISession {
     if (to - from < 2) {
       return;
     }
+    // Stop at existing ordered runs before recursing. Restrict the scan to larger ranges
+    // to avoid adding per-leaf probes on random inputs.
+    if (to - from >= 1024) {
+      int orderedEnd = from + 1;
+      while (orderedEnd < to
+          && valueProvider.applyAsLong(index[orderedEnd - 1])
+              <= valueProvider.applyAsLong(index[orderedEnd])) {
+        orderedEnd++;
+      }
+      if (orderedEnd == to) {
+        return;
+      }
+    }
     int middle = (from + to) >>> 1;
     sortIndexes(index, scratch, from, middle, valueProvider);
     sortIndexes(index, scratch, middle, to, valueProvider);
+    // Skip ordered merges above small leaf ranges; probing every leaf costs random-input
+    // throughput.
+    if (to - from >= 32
+        && valueProvider.applyAsLong(index[middle - 1])
+            <= valueProvider.applyAsLong(index[middle])) {
+      return;
+    }
 
     int left = from;
     int right = middle;

@@ -168,6 +168,10 @@ public class LastAccumulator implements TableAccumulator, TypeServices.LastValue
       } else if (checkAndUpdateNullTime()) {
         valueSetter.set(lastValue, valueColumn, position);
       }
+      // Descending inputs may finish within this block after the first valid order time.
+      if (hasFinalResult()) {
+        return;
+      }
     }
   }
 

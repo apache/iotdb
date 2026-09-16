@@ -256,6 +256,10 @@ public class LastByAccumulator implements TableAccumulator {
       } else if (checkAndUpdateNullTime(isXValueNull) && !isXValueNull) {
         xValueSetter.set(xResult, xColumn, position);
       }
+      // Descending inputs may finish within this block after the first valid order time.
+      if (hasFinalResult()) {
+        return;
+      }
     }
   }
 

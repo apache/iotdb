@@ -28,27 +28,25 @@ import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class SumAccumulator implements TableAccumulator {
+public class SumAccumulator implements TableAccumulator, TypeServices.SumState {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SumAccumulator.class);
   private final TSDataType argumentDataType;
-  private final TypeServices.ColumnToDoubleConverter valueConverter;
+  private final TypeServices.SumInputStrategy sumInputStrategy;
   private double sumValue = 0;
   private boolean initResult = false;
 
   public SumAccumulator(TSDataType argumentDataType) {
     this.argumentDataType = argumentDataType;
-    Type type = Type.fromTsDataType(argumentDataType);
-    this.valueConverter =
+    this.sumInputStrategy =
         TypeServices.AGGREGATION_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
-            .call(type)
-            .create(
+            .call(Type.fromTsDataType(argumentDataType))
+            .createSumInput(
                 () ->
-                    new UnSupportedDataTypeException(
+                    new IllegalArgumentException(
                         String.format(
                             CalcMessages.UNSUPPORTED_DATA_TYPE_IN_SUM_AGGREGATION,
                             argumentDataType)));
@@ -66,14 +64,18 @@ public class SumAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of SUM should be one column");
-    addInput(arguments[0], mask);
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_SUM_SHOULD_BE_ONE_COLUMN_D6E636D1);
+    sumInputStrategy.addInput(this, arguments[0], mask);
   }
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 1, "argument of SUM should be one column");
-    removeInput(arguments[0]);
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_SUM_SHOULD_BE_ONE_COLUMN_D6E636D1);
+    sumInputStrategy.removeInput(this, arguments[0]);
   }
 
   @Override
@@ -136,36 +138,14 @@ public class SumAccumulator implements TableAccumulator {
     return true;
   }
 
-  private void addInput(Column column, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      int count = column.getPositionCount();
-      for (int i = 0; i < count; i++) {
-        if (!column.isNull(i)) {
-          initResult = true;
-          sumValue += valueConverter.convert(column, i);
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!column.isNull(position)) {
-          initResult = true;
-          sumValue += valueConverter.convert(column, position);
-        }
-      }
-    }
+  @Override
+  public double getSumValue() {
+    return sumValue;
   }
 
-  private void removeInput(Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        sumValue -= valueConverter.convert(column, i);
-      }
-    }
+  @Override
+  public void updateSum(double sum, boolean initialized) {
+    sumValue = sum;
+    initResult |= initialized;
   }
 }

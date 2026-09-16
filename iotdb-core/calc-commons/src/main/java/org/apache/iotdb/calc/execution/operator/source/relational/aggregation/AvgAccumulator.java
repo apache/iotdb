@@ -72,13 +72,17 @@ public class AvgAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of AVG should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_AVG_SHOULD_BE_ONE_COLUMN_82162B82);
     addInput(arguments[0], mask);
   }
 
   @Override
   public void removeInput(Column[] arguments) {
-    checkArgument(arguments.length == 1, "argument of AVG should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_AVG_SHOULD_BE_ONE_COLUMN_82162B82);
     removeInput(arguments[0]);
   }
 

@@ -75,7 +75,9 @@ public class GroupedAvgAccumulator implements GroupedAccumulator {
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 1, "argument of AVG should be one column");
+    checkArgument(
+        arguments.length == 1,
+        CalcMessages.EXCEPTION_ARGUMENT_OF_AVG_SHOULD_BE_ONE_COLUMN_82162B82);
     addInput(groupIds, arguments[0], mask);
   }
 
