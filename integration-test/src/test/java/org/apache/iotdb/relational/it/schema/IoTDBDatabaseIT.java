@@ -540,6 +540,7 @@ public class IoTDBDatabaseIT {
               "pipes,INF,",
               "queries,INF,",
               "queries_costs_histogram,INF,",
+              "receivers,INF,",
               "regions,INF,",
               "services,INF,",
               "subscriptions,INF,",
@@ -632,6 +633,23 @@ public class IoTDBDatabaseIT {
                   "parent_block_id,INT64,ATTRIBUTE,",
                   "hierarchy_level,INT32,ATTRIBUTE,",
                   "accounted_memory_usage_in_bytes,INT64,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc receivers"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "receiver_node_type,STRING,TAG,",
+                  "receiver_node_id,INT32,TAG,",
+                  "protocol,STRING,TAG,",
+                  "sender_address,STRING,TAG,",
+                  "sender_ports,STRING,ATTRIBUTE,",
+                  "connection_count,INT32,ATTRIBUTE,",
+                  "pipe_count,INT32,ATTRIBUTE,",
+                  "pipe_ids,STRING,ATTRIBUTE,",
+                  "user_name,STRING,TAG,",
+                  "sender_cluster_id,STRING,TAG,",
+                  "last_handshake_time,TIMESTAMP,ATTRIBUTE,",
+                  "last_transfer_time,TIMESTAMP,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipe_plugins"),
           "ColumnName,DataType,Category,",
@@ -870,6 +888,7 @@ public class IoTDBDatabaseIT {
                   "information_schema,topics,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,pipes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,receivers,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,services,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,views,INF,USING,null,SYSTEM VIEW,false,",

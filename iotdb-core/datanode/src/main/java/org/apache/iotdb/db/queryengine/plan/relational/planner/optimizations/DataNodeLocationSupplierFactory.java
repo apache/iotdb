@@ -133,6 +133,7 @@ public class DataNodeLocationSupplierFactory {
         case InformationSchema.CONNECTIONS:
         case InformationSchema.CURRENT_QUERIES:
         case InformationSchema.QUERIES_COSTS_HISTOGRAM:
+        case InformationSchema.RECEIVERS:
           return getReadableDataNodeLocations();
         case InformationSchema.DATABASES:
         case InformationSchema.TABLES:
