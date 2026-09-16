@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cli.fs.virtualdir;
 
+import org.apache.iotdb.cli.i18n.FsVirtualMessages;
+
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
@@ -48,12 +50,16 @@ final class VirtualDirectorySegments {
       char c = segment.charAt(i);
       if (c == '%') {
         if (i + 2 >= segment.length()) {
-          throw new SQLException("Invalid virtual path segment: " + segment);
+          throw new SQLException(
+              String.format(
+                  FsVirtualMessages.EXCEPTION_INVALID_VIRTUAL_PATH_SEGMENT_ARG_639C0A91, segment));
         }
         int high = hexValue(segment.charAt(i + 1));
         int low = hexValue(segment.charAt(i + 2));
         if (high < 0 || low < 0) {
-          throw new SQLException("Invalid virtual path segment: " + segment);
+          throw new SQLException(
+              String.format(
+                  FsVirtualMessages.EXCEPTION_INVALID_VIRTUAL_PATH_SEGMENT_ARG_639C0A91, segment));
         }
         bytes.write((high << 4) + low);
         i += 3;

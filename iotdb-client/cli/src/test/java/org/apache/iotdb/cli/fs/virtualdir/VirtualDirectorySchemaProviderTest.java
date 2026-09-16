@@ -24,6 +24,7 @@ import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.FsVirtualMessages;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -114,7 +115,9 @@ public class VirtualDirectorySchemaProviderTest {
       provider.read(path, 1);
       fail("Expected unknown virtual path to be rejected");
     } catch (SQLException e) {
-      assertEquals("Path is not readable: " + path, e.getMessage());
+      assertEquals(
+          String.format(FsVirtualMessages.EXCEPTION_PATH_IS_NOT_READABLE_ARG_4B338AD7, path),
+          e.getMessage());
     }
     verify(delegate, never()).read(path, 1);
   }
@@ -129,7 +132,9 @@ public class VirtualDirectorySchemaProviderTest {
       fail("Expected mixed virtual multi-read to be rejected");
     } catch (SQLException e) {
       assertEquals(
-          "Multiple paths are not readable when virtual paths are included", e.getMessage());
+          FsVirtualMessages
+              .EXCEPTION_MULTIPLE_PATHS_ARE_NOT_READABLE_WHEN_VIRTUAL_PATHS_ARE_INCLUDED_8EB63307,
+          e.getMessage());
     }
     verify(delegate, never()).read(paths, 1);
   }

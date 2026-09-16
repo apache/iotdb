@@ -24,6 +24,7 @@ import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.sql.SqlExecutor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.FsVirtualMessages;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -51,7 +52,8 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
 
   @Override
   public FsNode rootNode() {
-    return VirtualDirectoryNodes.root(NAME, "Browse table-model files grouped by table name");
+    return VirtualDirectoryNodes.root(
+        NAME, FsVirtualMessages.MESSAGE_BROWSE_TABLE_MODEL_FILES_GROUPED_BY_TABLE_NAME_50CA8C5E);
   }
 
   @Override
@@ -94,27 +96,27 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
 
   @Override
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
-    return delegate.read(canonicalLeafPath(path), limit);
+    return delegate.read(canonicalPath(path), limit);
   }
 
   @Override
   public List<String> readLines(FsPath path, int limit) throws SQLException {
-    return delegate.readLines(canonicalLeafPath(path), limit);
+    return delegate.readLines(canonicalPath(path), limit);
   }
 
   @Override
   public List<SqlRow> tail(FsPath path, int limit) throws SQLException {
-    return delegate.tail(canonicalLeafPath(path), limit);
+    return delegate.tail(canonicalPath(path), limit);
   }
 
   @Override
   public List<String> tailLines(FsPath path, int limit) throws SQLException {
-    return delegate.tailLines(canonicalLeafPath(path), limit);
+    return delegate.tailLines(canonicalPath(path), limit);
   }
 
   @Override
   public long count(FsPath path) throws SQLException {
-    return delegate.count(canonicalLeafPath(path));
+    return delegate.count(canonicalPath(path));
   }
 
   private List<FsNode> listTableDirectories() throws SQLException {
@@ -153,7 +155,7 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
     if (!tableExists(database, table)) {
       return nodes;
     }
-    String[] fileNames = {table + ".csv", table + ".schema", table + ".meta"};
+    String[] fileNames = {table + ".csv", table + ".meta"};
     for (String fileName : fileNames) {
       FsPath canonicalPath = FsPath.absolute("/" + database + "/" + fileName);
       FsNode node = delegate.describe(canonicalPath);
@@ -197,10 +199,12 @@ public class TableByTableVirtualDirectoryResolver implements VirtualDirectoryRes
     return tables;
   }
 
-  private FsPath canonicalLeafPath(FsPath path) throws SQLException {
+  @Override
+  public FsPath canonicalPath(FsPath path) throws SQLException {
     List<String> segments = VirtualDirectoryPaths.resolverSegments(path);
     if (segments.size() != 3) {
-      throw new SQLException("Path is not readable: " + path);
+      throw new SQLException(
+          String.format(FsVirtualMessages.EXCEPTION_PATH_IS_NOT_READABLE_ARG_4B338AD7, path));
     }
     return canonicalTableFilePath(segments);
   }

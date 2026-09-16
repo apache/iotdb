@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.cli.fs.virtualdir;
 
+import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.FsVirtualMessages;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -41,6 +43,47 @@ public class VirtualDirectorySchemaProvider implements FilesystemSchemaProvider 
     for (VirtualDirectoryResolver resolver : resolvers) {
       this.resolvers.put(resolver.name(), resolver);
     }
+  }
+
+  @Override
+  public String model() {
+    return delegate.model();
+  }
+
+  @Override
+  public List<SqlRow> executeSql(String sql) throws SQLException {
+    return delegate.executeSql(sql);
+  }
+
+  @Override
+  public List<FsColumn> columns(FsPath path) throws SQLException {
+    return delegate.columns(canonicalPath(path));
+  }
+
+  @Override
+  public List<SqlRow> schema(FsPath path) throws SQLException {
+    return delegate.schema(canonicalPath(path));
+  }
+
+  @Override
+  public List<SqlRow> meta(FsPath path) throws SQLException {
+    return delegate.meta(canonicalPath(path));
+  }
+
+  @Override
+  public List<SqlRow> stats(FsPath path) throws SQLException {
+    return delegate.stats(canonicalPath(path));
+  }
+
+  @Override
+  public List<SqlRow> countRows(FsPath path) throws SQLException {
+    return delegate.countRows(canonicalPath(path));
+  }
+
+  private FsPath canonicalPath(FsPath path) throws SQLException {
+    VirtualDirectoryResolver resolver =
+        readableResolver(path, FsVirtualMessages.EXCEPTION_PATH_IS_NOT_READABLE_ARG_4B338AD7);
+    return resolver == null ? path : resolver.canonicalPath(path);
   }
 
   @Override
@@ -72,31 +115,38 @@ public class VirtualDirectorySchemaProvider implements FilesystemSchemaProvider 
 
   @Override
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
-    VirtualDirectoryResolver resolver = readableResolver(path, "Path is not readable: ");
+    VirtualDirectoryResolver resolver =
+        readableResolver(path, FsVirtualMessages.EXCEPTION_PATH_IS_NOT_READABLE_ARG_4B338AD7);
     return resolver == null ? delegate.read(path, limit) : resolver.read(path, limit);
   }
 
   @Override
   public List<String> readLines(FsPath path, int limit) throws SQLException {
-    VirtualDirectoryResolver resolver = readableResolver(path, "Path is not readable as text: ");
+    VirtualDirectoryResolver resolver =
+        readableResolver(
+            path, FsVirtualMessages.EXCEPTION_PATH_IS_NOT_READABLE_AS_TEXT_ARG_5E500867);
     return resolver == null ? delegate.readLines(path, limit) : resolver.readLines(path, limit);
   }
 
   @Override
   public List<SqlRow> tail(FsPath path, int limit) throws SQLException {
-    VirtualDirectoryResolver resolver = readableResolver(path, "Path does not support tail: ");
+    VirtualDirectoryResolver resolver =
+        readableResolver(path, FsVirtualMessages.EXCEPTION_PATH_DOES_NOT_SUPPORT_TAIL_ARG_86CF3B99);
     return resolver == null ? delegate.tail(path, limit) : resolver.tail(path, limit);
   }
 
   @Override
   public List<String> tailLines(FsPath path, int limit) throws SQLException {
-    VirtualDirectoryResolver resolver = readableResolver(path, "Path does not support tail: ");
+    VirtualDirectoryResolver resolver =
+        readableResolver(path, FsVirtualMessages.EXCEPTION_PATH_DOES_NOT_SUPPORT_TAIL_ARG_86CF3B99);
     return resolver == null ? delegate.tailLines(path, limit) : resolver.tailLines(path, limit);
   }
 
   @Override
   public long count(FsPath path) throws SQLException {
-    VirtualDirectoryResolver resolver = readableResolver(path, "Path does not support count: ");
+    VirtualDirectoryResolver resolver =
+        readableResolver(
+            path, FsVirtualMessages.EXCEPTION_PATH_DOES_NOT_SUPPORT_COUNT_ARG_83DCE591);
     return resolver == null ? delegate.count(path) : resolver.count(path);
   }
 
@@ -107,7 +157,9 @@ public class VirtualDirectorySchemaProvider implements FilesystemSchemaProvider 
     }
     for (FsPath path : paths) {
       if (VirtualDirectoryPaths.isVirtualPath(path)) {
-        throw new SQLException("Multiple paths are not readable when virtual paths are included");
+        throw new SQLException(
+            FsVirtualMessages
+                .EXCEPTION_MULTIPLE_PATHS_ARE_NOT_READABLE_WHEN_VIRTUAL_PATHS_ARE_INCLUDED_8EB63307);
       }
     }
     return delegate.read(paths, limit);
@@ -139,14 +191,14 @@ public class VirtualDirectorySchemaProvider implements FilesystemSchemaProvider 
     return resolvers.get(VirtualDirectoryPaths.resolverName(path));
   }
 
-  private VirtualDirectoryResolver readableResolver(FsPath path, String errorPrefix)
+  private VirtualDirectoryResolver readableResolver(FsPath path, String errorTemplate)
       throws SQLException {
     if (!VirtualDirectoryPaths.isVirtualPath(path)) {
       return null;
     }
     VirtualDirectoryResolver resolver = resolver(path);
     if (resolver == null) {
-      throw new SQLException(errorPrefix + path);
+      throw new SQLException(String.format(errorTemplate, path));
     }
     return resolver;
   }

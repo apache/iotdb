@@ -21,6 +21,7 @@ package org.apache.iotdb.cli.fs.virtualdir;
 
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.sql.SqlExecutor;
+import org.apache.iotdb.cli.i18n.FsVirtualMessages;
 
 public class TreeByAttributeVirtualDirectoryResolver
     extends TreeByMetadataVirtualDirectoryResolver {
@@ -32,7 +33,8 @@ public class TreeByAttributeVirtualDirectoryResolver
     super(
         NAME,
         "Attributes",
-        "Browse tree timeseries grouped by attribute key and value",
+        FsVirtualMessages
+            .MESSAGE_BROWSE_TREE_TIMESERIES_GROUPED_BY_ATTRIBUTE_KEY_AND_VALUE_80D0EB64,
         "attribute-key",
         "attribute-value",
         executor,

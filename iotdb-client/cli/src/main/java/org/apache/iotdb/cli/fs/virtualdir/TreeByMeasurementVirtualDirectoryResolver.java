@@ -24,6 +24,7 @@ import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.sql.SqlExecutor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.FsVirtualMessages;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -53,7 +54,9 @@ public class TreeByMeasurementVirtualDirectoryResolver implements VirtualDirecto
 
   @Override
   public FsNode rootNode() {
-    return VirtualDirectoryNodes.root(NAME, "Browse tree timeseries grouped by measurement name");
+    return VirtualDirectoryNodes.root(
+        NAME,
+        FsVirtualMessages.MESSAGE_BROWSE_TREE_TIMESERIES_GROUPED_BY_MEASUREMENT_NAME_C96857DD);
   }
 
   @Override
@@ -99,17 +102,17 @@ public class TreeByMeasurementVirtualDirectoryResolver implements VirtualDirecto
 
   @Override
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
-    return delegate.read(canonicalLeafPath(path), limit);
+    return delegate.read(canonicalPath(path), limit);
   }
 
   @Override
   public List<SqlRow> tail(FsPath path, int limit) throws SQLException {
-    return delegate.tail(canonicalLeafPath(path), limit);
+    return delegate.tail(canonicalPath(path), limit);
   }
 
   @Override
   public long count(FsPath path) throws SQLException {
-    return delegate.count(canonicalLeafPath(path));
+    return delegate.count(canonicalPath(path));
   }
 
   private List<FsNode> listMeasurementDirectories() throws SQLException {
@@ -156,10 +159,12 @@ public class TreeByMeasurementVirtualDirectoryResolver implements VirtualDirecto
     return nodes;
   }
 
-  private FsPath canonicalLeafPath(FsPath path) throws SQLException {
+  @Override
+  public FsPath canonicalPath(FsPath path) throws SQLException {
     List<String> segments = VirtualDirectoryPaths.resolverSegments(path);
     if (segments.size() != 2) {
-      throw new SQLException("Path is not readable: " + path);
+      throw new SQLException(
+          String.format(FsVirtualMessages.EXCEPTION_PATH_IS_NOT_READABLE_ARG_4B338AD7, path));
     }
     return TreeTimeseriesSupport.canonicalTimeseriesPath(
         VirtualDirectorySegments.decode(segments.get(1)));

@@ -92,10 +92,6 @@ public class TableVirtualDirectoryResolverTest {
     when(delegate.describe(FsPath.absolute("/db1/t1.csv")))
         .thenReturn(
             new FsNode("t1.csv", FsPath.absolute("/db1/t1.csv"), FsNodeType.TABLE_DATA_FILE));
-    when(delegate.describe(FsPath.absolute("/db1/t1.schema")))
-        .thenReturn(
-            new FsNode(
-                "t1.schema", FsPath.absolute("/db1/t1.schema"), FsNodeType.TABLE_SCHEMA_FILE));
     when(delegate.describe(FsPath.absolute("/db1/t1.meta")))
         .thenReturn(
             new FsNode("t1.meta", FsPath.absolute("/db1/t1.meta"), FsNodeType.TABLE_META_FILE));
@@ -107,7 +103,7 @@ public class TableVirtualDirectoryResolverTest {
     assertEquals("t1", tables.get(0).getName());
     assertEquals(2, databases.size());
     assertEquals("db1", databases.get(0).getName());
-    assertEquals(3, files.size());
+    assertEquals(2, files.size());
     assertEquals("/.virtual/by-table/t1/db1/t1.csv", files.get(0).getPath().toString());
     assertEquals("/db1/t1.csv", files.get(0).getMetadata().get("canonicalPath"));
   }

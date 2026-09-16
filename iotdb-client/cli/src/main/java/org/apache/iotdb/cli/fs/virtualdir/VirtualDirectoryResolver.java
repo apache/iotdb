@@ -22,11 +22,15 @@ package org.apache.iotdb.cli.fs.virtualdir;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
+import org.apache.iotdb.cli.i18n.FsVirtualMessages;
 
 import java.sql.SQLException;
 import java.util.List;
 
 public interface VirtualDirectoryResolver {
+
+  /** Resolve a virtual data object to the upstream provider's canonical path. */
+  FsPath canonicalPath(FsPath path) throws SQLException;
 
   String name();
 
@@ -37,22 +41,27 @@ public interface VirtualDirectoryResolver {
   FsNode describe(FsPath path) throws SQLException;
 
   default List<SqlRow> read(FsPath path, int limit) throws SQLException {
-    throw new SQLException("Path is not readable: " + path);
+    throw new SQLException(
+        String.format(FsVirtualMessages.EXCEPTION_PATH_IS_NOT_READABLE_ARG_4B338AD7, path));
   }
 
   default List<String> readLines(FsPath path, int limit) throws SQLException {
-    throw new SQLException("Path is not readable as text: " + path);
+    throw new SQLException(
+        String.format(FsVirtualMessages.EXCEPTION_PATH_IS_NOT_READABLE_AS_TEXT_ARG_5E500867, path));
   }
 
   default List<SqlRow> tail(FsPath path, int limit) throws SQLException {
-    throw new SQLException("Path does not support tail: " + path);
+    throw new SQLException(
+        String.format(FsVirtualMessages.EXCEPTION_PATH_DOES_NOT_SUPPORT_TAIL_ARG_86CF3B99, path));
   }
 
   default List<String> tailLines(FsPath path, int limit) throws SQLException {
-    throw new SQLException("Path does not support tail: " + path);
+    throw new SQLException(
+        String.format(FsVirtualMessages.EXCEPTION_PATH_DOES_NOT_SUPPORT_TAIL_ARG_86CF3B99, path));
   }
 
   default long count(FsPath path) throws SQLException {
-    throw new SQLException("Path does not support count: " + path);
+    throw new SQLException(
+        String.format(FsVirtualMessages.EXCEPTION_PATH_DOES_NOT_SUPPORT_COUNT_ARG_83DCE591, path));
   }
 }

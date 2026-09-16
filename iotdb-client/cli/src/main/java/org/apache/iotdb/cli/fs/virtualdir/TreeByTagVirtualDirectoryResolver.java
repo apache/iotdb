@@ -21,6 +21,7 @@ package org.apache.iotdb.cli.fs.virtualdir;
 
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.sql.SqlExecutor;
+import org.apache.iotdb.cli.i18n.FsVirtualMessages;
 
 public class TreeByTagVirtualDirectoryResolver extends TreeByMetadataVirtualDirectoryResolver {
 
@@ -31,7 +32,7 @@ public class TreeByTagVirtualDirectoryResolver extends TreeByMetadataVirtualDire
     super(
         NAME,
         "Tags",
-        "Browse tree timeseries grouped by tag key and value",
+        FsVirtualMessages.MESSAGE_BROWSE_TREE_TIMESERIES_GROUPED_BY_TAG_KEY_AND_VALUE_5C5893DA,
         "tag-key",
         "tag-value",
         executor,
