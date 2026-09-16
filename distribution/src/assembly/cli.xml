@@ -54,9 +54,11 @@
                 <include>*data.*</include>
                 <include>*schema.*</include>
                 <include>*tsfile.*</include>
+                <include>*logical-backup*</include>
                 <include>**/*data.*</include>
                 <include>**/*schema.*</include>
                 <include>**/*tsfile.*</include>
+                <include>**/*logical-backup*</include>
             </includes>
             <fileMode>0755</fileMode>
         </fileSet>
