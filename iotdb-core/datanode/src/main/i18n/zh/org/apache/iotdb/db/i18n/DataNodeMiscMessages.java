@@ -1469,4 +1469,8 @@ public final class DataNodeMiscMessages {
       LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA =
           "table_query_device_entry_batch_size_in_bytes（%d）超过最大 RPC payload（dn_thrift_max_frame_size %d 减去 1024 字节），将使用 %d 作为生效值";
 
+  public static final String EXCEPTION_INVALID_PREPARED_NUMERIC_ROW_METADATA_OR_PAYLOAD_AECCCEAA =
+      "预备数值行元数据或数据载荷无效";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_IS_CLOSED_OR_DOES_NOT_BELONG_TO_THIS_SESSION_5CC5C50A =
+      "预备数值行已关闭或不属于当前会话";
 }

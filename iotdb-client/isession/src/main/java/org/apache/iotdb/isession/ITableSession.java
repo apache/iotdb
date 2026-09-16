@@ -22,7 +22,11 @@ package org.apache.iotdb.isession;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
+
+import java.util.List;
 
 /**
  * This interface defines a session for interacting with IoTDB tables. It supports operations such
@@ -57,6 +61,17 @@ public interface ITableSession extends AutoCloseable {
    * @throws IoTDBConnectionException if there is an issue with the IoTDB connection
    */
   void insert(NumericRow row) throws StatementExecutionException, IoTDBConnectionException;
+
+  NumericRowPreparedStatement prepareInsertNumericRow(
+      String tableName,
+      List<String> columnNames,
+      List<TSDataType> dataTypes,
+      List<ColumnCategory> columnCategories)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  void executePreparedInsertNumericRow(
+      NumericRowPreparedStatement prepared, long timestamp, long[] values, String[] tagValues)
+      throws StatementExecutionException, IoTDBConnectionException;
 
   /**
    * Executes a non-query SQL statement, such as a DDL or DML command.

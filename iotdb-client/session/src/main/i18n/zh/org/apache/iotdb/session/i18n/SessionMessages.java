@@ -288,4 +288,9 @@ public final class SessionMessages {
 
   public static final String EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_AND_COLUMN_NAMES_TYPES_CATEGORIES_AND_VALUES_MUST_HAVE_EQUAL_LENGTHS_AB102B01 = "数值行参数不能为 null，列名、类型、类别和值的数量必须相同。";
   public static final String EXCEPTION_NUMERIC_ROWS_SUPPORT_ONLY_FIELD_COLUMNS_DA7A8EE7 = "数值行仅支持 FIELD 列。";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_IS_CLOSED_OR_BELONGS_TO_ANOTHER_CONNECTION_PREPARE_IT_AGAIN_055CC7BC =
+      "预备数值行已关闭或属于其他连接，请重新准备";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_PREPARE_RETURNED_NO_STATUS_6FF7BC24 = "预备数值行准备请求未返回状态";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_COUNT_MISMATCH_9ACD3A0C = "预备数值行的值数量不匹配";
+  public static final String EXCEPTION_UNSUPPORTED_NUMERIC_TYPE_06DD3044 = "不支持的数值类型";
 }

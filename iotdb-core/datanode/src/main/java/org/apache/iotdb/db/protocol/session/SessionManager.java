@@ -260,6 +260,8 @@ public class SessionManager implements SessionManagerMBean {
       }
     }
 
+    session.releasePreparedNumericRows();
+
     // Release PreparedStatement memory resources
     try {
       PreparedStatementMemoryManager.getInstance().releaseAllForSession(session);

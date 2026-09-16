@@ -21,6 +21,7 @@ package org.apache.iotdb.relational.it.session;
 
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.NumericRow;
+import org.apache.iotdb.isession.NumericRowPreparedStatement;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -33,16 +34,26 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.write.record.Tablet;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.IntConsumer;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
@@ -179,6 +190,209 @@ public class IoTDBTableModelSessionIT {
       assertNumericTagRows(session);
       session.executeNonQueryStatement("FLUSH");
       assertNumericTagRows(session);
+    }
+  }
+
+  @Test
+  public void testPreparedNumericRowAndTabletWritePerformance() throws Exception {
+    Assume.assumeTrue(
+        "Performance benchmark disabled; set iotdb.numeric.row.insert.perf.enabled=true to run",
+        Boolean.getBoolean("iotdb.numeric.row.insert.perf.enabled"));
+    final int concurrency = 16;
+    // Compare sustained single-row writes after warming both paths; verify all acknowledged rows.
+    final int warmupRounds = 2;
+    final int measuredRounds = 6;
+    final int fieldCount = 99;
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE numeric_perf");
+      session.executeNonQueryStatement("USE numeric_perf");
+      StringBuilder ddl = new StringBuilder("CREATE TABLE prepared_perf (tag STRING TAG");
+      for (int i = 0; i < fieldCount; i++) {
+        ddl.append(", f").append(i).append(" DOUBLE FIELD");
+      }
+      ddl.append(")");
+      session.executeNonQueryStatement(ddl.toString());
+      session.executeNonQueryStatement(ddl.toString().replace("prepared_perf", "tablet_perf"));
+    }
+
+    List<String> names = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    List<ColumnCategory> categories = new ArrayList<>();
+    names.add("tag");
+    types.add(TSDataType.STRING);
+    categories.add(ColumnCategory.TAG);
+    for (int i = 0; i < fieldCount; i++) {
+      names.add("f" + i);
+      types.add(TSDataType.DOUBLE);
+      categories.add(ColumnCategory.FIELD);
+    }
+    ITableSession[] sessions = new ITableSession[concurrency];
+    NumericRowPreparedStatement[] prepared = new NumericRowPreparedStatement[concurrency];
+    Tablet[] tablets = new Tablet[concurrency];
+    String[][] tags = new String[concurrency][];
+    long[][] numericValues = new long[concurrency][fieldCount];
+    long[] preparedRows = new long[concurrency];
+    long[] tabletRows = new long[concurrency];
+    ExecutorService executor = Executors.newFixedThreadPool(concurrency);
+    try {
+      // Connections, USE, prepare and reusable input allocation are outside every timed round.
+      for (int i = 0; i < concurrency; i++) {
+        sessions[i] = EnvFactory.getEnv().getTableSessionConnection();
+        sessions[i].executeNonQueryStatement("USE numeric_perf");
+        prepared[i] =
+            sessions[i].prepareInsertNumericRow("prepared_perf", names, types, categories);
+        tablets[i] = new Tablet("tablet_perf", names, types, categories, 1);
+        tags[i] = new String[] {"device-" + i};
+        Arrays.fill(numericValues[i], Double.doubleToRawLongBits(1.0));
+      }
+      IntConsumer preparedWrite =
+          threadId -> {
+            try {
+              sessions[threadId].executePreparedInsertNumericRow(
+                  prepared[threadId],
+                  preparedRows[threadId],
+                  numericValues[threadId],
+                  tags[threadId]);
+              preparedRows[threadId]++;
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          };
+      IntConsumer tabletWrite =
+          threadId -> {
+            try {
+              Tablet tablet = tablets[threadId];
+              tablet.addTimestamp(0, tabletRows[threadId]);
+              tablet.addValue("tag", 0, tags[threadId][0]);
+              for (int i = 0; i < fieldCount; i++) {
+                tablet.addValue(names.get(i + 1), 0, 1.0D);
+              }
+              sessions[threadId].insert(tablet);
+              tablet.reset();
+              tabletRows[threadId]++;
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          };
+      double[][] rates = new double[2][measuredRounds];
+      long[] totalRows = new long[2];
+      long[] totalNanos = new long[2];
+      for (int round = 0; round < warmupRounds + measuredRounds; round++) {
+        boolean warmup = round < warmupRounds;
+        int seconds = warmup ? 3 : 5;
+        // Alternate AB/BA to distribute shared JVM warmup and background storage work.
+        for (int position = 0; position < 2; position++) {
+          int path = (round + position) % 2;
+          WritePerformance result =
+              runConcurrentWrites(
+                  executor, concurrency, seconds, path == 0 ? preparedWrite : tabletWrite);
+          System.out.printf(
+              "%s round %d position %d %s: %d rows, %.3f s, %.1f rows/s%n",
+              warmup ? "warmup" : "measured",
+              warmup ? round + 1 : round - warmupRounds + 1,
+              position + 1,
+              path == 0 ? "prepared numeric row" : "insertTablet batch=1",
+              result.rows(),
+              result.nanos() / 1_000_000_000.0,
+              result.rowsPerSecond());
+          if (!warmup) {
+            rates[path][round - warmupRounds] = result.rowsPerSecond();
+            totalRows[path] += result.rows();
+            totalNanos[path] += result.nanos();
+          }
+        }
+      }
+      for (int path = 0; path < 2; path++) {
+        Arrays.sort(rates[path]);
+        System.out.printf(
+            "summary %s: median %.1f rows/s, aggregate %.1f rows/s, min %.1f, max %.1f%n",
+            path == 0 ? "prepared numeric row" : "insertTablet batch=1",
+            (rates[path][measuredRounds / 2 - 1] + rates[path][measuredRounds / 2]) / 2,
+            totalRows[path] * 1_000_000_000.0 / totalNanos[path],
+            rates[path][0],
+            rates[path][measuredRounds - 1]);
+      }
+      // Per-device monotonic timestamps span warmup and measurement, so no rows overwrite others.
+      for (int path = 0; path < 2; path++) {
+        String table = path == 0 ? "prepared_perf" : "tablet_perf";
+        long expectedRows = Arrays.stream(path == 0 ? preparedRows : tabletRows).sum();
+        try (SessionDataSet dataSet =
+            sessions[0].executeQueryStatement("SELECT count(*) FROM " + table)) {
+          assertTrue(dataSet.hasNext());
+          assertEquals(expectedRows, dataSet.next().getFields().get(0).getLongV());
+          assertFalse(dataSet.hasNext());
+        }
+        System.out.printf("verified %s: %d rows%n", table, expectedRows);
+      }
+    } finally {
+      executor.shutdownNow();
+      try {
+        assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+      } finally {
+        // Closing each session also releases its server-side prepared metadata.
+        Exception closeFailure = null;
+        for (ITableSession session : sessions) {
+          if (session != null) {
+            try {
+              session.close();
+            } catch (Exception e) {
+              if (closeFailure == null) closeFailure = e;
+              else closeFailure.addSuppressed(e);
+            }
+          }
+        }
+        if (closeFailure != null) throw closeFailure;
+      }
+    }
+  }
+
+  private record WritePerformance(long rows, long nanos) {
+    double rowsPerSecond() {
+      return rows * 1_000_000_000.0 / nanos;
+    }
+  }
+
+  private static WritePerformance runConcurrentWrites(
+      ExecutorService executor, int concurrency, int seconds, IntConsumer write) throws Exception {
+    CountDownLatch ready = new CountDownLatch(concurrency);
+    CountDownLatch start = new CountDownLatch(1);
+    AtomicLong deadline = new AtomicLong();
+    List<Future<WritePerformance>> futures = new ArrayList<>();
+    try {
+      for (int i = 0; i < concurrency; i++) {
+        final int threadId = i;
+        futures.add(
+            executor.submit(
+                () -> {
+                  ready.countDown();
+                  start.await();
+                  long rows = 0;
+                  while (!Thread.currentThread().isInterrupted()
+                      && System.nanoTime() < deadline.get()) {
+                    write.accept(threadId);
+                    rows++;
+                  }
+                  return new WritePerformance(rows, System.nanoTime());
+                }));
+      }
+      assertTrue(ready.await(30, TimeUnit.SECONDS));
+      long startNanos = System.nanoTime();
+      deadline.set(startNanos + TimeUnit.SECONDS.toNanos(seconds));
+      start.countDown();
+      long rows = 0;
+      long endNanos = startNanos;
+      for (Future<WritePerformance> future : futures) {
+        WritePerformance result = future.get(seconds + 60, TimeUnit.SECONDS);
+        rows += result.rows();
+        endNanos = Math.max(endNanos, result.nanos());
+      }
+      // Include completion of in-flight RPCs, but exclude main-thread collection/printing time.
+      return new WritePerformance(rows, endNanos - startNanos);
+    } finally {
+      start.countDown();
+      for (Future<WritePerformance> future : futures) {
+        if (!future.isDone()) future.cancel(true);
+      }
     }
   }
 

@@ -44,6 +44,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedNumericRowReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
@@ -59,6 +60,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowResp;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
@@ -79,6 +82,7 @@ import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -757,6 +761,44 @@ public class SessionConnection {
   protected void insertRecord(TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     callWithRetryAndVerifyWithRedirection(() -> insertRecordInternal(request));
+  }
+
+  protected long prepareNumericRow(TSPrepareNumericRowReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      TSPrepareNumericRowResp resp = client.prepareNumericRow(request);
+      if (resp.getStatus() == null) {
+        throw new IoTDBConnectionException(
+            SessionMessages.EXCEPTION_PREPARED_NUMERIC_ROW_PREPARE_RETURNED_NO_STATUS_6FF7BC24);
+      }
+      RpcUtils.verifySuccess(resp.getStatus());
+      return resp.getPreparedId();
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+  }
+
+  protected void executePreparedNumericRow(
+      long id, long timestamp, ByteBuffer values, ByteBuffer tags)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSExecutePreparedNumericRowReq request =
+        new TSExecutePreparedNumericRowReq(sessionId, id, timestamp, values, tags);
+    try {
+      RpcUtils.verifySuccess(client.executePreparedNumericRow(request));
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+  }
+
+  protected void closePreparedNumericRow(long id) throws IoTDBConnectionException {
+    try {
+      RpcUtils.verifySuccess(client.closePreparedNumericRow(sessionId, id));
+    } catch (StatementExecutionException e) {
+      throw new IoTDBConnectionException(e);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
   }
 
   private TSStatus insertRecordInternal(TSInsertRecordReq request) throws TException {

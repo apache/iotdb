@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
@@ -33,11 +34,63 @@ import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 import javax.annotation.Nullable;
 
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class IClientSession {
+
+  private static final AtomicLong NUMERIC_ROW_IDS = new AtomicLong();
+  private Map<Long, PreparedNumericRowInfo> preparedNumericRows;
+  private boolean numericRowsClosed;
+
+  public synchronized long addPreparedNumericRow(PreparedNumericRowInfo info) {
+    if (numericRowsClosed) {
+      throw new SemanticException(
+          DataNodeMiscMessages
+              .EXCEPTION_PREPARED_NUMERIC_ROW_IS_CLOSED_OR_DOES_NOT_BELONG_TO_THIS_SESSION_5CC5C50A);
+    }
+    long preparedId = NUMERIC_ROW_IDS.incrementAndGet();
+    if (preparedNumericRows == null) {
+      preparedNumericRows = new HashMap<>();
+    }
+    PreparedStatementMemoryManager.getInstance()
+        .allocate(Long.toString(preparedId), info.ramBytesUsed());
+    preparedNumericRows.put(preparedId, info);
+    return preparedId;
+  }
+
+  public synchronized PreparedNumericRowInfo getPreparedNumericRow(long preparedId) {
+    PreparedNumericRowInfo info =
+        preparedNumericRows == null ? null : preparedNumericRows.get(preparedId);
+    if (info == null) {
+      throw new SemanticException(
+          DataNodeMiscMessages
+              .EXCEPTION_PREPARED_NUMERIC_ROW_IS_CLOSED_OR_DOES_NOT_BELONG_TO_THIS_SESSION_5CC5C50A);
+    }
+    return info;
+  }
+
+  public synchronized void removePreparedNumericRow(long preparedId) {
+    PreparedNumericRowInfo info =
+        preparedNumericRows == null ? null : preparedNumericRows.remove(preparedId);
+    if (info != null) {
+      PreparedStatementMemoryManager.getInstance().release(info.ramBytesUsed());
+    }
+  }
+
+  public synchronized void releasePreparedNumericRows() {
+    numericRowsClosed = true;
+    if (preparedNumericRows != null) {
+      for (PreparedNumericRowInfo info : preparedNumericRows.values()) {
+        PreparedStatementMemoryManager.getInstance().release(info.ramBytesUsed());
+      }
+      preparedNumericRows = null;
+    }
+  }
 
   private long id;
 

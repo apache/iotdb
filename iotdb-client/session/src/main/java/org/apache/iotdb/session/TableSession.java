@@ -21,17 +21,27 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.NumericRow;
+import org.apache.iotdb.isession.NumericRowPreparedStatement;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TableSession implements ITableSession {
 
   private final Session session;
 
-  TableSession(Session session) {
+  public TableSession(Session session) {
     this.session = session;
   }
 

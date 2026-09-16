@@ -1489,4 +1489,6 @@ public final class DataNodeMiscMessages {
       LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA =
           "table_query_device_entry_batch_size_in_bytes (%d) exceeds the maximum RPC payload (dn_thrift_max_frame_size %d minus 1024 bytes); using %d as the effective value";
 
+  public static final String EXCEPTION_INVALID_PREPARED_NUMERIC_ROW_METADATA_OR_PAYLOAD_AECCCEAA = "Invalid prepared numeric row metadata or payload.";
+  public static final String EXCEPTION_PREPARED_NUMERIC_ROW_IS_CLOSED_OR_DOES_NOT_BELONG_TO_THIS_SESSION_5CC5C50A = "Prepared numeric row is closed or does not belong to this session.";
 }

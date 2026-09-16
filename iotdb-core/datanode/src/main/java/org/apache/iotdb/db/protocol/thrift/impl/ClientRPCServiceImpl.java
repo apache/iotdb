@@ -69,6 +69,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.PreparedNumericRowInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -170,6 +171,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDeallocatePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedNumericRowReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -191,6 +193,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowResp;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareReq;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -2580,6 +2584,67 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         quota.close();
       }
     }
+  }
+
+  @Override
+  public TSPrepareNumericRowResp prepareNumericRow(TSPrepareNumericRowReq req) {
+    IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(session)) {
+      return new TSPrepareNumericRowResp(getNotLoggedInStatus());
+    }
+    try {
+      if (req.getSessionId() != session.getId()) {
+        return new TSPrepareNumericRowResp(RpcUtils.getStatus(TSStatusCode.NOT_LOGIN));
+      }
+      PreparedNumericRowInfo info = new PreparedNumericRowInfo(session.getDatabaseName(), req);
+      TSPrepareNumericRowResp response = new TSPrepareNumericRowResp();
+      response.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      response.setPreparedId(session.addPreparedNumericRow(info));
+      return response;
+    } catch (Exception e) {
+      return new TSPrepareNumericRowResp(
+          onQueryException(
+              e, OperationType.INSERT_RECORD.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR));
+    }
+  }
+
+  @Override
+  public TSStatus executePreparedNumericRow(TSExecutePreparedNumericRowReq req) {
+    IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(session)) return getNotLoggedInStatus();
+    try {
+      if (req.getSessionId() != session.getId()) return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN);
+      InsertBaseStatement statement =
+          session
+              .getPreparedNumericRow(req.getPreparedId())
+              .bind(
+                  req.getTimestamp(),
+                  ByteBuffer.wrap(req.getTagValues()),
+                  ByteBuffer.wrap(req.getValues()));
+      long queryId = SESSION_MANAGER.requestQueryId();
+      return COORDINATOR.executeForTableModel(
+              statement,
+              relationSqlParser,
+              session,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              metadata,
+              config.getConnectionTimeoutInMS())
+          .status;
+    } catch (Exception e) {
+      return onQueryException(
+          e, OperationType.INSERT_RECORD.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+  }
+
+  @Override
+  public TSStatus closePreparedNumericRow(long sessionId, long preparedId) {
+    IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(session) || session.getId() != sessionId)
+      return getNotLoggedInStatus();
+    session.removePreparedNumericRow(preparedId);
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
