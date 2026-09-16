@@ -41,8 +41,7 @@ class Session::Impl {
 public:
   std::string host_;
   int rpcPort_ = 6667;
-  bool useSSL_ = false;
-  std::string trustCertFilePath_;
+  SslConfig sslConfig_;
   std::vector<std::string> nodeUrls_;
   std::string username_ = "root";
   std::string password_ = "root";

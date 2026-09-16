@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 
 from dataclasses import dataclass
 from typing import List, Literal
