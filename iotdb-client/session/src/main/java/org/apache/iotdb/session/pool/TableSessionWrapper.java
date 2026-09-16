@@ -29,10 +29,13 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.TableSession;
 import org.apache.iotdb.session.i18n.SessionMessages;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -49,12 +52,15 @@ public class TableSessionWrapper implements ITableSession {
 
   private Session session;
 
+  private final TableSession tableSession;
+
   private final SessionPool sessionPool;
 
   private final AtomicBoolean closed;
 
   protected TableSessionWrapper(Session session, SessionPool sessionPool) {
     this.session = session;
+    this.tableSession = new TableSession(session);
     this.sessionPool = sessionPool;
     this.closed = new AtomicBoolean(false);
   }
@@ -75,6 +81,31 @@ public class TableSessionWrapper implements ITableSession {
   public void insert(NumericRow row) throws StatementExecutionException, IoTDBConnectionException {
     try {
       session.insertRelationalRecord(row);
+    } catch (IoTDBConnectionException e) {
+      sessionPool.cleanSessionAndMayThrowConnectionException(session);
+      closed.set(true);
+      session = null;
+      throw e;
+    }
+  }
+
+  @Override
+  public NumericRowPreparedStatement prepareInsertNumericRow(
+      String tableName,
+      List<String> columnNames,
+      List<TSDataType> dataTypes,
+      List<ColumnCategory> columnCategories)
+      throws StatementExecutionException, IoTDBConnectionException {
+    return tableSession.prepareInsertNumericRow(
+        tableName, columnNames, dataTypes, columnCategories);
+  }
+
+  @Override
+  public void executePreparedInsertNumericRow(
+      NumericRowPreparedStatement prepared, long timestamp, long[] values, String[] tagValues)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      tableSession.executePreparedInsertNumericRow(prepared, timestamp, values, tagValues);
     } catch (IoTDBConnectionException e) {
       sessionPool.cleanSessionAndMayThrowConnectionException(session);
       closed.set(true);
