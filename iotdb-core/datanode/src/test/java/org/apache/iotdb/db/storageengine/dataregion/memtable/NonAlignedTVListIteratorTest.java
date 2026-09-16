@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.utils.datastructure.LongTVList;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -716,5 +717,76 @@ public class NonAlignedTVListIteratorTest {
       }
     }
     Assert.assertEquals(expectedTimestamps, resultTimestamps);
+  }
+
+  @Test
+  public void testBatchToPointAfterEmptyPageKeepsLatestDuplicateValue() throws IOException {
+    LongTVList tvList = LongTVList.newList();
+    tvList.putLong(1, 1);
+    tvList.putLong(100, 2);
+    tvList.putLong(100, 3);
+
+    MemPointIterator iterator =
+        tvList.iterator(
+            Ordering.ASC,
+            tvList.rowCount(),
+            null,
+            Collections.emptyList(),
+            0,
+            TSEncoding.PLAIN,
+            1024,
+            null);
+
+    iterator.setCurrentPageTimeRange(new TimeRange(1, 33));
+    int firstPageRows = 0;
+    while (iterator.hasNextBatch()) {
+      firstPageRows += iterator.nextBatch().getPositionCount();
+    }
+    Assert.assertEquals(1, firstPageRows);
+
+    iterator.setCurrentPageTimeRange(new TimeRange(34, 66));
+    Assert.assertFalse(iterator.hasNextBatch());
+
+    iterator.setCurrentPageTimeRange(new TimeRange(67, 100));
+    List<Long> result = new ArrayList<>();
+    while (iterator.hasNextTimeValuePair()) {
+      result.add(iterator.nextTimeValuePair().getValue().getLong());
+    }
+    Assert.assertEquals(Collections.singletonList(3L), result);
+  }
+
+  @Test
+  public void testBatchToPointAfterEmptyPageDescendingSkipsDeletedPoint() throws IOException {
+    LongTVList tvList = LongTVList.newList();
+    tvList.putLong(10, 10);
+    tvList.putLong(100, 100);
+
+    MemPointIterator iterator =
+        tvList.iterator(
+            Ordering.DESC,
+            tvList.rowCount(),
+            null,
+            Collections.singletonList(new TimeRange(10, 10)),
+            0,
+            TSEncoding.PLAIN,
+            1024,
+            null);
+
+    iterator.setCurrentPageTimeRange(new TimeRange(67, 100));
+    int firstPageRows = 0;
+    while (iterator.hasNextBatch()) {
+      firstPageRows += iterator.nextBatch().getPositionCount();
+    }
+    Assert.assertEquals(1, firstPageRows);
+
+    iterator.setCurrentPageTimeRange(new TimeRange(34, 66));
+    Assert.assertFalse(iterator.hasNextBatch());
+
+    iterator.setCurrentPageTimeRange(new TimeRange(1, 33));
+    List<Long> result = new ArrayList<>();
+    while (iterator.hasNextTimeValuePair()) {
+      result.add(iterator.nextTimeValuePair().getValue().getLong());
+    }
+    Assert.assertTrue(result.isEmpty());
   }
 }

@@ -966,9 +966,10 @@ public abstract class TVList implements WALEntryValue {
           this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(newIndex - index);
         }
         index = newIndex;
+        // If the cursor does not move, a duplicate-timestamp group prepared for the current
+        // position remains valid. Invalidate it only after the cursor actually advances.
+        probeNext = false;
       }
-
-      probeNext = false;
     }
 
     protected void prepareNext() {
@@ -1312,6 +1313,7 @@ public abstract class TVList implements WALEntryValue {
       // been applied when constructing the tsBlock
       TsBlock tsBlock = builder.build();
       addTsBlock(tsBlock);
+      probeNext = false;
       return tsBlock;
     }
 
