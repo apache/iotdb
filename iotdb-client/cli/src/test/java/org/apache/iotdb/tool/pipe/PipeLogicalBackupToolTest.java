@@ -19,27 +19,35 @@
 
 package org.apache.iotdb.tool.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupArchiveReader;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupArchiveReader.BackupStream;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupFormat;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupManifest;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupWriter;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.commons.cli.ParseException;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -141,7 +149,93 @@ public class PipeLogicalBackupToolTest {
     }
   }
 
+  @Test
+  public void testRemovedCommandAliasesAreRejected() throws Exception {
+    final Path source = temporaryFolder.getRoot().toPath().resolve("source");
+    writeBackup(source);
+
+    for (final String command : Arrays.asList("restore", "stats")) {
+      try {
+        PipeLogicalBackupTool.run(new String[] {command, "--input", source.toString()});
+        Assert.fail();
+      } catch (final ParseException expected) {
+        // Expected.
+      }
+    }
+  }
+
+  @Test
+  public void testTransferAcceptsIdempotentConflict() throws Exception {
+    final IoTDBSyncClient client = Mockito.mock(IoTDBSyncClient.class);
+    final TPipeTransferReq request = request(1);
+    Mockito.when(client.pipeTransfer(request))
+        .thenReturn(
+            new TPipeTransferResp(
+                new TSStatus(
+                    TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())));
+
+    PipeLogicalBackupTool.transfer(client, request);
+  }
+
+  @Test
+  public void testImportCheckpointResumesAtRequestGranularity() throws Exception {
+    final Path root = temporaryFolder.getRoot().toPath();
+    final Path source = root.resolve("source");
+    writeBackup(source, Arrays.asList(request(1), request(2)));
+    final List<BackupStream> streams = new LogicalBackupArchiveReader().read(source, false);
+    final BackupStream stream = streams.get(0);
+    final Path checkpoint = root.resolve("import.checkpoint.json");
+    final PipeLogicalBackupTool.ImportCheckpoint state =
+        PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
+    final List<Integer> transferredBodies = new ArrayList<>();
+    final AtomicBoolean failCheckpointOnce = new AtomicBoolean(true);
+
+    try {
+      PipeLogicalBackupTool.importStream(
+          checkpoint,
+          state,
+          stream,
+          request -> transferredBodies.add((int) request.getBody()[0]),
+          checkpointState -> {
+            if (checkpointState.inProgress != null
+                && checkpointState.inProgress.nextRequestIndex == 1
+                && failCheckpointOnce.getAndSet(false)) {
+              throw new IOException("simulated checkpoint failure");
+            }
+            PipeLogicalBackupTool.writeCheckpoint(checkpoint, checkpointState);
+          });
+      Assert.fail();
+    } catch (final IOException expected) {
+      // The request succeeded, but advancing its checkpoint was interrupted.
+    }
+
+    Assert.assertEquals(Collections.singletonList(1), transferredBodies);
+    final PipeLogicalBackupTool.ImportCheckpoint durableState =
+        PipeLogicalBackupTool.readCheckpoint(checkpoint, streams, "localhost", 6667, "root");
+    Assert.assertNotNull(durableState.inProgress);
+    Assert.assertEquals(0, durableState.inProgress.nextRequestIndex);
+
+    Assert.assertEquals(
+        1,
+        PipeLogicalBackupTool.importStream(
+            checkpoint,
+            durableState,
+            stream,
+            request -> transferredBodies.add((int) request.getBody()[0]),
+            checkpointState -> PipeLogicalBackupTool.writeCheckpoint(checkpoint, checkpointState)));
+    Assert.assertEquals(Arrays.asList(1, 1, 2), transferredBodies);
+    Assert.assertNull(durableState.inProgress);
+    Assert.assertEquals(
+        Long.valueOf(stream.getEventGroups().get(0).getLastSequence()),
+        durableState.appliedSequences.get(stream.getManifest().streamId));
+  }
+
   private static void writeBackup(final Path directory) throws Exception {
+    writeBackup(directory, Collections.singletonList(request(3)));
+  }
+
+  private static void writeBackup(final Path directory, final List<TPipeTransferReq> requests)
+      throws Exception {
     final LogicalBackupManifest manifest = new LogicalBackupManifest();
     manifest.backupId = "backup";
     manifest.pipeName = "pipe";
@@ -152,15 +246,14 @@ public class PipeLogicalBackupToolTest {
     try (final LogicalBackupWriter writer =
         new LogicalBackupWriter(
             directory, manifest, 4096, 1024, LogicalBackupWriter.FsyncPolicy.ALWAYS, 1, 1, false)) {
-      writer.writeEvent(
-          UUID.randomUUID(),
-          1,
-          Collections.singletonList(
-              new TPipeTransferReq()
-                  .setVersion((byte) 1)
-                  .setType((short) 10)
-                  .setBody(ByteBuffer.wrap(new byte[] {3}))),
-          "metadata");
+      writer.writeEvent(UUID.randomUUID(), 1, requests, "metadata");
     }
+  }
+
+  private static TPipeTransferReq request(final int value) {
+    return new TPipeTransferReq()
+        .setVersion((byte) 1)
+        .setType((short) 10)
+        .setBody(ByteBuffer.wrap(new byte[] {(byte) value}));
   }
 }

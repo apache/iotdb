@@ -92,6 +92,31 @@ public class LogicalBackupWriterTest {
   }
 
   @Test
+  public void testAppendContinuesAndDeduplicatesLastEventAfterRestart() throws Exception {
+    final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
+    final UUID firstEventId = UUID.randomUUID();
+    final TPipeTransferReq firstRequest = replayableRequest(1);
+    try (final LogicalBackupWriter writer = writer(directory, 4096, false)) {
+      Assert.assertEquals(
+          0, writer.writeEvent(firstEventId, 1, Collections.singletonList(firstRequest), "first"));
+    }
+
+    try (final LogicalBackupWriter writer = writer(directory, 4096, true)) {
+      Assert.assertEquals(
+          0, writer.writeEvent(firstEventId, 1, Collections.singletonList(firstRequest), "first"));
+      Assert.assertEquals(
+          4,
+          writer.writeEvent(
+              UUID.randomUUID(), 2, Collections.singletonList(replayableRequest(2)), "second"));
+    }
+
+    final List<LogicalBackupArchiveReader.BackupStream> streams =
+        new LogicalBackupArchiveReader().read(directory, false);
+    Assert.assertEquals(1, streams.size());
+    Assert.assertEquals(2, streams.get(0).getEventGroups().size());
+  }
+
+  @Test
   public void testOnlineRollbackAfterPartialEvent() throws Exception {
     final Path directory = temporaryFolder.newFolder().toPath().resolve("backup");
     try (final LogicalBackupWriter writer = writer(directory, 4096, false)) {
@@ -522,6 +547,7 @@ public class LogicalBackupWriterTest {
     manifest.pipeCreationTime = 1;
     manifest.streamId = "stream";
     manifest.streamType = "data";
+    manifest.timestampPrecision = "ms";
     return manifest;
   }
 
@@ -531,6 +557,10 @@ public class LogicalBackupWriterTest {
 
   private static TPipeTransferReq request(final byte[] body) {
     return request((byte) 1, (short) 2, body);
+  }
+
+  private static TPipeTransferReq replayableRequest(final int value) {
+    return request((byte) 1, (short) 10, new byte[] {(byte) value});
   }
 
   private static TPipeTransferReq request(final byte version, final short type, final byte[] body) {

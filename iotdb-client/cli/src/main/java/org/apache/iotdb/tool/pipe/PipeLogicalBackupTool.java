@@ -80,8 +80,6 @@ public final class PipeLogicalBackupTool {
   private static final String COMMAND_VERIFY = "verify";
   private static final String COMMAND_EXPORT = "export";
   private static final String COMMAND_IMPORT = "import";
-  private static final String COMMAND_RESTORE = "restore";
-  private static final String COMMAND_STATS = "stats";
   private static final String OPTION_INPUT = "input";
   private static final String OPTION_OUTPUT = "output";
   private static final String OPTION_RESUME = "resume";
@@ -137,10 +135,7 @@ public final class PipeLogicalBackupTool {
       case COMMAND_EXPORT:
         return export(line);
       case COMMAND_IMPORT:
-      case COMMAND_RESTORE:
         return importBackup(line);
-      case COMMAND_STATS:
-        return inspect(line);
       default:
         throw new ParseException(
             String.format(
@@ -352,19 +347,13 @@ public final class PipeLogicalBackupTool {
       handshake(client, streams.get(0).getManifest().timestampPrecision, user, password);
       long importedGroups = 0;
       for (final BackupStream stream : streams) {
-        final String streamId = stream.getManifest().streamId;
-        final long lastApplied = checkpointState.appliedSequences.getOrDefault(streamId, -1L);
-        for (final EventGroup group : stream.getEventGroups()) {
-          if (group.getLastSequence() <= lastApplied) {
-            continue;
-          }
-          for (final LogicalBackupRecord record : group.getRequests()) {
-            transfer(client, record.toTPipeTransferReq());
-          }
-          checkpointState.appliedSequences.put(streamId, group.getLastSequence());
-          writeCheckpoint(checkpoint, checkpointState);
-          importedGroups++;
-        }
+        importedGroups +=
+            importStream(
+                checkpoint,
+                checkpointState,
+                stream,
+                request -> transfer(client, request),
+                state -> writeCheckpoint(checkpoint, state));
       }
       writeCheckpoint(checkpoint, checkpointState);
       System.out.println(
@@ -375,6 +364,49 @@ public final class PipeLogicalBackupTool {
               checkpoint));
     }
     return 0;
+  }
+
+  static long importStream(
+      final Path checkpoint,
+      final ImportCheckpoint checkpointState,
+      final BackupStream stream,
+      final RequestTransfer requestTransfer,
+      final CheckpointPersister checkpointPersister)
+      throws Exception {
+    final String streamId = stream.getManifest().streamId;
+    final long lastApplied = checkpointState.appliedSequences.getOrDefault(streamId, -1L);
+    long importedGroups = 0;
+    for (final EventGroup group : stream.getEventGroups()) {
+      if (group.getLastSequence() <= lastApplied) {
+        continue;
+      }
+
+      int nextRequestIndex = 0;
+      if (checkpointState.inProgress == null) {
+        checkpointState.inProgress = ImportProgress.start(streamId, group);
+        checkpointPersister.persist(checkpointState);
+      } else if (checkpointState.inProgress.matches(streamId, group)) {
+        nextRequestIndex = checkpointState.inProgress.nextRequestIndex;
+      } else {
+        throw invalidCheckpoint(checkpoint);
+      }
+
+      final List<LogicalBackupRecord> requests = group.getRequests();
+      if (nextRequestIndex < 0 || nextRequestIndex > requests.size()) {
+        throw invalidCheckpoint(checkpoint);
+      }
+      for (int index = nextRequestIndex; index < requests.size(); index++) {
+        requestTransfer.transfer(requests.get(index).toTPipeTransferReq());
+        checkpointState.inProgress.nextRequestIndex = index + 1;
+        checkpointPersister.persist(checkpointState);
+      }
+
+      checkpointState.appliedSequences.put(streamId, group.getLastSequence());
+      checkpointState.inProgress = null;
+      checkpointPersister.persist(checkpointState);
+      importedGroups++;
+    }
+    return importedGroups;
   }
 
   private static List<BackupStream> read(final CommandLine line) throws IOException {
@@ -472,14 +504,15 @@ public final class PipeLogicalBackupTool {
     }
   }
 
-  private static void transfer(final IoTDBSyncClient client, final TPipeTransferReq request)
+  static void transfer(final IoTDBSyncClient client, final TPipeTransferReq request)
       throws TException, IOException {
     final TPipeTransferResp response = client.pipeTransfer(request);
     if (response == null
         || response.getStatus() == null
         || (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && response.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
             && response.getStatus().getCode()
-                != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
+                != TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
       throw new IOException(
           String.format(
               CliMessages.EXCEPTION_LOGICAL_BACKUP_REQUEST_TYPE_ARG_FAILED_ARG_75EE2D11,
@@ -497,7 +530,7 @@ public final class PipeLogicalBackupTool {
     return source.resolveSibling(source.getFileName() + ".import.checkpoint.json");
   }
 
-  private static ImportCheckpoint readCheckpoint(
+  static ImportCheckpoint readCheckpoint(
       final Path checkpoint,
       final List<BackupStream> streams,
       final String host,
@@ -539,7 +572,7 @@ public final class PipeLogicalBackupTool {
         || !host.equals(state.targetHost)
         || port != state.targetPort
         || !user.equals(state.targetUser)
-        || !checkpointSequencesAreValid(streams, state.appliedSequences)) {
+        || !checkpointStateIsValid(streams, state)) {
       throw new IOException(
           String.format(
               CliMessages
@@ -615,34 +648,66 @@ public final class PipeLogicalBackupTool {
     digest.update(ByteBuffer.allocate(Long.BYTES).putLong(value).array());
   }
 
-  private static boolean checkpointSequencesAreValid(
-      final List<BackupStream> streams, final Map<String, Long> appliedSequences) {
+  private static boolean checkpointStateIsValid(
+      final List<BackupStream> streams, final ImportCheckpoint state) {
+    final Map<String, Long> appliedSequences = state.appliedSequences;
     if (appliedSequences.size() > streams.size()) {
       return false;
     }
+    boolean foundIncompleteStream = false;
+    boolean matchedInProgress = false;
     for (final BackupStream stream : streams) {
-      if (!appliedSequences.containsKey(stream.getManifest().streamId)) {
-        continue;
-      }
-      final Long applied = appliedSequences.get(stream.getManifest().streamId);
-      if (applied == null) {
+      final String streamId = stream.getManifest().streamId;
+      final Long applied = appliedSequences.getOrDefault(streamId, -1L);
+      if (applied == null || applied < -1) {
         return false;
       }
-      if (applied == -1) {
-        continue;
+
+      int appliedGroupIndex = -1;
+      if (applied != -1) {
+        for (int index = 0; index < stream.getEventGroups().size(); index++) {
+          if (stream.getEventGroups().get(index).getLastSequence() == applied) {
+            appliedGroupIndex = index;
+            break;
+          }
+        }
+        if (appliedGroupIndex < 0) {
+          return false;
+        }
       }
-      if (stream.getEventGroups().stream().noneMatch(group -> group.getLastSequence() == applied)) {
+
+      final boolean streamComplete = appliedGroupIndex == stream.getEventGroups().size() - 1;
+      if (foundIncompleteStream && appliedGroupIndex >= 0) {
         return false;
+      }
+      if (!streamComplete && !foundIncompleteStream) {
+        foundIncompleteStream = true;
+        if (state.inProgress != null) {
+          final EventGroup nextGroup = stream.getEventGroups().get(appliedGroupIndex + 1);
+          if (!state.inProgress.matches(streamId, nextGroup)
+              || state.inProgress.nextRequestIndex < 0
+              || state.inProgress.nextRequestIndex > nextGroup.getRequests().size()) {
+            return false;
+          }
+          matchedInProgress = true;
+        }
       }
     }
-    return appliedSequences.keySet().stream()
-        .allMatch(
-            streamId ->
-                streams.stream()
-                    .anyMatch(stream -> stream.getManifest().streamId.equals(streamId)));
+    return (state.inProgress == null || matchedInProgress)
+        && appliedSequences.keySet().stream()
+            .allMatch(
+                streamId ->
+                    streams.stream()
+                        .anyMatch(stream -> stream.getManifest().streamId.equals(streamId)));
   }
 
-  private static void writeCheckpoint(final Path checkpoint, final ImportCheckpoint checkpointState)
+  private static IOException invalidCheckpoint(final Path checkpoint) {
+    return new IOException(
+        String.format(
+            CliMessages.EXCEPTION_LOGICAL_BACKUP_CHECKPOINT_IS_INVALID_ARG_71E82F4C, checkpoint));
+  }
+
+  static void writeCheckpoint(final Path checkpoint, final ImportCheckpoint checkpointState)
       throws IOException {
     final Path parent = checkpoint.toAbsolutePath().normalize().getParent();
     if (parent != null) {
@@ -681,7 +746,7 @@ public final class PipeLogicalBackupTool {
     formatter.printHelp(
         new PrintWriter(System.out),
         120,
-        CliMessages.LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_RESTORE_STATS_BFF9FDC2,
+        CliMessages.LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_6D62F9CE,
         CliMessages
             .LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_4677380E,
         optionsForHelp(),
@@ -710,14 +775,46 @@ public final class PipeLogicalBackupTool {
     return options;
   }
 
-  private static class ImportCheckpoint {
-    private String formatName;
-    private String formatVersion;
-    private Map<String, String> sourceStreams = new LinkedHashMap<>();
-    private String targetHost;
-    private int targetPort;
-    private String targetUser;
-    private Map<String, Long> appliedSequences = new LinkedHashMap<>();
+  static class ImportCheckpoint {
+    String formatName;
+    String formatVersion;
+    Map<String, String> sourceStreams = new LinkedHashMap<>();
+    String targetHost;
+    int targetPort;
+    String targetUser;
+    Map<String, Long> appliedSequences = new LinkedHashMap<>();
+    ImportProgress inProgress;
+  }
+
+  static class ImportProgress {
+    String streamId;
+    String eventGroupId;
+    long lastSequence;
+    int nextRequestIndex;
+
+    static ImportProgress start(final String streamId, final EventGroup group) {
+      final ImportProgress progress = new ImportProgress();
+      progress.streamId = streamId;
+      progress.eventGroupId = group.getEventGroupId().toString();
+      progress.lastSequence = group.getLastSequence();
+      return progress;
+    }
+
+    boolean matches(final String candidateStreamId, final EventGroup group) {
+      return candidateStreamId.equals(streamId)
+          && group.getEventGroupId().toString().equals(eventGroupId)
+          && group.getLastSequence() == lastSequence;
+    }
+  }
+
+  @FunctionalInterface
+  interface RequestTransfer {
+    void transfer(TPipeTransferReq request) throws Exception;
+  }
+
+  @FunctionalInterface
+  interface CheckpointPersister {
+    void persist(ImportCheckpoint state) throws IOException;
   }
 
   private static class BackupInput implements AutoCloseable {

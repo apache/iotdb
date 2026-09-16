@@ -160,6 +160,7 @@ public class LogicalBackupSink implements PipeConnector {
         PipeSinkConstant.LOGICAL_BACKUP_FSYNC_BATCH,
         PipeSinkConstant.LOGICAL_BACKUP_FSYNC_PERIODIC,
         PipeSinkConstant.LOGICAL_BACKUP_FSYNC_NONE);
+    validateDataRegionResumePolicy(parameters);
     final String policy =
         parameters
             .getStringOrDefault(
@@ -185,6 +186,29 @@ public class LogicalBackupSink implements PipeConnector {
         Collections.singletonList(connectorAttribute),
         Collections.singletonList(sinkAttribute),
         false);
+  }
+
+  private void validateDataRegionResumePolicy(final PipeParameters parameters)
+      throws PipeParameterNotValidException {
+    if (!"data".equals(streamType)) {
+      return;
+    }
+    final boolean explicitlyConfigured =
+        parameters.hasAnyAttributes(
+            PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_RESUME_KEY,
+            PipeSinkConstant.SINK_LOGICAL_BACKUP_RESUME_KEY);
+    final String resume =
+        parameters.getStringOrDefault(
+            Arrays.asList(
+                PipeSinkConstant.CONNECTOR_LOGICAL_BACKUP_RESUME_KEY,
+                PipeSinkConstant.SINK_LOGICAL_BACKUP_RESUME_KEY),
+            PipeSinkConstant.LOGICAL_BACKUP_RESUME_DEFAULT_VALUE);
+    if (!explicitlyConfigured
+        || !PipeSinkConstant.LOGICAL_BACKUP_RESUME_APPEND.equalsIgnoreCase(resume)) {
+      throw new PipeParameterNotValidException(
+          DataNodePipeMessages
+              .EXCEPTION_DATAREGION_LOGICAL_BACKUP_REQUIRES_EXPLICIT_SINK_RESUME_APPEND_OR_CONNECTOR_RESUME_APPEND_AND_A_SHARED_BACKUP_DIRECTORY_9F7ADEA8);
+    }
   }
 
   @Override
@@ -253,6 +277,7 @@ public class LogicalBackupSink implements PipeConnector {
                     PipeSinkConstant.SINK_LOGICAL_BACKUP_RESUME_KEY),
                 PipeSinkConstant.LOGICAL_BACKUP_RESUME_DEFAULT_VALUE)
             .toLowerCase(Locale.ROOT);
+    validateDataRegionResumePolicy(parameters);
     final boolean append = PipeSinkConstant.LOGICAL_BACKUP_RESUME_APPEND.equals(resume);
     if (!append
         && !PipeSinkConstant.LOGICAL_BACKUP_RESUME_NEW.equals(resume)

@@ -2471,6 +2471,9 @@ public final class DataNodePipeMessages {
       "不支持的逻辑备份事件策略：%s";
   public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_RESUME_POLICY_ARG_583FCCF9 =
       "不支持的逻辑备份恢复策略：%s";
+  public static final String
+      EXCEPTION_DATAREGION_LOGICAL_BACKUP_REQUIRES_EXPLICIT_SINK_RESUME_APPEND_OR_CONNECTOR_RESUME_APPEND_AND_A_SHARED_BACKUP_DIRECTORY_9F7ADEA8 =
+          "DataRegion 逻辑备份要求显式配置 sink.resume=append（或 connector.resume=append），并使用共享备份目录";
   public static final String EXCEPTION_UNSUPPORTED_PIPE_EVENT_FOR_LOGICAL_BACKUP_ARG_521AEE97 =
       "逻辑备份不支持 Pipe 事件：%s";
   public static final String

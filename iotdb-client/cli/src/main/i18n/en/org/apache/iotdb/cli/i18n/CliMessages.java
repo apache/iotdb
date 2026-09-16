@@ -130,9 +130,8 @@ public final class CliMessages {
   public static final String
       LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_4677380E =
           "Use --input to specify the input. Export also requires --output; import requires --host and --port. Use --password-stdin or --password-env to avoid command-line passwords.";
-  public static final String
-      LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_RESTORE_STATS_BFF9FDC2 =
-          "pipe-logical-backup <inspect|verify|export|import|restore|stats>";
+  public static final String LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_6D62F9CE =
+      "pipe-logical-backup <inspect|verify|export|import>";
   public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_ENTRY_IS_UNSAFE_ARG_3E548152 =
       "Logical backup archive entry is unsafe: %s";
   public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_EXCEEDS_SAFETY_LIMIT_FFC54432 =
