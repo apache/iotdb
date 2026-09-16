@@ -80,6 +80,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFullId;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_SERVER;
@@ -186,13 +187,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
               int blockOffset = i == req.getStartSequenceId() ? offset : 0;
               int serializedTsBlockSize = serializedTsBlock.remaining();
-              if (blockOffset < 0 || blockOffset > serializedTsBlockSize) {
-                throw new IllegalArgumentException(
-                    String.format(
-                        DataNodeQueryMessages.EXCEPTION_INVALID_ARG_ARG_2946DBE5,
-                        "serialized TsBlock",
-                        "fragment range"));
-              }
+              checkArgument(
+                  blockOffset >= 0 && blockOffset <= serializedTsBlockSize,
+                  DataNodeQueryMessages
+                      .EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_RANGE_0672002F);
               int remainingBlockSize = serializedTsBlockSize - blockOffset;
               if (remainingBlockSize <= remainingPayloadSize) {
                 ByteBuffer fragment = serializedTsBlock.duplicate();

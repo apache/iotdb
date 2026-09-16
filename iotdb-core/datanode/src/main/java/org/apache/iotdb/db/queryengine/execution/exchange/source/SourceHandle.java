@@ -40,6 +40,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 
+import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.thrift.TException;
@@ -713,7 +714,14 @@ public class SourceHandle implements ISourceHandle {
               return;
             }
             break;
-          } catch (Throwable e) {
+          } catch (IllegalArgumentException | IllegalStateException e) {
+            if (!transferAttemptRecorded) {
+              recordTransferAttempt(
+                  false, UserDataTransferErrorCode.UNEXPECTED_RESPONSE_SIZE.name(), e);
+            }
+            fail(e);
+            return;
+          } catch (Exception e) {
 
             if (!transferAttemptRecorded) {
               recordTransferAttempt(false, null, e);
@@ -796,6 +804,7 @@ public class SourceHandle implements ISourceHandle {
       private int nextSequenceId;
       private int offset;
       private PublicBAOS partialTsBlock;
+      private int partialTsBlockTotalLength;
 
       private DataBlockFetchProgress(int startSequenceId, int endSequenceId) {
         this.nextSequenceId = startSequenceId;
@@ -818,8 +827,12 @@ public class SourceHandle implements ISourceHandle {
             updateOffset(response.getOffset());
             return;
           }
-          tsBlocks.add(ByteBuffer.wrap(partialTsBlock.getBuf()));
+          Preconditions.checkState(
+              partialTsBlock.size() == partialTsBlockTotalLength,
+              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
+          tsBlocks.add(ByteBuffer.wrap(partialTsBlock.getBuf(), 0, partialTsBlock.size()));
           partialTsBlock = null;
+          partialTsBlockTotalLength = 0;
           offset = 0;
           nextSequenceId++;
         }
@@ -832,20 +845,33 @@ public class SourceHandle implements ISourceHandle {
         }
 
         if (lastBlockIsFragment) {
-          checkArgument(response.isSetTotalLength(), "xxx");
+          checkArgument(
+              response.isSetTotalLength(),
+              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
           partialTsBlock = new PublicBAOS(response.getTotalLength());
           appendFragment(responseBlocks.get(blockIndex));
           updateOffset(response.getOffset());
         }
+
+        Preconditions.checkState(
+            nextSequenceId <= endSequenceId
+                && (lastBlockIsFragment
+                    || nextSequenceId != endSequenceId
+                    || partialTsBlock == null),
+            DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
       }
 
       private void appendFragment(ByteBuffer fragment) {
-        checkArgument(fragment.hasRemaining(), "xxx");
+        checkArgument(
+            fragment.hasRemaining(),
+            DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
         partialTsBlock.writeBytes(fragment.array());
       }
 
       private void updateOffset(int nextOffset) {
-        checkArgument(nextOffset > offset && nextOffset == partialTsBlock.size(), "xxx");
+        checkArgument(
+            nextOffset > offset && nextOffset == partialTsBlock.size(),
+            DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
         offset = nextOffset;
       }
     }

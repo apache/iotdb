@@ -272,6 +272,34 @@ public class PropertiesTest {
   }
 
   @Test
+  public void testMppDataExchangeMaxPayloadSizeHotReload() throws Exception {
+    IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
+    int originalPayloadSize = descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes();
+    try {
+      TrimProperties properties = new TrimProperties();
+
+      properties.setProperty("mpp_data_exchange_max_payload_size_in_bytes", "0");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          4 * 1024 * 1024, descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes());
+
+      properties.setProperty("mpp_data_exchange_max_payload_size_in_bytes", "1");
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          128 * 1024, descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes());
+
+      int maximumPayloadSize = descriptor.getConfig().getThriftMaxFrameSize() - 1024;
+      properties.setProperty(
+          "mpp_data_exchange_max_payload_size_in_bytes", Integer.toString(Integer.MAX_VALUE));
+      descriptor.loadHotModifiedProps(properties);
+      Assert.assertEquals(
+          maximumPayloadSize, descriptor.getConfig().getMppDataExchangeMaxPayloadSizeInBytes());
+    } finally {
+      descriptor.getConfig().setMppDataExchangeMaxPayloadSizeInBytes(originalPayloadSize);
+    }
+  }
+
+  @Test
   public void PropertiesWithSpace() {
     IoTDBDescriptor descriptor = IoTDBDescriptor.getInstance();
     TrimProperties properties = new TrimProperties();

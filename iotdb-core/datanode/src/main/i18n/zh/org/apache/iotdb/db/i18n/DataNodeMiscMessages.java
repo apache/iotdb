@@ -1474,5 +1474,8 @@ public final class DataNodeMiscMessages {
   public static final String
       LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC =
           "mpp_data_exchange_max_payload_size_in_bytes（%d）超过允许的最大值 %d，将使用 %d";
+  public static final String
+      LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76 =
+          "mpp_data_exchange_max_payload_size_in_bytes（%d）低于允许的最小值 %d，将使用 %d";
 
 }

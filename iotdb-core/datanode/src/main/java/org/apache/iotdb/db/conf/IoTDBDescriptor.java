@@ -121,6 +121,10 @@ public class IoTDBDescriptor {
 
   private static final long DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES = 1024;
 
+  private static final int DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES = 4 * 1024 * 1024;
+
+  private static final int MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES = 128 * 1024;
+
   private static final String[] DEFAULT_WAL_THRESHOLD_NAME = {
     "iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte"
   };
@@ -2448,6 +2452,9 @@ public class IoTDBDescriptor {
         "table_query_device_entry_batch_size_in_bytes",
         Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes()));
     ConfigurationFileUtils.updateAppliedProperties(
+        "mpp_data_exchange_max_payload_size_in_bytes",
+        Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
         DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
   }
 
@@ -3091,16 +3098,23 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "mpp_data_exchange_max_payload_size_in_bytes",
                 Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes())));
-    int defaultSize = 4 * 1024 * 1024;
     if (configuredSize <= 0) {
       LOGGER.warn(
           DataNodeMiscMessages
               .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2,
           configuredSize,
-          defaultSize);
-      configuredSize = defaultSize;
+          DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES);
+      configuredSize = DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES;
+    } else if (configuredSize < MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES) {
+      LOGGER.warn(
+          DataNodeMiscMessages
+              .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76,
+          configuredSize,
+          MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES,
+          MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES);
+      configuredSize = MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES;
     }
-    int maxAllowedSize = Math.max(1, conf.getThriftMaxFrameSize() - 1024);
+    int maxAllowedSize = conf.getThriftMaxFrameSize() - 1024;
     if (configuredSize > maxAllowedSize) {
       LOGGER.warn(
           DataNodeMiscMessages

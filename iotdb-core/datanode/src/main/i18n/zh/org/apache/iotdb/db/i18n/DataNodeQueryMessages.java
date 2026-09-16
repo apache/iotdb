@@ -1394,6 +1394,8 @@ public final class DataNodeQueryMessages {
       "获取数据块 [{}, {}) 失败，尝试次数：{}";
   public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
       "数据块响应数量异常。";
+  public static final String EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_RANGE_0672002F =
+      "无效的序列化 TsBlock 分片范围";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "发送数据块确认事件 [{}, {}) 失败，尝试次数：{}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =

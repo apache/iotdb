@@ -1412,6 +1412,8 @@ public final class DataNodeQueryMessages {
       "failed to get data block [{}, {}), attempt times: {}";
   public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
       "Unexpected data block response size.";
+  public static final String EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_RANGE_0672002F =
+      "Invalid serialized TsBlock fragment range";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "failed to send ack data block event [{}, {}), attempt times: {}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =
