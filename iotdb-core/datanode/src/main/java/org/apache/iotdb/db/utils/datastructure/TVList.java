@@ -1239,6 +1239,7 @@ public abstract class TVList implements WALEntryValue {
       // been applied when constructing the tsBlock
       TsBlock tsBlock = builder.build();
       addTsBlock(tsBlock);
+      probeNext = false;
       return tsBlock;
     }
 
