@@ -80,6 +80,11 @@ public class RestClientSession extends IClientSession {
   }
 
   @Override
+  public boolean containsQueryId(Long statementId, long queryId) {
+    return false;
+  }
+
+  @Override
   public void removeQueryId(Long statementId, Long queryId) {
     throw new UnsupportedOperationException();
   }
