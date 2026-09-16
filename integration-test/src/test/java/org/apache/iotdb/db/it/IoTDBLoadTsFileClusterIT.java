@@ -127,12 +127,18 @@ public class IoTDBLoadTsFileClusterIT {
       }
       statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
 
-      try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from " + DATABASE + ".**")) {
-        Assert.assertTrue(resultSet.next());
-        final long count = resultSet.getLong(1);
-        Assert.assertEquals(writtenPointCount, count);
+      long actualPointCount = 0;
+      for (final String device : DEVICES) {
+        try (final ResultSet resultSet =
+            statement.executeQuery(
+                "select count(s1), count(s2), count(s3), count(s4) from " + device)) {
+          Assert.assertTrue(resultSet.next());
+          for (int columnIndex = 1; columnIndex <= MEASUREMENTS.size(); columnIndex++) {
+            actualPointCount += resultSet.getLong(columnIndex);
+          }
+        }
       }
+      Assert.assertEquals(writtenPointCount, actualPointCount);
     }
   }
 }

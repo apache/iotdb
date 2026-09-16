@@ -594,9 +594,13 @@ public class LoadTsFileManager {
           dataPartition2Writer.entrySet()) {
         final TsFilePrecalculatedChunkWriter writer = entry.getValue();
         final LoadTsFileProgress progress = dataPartition2Progress.get(entry.getKey());
-        if (progress != null && progress.exists() && !progress.isReady(writer.getFile().length())) {
+        if (progress != null
+            && progress.exists()
+            && progress.getTotalLength() > 0
+            && writer.getFile().length() < progress.getTotalLength()) {
           throw new LoadFileException(
-              "Staged LOAD TsFile is not contiguous yet: " + writer.getFile().getAbsolutePath());
+              "Staged LOAD TsFile length does not reach prepare expectation: "
+                  + writer.getFile().getAbsolutePath());
         }
         writer.close();
 

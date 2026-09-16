@@ -79,12 +79,12 @@ public class LoadTsFileProgress {
   }
 
   public void activate(final long totalLength) throws IOException {
-    this.totalLength = totalLength;
+    this.totalLength = Math.max(this.totalLength, totalLength);
     if (!progressFile.exists()) {
       try (final DataOutputStream output =
           new DataOutputStream(new FileOutputStream(progressFile, false))) {
         ReadWriteIOUtils.write(MAGIC, output);
-        ReadWriteIOUtils.write(totalLength, output);
+        ReadWriteIOUtils.write(this.totalLength, output);
       }
     }
   }
@@ -183,6 +183,11 @@ public class LoadTsFileProgress {
         }
       }
     }
+    long maxPhysicalEnd = this.totalLength;
+    for (final ChunkRangeRecord record : result) {
+      maxPhysicalEnd = Math.max(maxPhysicalEnd, record.physicalEnd());
+    }
+    this.totalLength = maxPhysicalEnd;
     records.clear();
     records.addAll(result);
     return result;
