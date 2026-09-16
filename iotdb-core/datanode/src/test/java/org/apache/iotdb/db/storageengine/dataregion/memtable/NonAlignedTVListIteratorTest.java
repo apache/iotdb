@@ -734,8 +734,7 @@ public class NonAlignedTVListIteratorTest {
             Collections.emptyList(),
             0,
             TSEncoding.PLAIN,
-            1024,
-            null);
+            1024);
 
     iterator.setCurrentPageTimeRange(new TimeRange(1, 33));
     int firstPageRows = 0;
@@ -769,8 +768,7 @@ public class NonAlignedTVListIteratorTest {
             Collections.singletonList(new TimeRange(10, 10)),
             0,
             TSEncoding.PLAIN,
-            1024,
-            null);
+            1024);
 
     iterator.setCurrentPageTimeRange(new TimeRange(67, 100));
     int firstPageRows = 0;
