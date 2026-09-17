@@ -172,13 +172,17 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         loadPrivileges(dataInputStream, user);
       } else {
-        assert (tag == VERSION);
+        // tag >= 2: version 2 and version 3 share the same leading layout; version 3 additionally
+        // appends the extra segment region.
         user.setUserId(dataInputStream.readLong());
         user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
         user.setMaxSessionPerUser(dataInputStream.readInt());
         user.setMinSessionPerUser(dataInputStream.readInt());
         loadPrivileges(dataInputStream, user);
+        if (tag >= 3) {
+          loadExtraSegments(dataInputStream, user);
+        }
       }
 
       File roleOfUser = checkFileAvailable(entityName, "_role");
