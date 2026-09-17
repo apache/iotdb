@@ -495,7 +495,7 @@ public class LoadTsFileAnalyzerTest {
     private final Set<List<Object>> verifiedDevices = new HashSet<>();
 
     private TrackingLoadTsFileTableSchemaCache() throws LoadRuntimeOutOfMemoryException {
-      super(null, new MPPQueryContext(new QueryId("load_test")), false, true);
+      super(null, new MPPQueryContext(new QueryId("load_test")), false, true, -1);
     }
 
     @Override
