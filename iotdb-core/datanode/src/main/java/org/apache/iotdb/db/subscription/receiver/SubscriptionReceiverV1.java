@@ -47,6 +47,7 @@ import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetri
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPayloadExceedException;
@@ -210,6 +211,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   public String getConsumerGroupId() {
     final ConsumerConfig consumerConfig = sharedConsumerConfig;
     return Objects.isNull(consumerConfig) ? null : consumerConfig.getConsumerGroupId();
+  }
+
+  @Override
+  public String getConsumerInstanceId() {
+    final ConsumerConfig consumerConfig = sharedConsumerConfig;
+    return Objects.isNull(consumerConfig) ? null : consumerConfig.getConsumerInstanceId();
   }
 
   @Override
@@ -1208,11 +1215,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private void createConsumer(final ConsumerConfig consumerConfig) throws SubscriptionException {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final Map<String, String> persistedConsumerAttributes =
+          new HashMap<>(consumerConfig.getAttribute());
+      persistedConsumerAttributes.remove(ConsumerConstant.CONSUMER_INSTANCE_ID_KEY);
       final TCreateConsumerReq req =
           new TCreateConsumerReq()
               .setConsumerId(consumerConfig.getConsumerId())
               .setConsumerGroupId(consumerConfig.getConsumerGroupId())
-              .setConsumerAttributes(consumerConfig.getAttribute());
+              .setConsumerAttributes(persistedConsumerAttributes);
       final TSStatus tsStatus = configNodeClient.createConsumer(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(

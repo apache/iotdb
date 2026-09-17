@@ -137,7 +137,8 @@ public class SubscriptionReceiverAgent {
     if (receiverConstructors.containsKey(reqVersion)) {
       final SubscriptionReceiver receiver = getReceiver(reqVersion);
       receiver.setAuthenticatedUsername(username);
-      final ConsumerIdentity consumerIdentity = getConsumerIdentity(req, receiver);
+      final ConsumerConnection consumerConnection = getConsumerConnection(req, receiver);
+      final ConsumerIdentity consumerIdentity = consumerConnection.identity();
       final RequestResult requestResult = new RequestResult();
 
       if (Objects.isNull(consumerIdentity)) {
@@ -146,6 +147,15 @@ public class SubscriptionReceiverAgent {
         consumerReceivers.compute(
             consumerIdentity,
             (identity, currentReceiver) -> {
+              if (isHandshake(req)
+                  && currentReceiver != null
+                  && currentReceiver != receiver
+                  && shouldKeepCurrentReceiver(
+                      currentReceiver, consumerConnection.consumerInstanceId())) {
+                receiver.invalidateConsumer();
+                requestResult.response = SUBSCRIPTION_CONSUMER_FENCED_RESP;
+                return currentReceiver;
+              }
               requestResult.response = handleRequest(receiver, req, currentReceiver);
 
               if (isHandshake(req)) {
@@ -307,6 +317,12 @@ public class SubscriptionReceiverAgent {
             registered.set(true);
             return receiver;
           }
+          if (receiver.getConsumerInstanceId() != null
+              && !shouldKeepCurrentReceiver(currentReceiver, receiver.getConsumerInstanceId())) {
+            invalidateReplacedReceiver(currentReceiver, key);
+            registered.set(true);
+            return receiver;
+          }
           // The receiver completed its handshake after another receiver had already claimed the
           // identity. Keep the current owner and fence this late receiver instead of allowing an
           // old connection to take the consumer back.
@@ -345,7 +361,7 @@ public class SubscriptionReceiverAgent {
     receiver.invalidateConsumer();
   }
 
-  private static ConsumerIdentity getConsumerIdentity(
+  private static ConsumerConnection getConsumerConnection(
       final TPipeSubscribeReq req, final SubscriptionReceiver receiver) {
     if (isHandshake(req) && req.isSetBody()) {
       try {
@@ -356,7 +372,7 @@ public class SubscriptionReceiverAgent {
               ConsumerIdentity.of(
                   consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
           if (Objects.nonNull(identity)) {
-            return identity;
+            return new ConsumerConnection(identity, consumerConfig.getConsumerInstanceId());
           }
         }
       } catch (final RuntimeException ignored) {
@@ -364,7 +380,20 @@ public class SubscriptionReceiverAgent {
         // original buffer, so parsing is intentionally done on a duplicate above.
       }
     }
-    return getConsumerIdentity(receiver);
+    return new ConsumerConnection(getConsumerIdentity(receiver), receiver.getConsumerInstanceId());
+  }
+
+  private static boolean shouldKeepCurrentReceiver(
+      final SubscriptionReceiver currentReceiver, final String incomingConsumerInstanceId) {
+    final String currentConsumerInstanceId = currentReceiver.getConsumerInstanceId();
+    if (Objects.equals(currentConsumerInstanceId, incomingConsumerInstanceId)) {
+      return false;
+    }
+    if (currentConsumerInstanceId == null) {
+      return false;
+    }
+    return incomingConsumerInstanceId == null
+        || currentConsumerInstanceId.compareTo(incomingConsumerInstanceId) > 0;
   }
 
   private static ConsumerIdentity getConsumerIdentity(final SubscriptionReceiver receiver) {
@@ -396,4 +425,6 @@ public class SubscriptionReceiverAgent {
           : new ConsumerIdentity(consumerGroupId, consumerId);
     }
   }
+
+  private record ConsumerConnection(ConsumerIdentity identity, String consumerInstanceId) {}
 }

@@ -48,6 +48,14 @@ public interface SubscriptionReceiver {
   String getConsumerGroupId();
 
   /**
+   * Returns the identifier shared by all DataNode connections of the current consumer instance, or
+   * {@code null} for a legacy client.
+   */
+  default String getConsumerInstanceId() {
+    return null;
+  }
+
+  /**
    * Invalidates this receiver so that requests from an obsolete connection cannot affect a new
    * owner.
    */

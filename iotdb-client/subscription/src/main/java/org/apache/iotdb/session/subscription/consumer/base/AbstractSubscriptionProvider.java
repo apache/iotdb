@@ -88,6 +88,7 @@ public abstract class AbstractSubscriptionProvider {
 
   private String consumerId;
   private String consumerGroupId;
+  private String consumerInstanceId;
   private final String ownerId;
   private final Long ownerEpoch;
 
@@ -174,6 +175,10 @@ public abstract class AbstractSubscriptionProvider {
     return consumerGroupId;
   }
 
+  void setConsumerInstanceId(final String consumerInstanceId) {
+    this.consumerInstanceId = consumerInstanceId;
+  }
+
   TEndPoint getEndPoint() {
     return endPoint;
   }
@@ -191,6 +196,9 @@ public abstract class AbstractSubscriptionProvider {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    if (consumerInstanceId != null) {
+      consumerAttributes.put(ConsumerConstant.CONSUMER_INSTANCE_ID_KEY, consumerInstanceId);
+    }
     if (ownerId != null) {
       consumerAttributes.put(ConsumerConstant.OWNER_ID_KEY, ownerId);
     }

@@ -30,17 +30,26 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
+import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
 public class SubscriptionConsumerLifecycleTest {
@@ -185,6 +194,82 @@ public class SubscriptionConsumerLifecycleTest {
       }
 
       Assert.assertTrue(consumer.isFenced());
+      Assert.assertEquals(0, consumer.commitRequestCount);
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testFencedParallelPollDoesNotDeliverSiblingMessages() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer();
+    final SubscriptionConsumerFencedException fencedException =
+        new SubscriptionConsumerFencedException("consumer connection fenced");
+    final SubscriptionMessage message =
+        new SubscriptionMessage(
+            new SubscriptionCommitContext(0, 0, "topic", CONSUMER_GROUP_ID, 0L), 1L);
+    final CompletableFuture<List<SubscriptionMessage>> fencedFuture = new CompletableFuture<>();
+    fencedFuture.completeExceptionally(fencedException);
+
+    try {
+      consumer.collectMultiplePollResults(
+          Arrays.asList(
+              CompletableFuture.completedFuture(Collections.singletonList(message)), fencedFuture),
+          Collections.singleton("topic"));
+      Assert.fail("A fenced poll task must discard messages returned by sibling tasks");
+    } catch (final SubscriptionConsumerFencedException expected) {
+      Assert.assertSame(fencedException, expected);
+    }
+
+    Assert.assertTrue(consumer.isFenced());
+  }
+
+  @Test
+  public void testFencedAsyncCommitFailsBeforeReadingMessages() throws Exception {
+    final TestPullConsumer consumer = new TestPullConsumer();
+    try {
+      final SubscriptionConsumerFencedException fencedException =
+          new SubscriptionConsumerFencedException("consumer connection fenced");
+      consumer.fence(fencedException);
+      final AtomicBoolean messagesIterated = new AtomicBoolean(false);
+      final Iterable<SubscriptionMessage> messages =
+          () -> {
+            messagesIterated.set(true);
+            return Collections.emptyIterator();
+          };
+
+      final CountDownLatch callbackCompleted = new CountDownLatch(1);
+      final AtomicBoolean callbackSucceeded = new AtomicBoolean(false);
+      final AtomicReference<Throwable> callbackFailure = new AtomicReference<>();
+      consumer.commitAsync(
+          messages,
+          new AsyncCommitCallback() {
+            @Override
+            public void onComplete() {
+              callbackSucceeded.set(true);
+              callbackCompleted.countDown();
+            }
+
+            @Override
+            public void onFailure(final Throwable e) {
+              callbackFailure.set(e);
+              callbackCompleted.countDown();
+            }
+          });
+
+      Assert.assertTrue(callbackCompleted.await(5, TimeUnit.SECONDS));
+      Assert.assertFalse(callbackSucceeded.get());
+      Assert.assertSame(fencedException, callbackFailure.get());
+
+      final CompletableFuture<Void> future = consumer.commitAsync(messages);
+      try {
+        future.get(5, TimeUnit.SECONDS);
+        Assert.fail("A fenced async commit must complete exceptionally");
+      } catch (final ExecutionException expected) {
+        Assert.assertSame(fencedException, expected.getCause());
+      }
+
+      Assert.assertFalse(messagesIterated.get());
       Assert.assertEquals(0, consumer.commitRequestCount);
     } finally {
       consumer.close();

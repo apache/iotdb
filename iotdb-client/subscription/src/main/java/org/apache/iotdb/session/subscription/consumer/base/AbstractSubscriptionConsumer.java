@@ -91,6 +91,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -109,6 +110,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private static final long SLEEP_MS = 100L;
   private static final long SLEEP_DELTA_MS = 50L;
   private static final long TIMER_DELTA_MS = 250L;
+  private static final AtomicLong LAST_CONSUMER_INSTANCE_EPOCH = new AtomicLong();
 
   private final String username;
   private final String password;
@@ -118,6 +120,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   protected String consumerGroupId;
   protected String ownerId;
   protected Long ownerEpoch;
+  private final String consumerInstanceId = generateConsumerInstanceId();
 
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
@@ -195,6 +198,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   public Long getOwnerEpoch() {
     return ownerEpoch;
+  }
+
+  String getConsumerInstanceId() {
+    return consumerInstanceId;
   }
 
   /////////////////////////////// ctor ///////////////////////////////
@@ -582,6 +589,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this.thriftMaxFrameSize,
             this.heartbeatIntervalMs,
             this.connectionTimeoutInMs);
+    provider.setConsumerInstanceId(consumerInstanceId);
     try {
       provider.handshake();
     } catch (final Exception e) {
@@ -625,6 +633,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       message = message.replace(encryptedPassword, "***");
     }
     return message;
+  }
+
+  private static String generateConsumerInstanceId() {
+    final long epoch =
+        LAST_CONSUMER_INSTANCE_EPOCH.updateAndGet(
+            previous -> Math.max(System.currentTimeMillis(), previous + 1));
+    return String.format("%016x-%s", epoch, RandomStringGenerator.generate(16));
   }
 
   /////////////////////////////// file ops ///////////////////////////////
@@ -784,42 +799,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       tasks.add(new PollTask(partition, timeoutMs));
     }
 
-    // submit multiple tasks to poll messages
-    final List<SubscriptionMessage> messages = new ArrayList<>();
-    SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
     try {
       // strict timeout
-      for (final Future<List<SubscriptionMessage>> future :
-          SubscriptionExecutorServiceManager.submitMultiplePollTasks(tasks, timeoutMs)) {
-        try {
-          if (future.isCancelled()) {
-            continue;
-          }
-          messages.addAll(future.get());
-        } catch (final CancellationException ignored) {
-
-        } catch (final ExecutionException e) {
-          final Throwable cause = e.getCause();
-          if (cause instanceof SubscriptionRuntimeCriticalException) {
-            final SubscriptionRuntimeCriticalException ex =
-                (SubscriptionRuntimeCriticalException) cause;
-            LOGGER.warn(
-                SubscriptionMessages
-                    .LOG_SUBSCRIPTIONRUNTIMECRITICALEXCEPTION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_ARG_C96324AD,
-                this,
-                topicNames,
-                ex);
-            lastSubscriptionRuntimeCriticalException = ex;
-          } else {
-            LOGGER.warn(
-                SubscriptionMessages
-                    .LOG_EXECUTIONEXCEPTION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_ARG_40F5E1CC,
-                this,
-                topicNames,
-                e);
-          }
-        }
-      }
+      return collectMultiplePollResults(
+          SubscriptionExecutorServiceManager.submitMultiplePollTasks(tasks, timeoutMs), topicNames);
     } catch (final InterruptedException e) {
       LOGGER.warn(
           SubscriptionMessages
@@ -831,6 +814,56 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
 
     // TODO: ignore possible interrupted state?
+
+    return Collections.emptyList();
+  }
+
+  List<SubscriptionMessage> collectMultiplePollResults(
+      final List<Future<List<SubscriptionMessage>>> futures, final Set<String> topicNames)
+      throws InterruptedException {
+    final List<SubscriptionMessage> messages = new ArrayList<>();
+    SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
+    for (final Future<List<SubscriptionMessage>> future : futures) {
+      try {
+        if (future.isCancelled()) {
+          continue;
+        }
+        messages.addAll(future.get());
+      } catch (final CancellationException ignored) {
+
+      } catch (final ExecutionException e) {
+        final Throwable cause = e.getCause();
+        if (cause instanceof SubscriptionConsumerFencedException) {
+          final SubscriptionConsumerFencedException fencedException =
+              (SubscriptionConsumerFencedException) cause;
+          fence(fencedException);
+          throw fencedException;
+        }
+        if (cause instanceof SubscriptionRuntimeCriticalException) {
+          final SubscriptionRuntimeCriticalException ex =
+              (SubscriptionRuntimeCriticalException) cause;
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_SUBSCRIPTIONRUNTIMECRITICALEXCEPTION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_ARG_C96324AD,
+              this,
+              topicNames,
+              ex);
+          lastSubscriptionRuntimeCriticalException = ex;
+        } else {
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_EXECUTIONEXCEPTION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_ARG_40F5E1CC,
+              this,
+              topicNames,
+              e);
+        }
+      }
+    }
+
+    // A timed-out task can be cancelled after fencing the consumer but before its exception is
+    // observable through Future#get. Never deliver messages collected by sibling tasks in that
+    // case.
+    checkIfFenced();
 
     // even if a SubscriptionRuntimeCriticalException is encountered, try to deliver the message to
     // the client
@@ -1711,11 +1744,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
     @Override
     public void run() {
-      if (isClosed()) {
-        return;
-      }
-
       try {
+        checkIfFenced();
+        if (isClosed()) {
+          return;
+        }
         ack(messages);
         callback.onComplete();
       } catch (final Exception e) {
@@ -1728,11 +1761,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final CompletableFuture<Void> future = new CompletableFuture<>();
     SubscriptionExecutorServiceManager.submitAsyncCommitWorker(
         () -> {
-          if (isClosed()) {
-            return;
-          }
-
           try {
+            checkIfFenced();
+            if (isClosed()) {
+              return;
+            }
             ack(messages);
             future.complete(null);
           } catch (final Throwable e) {

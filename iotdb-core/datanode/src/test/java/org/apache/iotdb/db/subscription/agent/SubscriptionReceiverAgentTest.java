@@ -171,6 +171,40 @@ public class SubscriptionReceiverAgentTest {
   }
 
   @Test
+  public void testConsumerInstanceWinnerIsIndependentOfHandshakeOrder() throws Exception {
+    final TPipeSubscribeReq olderHandshake =
+        createHandshakeRequest("group", "consumer", "0000000000000001-older");
+    final TPipeSubscribeReq newerHandshake =
+        createHandshakeRequest("group", "consumer", "0000000000000002-newer");
+
+    final CopyOnWriteArrayList<FakeSubscriptionReceiver> olderFirstReceivers =
+        new CopyOnWriteArrayList<>();
+    final SubscriptionReceiverAgent olderFirstAgent =
+        createAgent(olderFirstReceivers, false /* closeOnTimeout */);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        handleOnNewConnection(olderFirstAgent, olderHandshake).getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        handleOnNewConnection(olderFirstAgent, newerHandshake).getStatus().getCode());
+    Assert.assertTrue(olderFirstReceivers.get(0).invalidated);
+    Assert.assertFalse(olderFirstReceivers.get(1).invalidated);
+
+    final CopyOnWriteArrayList<FakeSubscriptionReceiver> newerFirstReceivers =
+        new CopyOnWriteArrayList<>();
+    final SubscriptionReceiverAgent newerFirstAgent =
+        createAgent(newerFirstReceivers, false /* closeOnTimeout */);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        handleOnNewConnection(newerFirstAgent, newerHandshake).getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_CONSUMER_FENCED.getStatusCode(),
+        handleOnNewConnection(newerFirstAgent, olderHandshake).getStatus().getCode());
+    Assert.assertFalse(newerFirstReceivers.get(0).invalidated);
+    Assert.assertTrue(newerFirstReceivers.get(1).invalidated);
+  }
+
+  @Test
   public void testConcurrentHandshakeWithSameIdentityFencesOldReceiver() throws Exception {
     final CopyOnWriteArrayList<FakeSubscriptionReceiver> receivers = new CopyOnWriteArrayList<>();
     final CountDownLatch oldHandshakeEntered = new CountDownLatch(1);
@@ -482,10 +516,41 @@ public class SubscriptionReceiverAgentTest {
 
   private TPipeSubscribeReq createHandshakeRequest(
       final String consumerGroupId, final String consumerId) throws IOException {
+    return createHandshakeRequest(consumerGroupId, consumerId, null);
+  }
+
+  private TPipeSubscribeReq createHandshakeRequest(
+      final String consumerGroupId, final String consumerId, final String consumerInstanceId)
+      throws IOException {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     attributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    if (consumerInstanceId != null) {
+      attributes.put(ConsumerConstant.CONSUMER_INSTANCE_ID_KEY, consumerInstanceId);
+    }
     return PipeSubscribeHandshakeReq.toTPipeSubscribeReq(new ConsumerConfig(attributes));
+  }
+
+  private TPipeSubscribeResp handleOnNewConnection(
+      final SubscriptionReceiverAgent agent, final TPipeSubscribeReq request) throws Exception {
+    final AtomicReference<TPipeSubscribeResp> response = new AtomicReference<>();
+    final AtomicReference<Throwable> failure = new AtomicReference<>();
+    final Thread connection =
+        new Thread(
+            () -> {
+              try {
+                response.set(agent.handle(request, "root"));
+              } catch (final Throwable t) {
+                failure.set(t);
+              }
+            });
+    connection.start();
+    connection.join(TimeUnit.SECONDS.toMillis(10));
+    Assert.assertFalse(connection.isAlive());
+    if (failure.get() != null) {
+      throw new AssertionError(failure.get());
+    }
+    return response.get();
   }
 
   private TPipeSubscribeReq createHandshakeRequestWithoutIdentity() throws IOException {
@@ -579,6 +644,11 @@ public class SubscriptionReceiverAgentTest {
     @Override
     public String getConsumerGroupId() {
       return consumerConfig == null ? null : consumerConfig.getConsumerGroupId();
+    }
+
+    @Override
+    public String getConsumerInstanceId() {
+      return consumerConfig == null ? null : consumerConfig.getConsumerInstanceId();
     }
 
     @Override
