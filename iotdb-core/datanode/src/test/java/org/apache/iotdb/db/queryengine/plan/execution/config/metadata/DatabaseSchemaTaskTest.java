@@ -54,17 +54,4 @@ public class DatabaseSchemaTaskTest {
     assertTrue(databaseSchema.isSetNeedLastCache());
     assertEquals(false, databaseSchema.isNeedLastCache());
   }
-
-  @Test
-  public void testConstructDatabaseSchemaSetsPreferredDataNodeWhenPresent() throws Exception {
-    final DatabaseSchemaStatement statement =
-        new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.ALTER);
-    statement.setDatabasePath(new PartialPath("root.sg"));
-    statement.setPreferredDataNodeId(7);
-
-    final TDatabaseSchema databaseSchema = DatabaseSchemaTask.constructDatabaseSchema(statement);
-
-    assertTrue(databaseSchema.isSetPreferredDataNodeId());
-    assertEquals(7, databaseSchema.getPreferredDataNodeId());
-  }
 }

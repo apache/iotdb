@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -123,6 +124,11 @@ public class LoadTsFileDataTypeConverter {
     return false;
   }
 
+  private static int getPreferredDataNodeIdForLoad() {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    return config.isLoadTsFilePreferLocalNode() ? config.getDataNodeId() : -1;
+  }
+
   public static TSStatus getMemoryPressureStatus(final Throwable throwable) {
     Throwable current = throwable;
     while (current != null) {
@@ -176,8 +182,13 @@ public class LoadTsFileDataTypeConverter {
     try {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
-      return loadTsFileTableStatement.accept(
-          tableStatementDataTypeConvertExecutionVisitor, loadTsFileTableStatement.getDatabase());
+      ClusterPartitionFetcher.setLoadPreferredDataNodeId(getPreferredDataNodeIdForLoad());
+      try {
+        return loadTsFileTableStatement.accept(
+            tableStatementDataTypeConvertExecutionVisitor, loadTsFileTableStatement.getDatabase());
+      } finally {
+        ClusterPartitionFetcher.clearLoadPreferredDataNodeId();
+      }
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
@@ -242,7 +253,12 @@ public class LoadTsFileDataTypeConverter {
     try {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
-      return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
+      ClusterPartitionFetcher.setLoadPreferredDataNodeId(getPreferredDataNodeIdForLoad());
+      try {
+        return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
+      } finally {
+        ClusterPartitionFetcher.clearLoadPreferredDataNodeId();
+      }
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {

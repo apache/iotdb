@@ -76,9 +76,6 @@ public class DatabaseSchemaTask implements IConfigTask {
     if (databaseSchemaStatement.isSetNeedLastCache()) {
       databaseSchema.setNeedLastCache(databaseSchemaStatement.isNeedLastCache());
     }
-    if (databaseSchemaStatement.getPreferredDataNodeId() != null) {
-      databaseSchema.setPreferredDataNodeId(databaseSchemaStatement.getPreferredDataNodeId());
-    }
     databaseSchema.setIsTableModel(false);
     return databaseSchema;
   }

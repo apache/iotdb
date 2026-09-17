@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
@@ -213,11 +212,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   protected boolean isConvertOnTypeMismatch() {
     return isConvertOnTypeMismatch;
-  }
-
-  protected int getPreferredDataNodeId() {
-    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.isLoadTsFilePreferLocalNode() ? config.getDataNodeId() : -1;
   }
 
   public IAnalysis analyzeFileByFile(IAnalysis analysis) {
@@ -714,8 +708,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private LoadTsFileTableSchemaCache getOrCreateTableSchemaCache() {
     if (tableSchemaCache == null) {
       tableSchemaCache =
-          new LoadTsFileTableSchemaCache(
-              metadata, context, isAutoCreateDatabase, isVerifySchema, getPreferredDataNodeId());
+          new LoadTsFileTableSchemaCache(metadata, context, isAutoCreateDatabase, isVerifySchema);
     }
     return tableSchemaCache;
   }

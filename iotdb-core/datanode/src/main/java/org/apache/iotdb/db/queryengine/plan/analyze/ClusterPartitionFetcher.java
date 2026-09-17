@@ -75,6 +75,7 @@ import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATAB
 public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final ThreadLocal<Integer> LOAD_PREFERRED_DATA_NODE_ID = new ThreadLocal<>();
 
   private final SeriesPartitionExecutor partitionExecutor;
 
@@ -92,6 +93,23 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   public static ClusterPartitionFetcher getInstance() {
     return ClusterPartitionFetcherHolder.INSTANCE;
+  }
+
+  public static void setLoadPreferredDataNodeId(final int preferredDataNodeId) {
+    if (preferredDataNodeId >= 0) {
+      LOAD_PREFERRED_DATA_NODE_ID.set(preferredDataNodeId);
+    } else {
+      LOAD_PREFERRED_DATA_NODE_ID.remove();
+    }
+  }
+
+  public static void clearLoadPreferredDataNodeId() {
+    LOAD_PREFERRED_DATA_NODE_ID.remove();
+  }
+
+  private static int getLoadPreferredDataNodeId() {
+    final Integer preferredDataNodeId = LOAD_PREFERRED_DATA_NODE_ID.get();
+    return preferredDataNodeId == null ? -1 : preferredDataNodeId;
   }
 
   private ClusterPartitionFetcher() {
@@ -319,7 +337,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
-    return getOrCreateDataPartition(dataPartitionQueryParams, userName, -1);
+    return getOrCreateDataPartition(
+        dataPartitionQueryParams, userName, getLoadPreferredDataNodeId());
   }
 
   @Override

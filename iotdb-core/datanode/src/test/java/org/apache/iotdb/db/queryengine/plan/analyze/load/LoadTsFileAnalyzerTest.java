@@ -447,7 +447,7 @@ public class LoadTsFileAnalyzerTest {
   private LoadTsFileTableSchemaCache createTableSchemaCache(final boolean shouldVerifyDataType)
       throws LoadRuntimeOutOfMemoryException {
     return new LoadTsFileTableSchemaCache(
-        null, new MPPQueryContext(new QueryId("load_test")), false, shouldVerifyDataType, -1);
+        null, new MPPQueryContext(new QueryId("load_test")), false, shouldVerifyDataType);
   }
 
   private Method getVerifyTableDataTypeMethod() throws NoSuchMethodException {
@@ -495,7 +495,7 @@ public class LoadTsFileAnalyzerTest {
     private final Set<List<Object>> verifiedDevices = new HashSet<>();
 
     private TrackingLoadTsFileTableSchemaCache() throws LoadRuntimeOutOfMemoryException {
-      super(null, new MPPQueryContext(new QueryId("load_test")), false, true, -1);
+      super(null, new MPPQueryContext(new QueryId("load_test")), false, true);
     }
 
     @Override

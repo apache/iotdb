@@ -39,7 +39,6 @@ import org.apache.iotdb.confignode.manager.load.balancer.region.PartiteGraphPlac
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -134,9 +133,7 @@ public class RegionBalancer {
           preferredDataNodeMap == null ? null : preferredDataNodeMap.get(database);
       final int preferredDataNodeId =
           TConsensusGroupType.DataRegion.equals(consensusGroupType)
-              ? (requestPreferredDataNode != null
-                  ? requestPreferredDataNode
-                  : getPreferredDataNodeId(database))
+              ? (requestPreferredDataNode != null ? requestPreferredDataNode : -1)
               : -1;
       // Only considering the specified Database when doing allocation
       final List<TRegionReplicaSet> databaseAllocatedRegionGroups =
@@ -194,18 +191,6 @@ public class RegionBalancer {
 
   private ProcedureManager getProcedureManager() {
     return configManager.getProcedureManager();
-  }
-
-  private int getPreferredDataNodeId(final String database) {
-    try {
-      final TDatabaseSchema databaseSchema =
-          getClusterSchemaManager().getDatabaseSchemaByName(database);
-      return databaseSchema.isSetPreferredDataNodeId()
-          ? databaseSchema.getPreferredDataNodeId()
-          : -1;
-    } catch (final DatabaseNotExistsException e) {
-      return -1;
-    }
   }
 
   private static void preferDataNodeIfPossible(

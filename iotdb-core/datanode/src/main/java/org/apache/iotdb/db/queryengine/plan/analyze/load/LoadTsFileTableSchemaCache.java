@@ -100,7 +100,6 @@ public class LoadTsFileTableSchemaCache {
   private final Metadata metadata;
   private final MPPQueryContext context;
   private final boolean shouldVerifyDataType;
-  private final int preferredDataNodeId;
 
   private Map<String, Set<IDeviceID>> currentBatchTable2Devices;
 
@@ -122,8 +121,7 @@ public class LoadTsFileTableSchemaCache {
       final Metadata metadata,
       final MPPQueryContext context,
       final boolean needToCreateDatabase,
-      final boolean shouldVerifyDataType,
-      final int preferredDataNodeId)
+      final boolean shouldVerifyDataType)
       throws LoadRuntimeOutOfMemoryException {
     this.block =
         LoadTsFileMemoryManager.getInstance()
@@ -131,7 +129,6 @@ public class LoadTsFileTableSchemaCache {
     this.metadata = metadata;
     this.context = context;
     this.shouldVerifyDataType = shouldVerifyDataType;
-    this.preferredDataNodeId = preferredDataNodeId;
     this.currentBatchTable2Devices = new HashMap<>();
     this.currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
     this.needToCreateDatabase = needToCreateDatabase;
@@ -352,11 +349,8 @@ public class LoadTsFileTableSchemaCache {
 
     AuthorityChecker.getAccessControl()
         .checkCanCreateDatabase(context.getSession().getUserName(), database, context);
-    final TDatabaseSchema schema = new TDatabaseSchema(database).setIsTableModel(true);
-    if (preferredDataNodeId >= 0) {
-      schema.setPreferredDataNodeId(preferredDataNodeId);
-    }
-    final CreateDBTask task = new CreateDBTask(schema, true);
+    final CreateDBTask task =
+        new CreateDBTask(new TDatabaseSchema(database).setIsTableModel(true), true);
     try {
       final ListenableFuture<ConfigTaskResult> future =
           task.execute(ClusterConfigTaskExecutor.getInstance());
