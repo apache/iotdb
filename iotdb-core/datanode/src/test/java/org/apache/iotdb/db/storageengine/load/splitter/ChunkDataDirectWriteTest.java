@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkData.ChunkLayout;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -33,7 +34,14 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.TsFilePrecalculatedChunkWriter;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -45,6 +53,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.TIME_COLUMN_MASK;
@@ -204,6 +213,201 @@ public class ChunkDataDirectWriteTest {
     }
   }
 
+  @Test
+  public void testRichChunkOffsetCalculatorMatchesWriterForAlignedAndNonAligned() throws Exception {
+    final File tsFile =
+        Files.createTempFile("rich-chunk-offset-calculator", TsFileConstant.TSFILE_SUFFIX).toFile();
+    Files.deleteIfExists(tsFile.toPath());
+
+    final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
+    final List<ChunkData> chunkDataList = new ArrayList<>();
+    final int pointCount = 300_000;
+    final long[] times = new long[pointCount];
+    final Object[] values = new Object[pointCount];
+    for (int i = 0; i < pointCount; i++) {
+      times[i] = i + 1L;
+      values[i] = i;
+    }
+
+    for (int deviceIndex = 0; deviceIndex < 5; deviceIndex++) {
+      final StringArrayDeviceID device = new StringArrayDeviceID("root", "rich", "d" + deviceIndex);
+      for (int measurementIndex = 0; measurementIndex < 4; measurementIndex++) {
+        final NonAlignedChunkData chunkData =
+            createNonAlignedChunkData(device, "s" + measurementIndex);
+        chunkData.writeDecodePage(times, values, pointCount);
+        chunkData.endChunk();
+        calculator.assign(chunkData);
+        chunkDataList.add(chunkData);
+      }
+    }
+
+    final AlignedChunkData alignedChunkData = createAlignedTimeChunkData();
+    alignedChunkData.writeDecodePage(times, new Object[pointCount], pointCount);
+    alignedChunkData.endChunk();
+    alignedChunkData.addValueChunk(createChunkHeader("s1"));
+    final TsPrimitiveType[] alignedValues = new TsPrimitiveType[pointCount];
+    for (int i = 0; i < pointCount; i++) {
+      alignedValues[i] = TsPrimitiveType.getByType(TSDataType.INT32, i);
+    }
+    alignedChunkData.writeDecodeValuePage(times, alignedValues, TSDataType.INT32);
+    alignedChunkData.endChunk();
+    calculator.assign(alignedChunkData);
+    chunkDataList.add(alignedChunkData);
+
+    try (final TsFilePrecalculatedChunkWriter writer = new TsFilePrecalculatedChunkWriter(tsFile)) {
+      for (final ChunkData chunkData : chunkDataList) {
+        final ChunkData.ChunkLayout layout = chunkData.getChunkLayout();
+        final List<Chunk> chunks = chunkData.getChunks();
+        long chunkOffset = layout.offset();
+        for (int i = 0; i < chunks.size(); i++) {
+          final Chunk chunk = chunks.get(i);
+          final long chunkLength =
+              serializeChunkHeaderSize(chunk.getHeader()) + chunk.getData().remaining();
+          writer.writeChunk(
+              chunkData.getDevice(),
+              chunkData.isAligned(),
+              layout.chunkGroupHeaderOffset(),
+              layout.firstChunkOfGroup() && i == 0,
+              chunk,
+              chunkOffset);
+          chunkOffset += chunkLength;
+        }
+        writer.getOutput().flush();
+        assertEquals(
+            chunkData.getChunkLayout().offset() + chunkData.getChunkLayout().length(),
+            tsFile.length());
+      }
+    } finally {
+      try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+        assertEquals(6, reader.getAllDevices().size());
+      }
+      assertSeriesReadable(
+          tsFile,
+          new StringArrayDeviceID("root", "rich", "d0"),
+          "s0",
+          false,
+          pointCount,
+          0,
+          pointCount - 1,
+          TSDataType.INT32);
+      assertChunkMetadataCount(
+          tsFile, new StringArrayDeviceID("root", "sg", "d1"), "s1", true, pointCount);
+      Files.deleteIfExists(tsFile.toPath());
+    }
+  }
+
+  @Test
+  public void testPrecalculatedWriterHandlesOutOfOrderChunkDispatch() throws Exception {
+    final File tsFile =
+        Files.createTempFile("out-of-order-chunk-write", TsFileConstant.TSFILE_SUFFIX).toFile();
+    Files.deleteIfExists(tsFile.toPath());
+
+    final ChunkOffsetCalculator calculator = new ChunkOffsetCalculator();
+    final StringArrayDeviceID firstDevice = new StringArrayDeviceID("root", "order", "d0");
+    final StringArrayDeviceID secondDevice = new StringArrayDeviceID("root", "order", "d1");
+    final NonAlignedChunkData firstChunkData = createNonAlignedChunkData(firstDevice, "s0", 0, 4);
+    final NonAlignedChunkData secondChunkData =
+        createNonAlignedChunkData(secondDevice, "s0", 10, 4);
+    calculator.assign(firstChunkData);
+    calculator.assign(secondChunkData);
+
+    final ChunkLayout secondLayout = secondChunkData.getChunkLayout();
+    final ChunkLayout firstLayout = firstChunkData.getChunkLayout();
+    final Chunk secondChunk = secondChunkData.getChunks().get(0);
+    final Chunk firstChunk = firstChunkData.getChunks().get(0);
+    final long secondChunkLength =
+        serializeChunkHeaderSize(secondChunk.getHeader()) + secondChunk.getData().remaining();
+    final long firstChunkLength =
+        serializeChunkHeaderSize(firstChunk.getHeader()) + firstChunk.getData().remaining();
+    final long expectedLengthAfterSecondChunk = secondLayout.offset() + secondChunkLength;
+    final long expectedFinalLength =
+        expectedLengthAfterSecondChunk
+            + serializeChunkGroupHeaderSize(firstDevice)
+            + firstChunkLength;
+
+    try (final TsFilePrecalculatedChunkWriter writer = new TsFilePrecalculatedChunkWriter(tsFile)) {
+      writer.writeChunk(
+          secondChunkData.getDevice(),
+          secondChunkData.isAligned(),
+          secondLayout.chunkGroupHeaderOffset(),
+          secondLayout.firstChunkOfGroup(),
+          secondChunk,
+          secondLayout.offset());
+      writer.getOutput().flush();
+      assertEquals(expectedLengthAfterSecondChunk, tsFile.length());
+
+      writer.writeChunk(
+          firstChunkData.getDevice(),
+          firstChunkData.isAligned(),
+          firstLayout.chunkGroupHeaderOffset(),
+          firstLayout.firstChunkOfGroup(),
+          firstChunk,
+          firstLayout.offset());
+      writer.getOutput().flush();
+      assertEquals(expectedFinalLength, tsFile.length());
+    } finally {
+      assertSeriesReadable(tsFile, firstDevice, "s0", false, 4, 0, 3, TSDataType.INT32);
+      assertSeriesReadable(tsFile, secondDevice, "s0", false, 4, 10, 13, TSDataType.INT32);
+      Files.deleteIfExists(tsFile.toPath());
+    }
+  }
+
+  private static void assertSeriesReadable(
+      final File tsFile,
+      final IDeviceID device,
+      final String measurement,
+      final boolean isAligned,
+      final int expectedPointCount,
+      final int expectedFirstValue,
+      final int expectedLastValue,
+      final TSDataType dataType)
+      throws Exception {
+    final QueryExpression queryExpression =
+        QueryExpression.create(
+            Collections.singletonList(new Path(device, measurement, isAligned)), null);
+    try (final TsFileReader reader = new TsFileReader(tsFile)) {
+      final QueryDataSet dataSet = reader.query(queryExpression);
+      int count = 0;
+      while (dataSet.hasNext()) {
+        final RowRecord row = dataSet.next();
+        final Field field = row.getField(0);
+        final int value;
+        switch (dataType) {
+          case INT32:
+            value = field.getIntV();
+            break;
+          case INT64:
+            value = Math.toIntExact(field.getLongV());
+            break;
+          default:
+            throw new IllegalArgumentException("Unsupported type in assertion: " + dataType);
+        }
+        if (count == 0) {
+          assertEquals(expectedFirstValue, value);
+        }
+        if (count == expectedPointCount - 1) {
+          assertEquals(expectedLastValue, value);
+        }
+        count++;
+      }
+      assertEquals(expectedPointCount, count);
+    }
+  }
+
+  private static void assertChunkMetadataCount(
+      final File tsFile,
+      final IDeviceID device,
+      final String measurement,
+      final boolean isAligned,
+      final int expectedPointCount)
+      throws Exception {
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      final org.apache.tsfile.file.metadata.ChunkMetadata chunkMetadata =
+          reader.getChunkMetadataList(new Path(device, measurement, isAligned), false).get(0);
+      assertEquals(expectedPointCount, chunkMetadata.getStatistics().getCount());
+    }
+  }
+
   private static Statistics<?> createInt32Statistics() {
     final Statistics<?> statistics = Statistics.getStatsByType(TSDataType.INT32);
     statistics.update(1L, 1);
@@ -219,6 +423,33 @@ public class ChunkDataDirectWriteTest {
     final IDeviceID device = new StringArrayDeviceID("root", "sg", "d1");
     return (NonAlignedChunkData)
         ChunkData.createChunkData(false, device, createChunkHeader(), timePartitionSlot);
+  }
+
+  private static NonAlignedChunkData createNonAlignedChunkData(
+      final IDeviceID device, final String measurement) {
+    return (NonAlignedChunkData)
+        ChunkData.createChunkData(
+            false, device, createChunkHeader(measurement), new TTimePartitionSlot(0L));
+  }
+
+  private static NonAlignedChunkData createNonAlignedChunkData(
+      final IDeviceID device,
+      final String measurement,
+      final int startValue,
+      final int pointCount) {
+    final NonAlignedChunkData chunkData =
+        (NonAlignedChunkData)
+            ChunkData.createChunkData(
+                false, device, createChunkHeader(measurement), new TTimePartitionSlot(0L));
+    final long[] times = new long[pointCount];
+    final Object[] values = new Object[pointCount];
+    for (int i = 0; i < pointCount; i++) {
+      times[i] = i + 1L;
+      values[i] = startValue + i;
+    }
+    chunkData.writeDecodePage(times, values, pointCount);
+    chunkData.endChunk();
+    return chunkData;
   }
 
   private static AlignedChunkData createAlignedChunkData() {
@@ -259,6 +490,12 @@ public class ChunkDataDirectWriteTest {
   private static int serializeChunkHeaderSize(final ChunkHeader chunkHeader) throws Exception {
     try (final ByteArrayOutputStream output = new ByteArrayOutputStream()) {
       return chunkHeader.serializeTo(output);
+    }
+  }
+
+  private static int serializeChunkGroupHeaderSize(final IDeviceID device) throws Exception {
+    try (final ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+      return new ChunkGroupHeader(device).serializeTo(output);
     }
   }
 }

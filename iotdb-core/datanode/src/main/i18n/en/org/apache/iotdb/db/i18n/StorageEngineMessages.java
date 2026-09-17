@@ -530,6 +530,10 @@ public final class StorageEngineMessages {
       "Preparing LOAD TsFile {}: sealing staged resources.";
   public static final String LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335 =
       "Committing LOAD TsFile {}: loading prepared resources into DataRegion.";
+  public static final String LOG_RECEIVE_LOAD_TSFILE_NODE_ARG_C36E832B =
+      "Receive LOAD TsFile node: {}.";
+  public static final String LOG_RECEIVE_LOAD_TSFILE_NODE_SUCCESS_ARG_27F8ECD6 =
+      "Receive LOAD TsFile node success: {}.";
   public static final String EXCEPTION_TABLE_ARG_ARG_DOES_NOT_EXIST_WHEN_APPLYING_LOAD_CHUNK_DATA_IT_MAY_HAVE_BEEN_DROPPED_AFTER_THE_LOAD_WAS_ANALYZED_DDB35F93 =
       "Table '%s.%s' does not exist when applying LOAD chunk data. It may have been dropped after the LOAD was analyzed.";
   public static final String TASK_DIR_NOT_EMPTY_SKIP_DELETE = "Task dir {} is not empty, skip deleting.";

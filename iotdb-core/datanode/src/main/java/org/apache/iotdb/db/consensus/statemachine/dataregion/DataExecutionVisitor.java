@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
@@ -75,12 +76,16 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   @Override
   public TSStatus visitLoadTsFileConsensus(
       final LoadTsFileConsensusNode node, final DataRegion dataRegion) {
+    LOGGER.info(StorageEngineMessages.LOG_RECEIVE_LOAD_TSFILE_NODE_ARG_C36E832B, node);
     switch (node.getOp()) {
       case BEGIN:
+        LOGGER.info(StorageEngineMessages.LOG_RECEIVE_LOAD_TSFILE_NODE_SUCCESS_ARG_27F8ECD6, node);
         return StatusUtils.OK;
       case PIECE:
         try {
           dataRegion.writeLoadTsFilePiece(node);
+          LOGGER.info(
+              StorageEngineMessages.LOG_RECEIVE_LOAD_TSFILE_NODE_SUCCESS_ARG_27F8ECD6, node);
           return StatusUtils.OK;
         } catch (final IOException | PageException e) {
           LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
@@ -95,6 +100,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
                       progressIndexes.put(
                           slot, ProgressIndexType.deserializeFrom(ByteBuffer.wrap(bytes))));
           final boolean prepared = dataRegion.writeLoadTsFilePrepare(node, progressIndexes);
+          LOGGER.info(
+              StorageEngineMessages.LOG_RECEIVE_LOAD_TSFILE_NODE_SUCCESS_ARG_27F8ECD6, node);
           return prepared ? StatusUtils.OK : RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
         } catch (final Exception e) {
           LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
@@ -109,6 +116,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
                       progressIndexes.put(
                           slot, ProgressIndexType.deserializeFrom(ByteBuffer.wrap(bytes))));
           final boolean committed = dataRegion.writeLoadTsFileCommit(node, progressIndexes);
+          LOGGER.info(
+              StorageEngineMessages.LOG_RECEIVE_LOAD_TSFILE_NODE_SUCCESS_ARG_27F8ECD6, node);
           return committed ? StatusUtils.OK : RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
         } catch (final Exception e) {
           LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
@@ -117,6 +126,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       case ABORT:
         try {
           dataRegion.writeLoadTsFileAbort(node);
+          LOGGER.info(
+              StorageEngineMessages.LOG_RECEIVE_LOAD_TSFILE_NODE_SUCCESS_ARG_27F8ECD6, node);
           return StatusUtils.OK;
         } catch (final Exception e) {
           LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);

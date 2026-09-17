@@ -1704,6 +1704,11 @@ public class IoTDBConfig {
     return this.loadTsFileDirs;
   }
 
+  public void setLoadTsFileDirs(final String[] loadTsFileDirs) {
+    this.loadTsFileDirs = loadTsFileDirs;
+    this.loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
+  }
+
   public String[] getLoadTsFileAllowedDirs() {
     return this.loadTsFileAllowedDirs.length == 0
         ? getLoadTsFileDirs()

@@ -72,13 +72,9 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
   private void startFile() throws IOException {
     out.write(BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING));
     out.write(new byte[] {TSFileConfig.VERSION_NUMBER});
-    LOGGER.info(
-        "Started precalculated TsFile writer: file={}, headerEndOffset={}",
-        getFileForLog(),
-        out.getPosition());
   }
 
-  public void writeChunk(
+  public ChunkWriteResult writeChunk(
       IDeviceID device,
       boolean isAligned,
       long chunkGroupHeaderOffset,
@@ -91,56 +87,18 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
     final int chunkHeaderSize = chunk.getHeader().getSerializedSize();
     final int chunkDataSize = chunk.getData().remaining();
     final long chunkLength = chunkHeaderSize + (long) chunkDataSize;
-
-    LOGGER.info(
-        "Writing precalculated Chunk: file={}, device={}, aligned={}, measurement={}, dataType={}, "
-            + "chunkType={}, pageCount={}, firstChunkOfGroup={}, expectedGroupHeaderOffset={}, "
-            + "expectedChunkOffset={}, actualOffsetBeforeWrite={}, chunkHeaderSize={}, "
-            + "chunkDataSize={}, chunkLength={}",
-        getFileForLog(),
-        device,
-        isAligned,
-        chunk.getHeader().getMeasurementID(),
-        chunk.getHeader().getDataType(),
-        chunk.getHeader().getChunkType(),
-        chunk.getHeader().getNumOfPages(),
-        isFirstChunkOfGroup,
-        chunkGroupHeaderOffset,
-        chunkOffset,
-        currentPos,
-        chunkHeaderSize,
-        chunkDataSize,
-        chunkLength);
+    long actualChunkGroupHeaderOffset = -1L;
 
     if (isFirstChunkOfGroup) {
-      chunkGroupHeaderOffset = alignToOffset(chunkGroupHeaderOffset, device, chunk);
+      actualChunkGroupHeaderOffset = alignToOffset(chunkGroupHeaderOffset, device, chunk);
       new ChunkGroupHeader(device).serializeTo(stream);
       currentPos = out.getPosition();
-      LOGGER.info(
-          "Wrote ChunkGroupHeader: file={}, device={}, headerOffset={}, headerEndOffset={}, "
-              + "headerLength={}",
-          getFileForLog(),
-          device,
-          chunkGroupHeaderOffset,
-          currentPos,
-          currentPos - chunkGroupHeaderOffset);
     }
 
     chunkOffset = alignToOffset(chunkOffset, device, chunk);
     chunk.getHeader().serializeTo(stream);
     out.write(chunk.getData().duplicate());
-
-    LOGGER.info(
-        "Wrote precalculated Chunk: file={}, device={}, measurement={}, chunkOffset={}, "
-            + "chunkEndOffset={}, expectedChunkEndOffset={}, metadataMask={}",
-        getFileForLog(),
-        device,
-        chunk.getHeader().getMeasurementID(),
-        chunkOffset,
-        out.getPosition(),
-        chunkOffset + chunkLength,
-        chunk.getHeader().getChunkType()
-            & (TsFileConstant.TIME_COLUMN_MASK | TsFileConstant.VALUE_COLUMN_MASK));
+    final long actualChunkEndOffset = out.getPosition();
 
     ChunkMetadata metadata =
         new ChunkMetadata(
@@ -158,6 +116,8 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
         .computeIfAbsent(device, k -> new TreeMap<>())
         .computeIfAbsent(chunk.getHeader().getMeasurementID(), k -> new ArrayList<>())
         .add(metadata);
+
+    return new ChunkWriteResult(actualChunkGroupHeaderOffset, chunkOffset, actualChunkEndOffset);
   }
 
   private long alignToOffset(final long expectedOffset, final IDeviceID device, final Chunk chunk)
@@ -199,17 +159,6 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
   @Override
   public void close() throws IOException {
     final long metaOffset = out.getPosition();
-    LOGGER.info(
-        "Closing precalculated TsFile writer: file={}, dataEndOffset={}, deviceCount={}, "
-            + "seriesCount={}, chunkCount={}",
-        getFileForLog(),
-        metaOffset,
-        device2MetadataMap.size(),
-        device2MetadataMap.values().stream().mapToInt(Map::size).sum(),
-        device2MetadataMap.values().stream()
-            .flatMap(measurements -> measurements.values().stream())
-            .mapToInt(List::size)
-            .sum());
     final OutputStream stream = out.wrapAsStream();
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, stream);
     final Map<IDeviceID, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
@@ -261,14 +210,6 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
 
     ReadWriteIOUtils.write(tsFileMetadataSize, stream);
     out.write(BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING));
-    LOGGER.info(
-        "Finished precalculated TsFile writer: file={}, metaOffset={}, tsFileMetadataOffset={}, "
-            + "tsFileMetadataSize={}, fileEndOffset={}",
-        getFileForLog(),
-        metaOffset,
-        tsFileMetadataOffset,
-        tsFileMetadataSize,
-        out.getPosition());
     out.close();
   }
 
@@ -298,4 +239,7 @@ public class TsFilePrecalculatedChunkWriter implements AutoCloseable {
                     .collect(java.util.stream.Collectors.toList())));
     return result;
   }
+
+  public record ChunkWriteResult(
+      long actualChunkGroupHeaderOffset, long actualChunkOffset, long actualChunkEndOffset) {}
 }

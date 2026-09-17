@@ -243,6 +243,15 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
         regionLoadIds.computeIfAbsent(regionId, ignored -> UUID.randomUUID().toString());
 
     final long pieceIndex = pieceNode.getPieceIndex();
+    LOGGER.info(
+        "Dispatch LOAD piece: loadId={}, regionId={}, pieceIndex={}, tsFile={}, dataSize={}, "
+            + "replicaSet={}",
+        loadId,
+        regionId,
+        pieceIndex,
+        pieceNode.getTsFile() == null ? null : pieceNode.getTsFile().getName(),
+        pieceNode.getDataSize(),
+        replicaSet);
     final LoadTsFileConsensusNode piece =
         LoadTsFileConsensusNode.piece(
             new PlanNodeId("load-piece-" + loadId + "-" + pieceIndex),
@@ -262,6 +271,12 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
           pieceNode);
       return false;
     }
+    LOGGER.info(
+        "Dispatch LOAD piece success: loadId={}, regionId={}, pieceIndex={}, dataSize={}",
+        loadId,
+        regionId,
+        pieceIndex,
+        piece.getDataSize());
     regionPieceCounts.merge(regionId, 1L, Long::sum);
     regionTotalBytes.merge(regionId, piece.getDataSize(), Long::sum);
     return true;

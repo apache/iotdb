@@ -38,7 +38,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -98,11 +97,32 @@ public class LoadTsFileProgress {
       final Chunk chunk,
       final long dataEnd)
       throws IOException {
+    final long physicalStart = firstChunkOfGroup ? chunkGroupHeaderOffset : chunkOffset;
+    recordChunk(
+        device,
+        aligned,
+        chunkGroupHeaderOffset,
+        chunkOffset,
+        firstChunkOfGroup,
+        chunk,
+        dataEnd,
+        physicalStart);
+  }
+
+  public void recordChunk(
+      final String device,
+      final boolean aligned,
+      final long chunkGroupHeaderOffset,
+      final long chunkOffset,
+      final boolean firstChunkOfGroup,
+      final Chunk chunk,
+      final long dataEnd,
+      final long actualPhysicalStart)
+      throws IOException {
     activate(dataEnd);
 
     final byte[] chunkHeaderBytes = serializeChunkHeader(chunk);
     final byte[] statisticsBytes = serializeStatistics(chunk);
-    final long physicalStart = firstChunkOfGroup ? chunkGroupHeaderOffset : chunkOffset;
 
     final ChunkRangeRecord record =
         new ChunkRangeRecord(
@@ -115,7 +135,7 @@ public class LoadTsFileProgress {
             chunk.getHeader().getChunkType(),
             chunkHeaderBytes,
             statisticsBytes,
-            physicalStart,
+            actualPhysicalStart,
             dataEnd);
     records.add(record);
 
@@ -130,25 +150,10 @@ public class LoadTsFileProgress {
       return false;
     }
 
-    final List<ChunkRangeRecord> sorted = readAllRecords();
-    if (sorted.isEmpty()) {
+    if (readAllRecords().isEmpty()) {
       return false;
     }
-    sorted.sort(Comparator.comparingLong(ChunkRangeRecord::physicalStart));
-
-    long coveredStart = sorted.get(0).physicalStart();
-    long coveredEnd = sorted.get(0).physicalEnd();
-    if (coveredStart != TS_FILE_HEADER_SIZE) {
-      return false;
-    }
-    for (int i = 1; i < sorted.size(); i++) {
-      final ChunkRangeRecord record = sorted.get(i);
-      if (record.physicalStart() > coveredEnd) {
-        return false;
-      }
-      coveredEnd = Math.max(coveredEnd, record.physicalEnd());
-    }
-    return coveredEnd == currentFileLength;
+    return currentFileLength >= totalLength;
   }
 
   public List<ChunkRangeRecord> readAllRecords() throws IOException {
