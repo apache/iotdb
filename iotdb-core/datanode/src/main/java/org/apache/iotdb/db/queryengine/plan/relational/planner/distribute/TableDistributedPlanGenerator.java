@@ -989,7 +989,7 @@ public class TableDistributedPlanGenerator
     Comparator<DeviceEntry> comparator =
         sortPropertyContext.map(property -> property.comparator).orElse(null);
     long batchSize =
-        IoTDBDescriptor.getInstance().getConfig().getTableQueryDeviceEntryBatchSizeInBytes();
+        IoTDBDescriptor.getInstance().getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     Map<TRegionReplicaSet, DeviceTableScanNode> scanNodes = new HashMap<>();
     Map<TRegionReplicaSet, AbstractDeviceEntryMaterializer> materializers = new HashMap<>();
     Map<TRegionReplicaSet, Integer> regionEntryCounts = new HashMap<>();
@@ -1213,7 +1213,7 @@ public class TableDistributedPlanGenerator
     Comparator<DeviceEntry> comparator =
         sortPropertyContext.map(property -> property.comparator).orElse(null);
     long batchSize =
-        IoTDBDescriptor.getInstance().getConfig().getTableQueryDeviceEntryBatchSizeInBytes();
+        IoTDBDescriptor.getInstance().getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     Map<TRegionReplicaSet, DeviceTableScanNode> scanNodes = new HashMap<>();
     Map<TRegionReplicaSet, AbstractDeviceEntryMaterializer> materializers = new HashMap<>();
     Map<TRegionReplicaSet, Integer> regionEntryCounts = new HashMap<>();
@@ -1536,7 +1536,7 @@ public class TableDistributedPlanGenerator
     Comparator<DeviceEntry> comparator =
         sortPropertyContext.map(property -> property.comparator).orElse(null);
     long batchSize =
-        IoTDBDescriptor.getInstance().getConfig().getTableQueryDeviceEntryBatchSizeInBytes();
+        IoTDBDescriptor.getInstance().getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
         scanNodes = new HashMap<>();
     Map<DeviceTableScanNode, AbstractDeviceEntryMaterializer> materializers = new HashMap<>();
@@ -2099,7 +2099,7 @@ public class TableDistributedPlanGenerator
     }
 
     long batchSize =
-        IoTDBDescriptor.getInstance().getConfig().getTableQueryDeviceEntryBatchSizeInBytes();
+        IoTDBDescriptor.getInstance().getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
     Map<TRegionReplicaSet, PlanNodeId> regionPlanNodeIds = new HashMap<>();
     Map<TRegionReplicaSet, AbstractDeviceEntryMaterializer> stagingMaterializers = new HashMap<>();
@@ -2475,7 +2475,7 @@ public class TableDistributedPlanGenerator
     }
 
     long batchSize =
-        IoTDBDescriptor.getInstance().getConfig().getTableQueryDeviceEntryBatchSizeInBytes();
+        IoTDBDescriptor.getInstance().getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     boolean hasCrossRegionDevice = false;
     Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions = new HashMap<>();
     Map<TRegionReplicaSet, Pair<PlanNodeId, PlanNodeId>> regionPlanNodeIds = new HashMap<>();
