@@ -66,7 +66,8 @@ final class VirtualDirectoryNodes {
   }
 
   static FsNode rewrite(FsNode node, FsPath virtualPath, String resolverName) {
-    return rewrite(node, node.getName(), virtualPath, resolverName, new LinkedHashMap<>());
+    return rewrite(
+        node, virtualPath.getFileName(), virtualPath, resolverName, new LinkedHashMap<>());
   }
 
   static FsNode rewrite(

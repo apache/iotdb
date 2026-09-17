@@ -68,23 +68,27 @@ public class TableVirtualDirectoryResolverTest {
 
   @Test
   public void byDatabaseEscapesDatabaseAndChildNames() throws SQLException {
-    when(executor.query("SHOW DATABASES"))
-        .thenReturn(SqlRow.list(SqlRow.of("Database", "db name")));
-    when(delegate.list(FsPath.absolute("/db name")))
-        .thenReturn(
-            Arrays.asList(
-                new FsNode(
-                    "table name.csv",
-                    FsPath.absolute("/db name/table name.csv"),
-                    FsNodeType.TABLE_DATA_FILE)));
+    when(executor.query("SHOW DATABASES")).thenReturn(SqlRow.list(SqlRow.of("Database", "库")));
+    FsNode canonicalFile =
+        new FsNode("表.csv", FsPath.absolute("/库/表.csv"), FsNodeType.TABLE_DATA_FILE);
+    when(delegate.list(FsPath.absolute("/库"))).thenReturn(Arrays.asList(canonicalFile));
+    when(delegate.describe(canonicalFile.getPath())).thenReturn(canonicalFile);
+    when(delegate.readLines(canonicalFile.getPath(), 5))
+        .thenReturn(Arrays.asList("Time,value", "1,42"));
 
     List<FsNode> databases = byDatabase.list(FsPath.absolute("/.virtual/by-database"));
-    List<FsNode> children = byDatabase.list(FsPath.absolute("/.virtual/by-database/db%20name"));
+    FsPath databasePath = FsPath.absolute("/.virtual/by-database/%E5%BA%93");
+    List<FsNode> children = byDatabase.list(databasePath);
+    FsNode child = children.get(0);
 
-    assertEquals("db%20name", databases.get(0).getName());
-    assertEquals("/.virtual/by-database/db%20name", databases.get(0).getPath().toString());
-    assertEquals(
-        "/.virtual/by-database/db%20name/table%20name.csv", children.get(0).getPath().toString());
+    assertEquals("%E5%BA%93", databases.get(0).getName());
+    assertEquals(databasePath, databases.get(0).getPath());
+    assertEquals("%E5%BA%93", byDatabase.describe(databasePath).getName());
+    assertEquals("%E8%A1%A8.csv", child.getName());
+    assertEquals(databasePath.resolve(child.getName()), child.getPath());
+    assertEquals(child.getName(), byDatabase.describe(child.getPath()).getName());
+    assertEquals("/库/表.csv", child.getMetadata().get("canonicalPath"));
+    assertEquals("1,42", byDatabase.readLines(child.getPath(), 5).get(1));
   }
 
   @Test
@@ -142,22 +146,30 @@ public class TableVirtualDirectoryResolverTest {
 
   @Test
   public void byTableEscapesTableAndDatabaseNames() throws SQLException {
-    when(executor.query("SHOW DATABASES"))
-        .thenReturn(SqlRow.list(SqlRow.of("Database", "db name")));
-    when(executor.query("SHOW TABLES FROM \"db name\""))
-        .thenReturn(SqlRow.list(SqlRow.of("TableName", "table name")));
-    when(delegate.readLines(FsPath.absolute("/db name/table name.csv"), 5))
+    when(executor.query("SHOW DATABASES")).thenReturn(SqlRow.list(SqlRow.of("Database", "库")));
+    when(executor.query("SHOW TABLES FROM \"库\""))
+        .thenReturn(SqlRow.list(SqlRow.of("TableName", "表")));
+    when(delegate.describe(FsPath.absolute("/库/表.csv")))
+        .thenReturn(new FsNode("表.csv", FsPath.absolute("/库/表.csv"), FsNodeType.TABLE_DATA_FILE));
+    when(delegate.describe(FsPath.absolute("/库/表.meta")))
+        .thenReturn(new FsNode("表.meta", FsPath.absolute("/库/表.meta"), FsNodeType.TABLE_META_FILE));
+    when(delegate.readLines(FsPath.absolute("/库/表.csv"), 5))
         .thenReturn(Arrays.asList("Time,value", "1,42"));
 
     List<FsNode> tables = byTable.list(FsPath.absolute("/.virtual/by-table"));
-    List<FsNode> databases = byTable.list(FsPath.absolute("/.virtual/by-table/table%20name"));
-    List<String> lines =
-        byTable.readLines(
-            FsPath.absolute("/.virtual/by-table/table%20name/db%20name/table%20name.csv"), 5);
+    List<FsNode> databases = byTable.list(FsPath.absolute("/.virtual/by-table/%E8%A1%A8"));
+    FsPath databasePath = FsPath.absolute("/.virtual/by-table/%E8%A1%A8/%E5%BA%93");
+    List<FsNode> files = byTable.list(databasePath);
 
-    assertEquals("table%20name", tables.get(0).getName());
-    assertEquals("db%20name", databases.get(0).getName());
-    assertEquals("1,42", lines.get(1));
-    verify(delegate).readLines(FsPath.absolute("/db name/table name.csv"), 5);
+    assertEquals("%E8%A1%A8", tables.get(0).getName());
+    assertEquals("%E5%BA%93", databases.get(0).getName());
+    assertEquals("%E8%A1%A8.csv", files.get(0).getName());
+    assertEquals("%E8%A1%A8.meta", files.get(1).getName());
+    for (FsNode file : files) {
+      assertEquals(databasePath.resolve(file.getName()), file.getPath());
+      assertEquals(file.getName(), byTable.describe(file.getPath()).getName());
+    }
+    assertEquals("1,42", byTable.readLines(files.get(0).getPath(), 5).get(1));
+    verify(delegate).readLines(FsPath.absolute("/库/表.csv"), 5);
   }
 }
