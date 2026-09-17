@@ -330,7 +330,8 @@ public class TableDeviceSchemaFetcher {
 
   private AbstractDeviceEntryMaterializer createDataSetMaterializer(
       MPPQueryContext queryContext, PlanNodeId planNodeId, boolean distinct) {
-    long batchSize = CONFIG.getTableQueryDeviceEntryBatchSizeInBytes();
+    long batchSize =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     if (distinct) {
       return new DeviceEntrySortedMaterializer(
           queryContext.getQueryId().getId(),
