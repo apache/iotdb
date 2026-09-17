@@ -1295,7 +1295,9 @@ public class ProcedureManager {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       List<ReconstructRegionProcedure> procedures = new ArrayList<>();
-      for (int x : req.getRegionIds()) {
+      // Check each Region only once before submitting the batch. Otherwise duplicate ids pass the
+      // in-progress Procedure check together and submit concurrent Remove/Add operations.
+      for (int x : new LinkedHashSet<>(req.getRegionIds())) {
         TConsensusGroupId regionId =
             configManager
                 .getPartitionManager()
