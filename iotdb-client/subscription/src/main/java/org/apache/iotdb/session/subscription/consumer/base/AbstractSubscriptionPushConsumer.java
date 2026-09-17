@@ -66,6 +66,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
 
   protected AbstractSubscriptionPushConsumer(
       final AbstractSubscriptionPushConsumerBuilder builder) {
@@ -142,13 +143,24 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
   }
 
   @Override
-  public synchronized void close() {
-    if (isClosed.get()) {
+  public void close() {
+    if (isClosed.get() || !isClosing.compareAndSet(false, true)) {
       return;
     }
 
-    isClosed.set(true);
-    super.close();
+    try {
+      synchronized (this) {
+        if (isClosed.get()) {
+          return;
+        }
+
+        isClosed.set(true);
+        prepareClose();
+        super.close();
+      }
+    } finally {
+      isClosing.set(false);
+    }
   }
 
   @Override
