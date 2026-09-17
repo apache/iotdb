@@ -33,6 +33,8 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
+import org.apache.iotdb.db.queryengine.plan.relational.information.AdditionalInformationSchemaProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.information.AdditionalInformationSchemaProviderRegistry;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -127,6 +129,13 @@ public class DataNodeLocationSupplierFactory {
 
     @Override
     public List<TDataNodeLocation> getDataNodeLocations(final String tableName) {
+      for (final AdditionalInformationSchemaProvider provider :
+          AdditionalInformationSchemaProviderRegistry.getProviders()) {
+        final List<TDataNodeLocation> location = provider.getTableLocation(tableName);
+        if (location != null) {
+          return location;
+        }
+      }
       switch (tableName) {
         case InformationSchema.QUERIES:
         case InformationSchema.TABLE_DISK_USAGE:
