@@ -67,6 +67,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.tree.AlterTimeSeriesOperationType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressSnapshot;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -377,58 +378,44 @@ public class ConfigManager implements IManager {
 
   public ConfigManager() throws IOException {
     // Build the persistence module
-    ClusterInfo clusterInfo = new ClusterInfo();
-    NodeInfo nodeInfo = new NodeInfo();
-    ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
-    PartitionInfo partitionInfo = new PartitionInfo();
-    AuthorInfo authorInfo = createAuthorInfo();
-    ProcedureInfo procedureInfo = new ProcedureInfo(this);
-    UDFInfo udfInfo = new UDFInfo();
-    TriggerInfo triggerInfo = new TriggerInfo();
-    CQInfo cqInfo = new CQInfo();
-    ExternalServiceInfo externalServiceInfo = new ExternalServiceInfo();
-    this.permissionManager = createPermissionManager(authorInfo);
-    PipeInfo pipeInfo = new PipeInfo(userName -> this.permissionManager.login4Pipe(userName, null));
-    QuotaInfo quotaInfo = new QuotaInfo();
-    TTLInfo ttlInfo = new TTLInfo();
-    SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-
+    ConfigManagerContext context = createConfigManagerContext();
+    context.clusterInfo = new ClusterInfo();
+    context.nodeInfo = new NodeInfo();
+    context.clusterSchemaInfo = new ClusterSchemaInfo();
+    context.partitionInfo = new PartitionInfo();
+    context.authorInfo = createAuthorInfo();
+    context.procedureInfo = new ProcedureInfo(this);
+    context.udfInfo = new UDFInfo();
+    context.triggerInfo = new TriggerInfo();
+    context.cqInfo = new CQInfo();
+    context.externalServiceInfo = new ExternalServiceInfo();
+    this.permissionManager = createPermissionManager(context.authorInfo);
+    context.pipeInfo = new PipeInfo(userName -> this.permissionManager.login4Pipe(userName, null));
+    context.quotaInfo = new QuotaInfo();
+    context.ttlInfo = new TTLInfo();
+    context.subscriptionInfo = new SubscriptionInfo();
+    initAdditionalInfos(context);
     // Build state machine and executor
-    ConfigPlanExecutor executor =
-        new ConfigPlanExecutor(
-            clusterInfo,
-            nodeInfo,
-            clusterSchemaInfo,
-            partitionInfo,
-            authorInfo,
-            procedureInfo,
-            udfInfo,
-            triggerInfo,
-            cqInfo,
-            externalServiceInfo,
-            pipeInfo,
-            subscriptionInfo,
-            quotaInfo,
-            ttlInfo);
+    ConfigPlanExecutor executor = createConfigPlanExecutor(context);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
-    this.clusterManager = new ClusterManager(this, clusterInfo);
-    setNodeManager(nodeInfo);
+    this.clusterManager = new ClusterManager(this, context.clusterInfo);
+    setNodeManager(context.nodeInfo);
     this.clusterSchemaManager =
         new ClusterSchemaManager(
             this,
-            clusterSchemaInfo,
+            context.clusterSchemaInfo,
             new ClusterSchemaQuotaStatistics(
                 COMMON_CONF.getSeriesLimitThreshold(), COMMON_CONF.getDeviceLimitThreshold()));
-    this.partitionManager = new PartitionManager(this, partitionInfo);
-    this.procedureManager = createProcedureManager(procedureInfo);
+    this.partitionManager = new PartitionManager(this, context.partitionInfo);
+    this.procedureManager = createProcedureManager(context.procedureInfo);
     this.externalServiceManager = new ExternalServiceManager(this);
-    this.udfManager = new UDFManager(this, udfInfo);
-    this.triggerManager = new TriggerManager(this, triggerInfo);
+    this.udfManager = new UDFManager(this, context.udfInfo);
+    this.triggerManager = new TriggerManager(this, context.triggerInfo);
     this.cqManager = new CQManager(this);
-    this.pipeManager = new PipeManager(this, pipeInfo);
-    this.subscriptionManager = new SubscriptionManager(this, subscriptionInfo);
+    this.pipeManager = new PipeManager(this, context.pipeInfo);
+    this.subscriptionManager = new SubscriptionManager(this, context.subscriptionInfo);
     this.auditLogger = new CNAuditLogger(this);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
@@ -438,8 +425,8 @@ public class ConfigManager implements IManager {
     setLoadManager();
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
-    this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
-    this.ttlManager = new TTLManager(this, ttlInfo);
+    this.clusterQuotaManager = new ClusterQuotaManager(this, context.quotaInfo);
+    this.ttlManager = new TTLManager(this, context.ttlInfo);
   }
 
   public void initConsensusManager() throws IOException {
@@ -457,6 +444,16 @@ public class ConfigManager implements IManager {
 
   protected AuthorInfo createAuthorInfo() {
     return new AuthorInfo();
+  }
+
+  protected ConfigManagerContext createConfigManagerContext() {
+    return new ConfigManagerContext();
+  }
+
+  protected void initAdditionalInfos(final ConfigManagerContext context) {}
+
+  protected ConfigPlanExecutor createConfigPlanExecutor(final ConfigManagerContext context) {
+    return new ConfigPlanExecutor(context);
   }
 
   protected void setNodeManager(NodeInfo nodeInfo) {
@@ -3467,5 +3464,27 @@ public class ConfigManager implements IManager {
   @TestOnly
   public void setPermissionManager(final PermissionManager permissionManager) {
     this.permissionManager = permissionManager;
+  }
+
+  public static class ConfigManagerContext {
+
+    public ClusterInfo clusterInfo;
+    public NodeInfo nodeInfo;
+    public ClusterSchemaInfo clusterSchemaInfo;
+    public PartitionInfo partitionInfo;
+    public AuthorInfo authorInfo;
+    public ProcedureInfo procedureInfo;
+    public UDFInfo udfInfo;
+    public TriggerInfo triggerInfo;
+    public CQInfo cqInfo;
+    public ExternalServiceInfo externalServiceInfo;
+    public PipeInfo pipeInfo;
+    public SubscriptionInfo subscriptionInfo;
+    public QuotaInfo quotaInfo;
+    public TTLInfo ttlInfo;
+
+    public List<SnapshotProcessor> getAdditionalInfoList() {
+      return Collections.emptyList();
+    }
   }
 }

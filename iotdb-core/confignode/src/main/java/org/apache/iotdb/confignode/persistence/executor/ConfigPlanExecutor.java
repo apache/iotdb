@@ -156,6 +156,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
@@ -228,65 +229,53 @@ public class ConfigPlanExecutor {
 
   private final TTLInfo ttlInfo;
 
-  public ConfigPlanExecutor(
-      ClusterInfo clusterInfo,
-      NodeInfo nodeInfo,
-      ClusterSchemaInfo clusterSchemaInfo,
-      PartitionInfo partitionInfo,
-      AuthorInfo authorInfo,
-      ProcedureInfo procedureInfo,
-      UDFInfo udfInfo,
-      TriggerInfo triggerInfo,
-      CQInfo cqInfo,
-      ExternalServiceInfo externalServiceInfo,
-      PipeInfo pipeInfo,
-      SubscriptionInfo subscriptionInfo,
-      QuotaInfo quotaInfo,
-      TTLInfo ttlInfo) {
+  public ConfigPlanExecutor(final ConfigManager.ConfigManagerContext context) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
-    this.clusterInfo = clusterInfo;
-    this.snapshotProcessorList.add(clusterInfo);
+    this.clusterInfo = context.clusterInfo;
+    this.snapshotProcessorList.add(context.clusterInfo);
 
-    this.nodeInfo = nodeInfo;
-    this.snapshotProcessorList.add(nodeInfo);
+    this.nodeInfo = context.nodeInfo;
+    this.snapshotProcessorList.add(context.nodeInfo);
 
-    this.clusterSchemaInfo = clusterSchemaInfo;
-    this.snapshotProcessorList.add(clusterSchemaInfo);
+    this.clusterSchemaInfo = context.clusterSchemaInfo;
+    this.snapshotProcessorList.add(context.clusterSchemaInfo);
 
-    this.partitionInfo = partitionInfo;
-    this.snapshotProcessorList.add(partitionInfo);
+    this.partitionInfo = context.partitionInfo;
+    this.snapshotProcessorList.add(context.partitionInfo);
 
-    this.authorInfo = authorInfo;
-    this.snapshotProcessorList.add(authorInfo);
+    this.authorInfo = context.authorInfo;
+    this.snapshotProcessorList.add(context.authorInfo);
 
-    this.triggerInfo = triggerInfo;
-    this.snapshotProcessorList.add(triggerInfo);
+    this.triggerInfo = context.triggerInfo;
+    this.snapshotProcessorList.add(context.triggerInfo);
 
-    this.udfInfo = udfInfo;
-    this.snapshotProcessorList.add(udfInfo);
+    this.udfInfo = context.udfInfo;
+    this.snapshotProcessorList.add(context.udfInfo);
 
-    this.cqInfo = cqInfo;
-    this.snapshotProcessorList.add(cqInfo);
+    this.cqInfo = context.cqInfo;
+    this.snapshotProcessorList.add(context.cqInfo);
 
-    this.externalServiceInfo = externalServiceInfo;
-    this.snapshotProcessorList.add(externalServiceInfo);
+    this.externalServiceInfo = context.externalServiceInfo;
+    this.snapshotProcessorList.add(context.externalServiceInfo);
 
-    this.pipeInfo = pipeInfo;
-    this.snapshotProcessorList.add(pipeInfo);
+    this.pipeInfo = context.pipeInfo;
+    this.snapshotProcessorList.add(context.pipeInfo);
 
-    this.subscriptionInfo = subscriptionInfo;
-    this.snapshotProcessorList.add(subscriptionInfo);
+    this.subscriptionInfo = context.subscriptionInfo;
+    this.snapshotProcessorList.add(context.subscriptionInfo);
 
-    this.procedureInfo = procedureInfo;
-    this.snapshotProcessorList.add(procedureInfo);
+    this.procedureInfo = context.procedureInfo;
+    this.snapshotProcessorList.add(context.procedureInfo);
 
-    this.quotaInfo = quotaInfo;
-    this.snapshotProcessorList.add(quotaInfo);
+    this.quotaInfo = context.quotaInfo;
+    this.snapshotProcessorList.add(context.quotaInfo);
 
-    this.ttlInfo = ttlInfo;
-    this.snapshotProcessorList.add(ttlInfo);
+    this.ttlInfo = context.ttlInfo;
+    this.snapshotProcessorList.add(context.ttlInfo);
+
+    this.snapshotProcessorList.addAll(context.getAdditionalInfoList());
 
     this.snapshotProcessorList.add(PipeConfigNodeAgent.runtime().listener());
   }
