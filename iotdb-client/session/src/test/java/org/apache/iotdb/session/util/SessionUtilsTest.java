@@ -46,6 +46,69 @@ import static org.junit.Assert.assertThrows;
 
 public class SessionUtilsTest {
 
+  // Null FIELDs are omitted without shifting indices around interleaved TAG metadata or NaN bits.
+  @Test
+  public void testNumericRowNullBitmapEncoding() throws Exception {
+    BitMap nulls = new BitMap(9);
+    nulls.mark(0);
+    nulls.mark(7);
+    nulls.mark(8);
+    List<TSDataType> types = new ArrayList<>(Collections.nCopies(9, TSDataType.DOUBLE));
+    List<ColumnCategory> categories = new ArrayList<>(Collections.nCopies(9, ColumnCategory.FIELD));
+    types.add(3, TSDataType.STRING);
+    categories.add(3, ColumnCategory.TAG);
+    long[] values = new long[9];
+    Arrays.fill(values, 0x7ff8000000001234L);
+    ByteBuffer payload =
+        SessionUtils.getValueBuffer(
+            types, values, Collections.nCopies(10, "v"), categories, new String[] {"tag"}, nulls);
+    for (TSDataType type : types) {
+      Assert.assertEquals(type.serialize(), payload.get());
+    }
+    Assert.assertEquals("tag", ReadWriteIOUtils.readString(payload));
+    for (int i = 0; i < 6; i++) {
+      Assert.assertEquals(0x7ff8000000001234L, payload.getLong());
+    }
+    Assert.assertFalse(payload.hasRemaining());
+    Assert.assertEquals(
+        ByteBuffer.wrap(new byte[] {(byte) 0x81, 1}),
+        SessionUtils.encodeNumericRowNullBitmap(nulls, null));
+  }
+
+  // markAll may set padding in BitMap; the wire representation uses exactly ceil(FIELDs/8) bytes.
+  @Test
+  public void testNumericRowNullBitmapBoundaries() throws Exception {
+    for (int size : new int[] {1, 7, 8, 9, 16}) {
+      BitMap nulls = new BitMap(size);
+      nulls.markAll();
+      byte[] original = nulls.getByteArray().clone();
+      ByteBuffer bitmap = SessionUtils.encodeNumericRowNullBitmap(nulls, null);
+      Assert.assertEquals((size + 7) / 8, bitmap.remaining());
+      Assert.assertEquals(
+          size % 8 == 0 ? 255 : (1 << (size % 8)) - 1, bitmap.get(bitmap.limit() - 1) & 255);
+      Assert.assertArrayEquals(original, nulls.getByteArray());
+      ByteBuffer payload =
+          SessionUtils.getValueBuffer(
+              Collections.nCopies(size, TSDataType.INT64),
+              new long[size],
+              Collections.nCopies(size, "v"),
+              Collections.nCopies(size, ColumnCategory.FIELD),
+              new String[0],
+              nulls);
+      Assert.assertEquals(size, payload.remaining());
+    }
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SessionUtils.getValueBuffer(
+                List.of(TSDataType.INT64),
+                new long[1],
+                List.of("v"),
+                List.of(ColumnCategory.FIELD),
+                new String[0],
+                new BitMap(2)));
+  }
+
   @Test
   public void testNumericRowEncodingPreservesRawBits() throws IoTDBConnectionException {
     List<TSDataType> types =

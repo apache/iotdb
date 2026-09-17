@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.session;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -29,12 +30,14 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertNumericRow;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -45,14 +48,17 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -189,6 +195,75 @@ public class PreparedNumericRowInfoTest {
     verify(metadata)
         .validateInsertNodeMeasurements(eq(DATABASE), any(), eq(context), eq(true), any(), any());
     assertNull(statement.getPreparedTableVersion());
+  }
+
+  // The optional bitmap uses FIELD indices, not measurement indices, and accepts sliced buffers.
+  @Test
+  public void testNullBitmapDecodingAndValidation() throws Exception {
+    TSPrepareNumericRowReq req = request("tag", "v");
+    req.setMeasurements(new ArrayList<>(req.getMeasurements()));
+    req.setDataTypes(new ArrayList<>(req.getDataTypes()));
+    req.setColumnCategories(new ArrayList<>(req.getColumnCategories()));
+    for (int i = 1; i < 9; i++) {
+      req.addToMeasurements("v" + i);
+      req.addToDataTypes(TSDataType.DOUBLE.ordinal());
+      req.addToColumnCategories((byte) ColumnCategory.FIELD.ordinal());
+    }
+    PreparedNumericRowInfo info = new PreparedNumericRowInfo(DATABASE, req);
+    ByteBuffer bitmap = ByteBuffer.wrap(new byte[] {99, (byte) 0x81, 1, 99});
+    bitmap.position(1).limit(3);
+    ByteBuffer values = ByteBuffer.allocate(6 * 8);
+    for (int i = 1; i <= 6; i++) {
+      values.putLong(i == 1 ? 0x7ff8000000001234L : Double.doubleToRawLongBits(i));
+    }
+    values.flip();
+    InsertNumericRowStatement prepared = info.bind(1, tagBuffer(1), values, bitmap);
+    assertEquals(1, bitmap.position());
+    assertEquals(0, values.position());
+    ByteBuffer payload = ByteBuffer.allocate(10 + 5 + values.remaining());
+    payload.put(TSDataType.STRING.serialize());
+    for (int i = 0; i < 9; i++) {
+      payload.put(TSDataType.DOUBLE.serialize());
+    }
+    payload.put(tagBuffer(1)).put(values.duplicate()).flip();
+    TSInsertRecordReq insertReq = new TSInsertRecordReq();
+    insertReq
+        .setPrefixPath("t")
+        .setTimestamp(1)
+        .setMeasurements(req.getMeasurements())
+        .setColumnCategoryies(req.getColumnCategories())
+        .setIsNumericRow(true)
+        .setIsWriteToTable(true)
+        .setValues(payload)
+        .setNullBitmap(bitmap);
+    InsertNumericRowStatement direct =
+        (InsertNumericRowStatement) StatementGenerator.createStatement(insertReq);
+    assertEquals(prepared.getNumericValues(), direct.getNumericValues());
+    assertTrue(prepared.getNumericValues().isNull(1));
+    assertTrue(prepared.getNumericValues().isNull(8));
+    assertTrue(prepared.getNumericValues().isNull(9));
+    assertFalse(prepared.getNumericValues().isNull(0));
+    assertEquals(0x7ff8000000001234L, prepared.getNumericValues().get(2));
+    for (byte[] bad : new byte[][] {new byte[0], new byte[1], new byte[3], {0, 2}}) {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> info.bind(1, tagBuffer(1), values, ByteBuffer.wrap(bad)));
+      insertReq.setValues(payload.duplicate().rewind()).setNullBitmap(bad);
+      assertThrows(
+          IllegalArgumentException.class, () -> StatementGenerator.createStatement(insertReq));
+    }
+    assertThrows(
+        SemanticException.class,
+        () -> info.bind(1, tagBuffer(1), ByteBuffer.allocate(9 * 8), bitmap));
+    ByteBuffer allNulls = ByteBuffer.wrap(new byte[] {(byte) 255, 1});
+    insertReq.setValues(payload.duplicate().rewind()).setNullBitmap(allNulls);
+    assertThrows(
+        IllegalArgumentException.class, () -> StatementGenerator.createStatement(insertReq));
+    InsertNumericRowStatement allNull =
+        info.bind(1, tagBuffer(1), ByteBuffer.allocate(0), allNulls);
+    for (int i = 1; i <= 9; i++) {
+      assertTrue(allNull.getNumericValues().isNull(i));
+    }
   }
 
   private static void install(TsTable table) {

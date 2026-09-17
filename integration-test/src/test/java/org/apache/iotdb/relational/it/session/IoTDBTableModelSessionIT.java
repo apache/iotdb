@@ -34,6 +34,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.After;
 import org.junit.Assume;
@@ -229,6 +230,84 @@ public class IoTDBTableModelSessionIT {
         }
         assertFalse(dataSet.hasNext());
       }
+    }
+  }
+
+  @Test
+  public void testNumericRowNullBitmap() throws Exception {
+    // Exercise bits 0/7/8, interleaved TAG metadata, prepared fast/fallback paths and pooled
+    // sessions.
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE numeric_nulls");
+      session.executeNonQueryStatement("USE numeric_nulls");
+      StringBuilder ddl = new StringBuilder("CREATE TABLE readings(tag STRING TAG");
+      List<String> names = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      List<ColumnCategory> categories = new ArrayList<>();
+      long[] values = new long[9];
+      for (int i = 0; i < 9; i++) {
+        ddl.append(", f").append(i).append(" DOUBLE FIELD");
+        names.add("f" + i);
+        types.add(TSDataType.DOUBLE);
+        categories.add(ColumnCategory.FIELD);
+        values[i] = Double.doubleToRawLongBits(i + 0.25);
+      }
+      session.executeNonQueryStatement(ddl.append(")").toString());
+      names.add(1, "tag");
+      types.add(1, TSDataType.STRING);
+      categories.add(1, ColumnCategory.TAG);
+      BitMap nulls = new BitMap(9);
+      nulls.mark(0);
+      nulls.mark(7);
+      nulls.mark(8);
+      String[] tags = {"device"};
+      session.insert(new NumericRow("readings", 1, names, types, categories, values, tags, nulls));
+      try (NumericRowPreparedStatement prepared =
+          session.prepareInsertNumericRow("readings", names, types, categories)) {
+        session.executePreparedInsertNumericRow(prepared, 2, values, tags, nulls);
+        session.executePreparedInsertNumericRow(prepared, 3, values, tags);
+        // All-null table rows retain their timestamp/TAGs; null slots must never become zeros.
+        BitMap allNulls = new BitMap(9);
+        allNulls.markAll();
+        session.executePreparedInsertNumericRow(prepared, 3, values, tags, allNulls);
+        session.insert(
+            new NumericRow("readings", 10, names, types, categories, values, tags, allNulls));
+        session.executePreparedInsertNumericRow(prepared, 11, values, tags, allNulls);
+        session.executeNonQueryStatement("ALTER TABLE readings ADD COLUMN tag2 STRING TAG");
+        session.executePreparedInsertNumericRow(prepared, 4, values, tags, nulls);
+      }
+      try (ITableSessionPool pool = EnvFactory.getEnv().getTableSessionPool(1, "numeric_nulls");
+          ITableSession pooled = pool.getSession();
+          NumericRowPreparedStatement prepared =
+              pooled.prepareInsertNumericRow("readings", names, types, categories)) {
+        pooled.insert(new NumericRow("readings", 5, names, types, categories, values, tags, nulls));
+        pooled.executePreparedInsertNumericRow(prepared, 6, values, tags, nulls);
+      }
+      assertNumericNullRows(session);
+      session.executeNonQueryStatement("FLUSH");
+      assertNumericNullRows(session);
+    }
+  }
+
+  private void assertNumericNullRows(ITableSession session) throws Exception {
+    try (SessionDataSet dataSet =
+        session.executeQueryStatement(
+            "SELECT time,tag,tag2,f0,f1,f2,f3,f4,f5,f6,f7,f8 FROM readings ORDER BY time")) {
+      for (int time : new int[] {1, 2, 3, 4, 5, 6, 10, 11}) {
+        assertTrue(dataSet.hasNext());
+        RowRecord row = dataSet.next();
+        assertEquals(time, row.getFields().get(0).getLongV());
+        assertEquals("device", row.getFields().get(1).getStringValue());
+        assertNull(row.getFields().get(2).getDataType());
+        for (int field = 0; field < 9; field++) {
+          if (time >= 10 || (time != 3 && (field == 0 || field == 7 || field == 8))) {
+            assertNull(row.getFields().get(field + 3).getDataType());
+          } else {
+            assertEquals(field + 0.25, row.getFields().get(field + 3).getDoubleV(), 0);
+          }
+        }
+      }
+      assertFalse(dataSet.hasNext());
     }
   }
 

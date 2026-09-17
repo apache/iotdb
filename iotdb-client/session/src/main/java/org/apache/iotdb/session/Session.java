@@ -2922,7 +2922,7 @@ public class Session implements ISession {
     }
     ByteBuffer valueBuffer =
         SessionUtils.getValueBuffer(
-            rpcTypes, values, rpcMeasurements, rpcColumnCategories, tagValues);
+            rpcTypes, values, rpcMeasurements, rpcColumnCategories, tagValues, row.getNullBitmap());
     TSInsertRecordReq request = new TSInsertRecordReq();
     request.setPrefixPath(tableName);
     request.setTimestamp(timestamp);
@@ -2930,6 +2930,9 @@ public class Session implements ISession {
     request.setValues(valueBuffer);
     request.setIsWriteToTable(true);
     request.setIsNumericRow(true);
+    if (row.getNullBitmap() != null) {
+      request.setNullBitmap(SessionUtils.encodeNumericRowNullBitmap(row.getNullBitmap(), null));
+    }
     request.setIsAligned(true);
     request.setColumnCategoryies(
         rpcColumnCategories.stream()

@@ -27,9 +27,11 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
 import org.apache.iotdb.session.i18n.SessionMessages;
+import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 
@@ -101,6 +103,17 @@ public class TableSession implements ITableSession {
   public void executePreparedInsertNumericRow(
       NumericRowPreparedStatement prepared, long timestamp, long[] values, String[] tagValues)
       throws StatementExecutionException, IoTDBConnectionException {
+    executePreparedInsertNumericRow(prepared, timestamp, values, tagValues, null);
+  }
+
+  @Override
+  public void executePreparedInsertNumericRow(
+      NumericRowPreparedStatement prepared,
+      long timestamp,
+      long[] values,
+      String[] tagValues,
+      BitMap nullBitmap)
+      throws StatementExecutionException, IoTDBConnectionException {
     SessionConnection connection = session.getDefaultSessionConnection();
     if (prepared == null || prepared.isClosed() || prepared.getOwner() != connection) {
       throw new IoTDBConnectionException(
@@ -109,10 +122,14 @@ public class TableSession implements ITableSession {
     }
     int tagCount = prepared.getTagCount();
     int fieldCount = prepared.getDataTypes().size() - tagCount;
-    if (values.length != fieldCount || tagValues.length != tagCount) {
+    if (values == null
+        || tagValues == null
+        || values.length != fieldCount
+        || tagValues.length != tagCount) {
       throw new IllegalArgumentException(
           SessionMessages.EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_COUNT_MISMATCH_9ACD3A0C);
     }
+    SessionUtils.validateNumericRowNullBitmap(nullBitmap, fieldCount);
     int tagBytes = 0;
     for (String tag : tagValues) {
       tagBytes += ReadWriteIOUtils.sizeToWrite(tag);
@@ -127,6 +144,9 @@ public class TableSession implements ITableSession {
     for (int i = 0; i < prepared.getDataTypes().size(); i++) {
       if (prepared.getColumnCategories().get(i) == ColumnCategory.FIELD) {
         long value = values[valueIndex++];
+        if (nullBitmap != null && nullBitmap.isMarked(valueIndex - 1)) {
+          continue;
+        }
         switch (prepared.getDataTypes().get(i)) {
           case BOOLEAN -> valueBuffer.put((byte) (value == 0 ? 0 : 1));
           case INT32, DATE, FLOAT -> valueBuffer.putInt((int) value);
@@ -138,8 +158,17 @@ public class TableSession implements ITableSession {
       }
     }
     valueBuffer.flip();
-    connection.executePreparedNumericRow(
-        prepared.getPreparedId(), timestamp, valueBuffer, tagBuffer);
+    if (nullBitmap == null) {
+      connection.executePreparedNumericRow(
+          prepared.getPreparedId(), timestamp, valueBuffer, tagBuffer);
+    } else {
+      connection.executePreparedNumericRow(
+          prepared.getPreparedId(),
+          timestamp,
+          valueBuffer,
+          tagBuffer,
+          SessionUtils.encodeNumericRowNullBitmap(nullBitmap, prepared.prepareNullBitmapBuffer()));
+    }
   }
 
   @Override

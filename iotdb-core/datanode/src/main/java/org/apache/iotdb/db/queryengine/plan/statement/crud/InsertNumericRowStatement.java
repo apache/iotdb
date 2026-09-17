@@ -100,6 +100,10 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
 
   /** RPC cells carry typed primitive FIELD bits or a length-prefixed STRING TAG. */
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
+    fillValues(buffer, null);
+  }
+
+  public void fillValues(ByteBuffer buffer, ByteBuffer nullBitmap) throws QueryProcessException {
     dataTypes = new TSDataType[measurements.length];
     for (int i = 0; i < dataTypes.length; i++) {
       byte type = buffer.get();
@@ -124,6 +128,7 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
       }
     }
     int tagCount = countTagColumns(columnCategories);
+    NumericRowValues.validateNullBitmap(nullBitmap, measurements.length - tagCount);
     numericValues = new NumericRowValues(tagCount, measurements.length - tagCount);
     ColumnCategory[] categories = new ColumnCategory[measurements.length];
     for (int i = 0; i < measurements.length; i++) {
@@ -140,8 +145,18 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
     }
     for (int i = 0; i < dataTypes.length; i++) {
       if (columnCategories[i] == TsTableColumnCategory.FIELD) {
-        numericValues.read(i, dataTypes[i], buffer);
+        if (NumericRowValues.isNullField(nullBitmap, i - tagCount)) {
+          numericValues.setNull(i);
+        } else {
+          numericValues.read(i, dataTypes[i], buffer);
+        }
       }
+    }
+    if (buffer.hasRemaining()) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_NUMERIC_ROW_PAYLOAD_HAS_ARG_TRAILING_BYTES_89E46A34,
+              buffer.remaining()));
     }
   }
 

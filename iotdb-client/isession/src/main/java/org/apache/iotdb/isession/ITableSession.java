@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.List;
@@ -71,6 +72,19 @@ public interface ITableSession extends AutoCloseable {
 
   void executePreparedInsertNumericRow(
       NumericRowPreparedStatement prepared, long timestamp, long[] values, String[] tagValues)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  /**
+   * Executes a prepared row with an optional FIELD-only null bitmap sized to {@code values.length}.
+   * Marked slots are null and their values are ignored. Do not mutate the bitmap during execution.
+   * Requires a server supporting numeric row null bitmaps.
+   */
+  void executePreparedInsertNumericRow(
+      NumericRowPreparedStatement prepared,
+      long timestamp,
+      long[] values,
+      String[] tagValues,
+      BitMap nullBitmap)
       throws StatementExecutionException, IoTDBConnectionException;
 
   /**

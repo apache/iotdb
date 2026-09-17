@@ -29,6 +29,7 @@ public final class NumericRowPreparedStatement implements AutoCloseable {
   private final int valueBytes;
   private ByteBuffer tagBuffer;
   private ByteBuffer valueBuffer;
+  private ByteBuffer nullBitmapBuffer;
   private long preparedId = -1;
   private Object owner;
   private Runnable closeAction = () -> {};
@@ -106,6 +107,15 @@ public final class NumericRowPreparedStatement implements AutoCloseable {
 
   public long getPreparedId() {
     return preparedId;
+  }
+
+  /** Returns a reusable FIELD null bitmap buffer, allocated only for nullable executions. */
+  public ByteBuffer prepareNullBitmapBuffer() {
+    if (nullBitmapBuffer == null) {
+      nullBitmapBuffer = ByteBuffer.allocate((dataTypes.size() - tagCount + 7) / 8);
+    }
+    nullBitmapBuffer.clear();
+    return nullBitmapBuffer;
   }
 
   public Object getOwner() {

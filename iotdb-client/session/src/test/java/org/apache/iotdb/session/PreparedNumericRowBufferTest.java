@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Test;
 
@@ -44,6 +45,61 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class PreparedNumericRowBufferTest {
+  // Reusing the statement after sparse/all-null rows must reset both payload and bitmap cursors.
+  @Test
+  public void testNullBitmapBufferReuse() throws Exception {
+    Session session = mock(Session.class);
+    SessionConnection connection = mock(SessionConnection.class);
+    when(session.getDefaultSessionConnection()).thenReturn(connection);
+    TableSession tableSession = new TableSession(session);
+    NumericRowPreparedStatement prepared =
+        new NumericRowPreparedStatement(
+            "t",
+            List.of("a", "b", "c"),
+            List.of(TSDataType.INT64, TSDataType.INT64, TSDataType.INT64),
+            List.of(ColumnCategory.FIELD, ColumnCategory.FIELD, ColumnCategory.FIELD));
+    prepared.bind(1, connection, () -> {});
+    List<ByteBuffer> bitmaps = new ArrayList<>();
+    List<ByteBuffer> payloads = new ArrayList<>();
+    int[] masks = {2, 7, 0};
+    doAnswer(
+            invocation -> {
+              int index = bitmaps.size();
+              ByteBuffer values = invocation.getArgument(2);
+              ByteBuffer bitmap = invocation.getArgument(4);
+              bitmaps.add(bitmap);
+              payloads.add(values);
+              assertEquals(masks[index], bitmap.get());
+              assertFalse(bitmap.hasRemaining());
+              for (int field = 0; field < 3; field++) {
+                if ((masks[index] & (1 << field)) == 0) {
+                  assertEquals(field + 10, values.getLong());
+                }
+              }
+              assertFalse(values.hasRemaining());
+              return null;
+            })
+        .when(connection)
+        .executePreparedNumericRow(
+            eq(1L), anyLong(), any(ByteBuffer.class), any(ByteBuffer.class), any(ByteBuffer.class));
+    BitMap nulls = new BitMap(3);
+    for (int mask : masks) {
+      nulls.reset();
+      for (int i = 0; i < 3; i++) {
+        if ((mask & (1 << i)) != 0) {
+          nulls.mark(i);
+        }
+      }
+      tableSession.executePreparedInsertNumericRow(
+          prepared, 1, new long[] {10, 11, 12}, new String[0], nulls);
+    }
+    assertEquals(3, bitmaps.size());
+    for (int i = 1; i < 3; i++) {
+      assertSame(bitmaps.get(0), bitmaps.get(i));
+      assertSame(payloads.get(0), payloads.get(i));
+    }
+  }
+
   @Test
   public void testBuffersAcrossTagGrowthShrinkAndRpcFailure() throws Exception {
     Session session = mock(Session.class);

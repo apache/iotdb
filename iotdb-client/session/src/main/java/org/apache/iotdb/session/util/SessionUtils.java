@@ -171,6 +171,18 @@ public class SessionUtils {
       List<ColumnCategory> categories,
       String[] tagValues)
       throws IoTDBConnectionException {
+    return getValueBuffer(types, values, measurements, categories, tagValues, null);
+  }
+
+  /** Null FIELD slots retain their indices but consume no payload bytes. */
+  public static ByteBuffer getValueBuffer(
+      List<TSDataType> types,
+      long[] values,
+      List<String> measurements,
+      List<ColumnCategory> categories,
+      String[] tagValues,
+      BitMap nullBitmap)
+      throws IoTDBConnectionException {
     if (types == null
         || values == null
         || measurements == null
@@ -180,6 +192,7 @@ public class SessionUtils {
         || types.size() != categories.size()) {
       throw invalidNumericRowArguments();
     }
+    validateNumericRowNullBitmap(nullBitmap, values.length);
     int fieldCount = 0;
     int tagCount = 0;
     int length = types.size();
@@ -191,14 +204,20 @@ public class SessionUtils {
         }
         length += ReadWriteIOUtils.sizeToWrite(tagValues[tagCount++]);
       } else if (categories.get(i) == ColumnCategory.FIELD && type != null) {
-        fieldCount++;
-        length +=
+        if (fieldCount >= values.length) {
+          throw invalidNumericRowArguments();
+        }
+        int valueSize =
             switch (type) {
               case BOOLEAN -> Byte.BYTES;
               case INT32, DATE, FLOAT -> Integer.BYTES;
               case INT64, TIMESTAMP, DOUBLE -> Long.BYTES;
               default -> throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + type);
             };
+        if (nullBitmap == null || !nullBitmap.isMarked(fieldCount)) {
+          length += valueSize;
+        }
+        fieldCount++;
       } else {
         throw new IllegalArgumentException(
             SessionMessages
@@ -226,6 +245,9 @@ public class SessionUtils {
       TSDataType type = types.get(i);
       if (categories.get(i) == ColumnCategory.FIELD) {
         long value = values[fieldIndex++];
+        if (nullBitmap != null && nullBitmap.isMarked(fieldIndex - 1)) {
+          continue;
+        }
         switch (type) {
           case BOOLEAN -> buffer.put((byte) (value == 0 ? 0 : 1));
           case INT32, DATE, FLOAT -> buffer.putInt((int) value);
@@ -242,6 +264,33 @@ public class SessionUtils {
     return new IllegalArgumentException(
         SessionMessages
             .EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233);
+  }
+
+  public static void validateNumericRowNullBitmap(BitMap nullBitmap, int fieldCount) {
+    if (nullBitmap != null && nullBitmap.getSize() != fieldCount) {
+      throw new IllegalArgumentException(
+          String.format(
+              SessionMessages
+                  .EXCEPTION_NUMERIC_ROW_NULL_BITMAP_SIZE_MISMATCH_EXPECTED_ARG_FIELDS_BUT_GOT_ARG_8D30F6A0,
+              fieldCount,
+              nullBitmap.getSize()));
+    }
+  }
+
+  /** Encodes FIELD bits LSB first with zero padding, including when BitMap.markAll() was used. */
+  public static ByteBuffer encodeNumericRowNullBitmap(BitMap nullBitmap, ByteBuffer buffer) {
+    int fieldCount = nullBitmap.getSize();
+    int length = (fieldCount + 7) / 8;
+    if (buffer == null) {
+      buffer = ByteBuffer.allocate(length);
+    }
+    buffer.clear();
+    buffer.put(nullBitmap.getByteArray(), 0, length);
+    if (fieldCount % 8 != 0) {
+      buffer.put(length - 1, (byte) (buffer.get(length - 1) & ((1 << (fieldCount % 8)) - 1)));
+    }
+    buffer.flip();
+    return buffer;
   }
 
   public static int calculateLength(List<TSDataType> types, List<? extends Object> values)

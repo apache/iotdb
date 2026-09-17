@@ -2620,7 +2620,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               .bind(
                   req.getTimestamp(),
                   ByteBuffer.wrap(req.getTagValues()),
-                  ByteBuffer.wrap(req.getValues()));
+                  ByteBuffer.wrap(req.getValues()),
+                  req.bufferForNullBitmap());
       long queryId = SESSION_MANAGER.requestQueryId();
       return COORDINATOR.executeForTableModel(
               statement,

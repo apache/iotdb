@@ -782,8 +782,17 @@ public class SessionConnection {
   protected void executePreparedNumericRow(
       long id, long timestamp, ByteBuffer values, ByteBuffer tags)
       throws IoTDBConnectionException, StatementExecutionException {
+    executePreparedNumericRow(id, timestamp, values, tags, null);
+  }
+
+  protected void executePreparedNumericRow(
+      long id, long timestamp, ByteBuffer values, ByteBuffer tags, ByteBuffer nullBitmap)
+      throws IoTDBConnectionException, StatementExecutionException {
     TSExecutePreparedNumericRowReq request =
         new TSExecutePreparedNumericRowReq(sessionId, id, timestamp, values, tags);
+    if (nullBitmap != null) {
+      request.setNullBitmap(nullBitmap);
+    }
     try {
       RpcUtils.verifySuccess(client.executePreparedNumericRow(request));
     } catch (TException e) {

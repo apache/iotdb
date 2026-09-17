@@ -205,6 +205,11 @@ public final class PreparedNumericRowInfo {
   }
 
   public InsertNumericRowStatement bind(long timestamp, ByteBuffer tags, ByteBuffer values) {
+    return bind(timestamp, tags, values, null);
+  }
+
+  public InsertNumericRowStatement bind(
+      long timestamp, ByteBuffer tags, ByteBuffer values, ByteBuffer nullBitmap) {
     if (tags == null) {
       throw invalid(
           DataNodeMiscMessages.EXCEPTION_PREPARED_NUMERIC_ROW_TAG_BUFFER_IS_NULL_3FF27BF7);
@@ -213,11 +218,21 @@ public final class PreparedNumericRowInfo {
       throw invalid(
           DataNodeMiscMessages.EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_BUFFER_IS_NULL_A928F919);
     }
-    if (values.remaining() != valueBytes) {
+    NumericRowValues.validateNullBitmap(nullBitmap, types.length - tagCount);
+    // Preserve the cached fixed-width length for the common non-null path.
+    int expectedBytes = valueBytes;
+    if (nullBitmap != null) {
+      for (int i = tagCount; i < types.length; i++) {
+        if (NumericRowValues.isNullField(nullBitmap, i - tagCount)) {
+          expectedBytes -= types[i].getDataTypeSize();
+        }
+      }
+    }
+    if (values.remaining() != expectedBytes) {
       throw invalid(
           DataNodeMiscMessages
               .EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_BUFFER_SIZE_MISMATCH_EXPECTED_ARG_BYTES_BUT_GOT_ARG_B75D48C8,
-          valueBytes,
+          expectedBytes,
           values.remaining());
     }
     TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
@@ -252,7 +267,11 @@ public final class PreparedNumericRowInfo {
             tags.remaining());
       }
       for (int i = tagCount; i < types.length; i++) {
-        row.read(i, types[i], values);
+        if (NumericRowValues.isNullField(nullBitmap, i - tagCount)) {
+          row.setNull(i);
+        } else {
+          row.read(i, types[i], values);
+        }
       }
     } catch (BufferUnderflowException e) {
       throw invalid(

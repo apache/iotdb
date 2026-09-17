@@ -20,6 +20,8 @@
 package org.apache.iotdb.session.i18n;
 
 public final class SessionMessages {
+  public static final String EXCEPTION_NUMERIC_ROW_NULL_BITMAP_SIZE_MISMATCH_EXPECTED_ARG_FIELDS_BUT_GOT_ARG_8D30F6A0 =
+      "Numeric row 的 null bitmap 大小不匹配：预期 %d 个 FIELD，实际为 %d";
   public static final String EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233 = "数值行参数不能为 null；列元数据长度必须一致，FIELD 和 TAG 的数量必须分别与对应的值数组长度一致。";
   public static final String EXCEPTION_NUMERIC_ROWS_SUPPORT_NUMERIC_FIELD_COLUMNS_AND_STRING_TAG_COLUMNS_ONLY_87159FFA = "数值行仅支持数值类型的 FIELD 列和 STRING 类型的 TAG 列。";
 

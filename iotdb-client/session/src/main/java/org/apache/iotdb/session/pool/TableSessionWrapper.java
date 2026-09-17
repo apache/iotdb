@@ -31,6 +31,7 @@ import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,8 +105,20 @@ public class TableSessionWrapper implements ITableSession {
   public void executePreparedInsertNumericRow(
       NumericRowPreparedStatement prepared, long timestamp, long[] values, String[] tagValues)
       throws StatementExecutionException, IoTDBConnectionException {
+    executePreparedInsertNumericRow(prepared, timestamp, values, tagValues, null);
+  }
+
+  @Override
+  public void executePreparedInsertNumericRow(
+      NumericRowPreparedStatement prepared,
+      long timestamp,
+      long[] values,
+      String[] tagValues,
+      BitMap nullBitmap)
+      throws StatementExecutionException, IoTDBConnectionException {
     try {
-      tableSession.executePreparedInsertNumericRow(prepared, timestamp, values, tagValues);
+      tableSession.executePreparedInsertNumericRow(
+          prepared, timestamp, values, tagValues, nullBitmap);
     } catch (IoTDBConnectionException e) {
       sessionPool.cleanSessionAndMayThrowConnectionException(session);
       closed.set(true);

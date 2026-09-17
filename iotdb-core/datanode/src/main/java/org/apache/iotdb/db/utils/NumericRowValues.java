@@ -161,6 +161,36 @@ public final class NumericRowValues {
         };
   }
 
+  /** Validates the optional FIELD-only RPC bitmap without changing its cursor. */
+  public static void validateNullBitmap(ByteBuffer bitmap, int fieldCount) {
+    if (bitmap == null) {
+      return;
+    }
+    int length = (fieldCount + 7) / 8;
+    if (bitmap.remaining() != length) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_NUMERIC_ROW_NULL_BITMAP_LENGTH_MISMATCH_EXPECTED_ARG_BYTES_FOR_ARG_FIELDS_BUT_GOT_ARG_31F1DB42,
+              length,
+              fieldCount,
+              bitmap.remaining()));
+    }
+    if (fieldCount % 8 != 0
+        && (bitmap.get(bitmap.limit() - 1) & ~((1 << (fieldCount % 8)) - 1)) != 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_NUMERIC_ROW_NULL_BITMAP_HAS_SET_BITS_OUTSIDE_ARG_FIELDS_AD6066D1,
+              fieldCount));
+    }
+  }
+
+  public static boolean isNullField(ByteBuffer bitmap, int fieldIndex) {
+    return bitmap != null
+        && (bitmap.get(bitmap.position() + fieldIndex / 8) & (1 << (fieldIndex % 8))) != 0;
+  }
+
   public Object getObject(int index, TSDataType type) {
     if (isNull(index)) {
       return null;

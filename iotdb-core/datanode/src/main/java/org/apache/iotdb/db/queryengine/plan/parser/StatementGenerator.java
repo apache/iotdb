@@ -328,7 +328,8 @@ public class StatementGenerator {
       }
       insertStatement.setColumnCategories(columnCategories);
       if (insertRecordReq.isIsNumericRow()) {
-        ((InsertNumericRowStatement) insertStatement).fillValues(insertRecordReq.values);
+        ((InsertNumericRowStatement) insertStatement)
+            .fillValues(insertRecordReq.values, insertRecordReq.bufferForNullBitmap());
         for (int i = 0; i < columnCategories.length; i++) {
           TSDataType type = insertStatement.getDataType(i);
           if (!(columnCategories[i] == TsTableColumnCategory.TAG && type == TSDataType.STRING)

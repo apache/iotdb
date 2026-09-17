@@ -20,6 +20,8 @@
 package org.apache.iotdb.session.i18n;
 
 public final class SessionMessages {
+  public static final String EXCEPTION_NUMERIC_ROW_NULL_BITMAP_SIZE_MISMATCH_EXPECTED_ARG_FIELDS_BUT_GOT_ARG_8D30F6A0 =
+      "Numeric row null bitmap size mismatch: expected %d FIELDs but got %d";
   public static final String EXCEPTION_NUMERIC_ROW_ARGUMENTS_MUST_BE_NON_NULL_COLUMN_METADATA_LENGTHS_AND_PER_CATEGORY_VALUE_COUNTS_MUST_MATCH_EB12B233 = "Numeric row arguments must be non-null; column metadata lengths and per-category value counts must match.";
   public static final String EXCEPTION_NUMERIC_ROWS_SUPPORT_NUMERIC_FIELD_COLUMNS_AND_STRING_TAG_COLUMNS_ONLY_87159FFA = "Numeric rows support numeric FIELD columns and STRING TAG columns only.";
 
