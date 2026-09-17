@@ -42,6 +42,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -516,39 +518,46 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final String topicName,
       final List<ConsensusPrefetchingQueue> queues,
       final String consumerId) {
-    final ConcurrentHashMap<String, Long> consumerTimestamps =
-        topicConsumerLastPollMs.computeIfAbsent(topicName, ignored -> new ConcurrentHashMap<>());
-    consumerTimestamps.put(consumerId, System.currentTimeMillis());
-    evictInactiveConsumers(consumerTimestamps);
-    final List<String> sortedConsumers = new ArrayList<>(consumerTimestamps.keySet());
-    Collections.sort(sortedConsumers);
+    synchronized (queueLifecycleLock) {
+      // Do not recreate ownership metadata for a topic that was concurrently removed.
+      if (topicNameToConsensusPrefetchingQueues.get(topicName) != queues) {
+        return TopicOwnershipSnapshot.empty();
+      }
 
-    final List<String> activeRegionIds =
-        queues.stream()
-            .filter(q -> !q.isClosed())
-            .map(q -> q.getConsensusGroupId().toString())
-            .sorted()
-            .collect(Collectors.toList());
+      final ConcurrentHashMap<String, Long> consumerTimestamps =
+          topicConsumerLastPollMs.computeIfAbsent(topicName, ignored -> new ConcurrentHashMap<>());
+      consumerTimestamps.put(consumerId, System.currentTimeMillis());
+      evictInactiveConsumers(consumerTimestamps);
+      final List<String> sortedConsumers = new ArrayList<>(consumerTimestamps.keySet());
+      Collections.sort(sortedConsumers);
 
-    final TopicOwnershipSnapshot existingSnapshot = topicOwnershipSnapshots.get(topicName);
-    if (Objects.nonNull(existingSnapshot)
-        && existingSnapshot.hasSameConsumers(sortedConsumers)
-        && existingSnapshot.hasSameRegions(activeRegionIds)) {
-      return existingSnapshot;
+      final List<String> activeRegionIds =
+          queues.stream()
+              .filter(q -> !q.isClosed())
+              .map(q -> q.getConsensusGroupId().toString())
+              .sorted()
+              .collect(Collectors.toList());
+
+      final TopicOwnershipSnapshot existingSnapshot = topicOwnershipSnapshots.get(topicName);
+      if (Objects.nonNull(existingSnapshot)
+          && existingSnapshot.hasSameConsumers(sortedConsumers)
+          && existingSnapshot.hasSameRegions(activeRegionIds)) {
+        return existingSnapshot;
+      }
+
+      final TopicOwnershipSnapshot refreshedSnapshot =
+          TopicOwnershipSnapshot.create(sortedConsumers, activeRegionIds, existingSnapshot);
+      topicOwnershipSnapshots.put(topicName, refreshedSnapshot);
+      LOGGER.debug(
+          DataNodePipeMessages
+              .PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_REFRESHED_OWNERSHIP_FOR_TOPIC_EB11CF64,
+          brokerId,
+          topicName,
+          sortedConsumers,
+          activeRegionIds,
+          refreshedSnapshot.getGeneration());
+      return refreshedSnapshot;
     }
-
-    final TopicOwnershipSnapshot refreshedSnapshot =
-        TopicOwnershipSnapshot.create(sortedConsumers, activeRegionIds);
-    topicOwnershipSnapshots.put(topicName, refreshedSnapshot);
-    LOGGER.debug(
-        DataNodePipeMessages
-            .PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_REFRESHED_OWNERSHIP_FOR_TOPIC_EB11CF64,
-        brokerId,
-        topicName,
-        sortedConsumers,
-        activeRegionIds,
-        refreshedSnapshot.getGeneration());
-    return refreshedSnapshot;
   }
 
   private List<ConsensusPrefetchingQueue> getAssignedQueues(
@@ -727,8 +736,6 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           topicNameToConsensusPrefetchingQueues.remove(entry.getKey(), queues);
           topicConsumerLastPollMs.remove(entry.getKey());
           topicOwnershipSnapshots.remove(entry.getKey());
-        } else {
-          topicOwnershipSnapshots.remove(entry.getKey());
         }
       }
     }
@@ -844,7 +851,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         brokerId);
   }
 
-  private static final class TopicOwnershipSnapshot {
+  static final class TopicOwnershipSnapshot {
 
     private final List<String> activeConsumers;
     private final List<String> activeRegionIds;
@@ -862,24 +869,98 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       this.generation = generation;
     }
 
-    private static TopicOwnershipSnapshot create(
-        final List<String> activeConsumers, final List<String> activeRegionIds) {
+    static TopicOwnershipSnapshot create(
+        final List<String> activeConsumers,
+        final List<String> activeRegionIds,
+        final TopicOwnershipSnapshot previousSnapshot) {
       if (activeConsumers.isEmpty() || activeRegionIds.isEmpty()) {
         return new TopicOwnershipSnapshot(
-            Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), 0);
+            Collections.unmodifiableList(new ArrayList<>(activeConsumers)),
+            Collections.unmodifiableList(new ArrayList<>(activeRegionIds)),
+            Collections.emptyMap(),
+            0);
       }
 
-      final Map<String, String> ownerByRegionId = new ConcurrentHashMap<>();
-      final int consumerCount = activeConsumers.size();
-      for (final String regionId : activeRegionIds) {
-        final int ownerIdx = Math.floorMod(regionId.hashCode(), consumerCount);
-        ownerByRegionId.put(regionId, activeConsumers.get(ownerIdx));
+      final Map<String, String> ownerByRegionId = new LinkedHashMap<>();
+      final Map<String, Integer> regionCountByConsumer = new HashMap<>();
+      activeConsumers.forEach(consumer -> regionCountByConsumer.put(consumer, 0));
+
+      // Keep assignments that are still valid. Reassigning every region whenever membership
+      // changes causes consumers to repeatedly lose their WAL queues and makes empty polls likely.
+      if (Objects.nonNull(previousSnapshot)) {
+        for (final String regionId : activeRegionIds) {
+          final String owner = previousSnapshot.getOwnerConsumerId(regionId);
+          if (Objects.nonNull(owner) && regionCountByConsumer.containsKey(owner)) {
+            ownerByRegionId.put(regionId, owner);
+            regionCountByConsumer.computeIfPresent(owner, (ignored, count) -> count + 1);
+          }
+        }
       }
+
+      final List<String> unassignedRegionIds =
+          activeRegionIds.stream()
+              .filter(regionId -> !ownerByRegionId.containsKey(regionId))
+              .collect(Collectors.toCollection(ArrayList::new));
+
+      // Assign newly created regions, or regions whose owner left, before moving valid ownership.
+      for (final String regionId : unassignedRegionIds) {
+        final String leastLoadedConsumer =
+            findLeastLoadedConsumer(activeConsumers, regionCountByConsumer);
+        ownerByRegionId.put(regionId, leastLoadedConsumer);
+        regionCountByConsumer.computeIfPresent(leastLoadedConsumer, (ignored, count) -> count + 1);
+      }
+
+      // Move only enough valid ownerships to make the distribution balanced. Choosing consumers
+      // and regions deterministically keeps ownership stable across JVMs.
+      while (true) {
+        final String leastLoadedConsumer =
+            findLeastLoadedConsumer(activeConsumers, regionCountByConsumer);
+        final String mostLoadedConsumer =
+            findMostLoadedConsumer(activeConsumers, regionCountByConsumer);
+        if (regionCountByConsumer.get(mostLoadedConsumer)
+                - regionCountByConsumer.get(leastLoadedConsumer)
+            <= 1) {
+          break;
+        }
+
+        final String regionToMove =
+            activeRegionIds.stream()
+                .filter(regionId -> mostLoadedConsumer.equals(ownerByRegionId.get(regionId)))
+                .max(Comparator.naturalOrder())
+                .orElseThrow(IllegalStateException::new);
+        ownerByRegionId.put(regionToMove, leastLoadedConsumer);
+        regionCountByConsumer.computeIfPresent(mostLoadedConsumer, (ignored, count) -> count - 1);
+        regionCountByConsumer.computeIfPresent(leastLoadedConsumer, (ignored, count) -> count + 1);
+      }
+
       return new TopicOwnershipSnapshot(
           Collections.unmodifiableList(new ArrayList<>(activeConsumers)),
           Collections.unmodifiableList(new ArrayList<>(activeRegionIds)),
           Collections.unmodifiableMap(ownerByRegionId),
           ownerByRegionId.hashCode());
+    }
+
+    private static TopicOwnershipSnapshot empty() {
+      return new TopicOwnershipSnapshot(
+          Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), 0);
+    }
+
+    private static String findLeastLoadedConsumer(
+        final List<String> activeConsumers, final Map<String, Integer> regionCountByConsumer) {
+      return activeConsumers.stream()
+          .min(
+              Comparator.comparingInt((String consumer) -> regionCountByConsumer.get(consumer))
+                  .thenComparing(Comparator.naturalOrder()))
+          .orElseThrow(IllegalStateException::new);
+    }
+
+    private static String findMostLoadedConsumer(
+        final List<String> activeConsumers, final Map<String, Integer> regionCountByConsumer) {
+      return activeConsumers.stream()
+          .min(
+              Comparator.comparingInt((String consumer) -> -regionCountByConsumer.get(consumer))
+                  .thenComparing(Comparator.naturalOrder()))
+          .orElseThrow(IllegalStateException::new);
     }
 
     private boolean isEmpty() {
@@ -894,7 +975,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       return activeRegionIds.equals(regionIds);
     }
 
-    private String getOwnerConsumerId(final String regionId) {
+    String getOwnerConsumerId(final String regionId) {
       return ownerByRegionId.get(regionId);
     }
 
