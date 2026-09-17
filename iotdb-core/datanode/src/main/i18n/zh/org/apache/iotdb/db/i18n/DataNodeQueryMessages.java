@@ -152,6 +152,8 @@ public final class DataNodeQueryMessages {
           + "原始错误：%s";
   public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
       "匹配的源列超过了当前估算内存容量，至少超出 %,d 列。";
+  public static final String RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT =
+      "本次失败的内存申请超出可用内存，按已记录列的平均内存估算，至少超出相当于 %,d 列的容量。";
   public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
       "查询分析拉取元数据时内存不足。结果集可能包含过多列。"
           + "失败前，IoTDB 已从 schema 拉取结果中反序列化 %,d 个时间序列列。"

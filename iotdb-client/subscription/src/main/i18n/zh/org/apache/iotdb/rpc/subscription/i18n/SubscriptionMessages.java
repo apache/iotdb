@@ -143,6 +143,8 @@ public final class SubscriptionMessages {
   public static final String LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F = "{} 无法向 SubscriptionProvider {} 发送心跳，原因：{}，将 SubscriptionProvider 设为不可用";
   public static final String LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739 = "{} 关闭并移除 SubscriptionProvider {} 时发生异常，原因：{}";
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198 = "集群没有可连接初始 endpoint %s 的可用 SubscriptionProvider";
+  public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_712D99EA =
+      "集群没有可连接初始 endpoint %s 的可用 SubscriptionProvider。连接失败原因：%s";
   public static final String LOG_ARG_HAS_BEEN_LAUNCHED_SET_CORE_POOL_SIZE_ARG_WILL_0FDECBE3 = "{} 已启动，将 core pool size 设置为 {} 的操作会被忽略";
   public static final String LOG_INTERRUPT_WORKER_WHICH_MAY_CAUSE_SOME_TASK_INCONSISTENT_PLEASE_CHECK_04926D9F = "中断 worker 可能造成某些任务不一致。请检查业务日志。";
   public static final String LOG_THREAD_POOL_CAN_T_SHUTDOWN_EVEN_INTERRUPTING_WORKER_THREADS_WHICH_A49166F9 =

@@ -1144,12 +1144,14 @@ public class SubscriptionInfo implements SnapshotProcessor {
         throw new SubscriptionException(exceptionMessage);
       }
 
-      // 2.2. check username
+      // 2.2. check consumer membership
       if (!consumerGroupMeta.allowSubscribeTopicForConsumer(topicName, consumerId)) {
         final String exceptionMessage =
             String.format(
-                "Failed to subscribe topic %s for consumer %s because inconsistent username under the same consumer group",
-                topicName, consumerId);
+                ManagerMessages
+                    .EXCEPTION_FAILED_TO_SUBSCRIBE_TOPIC_ARG_FOR_CONSUMER_ARG_CONSUMER_DOES_NOT_EXIST_IN_CONSUMER_GROUP_BFF68F12,
+                topicName,
+                consumerId);
         LOGGER.warn(exceptionMessage);
         throw new SubscriptionException(exceptionMessage);
       }

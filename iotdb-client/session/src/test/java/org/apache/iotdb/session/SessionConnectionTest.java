@@ -28,6 +28,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.TimeoutChangeableTFastFramedTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
@@ -203,6 +204,24 @@ public class SessionConnectionTest {
   public void testSetStorageGroup() throws IoTDBConnectionException, StatementExecutionException {
     sessionConnection.setTimeZone(ZoneId.systemDefault().getId());
     sessionConnection.setStorageGroup("root.test1");
+  }
+
+  @Test
+  public void testTransportLifecycleControls() {
+    final TimeoutChangeableTFastFramedTransport timeoutTransport =
+        Mockito.mock(TimeoutChangeableTFastFramedTransport.class);
+    Whitebox.setInternalState(sessionConnection, "transport", timeoutTransport);
+
+    Assert.assertTrue(sessionConnection.setTransportTimeout(123));
+    Mockito.verify(timeoutTransport).setTimeout(123);
+
+    sessionConnection.forceCloseTransport();
+    Mockito.verify(timeoutTransport).close();
+  }
+
+  @Test
+  public void testSetTransportTimeoutOnUnsupportedTransport() {
+    Assert.assertFalse(sessionConnection.setTransportTimeout(123));
   }
 
   @Test

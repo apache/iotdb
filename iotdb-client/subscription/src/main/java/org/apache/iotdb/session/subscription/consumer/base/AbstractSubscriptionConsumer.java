@@ -338,24 +338,23 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     submitEndpointsSyncer();
   }
 
+  protected void prepareClose() {
+    providers.prepareClose();
+  }
+
   @Override
-  public synchronized void close() {
-    if (isClosed.get()) {
+  public void close() {
+    if (!isClosed.compareAndSet(false, true)) {
       return;
     }
 
-    // close subscription providers
-    providers.acquireWriteLock();
-    try {
-      providers.closeProviders();
-    } finally {
-      providers.releaseWriteLock();
-    }
-
-    isClosed.set(true);
-
     // mark is released to avoid reopening after closing
     isReleased.set(true);
+
+    // Do not wait for the providers write lock here. A poll or heartbeat may hold it while blocked
+    // in network I/O. prepareClose() bounds or interrupts those RPCs before providers are detached.
+    providers.prepareClose();
+    providers.closeProviders();
   }
 
   boolean isClosed() {
@@ -583,6 +582,20 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
 
     return provider;
+  }
+
+  String sanitizeConnectionFailureMessage(final Throwable throwable) {
+    String message = throwable.getMessage();
+    if (Objects.isNull(message) || message.isEmpty()) {
+      message = throwable.getClass().getName();
+    }
+    if (Objects.nonNull(password) && !password.isEmpty()) {
+      message = message.replace(password, "***");
+    }
+    if (Objects.nonNull(encryptedPassword) && !encryptedPassword.isEmpty()) {
+      message = message.replace(encryptedPassword, "***");
+    }
+    return message;
   }
 
   /////////////////////////////// file ops ///////////////////////////////
