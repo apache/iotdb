@@ -3100,28 +3100,31 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes())));
     if (configuredSize <= 0) {
       LOGGER.warn(
-          DataNodeMiscMessages
-              .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2,
-          configuredSize,
-          DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES);
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2,
+              configuredSize,
+              DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES));
       configuredSize = DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES;
     } else if (configuredSize < MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES) {
       LOGGER.warn(
-          DataNodeMiscMessages
-              .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76,
-          configuredSize,
-          MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES,
-          MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES);
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76,
+              configuredSize,
+              MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES,
+              MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES));
       configuredSize = MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES;
     }
     int maxAllowedSize = conf.getThriftMaxFrameSize() - 1024;
     if (configuredSize > maxAllowedSize) {
       LOGGER.warn(
-          DataNodeMiscMessages
-              .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC,
-          configuredSize,
-          maxAllowedSize,
-          maxAllowedSize);
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC,
+              configuredSize,
+              maxAllowedSize,
+              maxAllowedSize));
       configuredSize = maxAllowedSize;
     }
     conf.setMppDataExchangeMaxPayloadSizeInBytes(configuredSize);

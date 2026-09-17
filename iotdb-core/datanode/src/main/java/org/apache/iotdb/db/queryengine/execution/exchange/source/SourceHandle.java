@@ -654,6 +654,9 @@ public class SourceHandle implements ISourceHandle {
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = getDataBlockWithFragments(client, req, fetchProgress);
+            if (resp == null) {
+              return;
+            }
             int tsBlockNum = resp.getTsBlocks().size();
             if (tsBlockNum != endSequenceId - startSequenceId) {
               recordTransferAttempt(
@@ -721,6 +724,17 @@ public class SourceHandle implements ISourceHandle {
             }
             fail(e);
             return;
+          } catch (Error e) {
+            if (!transferAttemptRecorded) {
+              recordTransferAttempt(
+                  false,
+                  e instanceof OutOfMemoryError
+                      ? UserDataTransferErrorCode.OUT_OF_MEMORY.name()
+                      : null,
+                  e);
+            }
+            fail(e);
+            throw e;
           } catch (Exception e) {
 
             if (!transferAttemptRecorded) {
@@ -786,14 +800,26 @@ public class SourceHandle implements ISourceHandle {
         DataBlockFetchProgress fetchProgress)
         throws TException {
       while (!fetchProgress.isFinished()) {
+        synchronized (SourceHandle.this) {
+          if (aborted || closed) {
+            fetchProgress.discard();
+            return null;
+          }
+        }
         TGetDataBlockRequest fragmentRequest = request.deepCopy();
         fragmentRequest.setStartSequenceId(fetchProgress.nextSequenceId);
         fragmentRequest.setOffset(fetchProgress.offset);
         TGetDataBlockResponse response = client.getDataBlock(fragmentRequest);
-        if (response.getTsBlocks().isEmpty()) {
-          return response;
+        synchronized (SourceHandle.this) {
+          if (aborted || closed) {
+            fetchProgress.discard();
+            return null;
+          }
+          if (response.getTsBlocks().isEmpty()) {
+            return response;
+          }
+          fetchProgress.addResponse(response);
         }
-        fetchProgress.addResponse(response);
       }
       return new TGetDataBlockResponse(fetchProgress.tsBlocks);
     }
@@ -814,6 +840,13 @@ public class SourceHandle implements ISourceHandle {
 
       private boolean isFinished() {
         return nextSequenceId == endSequenceId && partialTsBlock == null;
+      }
+
+      private void discard() {
+        tsBlocks.clear();
+        partialTsBlock = null;
+        partialTsBlockTotalLength = 0;
+        offset = 0;
       }
 
       private void addResponse(TGetDataBlockResponse response) {
