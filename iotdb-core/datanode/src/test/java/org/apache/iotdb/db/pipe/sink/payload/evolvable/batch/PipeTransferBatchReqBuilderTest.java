@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
@@ -91,6 +93,29 @@ public class PipeTransferBatchReqBuilderTest {
       Assert.assertTrue(batch.shouldEmit());
     } finally {
       batch.close();
+    }
+  }
+
+  @Test
+  public void testBatchMemoryIsNotCountedAsTabletMemory() throws Exception {
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    final PipeRawTabletInsertionEvent event = createEvent(1);
+
+    try {
+      Assert.assertTrue(event.increaseReferenceCount(getClass().getName()));
+      final long tabletMemoryBeforeBatch = memoryManager.getUsedMemorySizeInBytesOfTablets();
+      final long totalMemoryBeforeBatch = memoryManager.getUsedMemorySizeInBytes();
+
+      try (final PipeTabletEventBatch batch =
+          new PipeTabletEventPlainBatch(Integer.MAX_VALUE, Long.MAX_VALUE, null)) {
+        batch.onEvent(event);
+
+        Assert.assertEquals(
+            tabletMemoryBeforeBatch, memoryManager.getUsedMemorySizeInBytesOfTablets());
+        Assert.assertTrue(memoryManager.getUsedMemorySizeInBytes() > totalMemoryBeforeBatch);
+      }
+    } finally {
+      event.clearReferenceCount(getClass().getName());
     }
   }
 
