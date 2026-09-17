@@ -31,29 +31,31 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class DataNodeSpaceQuotaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeSpaceQuotaManager.class);
 
-  private Map<String, TSpaceQuota> spaceQuotaLimit;
-  private Map<String, TSpaceQuota> spaceQuotaUsage;
+  private ConcurrentMap<String, TSpaceQuota> spaceQuotaLimit;
+  private ConcurrentMap<String, TSpaceQuota> spaceQuotaUsage;
   private DataNodeSizeStore dataNodeSizeStore;
 
   public DataNodeSpaceQuotaManager() {
-    spaceQuotaLimit = new HashMap<>();
-    spaceQuotaUsage = new HashMap<>();
+    spaceQuotaLimit = new ConcurrentHashMap<>();
+    spaceQuotaUsage = new ConcurrentHashMap<>();
     dataNodeSizeStore = new DataNodeSizeStore();
     recover();
   }
 
   public DataNodeSpaceQuotaManager(
       Map<String, TSpaceQuota> spaceQuotaLimit, Map<String, TSpaceQuota> spaceQuotaUsage) {
-    this.spaceQuotaLimit = spaceQuotaLimit;
-    this.spaceQuotaUsage = spaceQuotaUsage;
+    this.spaceQuotaLimit = new ConcurrentHashMap<>(spaceQuotaLimit);
+    this.spaceQuotaUsage = new ConcurrentHashMap<>(spaceQuotaUsage);
   }
 
   /** SingleTon */
@@ -69,8 +71,8 @@ public class DataNodeSpaceQuotaManager {
 
   public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
     for (String database : req.getDatabase()) {
-      spaceQuotaLimit.put(database, req.getSpaceLimit());
       spaceQuotaUsage.put(database, new TSpaceQuota());
+      spaceQuotaLimit.put(database, req.getSpaceLimit());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -81,8 +83,8 @@ public class DataNodeSpaceQuotaManager {
       if (spaceQuota.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && spaceQuota.getSpaceQuota() != null) {
         for (String database : spaceQuota.getSpaceQuota().keySet()) {
-          spaceQuotaLimit.put(database, spaceQuota.getSpaceQuota().get(database));
           spaceQuotaUsage.put(database, new TSpaceQuota());
+          spaceQuotaLimit.put(database, spaceQuota.getSpaceQuota().get(database));
         }
       }
       LOGGER.info("Space quota limit restored succeeded. " + spaceQuotaLimit.toString());
@@ -107,7 +109,9 @@ public class DataNodeSpaceQuotaManager {
   }
 
   public void updateSpaceQuotaUsage(Map<String, TSpaceQuota> spaceQuotaUsage) {
-    this.spaceQuotaUsage = spaceQuotaUsage;
+    if (Objects.nonNull(spaceQuotaUsage)) {
+      this.spaceQuotaUsage.putAll(spaceQuotaUsage);
+    }
   }
 
   public boolean checkTimeSeriesNum(String database) {
@@ -148,6 +152,6 @@ public class DataNodeSpaceQuotaManager {
   }
 
   public void setSpaceQuotaLimit(Map<String, TSpaceQuota> spaceQuotaLimit) {
-    this.spaceQuotaLimit = spaceQuotaLimit;
+    this.spaceQuotaLimit = new ConcurrentHashMap<>(spaceQuotaLimit);
   }
 }
