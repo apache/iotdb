@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -56,8 +57,7 @@ public class PipeMemoryBlock implements AutoCloseable {
   // truncated by GC. The parent only keeps weak references to children, avoiding a parent-child
   // retention cycle and allowing forgotten zero-sized children to be collected.
   private final PipeMemoryBlock parent;
-  private final Set<PipeMemoryBlock> children =
-      Collections.newSetFromMap(new java.util.WeakHashMap<>());
+  private final Set<PipeMemoryBlock> children = Collections.newSetFromMap(new WeakHashMap<>());
   private final int hierarchyLevel;
   private final long allocationTime;
   private final AtomicReference<String> assigner = new AtomicReference<>();

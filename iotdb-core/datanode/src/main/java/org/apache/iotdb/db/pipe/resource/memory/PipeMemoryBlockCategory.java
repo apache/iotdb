@@ -45,17 +45,12 @@ public enum PipeMemoryBlockCategory {
     if (type == null) {
       return OTHER;
     }
-    switch (type) {
-      case TABLET:
-        return TABLET;
-      case TS_FILE:
-        return TS_FILE;
-      case BATCH:
-        return BATCH;
-      case WAL:
-        return WAL;
-      default:
-        return OTHER;
-    }
+    return switch (type) {
+      case NORMAL -> OTHER;
+      case TABLET -> TABLET;
+      case TS_FILE -> TS_FILE;
+      case BATCH -> BATCH;
+      case WAL -> WAL;
+    };
   }
 }
