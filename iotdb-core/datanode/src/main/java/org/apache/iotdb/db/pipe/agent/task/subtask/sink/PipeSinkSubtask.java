@@ -69,6 +69,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   private final String pipeName;
   private final String attributeSortedString;
   private final int connectorIndex;
+  private final boolean isExternalSink;
 
   // Now parallel connectors run the same time, thus the heartbeat events are not sure
   // to trigger the general event transfer function, causing potentially such as
@@ -93,7 +94,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         attributeSortedString,
         connectorIndex,
         inputPendingQueue,
-        outputPipeConnector);
+        outputPipeConnector,
+        true);
   }
 
   public PipeSinkSubtask(
@@ -104,10 +106,31 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final int connectorIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       final PipeConnector outputPipeConnector) {
+    this(
+        pipeName,
+        taskID,
+        creationTime,
+        attributeSortedString,
+        connectorIndex,
+        inputPendingQueue,
+        outputPipeConnector,
+        true);
+  }
+
+  public PipeSinkSubtask(
+      final String pipeName,
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
+      final int connectorIndex,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector,
+      final boolean isExternalSink) {
     super(taskID, creationTime, outputPipeConnector);
     this.pipeName = pipeName;
     this.attributeSortedString = attributeSortedString;
     this.connectorIndex = connectorIndex;
+    this.isExternalSink = isExternalSink;
     this.inputPendingQueue = inputPendingQueue;
 
     if (!attributeSortedString.startsWith("schema_")) {
@@ -291,6 +314,17 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   private boolean closeOutputPipeConnector() throws Exception {
+    if (!isExternalSink) {
+      outputPipeConnectorOperationLock.lock();
+      try {
+        discardPendingEventsOfPipeUnderLock();
+        outputPipeConnector.close();
+      } finally {
+        outputPipeConnectorOperationLock.unlock();
+      }
+      return true;
+    }
+
     final AtomicReference<Exception> exception = new AtomicReference<>();
     final AtomicBoolean closeStarted = new AtomicBoolean(false);
     final Thread closeThread =
@@ -397,12 +431,17 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
 
     pendingDiscardCommitterKeys.offer(committerKey);
-    if (outputPipeConnectorOperationLock.tryLock()) {
-      try {
-        discardPendingEventsOfPipeUnderLock();
-      } finally {
-        outputPipeConnectorOperationLock.unlock();
+    if (isExternalSink) {
+      if (!outputPipeConnectorOperationLock.tryLock()) {
+        return;
       }
+    } else {
+      outputPipeConnectorOperationLock.lock();
+    }
+    try {
+      discardPendingEventsOfPipeUnderLock();
+    } finally {
+      outputPipeConnectorOperationLock.unlock();
     }
   }
 
