@@ -194,9 +194,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   blockOffset,
                   serializedTsBlockSize);
               int remainingBlockSize = serializedTsBlockSize - blockOffset;
+              ByteBuffer fragment = serializedTsBlock;
+              fragment.position(blockOffset);
               if (remainingBlockSize <= remainingPayloadSize) {
-                ByteBuffer fragment = serializedTsBlock.duplicate();
-                fragment.position(blockOffset);
                 fragment.limit(blockOffset + remainingBlockSize);
                 resp.addToTsBlocks(fragment.slice());
                 remainingPayloadSize -= remainingBlockSize;
@@ -204,8 +204,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   break;
                 }
               } else {
-                ByteBuffer fragment = serializedTsBlock.duplicate();
-                fragment.position(blockOffset);
                 fragment.limit(blockOffset + remainingPayloadSize);
                 resp.addToTsBlocks(fragment.slice());
                 resp.setOffset(blockOffset + remainingPayloadSize);
