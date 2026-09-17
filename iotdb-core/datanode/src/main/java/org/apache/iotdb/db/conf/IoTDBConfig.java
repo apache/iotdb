@@ -1156,6 +1156,9 @@ public class IoTDBConfig {
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
+  /** Hidden hot-reload switch that prefers placing LOAD-created DataRegions on this DataNode. */
+  private volatile boolean loadTsFilePreferLocalNode = true;
+
   private int loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber = 4096; // For table model
@@ -4287,6 +4290,14 @@ public class IoTDBConfig {
 
   public void setLoadTsFileRetryCountOnRegionChange(int loadTsFileRetryCountOnRegionChange) {
     this.loadTsFileRetryCountOnRegionChange = loadTsFileRetryCountOnRegionChange;
+  }
+
+  public boolean isLoadTsFilePreferLocalNode() {
+    return loadTsFilePreferLocalNode;
+  }
+
+  public void setLoadTsFilePreferLocalNode(final boolean loadTsFilePreferLocalNode) {
+    this.loadTsFilePreferLocalNode = loadTsFilePreferLocalNode;
   }
 
   public double getLoadWriteThroughputBytesPerSecond() {

@@ -241,6 +241,7 @@ struct TDatabaseSchema {
     10: optional i64 timePartitionOrigin
     11: optional bool isTableModel
     12: optional bool needLastCache
+    13: optional i32 preferredDataNodeId
 }
 
 // Schema
@@ -279,6 +280,7 @@ struct TTimeSlotList {
 struct TDataPartitionReq {
   // map<DatabaseName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
   1: required map<string, map<common.TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap
+  2: optional i32 preferredDataNodeId
 }
 
 struct TDataPartitionTableResp {

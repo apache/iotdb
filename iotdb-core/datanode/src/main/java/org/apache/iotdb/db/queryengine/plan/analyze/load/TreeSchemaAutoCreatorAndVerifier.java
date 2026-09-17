@@ -407,6 +407,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
       final DatabaseSchemaStatement statement =
           new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
       statement.setDatabasePath(databasePath);
+      final int preferredDataNodeId = loadTsFileAnalyzer.getPreferredDataNodeId();
+      if (preferredDataNodeId >= 0) {
+        statement.setPreferredDataNodeId(preferredDataNodeId);
+      }
       // do not print exception log because it is not an error
       statement.setEnablePrintExceptionLog(false);
       executeSetDatabaseStatement(statement);

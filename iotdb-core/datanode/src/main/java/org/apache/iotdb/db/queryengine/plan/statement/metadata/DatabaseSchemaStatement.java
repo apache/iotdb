@@ -41,6 +41,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private boolean enablePrintExceptionLog = true;
   private boolean needLastCache = true;
   private boolean isNeedLastCacheSet = false;
+  private Integer preferredDataNodeId = null;
 
   // Deprecated
   private Integer schemaReplicationFactor = null;
@@ -133,6 +134,14 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     this.isNeedLastCacheSet = true;
   }
 
+  public Integer getPreferredDataNodeId() {
+    return preferredDataNodeId;
+  }
+
+  public void setPreferredDataNodeId(final Integer preferredDataNodeId) {
+    this.preferredDataNodeId = preferredDataNodeId;
+  }
+
   @Override
   public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     switch (subType) {
@@ -171,6 +180,8 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
         + maxSchemaRegionGroupNum
         + ", maxDataRegionGroupNum="
         + maxDataRegionGroupNum
+        + ", preferredDataNodeId="
+        + preferredDataNodeId
         + '}';
   }
 

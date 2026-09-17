@@ -447,7 +447,7 @@ public class LoadTsFileAnalyzerTest {
   private LoadTsFileTableSchemaCache createTableSchemaCache(final boolean shouldVerifyDataType)
       throws LoadRuntimeOutOfMemoryException {
     return new LoadTsFileTableSchemaCache(
-        null, new MPPQueryContext(new QueryId("load_test")), false, shouldVerifyDataType);
+        null, new MPPQueryContext(new QueryId("load_test")), false, shouldVerifyDataType, -1);
   }
 
   private Method getVerifyTableDataTypeMethod() throws NoSuchMethodException {

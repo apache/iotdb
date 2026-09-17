@@ -319,6 +319,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
+    return getOrCreateDataPartition(dataPartitionQueryParams, userName, -1);
+  }
+
+  @Override
+  public DataPartition getOrCreateDataPartition(
+      final List<DataPartitionQueryParam> dataPartitionQueryParams,
+      final String userName,
+      final int preferredDataNodeId) {
     final Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
         splitDataPartitionQueryParam(
             dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
@@ -330,6 +338,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
+      if (preferredDataNodeId >= 0) {
+        req.setPreferredDataNodeId(preferredDataNodeId);
+      }
       final TDataPartitionTableResp dataPartitionTableResp =
           client.getOrCreateDataPartitionTable(req);
 
