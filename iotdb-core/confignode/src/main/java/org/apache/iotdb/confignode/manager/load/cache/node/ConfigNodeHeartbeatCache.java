@@ -74,6 +74,14 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
       }
     }
 
+    // The Stopped status is sticky: heartbeat-driven updates (heartbeat failure, failure
+    // detection) must not refresh a gracefully stopped node back to Unknown. A live status
+    // reported by a heartbeat (e.g. Running after the node restarts) still revives it. Removing
+    // needs no extra protection here: the guard above unconditionally keeps it.
+    if (NodeStatus.Stopped.equals(getNodeStatus()) && NodeStatus.Unknown.equals(status)) {
+      status = NodeStatus.Stopped;
+    }
+
     /* Update loadScore */
     // Only consider Running ConfigNode as available currently
     // TODO: Construct load score module

@@ -1032,10 +1032,13 @@ public class ConfigNodeProcedureEnv {
     return responseMap;
   }
 
-  private boolean isRuntimeActiveWriterNode(final int dataNodeId) {
+  boolean isRuntimeActiveWriterNode(final int dataNodeId) {
+    final NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
     return dataNodeId >= 0
-        && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Unknown
-        && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Removing;
+        && nodeStatus != NodeStatus.Unknown
+        && nodeStatus != NodeStatus.Removing
+        // A Stopped node can not serve as an active runtime writer either
+        && nodeStatus != NodeStatus.Stopped;
   }
 
   private static Map<Integer, TPushPipeMetaResp> sendPipeMetaRequest(

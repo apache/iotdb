@@ -1168,6 +1168,9 @@ public final class ProcedureMessages {
   public static final String MESSAGE_CAN_T_REMOVE_DATANODE_LIMIT_REPLICATION_FACTOR_D960E3A6 =
       "无法移除 DataNode，原因：受副本因子限制，";
   public static final String
+      MESSAGE_SUBMIT_REMOVEDATANODESPROCEDURE_FAILED_BECAUSE_WHEN_THERE_ARE_OTHER_UNKNOWN_STOPPED_OR_READONLY_NODES_IN_THE_CONSENSUS_GROUP_THAT_ARE_NOT_REMOVE_NODES_THE_REMOVE_OPERATION_CANNOT_BE_PERFORMED_FOR_SECURITY_REASONS_PLEASE_CHECK_THE_STATUS_OF_THE_NODE_ARG_AND_ENSURE_IT_IS_RUNNING_5063B3F6 =
+          "提交 RemoveDataNodesProcedure 失败：共识组内存在非移除目标且状态为 Unknown、Stopped 或 ReadOnly 的其他节点时，出于安全考虑无法执行移除操作。请检查节点 %s 的状态并确保其处于 Running 状态。";
+  public static final String
       MESSAGE_AVAILABLEDATANODESIZE_ARG_MAXREPLICAFACTOR_ARG_MAX_ALLOWED_REMOVED_DATA_NODE_SIZE_FB8C382C =
           "availableDataNodeSize：%s，maxReplicaFactor：%s，允许移除的最大 DataNode 数量为：%s";
   public static final String EXCEPTION_NOT_SUPPORTED_0A83F963 = " 不支持";

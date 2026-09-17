@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -318,36 +319,34 @@ public class IoTDBPartitionCreationIT {
 
       // Shutdown 1 DataNode
       // Current cluster: 1C5D
-      // DataNode status: Running, Running, Removing, ReadOnly, Unknown
+      // DataNode status: Running, Running, Removing, ReadOnly, Stopped
       // Region distribution: [0, 1, 2], [0, 1, 2], [0], [1], [2]
       EnvFactory.getEnv().shutdownDataNode(4);
       // Wait for shutdown check
-      while (true) {
-        AtomicBoolean containUnknown = new AtomicBoolean(false);
+      boolean isShutdownDetected = false;
+      for (int retry = 0; retry < 60; retry++) {
         TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                    containUnknown.set(true);
-                  }
-                });
-
-        if (containUnknown.get()) {
+        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+          if (NodeStatus.Stopped.getStatus().equals(dataNodeInfo.getStatus())) {
+            isShutdownDetected = true;
+            break;
+          }
+        }
+        if (isShutdownDetected) {
           break;
         }
         TimeUnit.SECONDS.sleep(1);
       }
+      Assert.assertTrue(isShutdownDetected);
 
       // Register 1 DataNode and Create 1 DataPartition to extend 1 DataRegionGroup
       // The new DataRegions wouldn't be allocated to the Removing and ReadOnly DataNode
-      // But the new DataRegion can be allocated to the Unknown DataNode
+      // But the new DataRegion can be allocated to the Stopped DataNode
       // Current cluster: 1C6D
-      // Status: Running, Running, Removing, ReadOnly, Unknown, Running
+      // Status: Running, Running, Removing, ReadOnly, Stopped, Running
       // RegionGroup: [0, 1, 2, 3], [0, 1, 2], [0], [1], [2, 3], [3]
       EnvFactory.getEnv().registerNewDataNode(false);
-      // Use thread sleep to replace verifying because the Unknown DataNode can not pass the
+      // Use thread sleep to replace verifying because the Stopped DataNode can not pass the
       // connection check
       TimeUnit.SECONDS.sleep(25);
       partitionSlotsMap =
@@ -446,23 +445,25 @@ public class IoTDBPartitionCreationIT {
       // RegionGroup: [0, 1, 2, 3], [0, 1, 2], [0], [1], [2, 3], [3]
       EnvFactory.getEnv().startDataNode(4);
       // Wait for restart check
-      while (true) {
-        AtomicBoolean containUnknown = new AtomicBoolean(false);
+      boolean isRestartDetected = false;
+      for (int retry = 0; retry < 60; retry++) {
         TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        showDataNodesResp
-            .getDataNodesInfoList()
-            .forEach(
-                dataNodeInfo -> {
-                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                    containUnknown.set(true);
-                  }
-                });
-
-        if (!containUnknown.get()) {
+        boolean containDown = false;
+        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+          // The restarted DataNode keeps Stopped until its first heartbeat revives it
+          if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())
+              || NodeStatus.Stopped.getStatus().equals(dataNodeInfo.getStatus())) {
+            containDown = true;
+            break;
+          }
+        }
+        if (!containDown) {
+          isRestartDetected = true;
           break;
         }
         TimeUnit.SECONDS.sleep(1);
       }
+      Assert.assertTrue(isRestartDetected);
       // Check Region count and status
       for (int i = 0; i < 30; i++) {
         runningCnt = 0;

@@ -34,8 +34,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -49,8 +51,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -104,7 +108,21 @@ public class IoTDBAutoRegionGroupExtension2IT {
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(1)),
-              Collections.singletonList(NodeStatus.Unknown));
+              Collections.singletonList(EnvUtils.getNodeStatusAfterLocalStop()));
+
+      // The remaining DataNodes may transiently be ReadOnly (e.g. the disk-full flap on a busy
+      // runner, which auto-recovers at the next disk sampling); wait for them to be Running so a
+      // transient status does not fail the allocation below.
+      List<BaseNodeWrapper> remainingDataNodes = new ArrayList<>();
+      for (int i = 0; i < testDataNodeNum; i++) {
+        if (i != 1) {
+          remainingDataNodes.add(EnvFactory.getEnv().getDataNodeWrapper(i));
+        }
+      }
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              remainingDataNodes,
+              Collections.nCopies(remainingDataNodes.size(), NodeStatus.Running));
 
       // Create 3 DataPartitions to extend 3 DataRegionGroups
       for (int i = 0; i < testMinDataRegionGroupNum; i++) {
