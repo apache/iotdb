@@ -6,6 +6,7 @@ on:
       - master
       - "rel/*"
       - "rc/*"
+      - "fs/inner-view"
     paths-ignore:
       - "docs/**"
       - "site/**"
@@ -79,6 +80,7 @@ jobs:
             local -i max_attempts=3
             local -i attempt=1
             local -i retry_sleep=5
+            local -i test_status
             local test_output
 
             while [ $attempt -le $max_attempts ]; do
@@ -90,7 +92,8 @@ jobs:
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
               -am -PMultiClusterIT1 \
-              -ntp >> ~/run-tests-$attempt.log && return 0
+              -ntp > ~/run-tests-$attempt.log 2>&1 && return 0
+              test_status=$?
               test_output=$(cat ~/run-tests-$attempt.log) 
 
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
@@ -101,22 +104,18 @@ jobs:
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
 
-              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+              if grep -q "Could not transfer artifact" <<< "$test_output"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
                   sleep $retry_sleep
                   attempt=$((attempt + 1))
                 else
                   echo "Test failed after $max_attempts attempts due to artifact transfer issue."
-                  echo "Treating this as a success because the issue is likely transient."
-                  return 0
+                  return "$test_status"
                 fi
-              elif [ $? -ne 0 ]; then
-                echo "Test failed with a different error."
-                return 1
               else
-                echo "Tests passed"
-                return 0
+                echo "Test failed with a different error."
+                return "$test_status"
               fi
             done
           }
@@ -183,6 +182,7 @@ jobs:
             local -i max_attempts=3
             local -i attempt=1
             local -i retry_sleep=5
+            local -i test_status
             local test_output
 
             while [ $attempt -le $max_attempts ]; do
@@ -197,7 +197,8 @@ jobs:
               -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTreeAutoBasic \
-              -ntp >> ~/run-tests-$attempt.log && return 0
+              -ntp > ~/run-tests-$attempt.log 2>&1 && return 0
+              test_status=$?
               test_output=$(cat ~/run-tests-$attempt.log) 
 
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
@@ -208,22 +209,18 @@ jobs:
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
 
-              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+              if grep -q "Could not transfer artifact" <<< "$test_output"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
                   sleep $retry_sleep
                   attempt=$((attempt + 1))
                 else
                   echo "Test failed after $max_attempts attempts due to artifact transfer issue."
-                  echo "Treating this as a success because the issue is likely transient."
-                  return 0
+                  return "$test_status"
                 fi
-              elif [ $? -ne 0 ]; then
-                echo "Test failed with a different error."
-                return 1
               else
-                echo "Tests passed"
-                return 0
+                echo "Test failed with a different error."
+                return "$test_status"
               fi
             done
           }
@@ -291,6 +288,7 @@ jobs:
             local -i max_attempts=3
             local -i attempt=1
             local -i retry_sleep=5
+            local -i test_status
             local test_output
 
             while [ $attempt -le $max_attempts ]; do
@@ -305,7 +303,8 @@ jobs:
               -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTreeAutoEnhanced \
-              -ntp >> ~/run-tests-$attempt.log && return 0
+              -ntp > ~/run-tests-$attempt.log 2>&1 && return 0
+              test_status=$?
               test_output=$(cat ~/run-tests-$attempt.log) 
 
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
@@ -316,22 +315,18 @@ jobs:
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
 
-              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+              if grep -q "Could not transfer artifact" <<< "$test_output"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
                   sleep $retry_sleep
                   attempt=$((attempt + 1))
                 else
                   echo "Test failed after $max_attempts attempts due to artifact transfer issue."
-                  echo "Treating this as a success because the issue is likely transient."
-                  return 0
+                  return "$test_status"
                 fi
-              elif [ $? -ne 0 ]; then
-                echo "Test failed with a different error."
-                return 1
               else
-                echo "Tests passed"
-                return 0
+                echo "Test failed with a different error."
+                return "$test_status"
               fi
             done
           }
@@ -399,6 +394,7 @@ jobs:
             local -i max_attempts=3
             local -i attempt=1
             local -i retry_sleep=5
+            local -i test_status
             local test_output
 
             while [ $attempt -le $max_attempts ]; do
@@ -413,7 +409,8 @@ jobs:
               -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTreeManual \
-              -ntp >> ~/run-tests-$attempt.log && return 0
+              -ntp > ~/run-tests-$attempt.log 2>&1 && return 0
+              test_status=$?
               test_output=$(cat ~/run-tests-$attempt.log) 
 
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
@@ -424,22 +421,18 @@ jobs:
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
 
-              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+              if grep -q "Could not transfer artifact" <<< "$test_output"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
                   sleep $retry_sleep
                   attempt=$((attempt + 1))
                 else
                   echo "Test failed after $max_attempts attempts due to artifact transfer issue."
-                  echo "Treating this as a success because the issue is likely transient."
-                  return 0
+                  return "$test_status"
                 fi
-              elif [ $? -ne 0 ]; then
-                echo "Test failed with a different error."
-                return 1
               else
-                echo "Tests passed"
-                return 0
+                echo "Test failed with a different error."
+                return "$test_status"
               fi
             done
           }
@@ -504,6 +497,7 @@ jobs:
             local -i max_attempts=3
             local -i attempt=1
             local -i retry_sleep=5
+            local -i test_status
             local test_output
 
             while [ $attempt -le $max_attempts ]; do
@@ -518,7 +512,8 @@ jobs:
               -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTableManualBasic \
-              -ntp >> ~/run-tests-$attempt.log && return 0
+              -ntp > ~/run-tests-$attempt.log 2>&1 && return 0
+              test_status=$?
               test_output=$(cat ~/run-tests-$attempt.log) 
 
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
@@ -529,22 +524,18 @@ jobs:
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
 
-              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+              if grep -q "Could not transfer artifact" <<< "$test_output"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
                   sleep $retry_sleep
                   attempt=$((attempt + 1))
                 else
                   echo "Test failed after $max_attempts attempts due to artifact transfer issue."
-                  echo "Treating this as a success because the issue is likely transient."
-                  return 0
+                  return "$test_status"
                 fi
-              elif [ $? -ne 0 ]; then
-                echo "Test failed with a different error."
-                return 1
               else
-                echo "Tests passed"
-                return 0
+                echo "Test failed with a different error."
+                return "$test_status"
               fi
             done
           }
@@ -611,6 +602,7 @@ jobs:
             local -i max_attempts=3
             local -i attempt=1
             local -i retry_sleep=5
+            local -i test_status
             local test_output
 
             while [ $attempt -le $max_attempts ]; do
@@ -625,7 +617,8 @@ jobs:
               -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTableManualEnhanced \
-              -ntp >> ~/run-tests-$attempt.log && return 0
+              -ntp > ~/run-tests-$attempt.log 2>&1 && return 0
+              test_status=$?
               test_output=$(cat ~/run-tests-$attempt.log) 
 
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
@@ -636,22 +629,18 @@ jobs:
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
 
-              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+              if grep -q "Could not transfer artifact" <<< "$test_output"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
                   sleep $retry_sleep
                   attempt=$((attempt + 1))
                 else
                   echo "Test failed after $max_attempts attempts due to artifact transfer issue."
-                  echo "Treating this as a success because the issue is likely transient."
-                  return 0
+                  return "$test_status"
                 fi
-              elif [ $? -ne 0 ]; then
-                echo "Test failed with a different error."
-                return 1
               else
-                echo "Tests passed"
-                return 0
+                echo "Test failed with a different error."
+                return "$test_status"
               fi
             done
           }
@@ -701,6 +690,7 @@ jobs:
             local -i max_attempts=3
             local -i attempt=1
             local -i retry_sleep=5
+            local -i test_status
             local test_output
 
             while [ $attempt -le $max_attempts ]; do
@@ -712,7 +702,8 @@ jobs:
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }},${{ matrix.cluster3 }} \
               -pl integration-test \
               -am -PMultiClusterIT3 \
-              -ntp >> ~/run-tests-$attempt.log && return 0
+              -ntp > ~/run-tests-$attempt.log 2>&1 && return 0
+              test_status=$?
               test_output=$(cat ~/run-tests-$attempt.log) 
 
               echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
@@ -723,22 +714,18 @@ jobs:
                 echo "Failed to move log file ~/run-tests-$attempt.log to integration-test/target/cluster-logs/. Skipping..."
               fi
 
-              if echo "$test_output" | grep -q "Could not transfer artifact"; then
+              if grep -q "Could not transfer artifact" <<< "$test_output"; then
                 if [ $attempt -lt $max_attempts ]; then
                   echo "Test failed with artifact transfer issue, attempt $attempt. Retrying in $retry_sleep seconds..."
                   sleep $retry_sleep
                   attempt=$((attempt + 1))
                 else
                   echo "Test failed after $max_attempts attempts due to artifact transfer issue."
-                  echo "Treating this as a success because the issue is likely transient."
-                  return 0
+                  return "$test_status"
                 fi
-              elif [ $? -ne 0 ]; then
-                echo "Test failed with a different error."
-                return 1
               else
-                echo "Tests passed"
-                return 0
+                echo "Test failed with a different error."
+                return "$test_status"
               fi
             done
           }
