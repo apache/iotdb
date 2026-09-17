@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.ImportWALMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -89,8 +91,13 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 
 public class ImportWAL {
 
@@ -101,6 +108,8 @@ public class ImportWAL {
   private static final String DEFAULT_USER = "root";
   private static final int DEFAULT_THREAD_NUM = 1;
   private static final int SNAPSHOT_TABLET_ROW_LIMIT = 1024;
+  private static final Pattern WAL_DIRECTORY_PATTERN =
+      Pattern.compile("(.+)" + Pattern.quote(FILE_NAME_SEPARATOR) + "[0-9]+");
 
   private ImportWAL() {}
 
@@ -140,13 +149,32 @@ public class ImportWAL {
       final String host = commandLine.getOptionValue("host", DEFAULT_HOST);
       final int port = parsePort(commandLine.getOptionValue("port", String.valueOf(DEFAULT_PORT)));
       final String username = commandLine.getOptionValue("username", DEFAULT_USER);
+      final Console console = System.console();
+      final Map<Path, String> directoryDatabases =
+          resolveDirectoryDatabases(
+              walFiles,
+              database,
+              commandLine.hasOption("skip_db_confirmation"),
+              console == null
+                  ? null
+                  : (directory, inferredDatabase) ->
+                      console.readLine(
+                          ImportWALMessages
+                              .MESSAGE_INFERRED_TABLE_DATABASE_ARG_FROM_WAL_DIRECTORY_ARG_REPLAY_INTO_THIS_DATABASE_Y_YES_A_ACCEPT_ALL_INFERRED_DATABASES_N_QUIT_5B59D833,
+                          inferredDatabase,
+                          directory));
       final ReplayStatistics statistics =
           replayWALDirectories(
               walFiles,
               threadNum,
-              () ->
+              directory ->
                   createWALReplayWorker(
-                      host, port, username, password, database, replayDecisionController),
+                      host,
+                      port,
+                      username,
+                      password,
+                      directoryDatabases.get(directory),
+                      replayDecisionController),
               out,
               deleteSource);
       out.printf(
@@ -156,6 +184,13 @@ public class ImportWAL {
           walFiles.size(),
           statistics.skippedEntryCount);
       out.println();
+      if (!statistics.skippedCorruptedFiles.isEmpty()) {
+        out.printf(
+            ImportWALMessages
+                .MESSAGE_SKIPPED_ARG_CORRUPTED_WAL_FILES_SOURCE_FILES_RETAINED_A889CCE2,
+            statistics.getSkippedCorruptedFileCount());
+        out.println();
+      }
       out.printf(
           ImportWALMessages
               .MESSAGE_IMPORT_DURATION_ARG_SECONDS_TOTAL_SIZE_ARG_BYTES_AVERAGE_RATE_ARG_MB_PER_SECOND_4B4EA58D,
@@ -218,7 +253,16 @@ public class ImportWAL {
         Option.builder("db")
             .longOpt("database")
             .hasArg()
-            .desc(ImportWALMessages.MESSAGE_TARGET_DATABASE_FOR_TABLE_MODEL_WAL_ENTRIES_27BACD1C)
+            .desc(
+                ImportWALMessages
+                    .MESSAGE_TARGET_DATABASE_FOR_TABLE_MODEL_WAL_ENTRIES_IF_OMITTED_INFER_FROM_THE_WAL_PARENT_DIRECTORY_AND_ASK_FOR_CONFIRMATION_4B1E409D)
+            .build());
+    options.addOption(
+        Option.builder()
+            .longOpt("skip_db_confirmation")
+            .desc(
+                ImportWALMessages
+                    .MESSAGE_ACCEPT_ALL_INFERRED_DATABASE_NAMES_WITHOUT_CONFIRMATION_DB_DATABASE_STILL_TAKES_PRECEDENCE_FA49A73C)
             .build());
     options.addOption(
         Option.builder("os")
@@ -264,6 +308,15 @@ public class ImportWAL {
             .desc(
                 ImportWALMessages
                     .MESSAGE_POLICY_FOR_UNSUPPORTED_OPERATIONS_INCLUDING_UNCONVERTIBLE_TABLE_DELETIONS_ASK_DEFAULT_SKIP_TERMINATE_46ED9D3B)
+            .build());
+    options.addOption(
+        Option.builder()
+            .longOpt("on_corrupted")
+            .hasArg()
+            .argName("ask|skip|terminate")
+            .desc(
+                ImportWALMessages
+                    .MESSAGE_POLICY_FOR_CORRUPTED_WAL_FILES_ASK_DEFAULT_SKIP_TERMINATE_SKIPS_THE_REST_OF_THE_FILE_ALREADY_REPLAYED_OPERATIONS_ARE_NOT_ROLLED_BACK_BF097791)
             .build());
     options.addOption(
         Option.builder()
@@ -458,6 +511,71 @@ public class ImportWAL {
     return path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".wal");
   }
 
+  static String inferDatabaseFromWALDirectory(final Path directory) {
+    if (directory == null || directory.getFileName() == null) {
+      return null;
+    }
+    // IoTConsensus names each WAL node <database>-<regionId>. Match the final separator because
+    // table database names may contain hyphens. Numeric shared WAL nodes carry no database name.
+    final Matcher matcher = WAL_DIRECTORY_PATTERN.matcher(directory.getFileName().toString());
+    if (!matcher.matches()) {
+      return null;
+    }
+    final String database = matcher.group(1);
+    return PathUtils.isTableModelDatabase(database)
+            && !database.contains(".")
+            && database.length() <= MAX_DATABASE_NAME_LENGTH
+            && IoTDBConfig.DATABASE_PATTERN.matcher(database).matches()
+        ? database
+        : null;
+  }
+
+  static Map<Path, String> resolveDirectoryDatabases(
+      final List<Path> walFiles,
+      final String explicitDatabase,
+      final BiFunction<Path, String, String> confirmDatabase) {
+    return resolveDirectoryDatabases(walFiles, explicitDatabase, false, confirmDatabase);
+  }
+
+  static Map<Path, String> resolveDirectoryDatabases(
+      final List<Path> walFiles,
+      final String explicitDatabase,
+      final boolean skipConfirmation,
+      final BiFunction<Path, String, String> confirmDatabase) {
+    final Map<Path, String> databases = new LinkedHashMap<>();
+    // Consent applies only to this import; each directory still resolves its own database.
+    boolean acceptAll = skipConfirmation;
+    // Resolve every directory before starting any worker so refusal cannot leave a partial import.
+    for (final List<Path> directoryFiles : groupWALFilesByDirectory(walFiles)) {
+      final Path directory = directoryFiles.get(0).getParent();
+      final String database =
+          explicitDatabase != null ? explicitDatabase : inferDatabaseFromWALDirectory(directory);
+      if (explicitDatabase == null && database != null && !acceptAll) {
+        if (confirmDatabase == null) {
+          throw new IllegalArgumentException(
+              String.format(
+                  ImportWALMessages
+                      .EXCEPTION_DATABASE_CONFIRMATION_REQUIRED_FOR_WAL_DIRECTORY_ARG_INFERRED_DATABASE_ARG_SPECIFY_DB_DATABASE_OR_SKIP_DB_CONFIRMATION_WHEN_INTERACTIVE_INPUT_IS_UNAVAILABLE_14DF6D36,
+                  directory,
+                  database));
+        }
+        final String answer = confirmDatabase.apply(directory, database);
+        final String normalizedAnswer =
+            answer == null ? "" : answer.trim().toLowerCase(Locale.ROOT);
+        acceptAll = "a".equals(normalizedAnswer) || "all".equals(normalizedAnswer);
+        if (!acceptAll && !"y".equals(normalizedAnswer) && !"yes".equals(normalizedAnswer)) {
+          throw new IllegalArgumentException(
+              String.format(
+                  ImportWALMessages
+                      .EXCEPTION_REPLAY_INTO_INFERRED_DATABASE_ARG_WAS_NOT_CONFIRMED_SPECIFY_DB_DATABASE_TO_SELECT_THE_TARGET_EXPLICITLY_86F81190,
+                  database));
+        }
+      }
+      databases.put(directory, database);
+    }
+    return databases;
+  }
+
   private static final Comparator<Path> WAL_FILE_COMPARATOR =
       Comparator.comparing((Path path) -> Objects.toString(path.getParent(), ""))
           .thenComparingLong(ImportWAL::getWALVersion)
@@ -510,6 +628,17 @@ public class ImportWAL {
       final PrintStream progressStream,
       final boolean deleteSource)
       throws IOException {
+    return replayWALDirectories(
+        walFiles, threadNum, directory -> workerFactory.create(), progressStream, deleteSource);
+  }
+
+  static ReplayStatistics replayWALDirectories(
+      final List<Path> walFiles,
+      final int threadNum,
+      final DirectoryWALReplayWorkerFactory workerFactory,
+      final PrintStream progressStream,
+      final boolean deleteSource)
+      throws IOException {
     if (threadNum <= 0) {
       throw new IllegalArgumentException(
           String.format(
@@ -534,20 +663,26 @@ public class ImportWAL {
       futures.add(
           executor.submit(
               () -> {
-                try (WALReplayWorker worker = workerFactory.create()) {
+                try {
                   int directoryIndex;
                   // A worker owns one directory at a time so WAL files from that directory remain
                   // ordered, while independent directories can make progress concurrently.
                   while (replayFailure.get() == null
                       && (directoryIndex = nextDirectoryIndex.getAndIncrement())
                           < walDirectories.size()) {
-                    for (final Path walFile : walDirectories.get(directoryIndex)) {
-                      recordCompletedFile(
-                          statistics,
-                          replayWALFile(walFile, worker),
-                          walFiles.size(),
-                          startNanos,
-                          progressStream);
+                    final List<Path> directoryFiles = walDirectories.get(directoryIndex);
+                    // A fresh worker keeps the Session database, converter and schema cache scoped
+                    // to this directory, even when one thread processes multiple databases.
+                    try (WALReplayWorker worker =
+                        workerFactory.create(directoryFiles.get(0).getParent())) {
+                      for (final Path walFile : directoryFiles) {
+                        recordCompletedFile(
+                            statistics,
+                            replayWALFile(walFile, worker),
+                            walFiles.size(),
+                            startNanos,
+                            progressStream);
+                      }
                     }
                   }
                 } catch (final Exception e) {
@@ -639,19 +774,28 @@ public class ImportWAL {
         offset = reader.getWALCurrentReadOffset();
       }
       if (reader.isFileCorrupted()) {
-        throw new WALReplayException(
-            String.format(
-                ImportWALMessages
-                    .EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9,
-                walFile,
-                reader.getWALCurrentReadOffset(),
-                ImportWALMessages.EXCEPTION_THE_WAL_FILE_IS_TRUNCATED_OR_CORRUPTED_6B0734C5),
-            null);
+        final WALReplayException corruption =
+            new WALReplayException(
+                String.format(
+                    ImportWALMessages
+                        .EXCEPTION_FAILED_TO_REPLAY_WAL_FILE_ARG_AT_OFFSET_ARG_ARG_FCFAF7F9,
+                    walFile,
+                    reader.getWALCurrentReadOffset(),
+                    ImportWALMessages.EXCEPTION_THE_WAL_FILE_IS_TRUNCATED_OR_CORRUPTED_6B0734C5),
+                null);
+        // Only reader-detected corruption is skippable; replay/RPC and other I/O failures still
+        // abort the import. Earlier entries may already have been applied and cannot be rolled
+        // back.
+        if (!replayer.skipCorruptedFile(corruption.getMessage())) {
+          throw corruption;
+        }
+        fullyReplayed = false;
+        statistics.skippedCorruptedFiles.add(walFile);
       }
       statistics.completedFileCount++;
       statistics.processedBytes += Files.size(walFile);
       // Ignored control entries carry no data to replay. A user-skipped operation, however,
-      // must keep its source WAL available even when every worker finishes without an exception.
+      // or a corrupted tail must keep its source WAL available even when every worker finishes.
       if (fullyReplayed) {
         statistics.fullyReplayedFiles.add(walFile);
       }
@@ -680,6 +824,13 @@ public class ImportWAL {
       statistics.add(completedFileStatistics);
       statistics.elapsedNanos = System.nanoTime() - startNanos;
       if (progressStream != null) {
+        for (final Path corruptedFile : completedFileStatistics.skippedCorruptedFiles) {
+          progressStream.printf(
+              ImportWALMessages
+                  .MESSAGE_SKIPPED_CORRUPTED_WAL_FILE_ARG_SOURCE_FILE_RETAINED_C20FF968,
+              corruptedFile);
+          progressStream.println();
+        }
         progressStream.printf(
             ImportWALMessages
                 .MESSAGE_PROGRESS_ARG_COMPLETED_FILES_ARG_TOTAL_FILES_ARG_PROCESSED_BYTES_ARG_TOTAL_BYTES_ARG_PERCENT_ARG_ELAPSED_SECONDS_ARG_RATE_ARG_MB_PER_SECOND_F1C1356F,
@@ -732,10 +883,20 @@ public class ImportWAL {
     WALReplayWorker create() throws Exception;
   }
 
+  @FunctionalInterface
+  interface DirectoryWALReplayWorkerFactory {
+
+    WALReplayWorker create(Path directory) throws Exception;
+  }
+
   interface WALReplayWorker extends AutoCloseable {
 
     ReplayResult replay(WALEntry entry)
         throws IoTDBConnectionException, StatementExecutionException;
+
+    default boolean skipCorruptedFile(final String reason) {
+      return false;
+    }
 
     @Override
     default void close() {}
@@ -799,6 +960,11 @@ public class ImportWAL {
       converter =
           new ConsensusLogToTabletConverter(
               null, null, ColumnFilterMatcher.matchAll(), tableDatabaseName);
+    }
+
+    @Override
+    public boolean skipCorruptedFile(final String reason) {
+      return replayDecisionPrompt.skipCorruptedFile(reason);
     }
 
     @Override
@@ -904,6 +1070,10 @@ public class ImportWAL {
           final WALEntry entry, final boolean executableDelete, final String reason) {
         return decide(entry, executableDelete);
       }
+
+      default boolean skipCorruptedFile(final String reason) {
+        return false;
+      }
     }
 
     static class ReplayDecisionController implements ReplayDecisionPrompt {
@@ -912,9 +1082,11 @@ public class ImportWAL {
       private final ReplayPolicy deletePolicy;
       private final ReplayPolicy objectPolicy;
       private final ReplayPolicy unsupportedPolicy;
+      private final ReplayPolicy corruptedPolicy;
       private ReplayDecision treeDeleteDecision;
       private ReplayDecision tableDeleteDecision;
       private boolean skipAllUnsupportedEntries;
+      private boolean skipAllCorruptedFiles;
 
       ReplayDecisionController(final Console console) {
         this(console == null ? null : console::readLine);
@@ -925,6 +1097,7 @@ public class ImportWAL {
         deletePolicy = ReplayPolicy.ASK;
         objectPolicy = ReplayPolicy.ASK;
         unsupportedPolicy = ReplayPolicy.ASK;
+        corruptedPolicy = ReplayPolicy.ASK;
       }
 
       ReplayDecisionController(final CommandLine commandLine, final Console console) {
@@ -932,6 +1105,33 @@ public class ImportWAL {
         deletePolicy = ReplayPolicy.parse(commandLine, "on_delete");
         objectPolicy = ReplayPolicy.parse(commandLine, "on_object");
         unsupportedPolicy = ReplayPolicy.parse(commandLine, "on_unsupported");
+        corruptedPolicy = ReplayPolicy.parse(commandLine, "on_corrupted");
+      }
+
+      @Override
+      public synchronized boolean skipCorruptedFile(final String reason) {
+        return switch (corruptedPolicy) {
+          case SKIP -> true;
+          case EXECUTE, TERMINATE -> false;
+          case ASK -> {
+            if (skipAllCorruptedFiles) {
+              yield true;
+            }
+            if (readLine == null) {
+              yield false;
+            }
+            final ReplayDecision decision =
+                parseDecision(
+                    readLine.apply(
+                        ImportWALMessages
+                            .MESSAGE_WAL_CORRUPTION_DETECTED_ARG_ALREADY_REPLAYED_OPERATIONS_ARE_NOT_ROLLED_BACK_CHOOSE_S_SKIP_FILE_L_SKIP_ALL_CORRUPTED_FILES_Q_QUIT_BFED14E4,
+                        reason),
+                    false);
+            // File corruption has its own "skip all" choice, shared across parallel workers.
+            skipAllCorruptedFiles = decision == ReplayDecision.SKIP_ALL;
+            yield decision == ReplayDecision.SKIP || skipAllCorruptedFiles;
+          }
+        };
       }
 
       // The controller is shared by parallel workers so an "all" choice applies to the whole
@@ -1481,6 +1681,7 @@ public class ImportWAL {
 
   static class ReplayStatistics {
     private final List<Path> fullyReplayedFiles = new ArrayList<>();
+    private final List<Path> skippedCorruptedFiles = new ArrayList<>();
     private long replayedOperationCount;
     private long skippedEntryCount;
     private long totalBytes;
@@ -1490,6 +1691,7 @@ public class ImportWAL {
 
     private void add(final ReplayStatistics statistics) {
       fullyReplayedFiles.addAll(statistics.fullyReplayedFiles);
+      skippedCorruptedFiles.addAll(statistics.skippedCorruptedFiles);
       replayedOperationCount += statistics.replayedOperationCount;
       skippedEntryCount += statistics.skippedEntryCount;
       processedBytes += statistics.processedBytes;
@@ -1502,6 +1704,10 @@ public class ImportWAL {
 
     long getSkippedEntryCount() {
       return skippedEntryCount;
+    }
+
+    long getSkippedCorruptedFileCount() {
+      return skippedCorruptedFiles.size();
     }
 
     long getTotalBytes() {

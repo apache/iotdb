@@ -73,9 +73,11 @@ import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,6 +89,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -129,6 +132,258 @@ public class ImportWALTest {
         files);
   }
 
+  /** IoTConsensus directories end in a region ID; hyphens inside database names are preserved. */
+  @Test
+  public void testInferDatabaseFromWALDirectory() {
+    assertEquals("factory", ImportWAL.inferDatabaseFromWALDirectory(Paths.get("wal/factory-3")));
+    assertEquals(
+        "factory-east-2",
+        ImportWAL.inferDatabaseFromWALDirectory(Paths.get("wal/factory-east-2-17")));
+    assertEquals("数据库", ImportWAL.inferDatabaseFromWALDirectory(Paths.get("wal/数据库-0")));
+    assertEquals("root", ImportWAL.inferDatabaseFromWALDirectory(Paths.get("wal/root-1")));
+    for (final String name :
+        Arrays.asList(
+            "0",
+            "17",
+            "root.sg-3",
+            "backup",
+            "factory-x",
+            "-3",
+            "factory-3-copy",
+            "a.b-2",
+            "bad name-1")) {
+      assertNull(name, ImportWAL.inferDatabaseFromWALDirectory(Paths.get("wal", name)));
+    }
+    assertNull(ImportWAL.inferDatabaseFromWALDirectory(null));
+  }
+
+  /**
+   * A single file uses its parent directory; one directory is confirmed only once for many files.
+   */
+  @Test
+  public void testConfirmInferredDatabasePerDirectory() throws Exception {
+    final Path directory = temporaryFolder.newFolder("factory-east-3").toPath();
+    final Path first = createWALFile(directory, 0);
+    createWALFile(directory, 1);
+    final AtomicInteger confirmations = new AtomicInteger();
+    final Map<Path, String> databases =
+        ImportWAL.resolveDirectoryDatabases(
+            ImportWAL.collectWALFiles(directory),
+            null,
+            false,
+            (source, database) -> {
+              assertEquals(directory, source);
+              assertEquals("factory-east", database);
+              confirmations.incrementAndGet();
+              return " YeS ";
+            });
+    assertEquals(1, confirmations.get());
+    assertEquals("factory-east", databases.get(directory));
+    assertEquals(
+        databases,
+        ImportWAL.resolveDirectoryDatabases(
+            ImportWAL.collectWALFiles(first), null, false, (source, database) -> "y"));
+  }
+
+  /** Explicit -db overrides every directory and never asks for inference approval. */
+  @Test
+  public void testExplicitDatabaseOverridesDirectories() {
+    final List<Path> files =
+        Arrays.asList(
+            Paths.get("factory-3/one.wal"), Paths.get("other-4/two.wal"), Paths.get("0/three.wal"));
+    final Map<Path, String> databases =
+        ImportWAL.resolveDirectoryDatabases(
+            files,
+            "target",
+            false,
+            (source, database) -> {
+              throw new AssertionError("Explicit database must not prompt");
+            });
+    assertEquals(3, databases.size());
+    assertTrue(databases.values().stream().allMatch("target"::equals));
+    assertEquals(databases, ImportWAL.resolveDirectoryDatabases(files, "target", false, null));
+  }
+
+  /** Rejecting a candidate, EOF, empty/invalid input, or no console must not authorize writes. */
+  @Test
+  public void testInferredDatabaseRequiresPositiveConfirmation() {
+    final List<Path> files = Collections.singletonList(Paths.get("factory-3/one.wal"));
+    for (final String answer : Arrays.asList("n", "no", "", "invalid", "execute", null)) {
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              ImportWAL.resolveDirectoryDatabases(
+                  files, null, false, (source, database) -> answer));
+    }
+    final IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> ImportWAL.resolveDirectoryDatabases(files, null, false, null));
+    assertTrue(failure.getMessage().contains("factory-3"));
+    assertTrue(failure.getMessage().contains("-db/--database"));
+    assertTrue(failure.getMessage().contains("--skip_db_confirmation"));
+  }
+
+  /** The flag authorizes inferred targets without a console, but never invents missing names. */
+  @Test
+  public void testSkipDatabaseConfirmationOption() throws Exception {
+    final CommandLine commandLine =
+        new DefaultParser()
+            .parse(ImportWAL.createOptions(), new String[] {"-f", "wal", "--skip_db_confirmation"});
+    assertTrue(commandLine.hasOption("skip_db_confirmation"));
+    assertFalse(ImportWAL.createOptions().getOption("skip_db_confirmation").hasArg());
+    final List<Path> files =
+        Arrays.asList(
+            Paths.get("factory-east-3/one.wal"),
+            Paths.get("factory-west-4/two.wal"),
+            Paths.get("0/three.wal"));
+    final Map<Path, String> databases =
+        ImportWAL.resolveDirectoryDatabases(
+            files, null, commandLine.hasOption("skip_db_confirmation"), null);
+    assertEquals("factory-east", databases.get(files.get(0).getParent()));
+    assertEquals("factory-west", databases.get(files.get(1).getParent()));
+    assertTrue(databases.containsKey(files.get(2).getParent()));
+    assertNull(databases.get(files.get(2).getParent()));
+    assertEquals(
+        databases,
+        ImportWAL.resolveDirectoryDatabases(
+            files,
+            null,
+            true,
+            (directory, database) -> {
+              throw new AssertionError("Skipped confirmation must not prompt");
+            }));
+    assertTrue(
+        ImportWAL.resolveDirectoryDatabases(files, "target", true, null).values().stream()
+            .allMatch("target"::equals));
+  }
+
+  /** Accept-all applies to subsequent directories, without reusing the first database name. */
+  @Test
+  public void testAcceptAllInferredDatabases() {
+    final List<Path> files =
+        Arrays.asList(
+            Paths.get("first-1/one.wal"),
+            Paths.get("second-2/two.wal"),
+            Paths.get("third-3/three.wal"),
+            Paths.get("unknown/four.wal"));
+    for (final String answer : Arrays.asList("a", " A ", "all", " AlL ")) {
+      final AtomicInteger prompts = new AtomicInteger();
+      final Map<Path, String> databases =
+          ImportWAL.resolveDirectoryDatabases(
+              files,
+              null,
+              false,
+              (directory, database) -> prompts.incrementAndGet() == 1 ? "y" : answer);
+      assertEquals(2, prompts.get());
+      assertEquals("first", databases.get(files.get(0).getParent()));
+      assertEquals("second", databases.get(files.get(1).getParent()));
+      assertEquals("third", databases.get(files.get(2).getParent()));
+      assertNull(databases.get(files.get(3).getParent()));
+    }
+    // A later import must ask again even if an earlier import accepted all inferred targets.
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ImportWAL.resolveDirectoryDatabases(files, null, false, null));
+  }
+
+  /** Tree and shared WAL node directories do not imply a table database or require confirmation. */
+  @Test
+  public void testUnrecognizedDirectoryDoesNotInferFromAncestor() {
+    final List<Path> files =
+        Arrays.asList(
+            Paths.get("factory-3/0/one.wal"),
+            Paths.get("root.sg-4/two.wal"),
+            Paths.get("backup/three.wal"));
+    final Map<Path, String> databases =
+        ImportWAL.resolveDirectoryDatabases(files, null, false, null);
+    assertEquals(3, databases.size());
+    assertTrue(databases.values().stream().allMatch(database -> database == null));
+  }
+
+  /**
+   * One thread may visit several databases; each directory needs its own Session and schema cache.
+   */
+  @Test
+  public void testInferredDatabasesRouteDirectoriesSequentially() throws Exception {
+    assertInferredDatabasesRouteDirectories(1);
+  }
+
+  /** Concurrent directory replay must use the confirmed database for each directory. */
+  @Test
+  public void testInferredDatabasesRouteDirectoriesInParallel() throws Exception {
+    assertInferredDatabasesRouteDirectories(2);
+  }
+
+  private void assertInferredDatabasesRouteDirectories(final int threads) throws Exception {
+    final Path source = temporaryFolder.newFolder("database-routing").toPath();
+    final Map<String, Session> tables = new LinkedHashMap<>();
+    final List<Path> directories = new ArrayList<>();
+    for (final String database : Arrays.asList("factory-east", "factory-west")) {
+      final Path directory = Files.createDirectory(source.resolve(database + "-3"));
+      directories.add(directory);
+      final Session session = mock(Session.class);
+      mockTableSchema(session, "table1", database + "_time", "tag1");
+      tables.put(database, session);
+      writeWAL(
+          createWALFile(directory, 0).toFile(),
+          new WALInfoEntry(1, WALFileTest.getRelationalInsertTabletNode("table1")),
+          tableDeleteEntry(tableDeletion("table1", new TagPredicate.NOP(), 10, 20)));
+      writeWAL(
+          createWALFile(directory, 1).toFile(),
+          tableDeleteEntry(tableDeletion("table1", new TagPredicate.NOP(), 30, 40)));
+    }
+    final Path treeDirectory = Files.createDirectory(source.resolve("root.sg-4"));
+    writeWAL(
+        createWALFile(treeDirectory, 0).toFile(),
+        new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.d1", 1)));
+    final List<Path> files = ImportWAL.collectWALFiles(source);
+    final AtomicInteger confirmations = new AtomicInteger();
+    final Map<Path, String> databases =
+        ImportWAL.resolveDirectoryDatabases(
+            files,
+            null,
+            false,
+            (directory, database) -> {
+              assertTrue(directories.contains(directory));
+              assertTrue(tables.containsKey(database));
+              confirmations.incrementAndGet();
+              return "yes";
+            });
+    final Session tree = mock(Session.class);
+    final AtomicInteger closed = new AtomicInteger();
+    final ReplayDecisionController controller = policyController("--on_delete", "execute");
+    final ImportWAL.ReplayStatistics statistics =
+        ImportWAL.replayWALDirectories(
+            files,
+            threads,
+            directory -> {
+              assertEquals(2, confirmations.get());
+              final String database = databases.get(directory);
+              return new ImportWAL.WALReplayer(tree, tables.get(database), database, controller) {
+                @Override
+                public void close() {
+                  closed.incrementAndGet();
+                }
+              };
+            },
+            null,
+            false);
+    assertEquals(7, statistics.getReplayedOperationCount());
+    assertEquals(3, closed.get());
+    for (final Map.Entry<String, Session> table : tables.entrySet()) {
+      verify(table.getValue()).insertRelationalTablet(any(Tablet.class));
+      verify(table.getValue()).executeQueryStatement("DESCRIBE \"table1\"");
+      final ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+      verify(table.getValue(), times(2)).executeNonQueryStatement(sql.capture());
+      assertTrue(
+          sql.getAllValues().stream()
+              .allMatch(statement -> statement.contains(table.getKey() + "_time")));
+    }
+    verify(tree).insertTablet(any(Tablet.class));
+    verify(tree, never()).insertRelationalTablet(any(Tablet.class));
+  }
+
   /** Covers CLI discovery of source-file and parallel replay options without opening a Session. */
   @Test
   public void testHelpDescribesDeleteSourceOption() {
@@ -143,6 +398,8 @@ public class ImportWALTest {
     assertTrue(output.toString().contains("--on_delete"));
     assertTrue(output.toString().contains("--on_object"));
     assertTrue(output.toString().contains("--on_unsupported"));
+    assertTrue(output.toString().contains("--on_corrupted"));
+    assertTrue(output.toString().contains("--skip_db_confirmation"));
   }
 
   @Test
@@ -152,17 +409,26 @@ public class ImportWALTest {
         Arrays.asList(
             policyController(),
             policyController(
-                "--on_delete", "ask", "--on_object", "ask", "--on_unsupported", "ask"))) {
+                "--on_delete",
+                "ask",
+                "--on_object",
+                "ask",
+                "--on_unsupported",
+                "ask",
+                "--on_corrupted",
+                "ask"))) {
       assertEquals(ReplayDecision.TERMINATE, controller.decide(deletion, true));
       assertEquals(ReplayDecision.TERMINATE, controller.decide(mockUnsupportedEntry(), false));
       assertEquals(ReplayDecision.TERMINATE, controller.decide(deletion, false));
+      assertFalse(controller.skipCorruptedFile("broken.wal"));
     }
   }
 
   /** Invalid policies must fail before reading WAL files or connecting to the target. */
   @Test
   public void testInvalidReplayPoliciesFailEarly() {
-    for (final String option : Arrays.asList("on_delete", "on_object", "on_unsupported")) {
+    for (final String option :
+        Arrays.asList("on_delete", "on_object", "on_unsupported", "on_corrupted")) {
       final List<String> invalidValues = new ArrayList<>(Arrays.asList("", "invalid"));
       if (!"on_delete".equals(option)) {
         invalidValues.add("execute");
@@ -1414,6 +1680,176 @@ public class ImportWALTest {
                     new ImportWAL.WALReplayer(mock(Session.class), null, null)));
 
     assertTrue(exception.getMessage().contains(walFile.getName()));
+  }
+
+  @Test
+  public void testConfiguredSkipCorruptedFiles() throws Exception {
+    assertReplaySkipsCorruptedFiles(policyController("--on_corrupted", " SkIp "), false);
+  }
+
+  @Test
+  public void testParallelConfiguredSkipCorruptedFiles() throws Exception {
+    assertReplaySkipsCorruptedFiles(policyController("--on_corrupted", "skip"), true);
+  }
+
+  @Test
+  public void testInteractivelySkipEachCorruptedFile() throws Exception {
+    final List<String> reasons = new ArrayList<>();
+    assertReplaySkipsCorruptedFiles(
+        new ReplayDecisionController(
+            (prompt, reason) -> {
+              assertEquals(
+                  ImportWALMessages
+                      .MESSAGE_WAL_CORRUPTION_DETECTED_ARG_ALREADY_REPLAYED_OPERATIONS_ARE_NOT_ROLLED_BACK_CHOOSE_S_SKIP_FILE_L_SKIP_ALL_CORRUPTED_FILES_Q_QUIT_BFED14E4,
+                  prompt);
+              reasons.add(reason.toString());
+              return "s";
+            }),
+        false);
+    assertEquals(2, reasons.size());
+    assertTrue(reasons.get(0).contains("node-a"));
+    assertTrue(reasons.get(1).contains("node-b"));
+  }
+
+  @Test
+  public void testParallelInteractivelySkipAllCorruptedFiles() throws Exception {
+    final AtomicInteger prompts = new AtomicInteger();
+    final ReplayDecisionController controller =
+        new ReplayDecisionController(
+            (prompt, reason) -> {
+              prompts.incrementAndGet();
+              return "l";
+            });
+    assertReplaySkipsCorruptedFiles(controller, true);
+    assertEquals(1, prompts.get());
+    controller.decide(mockUnsupportedEntry(), false);
+    assertEquals(2, prompts.get());
+  }
+
+  /**
+   * Complete entries before corruption stay counted, and later files in each directory continue.
+   */
+  private void assertReplaySkipsCorruptedFiles(
+      final ReplayDecisionController controller, final boolean parallel) throws Exception {
+    final Path source = temporaryFolder.newFolder("corrupted-wal-root").toPath();
+    final List<Path> corrupted = new ArrayList<>();
+    final List<Path> complete = new ArrayList<>();
+    for (final String node : Arrays.asList("node-a", "node-b")) {
+      final Path directory = Files.createDirectory(source.resolve(node));
+      final Path brokenWAL = createWALFile(directory, 0);
+      // Keep one valid entry before a truncated entry in a properly framed WAL segment.
+      try (ILogWriter writer = new WALWriter(brokenWAL.toFile())) {
+        writer.write(
+            serializeWAL(new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.d1", 1))));
+        final ByteBuffer partialEntry = ByteBuffer.allocate(1);
+        partialEntry.put(WALEntryType.INSERT_ROW_NODE.getCode());
+        writer.write(partialEntry);
+      }
+      corrupted.add(brokenWAL);
+      final Path validWAL = createWALFile(directory, 1);
+      writeWAL(
+          validWAL.toFile(), new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.d1", 2)));
+      complete.add(validWAL);
+    }
+    final Session session = mock(Session.class);
+    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+    final List<Path> files = ImportWAL.collectWALFiles(source);
+    final ImportWAL.ReplayStatistics statistics =
+        parallel
+            ? ImportWAL.replayWALDirectories(
+                files,
+                2,
+                () -> new ImportWAL.WALReplayer(session, null, null, controller),
+                new PrintStream(output),
+                true)
+            : ImportWAL.replayWALFiles(
+                files,
+                new ImportWAL.WALReplayer(session, null, null, controller),
+                new PrintStream(output),
+                true);
+    assertEquals(4, statistics.getReplayedOperationCount());
+    assertEquals(0, statistics.getSkippedEntryCount());
+    assertEquals(2, statistics.getSkippedCorruptedFileCount());
+    assertEquals(4, statistics.getCompletedFileCount());
+    assertEquals(100.0, statistics.getProgressPercent(), 0.0);
+    for (final Path file : corrupted) {
+      assertTrue(Files.exists(file));
+      assertTrue(output.toString().contains(file.toString()));
+    }
+    for (final Path file : complete) {
+      assertFalse(Files.exists(file));
+    }
+    verify(session, times(4)).insertTablet(any(Tablet.class));
+  }
+
+  @Test
+  public void testCorruptionTerminationRetainsAllSourceFiles() throws Exception {
+    final File valid = createWALFile(0);
+    final File corrupted = createWALFile(1);
+    final File later = createWALFile(2);
+    writeWAL(valid, new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.d1", 1)));
+    Files.write(corrupted.toPath(), new byte[] {WALEntryType.INSERT_ROW_NODE.getCode()});
+    writeWAL(later, new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.d1", 2)));
+    final List<ReplayDecisionController> controllers =
+        new ArrayList<>(
+            Arrays.asList(policyController("--on_corrupted", "terminate"), policyController()));
+    for (final String answer : Arrays.asList("q", "invalid", "e", null)) {
+      controllers.add(new ReplayDecisionController((prompt, reason) -> answer));
+    }
+    for (final ReplayDecisionController controller : controllers) {
+      final Session session = mock(Session.class);
+      final IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  ImportWAL.replayWALFiles(
+                      Arrays.asList(valid.toPath(), corrupted.toPath(), later.toPath()),
+                      new ImportWAL.WALReplayer(session, null, null, controller),
+                      null,
+                      true));
+      assertTrue(failure.getMessage().contains(corrupted.getName()));
+      assertTrue(valid.exists());
+      assertTrue(corrupted.exists());
+      assertTrue(later.exists());
+      verify(session).insertTablet(any(Tablet.class));
+    }
+  }
+
+  @Test
+  public void testUnsupportedSkipAllDoesNotSkipCorruption() {
+    final AtomicInteger prompts = new AtomicInteger();
+    final ReplayDecisionController controller =
+        new ReplayDecisionController(
+            (prompt, reason) -> prompts.incrementAndGet() == 1 ? "l" : "q");
+    assertEquals(ReplayDecision.SKIP_ALL, controller.decide(mockUnsupportedEntry(), false));
+    assertFalse(controller.skipCorruptedFile("broken.wal"));
+    assertEquals(2, prompts.get());
+  }
+
+  /** A failed RPC may already have applied data; corruption policy must not hide it. */
+  @Test
+  public void testSkipCorruptionDoesNotSkipReplayFailures() throws Exception {
+    final File walFile = createWALFile(0);
+    writeWAL(walFile, new WALInfoEntry(1, WALTestUtils.getInsertRowNode("root.sg.d1", 1)));
+    for (final Exception cause :
+        Arrays.asList(
+            new IoTDBConnectionException("disconnected"),
+            new StatementExecutionException("insert failed"))) {
+      final Session session = mock(Session.class);
+      doThrow(cause).when(session).insertTablet(any(Tablet.class));
+      final IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  ImportWAL.replayWALFiles(
+                      Collections.singletonList(walFile.toPath()),
+                      new ImportWAL.WALReplayer(
+                          session, null, null, policyController("--on_corrupted", "skip")),
+                      null,
+                      true));
+      assertEquals(cause, failure.getCause());
+      assertTrue(walFile.exists());
+    }
   }
 
   @Test

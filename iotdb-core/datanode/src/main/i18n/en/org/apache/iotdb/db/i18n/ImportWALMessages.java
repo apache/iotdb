@@ -127,5 +127,26 @@ public final class ImportWALMessages {
   public static final String EXCEPTION_INVALID_VALUE_FOR_ARG_ARG_EXPECTED_ARG_73B78522 =
       "Invalid value for --%s: %s. Expected %s.";
 
+  public static final String MESSAGE_POLICY_FOR_CORRUPTED_WAL_FILES_ASK_DEFAULT_SKIP_TERMINATE_SKIPS_THE_REST_OF_THE_FILE_ALREADY_REPLAYED_OPERATIONS_ARE_NOT_ROLLED_BACK_BF097791 =
+      "Policy for corrupted WAL files: ask (default), skip, terminate. Skips the rest of the file; already replayed operations are not rolled back.";
+  public static final String MESSAGE_WAL_CORRUPTION_DETECTED_ARG_ALREADY_REPLAYED_OPERATIONS_ARE_NOT_ROLLED_BACK_CHOOSE_S_SKIP_FILE_L_SKIP_ALL_CORRUPTED_FILES_Q_QUIT_BFED14E4 =
+      "WAL corruption detected: %s. Already replayed operations are not rolled back. Choose s=skip file, l=skip all corrupted files, q=quit: ";
+  public static final String MESSAGE_SKIPPED_CORRUPTED_WAL_FILE_ARG_SOURCE_FILE_RETAINED_C20FF968 =
+      "Skipped corrupted WAL file: %s. Source file retained.";
+  public static final String MESSAGE_SKIPPED_ARG_CORRUPTED_WAL_FILES_SOURCE_FILES_RETAINED_A889CCE2 =
+      "Skipped %d corrupted WAL files; source files retained.";
+
+  public static final String MESSAGE_TARGET_DATABASE_FOR_TABLE_MODEL_WAL_ENTRIES_IF_OMITTED_INFER_FROM_THE_WAL_PARENT_DIRECTORY_AND_ASK_FOR_CONFIRMATION_4B1E409D =
+      "Target database for table-model WAL entries. If omitted, infer from the WAL parent directory and ask for confirmation.";
+  public static final String MESSAGE_INFERRED_TABLE_DATABASE_ARG_FROM_WAL_DIRECTORY_ARG_REPLAY_INTO_THIS_DATABASE_Y_YES_A_ACCEPT_ALL_INFERRED_DATABASES_N_QUIT_5B59D833 =
+      "Inferred table database %s from WAL directory %s. Replay into this database? [y] yes, [a] accept all inferred databases, [N] quit: ";
+  public static final String EXCEPTION_DATABASE_CONFIRMATION_REQUIRED_FOR_WAL_DIRECTORY_ARG_INFERRED_DATABASE_ARG_SPECIFY_DB_DATABASE_OR_SKIP_DB_CONFIRMATION_WHEN_INTERACTIVE_INPUT_IS_UNAVAILABLE_14DF6D36 =
+      "Database confirmation required for WAL directory %s (inferred database: %s). Specify -db/--database or --skip_db_confirmation when interactive input is unavailable.";
+  public static final String EXCEPTION_REPLAY_INTO_INFERRED_DATABASE_ARG_WAS_NOT_CONFIRMED_SPECIFY_DB_DATABASE_TO_SELECT_THE_TARGET_EXPLICITLY_86F81190 =
+      "Replay into inferred database %s was not confirmed. Specify -db/--database to select the target explicitly.";
+
+  public static final String MESSAGE_ACCEPT_ALL_INFERRED_DATABASE_NAMES_WITHOUT_CONFIRMATION_DB_DATABASE_STILL_TAKES_PRECEDENCE_FA49A73C =
+      "Accept all inferred database names without confirmation; -db/--database still takes precedence.";
+
   private ImportWALMessages() {}
 }
