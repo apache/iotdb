@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.ResidualDataProtectionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
@@ -41,7 +40,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
@@ -83,9 +81,23 @@ public abstract class LogWriter implements ILogWriter {
             StandardOpenOption.CREATE,
             StandardOpenOption.WRITE,
             StandardOpenOption.APPEND);
-    if ((!logFile.exists() || logFile.length() == 0)
-        && (version == WALFileVersion.V2 || version == WALFileVersion.V3)) {
-      this.logChannel.write(ByteBuffer.wrap(version.getVersionBytes()));
+    try {
+      if (logChannel.size() == 0
+          && (version == WALFileVersion.V2 || version == WALFileVersion.V3)) {
+        ByteBuffer magic = ByteBuffer.wrap(version.getVersionBytes());
+        while (magic.hasRemaining()) {
+          logChannel.write(magic);
+        }
+      }
+    } catch (IOException e) {
+      // A full disk can fail initialization after open() succeeds. Release the orphan channel
+      // before the owner retries creating the successor.
+      try {
+        logChannel.close();
+      } catch (IOException closeException) {
+        e.addSuppressed(closeException);
+      }
+      throw e;
     }
   }
 
@@ -134,17 +146,22 @@ public abstract class LogWriter implements ILogWriter {
       WritingMetrics.getInstance().recordCompressWALBufferCost(System.nanoTime() - startTime);
     }
     startTime = System.nanoTime();
-    try {
-      headerBuffer.flip();
+    headerBuffer.flip();
+    while (headerBuffer.hasRemaining()) {
       logChannel.write(headerBuffer);
+    }
+    while (buffer.hasRemaining()) {
+      logChannel.write(buffer);
+    }
+    try {
       if (!TSFileDescriptor.getInstance()
-              .getConfig()
-              .getEncryptType()
-              .equals(EncryptionType.UNENCRYPTED.getExtension())
+          .getConfig()
+          .getEncryptType()
+          .equals(EncryptionType.UNENCRYPTED.getExtension())
           && !TSFileDescriptor.getInstance()
-              .getConfig()
-              .getEncryptType()
-              .equals(IoTDBConstant.UNENCRYPTED_ENCRYPT_TYPE)
+          .getConfig()
+          .getEncryptType()
+          .equals(IoTDBConstant.UNENCRYPTED_ENCRYPT_TYPE)
           && logFile.getName().endsWith(SecretKey.FILE_ENCRYPTED_SUFFIX)) {
         ByteBuffer slice = buffer.slice();
         byte[] data = new byte[slice.remaining()];
@@ -159,12 +176,12 @@ public abstract class LogWriter implements ILogWriter {
         } else {
           encryptedByte = EncryptUtils.getEncrypt().getEncryptor().encrypt(data);
         }
-        logChannel.write(ByteBuffer.wrap(encryptedByte));
-      } else {
+        buffer = ByteBuffer.wrap(encryptedByte);
+      }
+
+      while (buffer.hasRemaining()) {
         logChannel.write(buffer);
       }
-    } catch (ClosedChannelException e) {
-      logger.warn(StorageEngineMessages.CANNOT_WRITE_TO, logFile, e);
     } finally {
       if (compressed) {
         ResidualDataProtectionUtils.eraseByteBufferIfEnabled(
@@ -190,9 +207,8 @@ public abstract class LogWriter implements ILogWriter {
 
   @Override
   public void force(boolean metaData) throws IOException {
-    if (logChannel != null && logChannel.isOpen()) {
-      logChannel.force(metaData);
-    }
+    // A closed channel is a failed durability operation, not a successful no-op.
+    logChannel.force(metaData);
   }
 
   @Override

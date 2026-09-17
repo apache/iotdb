@@ -131,6 +131,12 @@ public class WALBuffer extends AbstractWALBuffer {
   private final Map<Long, Set<Long>> memTableIdsOfWal = new ConcurrentHashMap<>();
   private final BiConsumer<File, File> walFileRolledListener;
 
+  // An entry may span several sync tasks. Never acknowledge its final chunk after an earlier
+  // chunk failed. Failures before writing a pending successor can be cleared at the batch boundary;
+  // failures while writing the active WAL require recovery because its record boundary is unknown.
+  private Exception syncFailure;
+  private boolean retryAfterFailedBatch;
+
   public WALBuffer(String identifier, String logDirectory) throws IOException {
     this(
         identifier,
@@ -591,6 +597,45 @@ public class WALBuffer extends AbstractWALBuffer {
     public void run() {
       final long startTime = System.nanoTime();
 
+      if (syncFailure != null) {
+        failListeners(syncFailure);
+        // SET SYSTEM TO RUNNING does not repair a failed batch or an unknown record boundary.
+        if (CommonDescriptor.getInstance().getConfig().isRunning()) {
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        }
+        if (forceFlag && retryAfterFailedBatch) {
+          syncFailure = null;
+        }
+        switchSyncingBufferToIdle();
+        return;
+      }
+
+      boolean resumedRoll = false;
+      final boolean hasData = syncingBuffer.position() > 0;
+      try {
+        if (hasPendingRoll()) {
+          // The previous task sealed the old file. Finish opening its successor before touching
+          // this buffer, so no bytes or metadata can be appended after the old WAL's end marker.
+          rollLogWriter(searchIndex, fileStatus);
+          resumedRoll = true;
+        }
+      } catch (IOException e) {
+        logger.error(
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_ROLL_WAL_NODE_S_LOG_WRITER_CHANGE_SYSTEM_MODE_TO_A384AA54,
+            identifier,
+            e);
+        if (!forceFlag) {
+          syncFailure = e;
+          retryAfterFailedBatch = true;
+        }
+        failListeners(e);
+        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        switchSyncingBufferToIdle();
+        return;
+      }
+
       makeMemTableCheckpoints();
 
       long walFileVersionId = currentWALFileVersion;
@@ -616,7 +661,11 @@ public class WALBuffer extends AbstractWALBuffer {
                 .STORAGE_LOG_FAIL_TO_SYNC_WAL_NODE_S_BUFFER_CHANGE_SYSTEM_MODE_TO_ERROR_8C379D57,
             identifier,
             e);
+        syncFailure = e instanceof Exception exception ? exception : new IOException(e);
+        retryAfterFailedBatch = false;
+        failListeners(syncFailure);
         CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        return;
       } finally {
         switchSyncingBufferToIdle();
       }
@@ -629,24 +678,24 @@ public class WALBuffer extends AbstractWALBuffer {
 
       boolean forceSuccess = false;
       // try to roll log writer
-      if (info.rollWALFileWriterListener != null
+      if ((info.rollWALFileWriterListener != null && (!resumedRoll || hasData))
           // TODO: Control the wal file by the number of WALEntry
           || (forceFlag
               && currentWALFileWriter.originalSize() >= config.getWalFileSizeThresholdInByte())) {
         try {
           rollLogWriter(searchIndex, currentWALFileWriter.getWalFileStatus());
           forceSuccess = true;
-          if (info.rollWALFileWriterListener != null) {
-            info.rollWALFileWriterListener.succeed();
-          }
         } catch (IOException e) {
           logger.error(
               StorageEngineMessages
                   .STORAGE_LOG_FAIL_TO_ROLL_WAL_NODE_S_LOG_WRITER_CHANGE_SYSTEM_MODE_TO_A384AA54,
               identifier,
               e);
-          if (info.rollWALFileWriterListener != null) {
-            info.rollWALFileWriterListener.fail(e);
+          failListeners(e);
+          if (!hasPendingRoll()) {
+            // A failed seal has no known durable boundary from which to resume rotation.
+            syncFailure = e;
+            retryAfterFailedBatch = false;
           }
           DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
@@ -663,15 +712,18 @@ public class WALBuffer extends AbstractWALBuffer {
               identifier,
               e);
           DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-          for (WALFlushListener fsyncListener : info.fsyncListeners) {
-            fsyncListener.fail(e);
-          }
+          failListeners(e);
+          syncFailure = e;
+          retryAfterFailedBatch = false;
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       }
 
       // notify all waiting listeners
       if (forceSuccess) {
+        if (info.rollWALFileWriterListener != null) {
+          info.rollWALFileWriterListener.succeed();
+        }
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
         }
@@ -679,6 +731,15 @@ public class WALBuffer extends AbstractWALBuffer {
       }
       WRITING_METRICS.recordWALBufferEntriesCount(info.fsyncListeners.size());
       WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - startTime, forceFlag);
+    }
+
+    private void failListeners(Exception e) {
+      if (info.rollWALFileWriterListener != null) {
+        info.rollWALFileWriterListener.fail(e);
+      }
+      for (WALFlushListener fsyncListener : info.fsyncListeners) {
+        fsyncListener.fail(e);
+      }
     }
 
     private void makeMemTableCheckpoints() {
@@ -775,7 +836,7 @@ public class WALBuffer extends AbstractWALBuffer {
       shutdownThread(syncBufferThread, ThreadName.WAL_SYNC);
     }
 
-    if (currentWALFileWriter != null) {
+    if (currentWALFileWriter != null && !hasPendingRoll()) {
       try {
         currentWALFileWriter.close();
       } catch (IOException e) {
