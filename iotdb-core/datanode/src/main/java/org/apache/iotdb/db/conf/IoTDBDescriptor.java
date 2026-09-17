@@ -168,14 +168,9 @@ public class IoTDBDescriptor {
           .getConfig()
           .setCustomizedProperties(loader.getCustomizedProperties());
     }
-    // If no configuration source initialized the config, run the normal loading path with defaults.
+    // If no configuration source initialized the memory config, initialize it with defaults.
     if (!hasLoadedProperties && !hasProperties) {
-      try {
-        loadProperties(new TrimProperties());
-      } catch (Exception e) {
-        LOGGER.error(DataNodeMiscMessages.INCORRECT_FORMAT_CONFIG_FILE, e);
-        System.exit(-1);
-      }
+      memoryConfig.init(new TrimProperties());
     }
   }
 
