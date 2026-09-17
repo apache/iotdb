@@ -31,12 +31,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -46,6 +48,7 @@ final class AbstractSubscriptionProviders {
 
   private final SortedMap<Integer, AbstractSubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private int nextDataNodeId = -1;
 
   private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
@@ -81,6 +84,8 @@ final class AbstractSubscriptionProviders {
     // close stale providers
     closeProviders();
 
+    final Map<TEndPoint, String> connectionFailures = new LinkedHashMap<>();
+    final List<Throwable> connectionFailureCauses = new ArrayList<>();
     for (final TEndPoint endPoint : initialEndpoints) {
       final AbstractSubscriptionProvider defaultProvider;
       final int defaultDataNodeId;
@@ -88,6 +93,8 @@ final class AbstractSubscriptionProviders {
       try {
         defaultProvider = consumer.constructProviderAndHandshake(endPoint);
       } catch (final Exception e) {
+        connectionFailures.put(endPoint, consumer.sanitizeConnectionFailureMessage(e));
+        connectionFailureCauses.add(e);
         LOGGER.warn(
             SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
             consumer,
@@ -136,33 +143,70 @@ final class AbstractSubscriptionProviders {
     }
 
     if (hasNoAvailableProviders()) {
-      throw new SubscriptionConnectionException(
-          String.format(
-              SubscriptionMessages
-                  .EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198,
-              initialEndpoints));
+      final SubscriptionConnectionException exception =
+          new SubscriptionConnectionException(
+              String.format(
+                  SubscriptionMessages
+                      .EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_712D99EA,
+                  initialEndpoints,
+                  connectionFailures),
+              connectionFailureCauses.isEmpty()
+                  ? null
+                  : connectionFailureCauses.get(connectionFailureCauses.size() - 1));
+      for (int i = 0; i < connectionFailureCauses.size() - 1; i++) {
+        exception.addSuppressed(connectionFailureCauses.get(i));
+      }
+      throw exception;
     }
 
     nextDataNodeId = subscriptionProviders.firstKey();
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  /** Detaches and closes the current providers. Terminal consumer close may call this lock-free. */
   void closeProviders() {
-    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+    final List<AbstractSubscriptionProvider> providers = getAllProviders();
+    subscriptionProviders.clear();
+    for (final AbstractSubscriptionProvider provider : providers) {
       try {
         provider.close();
       } catch (final Exception e) {
         LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
       }
     }
-    subscriptionProviders.clear();
+  }
+
+  void prepareClose() {
+    isClosing.set(true);
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+      provider.prepareClose();
+    }
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   void addProvider(final int dataNodeId, final AbstractSubscriptionProvider provider) {
+    if (isClosing.get()) {
+      closeProviderAddedDuringClosing(provider);
+      return;
+    }
+
+    subscriptionProviders.put(dataNodeId, provider);
+    if (isClosing.get()) {
+      subscriptionProviders.remove(dataNodeId, provider);
+      closeProviderAddedDuringClosing(provider);
+      return;
+    }
+
     // the subscription provider is opened
     LOGGER.info(SubscriptionMessages.ADD_NEW_PROVIDER, provider);
-    subscriptionProviders.put(dataNodeId, provider);
+  }
+
+  private void closeProviderAddedDuringClosing(final AbstractSubscriptionProvider provider) {
+    provider.prepareClose();
+    try {
+      provider.close();
+    } catch (final Exception e) {
+      LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
+    }
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */

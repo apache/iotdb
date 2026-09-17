@@ -187,6 +187,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -1295,17 +1296,27 @@ public class ProcedureManager {
     try (AutoCloseableLock ignoredLock =
         AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       List<ReconstructRegionProcedure> procedures = new ArrayList<>();
+      Set<Integer> seenRegionIds = new HashSet<>();
       for (int x : req.getRegionIds()) {
-        TConsensusGroupId regionId =
-            configManager
-                .getPartitionManager()
-                .generateTConsensusGroupIdByRegionId(x)
-                .orElseThrow(
-                    () ->
-                        new IllegalArgumentException(
-                            ManagerMessages.REGION_ID
-                                + x
-                                + ManagerMessages.EXCEPTION_INVALID_2928F475));
+        if (!seenRegionIds.add(x)) {
+          LOGGER.info(
+              ManagerMessages
+                  .LOG_SKIP_DUPLICATE_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_ED195F69,
+              x,
+              req.getDataNodeId());
+          continue;
+        }
+        Optional<TConsensusGroupId> regionIdOptional =
+            configManager.getPartitionManager().findTConsensusGroupIdByRegionId(x);
+        if (!regionIdOptional.isPresent()) {
+          LOGGER.info(
+              ManagerMessages
+                  .LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789,
+              x,
+              req.getDataNodeId());
+          continue;
+        }
+        TConsensusGroupId regionId = regionIdOptional.get();
         final TDataNodeLocation coordinator =
             handler
                 .filterDataNodeWithOtherRegionReplica(

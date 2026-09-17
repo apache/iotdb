@@ -143,6 +143,8 @@ public final class ManagerMessages {
       "Failed to collect user name for user id {}";
   public static final String FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "Failed to create consumer {} in consumer group {}. Result status: {}.";
+  public static final String EXCEPTION_FAILED_TO_SUBSCRIBE_TOPIC_ARG_FOR_CONSUMER_ARG_CONSUMER_DOES_NOT_EXIST_IN_CONSUMER_GROUP_BFF68F12 =
+      "Failed to subscribe topic %s for consumer %s because the consumer does not exist in the consumer group";
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "Failed to create peer for consensus group";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
@@ -287,6 +289,12 @@ public final class ManagerMessages {
       "LoadStatistics service is started successfully.";
   public static final String LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "LoadStatistics service is stopped successfully.";
+  public static final String
+      LOG_SKIP_DUPLICATE_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_ED195F69 =
+          "Skip duplicate Region ID {} in ReconstructRegion request to DataNode {}.";
+  public static final String
+      LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789 =
+          "Skip non-existent Region ID {} in ReconstructRegion request to DataNode {}.";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}";
   public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =

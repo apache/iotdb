@@ -119,8 +119,6 @@ public class IoTDBDescriptor {
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
-  private static final long DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES = 1024;
-
   private static final int DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES = 4 * 1024 * 1024;
 
   private static final int MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES = 128 * 1024;
@@ -174,7 +172,7 @@ public class IoTDBDescriptor {
     }
     // If no configuration source initialized the memory config, initialize it with defaults.
     if (!hasLoadedProperties && !hasProperties) {
-      memoryConfig.init(new TrimProperties());
+      memoryConfig.init(new TrimProperties(), conf.getThriftMaxFrameSize(), LOGGER);
     }
   }
 
@@ -341,7 +339,11 @@ public class IoTDBDescriptor {
                 "write_memory_variation_report_proportion",
                 Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
-    memoryConfig.init(properties);
+    conf.setThriftMaxFrameSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+    memoryConfig.init(properties, conf.getThriftMaxFrameSize(), LOGGER);
 
     String systemDir = properties.getProperty("dn_system_dir");
     if (systemDir == null) {
@@ -514,6 +516,18 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
+
+    conf.setCopyToAllowedExportDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "copy_to_allowed_export_dirs",
+                        String.join(",", conf.getCopyToAllowedExportDirs()))
+                    .trim()
+                    .split(","))
+            .map(String::trim)
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
 
     conf.setSessionTimeoutThreshold(
         Integer.parseInt(
@@ -822,13 +836,6 @@ public class IoTDBDescriptor {
         (Integer.parseInt(
             properties.getProperty(
                 "primitive_array_size", String.valueOf(conf.getPrimitiveArraySize())))));
-
-    conf.setThriftMaxFrameSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
-
-    loadTableQueryDeviceEntryBatchSize(properties);
 
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
@@ -2271,7 +2278,9 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "enable_topk_runtime_filter"))));
 
-      loadTableQueryDeviceEntryBatchSize(properties);
+      memoryConfig.loadTableQueryDeviceEntryBatchSize(
+          properties, conf.getThriftMaxFrameSize(), LOGGER);
+
       loadMppDataExchangeMaxPayloadSize(properties);
 
       // update wal config
@@ -2450,39 +2459,12 @@ public class IoTDBDescriptor {
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
     ConfigurationFileUtils.updateAppliedProperties(
         "table_query_device_entry_batch_size_in_bytes",
-        Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes()));
+        Long.toString(memoryConfig.getTableQueryDeviceEntryBatchSizeInBytes()));
     ConfigurationFileUtils.updateAppliedProperties(
         "mpp_data_exchange_max_payload_size_in_bytes",
         Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes()));
     ConfigurationFileUtils.updateAppliedProperties(
         DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
-  }
-
-  private void loadTableQueryDeviceEntryBatchSize(TrimProperties properties) {
-    long deviceEntryBatchSize =
-        Long.parseLong(
-            properties.getProperty(
-                "table_query_device_entry_batch_size_in_bytes",
-                Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes())));
-    if (deviceEntryBatchSize <= 0) {
-      deviceEntryBatchSize =
-          memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
-              / memoryConfig.getQueryThreadCount()
-              / 4;
-    }
-    long maxBatchSize =
-        Math.max(1, conf.getThriftMaxFrameSize() - DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES);
-    long effectiveBatchSize = Math.min(deviceEntryBatchSize, maxBatchSize);
-    if (deviceEntryBatchSize > maxBatchSize) {
-      LOGGER.warn(
-          String.format(
-              DataNodeMiscMessages
-                  .LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA,
-              deviceEntryBatchSize,
-              conf.getThriftMaxFrameSize(),
-              effectiveBatchSize));
-    }
-    conf.setTableQueryDeviceEntryBatchSizeInBytes(effectiveBatchSize);
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
@@ -2667,6 +2649,18 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
+    conf.setCopyToAllowedExportDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "copy_to_allowed_export_dirs",
+                        String.join(",", conf.getCopyToAllowedExportDirs()))
+                    .trim()
+                    .split(","))
+            .map(String::trim)
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
             properties.getProperty(
@@ -2804,6 +2798,18 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
+    conf.setCopyToAllowedExportDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "copy_to_allowed_export_dirs",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "copy_to_allowed_export_dirs"))
+                    .trim()
+                    .split(","))
+            .map(String::trim)
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(
             properties.getProperty(
@@ -3078,6 +3084,7 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "mpp_data_exchange_keep_alive_time_in_ms",
                 Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))));
+
     loadMppDataExchangeMaxPayloadSize(properties);
 
     conf.setPartitionCacheSize(

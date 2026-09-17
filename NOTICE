@@ -26,6 +26,14 @@ This product includes source code derived from the DataDog/toto project:
 
 ============================================================================
 
+This product includes source code derived from the chronos-forecasting project:
+
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  Licensed under the Apache License, Version 2.0
+  https://github.com/amazon-science/chronos-forecasting
+
+============================================================================
+
 Apache Commons Collections
 Copyright 2001-2019 The Apache Software Foundation
 

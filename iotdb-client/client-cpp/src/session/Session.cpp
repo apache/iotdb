@@ -563,7 +563,6 @@ Session::Session(const std::string& host, int rpcPort) : impl_(new Impl()) {
   impl_->host_ = host;
   impl_->rpcPort_ = rpcPort;
   impl_->initZoneId();
-  impl_->initNodesSupplier();
 }
 
 Session::Session(const std::vector<std::string>& nodeUrls, const std::string& username,
@@ -574,7 +573,6 @@ Session::Session(const std::vector<std::string>& nodeUrls, const std::string& us
   impl_->password_ = password;
   impl_->version = Version::V_1_0;
   impl_->initZoneId();
-  impl_->initNodesSupplier(impl_->nodeUrls_);
 }
 
 Session::Session(const std::string& host, int rpcPort, const std::string& username,
@@ -587,7 +585,6 @@ Session::Session(const std::string& host, int rpcPort, const std::string& userna
   impl_->fetchSize_ = iotdb::session::DEFAULT_FETCH_SIZE;
   impl_->version = Version::V_1_0;
   impl_->initZoneId();
-  impl_->initNodesSupplier();
 }
 
 Session::Session(const std::string& host, int rpcPort, const std::string& username,
@@ -601,7 +598,6 @@ Session::Session(const std::string& host, int rpcPort, const std::string& userna
   impl_->fetchSize_ = fetchSize;
   impl_->version = Version::V_1_0;
   impl_->initZoneId();
-  impl_->initNodesSupplier();
 }
 
 Session::Session(const std::string& host, const std::string& rpcPort, const std::string& username,
@@ -615,7 +611,6 @@ Session::Session(const std::string& host, const std::string& rpcPort, const std:
   impl_->fetchSize_ = fetchSize;
   impl_->version = Version::V_1_0;
   impl_->initZoneId();
-  impl_->initNodesSupplier();
 }
 
 Session::Session(AbstractSessionBuilder* builder) : impl_(new Impl()) {
@@ -632,10 +627,8 @@ Session::Session(AbstractSessionBuilder* builder) : impl_(new Impl()) {
   impl_->enableRedirection_ = builder->enableRedirections;
   impl_->connectTimeoutMs_ = builder->connectTimeoutMs;
   impl_->nodeUrls_ = builder->nodeUrls;
-  impl_->useSSL_ = builder->useSSL;
-  impl_->trustCertFilePath_ = builder->trustCertFilePath;
+  impl_->sslConfig_ = builder->getSslConfig();
   impl_->initZoneId();
-  impl_->initNodesSupplier(impl_->nodeUrls_);
 }
 
 void Session::setSqlDialect(const std::string& dialect) {
@@ -644,6 +637,14 @@ void Session::setSqlDialect(const std::string& dialect) {
 
 void Session::setDatabase(const std::string& database) {
   impl_->database_ = database;
+}
+
+void Session::setSslConfig(const SslConfig& sslConfig) {
+  if (!impl_->isClosed_) {
+    throw IoTDBException("SSL configuration cannot be changed after the Session is opened");
+  }
+  sslConfig.validate();
+  impl_->sslConfig_ = sslConfig;
 }
 
 std::string Session::getDatabase() {
@@ -961,8 +962,7 @@ void Session::Impl::initNodesSupplier(const std::vector<std::string>& nodeUrls) 
   }
 
   if (enableAutoFetch_) {
-    nodesSupplier_ =
-        NodesSupplier::create(endPoints, username_, password_, useSSL_, trustCertFilePath_);
+    nodesSupplier_ = NodesSupplier::create(endPoints, username_, password_, sslConfig_);
   } else {
     nodesSupplier_ = make_shared<StaticNodesSupplier>(endPoints);
   }
@@ -1147,8 +1147,10 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
   }
 
   try {
+    impl_->initNodesSupplier(impl_->nodeUrls_);
     impl_->initDefaultSessionConnection();
   } catch (const exception& e) {
+    impl_->nodesSupplier_.reset();
     log_debug(e.what());
     throw IoTDBException(e.what());
   }
@@ -1188,9 +1190,11 @@ void Session::close() {
       impl_->defaultSessionConnection_.reset();
     }
   } catch (...) {
+    impl_->nodesSupplier_.reset();
     impl_->isClosed_ = true;
     throw;
   }
+  impl_->nodesSupplier_.reset();
   impl_->isClosed_ = true;
 }
 
@@ -2122,9 +2126,10 @@ bool Session::checkTimeseriesExists(const string& path) {
 }
 
 shared_ptr<SessionConnection> Session::Impl::getQuerySessionConnection() {
+  auto defaultSessionConnection = getDefaultSessionConnection();
   auto endPoint = nodesSupplier_->getQueryEndPoint();
   if (!endPoint.is_initialized() || endPointToSessionConnection.empty()) {
-    return getDefaultSessionConnection();
+    return defaultSessionConnection;
   }
 
   auto it = endPointToSessionConnection.find(endPoint.value());

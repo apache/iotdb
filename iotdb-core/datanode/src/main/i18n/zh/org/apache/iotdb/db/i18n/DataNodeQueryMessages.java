@@ -152,6 +152,8 @@ public final class DataNodeQueryMessages {
           + "原始错误：%s";
   public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
       "匹配的源列超过了当前估算内存容量，至少超出 %,d 列。";
+  public static final String RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT =
+      "本次失败的内存申请超出可用内存，按已记录列的平均内存估算，至少超出相当于 %,d 列的容量。";
   public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
       "查询分析拉取元数据时内存不足。结果集可能包含过多列。"
           + "失败前，IoTDB 已从 schema 拉取结果中反序列化 %,d 个时间序列列。"
@@ -192,6 +194,8 @@ public final class DataNodeQueryMessages {
       "目标文件已存在：";
   public static final String FAILED_TO_CREATE_FILE =
       "创建文件失败：";
+  public static final String COPY_TO_TARGET_PATH_NOT_ALLOWED =
+      "COPY TO 目标路径不在允许的导出目录内（可通过 copy_to_allowed_export_dirs 配置）：";
   public static final String DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT =
       "目标时间列的数据类型不是 TIMESTAMP";
   public static final String DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET =

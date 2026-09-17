@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -258,6 +259,95 @@ public class IoTDBJDBCResultSetTest {
 
     // The client get TSQueryDataSet at the first request
     verify(fetchResultsResp, times(0)).getStatus();
+  }
+
+  /**
+   * The tree-model time pseudo-column is addressed by a negative TsBlock column index. getLong,
+   * getString and getObject handle it; the strictly-typed getters used to fall through to
+   * TsBlock.getColumn(-1) and escape as an unchecked ArrayIndexOutOfBoundsException instead of the
+   * SQLException a JDBC caller can handle. getDate delegates to getInt, so it is affected too.
+   */
+  @SuppressWarnings("resource")
+  @Test
+  public void testTimeColumnRejectedByStrictlyTypedGetters() throws Exception {
+    try (ResultSet resultSet = executeAndFetchTreeModelResultSet()) {
+      Assert.assertEquals(1, resultSet.findColumn("Time"));
+      Assert.assertTrue(resultSet.next());
+
+      // The getters that support the time column keep working.
+      Assert.assertEquals(2L, resultSet.getLong(1));
+      Assert.assertEquals("2", resultSet.getString(1));
+      Assert.assertEquals(new Timestamp(2), resultSet.getObject(1));
+      Assert.assertEquals(new Timestamp(2), resultSet.getTimestamp(1));
+
+      // The strictly-typed ones must report a SQLException, not an unchecked exception.
+      assertTimeColumnRejected(() -> resultSet.getBoolean(1));
+      assertTimeColumnRejected(() -> resultSet.getInt(1));
+      assertTimeColumnRejected(() -> resultSet.getFloat(1));
+      assertTimeColumnRejected(() -> resultSet.getDouble(1));
+      assertTimeColumnRejected(() -> resultSet.getDate(1));
+
+      // Reading by name goes through the same path.
+      assertTimeColumnRejected(() -> resultSet.getInt("Time"));
+    }
+  }
+
+  @FunctionalInterface
+  private interface ResultSetRead {
+    void run() throws SQLException;
+  }
+
+  private void assertTimeColumnRejected(ResultSetRead read) {
+    try {
+      read.run();
+      Assert.fail("reading the time column with a strictly-typed getter should have thrown");
+    } catch (SQLException e) {
+      // expected
+    } catch (RuntimeException e) {
+      Assert.fail(
+          "expected a SQLException but the time column leaked an unchecked "
+              + e.getClass().getName()
+              + ": "
+              + e.getMessage());
+    }
+  }
+
+  /** Same tree-model fixture as testQuery: column 1 is Time, columns 2..5 are measurements. */
+  private ResultSet executeAndFetchTreeModelResultSet() throws Exception {
+    List<String> columns = new ArrayList<>();
+    columns.add("root.vehicle.d0.s2");
+    columns.add("root.vehicle.d0.s1");
+    columns.add("root.vehicle.d0.s0");
+    columns.add("root.vehicle.d0.s2");
+
+    List<String> dataTypeList = new ArrayList<>();
+    dataTypeList.add("FLOAT");
+    dataTypeList.add("INT64");
+    dataTypeList.add("INT32");
+    dataTypeList.add("FLOAT");
+
+    when(execResp.isSetColumns()).thenReturn(true);
+    when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.isSetDataTypeList()).thenReturn(true);
+    when(execResp.getDataTypeList()).thenReturn(dataTypeList);
+    when(execResp.isSetOperationType()).thenReturn(true);
+    when(execResp.getOperationType()).thenReturn("QUERY");
+    when(execResp.isSetQueryId()).thenReturn(true);
+    when(execResp.getQueryId()).thenReturn(queryId);
+    when(execResp.isSetTableModel()).thenReturn(false);
+    when(execResp.isIgnoreTimeStamp()).thenReturn(false);
+
+    List<Integer> columnIndex2TsBlockColumnIndexList = new ArrayList<>(columns.size());
+    columnIndex2TsBlockColumnIndexList.add(0);
+    columnIndex2TsBlockColumnIndexList.add(1);
+    columnIndex2TsBlockColumnIndexList.add(2);
+    columnIndex2TsBlockColumnIndexList.add(0);
+    when(execResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(columnIndex2TsBlockColumnIndexList);
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+    fetchResultsResp.hasResultSet = true;
+    return statement.getResultSet();
   }
 
   private void constructObjectList(List<Object> standardObject) {

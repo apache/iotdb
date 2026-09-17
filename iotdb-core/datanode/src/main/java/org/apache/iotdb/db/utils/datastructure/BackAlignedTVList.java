@@ -40,6 +40,7 @@ public class BackAlignedTVList extends QuickAlignedTVList {
     if (!sorted) {
       policy.backwardSort(timestamps, rowCount);
       policy.clearTmp();
+      updateSegmentMovedMap();
     }
     sorted = true;
     seqRowCount = rowCount;

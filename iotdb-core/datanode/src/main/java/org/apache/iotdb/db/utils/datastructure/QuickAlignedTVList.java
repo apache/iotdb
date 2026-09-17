@@ -38,6 +38,7 @@ public class QuickAlignedTVList extends AlignedTVList {
   public synchronized int sort() {
     if (!sorted) {
       policy.qsort(0, rowCount - 1);
+      updateSegmentMovedMap();
     }
     sorted = true;
     seqRowCount = rowCount;

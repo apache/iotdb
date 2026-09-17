@@ -330,6 +330,33 @@ public class FileUtils {
   }
 
   /**
+   * Checks whether a target path is strictly under one of the allowed directories after
+   * canonicalization.
+   *
+   * <p>The method returns {@code false} if the target equals an allowed directory or if any path
+   * cannot be canonicalized.
+   */
+  public static boolean isFilePathAllowed(String targetFilePath, String[] allowedDirectories) {
+    if (targetFilePath == null || allowedDirectories == null) {
+      return false;
+    }
+    try {
+      final Path targetPath = new File(targetFilePath).getCanonicalFile().toPath();
+      for (String allowedDirectory : allowedDirectories) {
+        if (allowedDirectory != null && !allowedDirectory.isEmpty()) {
+          final Path allowedPath = new File(allowedDirectory).getCanonicalFile().toPath();
+          if (!targetPath.equals(allowedPath) && targetPath.startsWith(allowedPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  /**
    * Move source file to target file. The move will be divided into three steps: 1. Copy the source
    * file to the "target.unfinished" location 2. Rename the "target.unfinished" to "target" 3.
    * Delete the source file

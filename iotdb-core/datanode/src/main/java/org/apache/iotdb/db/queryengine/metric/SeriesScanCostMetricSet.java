@@ -58,6 +58,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   public static final String TIMESERIES_METADATA = "timeseries_metadata";
   public static final String CHUNK = "chunk";
   private static final String DEVICE_ENTRY_DISK_READ_WRITE = "device_entry_disk_read_write";
+  private static final String DEVICE_ENTRY_FETCH_SCHEMA = "device_entry_fetch_schema";
+  private static final String DEVICE_ENTRY_DISTRIBUTION_PLAN = "device_entry_distribution_plan";
   private static final String FETCH_SCHEMA = "fetch_schema";
   private static final String DISTRIBUTION_PLAN = "distribution_plan";
 
@@ -90,17 +92,13 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             Metric.QUERY_DISK_READ.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
-            DEVICE_ENTRY_DISK_READ_WRITE,
-            Tag.STAGE.toString(),
-            FETCH_SCHEMA);
+            DEVICE_ENTRY_FETCH_SCHEMA);
     deviceEntryDistributionPlanDiskIOSize =
         metricService.getOrCreateCounter(
             Metric.QUERY_DISK_READ.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
-            DEVICE_ENTRY_DISK_READ_WRITE,
-            Tag.STAGE.toString(),
-            DISTRIBUTION_PLAN);
+            DEVICE_ENTRY_DISTRIBUTION_PLAN);
     deviceEntryFetchSchemaDiskIOTime =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
@@ -132,16 +130,12 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         MetricType.COUNTER,
         Metric.QUERY_DISK_READ.toString(),
         Tag.TYPE.toString(),
-        DEVICE_ENTRY_DISK_READ_WRITE,
-        Tag.STAGE.toString(),
-        FETCH_SCHEMA);
+        DEVICE_ENTRY_FETCH_SCHEMA);
     metricService.remove(
         MetricType.COUNTER,
         Metric.QUERY_DISK_READ.toString(),
         Tag.TYPE.toString(),
-        DEVICE_ENTRY_DISK_READ_WRITE,
-        Tag.STAGE.toString(),
-        DISTRIBUTION_PLAN);
+        DEVICE_ENTRY_DISTRIBUTION_PLAN);
     for (String type : Arrays.asList(FETCH_SCHEMA, DISTRIBUTION_PLAN)) {
       metricService.remove(
           MetricType.TIMER,

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
@@ -164,7 +165,8 @@ public class PipeSinkSubtaskManager {
                 attributeDisplayStringWithPrefix,
                 sinkIndex,
                 pendingQueue,
-                pipeSink);
+                pipeSink,
+                !BuiltinPipePlugin.BUILTIN_SINKS.contains(connectorKey));
         final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle =
             new PipeSinkSubtaskLifeCycle(executor, pipeSinkSubtask, pendingQueue);
         pipeSinkSubtaskLifeCycleList.add(pipeSinkSubtaskLifeCycle);
@@ -272,6 +274,34 @@ public class PipeSinkSubtaskManager {
     for (final PipeSinkSubtaskLifeCycle lifeCycle :
         pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
       lifeCycle.stop();
+    }
+  }
+
+  public synchronized void discardReceiverRuntimeSessions(
+      final String attributeSortedString, final String pipeName, final long creationTime) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        new PipeSinkSubtaskKey(pipeName, creationTime, attributeSortedString);
+    if (!pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(pipeSinkSubtaskKey)) {
+      throwNoSuchSubtaskException(pipeSinkSubtaskKey);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
+      lifeCycle.discardReceiverRuntimeSessions(pipeName, creationTime);
+    }
+  }
+
+  public synchronized void registerReceiverRuntimeSessions(
+      final String attributeSortedString, final String pipeName, final long creationTime) {
+    final PipeSinkSubtaskKey pipeSinkSubtaskKey =
+        new PipeSinkSubtaskKey(pipeName, creationTime, attributeSortedString);
+    if (!pipeSinkSubtaskKey2SubtaskLifeCycleMap.containsKey(pipeSinkSubtaskKey)) {
+      throwNoSuchSubtaskException(pipeSinkSubtaskKey);
+    }
+
+    for (final PipeSinkSubtaskLifeCycle lifeCycle :
+        pipeSinkSubtaskKey2SubtaskLifeCycleMap.get(pipeSinkSubtaskKey)) {
+      lifeCycle.registerReceiverRuntimeSessions(pipeName, creationTime);
     }
   }
 

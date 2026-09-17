@@ -117,6 +117,34 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   }
 
   @Override
+  public Object createCheckpoint() {
+    final Map<String, Integer> tabletListSizes = new HashMap<>();
+    dataBase2TabletList.forEach(
+        (database, tablets) -> tabletListSizes.put(database, tablets.size()));
+    return new BatchState(tabletListSizes, fallbackBuilder.createCheckpoint());
+  }
+
+  @Override
+  public void rollbackToCheckpoint(final Object checkpoint) {
+    if (!(checkpoint instanceof BatchState)) {
+      return;
+    }
+    final BatchState batchState = (BatchState) checkpoint;
+    dataBase2TabletList
+        .entrySet()
+        .removeIf(
+            entry -> {
+              final Integer size = batchState.tabletListSizes.get(entry.getKey());
+              if (size == null) {
+                return true;
+              }
+              truncate(entry.getValue(), size);
+              return false;
+            });
+    fallbackBuilder.rollbackToCheckpoint(batchState.fallbackCheckpoint);
+  }
+
+  @Override
   public synchronized void onSuccess() {
     super.onSuccess();
     dataBase2TabletList.clear();
@@ -128,6 +156,23 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
     super.close();
     dataBase2TabletList.clear();
     fallbackBuilder.close();
+  }
+
+  private static <T> void truncate(final List<T> list, final int size) {
+    if (list.size() > size) {
+      list.subList(size, list.size()).clear();
+    }
+  }
+
+  private static final class BatchState {
+    private final Map<String, Integer> tabletListSizes;
+    private final Object fallbackCheckpoint;
+
+    private BatchState(
+        final Map<String, Integer> tabletListSizes, final Object fallbackCheckpoint) {
+      this.tabletListSizes = tabletListSizes;
+      this.fallbackCheckpoint = fallbackCheckpoint;
+    }
   }
 
   private List<Pair<String, File>> writeTabletsToTsFiles(final String dataBase)
