@@ -395,6 +395,7 @@ public class ConsensusPrefetchingQueueTest {
               1L,
               1L,
               true);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
       final IndexedConsensusRequest request =
           new IndexedConsensusRequest(
                   1L, Collections.singletonList(StatementTestUtils.genInsertRowNode(1)))
@@ -430,6 +431,59 @@ public class ConsensusPrefetchingQueueTest {
       CommonDescriptor.getInstance()
           .getConfig()
           .setSubscriptionConsensusBatchMaxDelayInMs(originalBatchMaxDelay);
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testLagIncludesUnreadWalSearchIndexDistance() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("lagWithUnreadWal");
+    ConsensusPrefetchingQueue queue = null;
+    try {
+      final DataRegionId regionId = new DataRegionId(9);
+      final FakeConsensusReqReader reader = new FakeConsensusReqReader();
+      reader.currentSearchIndex = 300_000L;
+      final IoTConsensusServerImpl serverImpl = mock(IoTConsensusServerImpl.class);
+      when(serverImpl.getConsensusReqReader()).thenReturn(reader);
+      when(serverImpl.getWriterSafeFrontierTracker()).thenReturn(new WriterSafeFrontierTracker());
+      final ConsensusLogToTabletConverter converter = mock(ConsensusLogToTabletConverter.class);
+      when(converter.getDatabaseName()).thenReturn("db");
+      when(converter.convert(any())).thenReturn(Collections.singletonList(createTablet()));
+      queue =
+          new ConsensusPrefetchingQueue(
+              "consumerGroup",
+              "topic",
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              regionId,
+              serverImpl,
+              new SubscriptionWalRetentionPolicy(
+                  "topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              converter,
+              newCommitManager(systemDir),
+              new RegionProgress(Collections.emptyMap()),
+              1L,
+              1L,
+              true);
+      queue.setSubscriptionMemoryManager(new SubscriptionMemoryManager(16L * 1024 * 1024));
+
+      assertEquals(300_000L, queue.getRawWalGap());
+      assertEquals(300_000L, queue.getLag());
+
+      assertNull(queue.poll("consumer"));
+      assertTrue(pendingEntries(queue).offer(createRequest(1L)));
+      queue.drivePrefetchOnce();
+
+      assertEquals(2L, queue.getCurrentReadSearchIndex());
+      assertEquals(299_999L, queue.getRawWalGap());
+      assertEquals(1L, queue.getRemainingEventCount());
+      assertEquals(300_000L, queue.getLag());
+    } finally {
+      if (queue != null) {
+        queue.close();
+      }
       IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
     }
   }
