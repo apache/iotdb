@@ -65,7 +65,7 @@ public class AlignedTVListTest {
     AlignedTVList boxed = AlignedTVList.newAlignedList(types);
     try {
       for (int i = ARRAY_SIZE + 3; i >= 0; i--) {
-        NumericRowValues row = new NumericRowValues(5);
+        NumericRowValues row = new NumericRowValues(0, 5);
         row.getValues()[0] = i;
         row.getValues()[1] = i % 2;
         row.getValues()[2] = -i;
