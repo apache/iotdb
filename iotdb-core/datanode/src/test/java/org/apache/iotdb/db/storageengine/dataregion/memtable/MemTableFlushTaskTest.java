@@ -273,6 +273,80 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
+  public void testAlignedFlushKeepsValuesAlignedAfterTimeDeletion() throws IOException {
+    // Deleted rows must be omitted from both time and value pages, including after sorting.
+    checkAlignedFlushAfterTimeDeletion(false);
+  }
+
+  @Test
+  public void testAlignedFlushKeepsValuesAlignedAfterTimeAndColumnDeletion() throws IOException {
+    // Removing the first measurement also exercises the remapped value-column encoding path.
+    checkAlignedFlushAfterTimeDeletion(true);
+  }
+
+  private void checkAlignedFlushAfterTimeDeletion(boolean removeColumn) throws IOException {
+    for (int pageSize : new int[] {2, 100}) {
+      List<IMeasurementSchema> schemas =
+          Arrays.asList(
+              new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN),
+              new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, false);
+      String alignedFilePath =
+          TestConstant.OUTPUT_DATA_DIR.concat("testAlignedTimeDeletion" + pageSize + ".tsfile");
+      try {
+        for (int time : new int[] {4, 1, 6, 2, 5, 3}) {
+          memChunk.putAlignedRow(time, new Object[] {time, time * 10L});
+        }
+        memChunk.deleteTime(2, 2);
+        memChunk.deleteTime(6, 6);
+        if (removeColumn) {
+          memChunk.removeColumn("s0");
+        }
+        memChunk.sortTvListForFlush();
+
+        BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+        // Cover a single page and boundaries between pages and chunks.
+        memChunk.encodeWorkingAlignedTVList(ioTaskQueue, pageSize + 1, pageSize);
+        try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
+          alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
+          Object task;
+          while ((task = ioTaskQueue.poll()) != null) {
+            if (task instanceof IChunkWriter chunkWriter) {
+              chunkWriter.writeToFileWriter(alignedWriter);
+            }
+          }
+          alignedWriter.endChunkGroup();
+          alignedWriter.endFile();
+        }
+
+        try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(alignedFilePath);
+            TsFileReader fileReader = new TsFileReader(sequenceReader)) {
+          List<Path> paths = new ArrayList<>();
+          paths.add(new Path("root.d", "s1", false));
+          if (!removeColumn) {
+            paths.add(new Path("root.d", "s0", false));
+          }
+          QueryDataSet dataSet = fileReader.query(QueryExpression.create(paths, null));
+          for (int time : new int[] {1, 3, 4, 5}) {
+            assertTrue(dataSet.hasNext());
+            RowRecord row = dataSet.next();
+            assertEquals(time, row.getTimestamp());
+            assertEquals(TSDataType.INT64, row.getFields().get(0).getDataType());
+            assertEquals(time * 10L, row.getFields().get(0).getLongV());
+            if (!removeColumn) {
+              assertEquals(TSDataType.INT32, row.getFields().get(1).getDataType());
+              assertEquals(time, row.getFields().get(1).getIntV());
+            }
+          }
+          assertFalse(dataSet.hasNext());
+        }
+      } finally {
+        memChunk.release();
+      }
+    }
+  }
+
+  @Test
   public void testAlignedFastPathEncodesUnmaterializedSegments() throws Exception {
     // Exercise all six value representations with null/dense/null segments, partial nulls, an
     // entirely empty column, and page/chunk boundaries inside backing arrays.

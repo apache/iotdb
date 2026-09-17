@@ -58,15 +58,16 @@ cd src/main
 ./build-ainode.sh -v 2.0.8-SNAPSHOT -d /data/ainode
 ```
 Notice:
-Make directory of src/main/target and put the zip file downloading from the official download page. 
-e.g.
+Create `src/main/target` and place the downloaded release archives there.
+ConfigNode, DataNode, standalone and latest images all use `apache-iotdb-<version>-all-bin.zip`;
+their entrypoints still start only the requested components. The separate CLI, ConfigNode and
+DataNode archives are no longer published. AINode uses its own archive.
+
+For example:
 ```shell
-$ ls -hl target/
-total 215M
--rw-r--r-- 1 root root 75M Nov 30 20:04 apache-iotdb-1.0.0-all-bin.zip
--rw-r--r-- 1 root root 69M Dec  1 17:12 apache-iotdb-1.0.0-confignode-bin.zip
--rw-r--r-- 1 root root 73M Dec  1 17:13 apache-iotdb-1.0.0-datanode-bin.zip
--rw-r--r-- 1 root root 329K  7 15 17:12 apache-iotdb-2.0.5-SNAPSHOT-ainode-bin.zip
+$ ls target/
+apache-iotdb-2.0.11-SNAPSHOT-all-bin.zip
+apache-iotdb-2.0.11-SNAPSHOT-ainode-bin.zip
 ```
 
 To avoid mannually copy these files, you can run our `do-docker-build.sh` with argument `-b`.
