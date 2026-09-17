@@ -852,7 +852,8 @@ public class SourceHandle implements ISourceHandle {
               response.isSetTotalLength(),
               DataNodeQueryMessages
                   .EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2);
-          partialTsBlock = new PublicBAOS(response.getTotalLength());
+          partialTsBlockTotalLength = response.getTotalLength();
+          partialTsBlock = new PublicBAOS(partialTsBlockTotalLength);
           appendFragment(responseBlocks.get(blockIndex));
           updateOffset(response.getOffset());
         }
