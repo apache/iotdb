@@ -28,8 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import java.util.Map;
 
 /**
- * Open-source default implementation of {@link ILBACAccessControl} that allows all access. The
- * commercial TimechoDB DataNode replaces this with its real LBAC implementation during startup.
+ * Default implementation of {@link ILBACAccessControl} that allows all access. A DataNode may
+ * replace it with a real LBAC implementation during startup.
  */
 @SuppressWarnings("java:S100")
 public class AllowAllLBACAccessControl implements ILBACAccessControl {
