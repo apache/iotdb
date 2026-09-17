@@ -83,7 +83,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       return true;
     }
 
-    if (event instanceof PipeHeartbeatEvent && super.peekLast() instanceof PipeHeartbeatEvent) {
+    if (event instanceof PipeHeartbeatEvent
+        && !((PipeHeartbeatEvent) event).isCompletionBarrier()
+        && super.peekLast() instanceof PipeHeartbeatEvent) {
       // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
       ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
       return false;

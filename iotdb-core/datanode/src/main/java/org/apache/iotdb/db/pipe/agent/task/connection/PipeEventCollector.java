@@ -36,6 +36,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTablePrivilegeParseVisitor;
 import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTreePrivilegeParseVisitor;
@@ -60,6 +61,8 @@ public class PipeEventCollector implements EventCollector {
 
   private final int regionId;
 
+  private final long completionSourceId;
+
   private final boolean forceTabletFormat;
 
   private final boolean skipParsing;
@@ -76,12 +79,14 @@ public class PipeEventCollector implements EventCollector {
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
       final long creationTime,
       final int regionId,
+      final long completionSourceId,
       final boolean forceTabletFormat,
       final boolean skipParsing,
       final boolean isUsedInConsensusPipe) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
+    this.completionSourceId = completionSourceId;
     this.forceTabletFormat = forceTabletFormat;
     this.skipParsing = skipParsing;
     this.isUsedForConsensusPipe = isUsedInConsensusPipe;
@@ -246,6 +251,7 @@ public class PipeEventCollector implements EventCollector {
     if (event instanceof EnrichedEvent) {
       final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
       if (!enrichedEvent.increaseReferenceCount(PipeEventCollector.class.getName())) {
+        markDataRegionCompletionInvalid(enrichedEvent);
         LOGGER.warn(
             DataNodePipeMessages.PIPEEVENTCOLLECTOR_THE_EVENT_IS_ALREADY_RELEASED_SKIPPING, event);
         isFailedToIncreaseReferenceCount = true;
@@ -255,6 +261,9 @@ public class PipeEventCollector implements EventCollector {
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
           .enrichWithCommitterKeyAndCommitId(enrichedEvent, creationTime, regionId);
+      if (enrichedEvent.needToCommit() && enrichedEvent.getCommitterKey() == null) {
+        markDataRegionCompletionInvalid(enrichedEvent);
+      }
 
       // Assign a rebootTime for iotConsensusV2
       enrichedEvent.setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
@@ -275,6 +284,20 @@ public class PipeEventCollector implements EventCollector {
 
     if (pendingQueue.offer(event)) {
       collectInvocationCount.incrementAndGet();
+    } else if (event instanceof EnrichedEvent) {
+      markDataRegionCompletionInvalid((EnrichedEvent) event);
+    }
+  }
+
+  private void markDataRegionCompletionInvalid(final EnrichedEvent event) {
+    if (!(event instanceof PipeHeartbeatEvent) && event.getPipeName() != null && regionId >= 0) {
+      PipeDataNodeSinglePipeMetrics.getInstance()
+          .markDataRegionInvalid(
+              event.getPipeName(),
+              creationTime,
+              regionId,
+              event.getPipeTaskMeta(),
+              completionSourceId);
     }
   }
 

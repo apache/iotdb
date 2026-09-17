@@ -207,13 +207,17 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
   private void markTsFileEpochDegraded(final TsFileEpoch tsFileEpoch) {
     activeTsFileEpochs.add(tsFileEpoch);
-    degradedTsFileEpochs.add(tsFileEpoch);
+    if (degradedTsFileEpochs.add(tsFileEpoch)) {
+      markCompletionStateChanged();
+    }
     reportTsFileEpochDegradedStatus();
   }
 
   private void clearTsFileEpoch(final TsFileEpoch tsFileEpoch) {
     activeTsFileEpochs.remove(tsFileEpoch);
-    degradedTsFileEpochs.remove(tsFileEpoch);
+    if (degradedTsFileEpochs.remove(tsFileEpoch)) {
+      markCompletionStateChanged();
+    }
     reportTsFileEpochDegradedStatus();
   }
 
@@ -228,11 +232,19 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   }
 
   @Override
+  public boolean isTsFileEpochDegraded() {
+    return !degradedTsFileEpochs.isEmpty();
+  }
+
+  @Override
   public void close() throws Exception {
     try {
       super.close();
     } finally {
       activeTsFileEpochs.clear();
+      if (!degradedTsFileEpochs.isEmpty()) {
+        markCompletionStateChanged();
+      }
       degradedTsFileEpochs.clear();
       PipeDataNodeAgent.task().clearPipeTsFileEpochDegraded(pipeName, creationTime, dataRegionId);
     }
@@ -346,6 +358,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
                 DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
                 event.getEvent());
         LOGGER.error(errorMessage);
+        markDataRegionCompletionInvalid();
         PipeDataNodeAgent.runtime()
             .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
         PipeTsFileEpochProgressIndexKeeper.getInstance()
