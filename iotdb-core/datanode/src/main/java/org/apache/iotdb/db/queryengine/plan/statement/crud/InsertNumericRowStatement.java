@@ -39,6 +39,7 @@ import org.apache.iotdb.db.utils.NumericRowValues;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -55,11 +56,21 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
   private long time;
   private NumericRowValues numericValues;
   private IDeviceID deviceID;
+  // A candidate snapshot, checked again under the schema analysis lock before reuse.
+  private Pair<Long, Long> preparedTableVersion;
 
   public InsertNumericRowStatement() {
     statementType = StatementType.INSERT_NUMERIC_ROW;
     writeToTable = true;
     isAligned = true;
+  }
+
+  public Pair<Long, Long> getPreparedTableVersion() {
+    return preparedTableVersion;
+  }
+
+  public void setPreparedTableVersion(Pair<Long, Long> preparedTableVersion) {
+    this.preparedTableVersion = preparedTableVersion;
   }
 
   public long getTime() {

@@ -194,6 +194,45 @@ public class IoTDBTableModelSessionIT {
   }
 
   @Test
+  public void testPreparedNumericRowSchemaVersionChange() throws Exception {
+    // Reuse a prepared row before and after adding a TAG, including a flush/read round trip.
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE numeric_version");
+      session.executeNonQueryStatement("USE numeric_version");
+      session.executeNonQueryStatement("CREATE TABLE readings (tag STRING TAG, v DOUBLE FIELD)");
+      NumericRowPreparedStatement prepared =
+          session.prepareInsertNumericRow(
+              "readings",
+              Arrays.asList("tag", "v"),
+              Arrays.asList(TSDataType.STRING, TSDataType.DOUBLE),
+              Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD));
+      for (int time = 1; time <= 3; time++) {
+        if (time == 3) {
+          session.executeNonQueryStatement("ALTER TABLE readings ADD COLUMN tag2 STRING TAG");
+        }
+        session.executePreparedInsertNumericRow(
+            prepared,
+            time,
+            new long[] {Double.doubleToRawLongBits(time + 0.5)},
+            new String[] {"device"});
+      }
+      session.executeNonQueryStatement("FLUSH");
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT time,tag,tag2,v FROM readings ORDER BY time")) {
+        for (int time = 1; time <= 3; time++) {
+          assertTrue(dataSet.hasNext());
+          RowRecord row = dataSet.next();
+          assertEquals(time, row.getFields().get(0).getLongV());
+          assertEquals("device", row.getFields().get(1).getStringValue());
+          assertNull(row.getFields().get(2).getDataType());
+          assertEquals(time + 0.5, row.getFields().get(3).getDoubleV(), 0);
+        }
+        assertFalse(dataSet.hasNext());
+      }
+    }
+  }
+
+  @Test
   public void testPreparedNumericRowAndTabletWritePerformance() throws Exception {
     Assume.assumeTrue(
         "Performance benchmark disabled; set iotdb.numeric.row.insert.perf.enabled=true to run",

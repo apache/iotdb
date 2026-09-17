@@ -20,8 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,6 +46,30 @@ public class InsertNumericRow extends WrappedInsertStatement {
   @Override
   public InsertNumericRowStatement getInnerTreeStatement() {
     return (InsertNumericRowStatement) super.getInnerTreeStatement();
+  }
+
+  @Override
+  public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
+    InsertNumericRowStatement statement = getInnerTreeStatement();
+    if (statement.getPreparedTableVersion() != null) {
+      // Check at analysis time under the same deletion lock and metadata lease as normal inserts.
+      DataNodeSchemaLockManager.getInstance()
+          .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
+      TsTable currentTable =
+          DataNodeTableCache.getInstance().getTableInWrite(getDatabase(), getTableName());
+      if (currentTable != null
+          && currentTable.matchesInstanceVersion(statement.getPreparedTableVersion())) {
+        statement.setAttributeColumnsPresent(false);
+        // Cached schema names must not be mutated by later normalization.
+        statement.setToLowerCaseApplied(true);
+        statement.semanticCheck();
+        return;
+      }
+      // Full validation may cast, reorder, or fail columns; discard all cached schema state first.
+      statement.setPreparedTableVersion(null);
+      statement.setMeasurementSchemas(null);
+    }
+    super.validateTableSchema(metadata, context);
   }
 
   @Override

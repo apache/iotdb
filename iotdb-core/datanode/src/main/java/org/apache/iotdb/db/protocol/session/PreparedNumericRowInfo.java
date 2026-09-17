@@ -22,22 +22,32 @@ package org.apache.iotdb.db.protocol.session;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.db.utils.NumericRowValues;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 /**
  * Session-owned metadata. Each execution gets fresh arrays because schema analysis mutates them.
@@ -50,6 +60,8 @@ public final class PreparedNumericRowInfo {
   private final TsTableColumnCategory[] categories;
   private final int tagCount;
   private final int valueBytes;
+  private final Pair<Long, Long> tableVersion;
+  private final MeasurementSchema[] measurementSchemas;
 
   public PreparedNumericRowInfo(String database, TSPrepareNumericRowReq req) {
     if (req == null) {
@@ -152,6 +164,44 @@ public final class PreparedNumericRowInfo {
       throw invalid(
           DataNodeMiscMessages.EXCEPTION_PREPARED_NUMERIC_ROW_HAS_NO_FIELD_COLUMNS_A76209AE);
     }
+    TsTable currentTable = DataNodeTableCache.getInstance().getTableInWrite(database, table);
+    Pair<Long, Long> version = currentTable == null ? null : currentTable.getInstanceVersion();
+    MeasurementSchema[] schemas = prepareMeasurementSchemas(currentTable);
+    // Never retain a snapshot assembled across concurrent schema revisions.
+    if (schemas != null && currentTable.matchesInstanceVersion(version)) {
+      tableVersion = version;
+      measurementSchemas = schemas;
+    } else {
+      tableVersion = null;
+      measurementSchemas = null;
+    }
+  }
+
+  private MeasurementSchema[] prepareMeasurementSchemas(TsTable currentTable) {
+    // Views and requests needing TAG padding/reordering or type conversion use normal analysis.
+    if (currentTable == null
+        || currentTable.getClass() != TsTable.class
+        || DataNodeTreeViewSchemaUtils.isTreeViewTable(currentTable)
+        || currentTable.getTagColumnSchemaList().size() != tagCount) {
+      return null;
+    }
+    MeasurementSchema[] schemas = new MeasurementSchema[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      TsTableColumnSchema column = currentTable.getColumnSchema(measurements[i]);
+      if (column == null
+          || column.getDataType() != types[i]
+          || column.getColumnCategory() != categories[i]
+          || (i < tagCount && currentTable.getTagColumnOrdinal(measurements[i]) != i)) {
+        return null;
+      }
+      schemas[i] =
+          new MeasurementSchema(
+              column.getColumnName(),
+              types[i],
+              getDefaultEncoding(types[i]),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(types[i]));
+    }
+    return schemas;
   }
 
   public InsertNumericRowStatement bind(long timestamp, ByteBuffer tags, ByteBuffer values) {
@@ -217,6 +267,10 @@ public final class PreparedNumericRowInfo {
     statement.setColumnCategories(categories.clone());
     statement.setTime(timestamp);
     statement.setNumericValues(row);
+    if (measurementSchemas != null) {
+      statement.setPreparedTableVersion(tableVersion);
+      statement.setMeasurementSchemas(measurementSchemas.clone());
+    }
     return statement;
   }
 
@@ -227,6 +281,11 @@ public final class PreparedNumericRowInfo {
         + RamUsageEstimator.sizeOf(measurements)
         + RamUsageEstimator.shallowSizeOf(types)
         + RamUsageEstimator.shallowSizeOf(categories)
+        + InsertNodeMemoryEstimator.sizeOfMeasurementSchemas(measurementSchemas)
+        + (tableVersion == null
+            ? 0
+            : RamUsageEstimator.shallowSizeOf(tableVersion)
+                + 2 * RamUsageEstimator.shallowSizeOfInstance(Long.class))
         // Account for the map entry and boxed ID retained by the session.
         + 64;
   }
