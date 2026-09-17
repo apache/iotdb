@@ -91,6 +91,8 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
 
   // All available DataNode IDs (used for variance computation)
   private Set<Integer> allAvailableNodeIds;
+  // Running DataNode IDs, the only candidates allowed to receive a Region replica
+  private Set<Integer> runningDataNodeIds;
 
   // Log tag for the current pass, e.g. "LoadBalance-DataRegion" / "LoadBalance-SchemaRegion".
   // LOAD BALANCE runs this migrator once for DataRegions and once for SchemaRegions; the region
@@ -184,12 +186,18 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
   @Override
   public Map<TConsensusGroupId, TRegionReplicaSet> autoBalanceRegionReplicasDistribution(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, TDataNodeConfiguration> runningDataNodeMap,
       Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
       List<Integer> targetNodeIds) {
+    if (runningDataNodeMap.isEmpty()) {
+      return allocatedRegionGroups.stream()
+          .collect(Collectors.toMap(TRegionReplicaSet::getRegionId, region -> region));
+    }
     this.regionGroupStatisticsMap = regionGroupStatisticsMap;
     this.replicationFactor = replicationFactor;
+    this.runningDataNodeIds = new HashSet<>(runningDataNodeMap.keySet());
     this.logTag = "LoadBalance-" + MigratorLogHelper.regionTypeTag(allocatedRegionGroups);
     this.replicaNodesIdMap =
         allocatedRegionGroups.stream()
@@ -228,15 +236,15 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
 
     if (targetNodeIds != null && !targetNodeIds.isEmpty()) {
       // ===== Unidirectional mode (scale-out) =====
-      result = executeUnidirectionalMigration(availableDataNodeMap, regionKeys, targetNodeIds);
+      result = executeUnidirectionalMigration(runningDataNodeMap, regionKeys, targetNodeIds);
     } else {
       // ===== Bidirectional mode (global balance) =====
-      result = executeBidirectionalMigration(availableDataNodeMap, regionKeys);
+      result = executeBidirectionalMigration(runningDataNodeMap, regionKeys);
     }
     logSummary("Final", result);
 
     // Construct the final result
-    return constructResult(result, regionKeys, availableDataNodeMap);
+    return constructResult(result, allocatedRegionGroups, runningDataNodeMap);
   }
 
   // ==================== Unidirectional Mode (Scale-Out) ====================
@@ -253,7 +261,7 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
     // Determine to set
     availableToDataNodeSet = new HashSet<>();
     for (Integer targetNodeId : targetNodeIds) {
-      if (availableDataNodeMap.containsKey(targetNodeId)) {
+      if (runningDataNodeIds.contains(targetNodeId)) {
         availableToDataNodeSet.add(targetNodeId);
       }
     }
@@ -466,6 +474,7 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
           }
           for (int candidateUnderNode : sortedNodeIds) {
             if (regionCounter[candidateUnderNode] < idealFloor
+                && runningDataNodeIds.contains(candidateUnderNode)
                 && !replicaNodeIds.contains(candidateUnderNode)) {
               correctionRegion = regionId;
               correctionOption = option;
@@ -541,6 +550,9 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
         availableFromDataNodeSet.add(nodeId);
       }
       if (regionCounter[nodeId] < idealFloor) {
+        if (!runningDataNodeIds.contains(nodeId)) {
+          continue;
+        }
         availableToDataNodeSet.add(nodeId);
       }
     }
@@ -646,6 +658,9 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
       List<Integer> overNodes = new ArrayList<>();
       List<Integer> underNodes = new ArrayList<>();
       for (int nodeId : allAvailableNodeIds) {
+        if (!runningDataNodeIds.contains(nodeId)) {
+          continue;
+        }
         if (diskCounter[nodeId] > meanDisk) {
           overNodes.add(nodeId);
         } else if (diskCounter[nodeId] < meanDisk) {
@@ -1239,21 +1254,25 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
   /** Construct the final TRegionReplicaSet result from migration decisions. */
   private Map<TConsensusGroupId, TRegionReplicaSet> constructResult(
       Map<TConsensusGroupId, MigrateOption> result,
-      List<TConsensusGroupId> regionKeys,
+      List<TRegionReplicaSet> allocatedRegionGroups,
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap) {
     Map<TConsensusGroupId, TRegionReplicaSet> finalResult = new HashMap<>();
-    for (TConsensusGroupId regionId : regionKeys) {
+    for (TRegionReplicaSet allocatedRegionGroup : allocatedRegionGroups) {
+      TConsensusGroupId regionId = allocatedRegionGroup.getRegionId();
       TRegionReplicaSet currentRegionReplicaSet = new TRegionReplicaSet();
       currentRegionReplicaSet.setRegionId(regionId);
       MigrateOption option = result.get(regionId);
       List<Integer> replicaNodeIds = replicaNodesIdMap.get(regionId);
-      for (Integer nodeId : replicaNodeIds) {
+      for (int replicaIndex = 0; replicaIndex < replicaNodeIds.size(); replicaIndex++) {
+        Integer nodeId = replicaNodeIds.get(replicaIndex);
         if (option.isMigration && nodeId == option.fromNodeId) {
           currentRegionReplicaSet.addToDataNodeLocations(
               availableDataNodeMap.get(option.toNodeId).getLocation());
         } else {
+          // A node outside the target map may still host an unchanged replica. Preserve its
+          // original location rather than looking it up among migration targets.
           currentRegionReplicaSet.addToDataNodeLocations(
-              availableDataNodeMap.get(nodeId).getLocation());
+              allocatedRegionGroup.getDataNodeLocations().get(replicaIndex));
         }
       }
       finalResult.put(regionId, currentRegionReplicaSet);

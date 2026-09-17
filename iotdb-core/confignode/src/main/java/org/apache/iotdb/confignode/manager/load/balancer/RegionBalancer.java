@@ -188,8 +188,15 @@ public class RegionBalancer {
       List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
       List<Integer> targetNodeIds) {
+    Map<Integer, TDataNodeConfiguration> runningDataNodeMap = new HashMap<>();
+    getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+        .filter(
+            dataNode -> availableDataNodeMap.containsKey(dataNode.getLocation().getDataNodeId()))
+        .forEach(
+            dataNode -> runningDataNodeMap.put(dataNode.getLocation().getDataNodeId(), dataNode));
     return regionGroupMigrator.autoBalanceRegionReplicasDistribution(
         availableDataNodeMap,
+        runningDataNodeMap,
         regionGroupStatisticsMap,
         allocatedRegionGroups,
         replicationFactor,

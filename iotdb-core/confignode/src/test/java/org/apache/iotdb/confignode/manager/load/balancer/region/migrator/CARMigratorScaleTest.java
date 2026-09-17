@@ -195,7 +195,12 @@ public class CARMigratorScaleTest {
     // Execute migration
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         migrator.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allocatedResult, replicaCount, targetNodeIds);
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allocatedResult,
+            replicaCount,
+            targetNodeIds);
 
     // Metrics after migration
     Map<Integer, Integer> afterRegionCounter =

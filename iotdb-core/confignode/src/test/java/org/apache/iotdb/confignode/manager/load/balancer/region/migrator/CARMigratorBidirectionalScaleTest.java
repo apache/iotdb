@@ -195,7 +195,12 @@ public class CARMigratorBidirectionalScaleTest {
     // Execute bidirectional migration (empty targetNodeIds)
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         migrator.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allocatedResult,
+            replicaCount,
+            Collections.emptyList());
 
     // Metrics after
     Map<Integer, Integer> afterRegionCounter =

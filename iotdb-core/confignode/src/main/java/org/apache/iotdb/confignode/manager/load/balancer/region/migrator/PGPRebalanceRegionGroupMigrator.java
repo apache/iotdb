@@ -62,6 +62,7 @@ public class PGPRebalanceRegionGroupMigrator implements IRegionGroupMigrator {
   @Override
   public Map<TConsensusGroupId, TRegionReplicaSet> autoBalanceRegionReplicasDistribution(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, TDataNodeConfiguration> runningDataNodeMap,
       Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
@@ -75,9 +76,9 @@ public class PGPRebalanceRegionGroupMigrator implements IRegionGroupMigrator {
                     regionGroupStatisticsMap.get(rrs.getRegionId()).getDiskUsage())
             .reversed());
 
-    // 2. Build uniform freeDiskSpaceMap for all available nodes
+    // 2. Build uniform freeDiskSpaceMap for Running targets only
     Map<Integer, Double> spaceMap = new TreeMap<>();
-    for (int nodeId : availableDataNodeMap.keySet()) {
+    for (int nodeId : runningDataNodeMap.keySet()) {
       spaceMap.put(nodeId, 1.0);
     }
 
@@ -94,14 +95,18 @@ public class PGPRebalanceRegionGroupMigrator implements IRegionGroupMigrator {
 
     for (TRegionReplicaSet rrs : sorted) {
       TConsensusGroupId groupId = rrs.getRegionId();
+      // PGP reallocates a whole group. Leave it unchanged if that would move an unavailable
+      // source replica, or if there are too few Running nodes to hold all replicas.
+      if (runningDataNodeMap.size() < replicationFactor
+          || rrs.getDataNodeLocations().stream()
+              .anyMatch(location -> !availableDataNodeMap.containsKey(location.getDataNodeId()))) {
+        newAllocated.add(rrs);
+        result.put(groupId, rrs);
+        continue;
+      }
       TRegionReplicaSet newRrs =
           pgpAllocator.generateOptimalRegionReplicasDistribution(
-              availableDataNodeMap,
-              spaceMap,
-              newAllocated,
-              newAllocated,
-              replicationFactor,
-              groupId);
+              runningDataNodeMap, spaceMap, newAllocated, newAllocated, replicationFactor, groupId);
       newAllocated.add(newRrs);
       result.put(groupId, newRrs);
     }

@@ -101,7 +101,12 @@ public class CARMigratorScenarioTest {
     List<Integer> targetNodeIds = Collections.singletonList(newNode);
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allocatedResult, replicaCount, targetNodeIds);
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allocatedResult,
+            replicaCount,
+            targetNodeIds);
 
     // Metrics after migration
     Map<Integer, Integer> afterRegionCounter =
@@ -193,7 +198,12 @@ public class CARMigratorScenarioTest {
     List<Integer> targetNodeIds = Collections.singletonList(newNode);
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allocatedResult, replicaCount, targetNodeIds);
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allocatedResult,
+            replicaCount,
+            targetNodeIds);
 
     // Metrics after migration
     Map<Integer, Integer> afterRegionCounter =
@@ -270,7 +280,7 @@ public class CARMigratorScenarioTest {
     List<Integer> targetNodeIds = Collections.singletonList(4);
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            nodeMap, statsMap, allocatedResult, replicaCount, targetNodeIds);
+            nodeMap, nodeMap, statsMap, allocatedResult, replicaCount, targetNodeIds);
 
     // Metrics after migration
     Map<Integer, Integer> afterRegionCounter =
@@ -354,7 +364,12 @@ public class CARMigratorScenarioTest {
     List<Integer> targetNodeIds = Arrays.asList(newNodes[0], newNodes[1]);
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allocatedResult, replicaCount, targetNodeIds);
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allocatedResult,
+            replicaCount,
+            targetNodeIds);
 
     // Metrics after migration
     Map<Integer, Integer> afterRegionCounter =
@@ -477,13 +492,28 @@ public class CARMigratorScenarioTest {
     // Run all 3 algorithms in bidirectional mode (empty targetNodeIds)
     Map<TConsensusGroupId, TRegionReplicaSet> gcrPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allRegions, replicaCount, Collections.emptyList());
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allRegions,
+            replicaCount,
+            Collections.emptyList());
     Map<TConsensusGroupId, TRegionReplicaSet> greedyPlan =
         greedyMigrator.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allRegions, replicaCount, Collections.emptyList());
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allRegions,
+            replicaCount,
+            Collections.emptyList());
     Map<TConsensusGroupId, TRegionReplicaSet> pgpPlan =
         pgpMigrator.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allRegions, replicaCount, Collections.emptyList());
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allRegions,
+            replicaCount,
+            Collections.emptyList());
 
     // Compute metrics for each algorithm
     Map<Integer, Integer> gcrRegionCounter =
@@ -615,7 +645,12 @@ public class CARMigratorScenarioTest {
     // Execute bidirectional migration (empty targetNodeIds)
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allocatedResult,
+            replicaCount,
+            Collections.emptyList());
 
     // Metrics after
     Map<Integer, Integer> afterRegionCounter =
@@ -720,7 +755,12 @@ public class CARMigratorScenarioTest {
     // Execute bidirectional migration
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allocatedResult,
+            replicaCount,
+            Collections.emptyList());
 
     // Metrics after
     Map<Integer, Integer> afterRegionCounter =
@@ -803,7 +843,7 @@ public class CARMigratorScenarioTest {
     // Execute bidirectional migration
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            nodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
+            nodeMap, nodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
 
     // Metrics after
     Map<Integer, Integer> afterRegionCounter =
@@ -897,7 +937,7 @@ public class CARMigratorScenarioTest {
     // Execute bidirectional migration
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            nodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
+            nodeMap, nodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
 
     // Metrics after
     Map<Integer, Integer> afterRegionCounter =
@@ -967,7 +1007,7 @@ public class CARMigratorScenarioTest {
     // Execute bidirectional migration
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            nodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
+            nodeMap, nodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
 
     // Metrics after
     int migrations = CARMigratorTestHelper.countMigrations(allocatedResult, migrationPlan);
@@ -1044,7 +1084,12 @@ public class CARMigratorScenarioTest {
     // Execute bidirectional migration
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allocatedResult,
+            replicaCount,
+            Collections.emptyList());
 
     // Metrics after
     Map<Integer, Integer> afterRegionCounter =
@@ -1135,7 +1180,12 @@ public class CARMigratorScenarioTest {
     // Execute bidirectional migration
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableNodeMap, statsMap, allocatedResult, replicaCount, Collections.emptyList());
+            availableNodeMap,
+            availableNodeMap,
+            statsMap,
+            allocatedResult,
+            replicaCount,
+            Collections.emptyList());
 
     // Metrics after
     Map<Integer, Integer> afterRegionCounter =
@@ -1183,5 +1233,162 @@ public class CARMigratorScenarioTest {
           count >= idealFloor && count <= idealCeil);
     }
     Assert.assertTrue("Should have multiple migrations", migrations > 0);
+  }
+
+  /**
+   * A non-running DataNode is excluded from the available-node map, but its existing replicas must
+   * still be preserved in the generated target distribution.
+   */
+  @Test
+  public void testUnavailableReplicaNodeIsPreservedInResult() {
+    int replicaCount = 2;
+    TConsensusGroupId regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
+
+    Map<Integer, TDataNodeConfiguration> originalNodeMap =
+        CARMigratorTestHelper.buildNodeMap(new int[] {1, 2});
+    TRegionReplicaSet allocatedRegion =
+        new TRegionReplicaSet()
+            .setRegionId(regionId)
+            .setDataNodeLocations(
+                Arrays.asList(
+                    originalNodeMap.get(1).getLocation(), originalNodeMap.get(2).getLocation()));
+    List<TRegionReplicaSet> allocatedRegions = Collections.singletonList(allocatedRegion);
+
+    // Node 1 represents a non-DiskFull ReadOnly or Unknown node and is not a migration candidate.
+    Map<Integer, TDataNodeConfiguration> availableNodeMap =
+        CARMigratorTestHelper.buildNodeMap(new int[] {2, 3});
+    Map<TConsensusGroupId, RegionGroupStatistics> statisticsMap =
+        CARMigratorTestHelper.buildUniformStatisticsMap(allocatedRegions, 100_000_000L);
+
+    Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
+        MIGRATOR.autoBalanceRegionReplicasDistribution(
+            availableNodeMap,
+            availableNodeMap,
+            statisticsMap,
+            allocatedRegions,
+            replicaCount,
+            Collections.emptyList());
+
+    Assert.assertEquals(allocatedRegion, migrationPlan.get(regionId));
+  }
+
+  @Test
+  public void testReadOnlyReplicaIsOnlyMigrationSource() {
+    List<TRegionReplicaSet> allocatedRegions =
+        CARMigratorTestHelper.buildManualReplicaSets(
+            new int[] {3}, new int[] {3}, new int[] {3}, new int[] {3});
+    Map<TConsensusGroupId, RegionGroupStatistics> statisticsMap =
+        CARMigratorTestHelper.buildUniformStatisticsMap(allocatedRegions, 100_000_000L);
+
+    Map<Integer, TDataNodeConfiguration> availableDataNodeMap =
+        CARMigratorTestHelper.buildNodeMap(1, 2, 3);
+    Map<Integer, TDataNodeConfiguration> runningDataNodeMap =
+        CARMigratorTestHelper.buildNodeMap(1, 2);
+
+    Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
+        MIGRATOR.autoBalanceRegionReplicasDistribution(
+            availableDataNodeMap,
+            runningDataNodeMap,
+            statisticsMap,
+            allocatedRegions,
+            1,
+            Collections.emptyList());
+
+    int migrations = CARMigratorTestHelper.countMigrations(allocatedRegions, migrationPlan);
+    Assert.assertEquals(2, migrations);
+    Map<Integer, Integer> regionCounter =
+        CARMigratorTestHelper.computeRegionCounter(
+            migrationPlan.values(), new HashSet<>(Arrays.asList(1, 2, 3)));
+    Assert.assertEquals(1, (int) regionCounter.get(1));
+    Assert.assertEquals(1, (int) regionCounter.get(2));
+    Assert.assertEquals(2, (int) regionCounter.get(3));
+  }
+
+  @Test
+  public void testAllMigratorsAcceptDiskFullSourcesAndPreserveUnavailableReplicas() {
+    List<TRegionReplicaSet> regions =
+        CARMigratorTestHelper.buildManualReplicaSets(
+            new int[] {3}, new int[] {3}, new int[] {3}, new int[] {3}, new int[] {4});
+    Map<TConsensusGroupId, RegionGroupStatistics> statistics =
+        CARMigratorTestHelper.buildUniformStatisticsMap(regions, 100_000_000L);
+    for (IRegionGroupMigrator migrator :
+        Arrays.asList(
+            new CostAwareRegionGroupMigrator(),
+            new GreedyRegionGroupMigrator(),
+            new PGPRebalanceRegionGroupMigrator())) {
+      Map<TConsensusGroupId, TRegionReplicaSet> plan =
+          migrator.autoBalanceRegionReplicasDistribution(
+              CARMigratorTestHelper.buildNodeMap(1, 2, 3),
+              CARMigratorTestHelper.buildNodeMap(1, 2),
+              statistics,
+              regions,
+              1,
+              Collections.emptyList());
+      Assert.assertTrue(CARMigratorTestHelper.countMigrations(regions, plan) > 0);
+      Assert.assertEquals(
+          4, plan.get(regions.get(4).getRegionId()).getDataNodeLocations().get(0).getDataNodeId());
+      for (TRegionReplicaSet region : regions.subList(0, 4)) {
+        int target = plan.get(region.getRegionId()).getDataNodeLocations().get(0).getDataNodeId();
+        Assert.assertTrue(target == 1 || target == 2 || target == 3);
+      }
+    }
+  }
+
+  @Test
+  public void testAllMigratorsExcludeUnderloadedDiskFullTargets() {
+    List<TRegionReplicaSet> regions =
+        CARMigratorTestHelper.buildManualReplicaSets(
+            new int[] {1},
+            new int[] {1},
+            new int[] {1},
+            new int[] {1},
+            new int[] {1},
+            new int[] {1});
+    Map<TConsensusGroupId, RegionGroupStatistics> statistics =
+        CARMigratorTestHelper.buildUniformStatisticsMap(regions, 100_000_000L);
+    for (IRegionGroupMigrator migrator :
+        Arrays.asList(
+            new CostAwareRegionGroupMigrator(),
+            new GreedyRegionGroupMigrator(),
+            new PGPRebalanceRegionGroupMigrator())) {
+      Map<TConsensusGroupId, TRegionReplicaSet> plan =
+          migrator.autoBalanceRegionReplicasDistribution(
+              CARMigratorTestHelper.buildNodeMap(1, 2, 3),
+              CARMigratorTestHelper.buildNodeMap(1, 2),
+              statistics,
+              regions,
+              1,
+              Collections.emptyList());
+      for (TRegionReplicaSet region : plan.values()) {
+        int target = region.getDataNodeLocations().get(0).getDataNodeId();
+        Assert.assertTrue(target == 1 || target == 2);
+      }
+    }
+  }
+
+  @Test
+  public void testNoRunningTargetsPreservesReplicas() {
+    List<TRegionReplicaSet> regions = CARMigratorTestHelper.buildManualReplicaSets(new int[] {3});
+    Map<TConsensusGroupId, RegionGroupStatistics> statistics =
+        CARMigratorTestHelper.buildUniformStatisticsMap(regions, 100_000_000L);
+    for (IRegionGroupMigrator migrator :
+        Arrays.asList(
+            new CostAwareRegionGroupMigrator(),
+            new GreedyRegionGroupMigrator(),
+            new PGPRebalanceRegionGroupMigrator())) {
+      for (Map<Integer, TDataNodeConfiguration> availableNodes :
+          Arrays.asList(
+              CARMigratorTestHelper.buildNodeMap(3), CARMigratorTestHelper.buildNodeMap())) {
+        Map<TConsensusGroupId, TRegionReplicaSet> plan =
+            migrator.autoBalanceRegionReplicasDistribution(
+                availableNodes,
+                Collections.emptyMap(),
+                statistics,
+                regions,
+                1,
+                Collections.emptyList());
+        Assert.assertEquals(0, CARMigratorTestHelper.countMigrations(regions, plan));
+      }
+    }
   }
 }

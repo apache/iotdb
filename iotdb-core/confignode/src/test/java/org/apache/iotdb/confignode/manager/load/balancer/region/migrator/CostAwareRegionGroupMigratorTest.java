@@ -165,7 +165,12 @@ public class CostAwareRegionGroupMigratorTest {
     // Execute migration with targetNodeIds
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableDataNodeMap, fakeStatisticsMap, allocatedResult, replicaCount, targetNodeIds);
+            availableDataNodeMap,
+            availableDataNodeMap,
+            fakeStatisticsMap,
+            allocatedResult,
+            replicaCount,
+            targetNodeIds);
 
     // Verify that migrations target the specified node
     int migrationsToTargetNode = 0;
@@ -321,7 +326,12 @@ public class CostAwareRegionGroupMigratorTest {
     // Execute migration with multiple targetNodeIds
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableDataNodeMap, fakeStatisticsMap, allocatedResult, replicaCount, targetNodeIds);
+            availableDataNodeMap,
+            availableDataNodeMap,
+            fakeStatisticsMap,
+            allocatedResult,
+            replicaCount,
+            targetNodeIds);
 
     // Verify that migrations target the specified nodes
     Map<Integer, Integer> migrationsToTargetNodes = new TreeMap<>();
@@ -489,7 +499,12 @@ public class CostAwareRegionGroupMigratorTest {
     // Execute migration with three targetNodeIds
     Map<TConsensusGroupId, TRegionReplicaSet> migrationPlan =
         MIGRATOR.autoBalanceRegionReplicasDistribution(
-            availableDataNodeMap, fakeStatisticsMap, allocatedResult, replicaCount, targetNodeIds);
+            availableDataNodeMap,
+            availableDataNodeMap,
+            fakeStatisticsMap,
+            allocatedResult,
+            replicaCount,
+            targetNodeIds);
 
     // Verify that migrations target the specified nodes
     Map<Integer, Integer> migrationsToTargetNodes = new TreeMap<>();

@@ -129,6 +129,7 @@ import org.apache.iotdb.confignode.manager.fileloader.LocalFileLoader;
 import org.apache.iotdb.confignode.manager.load.LoadBalanceMetrics;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -3785,15 +3786,22 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus loadBalance(TLoadBalanceReq req) {
-    List<TDataNodeConfiguration> availableDataNodes =
-        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running);
+    Map<Integer, NodeStatistics> nodeStatisticsMap =
+        getLoadManager().getLoadCache().getCurrentDataNodeStatisticsMap();
     Map<Integer, TDataNodeConfiguration> availableDataNodeMap =
-        new HashMap<>(availableDataNodes.size());
-    availableDataNodes.forEach(
-        dataNodeConfiguration -> {
-          int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
-          availableDataNodeMap.put(dataNodeId, dataNodeConfiguration);
-        });
+        getNodeManager().getRegisteredDataNodes().stream()
+            .filter(
+                dataNode -> {
+                  NodeStatistics statistics =
+                      nodeStatisticsMap.get(dataNode.getLocation().getDataNodeId());
+                  return statistics != null
+                      && (statistics.getStatus() == NodeStatus.Running
+                          || (statistics.getStatus() == NodeStatus.ReadOnly
+                              && NodeStatus.DISK_FULL.equals(statistics.getStatusReason())));
+                })
+            .collect(
+                Collectors.toMap(
+                    dataNode -> dataNode.getLocation().getDataNodeId(), dataNode -> dataNode));
     Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap =
         getLoadManager().getLoadCache().getCurrentRegionGroupStatisticsMap();
 
@@ -3812,7 +3820,10 @@ public class ConfigManager implements IManager {
       targetNodeIds = req.getTargetNodeIds();
       List<Integer> unavailableTargetNodeIds =
           targetNodeIds.stream()
-              .filter(targetNodeId -> !availableDataNodeMap.containsKey(targetNodeId))
+              .filter(
+                  targetNodeId ->
+                      !availableDataNodeMap.containsKey(targetNodeId)
+                          || nodeStatisticsMap.get(targetNodeId).getStatus() != NodeStatus.Running)
               .distinct()
               .collect(Collectors.toList());
       if (!unavailableTargetNodeIds.isEmpty()) {

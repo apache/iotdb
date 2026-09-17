@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
  *
  * <ul>
  *   <li>Scale-out (targetNodeIds non-empty): fromSet = all nodes, toSet = targetNodeIds
- *   <li>Global balance (targetNodeIds empty): fromSet = toSet = all nodes
+ *   <li>Global balance (targetNodeIds empty): fromSet = available nodes, toSet = Running nodes
  * </ul>
  */
 public class GreedyRegionGroupMigrator implements IRegionGroupMigrator {
@@ -66,6 +66,7 @@ public class GreedyRegionGroupMigrator implements IRegionGroupMigrator {
   @Override
   public Map<TConsensusGroupId, TRegionReplicaSet> autoBalanceRegionReplicasDistribution(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, TDataNodeConfiguration> runningDataNodeMap,
       Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
@@ -89,10 +90,11 @@ public class GreedyRegionGroupMigrator implements IRegionGroupMigrator {
       // Scale-out mode: migrate from all nodes to target nodes
       fromSet = new HashSet<>(allNodeIds);
       toSet = new HashSet<>(targetNodeIds);
+      toSet.retainAll(runningDataNodeMap.keySet());
     } else {
       // Global balance mode: migrate among all nodes
       fromSet = new HashSet<>(allNodeIds);
-      toSet = new HashSet<>(allNodeIds);
+      toSet = new HashSet<>(runningDataNodeMap.keySet());
     }
 
     // Compute per-node disk usage

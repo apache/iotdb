@@ -32,7 +32,10 @@ public interface IRegionGroupMigrator {
   /**
    * Auto balance the RegionReplicas' distribution for cluster RegionGroups.
    *
-   * @param availableDataNodeMap DataNodes that can be used for allocation
+   * @param availableDataNodeMap Running and ReadOnly(DiskFull) DataNodes used for statistics and
+   *     migration sources; replicas on other nodes must stay in place
+   * @param runningDataNodeMap Running DataNodes that may receive replicas, a subset of
+   *     availableDataNodeMap
    * @param regionGroupStatisticsMap Statistics of RegionGroups
    * @param allocatedRegionGroups Allocated RegionGroups
    * @param replicationFactor Replication factor of TRegionReplicaSet
@@ -42,6 +45,7 @@ public interface IRegionGroupMigrator {
    */
   Map<TConsensusGroupId, TRegionReplicaSet> autoBalanceRegionReplicasDistribution(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, TDataNodeConfiguration> runningDataNodeMap,
       Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
       int replicationFactor,
