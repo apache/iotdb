@@ -55,6 +55,7 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeat
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionSessionConnection;
@@ -71,10 +72,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class AbstractSubscriptionProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionProvider.class);
+
+  private static final int CLOSE_TIMEOUT_IN_MS = 5_000;
 
   private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
   private static final String INTERNAL_ERROR_FORMATTER =
@@ -93,7 +97,9 @@ public abstract class AbstractSubscriptionProvider {
   private final Long ownerEpoch;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private final AtomicBoolean isAvailable = new AtomicBoolean(false);
+  private final ReentrantLock rpcLock = new ReentrantLock();
 
   private final TEndPoint endPoint;
   private int dataNodeId;
@@ -149,6 +155,16 @@ public abstract class AbstractSubscriptionProvider {
 
   SubscriptionSessionConnection getSessionConnection() throws IoTDBConnectionException {
     return session.getSessionConnection();
+  }
+
+  private TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req)
+      throws TException, IoTDBConnectionException {
+    rpcLock.lock();
+    try {
+      return getSessionConnection().pipeSubscribe(req);
+    } finally {
+      rpcLock.unlock();
+    }
   }
 
   boolean isAvailable() {
@@ -242,7 +258,7 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -258,17 +274,65 @@ public abstract class AbstractSubscriptionProvider {
     return PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
   }
 
-  synchronized void close() throws SubscriptionException, IoTDBConnectionException {
-    if (isClosed.get()) {
+  void prepareClose() {
+    final SubscriptionSessionConnection connection;
+    try {
+      connection = getSessionConnection();
+    } catch (final IoTDBConnectionException | RuntimeException ignored) {
+      return;
+    }
+    if (connection == null) {
       return;
     }
 
-    try {
-      closeInternal(); // throw SubscriptionException
-    } finally {
-      session.close(); // throw IoTDBConnectionException
+    if (!connection.setTimeout(CLOSE_TIMEOUT_IN_MS)) {
       setUnavailable();
-      isClosed.set(true);
+      connection.forceClose();
+      return;
+    }
+
+    if (rpcLock.tryLock()) {
+      rpcLock.unlock();
+    } else {
+      // Changing SO_TIMEOUT does not affect a read that is already blocked. Closing the transport
+      // is the only reliable way to make an in-flight RPC release the provider immediately.
+      setUnavailable();
+      connection.forceClose();
+    }
+  }
+
+  void close() throws SubscriptionException, IoTDBConnectionException {
+    if (isClosed.get() || !isClosing.compareAndSet(false, true)) {
+      return;
+    }
+
+    SubscriptionSessionConnection connection = null;
+    try {
+      connection = getSessionConnection();
+      if (!connection.setTimeout(CLOSE_TIMEOUT_IN_MS) || !rpcLock.tryLock()) {
+        connection.forceClose();
+        return;
+      }
+      try {
+        closeInternal(); // throw SubscriptionException
+      } finally {
+        rpcLock.unlock();
+      }
+    } finally {
+      try {
+        if (connection != null) {
+          connection.forceClose();
+        }
+      } finally {
+        try {
+          // The transport is already closed, so Session.close() only updates local resources and
+          // cannot block on a second closeSession RPC.
+          session.close(); // throw IoTDBConnectionException
+        } finally {
+          setUnavailable();
+          isClosed.set(true);
+        }
+      }
     }
   }
 
@@ -284,7 +348,7 @@ public abstract class AbstractSubscriptionProvider {
   void closeInternal() throws SubscriptionException {
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
+      resp = pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -322,7 +386,7 @@ public abstract class AbstractSubscriptionProvider {
 
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -352,7 +416,7 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -385,7 +449,7 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -419,7 +483,7 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       LOGGER.warn(
           SubscriptionMessages
@@ -449,7 +513,7 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       LOGGER.warn(
           SubscriptionMessages
@@ -479,7 +543,7 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       LOGGER.warn(
           SubscriptionMessages
@@ -550,7 +614,7 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(
@@ -584,7 +648,7 @@ public abstract class AbstractSubscriptionProvider {
     }
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(req);
+      resp = pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(

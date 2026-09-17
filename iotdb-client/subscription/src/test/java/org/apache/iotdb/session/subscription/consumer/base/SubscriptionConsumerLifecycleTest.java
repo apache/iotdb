@@ -47,6 +47,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -283,6 +286,34 @@ public class SubscriptionConsumerLifecycleTest {
     return (AbstractSubscriptionProviders) field.get(consumer);
   }
 
+  @Test
+  public void testConcurrentPullConsumerCloseReturnsWithoutWaiting() throws Exception {
+    final CountDownLatch providerCloseStarted = new CountDownLatch(1);
+    final CountDownLatch allowProviderClose = new CountDownLatch(1);
+    final TestPullConsumer consumer =
+        new TestPullConsumer(providerCloseStarted, allowProviderClose);
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    try {
+      consumer.open();
+
+      final Future<?> firstClose = executor.submit(consumer::close);
+      Assert.assertTrue(providerCloseStarted.await(5, TimeUnit.SECONDS));
+
+      final Future<?> concurrentClose = executor.submit(consumer::close);
+      concurrentClose.get(1, TimeUnit.SECONDS);
+      Assert.assertFalse(firstClose.isDone());
+
+      allowProviderClose.countDown();
+      firstClose.get(5, TimeUnit.SECONDS);
+      Assert.assertEquals(1, consumer.closedStatesDuringClose.size());
+    } finally {
+      allowProviderClose.countDown();
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+    }
+  }
+
   private static class TestPushConsumer extends AbstractSubscriptionPushConsumer {
 
     private final List<Boolean> closedStatesDuringHandshake = new ArrayList<>();
@@ -334,7 +365,9 @@ public class SubscriptionConsumerLifecycleTest {
           () -> false,
           () -> {},
           () -> {},
-          () -> {});
+          () -> {},
+          null,
+          null);
     }
   }
 
@@ -350,8 +383,15 @@ public class SubscriptionConsumerLifecycleTest {
     private int closeRequestCount;
     private int sessionCloseCount;
     private int commitRequestCount;
+    private final CountDownLatch providerCloseStarted;
+    private final CountDownLatch allowProviderClose;
 
     private TestPullConsumer() {
+      this(null, null);
+    }
+
+    private TestPullConsumer(
+        final CountDownLatch providerCloseStarted, final CountDownLatch allowProviderClose) {
       super(
           new AbstractSubscriptionPullConsumerBuilder()
               .host(HOST)
@@ -361,6 +401,8 @@ public class SubscriptionConsumerLifecycleTest {
               .heartbeatIntervalMs(LONG_INTERVAL_MS)
               .endpointsSyncIntervalMs(LONG_INTERVAL_MS)
               .autoCommit(false));
+      this.providerCloseStarted = providerCloseStarted;
+      this.allowProviderClose = allowProviderClose;
     }
 
     @Override
@@ -398,7 +440,9 @@ public class SubscriptionConsumerLifecycleTest {
               () -> returnPartialTablets,
               () -> closeRequestCount++,
               () -> commitRequestCount++,
-              () -> sessionCloseCount++);
+              () -> sessionCloseCount++,
+              providerCloseStarted,
+              allowProviderClose);
       createdProviders.add(provider);
       return provider;
     }
@@ -416,6 +460,8 @@ public class SubscriptionConsumerLifecycleTest {
     private final Runnable closeRequest;
     private final Runnable commitRequest;
     private final Runnable sessionClose;
+    private final CountDownLatch providerCloseStarted;
+    private final CountDownLatch allowProviderClose;
 
     private TestSubscriptionProvider(
         final TEndPoint endPoint,
@@ -438,7 +484,9 @@ public class SubscriptionConsumerLifecycleTest {
         final BooleanSupplier returnPartialTablets,
         final Runnable closeRequest,
         final Runnable commitRequest,
-        final Runnable sessionClose) {
+        final Runnable sessionClose,
+        final CountDownLatch providerCloseStarted,
+        final CountDownLatch allowProviderClose) {
       super(
           endPoint,
           username,
@@ -461,6 +509,8 @@ public class SubscriptionConsumerLifecycleTest {
       this.closeRequest = closeRequest;
       this.commitRequest = commitRequest;
       this.sessionClose = sessionClose;
+      this.providerCloseStarted = providerCloseStarted;
+      this.allowProviderClose = allowProviderClose;
     }
 
     @Override
@@ -496,6 +546,16 @@ public class SubscriptionConsumerLifecycleTest {
     synchronized void close() {
       closedStatesDuringClose.add(consumerClosedSupplier.getAsBoolean());
       closeRequest.run();
+      if (Objects.nonNull(providerCloseStarted)) {
+        providerCloseStarted.countDown();
+      }
+      if (Objects.nonNull(allowProviderClose)) {
+        try {
+          allowProviderClose.await();
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
       setUnavailable();
     }
 

@@ -354,24 +354,23 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     submitEndpointsSyncer();
   }
 
+  protected void prepareClose() {
+    providers.prepareClose();
+  }
+
   @Override
-  public synchronized void close() {
-    if (isClosed.get()) {
+  public void close() {
+    if (!isClosed.compareAndSet(false, true)) {
       return;
     }
 
-    // close subscription providers
-    providers.acquireWriteLock();
-    try {
-      providers.closeProviders(!isFenced());
-    } finally {
-      providers.releaseWriteLock();
-    }
-
-    isClosed.set(true);
-
     // mark is released to avoid reopening after closing
     isReleased.set(true);
+
+    // Do not wait for the providers write lock here. A poll or heartbeat may hold it while blocked
+    // in network I/O. prepareClose() bounds or interrupts those RPCs before providers are detached.
+    providers.prepareClose();
+    providers.closeProviders(!isFenced());
   }
 
   boolean isClosed() {
