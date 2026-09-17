@@ -133,6 +133,9 @@ public class DataNodeMemoryConfig {
   /** Memory manager for operators */
   private MemoryManager operatorsMemoryManager;
 
+  /** Maximum DeviceEntry bytes kept in memory before a table-query spill. */
+  private long tableQueryDeviceEntryBatchSizeInBytes;
+
   /** Memory manager for operators */
   private MemoryManager dataExchangeMemoryManager;
 
@@ -624,6 +627,13 @@ public class DataNodeMemoryConfig {
     setQueryThreadCount(
         Integer.parseInt(
             properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
+
+    tableQueryDeviceEntryBatchSizeInBytes =
+        Long.parseLong(
+            properties.getProperty(
+                "table_query_device_entry_batch_size_in_bytes",
+                Long.toString(
+                    operatorsMemoryManager.getTotalMemorySizeInBytes() / queryThreadCount / 4)));
   }
 
   public double getRejectProportion() {
@@ -772,6 +782,14 @@ public class DataNodeMemoryConfig {
 
   public MemoryManager getOperatorsMemoryManager() {
     return operatorsMemoryManager;
+  }
+
+  public long getTableQueryDeviceEntryBatchSizeInBytes() {
+    return tableQueryDeviceEntryBatchSizeInBytes;
+  }
+
+  public void setTableQueryDeviceEntryBatchSizeInBytes(long tableQueryDeviceEntryBatchSizeInBytes) {
+    this.tableQueryDeviceEntryBatchSizeInBytes = tableQueryDeviceEntryBatchSizeInBytes;
   }
 
   public MemoryManager getDataExchangeMemoryManager() {

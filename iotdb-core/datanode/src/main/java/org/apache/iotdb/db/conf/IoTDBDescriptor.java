@@ -168,9 +168,14 @@ public class IoTDBDescriptor {
           .getConfig()
           .setCustomizedProperties(loader.getCustomizedProperties());
     }
-    // If no configuration source initialized the memory config, initialize it with defaults.
+    // If no configuration source initialized the config, run the normal loading path with defaults.
     if (!hasLoadedProperties && !hasProperties) {
-      memoryConfig.init(new TrimProperties());
+      try {
+        loadProperties(new TrimProperties());
+      } catch (Exception e) {
+        LOGGER.error(DataNodeMiscMessages.INCORRECT_FORMAT_CONFIG_FILE, e);
+        System.exit(-1);
+      }
     }
   }
 
@@ -2457,7 +2462,7 @@ public class IoTDBDescriptor {
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
     ConfigurationFileUtils.updateAppliedProperties(
         "table_query_device_entry_batch_size_in_bytes",
-        Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes()));
+        Long.toString(memoryConfig.getTableQueryDeviceEntryBatchSizeInBytes()));
     ConfigurationFileUtils.updateAppliedProperties(
         DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
   }
@@ -2467,7 +2472,7 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "table_query_device_entry_batch_size_in_bytes",
-                Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes())));
+                Long.toString(memoryConfig.getTableQueryDeviceEntryBatchSizeInBytes())));
     if (deviceEntryBatchSize <= 0) {
       deviceEntryBatchSize =
           memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
@@ -2486,7 +2491,7 @@ public class IoTDBDescriptor {
               conf.getThriftMaxFrameSize(),
               effectiveBatchSize));
     }
-    conf.setTableQueryDeviceEntryBatchSizeInBytes(effectiveBatchSize);
+    memoryConfig.setTableQueryDeviceEntryBatchSizeInBytes(effectiveBatchSize);
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
