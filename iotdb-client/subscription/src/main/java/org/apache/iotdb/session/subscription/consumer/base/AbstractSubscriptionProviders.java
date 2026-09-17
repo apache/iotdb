@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -47,6 +48,7 @@ final class AbstractSubscriptionProviders {
 
   private final SortedMap<Integer, AbstractSubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private int nextDataNodeId = -1;
 
   private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
@@ -160,23 +162,51 @@ final class AbstractSubscriptionProviders {
     nextDataNodeId = subscriptionProviders.firstKey();
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  /** Detaches and closes the current providers. Terminal consumer close may call this lock-free. */
   void closeProviders() {
-    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+    final List<AbstractSubscriptionProvider> providers = getAllProviders();
+    subscriptionProviders.clear();
+    for (final AbstractSubscriptionProvider provider : providers) {
       try {
         provider.close();
       } catch (final Exception e) {
         LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
       }
     }
-    subscriptionProviders.clear();
+  }
+
+  void prepareClose() {
+    isClosing.set(true);
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+      provider.prepareClose();
+    }
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   void addProvider(final int dataNodeId, final AbstractSubscriptionProvider provider) {
+    if (isClosing.get()) {
+      closeProviderAddedDuringClosing(provider);
+      return;
+    }
+
+    subscriptionProviders.put(dataNodeId, provider);
+    if (isClosing.get()) {
+      subscriptionProviders.remove(dataNodeId, provider);
+      closeProviderAddedDuringClosing(provider);
+      return;
+    }
+
     // the subscription provider is opened
     LOGGER.info(SubscriptionMessages.ADD_NEW_PROVIDER, provider);
-    subscriptionProviders.put(dataNodeId, provider);
+  }
+
+  private void closeProviderAddedDuringClosing(final AbstractSubscriptionProvider provider) {
+    provider.prepareClose();
+    try {
+      provider.close();
+    } catch (final Exception e) {
+      LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
+    }
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
