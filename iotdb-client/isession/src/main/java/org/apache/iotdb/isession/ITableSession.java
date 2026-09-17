@@ -70,6 +70,12 @@ public interface ITableSession extends AutoCloseable {
       List<ColumnCategory> columnCategories)
       throws StatementExecutionException, IoTDBConnectionException;
 
+  /**
+   * Executes a prepared row, following write redirection recommendations for subsequent rows.
+   * Destination handles are prepared lazily and released when the statement is closed. An execution
+   * error reported by the server closes the statement; prepare it again before reuse. Transport
+   * failures are propagated without replaying a write whose outcome is unknown.
+   */
   void executePreparedInsertNumericRow(
       NumericRowPreparedStatement prepared, long timestamp, long[] values, String[] tagValues)
       throws StatementExecutionException, IoTDBConnectionException;

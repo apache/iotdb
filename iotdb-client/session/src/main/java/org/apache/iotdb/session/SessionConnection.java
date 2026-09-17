@@ -781,20 +781,22 @@ public class SessionConnection {
 
   protected void executePreparedNumericRow(
       long id, long timestamp, ByteBuffer values, ByteBuffer tags)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     executePreparedNumericRow(id, timestamp, values, tags, null);
   }
 
   protected void executePreparedNumericRow(
       long id, long timestamp, ByteBuffer values, ByteBuffer tags, ByteBuffer nullBitmap)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     TSExecutePreparedNumericRowReq request =
         new TSExecutePreparedNumericRowReq(sessionId, id, timestamp, values, tags);
     if (nullBitmap != null) {
       request.setNullBitmap(nullBitmap);
     }
     try {
-      RpcUtils.verifySuccess(client.executePreparedNumericRow(request));
+      // A redirect is a recommendation for later writes: this row has already been accepted.
+      // Never reconnect/replay a session-local prepared ID after an ambiguous transport failure.
+      RpcUtils.verifySuccessWithRedirection(client.executePreparedNumericRow(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -808,6 +810,10 @@ public class SessionConnection {
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
+  }
+
+  long getSessionId() {
+    return sessionId;
   }
 
   private TSStatus insertRecordInternal(TSInsertRecordReq request) throws TException {

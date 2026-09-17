@@ -24,6 +24,7 @@ import org.apache.iotdb.isession.NumericRow;
 import org.apache.iotdb.isession.NumericRowPreparedStatement;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareNumericRowReq;
 import org.apache.iotdb.session.i18n.SessionMessages;
@@ -31,6 +32,7 @@ import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -38,6 +40,7 @@ import org.apache.tsfile.write.record.Tablet;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class TableSession implements ITableSession {
 
@@ -84,18 +87,14 @@ public class TableSession implements ITableSession {
         .setDataTypes(types.stream().map(TSDataType::ordinal).toList())
         .setColumnCategories(categories.stream().map(c -> (byte) c.ordinal()).toList());
     NumericRowPreparedStatement prepared =
-        new NumericRowPreparedStatement(tableName, names, types, categories);
+        new NumericRowPreparedStatement(tableName, names, types, categories, session.getDatabase());
     SessionConnection connection = session.getDefaultSessionConnection();
+    long id = connection.prepareNumericRow(request);
     prepared.bind(
-        connection.prepareNumericRow(request),
+        id,
         connection,
-        () -> {
-          try {
-            connection.closePreparedNumericRow(prepared.getPreparedId());
-          } catch (IoTDBConnectionException ignored) {
-            // Closing the session releases all server-side prepared rows.
-          }
-        });
+        connection.getSessionId(),
+        closePreparedRow(connection, connection.getSessionId(), id));
     return prepared;
   }
 
@@ -115,7 +114,10 @@ public class TableSession implements ITableSession {
       BitMap nullBitmap)
       throws StatementExecutionException, IoTDBConnectionException {
     SessionConnection connection = session.getDefaultSessionConnection();
-    if (prepared == null || prepared.isClosed() || prepared.getOwner() != connection) {
+    if (prepared == null
+        || prepared.isClosed()
+        || prepared.getOwner() != connection
+        || prepared.getPreparedId(connection, connection.getSessionId()) == null) {
       throw new IoTDBConnectionException(
           SessionMessages
               .EXCEPTION_PREPARED_NUMERIC_ROW_IS_CLOSED_OR_BELONGS_TO_ANOTHER_CONNECTION_PREPARE_IT_AGAIN_055CC7BC);
@@ -130,6 +132,34 @@ public class TableSession implements ITableSession {
           SessionMessages.EXCEPTION_PREPARED_NUMERIC_ROW_VALUE_COUNT_MISMATCH_9ACD3A0C);
     }
     SessionUtils.validateNumericRowNullBitmap(nullBitmap, fieldCount);
+    // A prepared handle remains bound to its original database after USE. Do not prepare it on
+    // a redirected session whose database has changed in the meantime.
+    IDeviceID deviceId = null;
+    if (session.isEnableRedirection()
+        && Objects.equals(prepared.getDatabase(), session.getDatabase())) {
+      String[] segments = new String[tagValues.length + 1];
+      segments[0] = prepared.getTableName();
+      System.arraycopy(tagValues, 0, segments, 1, tagValues.length);
+      deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(segments);
+      connection = session.getSessionConnection(deviceId);
+    }
+    Long id = prepared.getPreparedId(connection, connection.getSessionId());
+    if (id == null) {
+      TSPrepareNumericRowReq request = new TSPrepareNumericRowReq();
+      request
+          .setTableName(prepared.getTableName())
+          .setMeasurements(prepared.getColumnNames())
+          .setDataTypes(prepared.getDataTypes().stream().map(TSDataType::ordinal).toList())
+          .setColumnCategories(
+              prepared.getColumnCategories().stream().map(c -> (byte) c.ordinal()).toList());
+      // Prepare lazily on each destination; IDs must never cross physical sessions.
+      id = connection.prepareNumericRow(request);
+      prepared.bindConnection(
+          connection,
+          connection.getSessionId(),
+          id,
+          closePreparedRow(connection, connection.getSessionId(), id));
+    }
     int tagBytes = 0;
     for (String tag : tagValues) {
       tagBytes += ReadWriteIOUtils.sizeToWrite(tag);
@@ -158,17 +188,42 @@ public class TableSession implements ITableSession {
       }
     }
     valueBuffer.flip();
-    if (nullBitmap == null) {
-      connection.executePreparedNumericRow(
-          prepared.getPreparedId(), timestamp, valueBuffer, tagBuffer);
-    } else {
-      connection.executePreparedNumericRow(
-          prepared.getPreparedId(),
-          timestamp,
-          valueBuffer,
-          tagBuffer,
-          SessionUtils.encodeNumericRowNullBitmap(nullBitmap, prepared.prepareNullBitmapBuffer()));
+    try {
+      if (nullBitmap == null) {
+        connection.executePreparedNumericRow(id, timestamp, valueBuffer, tagBuffer);
+      } else {
+        connection.executePreparedNumericRow(
+            id,
+            timestamp,
+            valueBuffer,
+            tagBuffer,
+            SessionUtils.encodeNumericRowNullBitmap(
+                nullBitmap, prepared.prepareNullBitmapBuffer()));
+      }
+    } catch (RedirectException e) {
+      // This row succeeded. Update only the route for subsequent rows, without replaying this one.
+      if (deviceId != null && e.getEndPoint() != null) {
+        session.handleRedirection(deviceId, e.getEndPoint());
+      }
+    } catch (StatementExecutionException e) {
+      // A server may have invalidated its handle on schema failure. Do not let another cached
+      // destination silently revive that logical statement; require an explicit new prepare.
+      prepared.close();
+      throw e;
     }
+  }
+
+  private static Runnable closePreparedRow(SessionConnection connection, long sessionId, long id) {
+    return () -> {
+      if (connection.getSessionId() != sessionId) {
+        return;
+      }
+      try {
+        connection.closePreparedNumericRow(id);
+      } catch (IoTDBConnectionException ignored) {
+        // Closing the physical session releases any handles left by a failed close RPC.
+      }
+    };
   }
 
   @Override

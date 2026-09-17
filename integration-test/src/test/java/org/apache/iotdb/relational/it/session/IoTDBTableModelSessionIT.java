@@ -43,11 +43,13 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -319,10 +321,11 @@ public class IoTDBTableModelSessionIT {
         assertTrue(schemaError.getMessage().contains("v"));
         session.executeNonQueryStatement("DROP TABLE readings");
         session.executeNonQueryStatement("CREATE TABLE readings(tag STRING TAG, v DOUBLE FIELD)");
-        StatementExecutionException closedError =
+        IoTDBConnectionException closedError =
             assertThrows(
-                StatementExecutionException.class,
+                IoTDBConnectionException.class,
                 () -> session.executePreparedInsertNumericRow(prepared, 2, values, tags));
+        assertTrue(prepared.isClosed());
         assertTrue(closedError.getMessage().contains("closed"));
         session.executePreparedInsertNumericRow(other, 3, values, tags);
         try (NumericRowPreparedStatement replacement =
@@ -360,6 +363,69 @@ public class IoTDBTableModelSessionIT {
         }
       }
       assertFalse(dataSet.hasNext());
+    }
+  }
+
+  // Pin clients to every DataNode so at least one must learn a remote leader in a cluster.
+  @Test
+  public void testPreparedNumericRowRedirection() throws Exception {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE numeric_redirect");
+      session.executeNonQueryStatement("USE numeric_redirect");
+      session.executeNonQueryStatement(
+          "CREATE TABLE readings(tag STRING TAG, v INT64 FIELD, n INT64 FIELD)");
+      int clientIndex = 0;
+      boolean redirected = false;
+      for (var node : EnvFactory.getEnv().getDataNodeWrapperList()) {
+        try (ITableSession pinned =
+            EnvFactory.getEnv().getTableSessionConnection(List.of(node.getIpAndPortString()))) {
+          pinned.executeNonQueryStatement("USE numeric_redirect");
+          redirected |= writeRedirectedNumericRows(pinned, clientIndex++ * 1000L);
+        }
+      }
+      try (ITableSessionPool pool = EnvFactory.getEnv().getTableSessionPool(1, "numeric_redirect");
+          ITableSession pooled = pool.getSession()) {
+        redirected |= writeRedirectedNumericRows(pooled, clientIndex++ * 1000L);
+      }
+      if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+        assertTrue("Expected a prepared handle on a remote leader", redirected);
+      }
+      session.executeNonQueryStatement("FLUSH");
+      try (SessionDataSet result =
+          session.executeQueryStatement("SELECT count(v),count(n) FROM readings")) {
+        assertTrue(result.hasNext());
+        RowRecord counts = result.next();
+        assertEquals(clientIndex * 32L, counts.getFields().get(0).getLongV());
+        assertEquals(clientIndex * 16L, counts.getFields().get(1).getLongV());
+        assertFalse(result.hasNext());
+      }
+    }
+  }
+
+  private boolean writeRedirectedNumericRows(ITableSession session, long start) throws Exception {
+    try (NumericRowPreparedStatement prepared =
+        session.prepareInsertNumericRow(
+            "readings",
+            List.of("tag", "v", "n"),
+            List.of(TSDataType.STRING, TSDataType.INT64, TSDataType.INT64),
+            List.of(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD))) {
+      BitMap nulls = new BitMap(2);
+      nulls.mark(1);
+      for (int round = 0; round < 4; round++) {
+        for (int device = 0; device < 8; device++) {
+          long time = start + round * 8 + device;
+          session.executePreparedInsertNumericRow(
+              prepared,
+              time,
+              new long[] {time, time},
+              new String[] {"d" + device},
+              round % 2 == 0 ? nulls : null);
+        }
+      }
+      // Count actual physical bindings: row counts alone cannot prove the client followed a hint.
+      Field bindings = NumericRowPreparedStatement.class.getDeclaredField("connectionBindings");
+      bindings.setAccessible(true);
+      return ((Map<?, ?>) bindings.get(prepared)).size() > 1;
     }
   }
 

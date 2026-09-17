@@ -12,7 +12,9 @@ import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.nio.ByteBuffer;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Immutable metadata and reusable serialization buffers for repeated numeric table row inserts.
@@ -22,6 +24,7 @@ import java.util.List;
  */
 public final class NumericRowPreparedStatement implements AutoCloseable {
   private final String tableName;
+  private final String database;
   private final List<String> columnNames;
   private final List<TSDataType> dataTypes;
   private final List<ColumnCategory> columnCategories;
@@ -30,17 +33,18 @@ public final class NumericRowPreparedStatement implements AutoCloseable {
   private ByteBuffer tagBuffer;
   private ByteBuffer valueBuffer;
   private ByteBuffer nullBitmapBuffer;
-  private long preparedId = -1;
   private Object owner;
-  private Runnable closeAction = () -> {};
+  private final Map<Object, ConnectionBinding> connectionBindings = new IdentityHashMap<>();
   private boolean closed;
 
   public NumericRowPreparedStatement(
       String tableName,
       List<String> columnNames,
       List<TSDataType> dataTypes,
-      List<ColumnCategory> columnCategories) {
+      List<ColumnCategory> columnCategories,
+      String database) {
     this.tableName = tableName;
+    this.database = database;
     this.columnNames = List.copyOf(columnNames);
     this.dataTypes = List.copyOf(dataTypes);
     this.columnCategories = List.copyOf(columnCategories);
@@ -67,6 +71,10 @@ public final class NumericRowPreparedStatement implements AutoCloseable {
 
   public String getTableName() {
     return tableName;
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   public List<String> getColumnNames() {
@@ -105,10 +113,6 @@ public final class NumericRowPreparedStatement implements AutoCloseable {
     return valueBuffer;
   }
 
-  public long getPreparedId() {
-    return preparedId;
-  }
-
   /** Returns a reusable FIELD null bitmap buffer, allocated only for nullable executions. */
   public ByteBuffer prepareNullBitmapBuffer() {
     if (nullBitmapBuffer == null) {
@@ -122,12 +126,23 @@ public final class NumericRowPreparedStatement implements AutoCloseable {
     return owner;
   }
 
-  public void bind(long id, Object owner, Runnable closeAction) {
-    this.preparedId = id;
+  public void bind(long id, Object owner, long sessionId, Runnable closeAction) {
     this.owner = owner;
-    this.closeAction = closeAction;
+    bindConnection(owner, sessionId, id, closeAction);
     this.closed = false;
   }
+
+  /** Handles belong to a physical session, including its generation after a reconnect. */
+  public Long getPreparedId(Object connection, long sessionId) {
+    ConnectionBinding binding = connectionBindings.get(connection);
+    return binding != null && binding.sessionId == sessionId ? binding.preparedId : null;
+  }
+
+  public void bindConnection(Object connection, long sessionId, long id, Runnable closeAction) {
+    connectionBindings.put(connection, new ConnectionBinding(sessionId, id, closeAction));
+  }
+
+  private record ConnectionBinding(long sessionId, long preparedId, Runnable closeAction) {}
 
   public boolean isClosed() {
     return closed;
@@ -135,8 +150,16 @@ public final class NumericRowPreparedStatement implements AutoCloseable {
 
   @Override
   public void close() {
-    closeAction.run();
-    closeAction = () -> {};
+    if (closed) {
+      return;
+    }
     closed = true;
+    try {
+      for (ConnectionBinding binding : connectionBindings.values()) {
+        binding.closeAction.run();
+      }
+    } finally {
+      connectionBindings.clear();
+    }
   }
 }
