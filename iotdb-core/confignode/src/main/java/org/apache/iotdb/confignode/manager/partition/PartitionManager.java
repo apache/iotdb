@@ -1084,17 +1084,28 @@ public class PartitionManager {
   }
 
   public Optional<TConsensusGroupId> generateTConsensusGroupIdByRegionId(final int regionId) {
-    if (isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
-      return Optional.of(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId));
-    }
-    if (isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
-      return Optional.of(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId));
+    Optional<TConsensusGroupId> result = findTConsensusGroupIdByRegionId(regionId);
+    if (result.isPresent()) {
+      return result;
     }
     String msg =
         String.format(
             ManagerMessages.SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST,
             regionId);
     LOGGER.warn(msg);
+    return Optional.empty();
+  }
+
+  /**
+   * Returns the RegionGroup with the specified numeric id without logging when it does not exist.
+   */
+  public Optional<TConsensusGroupId> findTConsensusGroupIdByRegionId(final int regionId) {
+    if (isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
+      return Optional.of(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId));
+    }
+    if (isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
+      return Optional.of(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId));
+    }
     return Optional.empty();
   }
 
