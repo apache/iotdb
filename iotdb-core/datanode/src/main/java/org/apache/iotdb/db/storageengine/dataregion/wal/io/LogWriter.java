@@ -155,13 +155,13 @@ public abstract class LogWriter implements ILogWriter {
     }
     try {
       if (!TSFileDescriptor.getInstance()
-          .getConfig()
-          .getEncryptType()
-          .equals(EncryptionType.UNENCRYPTED.getExtension())
+              .getConfig()
+              .getEncryptType()
+              .equals(EncryptionType.UNENCRYPTED.getExtension())
           && !TSFileDescriptor.getInstance()
-          .getConfig()
-          .getEncryptType()
-          .equals(IoTDBConstant.UNENCRYPTED_ENCRYPT_TYPE)
+              .getConfig()
+              .getEncryptType()
+              .equals(IoTDBConstant.UNENCRYPTED_ENCRYPT_TYPE)
           && logFile.getName().endsWith(SecretKey.FILE_ENCRYPTED_SUFFIX)) {
         ByteBuffer slice = buffer.slice();
         byte[] data = new byte[slice.remaining()];
