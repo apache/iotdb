@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
@@ -324,6 +325,31 @@ public class SessionConnection {
 
   protected IClientRPCService.Iface getClient() {
     return client;
+  }
+
+  protected boolean setTransportTimeout(final int timeoutInMs) {
+    if (!(transport instanceof TimeoutChangeableTransport)) {
+      return false;
+    }
+
+    try {
+      ((TimeoutChangeableTransport) transport).setTimeout(timeoutInMs);
+      return true;
+    } catch (final RuntimeException ignored) {
+      return false;
+    }
+  }
+
+  protected void forceCloseTransport() {
+    if (transport == null) {
+      return;
+    }
+
+    try {
+      transport.close();
+    } catch (final RuntimeException ignored) {
+      // Best effort. The caller must still finish updating its lifecycle state.
+    }
   }
 
   protected void setTimeZone(String zoneId)

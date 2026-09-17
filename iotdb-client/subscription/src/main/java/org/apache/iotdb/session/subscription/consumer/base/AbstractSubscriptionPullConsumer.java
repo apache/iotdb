@@ -87,6 +87,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private final EmptyPollLogThrottler emptyPollLogThrottler = new EmptyPollLogThrottler();
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
 
   @Override
   boolean isClosed() {
@@ -154,57 +155,70 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   @Override
-  public synchronized void close() {
-    if (isClosed.get()) {
+  public void close() {
+    if (isClosed.get() || !isClosing.compareAndSet(false, true)) {
       return;
     }
 
-    if (!processors.isEmpty()) {
-      if (autoCommit) {
-        final List<SubscriptionMessage> drainedMessages = drainProcessorPipeline();
-        if (!drainedMessages.isEmpty()) {
+    try {
+      synchronized (this) {
+        if (isClosed.get()) {
+          return;
+        }
+
+        List<SubscriptionMessage> drainedProcessorMessages = Collections.emptyList();
+        if (!processors.isEmpty()) {
+          drainedProcessorMessages = drainProcessorPipeline();
+          if (!autoCommit && !drainedProcessorMessages.isEmpty()) {
+            pendingDrainedMessages.addAll(drainedProcessorMessages);
+          }
+        }
+
+        // In manual-commit mode, preserve the existing retry contract: validate before making the
+        // terminal close state visible so the caller can drain and commit, then retry close().
+        if (!autoCommit) {
+          ensureNoManualBufferedMessagesOnClose();
+        }
+
+        // Publish the terminal state before touching the network. Workers stop starting new RPCs,
+        // while prepareClose() bounds subsequent requests and interrupts any read already blocked.
+        isClosed.set(true);
+        prepareClose();
+
+        if (autoCommit && !drainedProcessorMessages.isEmpty()) {
           try {
-            commitSync(drainedMessages);
+            commitSync(drainedProcessorMessages);
           } catch (final SubscriptionException e) {
             LOGGER.warn(
                 SubscriptionMessages.LOG_FAILED_COMMIT_DRAINED_PROCESSOR_MESSAGES_CLOSE_4264DB35,
                 e);
           }
         }
-      } else {
-        final List<SubscriptionMessage> drainedMessages = drainProcessorPipeline();
-        if (!drainedMessages.isEmpty()) {
-          pendingDrainedMessages.addAll(drainedMessages);
+
+        if (autoCommit && !pendingDrainedMessages.isEmpty()) {
+          final List<SubscriptionMessage> drainedMessages = drainPendingDrainedMessages();
+          if (!drainedMessages.isEmpty()) {
+            try {
+              commitSync(drainedMessages);
+            } catch (final SubscriptionException e) {
+              LOGGER.warn(
+                  SubscriptionMessages
+                      .LOG_FAILED_COMMIT_PENDING_DRAINED_PROCESSOR_MESSAGES_CLOSE_644B5DDD,
+                  e);
+            }
+          }
         }
-        ensureNoManualBufferedMessagesOnClose();
-      }
-    }
 
-    if (autoCommit && !pendingDrainedMessages.isEmpty()) {
-      final List<SubscriptionMessage> drainedMessages = drainPendingDrainedMessages();
-      if (!drainedMessages.isEmpty()) {
-        try {
-          commitSync(drainedMessages);
-        } catch (final SubscriptionException e) {
-          LOGGER.warn(
-              SubscriptionMessages
-                  .LOG_FAILED_COMMIT_PENDING_DRAINED_PROCESSOR_MESSAGES_CLOSE_644B5DDD,
-              e);
+        if (autoCommit) {
+          // commit all uncommitted messages
+          commitAllUncommittedMessages();
         }
+
+        super.close();
       }
+    } finally {
+      isClosing.set(false);
     }
-
-    if (!autoCommit) {
-      ensureNoManualBufferedMessagesOnClose();
-    }
-
-    if (autoCommit) {
-      // commit all uncommitted messages
-      commitAllUncommittedMessages();
-    }
-
-    isClosed.set(true);
-    super.close();
   }
 
   /////////////////////////////// poll & commit ///////////////////////////////
