@@ -142,6 +142,8 @@ public final class ManagerMessages {
       "为用户 id {} 收集用户名失败";
   public static final String FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "在 consumer group {} 中创建 consumer {} 失败。结果状态：{}。";
+  public static final String EXCEPTION_FAILED_TO_SUBSCRIBE_TOPIC_ARG_FOR_CONSUMER_ARG_CONSUMER_DOES_NOT_EXIST_IN_CONSUMER_GROUP_BFF68F12 =
+      "订阅 topic %s 失败，因为 consumer %s 不存在于 consumer group 中";
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "为 consensus group 创建 peer 失败";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
