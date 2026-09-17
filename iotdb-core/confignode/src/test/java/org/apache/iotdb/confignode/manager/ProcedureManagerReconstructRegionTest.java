@@ -71,6 +71,7 @@ public class ProcedureManagerReconstructRegionTest {
 
   private ProcedureManager manager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
+  private PartitionManager partitionManager;
   private final ConcurrentHashMap<Long, Procedure<ConfigNodeProcedureEnv>> procedures =
       new ConcurrentHashMap<>();
 
@@ -78,7 +79,7 @@ public class ProcedureManagerReconstructRegionTest {
   public void setUp() throws Exception {
     ConfigManager configManager = mock(ConfigManager.class);
     NodeManager nodeManager = mock(NodeManager.class);
-    PartitionManager partitionManager = mock(PartitionManager.class);
+    partitionManager = mock(PartitionManager.class);
     ConfigNodeProcedureEnv env = mock(ConfigNodeProcedureEnv.class);
     RegionMaintainHandler handler = mock(RegionMaintainHandler.class);
     executor = mock(ProcedureExecutor.class);
@@ -89,10 +90,10 @@ public class ProcedureManagerReconstructRegionTest {
         .thenReturn(new TDataNodeConfiguration().setLocation(target));
     when(nodeManager.filterDataNodeThroughStatus(NodeStatus.Running))
         .thenReturn(Collections.singletonList(new TDataNodeConfiguration().setLocation(target)));
-    when(partitionManager.generateTConsensusGroupIdByRegionId(12))
-        .thenReturn(Optional.of(firstRegion));
-    when(partitionManager.generateTConsensusGroupIdByRegionId(14))
+    when(partitionManager.findTConsensusGroupIdByRegionId(12)).thenReturn(Optional.of(firstRegion));
+    when(partitionManager.findTConsensusGroupIdByRegionId(14))
         .thenReturn(Optional.of(secondRegion));
+    when(partitionManager.findTConsensusGroupIdByRegionId(99)).thenReturn(Optional.empty());
     when(partitionManager.getRegionDatabase(any(TConsensusGroupId.class))).thenReturn("root.sg");
 
     Map<TConsensusGroupId, TRegionReplicaSet> replicaSets = new HashMap<>();
@@ -126,9 +127,9 @@ public class ProcedureManagerReconstructRegionTest {
   }
 
   @Test
-  public void testDuplicateRegionIdsSubmitOneProcedurePerRegionInInputOrder() {
+  public void testDuplicateAndNonExistentRegionIdsAreSkippedInInputOrder() {
     TReconstructRegionReq request =
-        new TReconstructRegionReq(Arrays.asList(12, 14, 12, 14), 7, Model.TREE);
+        new TReconstructRegionReq(Arrays.asList(12, 99, 14, 12, 99, 14), 7, Model.TREE);
 
     assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), manager.reconstructRegion(request).getCode());
@@ -138,6 +139,18 @@ public class ProcedureManagerReconstructRegionTest {
     verify(executor, times(2)).submitProcedure(captor.capture());
     assertEquals(firstRegion, captor.getAllValues().get(0).getRegionId());
     assertEquals(secondRegion, captor.getAllValues().get(1).getRegionId());
+    verify(partitionManager, times(1)).findTConsensusGroupIdByRegionId(12);
+    verify(partitionManager, times(1)).findTConsensusGroupIdByRegionId(14);
+    verify(partitionManager, times(1)).findTConsensusGroupIdByRegionId(99);
+  }
+
+  @Test
+  public void testRequestWithNoUsableRegionIdsSucceedsWithoutSubmittingProcedure() {
+    TReconstructRegionReq request = new TReconstructRegionReq(Arrays.asList(99, 99), 7, Model.TREE);
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), manager.reconstructRegion(request).getCode());
+    verify(executor, times(0)).submitProcedure(any());
   }
 
   @Test
