@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -81,6 +82,8 @@ final class AbstractSubscriptionProviders {
     // close stale providers
     closeProviders();
 
+    final Map<TEndPoint, String> connectionFailures = new LinkedHashMap<>();
+    final List<Throwable> connectionFailureCauses = new ArrayList<>();
     for (final TEndPoint endPoint : initialEndpoints) {
       final AbstractSubscriptionProvider defaultProvider;
       final int defaultDataNodeId;
@@ -88,6 +91,8 @@ final class AbstractSubscriptionProviders {
       try {
         defaultProvider = consumer.constructProviderAndHandshake(endPoint);
       } catch (final Exception e) {
+        connectionFailures.put(endPoint, consumer.sanitizeConnectionFailureMessage(e));
+        connectionFailureCauses.add(e);
         LOGGER.warn(
             SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
             consumer,
@@ -136,11 +141,20 @@ final class AbstractSubscriptionProviders {
     }
 
     if (hasNoAvailableProviders()) {
-      throw new SubscriptionConnectionException(
-          String.format(
-              SubscriptionMessages
-                  .EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198,
-              initialEndpoints));
+      final SubscriptionConnectionException exception =
+          new SubscriptionConnectionException(
+              String.format(
+                  SubscriptionMessages
+                      .EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_712D99EA,
+                  initialEndpoints,
+                  connectionFailures),
+              connectionFailureCauses.isEmpty()
+                  ? null
+                  : connectionFailureCauses.get(connectionFailureCauses.size() - 1));
+      for (int i = 0; i < connectionFailureCauses.size() - 1; i++) {
+        exception.addSuppressed(connectionFailureCauses.get(i));
+      }
+      throw exception;
     }
 
     nextDataNodeId = subscriptionProviders.firstKey();

@@ -585,6 +585,20 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     return provider;
   }
 
+  String sanitizeConnectionFailureMessage(final Throwable throwable) {
+    String message = throwable.getMessage();
+    if (Objects.isNull(message) || message.isEmpty()) {
+      message = throwable.getClass().getName();
+    }
+    if (Objects.nonNull(password) && !password.isEmpty()) {
+      message = message.replace(password, "***");
+    }
+    if (Objects.nonNull(encryptedPassword) && !encryptedPassword.isEmpty()) {
+      message = message.replace(encryptedPassword, "***");
+    }
+    return message;
+  }
+
   /////////////////////////////// file ops ///////////////////////////////
 
   private Path getFileDir(final String topicName) throws IOException {
