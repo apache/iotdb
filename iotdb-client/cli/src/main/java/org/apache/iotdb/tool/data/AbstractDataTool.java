@@ -56,7 +56,10 @@ import org.apache.tsfile.external.commons.lang3.ObjectUtils;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.jline.reader.LineReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +90,35 @@ import static org.apache.tsfile.enums.TSDataType.STRING;
 import static org.apache.tsfile.enums.TSDataType.TEXT;
 
 public abstract class AbstractDataTool {
+
+  private static final TypeService<ValueParser> VALUE_PARSER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case TEXT, STRING ->
+                value -> {
+                  if (value.startsWith("\"") && value.endsWith("\"")) {
+                    return value.substring(1, value.length() - 1);
+                  }
+                  return value;
+                };
+            case BOOLEAN ->
+                value ->
+                    !"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)
+                        ? null
+                        : Boolean.parseBoolean(value);
+            case INT32 -> value -> Integer.parseInt(value);
+            case INT64, TIMESTAMP -> value -> Long.parseLong(value);
+            case FLOAT -> value -> Float.parseFloat(value);
+            case DOUBLE -> value -> Double.parseDouble(value);
+            case DATE -> value -> LocalDate.parse(value);
+            case BLOB ->
+                value -> new Binary(parseHexStringToByteArray(value.replaceFirst("0x", "")));
+            case OBJECT, ROW, UNKNOWN, VECTOR ->
+                throw new UnSupportedDataTypeException(
+                    String.format(
+                        CliMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E,
+                        type.getTypeEnum()));
+          };
 
   protected static String host;
   protected static String port;
@@ -467,38 +499,15 @@ public abstract class AbstractDataTool {
    */
   protected static Object typeTrans(String value, TSDataType type) {
     try {
-      switch (type) {
-        case TEXT:
-        case STRING:
-          if (value.startsWith("\"") && value.endsWith("\"")) {
-            return value.substring(1, value.length() - 1);
-          }
-          return value;
-        case BOOLEAN:
-          if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
-            return null;
-          }
-          return Boolean.parseBoolean(value);
-        case INT32:
-          return Integer.parseInt(value);
-        case INT64:
-          return Long.parseLong(value);
-        case FLOAT:
-          return Float.parseFloat(value);
-        case DOUBLE:
-          return Double.parseDouble(value);
-        case TIMESTAMP:
-          return Long.parseLong(value);
-        case DATE:
-          return LocalDate.parse(value);
-        case BLOB:
-          return new Binary(parseHexStringToByteArray(value.replaceFirst("0x", "")));
-        default:
-          return null;
-      }
+      return VALUE_PARSER_SERVICE.call(Type.fromTsDataType(type)).parse(value);
     } catch (NumberFormatException e) {
       return null;
     }
+  }
+
+  @FunctionalInterface
+  private interface ValueParser {
+    Object parse(String value);
   }
 
   private static byte[] parseHexStringToByteArray(String hexString) {

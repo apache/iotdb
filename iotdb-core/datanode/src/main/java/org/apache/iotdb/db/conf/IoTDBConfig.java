@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.calc.utils.TypeServices.DefaultEncodingProvider;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
@@ -82,7 +83,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PIPE_FOLDER_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class IoTDBConfig {
+public class IoTDBConfig implements DefaultEncodingProvider {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
@@ -2613,6 +2614,7 @@ public class IoTDBConfig {
     this.defaultDatabaseLevel = defaultDatabaseLevel;
   }
 
+  @Override
   public TSEncoding getDefaultBooleanEncoding() {
     return defaultBooleanEncoding;
   }
@@ -2625,6 +2627,7 @@ public class IoTDBConfig {
     this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultInt32Encoding() {
     return defaultInt32Encoding;
   }
@@ -2637,6 +2640,7 @@ public class IoTDBConfig {
     this.defaultInt32Encoding = TSEncoding.valueOf(defaultInt32Encoding);
   }
 
+  @Override
   public TSEncoding getDefaultInt64Encoding() {
     return defaultInt64Encoding;
   }
@@ -2649,6 +2653,7 @@ public class IoTDBConfig {
     this.defaultInt64Encoding = TSEncoding.valueOf(defaultInt64Encoding);
   }
 
+  @Override
   public TSEncoding getDefaultFloatEncoding() {
     return defaultFloatEncoding;
   }
@@ -2661,6 +2666,7 @@ public class IoTDBConfig {
     this.defaultFloatEncoding = TSEncoding.valueOf(defaultFloatEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultDoubleEncoding() {
     return defaultDoubleEncoding;
   }
@@ -2673,6 +2679,7 @@ public class IoTDBConfig {
     this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultTextEncoding() {
     return defaultTextEncoding;
   }

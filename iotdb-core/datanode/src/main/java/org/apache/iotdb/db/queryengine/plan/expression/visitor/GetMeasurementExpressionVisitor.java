@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 
+import org.apache.tsfile.enums.TSDataType;
+
 public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis> {
 
   @Override
@@ -49,6 +51,10 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis
               : rawPath.getMeasurement();
       return new TimeSeriesOperand(
           new PartialPath(measurementName, false), rawPath.getMeasurementSchema().getType());
+    } else if (timeSeriesOperand.getType() == TSDataType.UNKNOWN) {
+      // Missing HAVING measurements still need the same output symbol as on other devices.
+      return new TimeSeriesOperand(
+          new PartialPath(timeSeriesOperand.getPath().getMeasurement(), false), TSDataType.UNKNOWN);
     } else {
       return new TimeSeriesOperand(
           new PartialPath(timeSeriesOperand.getPath().getNodes()), timeSeriesOperand.getType());

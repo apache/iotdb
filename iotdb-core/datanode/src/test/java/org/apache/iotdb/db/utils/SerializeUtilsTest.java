@@ -26,6 +26,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.DescReadBatchData;
 import org.apache.tsfile.read.common.DescReadWriteBatchData;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -205,22 +206,55 @@ public class SerializeUtilsTest {
     }
   }
 
+  /** DATE and TIMESTAMP use the INT32 and INT64 wire encodings while retaining their type tags. */
+  @Test
+  public void serdesDateAndTimestampBatchDataTest() {
+    BatchData dateData = new BatchData(TSDataType.DATE);
+    BatchData timestampData = new BatchData(TSDataType.TIMESTAMP);
+    for (int i = 0; i < 3; i++) {
+      dateData.putInt(i, 2024 + i);
+      timestampData.putLong(i, 1_000L + i);
+    }
+
+    ByteArrayOutputStream dateBytes = new ByteArrayOutputStream();
+    SerializeUtils.serializeBatchData(dateData, new DataOutputStream(dateBytes));
+    BatchData deserializedDate =
+        SerializeUtils.deserializeBatchData(ByteBuffer.wrap(dateBytes.toByteArray()));
+    ByteArrayOutputStream timestampBytes = new ByteArrayOutputStream();
+    SerializeUtils.serializeBatchData(timestampData, new DataOutputStream(timestampBytes));
+    BatchData deserializedTimestamp =
+        SerializeUtils.deserializeBatchData(ByteBuffer.wrap(timestampBytes.toByteArray()));
+
+    Assert.assertEquals(TSDataType.DATE, deserializedDate.getDataType());
+    Assert.assertEquals(TSDataType.TIMESTAMP, deserializedTimestamp.getDataType());
+    for (int i = 0; i < 3; i++) {
+      Assert.assertEquals(2024 + i, deserializedDate.getIntByIndex(i));
+      Assert.assertEquals(1_000L + i, deserializedTimestamp.getLongByIndex(i));
+    }
+  }
+
   /** This method tests SerializeUtils.serializeTVPair() and SerializeUtils.deserializeTVPair() */
   @Test
   public void serdesTVPairTest() {
     List<TimeValuePair> TVPairs = new ArrayList<>();
-    TimeValuePair p1 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.BOOLEAN, true));
+    TimeValuePair p1 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.BOOLEAN).getTsPrimitiveType(true));
     TVPairs.add(p1);
-    TimeValuePair p2 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.INT32, 1));
+    TimeValuePair p2 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.INT32).getTsPrimitiveType(1));
     TVPairs.add(p2);
-    TimeValuePair p3 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.INT64, 1L));
+    TimeValuePair p3 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(1L));
     TVPairs.add(p3);
-    TimeValuePair p4 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.FLOAT, 1.0f));
+    TimeValuePair p4 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.FLOAT).getTsPrimitiveType(1.0f));
     TVPairs.add(p4);
-    TimeValuePair p5 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0d));
+    TimeValuePair p5 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.DOUBLE).getTsPrimitiveType(1.0d));
     TVPairs.add(p5);
     TimeValuePair p6 =
-        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, BytesUtils.valueOf("a")));
+        new TimeValuePair(
+            0, Type.fromTsDataType(TSDataType.TEXT).getTsPrimitiveType(BytesUtils.valueOf("a")));
     TVPairs.add(p6);
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -233,22 +267,66 @@ public class SerializeUtilsTest {
     }
   }
 
+  /**
+   * Covers the DATE/TIMESTAMP aliases and binary type aliases in TVPair serialization. The
+   * Long.MIN_VALUE timestamp is the wire-format null-value marker and must not consume a value.
+   */
+  @Test
+  public void serdesAdditionalTVPairTypesTest() {
+    List<TimeValuePair> pairs =
+        Arrays.asList(
+            new TimeValuePair(1, Type.fromTsDataType(TSDataType.DATE).getTsPrimitiveType(2024)),
+            new TimeValuePair(2, Type.fromTsDataType(TSDataType.TIMESTAMP).getTsPrimitiveType(2L)),
+            new TimeValuePair(
+                3,
+                Type.fromTsDataType(TSDataType.BLOB)
+                    .getTsPrimitiveType(BytesUtils.valueOf("blob"))),
+            new TimeValuePair(
+                4,
+                Type.fromTsDataType(TSDataType.STRING)
+                    .getTsPrimitiveType(BytesUtils.valueOf("string"))));
+
+    for (TimeValuePair pair : pairs) {
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      SerializeUtils.serializeTVPair(pair, new DataOutputStream(baos));
+      Assert.assertEquals(
+          pair, SerializeUtils.deserializeTVPair(ByteBuffer.wrap(baos.toByteArray())));
+    }
+
+    // A sentinel timestamp represents a null value; serialization writes no value bytes after it.
+    TimeValuePair nullValue =
+        new TimeValuePair(
+            Long.MIN_VALUE, Type.fromTsDataType(TSDataType.INT32).getTsPrimitiveType(42));
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    SerializeUtils.serializeTVPair(nullValue, new DataOutputStream(baos));
+    TimeValuePair deserialized =
+        SerializeUtils.deserializeTVPair(ByteBuffer.wrap(baos.toByteArray()));
+    Assert.assertEquals(Long.MIN_VALUE, deserialized.getTimestamp());
+    Assert.assertNull(deserialized.getValue());
+  }
+
   /** This method tests SerializeUtils.serializeTVPairs() and SerializeUtils.deserializeTVPairs() */
   @Test
   public void serdesTVPairsTest() {
     List<List<TimeValuePair>> TVPairs = new ArrayList<>();
-    TimeValuePair p1 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.BOOLEAN, true));
+    TimeValuePair p1 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.BOOLEAN).getTsPrimitiveType(true));
     TVPairs.add(Collections.singletonList(p1));
-    TimeValuePair p2 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.INT32, 1));
+    TimeValuePair p2 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.INT32).getTsPrimitiveType(1));
     TVPairs.add(Collections.singletonList(p2));
-    TimeValuePair p3 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.INT64, 1L));
+    TimeValuePair p3 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.INT64).getTsPrimitiveType(1L));
     TVPairs.add(Collections.singletonList(p3));
-    TimeValuePair p4 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.FLOAT, 1.0f));
+    TimeValuePair p4 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.FLOAT).getTsPrimitiveType(1.0f));
     TVPairs.add(Collections.singletonList(p4));
-    TimeValuePair p5 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0d));
+    TimeValuePair p5 =
+        new TimeValuePair(0, Type.fromTsDataType(TSDataType.DOUBLE).getTsPrimitiveType(1.0d));
     TVPairs.add(Collections.singletonList(p5));
     TimeValuePair p6 =
-        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, BytesUtils.valueOf("a")));
+        new TimeValuePair(
+            0, Type.fromTsDataType(TSDataType.TEXT).getTsPrimitiveType(BytesUtils.valueOf("a")));
     TVPairs.add(Collections.singletonList(p6));
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -258,6 +336,36 @@ public class SerializeUtilsTest {
       ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
       Assert.assertEquals(tv, SerializeUtils.deserializeTVPairs(buffer));
       baos.reset();
+    }
+  }
+
+  /** Ensures the batch TVPair dispatcher uses the same primitive encodings as single pairs. */
+  @Test
+  public void serdesAdditionalTVPairsTypesTest() {
+    List<List<TimeValuePair>> pairs =
+        Arrays.asList(
+            Collections.singletonList(
+                new TimeValuePair(
+                    1, Type.fromTsDataType(TSDataType.DATE).getTsPrimitiveType(2024))),
+            Collections.singletonList(
+                new TimeValuePair(
+                    2, Type.fromTsDataType(TSDataType.TIMESTAMP).getTsPrimitiveType(2L))),
+            Collections.singletonList(
+                new TimeValuePair(
+                    3,
+                    Type.fromTsDataType(TSDataType.BLOB)
+                        .getTsPrimitiveType(BytesUtils.valueOf("blob")))),
+            Collections.singletonList(
+                new TimeValuePair(
+                    4,
+                    Type.fromTsDataType(TSDataType.STRING)
+                        .getTsPrimitiveType(BytesUtils.valueOf("string")))));
+
+    for (List<TimeValuePair> pair : pairs) {
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      SerializeUtils.serializeTVPairs(pair, new DataOutputStream(baos));
+      Assert.assertEquals(
+          pair, SerializeUtils.deserializeTVPairs(ByteBuffer.wrap(baos.toByteArray())));
     }
   }
 

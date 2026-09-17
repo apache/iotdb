@@ -27,62 +27,36 @@ import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.io.IOException;
 
 @SuppressWarnings("java:S2177")
 public class UDTFAbs extends UDTFMath {
 
+  private TypeServices.AbsRowCollector rowCollector;
+  private TypeServices.AbsRowMapper rowMapper;
+  private TypeServices.AbsColumnTransformer columnTransformer;
+
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    Type type = Type.fromTsDataType(dataType);
+    rowCollector = TypeServices.ABS_ROW_COLLECTOR_SERVICE.call(type);
+    rowMapper = TypeServices.ABS_ROW_MAPPER_SERVICE.call(type);
+    columnTransformer = TypeServices.ABS_COLUMN_TRANSFORMER_SERVICE.call(type);
     configurations
         .setAccessStrategy(new MappableRowByRowAccessStrategy())
         .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
   @Override
-  public void transform(Row row, PointCollector collector)
-      throws UDFInputSeriesDataTypeNotValidException, IOException {
-    long time = row.getTime();
-    switch (dataType) {
-      case INT32:
-        collector.putInt(time, Math.abs(row.getInt(0)));
-        break;
-      case INT64:
-        collector.putLong(time, Math.abs(row.getLong(0)));
-        break;
-      case FLOAT:
-        collector.putFloat(time, Math.abs(row.getFloat(0)));
-        break;
-      case DOUBLE:
-        collector.putDouble(time, Math.abs(row.getDouble(0)));
-        break;
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case TIMESTAMP:
-      case TEXT:
-      case DATE:
-      case BOOLEAN:
-      case VECTOR:
-      case UNKNOWN:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+  public void transform(Row row, PointCollector collector) throws IOException {
+    rowCollector.collect(row, collector);
   }
 
   @Override
@@ -90,66 +64,12 @@ public class UDTFAbs extends UDTFMath {
     if (row.isNull(0)) {
       return null;
     }
-    switch (dataType) {
-      case INT32:
-        return Math.abs(row.getInt(0));
-      case INT64:
-        return Math.abs(row.getLong(0));
-      case FLOAT:
-        return Math.abs(row.getFloat(0));
-      case DOUBLE:
-        return Math.abs(row.getDouble(0));
-      case DATE:
-      case BOOLEAN:
-      case TEXT:
-      case TIMESTAMP:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    return rowMapper.map(row);
   }
 
   @Override
   public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
-    switch (dataType) {
-      case INT32:
-        transformInt(columns, builder);
-        return;
-      case INT64:
-        transformLong(columns, builder);
-        return;
-      case FLOAT:
-        transformFloat(columns, builder);
-        return;
-      case DOUBLE:
-        transformDouble(columns, builder);
-        return;
-      case BLOB:
-      case OBJECT:
-      case STRING:
-      case TEXT:
-      case TIMESTAMP:
-      case BOOLEAN:
-      case DATE:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    columnTransformer.transform(this, columns, builder);
   }
 
   @Override

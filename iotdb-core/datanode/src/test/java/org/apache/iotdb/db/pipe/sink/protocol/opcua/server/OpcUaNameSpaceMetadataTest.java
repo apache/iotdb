@@ -25,10 +25,10 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
@@ -137,7 +137,8 @@ public class OpcUaNameSpaceMetadataTest {
             ? new Binary(
                 String.valueOf(value), org.apache.tsfile.common.conf.TSFileConfig.STRING_CHARSET)
             : value;
-    return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, primitiveValue));
+    return new TimeValuePair(
+        timestamp, Type.fromTsDataType(dataType).getTsPrimitiveType(primitiveValue));
   }
 
   private static class CapturedRow {

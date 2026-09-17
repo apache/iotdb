@@ -51,7 +51,7 @@ public class ExistUnknownTypeInExpression extends CollectVisitor {
   @Override
   public List<Expression> visitTimeSeriesOperand(
       TimeSeriesOperand timeSeriesOperand, Void context) {
-    if (timeSeriesOperand.getPath().getSeriesType() == TSDataType.UNKNOWN) {
+    if (timeSeriesOperand.getOperandType() == TSDataType.UNKNOWN) {
       return Collections.singletonList(timeSeriesOperand);
     }
 

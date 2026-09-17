@@ -20,20 +20,27 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BinaryBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BooleanBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.FloatBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-public class GroupedExtremeAccumulator implements GroupedAccumulator {
+public class GroupedExtremeAccumulator
+    implements GroupedAccumulator,
+        TypeServices.GroupedValueAccessor,
+        TypeServices.GroupedInputConsumer {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedExtremeAccumulator.class);
   private final TSDataType seriesDataType;
@@ -44,169 +51,38 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
   private IntBigArray intValues;
   private FloatBigArray floatValues;
   private DoubleBigArray doubleValues;
+  private final TypeServices.GroupedValueService valueService;
+  private final TypeServices.GroupedInputReader inputReader;
 
   public GroupedExtremeAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    switch (seriesDataType) {
-      case INT32:
-        intValues = new IntBigArray();
-        return;
-      case INT64:
-        longValues = new LongBigArray();
-        return;
-      case FLOAT:
-        floatValues = new FloatBigArray();
-        return;
-      case DOUBLE:
-        doubleValues = new DoubleBigArray();
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_EXTREME_AGGREGATION_ARG_AF4DA98F,
-                seriesDataType));
-    }
+    Type type = Type.fromTsDataType(seriesDataType);
+    this.valueService = TypeServices.GROUPED_EXTREME_VALUE_SERVICE.call(type);
+    this.inputReader = TypeServices.GROUPED_EXTREME_INPUT_READER_SERVICE.call(type);
+    valueService.initialize(this);
   }
 
   @Override
   public long getEstimatedSize() {
-    long valuesSize = 0;
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        valuesSize += intValues.sizeOf();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        valuesSize += longValues.sizeOf();
-        break;
-      case FLOAT:
-        valuesSize += floatValues.sizeOf();
-        break;
-      case DOUBLE:
-        valuesSize += doubleValues.sizeOf();
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        break;
-      case BOOLEAN:
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_EXTREME_AGGREGATION_ARG_276BE220,
-                seriesDataType));
-    }
-
-    return INSTANCE_SIZE + valuesSize;
+    return INSTANCE_SIZE + valueService.sizeOf(this);
   }
 
   @Override
   public void setGroupCount(long groupCount) {
     inits.ensureCapacity(groupCount);
-    switch (seriesDataType) {
-      case INT32:
-      case DATE:
-        intValues.ensureCapacity(groupCount);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        longValues.ensureCapacity(groupCount);
-        return;
-      case FLOAT:
-        floatValues.ensureCapacity(groupCount);
-        return;
-      case DOUBLE:
-        doubleValues.ensureCapacity(groupCount);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_EXTREME_AGGREGATION_ARG_276BE220,
-                seriesDataType));
-    }
+    valueService.ensureCapacity(this, groupCount);
   }
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
 
-    switch (seriesDataType) {
-      case INT32:
-        addIntInput(groupIds, arguments[0], mask);
-        return;
-      case INT64:
-        addLongInput(groupIds, arguments[0], mask);
-        return;
-      case FLOAT:
-        addFloatInput(groupIds, arguments[0], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments[0], mask);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_EXTREME_AGGREGATION_ARG_AF4DA98F,
-                seriesDataType));
-    }
+    inputReader.addInput(groupIds, arguments, mask, this);
   }
 
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
 
-    for (int i = 0; i < groupIds.length; i++) {
-      if (argument.isNull(i)) {
-        continue;
-      }
-
-      switch (seriesDataType) {
-        case INT32:
-          updateIntValue(groupIds[i], argument.getInt(i));
-          break;
-        case INT64:
-          updateLongValue(groupIds[i], argument.getLong(i));
-          break;
-        case FLOAT:
-          updateFloatValue(groupIds[i], argument.getFloat(i));
-          break;
-        case DOUBLE:
-          updateDoubleValue(groupIds[i], argument.getDouble(i));
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-        case BOOLEAN:
-        case DATE:
-        case TIMESTAMP:
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_EXTREME_AGGREGATION_ARG_276BE220,
-                  seriesDataType));
-      }
-    }
+    inputReader.addIntermediate(groupIds, argument, this);
   }
 
   @Override
@@ -214,32 +90,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
     if (!inits.get(groupId)) {
       columnBuilder.appendNull();
     } else {
-      switch (seriesDataType) {
-        case INT32:
-          columnBuilder.writeInt(intValues.get(groupId));
-          break;
-        case INT64:
-          columnBuilder.writeLong(longValues.get(groupId));
-          break;
-        case FLOAT:
-          columnBuilder.writeFloat(floatValues.get(groupId));
-          break;
-        case DOUBLE:
-          columnBuilder.writeDouble(doubleValues.get(groupId));
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-        case BOOLEAN:
-        case DATE:
-        case TIMESTAMP:
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_EXTREME_AGGREGATION_ARG_276BE220,
-                  seriesDataType));
-      }
+      valueService.write(this, groupId, columnBuilder);
     }
   }
 
@@ -248,32 +99,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
     if (!inits.get(groupId)) {
       columnBuilder.appendNull();
     } else {
-      switch (seriesDataType) {
-        case INT32:
-          columnBuilder.writeInt(intValues.get(groupId));
-          break;
-        case INT64:
-          columnBuilder.writeLong(longValues.get(groupId));
-          break;
-        case FLOAT:
-          columnBuilder.writeFloat(floatValues.get(groupId));
-          break;
-        case DOUBLE:
-          columnBuilder.writeDouble(doubleValues.get(groupId));
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-        case BOOLEAN:
-        case DATE:
-        case TIMESTAMP:
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_EXTREME_AGGREGATION_ARG_276BE220,
-                  seriesDataType));
-      }
+      valueService.write(this, groupId, columnBuilder);
     }
   }
 
@@ -283,32 +109,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
   @Override
   public void reset() {
     inits.reset();
-    switch (seriesDataType) {
-      case INT32:
-        intValues.reset();
-        return;
-      case INT64:
-        longValues.reset();
-        return;
-      case FLOAT:
-        floatValues.reset();
-        return;
-      case DOUBLE:
-        doubleValues.reset();
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case BOOLEAN:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_EXTREME_AGGREGATION_ARG_276BE220,
-                seriesDataType));
-    }
+    valueService.reset(this);
   }
 
   private void addIntInput(int[] groupIds, Column valueColumn, AggregationMask mask) {
@@ -455,5 +256,101 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
   private int compareExtreme(double left, double right) {
     int absComparison = Double.compare(Math.abs(left), Math.abs(right));
     return absComparison == 0 ? Double.compare(left, right) : absComparison;
+  }
+
+  @Override
+  public RuntimeException unsupportedException() {
+    return new UnSupportedDataTypeException(
+        String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_EXTREME_AGGREGATION, seriesDataType));
+  }
+
+  @Override
+  public void initializeIntValues() {
+    intValues = new IntBigArray();
+  }
+
+  @Override
+  public void initializeLongValues() {
+    longValues = new LongBigArray();
+  }
+
+  @Override
+  public void initializeFloatValues() {
+    floatValues = new FloatBigArray();
+  }
+
+  @Override
+  public void initializeDoubleValues() {
+    doubleValues = new DoubleBigArray();
+  }
+
+  @Override
+  public void initializeBinaryValues() {
+    throw unsupportedException();
+  }
+
+  @Override
+  public void initializeBooleanValues() {
+    throw unsupportedException();
+  }
+
+  @Override
+  public IntBigArray getIntValues() {
+    return intValues;
+  }
+
+  @Override
+  public LongBigArray getLongValues() {
+    return longValues;
+  }
+
+  @Override
+  public FloatBigArray getFloatValues() {
+    return floatValues;
+  }
+
+  @Override
+  public DoubleBigArray getDoubleValues() {
+    return doubleValues;
+  }
+
+  @Override
+  public BinaryBigArray getBinaryValues() {
+    throw unsupportedException();
+  }
+
+  @Override
+  public BooleanBigArray getBooleanValues() {
+    throw unsupportedException();
+  }
+
+  @Override
+  public void updateInt(int groupId, int value) {
+    updateIntValue(groupId, value);
+  }
+
+  @Override
+  public void updateLong(int groupId, long value) {
+    updateLongValue(groupId, value);
+  }
+
+  @Override
+  public void updateFloat(int groupId, float value) {
+    updateFloatValue(groupId, value);
+  }
+
+  @Override
+  public void updateDouble(int groupId, double value) {
+    updateDoubleValue(groupId, value);
+  }
+
+  @Override
+  public void updateBinary(int groupId, Binary value) {
+    throw unsupportedException();
+  }
+
+  @Override
+  public void updateBoolean(int groupId, boolean value) {
+    throw unsupportedException();
   }
 }

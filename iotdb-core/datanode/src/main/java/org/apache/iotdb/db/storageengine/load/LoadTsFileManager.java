@@ -68,6 +68,7 @@ import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -677,11 +678,11 @@ public class LoadTsFileManager {
                   TsPrimitiveType lastValue =
                       chunkMetadata.getStatistics() != null
                               && chunkMetadata.getDataType() != TSDataType.BLOB
-                          ? TsPrimitiveType.getByType(
-                              chunkMetadata.getDataType() == TSDataType.VECTOR
-                                  ? TSDataType.INT64
-                                  : chunkMetadata.getDataType(),
-                              chunkMetadata.getStatistics().getLastValue())
+                          ? Type.fromTsDataType(
+                                  chunkMetadata.getDataType() == TSDataType.VECTOR
+                                      ? TSDataType.INT64
+                                      : chunkMetadata.getDataType())
+                              .getTsPrimitiveType(chunkMetadata.getStatistics().getLastValue())
                           : null;
                   TimeValuePair timeValuePair =
                       lastValue != null

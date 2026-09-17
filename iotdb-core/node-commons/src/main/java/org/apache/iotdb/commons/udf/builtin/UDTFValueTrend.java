@@ -42,6 +42,7 @@ public abstract class UDTFValueTrend implements UDTF {
   protected double previousDouble = 0;
 
   protected TSDataType dataType;
+  protected TypeServices.PreviousValueReader previousValueReader;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -52,36 +53,17 @@ public abstract class UDTFValueTrend implements UDTF {
 
   protected void updatePreviousValue(Row row)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
-    switch (dataType) {
-      case INT32:
-        previousInt = row.getInt(0);
-        break;
-      case INT64:
-        previousLong = row.getLong(0);
-        break;
-      case FLOAT:
-        previousFloat = row.getFloat(0);
-        break;
-      case DOUBLE:
-        previousDouble = row.getDouble(0);
-        break;
-      case TEXT:
-      case BOOLEAN:
-      case TIMESTAMP:
-      case STRING:
-      case DATE:
-      case BLOB:
-      case OBJECT:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    previousValueReader.read(this, row);
+  }
+
+  protected UDFInputSeriesDataTypeNotValidException invalidDataType() {
+    return new UDFInputSeriesDataTypeNotValidException(
+        0,
+        UDFDataTypeTransformer.transformToUDFDataType(dataType),
+        Type.INT32,
+        Type.INT64,
+        Type.FLOAT,
+        Type.DOUBLE);
   }
 
   protected abstract void doTransform(Row row, PointCollector collector)

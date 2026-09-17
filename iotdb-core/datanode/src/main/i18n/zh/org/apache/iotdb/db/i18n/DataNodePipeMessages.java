@@ -1444,6 +1444,12 @@ public final class DataNodePipeMessages {
       "解绑 from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {} 失败";
 
   // ---------------------------------------------------------------------------
+  // pipe – PipeRow
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_FOR_COLUMN_ARG_4C4CCA6D =
+      "不支持的数据类型 %s，列名为 %s";
+
+  // ---------------------------------------------------------------------------
   // pipe – AbstractSameTypeNumericOperator
   // ---------------------------------------------------------------------------
   public static final String UNSUPPORTED_OUTPUT_DATATYPE_FMT = "不支持的输出数据类型 %s";

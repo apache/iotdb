@@ -25,10 +25,12 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.ra
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionValidation;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.TimeValueBuffer;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 public final class GroupedNaiveIrateAccumulator extends AbstractGroupedIrateAccumulator {
@@ -58,22 +60,19 @@ public final class GroupedNaiveIrateAccumulator extends AbstractGroupedIrateAccu
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     RateFunctionValidation.validateArgumentCount(arguments, RateFunctionType.IRATE);
-    int selectedCount = mask.getSelectedPositionCount();
-    int[] selectedPositions = mask.isSelectAll() ? null : mask.getSelectedPositions();
-    for (int index = 0; index < selectedCount; index++) {
-      int position = mask.isSelectAll() ? index : selectedPositions[index];
-      if (arguments[0].isNull(position)) {
-        continue;
-      }
-      int groupId = groupIds[position];
-      double value =
-          RateFunctionValidation.readValue(
-              arguments[0], position, valueDataType, RateFunctionType.IRATE);
-      long time =
-          RateFunctionValidation.readRequiredTime(
-              arguments[1], position, RateFunctionType.IRATE, 2);
-      samples.add(groupId, time, value);
-    }
+    TypeServices.RATE_INPUT_SERVICE
+        .call(Type.fromTsDataType(valueDataType))
+        .addInput(
+            arguments[0],
+            mask,
+            RateFunctionType.IRATE,
+            (position, value) -> {
+              int groupId = groupIds[position];
+              long time =
+                  RateFunctionValidation.readRequiredTime(
+                      arguments[1], position, RateFunctionType.IRATE, 2);
+              samples.add(groupId, time, value);
+            });
   }
 
   @Override

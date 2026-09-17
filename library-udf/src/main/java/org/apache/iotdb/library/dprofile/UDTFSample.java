@@ -20,8 +20,7 @@
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.LTThreeBuckets;
-import org.apache.iotdb.library.util.NoNumberException;
-import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
@@ -58,6 +57,10 @@ public class UDTFSample implements UDTF {
   private int num = 0; // number of points already sampled
   private Random random;
   private Type dataType;
+  private TypeServices.NumericValueWriter numericValueWriter;
+  private TypeServices.NumericRowReader numericRowReader;
+  private TypeServices.RowValueReader valueReader;
+  private TypeServices.RowValueWriter valueWriter;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -81,6 +84,12 @@ public class UDTFSample implements UDTF {
       throws Exception {
     this.k = parameters.getIntOrDefault("k", 1);
     this.dataType = parameters.getDataType(0);
+    numericValueWriter =
+        TypeServices.NUMERIC_VALUE_WRITER_SERVICE.call(TypeServices.toReadType(dataType));
+    numericRowReader =
+        TypeServices.NUMERIC_ROW_READER_SERVICE.call(TypeServices.toReadType(dataType));
+    valueReader = TypeServices.rowValueReader(dataType);
+    valueWriter = TypeServices.rowValueWriter(dataType);
     String methodIn = parameters.getStringOrDefault("method", METHOD_RESERVOIR);
     if ("triangle".equalsIgnoreCase(methodIn)) {
       this.method = Method.TRIANGLE;
@@ -112,7 +121,7 @@ public class UDTFSample implements UDTF {
       x = random.nextInt(num + 1);
     }
     if (x < this.k) {
-      Object v = Util.getValueAsObject(row);
+      Object v = valueReader.read(row);
       Long t = row.getTime();
       this.samples[x] = Pair.of(t, v);
     }
@@ -131,56 +140,35 @@ public class UDTFSample implements UDTF {
         for (int i = 0; i < n; i++) {
           Row row = rowWindow.getRow(i);
           long time = row.getTime();
-          double data = Util.getValueAsDouble(row);
+          double data = numericRowReader.read(row);
           input.add(Pair.of(time, data));
         }
         if (k > 2) {
           // The first and last element will always be sampled so the buckets is k - 2
           List<Pair<Long, Double>> output = LTThreeBuckets.sorted(input, k - 2);
           for (Pair<Long, Double> p : output) {
-            switch (dataType) {
-              case INT32:
-                collector.putInt(p.getLeft(), p.getRight().intValue());
-                break;
-              case INT64:
-                collector.putLong(p.getLeft(), p.getRight().longValue());
-                break;
-              case FLOAT:
-                collector.putFloat(p.getLeft(), p.getRight().floatValue());
-                break;
-              case DOUBLE:
-                collector.putDouble(p.getLeft(), p.getRight());
-                break;
-              case TIMESTAMP:
-              case DATE:
-              case BLOB:
-              case BOOLEAN:
-              case STRING:
-              case TEXT:
-              default:
-                throw new NoNumberException();
-            }
+            numericValueWriter.write(p.getLeft(), p.getRight(), collector);
           }
         } else { // For corner case of k == 1 and k == 2
           Row row = rowWindow.getRow(0); // Put first element
-          Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+          valueWriter.write(collector, row.getTime(), valueReader.read(row));
           if (k == 2) {
             row = rowWindow.getRow(n - 1); // Put last element
-            Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+            valueWriter.write(collector, row.getTime(), valueReader.read(row));
           }
         }
       } else { // Method.ISOMETRIC
         for (long i = 0; i < this.k; i++) {
           long j = Math.floorDiv(i * n, (long) k); // avoid intermediate result overflows
           Row row = rowWindow.getRow((int) j);
-          Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+          valueWriter.write(collector, row.getTime(), valueReader.read(row));
         }
       }
     } else { // when k is larger than series length, output all points
       RowIterator iterator = rowWindow.getRowIterator();
       while (iterator.hasNextRow()) {
         Row row = iterator.next();
-        Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+        valueWriter.write(collector, row.getTime(), valueReader.read(row));
       }
     }
   }
@@ -192,7 +180,7 @@ public class UDTFSample implements UDTF {
       Arrays.sort(samples, 0, m);
       for (int i = 0; i < m; i++) {
         Pair<Long, Object> p = samples[i];
-        Util.putValue(pc, dataType, p.getLeft(), p.getRight());
+        valueWriter.write(pc, p.getLeft(), p.getRight());
       }
     }
   }

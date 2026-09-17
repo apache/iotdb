@@ -57,6 +57,9 @@ public final class LibraryUdfMessages {
   public static final String ALL_VALUES_ARE_NAN = "所有值均为 NaN";
 
   // UDFEnvelopeAnalysis
+  public static final String EXCEPTION_THE_PARAM_FREQUENCY_MUST_BE_GREATER_THAN_0_45820CF9 = "参数 'frequency' 必须大于 0。";
+  public static final String EXCEPTION_THE_PARAM_AMPLIFICATION_MUST_BE_GREATER_THAN_OR_EQUAL_TO_1_D64050EB =
+      "参数 'amplification' 必须大于或等于 1。";
   public static final String UNSUPPORTED_TIME_UNIT = "不支持的时间单位。";
 
   // UDTFAR
@@ -90,6 +93,15 @@ public final class LibraryUdfMessages {
 
   // UDAFPatternMatch, UDAFDTWMatch
   public static final String UNSUPPORTED_DATATYPE = "不支持的数据类型 %s";
+
+  // ExactOrderStatistics
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E = "不支持的数据类型：%s";
+
+  // UDAFQuantile
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_A8CA7BE7 = "不支持的数据类型";
+  public static final String EXCEPTION_SIZE_K_HAS_TO_BE_GREATER_THAN_OR_EQUAL_TO_100_C514D1C3 = "K 的大小必须大于或等于 100。";
+  public static final String EXCEPTION_RANK_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1_0F16AF94 =
+      "rank 必须大于 0 且小于或等于 1。";
 
   // LinearScale
   public static final String DOMAIN_START_MUST_BE_LESS_THAN_DOMAIN_END =

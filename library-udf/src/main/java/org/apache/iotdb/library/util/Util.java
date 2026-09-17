@@ -50,34 +50,11 @@ public class Util {
    * @throws NoNumberException when getting a no number datatype
    */
   public static double getValueAsDouble(Row row, int index) throws IOException, NoNumberException {
-    double ans = 0;
     try {
-      switch (row.getDataType(index)) {
-        case INT32:
-          ans = row.getInt(index);
-          break;
-        case INT64:
-          ans = row.getLong(index);
-          break;
-        case FLOAT:
-          ans = row.getFloat(index);
-          break;
-        case DOUBLE:
-          ans = row.getDouble(index);
-          break;
-        case DATE:
-        case BLOB:
-        case BOOLEAN:
-        case STRING:
-        case TEXT:
-        case TIMESTAMP:
-        default:
-          throw new NoNumberException();
-      }
+      return TypeServices.indexedNumericRowReader(row.getDataType(index)).read(row, index);
     } catch (IOException e) {
       throw new IOException(LibraryUdfMessages.FAIL_TO_GET_DATA_TYPE_IN_ROW + row.getTime(), e);
     }
-    return ans;
   }
 
   /**
@@ -98,34 +75,7 @@ public class Util {
    * @return value from 0th column from Row
    */
   public static Object getValueAsObject(Row row) throws IOException {
-    Object ans = 0;
-    switch (row.getDataType(0)) {
-      case INT32:
-        ans = row.getInt(0);
-        break;
-      case INT64:
-        ans = row.getLong(0);
-        break;
-      case FLOAT:
-        ans = row.getFloat(0);
-        break;
-      case DOUBLE:
-        ans = row.getDouble(0);
-        break;
-      case BOOLEAN:
-        ans = row.getBoolean(0);
-        break;
-      case TEXT:
-        ans = row.getString(0);
-        break;
-      case BLOB:
-      case STRING:
-      case DATE:
-      case TIMESTAMP:
-      default:
-        break;
-    }
-    return ans;
+    return TypeServices.rowValueReader(row.getDataType(0)).read(row);
   }
 
   /**
@@ -137,30 +87,7 @@ public class Util {
    * @param o value in Object type
    */
   public static void putValue(PointCollector pc, Type type, long t, Object o) throws IOException {
-    switch (type) {
-      case INT32:
-        pc.putInt(t, (Integer) o);
-        break;
-      case INT64:
-        pc.putLong(t, (Long) o);
-        break;
-      case FLOAT:
-        pc.putFloat(t, (Float) o);
-        break;
-      case DOUBLE:
-        pc.putDouble(t, (Double) o);
-        break;
-      case BOOLEAN:
-        pc.putBoolean(t, (Boolean) o);
-        break;
-      case DATE:
-      case TIMESTAMP:
-      case TEXT:
-      case STRING:
-      case BLOB:
-      default:
-        break;
-    }
+    TypeServices.rowValueWriter(type).write(pc, t, o);
   }
 
   /**

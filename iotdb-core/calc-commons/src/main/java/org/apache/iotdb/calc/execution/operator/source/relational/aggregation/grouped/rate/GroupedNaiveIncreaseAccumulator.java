@@ -25,10 +25,12 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.ra
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionValidation;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.TimeValueBuffer;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 public final class GroupedNaiveIncreaseAccumulator extends AbstractGroupedIncreaseAccumulator {
@@ -59,31 +61,28 @@ public final class GroupedNaiveIncreaseAccumulator extends AbstractGroupedIncrea
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     RateFunctionValidation.validateArgumentCount(arguments, RateFunctionType.INCREASE);
-    int selectedCount = mask.getSelectedPositionCount();
-    int[] selectedPositions = mask.isSelectAll() ? null : mask.getSelectedPositions();
-    for (int index = 0; index < selectedCount; index++) {
-      int position = mask.isSelectAll() ? index : selectedPositions[index];
-      if (arguments[0].isNull(position)) {
-        continue;
-      }
-      int groupId = groupIds[position];
-      double value =
-          RateFunctionValidation.readValue(
-              arguments[0], position, valueDataType, RateFunctionType.INCREASE);
-      long time =
-          RateFunctionValidation.readRequiredTime(
-              arguments[1], position, RateFunctionType.INCREASE, 2);
-      long currentWindowStart =
-          RateFunctionValidation.readRequiredTime(
-              arguments[2], position, RateFunctionType.INCREASE, 3);
-      long currentWindowEnd =
-          RateFunctionValidation.readRequiredTime(
-              arguments[3], position, RateFunctionType.INCREASE, 4);
-      RateFunctionValidation.validateWindow(
-          RateFunctionType.INCREASE, time, currentWindowStart, currentWindowEnd);
-      initializeOrValidateWindow(groupId, currentWindowStart, currentWindowEnd);
-      samples.add(groupId, time, value);
-    }
+    TypeServices.RATE_INPUT_SERVICE
+        .call(Type.fromTsDataType(valueDataType))
+        .addInput(
+            arguments[0],
+            mask,
+            RateFunctionType.INCREASE,
+            (position, value) -> {
+              int groupId = groupIds[position];
+              long time =
+                  RateFunctionValidation.readRequiredTime(
+                      arguments[1], position, RateFunctionType.INCREASE, 2);
+              long currentWindowStart =
+                  RateFunctionValidation.readRequiredTime(
+                      arguments[2], position, RateFunctionType.INCREASE, 3);
+              long currentWindowEnd =
+                  RateFunctionValidation.readRequiredTime(
+                      arguments[3], position, RateFunctionType.INCREASE, 4);
+              RateFunctionValidation.validateWindow(
+                  RateFunctionType.INCREASE, time, currentWindowStart, currentWindowEnd);
+              initializeOrValidateWindow(groupId, currentWindowStart, currentWindowEnd);
+              samples.add(groupId, time, value);
+            });
   }
 
   @Override

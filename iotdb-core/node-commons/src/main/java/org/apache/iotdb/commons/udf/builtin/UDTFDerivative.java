@@ -29,16 +29,27 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.tsfile.read.common.type.service.TypeService;
+
 import java.io.IOException;
 
 public abstract class UDTFDerivative extends UDTFValueTrend {
 
   protected long previousTime;
+  protected TypeServices.DerivativeOperator derivativeOperator;
+
+  protected TypeService<TypeServices.DerivativeOperator> derivativeOperatorService() {
+    return TypeServices.DERIVATIVE_OPERATOR_SERVICE;
+  }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    org.apache.tsfile.read.common.type.Type type =
+        org.apache.tsfile.read.common.type.Type.fromTsDataType(dataType);
+    previousValueReader = TypeServices.VALUE_TREND_READER_SERVICE.call(type);
+    derivativeOperator = derivativeOperatorService().call(type);
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
   }
 
