@@ -51,14 +51,14 @@ public class PreparedNumericRowBufferTest {
     Session session = mock(Session.class);
     SessionConnection connection = mock(SessionConnection.class);
     when(session.getDefaultSessionConnection()).thenReturn(connection);
+    when(connection.prepareNumericRow(any())).thenReturn(1L);
     TableSession tableSession = new TableSession(session);
     NumericRowPreparedStatement prepared =
-        new NumericRowPreparedStatement(
+        tableSession.prepareInsertNumericRow(
             "t",
             List.of("a", "b", "c"),
             List.of(TSDataType.INT64, TSDataType.INT64, TSDataType.INT64),
             List.of(ColumnCategory.FIELD, ColumnCategory.FIELD, ColumnCategory.FIELD));
-    prepared.bind(1, connection, () -> {});
     List<ByteBuffer> bitmaps = new ArrayList<>();
     List<ByteBuffer> payloads = new ArrayList<>();
     int[] masks = {2, 7, 0};
@@ -105,9 +105,10 @@ public class PreparedNumericRowBufferTest {
     Session session = mock(Session.class);
     SessionConnection connection = mock(SessionConnection.class);
     when(session.getDefaultSessionConnection()).thenReturn(connection);
+    when(connection.prepareNumericRow(any())).thenReturn(1L);
     TableSession tableSession = new TableSession(session);
     NumericRowPreparedStatement prepared =
-        new NumericRowPreparedStatement(
+        tableSession.prepareInsertNumericRow(
             "t",
             List.of("tag", "flag", "count", "value"),
             List.of(TSDataType.STRING, TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.DOUBLE),
@@ -116,7 +117,6 @@ public class PreparedNumericRowBufferTest {
                 ColumnCategory.FIELD,
                 ColumnCategory.FIELD,
                 ColumnCategory.FIELD));
-    prepared.bind(1, connection, () -> {});
     List<ByteBuffer> tagBuffers = new ArrayList<>();
     List<ByteBuffer> valueBuffers = new ArrayList<>();
     String[] tags = {"x", "long-tag-\u4e2d\u6587", "", null, "retry"};
@@ -168,6 +168,7 @@ public class PreparedNumericRowBufferTest {
     Session session = mock(Session.class);
     SessionConnection connection = mock(SessionConnection.class);
     when(session.getDefaultSessionConnection()).thenReturn(connection);
+    when(connection.prepareNumericRow(any())).thenReturn(0L, 1L);
     TableSession tableSession = new TableSession(session);
     List<ByteBuffer> buffers = new ArrayList<>();
     doAnswer(
@@ -186,9 +187,8 @@ public class PreparedNumericRowBufferTest {
             anyLong(), anyLong(), any(ByteBuffer.class), any(ByteBuffer.class));
     for (int i = 0; i < 2; i++) {
       NumericRowPreparedStatement prepared =
-          new NumericRowPreparedStatement(
+          tableSession.prepareInsertNumericRow(
               "t", List.of("v"), List.of(TSDataType.INT64), List.of(ColumnCategory.FIELD));
-      prepared.bind(i, connection, () -> {});
       tableSession.executePreparedInsertNumericRow(prepared, 0, new long[] {42}, new String[0]);
     }
     assertNotSame(buffers.get(0), buffers.get(2));

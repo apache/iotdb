@@ -30,7 +30,6 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 
@@ -122,7 +121,11 @@ public class AlignedWritableMemChunkNumericTest {
   }
 
   private static NumericRowValues row(long... values) {
-    return new NumericRowValues(values, new BitSet());
+    NumericRowValues row = new NumericRowValues(0, values.length);
+    for (int i = 0; i < values.length; i++) {
+      row.setRawValue(i, values[i]);
+    }
+    return row;
   }
 
   private static int[] mapping(AlignedWritableMemChunk chunk) throws Exception {

@@ -248,7 +248,7 @@ public class NumericTableRowTest {
   @Test
   public void testNumericCastsKeepPrimitiveStorage() {
     // Widen INT32 to DOUBLE in place; reject STRING coercion while accepting an inserted null TAG.
-    NumericRowValues values = new NumericRowValues(2);
+    NumericRowValues values = new NumericRowValues(0, 2);
     values.getValues()[0] = Integer.MIN_VALUE;
     values.setNull(1);
     assertTrue(values.cast(0, TSDataType.INT32, TSDataType.DOUBLE));

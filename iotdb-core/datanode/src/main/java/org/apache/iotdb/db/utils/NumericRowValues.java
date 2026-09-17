@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -47,25 +46,12 @@ public final class NumericRowValues {
   private final int size;
   private int tagCount;
 
-  @TestOnly
-  public NumericRowValues(int size) {
-    this(0, size);
-  }
-
   public NumericRowValues(int tagLength, int valueLength) {
     this.values = new long[valueLength];
     this.nulls = new BitSet(tagLength + valueLength);
     this.tagValues = tagLength == 0 ? null : new String[tagLength];
     this.size = tagLength + valueLength;
     this.tagCount = tagLength;
-  }
-
-  @TestOnly
-  public NumericRowValues(long[] values, BitSet nulls) {
-    this.values = values;
-    this.nulls = nulls;
-    this.size = values.length;
-    this.tagCount = 0;
   }
 
   public int size() {

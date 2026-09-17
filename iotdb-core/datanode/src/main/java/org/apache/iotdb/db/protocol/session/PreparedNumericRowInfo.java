@@ -232,10 +232,6 @@ public final class PreparedNumericRowInfo {
     return version;
   }
 
-  public InsertNumericRowStatement bind(long timestamp, ByteBuffer tags, ByteBuffer values) {
-    return bind(timestamp, tags, values, null);
-  }
-
   public InsertNumericRowStatement bind(
       long timestamp, ByteBuffer tags, ByteBuffer values, ByteBuffer nullBitmap) {
     if (tags == null) {

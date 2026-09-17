@@ -235,7 +235,7 @@ public class PreparedNumericRowInfoTest {
     req.setDataTypes(Arrays.asList(TSDataType.STRING.ordinal(), TSDataType.INT64.ordinal()));
     assertNull(
         new PreparedNumericRowInfo(DATABASE, req)
-            .bind(1, tagBuffer(1), ByteBuffer.allocate(8))
+            .bind(1, tagBuffer(1), ByteBuffer.allocate(8), null)
             .getPreparedTableVersion());
     table.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.sg.**");
     assertNull(
@@ -364,6 +364,6 @@ public class PreparedNumericRowInfoTest {
   private static InsertNumericRowStatement bind(PreparedNumericRowInfo info, int tags) {
     ByteBuffer values = ByteBuffer.allocate(8);
     values.putDouble(2.5D).flip();
-    return info.bind(1, tagBuffer(tags), values);
+    return info.bind(1, tagBuffer(tags), values, null);
   }
 }
