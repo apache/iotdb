@@ -37,6 +37,7 @@ public class DataNodeMemoryConfig {
   private static final int LEGACY_QUERY_MEMORY_COMPONENT_COUNT = 8;
   private static final int QUERY_MEMORY_COMPONENT_COUNT = 9;
   private static final int SUBSCRIPTION_MEMORY_INDEX = 8;
+  private static final int DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES = 1024;
   private static final int[] DEFAULT_QUERY_MEMORY_PROPORTIONS = {
     1, 100, 200, 50, 200, 200, 200, 50, 250
   };
@@ -178,7 +179,7 @@ public class DataNodeMemoryConfig {
         getMemoryAllocateProportion(properties, false));
   }
 
-  public void init(TrimProperties properties) {
+  public void init(TrimProperties properties, int thriftMaxFrameSize, Logger logger) {
     // on heap memory
     String memoryAllocateProportion = getMemoryAllocateProportion(properties, true);
     // Get global memory manager here
@@ -255,6 +256,8 @@ public class DataNodeMemoryConfig {
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);
     initQueryEngineMemoryAllocate(queryEngineMemoryManager, properties);
+    tableQueryDeviceEntryBatchSizeInBytes = 0;
+    loadTableQueryDeviceEntryBatchSize(properties, thriftMaxFrameSize, logger);
 
     String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
     offHeapMemoryManager =
@@ -627,13 +630,32 @@ public class DataNodeMemoryConfig {
     setQueryThreadCount(
         Integer.parseInt(
             properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
+  }
 
-    tableQueryDeviceEntryBatchSizeInBytes =
+  public void loadTableQueryDeviceEntryBatchSize(
+      TrimProperties properties, int thriftMaxFrameSize, Logger logger) {
+    long defaultTableQueryDeviceEntryBatchSizeInBytes =
+        operatorsMemoryManager.getTotalMemorySizeInBytes() / queryThreadCount / 4;
+    long deviceEntryBatchSize =
         Long.parseLong(
             properties.getProperty(
                 "table_query_device_entry_batch_size_in_bytes",
-                Long.toString(
-                    operatorsMemoryManager.getTotalMemorySizeInBytes() / queryThreadCount / 4)));
+                Long.toString(tableQueryDeviceEntryBatchSizeInBytes)));
+    if (deviceEntryBatchSize <= 0) {
+      deviceEntryBatchSize = defaultTableQueryDeviceEntryBatchSizeInBytes;
+    }
+    long maxBatchSize = Math.max(1, thriftMaxFrameSize - DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES);
+    long effectiveBatchSize = Math.min(deviceEntryBatchSize, maxBatchSize);
+    if (deviceEntryBatchSize > maxBatchSize) {
+      logger.warn(
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA,
+              deviceEntryBatchSize,
+              thriftMaxFrameSize,
+              effectiveBatchSize));
+    }
+    tableQueryDeviceEntryBatchSizeInBytes = effectiveBatchSize;
   }
 
   public double getRejectProportion() {
