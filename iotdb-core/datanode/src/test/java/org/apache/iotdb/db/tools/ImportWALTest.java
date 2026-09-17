@@ -53,6 +53,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
@@ -72,6 +73,7 @@ import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -138,6 +140,151 @@ public class ImportWALTest {
     assertEquals(0, exitCode);
     assertTrue(output.toString().contains("--on_success"));
     assertTrue(output.toString().contains("--thread_num"));
+    assertTrue(output.toString().contains("--on_delete"));
+    assertTrue(output.toString().contains("--on_object"));
+    assertTrue(output.toString().contains("--on_unsupported"));
+  }
+
+  @Test
+  public void testReplayPolicyDefaultsRequireInteraction() throws Exception {
+    final WALEntry deletion = tableDeleteEntry();
+    for (final ReplayDecisionController controller :
+        Arrays.asList(
+            policyController(),
+            policyController(
+                "--on_delete", "ask", "--on_object", "ask", "--on_unsupported", "ask"))) {
+      assertEquals(ReplayDecision.TERMINATE, controller.decide(deletion, true));
+      assertEquals(ReplayDecision.TERMINATE, controller.decide(mockUnsupportedEntry(), false));
+      assertEquals(ReplayDecision.TERMINATE, controller.decide(deletion, false));
+    }
+  }
+
+  /** Invalid policies must fail before reading WAL files or connecting to the target. */
+  @Test
+  public void testInvalidReplayPoliciesFailEarly() {
+    for (final String option : Arrays.asList("on_delete", "on_object", "on_unsupported")) {
+      final List<String> invalidValues = new ArrayList<>(Arrays.asList("", "invalid"));
+      if (!"on_delete".equals(option)) {
+        invalidValues.add("execute");
+      }
+      for (final String value : invalidValues) {
+        final ByteArrayOutputStream error = new ByteArrayOutputStream();
+        assertEquals(
+            1,
+            ImportWAL.run(
+                new String[] {"-f", "unused.wal", "--" + option, value},
+                new PrintStream(error),
+                new PrintStream(error)));
+        assertTrue(error.toString().contains("--" + option));
+        assertTrue(error.toString().contains("ask"));
+      }
+      final ByteArrayOutputStream error = new ByteArrayOutputStream();
+      assertEquals(
+          1,
+          ImportWAL.run(
+              new String[] {"-f", "unused.wal", "--" + option},
+              new PrintStream(error),
+              new PrintStream(error)));
+    }
+  }
+
+  /** One explicit delete policy applies to both data models and all workers. */
+  @Test
+  public void testConfiguredDeletePoliciesAcrossWorkers() throws Exception {
+    final WALEntry treeDelete =
+        new WALInfoEntry(
+            1,
+            new DeleteDataNode(
+                new PlanNodeId(""),
+                Collections.singletonList(new MeasurementPath("root.sg.d1.s1")),
+                10,
+                20));
+    final WALEntry tableDelete =
+        tableDeleteEntry(tableDeletion("table1", new TagPredicate.NOP(), 10, 20));
+    for (final String policy : Arrays.asList(" ExEcUtE ", "skip", "terminate")) {
+      final Session tree = mock(Session.class);
+      final Session table = mock(Session.class);
+      final ReplayDecisionController controller = policyController("--on_delete", policy);
+      if (policy.trim().equalsIgnoreCase("execute")) {
+        mockTableSchema(table, "table1", "time", "tag1");
+      }
+      for (int worker = 0; worker < 2; worker++) {
+        final ImportWAL.WALReplayer replayer =
+            new ImportWAL.WALReplayer(tree, table, "target_db", controller);
+        for (final WALEntry entry : Arrays.asList(treeDelete, tableDelete)) {
+          if ("terminate".equals(policy)) {
+            assertThrows(StatementExecutionException.class, () -> replayer.replay(entry));
+          } else {
+            assertEquals(
+                "skip".equals(policy) ? ReplayResult.SKIPPED : ReplayResult.REPLAYED,
+                replayer.replay(entry));
+          }
+        }
+      }
+      if (policy.trim().equalsIgnoreCase("execute")) {
+        verify(tree, times(2)).deleteData(Collections.singletonList("root.sg.d1.s1"), 10, 20);
+        verify(table, times(2)).executeNonQueryStatement(any());
+      } else {
+        verifyZeroInteractions(tree, table);
+      }
+    }
+  }
+
+  /** ObjectNode and conversion failures have independent policies, without interactive input. */
+  @Test
+  public void testConfiguredUnsupportedPoliciesAreIndependent() throws Exception {
+    final WALEntry unconvertibleDelete =
+        tableDeleteEntry(
+            tableDeletion("table1", new TagPredicate.SegmentExactMatch("a", 2), 10, 20));
+    for (final String objectPolicy : Arrays.asList("skip", "terminate")) {
+      for (final String unsupportedPolicy : Arrays.asList("skip", "terminate")) {
+        final Session tree = mock(Session.class);
+        final Session table = mock(Session.class);
+        mockTableSchema(table, "table1", "time", "tag1");
+        final ImportWAL.WALReplayer replayer =
+            new ImportWAL.WALReplayer(
+                tree,
+                table,
+                "target_db",
+                policyController(
+                    "--on_delete", "execute",
+                    "--on_object", objectPolicy,
+                    "--on_unsupported", unsupportedPolicy));
+        for (int entry = 0; entry < 2; entry++) {
+          if ("skip".equals(objectPolicy)) {
+            assertEquals(ReplayResult.SKIPPED, replayer.replay(mockUnsupportedEntry()));
+          } else {
+            assertThrows(
+                StatementExecutionException.class, () -> replayer.replay(mockUnsupportedEntry()));
+          }
+          if ("skip".equals(unsupportedPolicy)) {
+            assertEquals(ReplayResult.SKIPPED, replayer.replay(unconvertibleDelete));
+          } else {
+            assertThrows(
+                StatementExecutionException.class, () -> replayer.replay(unconvertibleDelete));
+          }
+        }
+        verify(table, never()).executeNonQueryStatement(any());
+        verifyZeroInteractions(tree);
+      }
+    }
+  }
+
+  /** Skipping through CLI policy must still protect the WAL from --on_success delete. */
+  @Test
+  public void testConfiguredSkipRetainsSourceWAL() throws Exception {
+    final File walFile = createWALFile(0);
+    writeWAL(walFile, tableDeleteEntry(tableDeletion("table1", new TagPredicate.NOP(), 10, 20)));
+    final ImportWAL.ReplayStatistics statistics =
+        ImportWAL.replayWALFiles(
+            Collections.singletonList(walFile.toPath()),
+            new ImportWAL.WALReplayer(
+                mock(Session.class), null, null, policyController("--on_delete", "skip")),
+            null,
+            true);
+    assertEquals(1, statistics.getSkippedEntryCount());
+    assertEquals(0, statistics.getReplayedOperationCount());
+    assertTrue(walFile.exists());
   }
 
   /** Covers valid thread counts and rejects zero, negative, and non-numeric values. */
@@ -1284,6 +1431,15 @@ public class ImportWALTest {
     when(commandLine.getOptionValue("password")).thenReturn("secret");
 
     assertEquals("secret", ImportWAL.getPassword(commandLine, null));
+  }
+
+  private static ReplayDecisionController policyController(final String... options)
+      throws Exception {
+    final List<String> arguments = new ArrayList<>(Arrays.asList("-f", "unused.wal"));
+    arguments.addAll(Arrays.asList(options));
+    return new ReplayDecisionController(
+        new DefaultParser().parse(ImportWAL.createOptions(), arguments.toArray(new String[0])),
+        null);
   }
 
   private Path createWALFile(final Path parent, final long version) throws IOException {

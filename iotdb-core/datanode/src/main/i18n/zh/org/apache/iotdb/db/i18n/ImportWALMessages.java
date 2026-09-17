@@ -117,5 +117,14 @@ public final class ImportWALMessages {
   public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_UNSUPPORTED_TAG_PREDICATE_ARG_AD0753A8 =
       "无法重放表模型删除：不支持 TAG 条件 %s。";
 
+  public static final String MESSAGE_POLICY_FOR_TREE_TABLE_DELETIONS_ASK_DEFAULT_EXECUTE_SKIP_TERMINATE_C485B75F =
+      "树模型和表模型删除操作的策略：ask（默认）、execute、skip、terminate。";
+  public static final String MESSAGE_POLICY_FOR_OBJECTNODE_ENTRIES_ASK_DEFAULT_SKIP_TERMINATE_7C94280F =
+      "ObjectNode 条目的策略：ask（默认）、skip、terminate。";
+  public static final String MESSAGE_POLICY_FOR_UNSUPPORTED_OPERATIONS_INCLUDING_UNCONVERTIBLE_TABLE_DELETIONS_ASK_DEFAULT_SKIP_TERMINATE_46ED9D3B =
+      "不支持的操作（包括无法转换的表模型删除）的策略：ask（默认）、skip、terminate。";
+  public static final String EXCEPTION_INVALID_VALUE_FOR_ARG_ARG_EXPECTED_ARG_73B78522 =
+      "--%s 的值无效：%s。应为 %s。";
+
   private ImportWALMessages() {}
 }

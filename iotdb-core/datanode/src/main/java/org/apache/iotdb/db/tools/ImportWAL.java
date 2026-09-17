@@ -126,6 +126,8 @@ public class ImportWAL {
     }
 
     try {
+      final WALReplayer.ReplayDecisionController replayDecisionController =
+          new WALReplayer.ReplayDecisionController(commandLine, System.console());
       final Path source = Paths.get(commandLine.getOptionValue("file"));
       final List<Path> walFiles = collectWALFiles(source);
       final String database = commandLine.getOptionValue("database");
@@ -138,8 +140,6 @@ public class ImportWAL {
       final String host = commandLine.getOptionValue("host", DEFAULT_HOST);
       final int port = parsePort(commandLine.getOptionValue("port", String.valueOf(DEFAULT_PORT)));
       final String username = commandLine.getOptionValue("username", DEFAULT_USER);
-      final WALReplayer.ReplayDecisionController replayDecisionController =
-          new WALReplayer.ReplayDecisionController(System.console());
       final ReplayStatistics statistics =
           replayWALDirectories(
               walFiles,
@@ -177,7 +177,7 @@ public class ImportWAL {
     }
   }
 
-  private static Options createOptions() {
+  static Options createOptions() {
     final Options options = new Options();
     options.addOption(
         Option.builder("f")
@@ -237,6 +237,33 @@ public class ImportWAL {
             .desc(
                 ImportWALMessages
                     .MESSAGE_NUMBER_OF_THREADS_USED_TO_REPLAY_WAL_DIRECTORIES_IN_PARALLEL_DEFAULT_1_6AEF4F50)
+            .build());
+    options.addOption(
+        Option.builder()
+            .longOpt("on_delete")
+            .hasArg()
+            .argName("ask|execute|skip|terminate")
+            .desc(
+                ImportWALMessages
+                    .MESSAGE_POLICY_FOR_TREE_TABLE_DELETIONS_ASK_DEFAULT_EXECUTE_SKIP_TERMINATE_C485B75F)
+            .build());
+    options.addOption(
+        Option.builder()
+            .longOpt("on_object")
+            .hasArg()
+            .argName("ask|skip|terminate")
+            .desc(
+                ImportWALMessages
+                    .MESSAGE_POLICY_FOR_OBJECTNODE_ENTRIES_ASK_DEFAULT_SKIP_TERMINATE_7C94280F)
+            .build());
+    options.addOption(
+        Option.builder()
+            .longOpt("on_unsupported")
+            .hasArg()
+            .argName("ask|skip|terminate")
+            .desc(
+                ImportWALMessages
+                    .MESSAGE_POLICY_FOR_UNSUPPORTED_OPERATIONS_INCLUDING_UNCONVERTIBLE_TABLE_DELETIONS_ASK_DEFAULT_SKIP_TERMINATE_46ED9D3B)
             .build());
     options.addOption(
         Option.builder()
@@ -839,6 +866,35 @@ public class ImportWAL {
       TERMINATE
     }
 
+    private enum ReplayPolicy {
+      ASK,
+      EXECUTE,
+      SKIP,
+      TERMINATE;
+
+      static ReplayPolicy parse(final CommandLine commandLine, final String option) {
+        final String value = commandLine.getOptionValue(option, "ask");
+        final boolean executable = "on_delete".equals(option);
+        final ReplayPolicy policy =
+            switch (value.trim().toLowerCase(Locale.ROOT)) {
+              case "ask" -> ASK;
+              case "execute" -> executable ? EXECUTE : null;
+              case "skip" -> SKIP;
+              case "terminate" -> TERMINATE;
+              default -> null;
+            };
+        if (policy == null) {
+          throw new IllegalArgumentException(
+              String.format(
+                  ImportWALMessages.EXCEPTION_INVALID_VALUE_FOR_ARG_ARG_EXPECTED_ARG_73B78522,
+                  option,
+                  value,
+                  executable ? "ask, execute, skip, terminate" : "ask, skip, terminate"));
+        }
+        return policy;
+      }
+    }
+
     @FunctionalInterface
     interface ReplayDecisionPrompt {
 
@@ -853,6 +909,9 @@ public class ImportWAL {
     static class ReplayDecisionController implements ReplayDecisionPrompt {
 
       private final BiFunction<String, Object, String> readLine;
+      private final ReplayPolicy deletePolicy;
+      private final ReplayPolicy objectPolicy;
+      private final ReplayPolicy unsupportedPolicy;
       private ReplayDecision treeDeleteDecision;
       private ReplayDecision tableDeleteDecision;
       private boolean skipAllUnsupportedEntries;
@@ -863,6 +922,16 @@ public class ImportWAL {
 
       ReplayDecisionController(final BiFunction<String, Object, String> readLine) {
         this.readLine = readLine;
+        deletePolicy = ReplayPolicy.ASK;
+        objectPolicy = ReplayPolicy.ASK;
+        unsupportedPolicy = ReplayPolicy.ASK;
+      }
+
+      ReplayDecisionController(final CommandLine commandLine, final Console console) {
+        readLine = console == null ? null : console::readLine;
+        deletePolicy = ReplayPolicy.parse(commandLine, "on_delete");
+        objectPolicy = ReplayPolicy.parse(commandLine, "on_object");
+        unsupportedPolicy = ReplayPolicy.parse(commandLine, "on_unsupported");
       }
 
       // The controller is shared by parallel workers so an "all" choice applies to the whole
@@ -875,6 +944,26 @@ public class ImportWAL {
       @Override
       public synchronized ReplayDecision decide(
           final WALEntry entry, final boolean executableDelete, final String reason) {
+        // Conversion failures use the unsupported policy even when deletion was authorized.
+        // Explicit policies also take precedence over remembered interactive "all" choices.
+        final ReplayPolicy policy =
+            executableDelete
+                ? deletePolicy
+                : entry.getValue() instanceof ObjectNode ? objectPolicy : unsupportedPolicy;
+        switch (policy) {
+          case EXECUTE -> {
+            return ReplayDecision.EXECUTE;
+          }
+          case SKIP -> {
+            return ReplayDecision.SKIP;
+          }
+          case TERMINATE -> {
+            return ReplayDecision.TERMINATE;
+          }
+          case ASK -> {
+            // Preserve the existing interactive behavior when no policy was specified.
+          }
+        }
         final boolean tableDelete = entry.getValue() instanceof RelationalDeleteDataNode;
         final ReplayDecision rememberedDecision =
             tableDelete ? tableDeleteDecision : treeDeleteDecision;

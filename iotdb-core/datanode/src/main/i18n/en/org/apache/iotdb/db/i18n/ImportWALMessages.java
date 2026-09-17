@@ -118,5 +118,14 @@ public final class ImportWALMessages {
   public static final String EXCEPTION_CANNOT_REPLAY_TABLE_DELETION_UNSUPPORTED_TAG_PREDICATE_ARG_AD0753A8 =
       "Cannot replay table deletion: unsupported TAG predicate %s.";
 
+  public static final String MESSAGE_POLICY_FOR_TREE_TABLE_DELETIONS_ASK_DEFAULT_EXECUTE_SKIP_TERMINATE_C485B75F =
+      "Policy for tree/table deletions: ask (default), execute, skip, terminate.";
+  public static final String MESSAGE_POLICY_FOR_OBJECTNODE_ENTRIES_ASK_DEFAULT_SKIP_TERMINATE_7C94280F =
+      "Policy for ObjectNode entries: ask (default), skip, terminate.";
+  public static final String MESSAGE_POLICY_FOR_UNSUPPORTED_OPERATIONS_INCLUDING_UNCONVERTIBLE_TABLE_DELETIONS_ASK_DEFAULT_SKIP_TERMINATE_46ED9D3B =
+      "Policy for unsupported operations, including unconvertible table deletions: ask (default), skip, terminate.";
+  public static final String EXCEPTION_INVALID_VALUE_FOR_ARG_ARG_EXPECTED_ARG_73B78522 =
+      "Invalid value for --%s: %s. Expected %s.";
+
   private ImportWALMessages() {}
 }
