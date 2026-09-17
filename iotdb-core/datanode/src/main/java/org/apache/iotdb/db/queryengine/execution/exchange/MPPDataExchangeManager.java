@@ -190,7 +190,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               checkArgument(
                   blockOffset >= 0 && blockOffset <= serializedTsBlockSize,
                   DataNodeQueryMessages
-                      .EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_RANGE_0672002F);
+                      .EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284,
+                  blockOffset,
+                  serializedTsBlockSize);
               int remainingBlockSize = serializedTsBlockSize - blockOffset;
               if (remainingBlockSize <= remainingPayloadSize) {
                 ByteBuffer fragment = serializedTsBlock.duplicate();

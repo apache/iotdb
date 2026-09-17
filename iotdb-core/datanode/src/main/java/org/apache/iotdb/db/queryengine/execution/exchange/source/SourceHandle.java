@@ -829,7 +829,10 @@ public class SourceHandle implements ISourceHandle {
           }
           Preconditions.checkState(
               partialTsBlock.size() == partialTsBlockTotalLength,
-              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
+              DataNodeQueryMessages
+                  .EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303,
+              partialTsBlock.size(),
+              partialTsBlockTotalLength);
           tsBlocks.add(ByteBuffer.wrap(partialTsBlock.getBuf(), 0, partialTsBlock.size()));
           partialTsBlock = null;
           partialTsBlockTotalLength = 0;
@@ -847,31 +850,40 @@ public class SourceHandle implements ISourceHandle {
         if (lastBlockIsFragment) {
           checkArgument(
               response.isSetTotalLength(),
-              DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
+              DataNodeQueryMessages
+                  .EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2);
           partialTsBlock = new PublicBAOS(response.getTotalLength());
           appendFragment(responseBlocks.get(blockIndex));
           updateOffset(response.getOffset());
         }
 
         Preconditions.checkState(
-            nextSequenceId <= endSequenceId
-                && (lastBlockIsFragment
-                    || nextSequenceId != endSequenceId
-                    || partialTsBlock == null),
-            DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
+            nextSequenceId <= endSequenceId,
+            DataNodeQueryMessages
+                .EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E,
+            nextSequenceId,
+            endSequenceId);
+        Preconditions.checkState(
+            lastBlockIsFragment || nextSequenceId != endSequenceId || partialTsBlock == null,
+            DataNodeQueryMessages
+                .EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287);
       }
 
       private void appendFragment(ByteBuffer fragment) {
         checkArgument(
             fragment.hasRemaining(),
-            DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
+            DataNodeQueryMessages.EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863);
         partialTsBlock.writeBytes(fragment.array());
       }
 
       private void updateOffset(int nextOffset) {
         checkArgument(
             nextOffset > offset && nextOffset == partialTsBlock.size(),
-            DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
+            DataNodeQueryMessages
+                .EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047,
+            nextOffset,
+            offset,
+            partialTsBlock.size());
         offset = nextOffset;
       }
     }

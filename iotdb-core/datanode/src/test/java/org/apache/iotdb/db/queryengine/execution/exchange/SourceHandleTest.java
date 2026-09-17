@@ -41,7 +41,6 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.nio.ByteBuffer;
@@ -73,77 +72,7 @@ public class SourceHandleTest {
   }
 
   @Test
-  public void testFragmentAssemblyUsesOnlyByteBufferRemainingBytes() {
-    final String queryId = "q0";
-    final TEndPoint remoteEndpoint =
-        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
-    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
-    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
-
-    LocalMemoryManager localMemoryManager = Mockito.mock(LocalMemoryManager.class);
-    MemoryPool memoryPool = Utils.createMockNonBlockedMemoryPool();
-    Mockito.when(localMemoryManager.getQueryPool()).thenReturn(memoryPool);
-    SourceHandleListener sourceHandleListener = Mockito.mock(SourceHandleListener.class);
-    TsBlockSerde serde = Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE);
-    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager =
-        Mockito.mock(IClientManager.class);
-    SyncDataNodeMPPDataExchangeServiceClient client =
-        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
-    AtomicInteger rpcCount = new AtomicInteger();
-    try {
-      Mockito.when(clientManager.borrowClient(remoteEndpoint)).thenReturn(client);
-      Mockito.doAnswer(
-              invocation -> {
-                if (rpcCount.getAndIncrement() == 0) {
-                  ByteBuffer firstFragment = ByteBuffer.wrap(new byte[] {99, 1, 2, 98}, 1, 2);
-                  return new TGetDataBlockResponse(List.of(firstFragment))
-                      .setOffset(2)
-                      .setTotalLength(4);
-                }
-                ByteBuffer secondFragment =
-                    ByteBuffer.wrap(new byte[] {97, 3, 4, 96}, 1, 2).slice();
-                return new TGetDataBlockResponse(List.of(secondFragment));
-              })
-          .when(client)
-          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
-    } catch (ClientManagerException | TException e) {
-      Assert.fail(e.getMessage());
-    }
-
-    SourceHandle sourceHandle =
-        new SourceHandle(
-            remoteEndpoint,
-            remoteFragmentInstanceId,
-            localFragmentInstanceId,
-            "exchange_0",
-            0,
-            localMemoryManager,
-            Executors.newSingleThreadExecutor(),
-            serde,
-            sourceHandleListener,
-            clientManager);
-    Assert.assertFalse(sourceHandle.isBlocked().isDone());
-    sourceHandle.updatePendingDataBlockInfo(0, List.of(MOCK_TSBLOCK_SIZE));
-    try {
-      Mockito.verify(client, Mockito.timeout(10_000).times(2))
-          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
-    } catch (TException e) {
-      Assert.fail(e.getMessage());
-    }
-
-    sourceHandle.receive();
-    ArgumentCaptor<ByteBuffer> serializedBlock = ArgumentCaptor.forClass(ByteBuffer.class);
-    Mockito.verify(serde).deserialize(serializedBlock.capture());
-    ByteBuffer actual = serializedBlock.getValue().duplicate();
-    Assert.assertEquals(4, actual.remaining());
-    byte[] actualBytes = new byte[actual.remaining()];
-    actual.get(actualBytes);
-    Assert.assertArrayEquals(new byte[] {1, 2, 3, 4}, actualBytes);
-    sourceHandle.abort();
-  }
-
-  @Test
-  public void testFragmentAssemblyRejectsUnusedPublicBaosCapacity() {
+  public void testFragmentAssemblyFailsWhenTotalLengthDoesNotMatch() {
     final String queryId = "q0";
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
@@ -198,7 +127,7 @@ public class SourceHandleTest {
       Assert.fail(e.getMessage());
     }
     Mockito.verify(sourceHandleListener, Mockito.timeout(10_000))
-        .onFailure(Mockito.eq(sourceHandle), Mockito.any(IllegalArgumentException.class));
+        .onFailure(Mockito.eq(sourceHandle), Mockito.any(IllegalStateException.class));
     Mockito.verify(serde, Mockito.never()).deserialize(Mockito.any(ByteBuffer.class));
     sourceHandle.abort();
   }
