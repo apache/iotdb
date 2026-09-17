@@ -29,6 +29,7 @@ import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -287,6 +288,11 @@ public class WALNode implements IWALNode {
   public WALFlushListener log(long memTableId, ObjectNode objectNode) {
     WALEntry walEntry = new WALInfoEntry(memTableId, objectNode);
     return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, LoadTsFileConsensusNode node) {
+    return log(new WALInfoEntry(memTableId, node));
   }
 
   private WALFlushListener log(WALEntry walEntry) {
@@ -824,19 +830,23 @@ public class WALNode implements IWALNode {
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 currentEntryContainsUserData.set(
                     currentEntryContainsUserData.get() || containsUserData(type));
-                if (type == WALEntryType.OBJECT_FILE_NODE) {
+                if (type == WALEntryType.OBJECT_FILE_NODE
+                    || type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
                           new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // only be called by leader read from wal
-                  // wal only has relativePath, offset, eof, length
-                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
-                  // content
-                  // need to add IoTConsensusRequest instead of ObjectNode
-                  tmpNodes
-                      .get()
-                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
-                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                  // WAL only has relativePath, offset, eof and length. For downstream V1 sync,
+                  // read the content from the referenced file and send an IoTConsensusRequest
+                  // carrying the expanded bytes instead of the raw WAL slice.
+                  ByteBuffer request =
+                      type == WALEntryType.OBJECT_FILE_NODE
+                          ? ((ObjectNode) walEntry.getValue()).serialize()
+                          : ((LoadTsFileConsensusNode) walEntry.getValue()).serialize();
+                  tmpNodes.get().add(new IoTConsensusRequest(request));
+                  memorySize +=
+                      type == WALEntryType.OBJECT_FILE_NODE
+                          ? ((ObjectNode) walEntry.getValue()).getMemorySize()
+                          : request.remaining();
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));
                   memorySize += buffer.remaining();
@@ -861,19 +871,23 @@ public class WALNode implements IWALNode {
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 currentEntryContainsUserData.set(
                     currentEntryContainsUserData.get() || containsUserData(type));
-                if (type == WALEntryType.OBJECT_FILE_NODE) {
+                if (type == WALEntryType.OBJECT_FILE_NODE
+                    || type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
                           new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // only be called by leader read from wal
-                  // wal only has relativePath, offset, eof, length
-                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
-                  // content
-                  // need to add IoTConsensusRequest instead of ObjectNode
-                  tmpNodes
-                      .get()
-                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
-                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                  // WAL only has relativePath, offset, eof and length. For downstream V1 sync,
+                  // read the content from the referenced file and send an IoTConsensusRequest
+                  // carrying the expanded bytes instead of the raw WAL slice.
+                  ByteBuffer request =
+                      type == WALEntryType.OBJECT_FILE_NODE
+                          ? ((ObjectNode) walEntry.getValue()).serialize()
+                          : ((LoadTsFileConsensusNode) walEntry.getValue()).serialize();
+                  tmpNodes.get().add(new IoTConsensusRequest(request));
+                  memorySize +=
+                      type == WALEntryType.OBJECT_FILE_NODE
+                          ? ((ObjectNode) walEntry.getValue()).getMemorySize()
+                          : request.remaining();
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));
                   memorySize += buffer.remaining();

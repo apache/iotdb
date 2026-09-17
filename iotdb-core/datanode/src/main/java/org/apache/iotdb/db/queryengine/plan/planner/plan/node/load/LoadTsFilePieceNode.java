@@ -50,6 +50,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFilePieceNode.class);
 
   private File tsFile;
+  private long pieceIndex;
 
   private long dataSize;
   private List<TsFileData> tsFileDataList;
@@ -59,10 +60,19 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   public LoadTsFilePieceNode(PlanNodeId id, File tsFile) {
+    this(id, tsFile, 0L);
+  }
+
+  public LoadTsFilePieceNode(PlanNodeId id, File tsFile, long pieceIndex) {
     super(id);
     this.tsFile = tsFile;
+    this.pieceIndex = pieceIndex;
     this.dataSize = 0;
     this.tsFileDataList = new ArrayList<>();
+  }
+
+  public long getPieceIndex() {
+    return pieceIndex;
   }
 
   public long getDataSize() {
@@ -133,6 +143,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LOAD_TSFILE.serialize(stream);
+    ReadWriteIOUtils.write(pieceIndex, stream);
     ReadWriteIOUtils.write(tsFile.getPath(), stream); // TODO: can save this space
     ReadWriteIOUtils.write(tsFileDataList.size(), stream);
     for (TsFileData tsFileData : tsFileDataList) {
@@ -160,8 +171,10 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     ByteBufferInputStream stream = new ByteBufferInputStream(buffer);
     try {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
+      final long pieceIndex = ReadWriteIOUtils.readLong(stream);
       final File tsFile = new File(ReadWriteIOUtils.readString(stream));
-      final LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
+      final LoadTsFilePieceNode pieceNode =
+          new LoadTsFilePieceNode(new PlanNodeId(""), tsFile, pieceIndex);
       final int tsFileDataSize = ReadWriteIOUtils.readInt(stream);
       for (int i = 0; i < tsFileDataSize; i++) {
         TsFileData tsFileData = TsFileData.deserialize(stream);
@@ -185,13 +198,14 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     }
     LoadTsFilePieceNode loadTsFilePieceNode = (LoadTsFilePieceNode) o;
     return Objects.equals(tsFile, loadTsFilePieceNode.tsFile)
+        && pieceIndex == loadTsFilePieceNode.pieceIndex
         && Objects.equals(dataSize, loadTsFilePieceNode.dataSize)
         && Objects.equals(tsFileDataList, loadTsFilePieceNode.tsFileDataList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFile, dataSize, tsFileDataList);
+    return Objects.hash(tsFile, pieceIndex, dataSize, tsFileDataList);
   }
 
   @Override

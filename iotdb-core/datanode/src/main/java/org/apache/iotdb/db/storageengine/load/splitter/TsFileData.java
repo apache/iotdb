@@ -38,7 +38,11 @@ public interface TsFileData {
 
   static TsFileData deserialize(InputStream stream)
       throws IOException, PageException, IllegalPathException {
-    final TsFileDataType type = TsFileDataType.values()[ReadWriteIOUtils.readInt(stream)];
+    final int typeOrdinal = ReadWriteIOUtils.readInt(stream);
+    if (typeOrdinal < 0 || typeOrdinal >= TsFileDataType.values().length) {
+      throw new IOException();
+    }
+    final TsFileDataType type = TsFileDataType.values()[typeOrdinal];
     switch (type) {
       case CHUNK:
         return ChunkData.deserialize(stream);
