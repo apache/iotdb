@@ -287,6 +287,12 @@ public final class ManagerMessages {
       "LoadStatistics 服务已成功启动。";
   public static final String LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "LoadStatistics 服务已成功停止。";
+  public static final String
+      LOG_SKIP_DUPLICATE_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_ED195F69 =
+          "跳过 ReconstructRegion 请求中重复的 Region ID {}，目标 DataNode 为 {}。";
+  public static final String
+      LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789 =
+          "跳过 ReconstructRegion 请求中不存在的 Region ID {}，目标 DataNode 为 {}。";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] 成功提交 RegionMigrateProcedure，Region：{}，原 DataNode：{}，目标 DataNode：{}，新增 Coordinator：{}，移除 Coordinator：{}";
   public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =
