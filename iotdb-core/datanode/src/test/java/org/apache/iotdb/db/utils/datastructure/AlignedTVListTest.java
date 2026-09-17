@@ -606,6 +606,31 @@ public class AlignedTVListTest {
   }
 
   @Test
+  public void testSerializedSizeIncludesDeletedTimeBitmap() throws IOException {
+    AlignedTVList list = AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64));
+    for (int i = 0; i < ARRAY_SIZE + 3; i++) {
+      list.putAlignedValue(i, new Object[] {(long) i});
+    }
+    list.deleteTime(1, ARRAY_SIZE);
+    // Exact allocation used by WAL must include both values and the deleted-time bitmap.
+    WALByteBufferForTest buffer =
+        new WALByteBufferForTest(ByteBuffer.allocate(list.serializedSize()));
+    list.serializeToWAL(buffer);
+    Assert.assertEquals(list.serializedSize(), buffer.getBuffer().position());
+    DataInputStream stream =
+        new DataInputStream(new ByteArrayInputStream(buffer.getBuffer().array()));
+    AlignedTVList restored = AlignedTVList.deserialize(stream);
+    Assert.assertEquals(-1, stream.read());
+    Assert.assertEquals(list.rowCount(), restored.rowCount());
+    Assert.assertEquals(
+        list.getAlignedValue(ARRAY_SIZE + 2).toString(),
+        restored.getAlignedValue(ARRAY_SIZE + 2).toString());
+    for (int i = 0; i < list.rowCount(); i++) {
+      Assert.assertEquals(list.isTimeDeleted(i), restored.isTimeDeleted(i));
+    }
+  }
+
+  @Test
   public void testClone() {
     List<TSDataType> dataTypes = new ArrayList<>();
     BitMap[] bitMaps = new BitMap[5];

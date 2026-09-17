@@ -79,6 +79,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scal
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BinaryTVList;
 import org.apache.iotdb.db.utils.datastructure.BooleanTVList;
@@ -2107,6 +2108,114 @@ public class TypeServices {
                       .setChecked(true);
             };
 
+    @FunctionalInterface
+    public interface AlignedWalBatchWriter {
+      void write(
+          AlignedTVList list,
+          int columnIndex,
+          List<Object> arrays,
+          int rowCount,
+          IWALByteBufferView buffer);
+    }
+
+    // Aligned WAL interleaves values with null flags. Cast once per physical segment while keeping
+    // bitmap positions relative to the whole list; unmaterialized segments still write
+    // placeholders.
+    public static final TypeService<AlignedWalBatchWriter> ALIGNED_WAL_BATCH_WRITER_SERVICE =
+        type ->
+            switch (type.getTypeEnum()) {
+              case INT32, DATE ->
+                  (list, columnIndex, arrays, rowCount, buffer) -> {
+                    for (int start = 0;
+                        start < rowCount;
+                        start += PrimitiveArrayManager.ARRAY_SIZE) {
+                      int[] values = (int[]) arrays.get(start / PrimitiveArrayManager.ARRAY_SIZE);
+                      int count = Math.min(PrimitiveArrayManager.ARRAY_SIZE, rowCount - start);
+                      for (int i = 0; i < count; i++) {
+                        buffer.putInt(values == null ? 0 : values[i]);
+                        WALWriteUtils.write(list.isNullValue(start + i, columnIndex), buffer);
+                      }
+                    }
+                  };
+              case INT64, TIMESTAMP ->
+                  (list, columnIndex, arrays, rowCount, buffer) -> {
+                    for (int start = 0;
+                        start < rowCount;
+                        start += PrimitiveArrayManager.ARRAY_SIZE) {
+                      long[] values = (long[]) arrays.get(start / PrimitiveArrayManager.ARRAY_SIZE);
+                      int count = Math.min(PrimitiveArrayManager.ARRAY_SIZE, rowCount - start);
+                      for (int i = 0; i < count; i++) {
+                        buffer.putLong(values == null ? 0L : values[i]);
+                        WALWriteUtils.write(list.isNullValue(start + i, columnIndex), buffer);
+                      }
+                    }
+                  };
+              case FLOAT ->
+                  (list, columnIndex, arrays, rowCount, buffer) -> {
+                    for (int start = 0;
+                        start < rowCount;
+                        start += PrimitiveArrayManager.ARRAY_SIZE) {
+                      float[] values =
+                          (float[]) arrays.get(start / PrimitiveArrayManager.ARRAY_SIZE);
+                      int count = Math.min(PrimitiveArrayManager.ARRAY_SIZE, rowCount - start);
+                      for (int i = 0; i < count; i++) {
+                        buffer.putFloat(values == null ? 0F : values[i]);
+                        WALWriteUtils.write(list.isNullValue(start + i, columnIndex), buffer);
+                      }
+                    }
+                  };
+              case DOUBLE ->
+                  (list, columnIndex, arrays, rowCount, buffer) -> {
+                    for (int start = 0;
+                        start < rowCount;
+                        start += PrimitiveArrayManager.ARRAY_SIZE) {
+                      double[] values =
+                          (double[]) arrays.get(start / PrimitiveArrayManager.ARRAY_SIZE);
+                      int count = Math.min(PrimitiveArrayManager.ARRAY_SIZE, rowCount - start);
+                      for (int i = 0; i < count; i++) {
+                        buffer.putDouble(values == null ? 0D : values[i]);
+                        WALWriteUtils.write(list.isNullValue(start + i, columnIndex), buffer);
+                      }
+                    }
+                  };
+              case BOOLEAN ->
+                  (list, columnIndex, arrays, rowCount, buffer) -> {
+                    for (int start = 0;
+                        start < rowCount;
+                        start += PrimitiveArrayManager.ARRAY_SIZE) {
+                      boolean[] values =
+                          (boolean[]) arrays.get(start / PrimitiveArrayManager.ARRAY_SIZE);
+                      int count = Math.min(PrimitiveArrayManager.ARRAY_SIZE, rowCount - start);
+                      for (int i = 0; i < count; i++) {
+                        buffer.put((byte) (values != null && values[i] ? 1 : 0));
+                        WALWriteUtils.write(list.isNullValue(start + i, columnIndex), buffer);
+                      }
+                    }
+                  };
+              case TEXT, BLOB, STRING, OBJECT ->
+                  (list, columnIndex, arrays, rowCount, buffer) -> {
+                    for (int start = 0;
+                        start < rowCount;
+                        start += PrimitiveArrayManager.ARRAY_SIZE) {
+                      Binary[] values =
+                          (Binary[]) arrays.get(start / PrimitiveArrayManager.ARRAY_SIZE);
+                      int count = Math.min(PrimitiveArrayManager.ARRAY_SIZE, rowCount - start);
+                      for (int i = 0; i < count; i++) {
+                        if (values != null && values[i] != null && values[i].getValues() != null) {
+                          WALWriteUtils.write(values[i], buffer);
+                        } else {
+                          buffer.putInt(0);
+                        }
+                        WALWriteUtils.write(list.isNullValue(start + i, columnIndex), buffer);
+                      }
+                    }
+                  };
+              case ROW, UNKNOWN, VECTOR ->
+                  throw new UnSupportedDataTypeException(
+                          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + type.getTypeEnum())
+                      .setChecked(true);
+            };
+
     public static final TypeService<BatchDataColumnWriter> BATCH_DATA_COLUMN_WRITER_SERVICE =
         type ->
             switch (type.getTypeEnum()) {
@@ -3026,6 +3135,7 @@ public class TypeServices {
       DECODED_VALUE_CHUNK_WRITER_SERVICE.check();
       SEGMENTED_ARRAY_SERIALIZED_SIZE_SERVICE.check();
       ARRAY_VALUE_COLUMN_WRITER_SERVICE.check();
+      ALIGNED_WAL_BATCH_WRITER_SERVICE.check();
       BATCH_DATA_COLUMN_WRITER_SERVICE.check();
       OBJECT_VALUE_SERIALIZER_SERVICE.check();
       TS_PRIMITIVE_VALUE_SERIALIZER_SERVICE.check();

@@ -23,6 +23,9 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ac
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedDeltaAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedIncreaseAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedRateAccumulator;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.SemanticException;
@@ -31,20 +34,84 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Aggrega
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class RateBatchInputTest {
+  @Test
+  public void testOrderedValidationAcrossBatches() {
+    // An invalid later row must not undo accepted rows or advance the ordered state itself.
+    for (RateFunctionType function : RateFunctionType.values()) {
+      TableAccumulator single = new OrderedIrateAccumulator(TSDataType.DOUBLE);
+      GroupedAccumulator grouped =
+          switch (function) {
+            case RATE -> new GroupedOrderedRateAccumulator(TSDataType.DOUBLE);
+            case INCREASE -> new GroupedOrderedIncreaseAccumulator(TSDataType.DOUBLE);
+            case DELTA -> new GroupedOrderedDeltaAccumulator(TSDataType.DOUBLE);
+            case IRATE -> null;
+          };
+      if (grouped != null) grouped.setGroupCount(2);
+      Consumer<Column[]> add =
+          columns -> {
+            AggregationMask mask = AggregationMask.createSelectAll(columns[0].getPositionCount());
+            if (grouped == null) single.addInput(columns, mask);
+            else grouped.addInput(new int[] {1, 1}, columns, mask);
+          };
+      for (double invalid :
+          new double[] {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY}) {
+        single.reset();
+        if (grouped != null) grouped.reset();
+        Column[] input = orderedArguments(function, new double[] {2, invalid}, new long[] {10, 20});
+        assertThrows(SemanticException.class, () -> add.accept(input));
+        add.accept(orderedArguments(function, new double[] {4}, new long[] {20}));
+        ColumnBuilder result = new DoubleColumnBuilder(null, 1);
+        if (grouped == null) single.evaluateFinal(result);
+        else grouped.evaluateFinal(1, result);
+        assertFalse(result.build().isNull(0));
+        Column[] duplicate = orderedArguments(function, new double[] {8}, new long[] {20});
+        Column[] descending = orderedArguments(function, new double[] {8}, new long[] {15});
+        assertThrows(SemanticException.class, () -> add.accept(duplicate));
+        assertThrows(SemanticException.class, () -> add.accept(descending));
+      }
+      single.reset();
+      if (grouped != null) grouped.reset();
+      Column[] negative = orderedArguments(function, new double[] {-2}, new long[] {10});
+      if (function.isCounter()) assertThrows(SemanticException.class, () -> add.accept(negative));
+      else add.accept(negative);
+    }
+  }
+
+  private static Column[] orderedArguments(
+      RateFunctionType function, double[] values, long[] times) {
+    int count = values.length;
+    Column value = new DoubleColumn(count, Optional.empty(), values);
+    Column time = new LongColumn(count, Optional.empty(), times);
+    long[] ends = new long[count];
+    Arrays.fill(ends, 60);
+    return function.isWindowed()
+        ? new Column[] {
+          value,
+          time,
+          new LongColumn(count, Optional.empty(), new long[count]),
+          new LongColumn(count, Optional.empty(), ends)
+        }
+        : new Column[] {value, time};
+  }
+
   @Test
   public void testAllImplementationsWithMaskedNullsAndLogicalGroupIds() {
     MemoryReservationManager memory = new NoOpMemoryReservationManager();

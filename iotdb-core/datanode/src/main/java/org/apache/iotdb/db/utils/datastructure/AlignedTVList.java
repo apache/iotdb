@@ -48,7 +48,6 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -1853,7 +1852,8 @@ public abstract class AlignedTVList extends TVList {
     size += Byte.BYTES;
     if (timeColDeletedMap != null) {
       int length = timeColDeletedMap.getByteArray().length;
-      return ReadWriteForEncodingUtils.varIntSize(length) + length * Byte.BYTES;
+      // WALWriteUtils writes the bitmap length as a fixed-width int after the existing payload.
+      size += Integer.BYTES + length * Byte.BYTES;
     }
     return size;
   }
@@ -1872,19 +1872,9 @@ public abstract class AlignedTVList extends TVList {
     }
     // serialize value and bitmap by column
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
-      TypeServices.WALColumnWriter valueWriter =
-          TypeServices.StorageEngine.WAL_ARRAY_WRITER_SERVICE.call(
-              Type.fromTsDataType(dataTypes.get(columnIndex)));
-      List<Object> columnValues = values.get(columnIndex);
-      for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-        int arrayIndex = rowIndex / ARRAY_SIZE;
-        int elementIndex = rowIndex % ARRAY_SIZE;
-        Object valueArray = columnValues.get(arrayIndex);
-        // value
-        valueWriter.write(valueArray, buffer, elementIndex, elementIndex + 1);
-        // bitmap
-        WALWriteUtils.write(isNullValue(rowIndex, columnIndex), buffer);
-      }
+      TypeServices.StorageEngine.ALIGNED_WAL_BATCH_WRITER_SERVICE
+          .call(Type.fromTsDataType(dataTypes.get(columnIndex)))
+          .write(this, columnIndex, values.get(columnIndex), rowCount, buffer);
     }
 
     if (timeColDeletedMap != null) {
@@ -1939,7 +1929,7 @@ public abstract class AlignedTVList extends TVList {
 
     boolean hasTimeColDeletedMap = stream.read() == 1;
     if (hasTimeColDeletedMap) {
-      int length = ReadWriteForEncodingUtils.readVarInt(stream);
+      int length = stream.readInt();
       byte[] bytes = new byte[length];
       stream.readFully(bytes);
       tvList.timeColDeletedMap = new BitMap(rowCount, bytes);
