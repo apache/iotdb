@@ -115,6 +115,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -2612,9 +2613,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus executePreparedNumericRow(TSExecutePreparedNumericRowReq req) {
     IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     if (!SESSION_MANAGER.checkLogin(session)) return getNotLoggedInStatus();
+    InsertNumericRowStatement statement = null;
     try {
       if (req.getSessionId() != session.getId()) return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN);
-      InsertBaseStatement statement =
+      statement =
           session
               .getPreparedNumericRow(req.getPreparedId())
               .bind(
@@ -2636,6 +2638,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.INSERT_RECORD.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    } finally {
+      if (statement != null && statement.isTableSchemaValidationFailed()) {
+        // Remove only this session's invalid handle, releasing its reservation exactly once.
+        session.removePreparedNumericRow(req.getPreparedId());
+      }
     }
   }
 

@@ -28,6 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertNumericRowStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.utils.Pair;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -50,6 +52,19 @@ public class InsertNumericRow extends WrappedInsertStatement {
 
   @Override
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
+    try {
+      validatePreparedTableSchema(metadata, context);
+      if (getInnerTreeStatement().hasFailedMeasurements()) {
+        getInnerTreeStatement().markTableSchemaValidationFailed();
+      }
+    } catch (RuntimeException e) {
+      // The coordinator may convert exceptions to statuses; retain the failure for RPC cleanup.
+      getInnerTreeStatement().markTableSchemaValidationFailed();
+      throw e;
+    }
+  }
+
+  private void validatePreparedTableSchema(Metadata metadata, MPPQueryContext context) {
     InsertNumericRowStatement statement = getInnerTreeStatement();
     if (statement.getPreparedTableVersion() != null) {
       // Check at analysis time under the same deletion lock and metadata lease as normal inserts.
@@ -57,8 +72,18 @@ public class InsertNumericRow extends WrappedInsertStatement {
           .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
       TsTable currentTable =
           DataNodeTableCache.getInstance().getTableInWrite(getDatabase(), getTableName());
-      if (currentTable != null
-          && currentTable.matchesInstanceVersion(statement.getPreparedTableVersion())) {
+      boolean compatible =
+          currentTable != null
+              && currentTable.matchesInstanceVersion(statement.getPreparedTableVersion());
+      if (!compatible && statement.getPreparedNumericRowInfo() != null) {
+        Pair<Long, Long> version =
+            statement.getPreparedNumericRowInfo().refreshTableVersionIfCompatible(currentTable);
+        if (version != null) {
+          statement.setPreparedTableVersion(version);
+          compatible = true;
+        }
+      }
+      if (compatible) {
         statement.setAttributeColumnsPresent(false);
         // Cached schema names must not be mutated by later normalization.
         statement.setToLowerCaseApplied(true);

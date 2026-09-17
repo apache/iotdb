@@ -60,7 +60,7 @@ public final class PreparedNumericRowInfo {
   private final TsTableColumnCategory[] categories;
   private final int tagCount;
   private final int valueBytes;
-  private final Pair<Long, Long> tableVersion;
+  private volatile Pair<Long, Long> tableVersion;
   private final MeasurementSchema[] measurementSchemas;
 
   public PreparedNumericRowInfo(String database, TSPrepareNumericRowReq req) {
@@ -178,20 +178,13 @@ public final class PreparedNumericRowInfo {
   }
 
   private MeasurementSchema[] prepareMeasurementSchemas(TsTable currentTable) {
-    // Views and requests needing TAG padding/reordering or type conversion use normal analysis.
-    if (currentTable == null
-        || currentTable.getClass() != TsTable.class
-        || DataNodeTreeViewSchemaUtils.isTreeViewTable(currentTable)
-        || currentTable.getTagColumnSchemaList().size() != tagCount) {
+    if (!matchesTableSchema(currentTable)) {
       return null;
     }
     MeasurementSchema[] schemas = new MeasurementSchema[measurements.length];
     for (int i = 0; i < measurements.length; i++) {
       TsTableColumnSchema column = currentTable.getColumnSchema(measurements[i]);
-      if (column == null
-          || column.getDataType() != types[i]
-          || column.getColumnCategory() != categories[i]
-          || (i < tagCount && currentTable.getTagColumnOrdinal(measurements[i]) != i)) {
+      if (column == null) {
         return null;
       }
       schemas[i] =
@@ -202,6 +195,41 @@ public final class PreparedNumericRowInfo {
               TSFileDescriptor.getInstance().getConfig().getCompressor(types[i]));
     }
     return schemas;
+  }
+
+  private boolean matchesTableSchema(TsTable currentTable) {
+    // Views and requests needing TAG padding/reordering or type conversion use normal analysis.
+    if (currentTable == null
+        || currentTable.getClass() != TsTable.class
+        || DataNodeTreeViewSchemaUtils.isTreeViewTable(currentTable)
+        || currentTable.getTagColumnSchemaList().size() != tagCount) {
+      return false;
+    }
+    for (int i = 0; i < measurements.length; i++) {
+      TsTableColumnSchema column = currentTable.getColumnSchema(measurements[i]);
+      if (column == null
+          || column.getDataType() != types[i]
+          || column.getColumnCategory() != categories[i]
+          || (i < tagCount && currentTable.getTagColumnOrdinal(measurements[i]) != i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Returns a stable compatible version, retaining the cached schemas and wire layout. */
+  public Pair<Long, Long> refreshTableVersionIfCompatible(TsTable currentTable) {
+    if (measurementSchemas == null || currentTable == null) {
+      return null;
+    }
+    Pair<Long, Long> version = currentTable.getInstanceVersion();
+    if (!matchesTableSchema(currentTable) || !currentTable.matchesInstanceVersion(version)) {
+      return null;
+    }
+    // Publish only a compatible candidate. Each execution rechecks it under the schema lock;
+    // retaining the old candidate on failure also keeps the session's memory reservation stable.
+    tableVersion = version;
+    return version;
   }
 
   public InsertNumericRowStatement bind(long timestamp, ByteBuffer tags, ByteBuffer values) {
@@ -287,6 +315,7 @@ public final class PreparedNumericRowInfo {
     statement.setTime(timestamp);
     statement.setNumericValues(row);
     if (measurementSchemas != null) {
+      statement.setPreparedNumericRowInfo(this);
       statement.setPreparedTableVersion(tableVersion);
       statement.setMeasurementSchemas(measurementSchemas.clone());
     }

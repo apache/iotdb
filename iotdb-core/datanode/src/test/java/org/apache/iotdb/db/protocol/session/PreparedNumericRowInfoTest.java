@@ -65,6 +65,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -142,18 +143,86 @@ public class PreparedNumericRowInfoTest {
     assertArrayEquals(new String[] {"tag", "v"}, bind(info, 1).getMeasurements());
   }
 
-  // A replacement table with the same name/revision must not reuse the old instance's schema.
+  // A replacement instance must pass compatibility checks even when its revision is unchanged.
   @Test
-  public void testRecreatedTableUsesFullValidation() {
-    InsertNumericRowStatement statement =
-        bind(new PreparedNumericRowInfo(DATABASE, request("tag", "v")), 1);
+  public void testCompatibleRecreatedTableRefreshesVersion() {
+    PreparedNumericRowInfo info = new PreparedNumericRowInfo(DATABASE, request("tag", "v"));
+    InsertNumericRowStatement statement = bind(info, 1);
     TsTable replacement = new TsTable("t");
     replacement.addColumnSchema(new TagColumnSchema("tag", TSDataType.STRING));
     replacement.addColumnSchema(new FieldColumnSchema("v", TSDataType.DOUBLE));
     assertEquals(table.getInstanceVersion().right, replacement.getInstanceVersion().right);
     install(replacement);
-    validateFallback(statement);
+    new InsertNumericRow(statement, context).validateTableSchema(metadata, context);
+    assertEquals(replacement.getInstanceVersion(), statement.getPreparedTableVersion());
+    assertEquals(replacement.getInstanceVersion(), bind(info, 1).getPreparedTableVersion());
+    verify(metadata, never())
+        .validateInsertNodeMeasurements(anyString(), any(), any(), anyBoolean(), any(), any());
     assertNotNull(statement.getMeasurementSchemas()[1]);
+  }
+
+  // An unrelated FIELD addition refreshes only the version, preserving schemas and memory usage.
+  @Test
+  public void testCompatibleVersionChangeRetainsFastPath() {
+    PreparedNumericRowInfo info = new PreparedNumericRowInfo(DATABASE, request("tag", "v"));
+    long reservedBytes = info.ramBytesUsed();
+    InsertNumericRowStatement statement = bind(info, 1);
+    Object schemas = statement.getMeasurementSchemas();
+    table.addColumnSchema(new FieldColumnSchema("extra", TSDataType.INT64));
+    new InsertNumericRow(statement, context).validateTableSchema(metadata, context);
+    assertSame(schemas, statement.getMeasurementSchemas());
+    assertFalse(statement.isTableSchemaValidationFailed());
+    assertEquals(table.getInstanceVersion(), statement.getPreparedTableVersion());
+    InsertNumericRowStatement next = bind(info, 1);
+    assertEquals(table.getInstanceVersion(), next.getPreparedTableVersion());
+    assertSame(statement.getMeasurementSchemas()[1], next.getMeasurementSchemas()[1]);
+    new InsertNumericRow(next, context).validateTableSchema(metadata, context);
+    verify(metadata, never())
+        .validateInsertNodeMeasurements(anyString(), any(), any(), anyBoolean(), any(), any());
+    assertEquals(reservedBytes, info.ramBytesUsed());
+  }
+
+  // Changed FIELD types must use normal validation and preserve its concrete error.
+  @Test
+  public void testIncompatibleVersionUsesValidationError() {
+    PreparedNumericRowInfo info = new PreparedNumericRowInfo(DATABASE, request("tag", "v"));
+    InsertNumericRowStatement statement = bind(info, 1);
+    TsTable replacement = new TsTable("t");
+    replacement.addColumnSchema(new TagColumnSchema("tag", TSDataType.STRING));
+    replacement.addColumnSchema(new FieldColumnSchema("v", TSDataType.BOOLEAN));
+    install(replacement);
+    SemanticException failure = new SemanticException("column v type mismatch");
+    doThrow(failure)
+        .when(metadata)
+        .validateInsertNodeMeasurements(anyString(), any(), any(), anyBoolean(), any(), any());
+    assertSame(
+        failure,
+        assertThrows(
+            SemanticException.class,
+            () -> new InsertNumericRow(statement, context).validateTableSchema(metadata, context)));
+    verify(metadata)
+        .validateInsertNodeMeasurements(eq(DATABASE), any(), eq(context), eq(true), any(), any());
+    assertNull(statement.getPreparedTableVersion());
+    assertNull(statement.getMeasurementSchemas());
+    assertTrue(statement.isTableSchemaValidationFailed());
+    assertFalse(replacement.matchesInstanceVersion(bind(info, 1).getPreparedTableVersion()));
+  }
+
+  // Partial insert errors also invalidate the handle even when validation returns normally.
+  @Test
+  public void testPartialSchemaFailureMarksPreparedRowInvalid() {
+    PreparedNumericRowInfo info = new PreparedNumericRowInfo(DATABASE, request("tag", "v"));
+    InsertNumericRowStatement statement = bind(info, 1);
+    table.addColumnSchema(new TagColumnSchema("tag2", TSDataType.STRING));
+    doAnswer(
+            invocation -> {
+              statement.markFailedMeasurement(1, new SemanticException("column v rejected"));
+              return null;
+            })
+        .when(metadata)
+        .validateInsertNodeMeasurements(anyString(), any(), any(), anyBoolean(), any(), any());
+    validateFallback(statement);
+    assertTrue(statement.isTableSchemaValidationFailed());
   }
 
   // Missing columns/table, views and type conversions remain on normal creation/validation.

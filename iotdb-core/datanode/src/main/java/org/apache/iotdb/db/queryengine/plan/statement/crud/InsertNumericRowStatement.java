@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
+import org.apache.iotdb.db.protocol.session.PreparedNumericRowInfo;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertNumericRow;
@@ -58,6 +59,8 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
   private IDeviceID deviceID;
   // A candidate snapshot, checked again under the schema analysis lock before reuse.
   private Pair<Long, Long> preparedTableVersion;
+  private PreparedNumericRowInfo preparedNumericRowInfo;
+  private volatile boolean tableSchemaValidationFailed;
 
   public InsertNumericRowStatement() {
     statementType = StatementType.INSERT_NUMERIC_ROW;
@@ -71,6 +74,22 @@ public class InsertNumericRowStatement extends InsertBaseStatement {
 
   public void setPreparedTableVersion(Pair<Long, Long> preparedTableVersion) {
     this.preparedTableVersion = preparedTableVersion;
+  }
+
+  public PreparedNumericRowInfo getPreparedNumericRowInfo() {
+    return preparedNumericRowInfo;
+  }
+
+  public void setPreparedNumericRowInfo(PreparedNumericRowInfo preparedNumericRowInfo) {
+    this.preparedNumericRowInfo = preparedNumericRowInfo;
+  }
+
+  public boolean isTableSchemaValidationFailed() {
+    return tableSchemaValidationFailed;
+  }
+
+  public void markTableSchemaValidationFailed() {
+    tableSchemaValidationFailed = true;
   }
 
   public long getTime() {

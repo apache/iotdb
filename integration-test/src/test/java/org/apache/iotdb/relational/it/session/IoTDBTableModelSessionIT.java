@@ -60,6 +60,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTa
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -196,7 +197,8 @@ public class IoTDBTableModelSessionIT {
 
   @Test
   public void testPreparedNumericRowSchemaVersionChange() throws Exception {
-    // Reuse a prepared row before and after adding a TAG, including a flush/read round trip.
+    // Refresh compatible FIELD additions, validate TAG padding, then verify a flush/read round
+    // trip.
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE numeric_version");
       session.executeNonQueryStatement("USE numeric_version");
@@ -207,8 +209,11 @@ public class IoTDBTableModelSessionIT {
               Arrays.asList("tag", "v"),
               Arrays.asList(TSDataType.STRING, TSDataType.DOUBLE),
               Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD));
-      for (int time = 1; time <= 3; time++) {
-        if (time == 3) {
+      for (int time = 1; time <= 5; time++) {
+        if (time == 2) {
+          session.executeNonQueryStatement("ALTER TABLE readings ADD COLUMN extra INT64 FIELD");
+        }
+        if (time == 4) {
           session.executeNonQueryStatement("ALTER TABLE readings ADD COLUMN tag2 STRING TAG");
         }
         session.executePreparedInsertNumericRow(
@@ -220,7 +225,7 @@ public class IoTDBTableModelSessionIT {
       session.executeNonQueryStatement("FLUSH");
       try (SessionDataSet dataSet =
           session.executeQueryStatement("SELECT time,tag,tag2,v FROM readings ORDER BY time")) {
-        for (int time = 1; time <= 3; time++) {
+        for (int time = 1; time <= 5; time++) {
           assertTrue(dataSet.hasNext());
           RowRecord row = dataSet.next();
           assertEquals(time, row.getFields().get(0).getLongV());
@@ -286,6 +291,53 @@ public class IoTDBTableModelSessionIT {
       assertNumericNullRows(session);
       session.executeNonQueryStatement("FLUSH");
       assertNumericNullRows(session);
+    }
+  }
+
+  // Failed schema validation closes only its handle; fixing the table still requires a new prepare.
+  @Test
+  public void testPreparedNumericRowClosesOnSchemaFailure() throws Exception {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE numeric_invalid");
+      session.executeNonQueryStatement("USE numeric_invalid");
+      session.executeNonQueryStatement("CREATE TABLE readings(tag STRING TAG, v DOUBLE FIELD)");
+      List<String> names = Arrays.asList("tag", "v");
+      List<TSDataType> types = Arrays.asList(TSDataType.STRING, TSDataType.DOUBLE);
+      List<ColumnCategory> categories = Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+      long[] values = {Double.doubleToRawLongBits(2.5)};
+      String[] tags = {"device"};
+      try (NumericRowPreparedStatement prepared =
+              session.prepareInsertNumericRow("readings", names, types, categories);
+          NumericRowPreparedStatement other =
+              session.prepareInsertNumericRow("readings", names, types, categories)) {
+        session.executeNonQueryStatement("DROP TABLE readings");
+        session.executeNonQueryStatement("CREATE TABLE readings(tag STRING TAG, v BOOLEAN FIELD)");
+        StatementExecutionException schemaError =
+            assertThrows(
+                StatementExecutionException.class,
+                () -> session.executePreparedInsertNumericRow(prepared, 1, values, tags));
+        assertTrue(schemaError.getMessage().contains("v"));
+        session.executeNonQueryStatement("DROP TABLE readings");
+        session.executeNonQueryStatement("CREATE TABLE readings(tag STRING TAG, v DOUBLE FIELD)");
+        StatementExecutionException closedError =
+            assertThrows(
+                StatementExecutionException.class,
+                () -> session.executePreparedInsertNumericRow(prepared, 2, values, tags));
+        assertTrue(closedError.getMessage().contains("closed"));
+        session.executePreparedInsertNumericRow(other, 3, values, tags);
+        try (NumericRowPreparedStatement replacement =
+            session.prepareInsertNumericRow("readings", names, types, categories)) {
+          session.executePreparedInsertNumericRow(replacement, 4, values, tags);
+        }
+        try (SessionDataSet dataSet =
+            session.executeQueryStatement("SELECT v FROM readings ORDER BY time")) {
+          for (int i = 0; i < 2; i++) {
+            assertTrue(dataSet.hasNext());
+            assertEquals(2.5, dataSet.next().getFields().get(0).getDoubleV(), 0);
+          }
+          assertFalse(dataSet.hasNext());
+        }
+      }
     }
   }
 
