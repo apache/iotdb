@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterTableColumnDataTypeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -41,6 +43,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.Optional;
 
 public class AlterTableColumnDataTypeProcedure
     extends AbstractAlterOrDropTableProcedure<AlterTableColumnDataTypeState> {
@@ -156,14 +159,25 @@ public class AlterTableColumnDataTypeProcedure
                 new AlterColumnDataTypePlan(database, tableName, columnName, dataType),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // A consensus write may have been applied even when the client observed a failure (for
+      // example, a timeout after the leader committed the entry). Continue with release when the
+      // canonical CN schema already contains the requested type; rolling back in that case would
+      // leave DataNodes on an older schema than the CN.
+      if (isColumnAlterCommitted(env)) {
+        setNextState(AlterTableColumnDataTypeState.COMMIT_RELEASE);
+        return;
+      }
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      return;
     }
     setNextState(AlterTableColumnDataTypeState.COMMIT_RELEASE);
   }
 
   @Override
   protected boolean isRollbackSupported(final AlterTableColumnDataTypeState state) {
-    return false;
+    return state == AlterTableColumnDataTypeState.CHECK_AND_INVALIDATE_COLUMN
+        || state == AlterTableColumnDataTypeState.PRE_RELEASE
+        || state == AlterTableColumnDataTypeState.ALTER_TABLE_COLUMN_DATA_TYPE;
   }
 
   @Override
@@ -171,7 +185,67 @@ public class AlterTableColumnDataTypeProcedure
       final ConfigNodeProcedureEnv configNodeProcedureEnv,
       final AlterTableColumnDataTypeState alterTableColumnDataTypeState)
       throws IOException, InterruptedException, ProcedureException {
-    // Do nothing
+    // COMMIT_RELEASE is irreversible: the CN schema has already been committed and must not be
+    // followed by a cache rollback if the procedure is aborted while notifying DataNodes.
+    if (alterTableColumnDataTypeState == AlterTableColumnDataTypeState.COMMIT_RELEASE) {
+      return;
+    }
+    final Optional<TSDataType> pendingType = getPreAlteredColumnType(configNodeProcedureEnv);
+    if (pendingType.isPresent() && pendingType.get() != dataType) {
+      // This rollback belongs to an older procedure. Leave a newer pre-alter marker and its
+      // DataNode cache entry untouched.
+      return;
+    }
+    final boolean ownsPendingMarker = pendingType.isPresent();
+    if (!ownsPendingMarker && isColumnAlterCommittedForRollback(configNodeProcedureEnv)) {
+      return;
+    }
+    final TSStatus status =
+        SchemaUtils.executeInConsensusLayer(
+            new RollbackPreAlterColumnDataTypePlan(database, tableName, columnName, dataType),
+            configNodeProcedureEnv,
+            LOGGER);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
+    if (alterTableColumnDataTypeState != AlterTableColumnDataTypeState.CHECK_AND_INVALIDATE_COLUMN
+        && table != null
+        && !getPreAlteredColumnType(configNodeProcedureEnv).isPresent()
+        && (ownsPendingMarker || !isColumnAlterCommittedForRollback(configNodeProcedureEnv))) {
+      rollbackPreRelease(configNodeProcedureEnv);
+    }
+  }
+
+  private Optional<TSDataType> getPreAlteredColumnType(final ConfigNodeProcedureEnv env)
+      throws ProcedureException {
+    try {
+      return env.getConfigManager()
+          .getClusterSchemaManager()
+          .getPreAlteredColumnType(database, tableName, columnName);
+    } catch (final MetadataException e) {
+      throw new ProcedureException(e);
+    }
+  }
+
+  private boolean isColumnAlterCommittedForRollback(final ConfigNodeProcedureEnv env)
+      throws ProcedureException {
+    try {
+      return env.getConfigManager()
+          .getClusterSchemaManager()
+          .isColumnAlterCommitted(database, tableName, columnName, dataType);
+    } catch (final MetadataException e) {
+      throw new ProcedureException(e);
+    }
+  }
+
+  private boolean isColumnAlterCommitted(final ConfigNodeProcedureEnv env) {
+    try {
+      return env.getConfigManager()
+          .getClusterSchemaManager()
+          .isColumnAlterCommitted(database, tableName, columnName, dataType);
+    } catch (final MetadataException e) {
+      return false;
+    }
   }
 
   @Override
