@@ -40,6 +40,13 @@ import java.util.regex.Pattern;
 /** Immutable parsed tag-filter cached per topic. */
 public class TagFilterMatcher {
 
+  public enum RuntimeStatus {
+    MATCH_ALL,
+    MATCH_NONE,
+    ACTIVE,
+    ERROR
+  }
+
   private static final TagFilterMatcher MATCH_NONE =
       new TagFilterMatcher(
           null, Collections.emptyList(), Collections.emptyMap(), State.MATCH_NONE, null, false);
@@ -276,6 +283,35 @@ public class TagFilterMatcher {
 
   public boolean isFailure() {
     return state == State.FAILURE;
+  }
+
+  public RuntimeStatus getRuntimeStatus() {
+    switch (state) {
+      case MATCH_ALL:
+        return RuntimeStatus.MATCH_ALL;
+      case MATCH_NONE:
+        return RuntimeStatus.MATCH_NONE;
+      case ACTIVE:
+        return RuntimeStatus.ACTIVE;
+      case FAILURE:
+      default:
+        return RuntimeStatus.ERROR;
+    }
+  }
+
+  public String getFailureMessage() {
+    if (!isFailure() || Objects.isNull(failure)) {
+      return null;
+    }
+    Throwable current = failure;
+    while (Objects.isNull(current.getMessage())
+        && Objects.nonNull(current.getCause())
+        && current != current.getCause()) {
+      current = current.getCause();
+    }
+    return Objects.nonNull(current.getMessage())
+        ? current.getMessage()
+        : current.getClass().getSimpleName();
   }
 
   public void throwIfFailure() {
