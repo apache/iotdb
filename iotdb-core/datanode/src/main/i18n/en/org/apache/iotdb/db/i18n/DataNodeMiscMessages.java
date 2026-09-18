@@ -22,6 +22,9 @@ package org.apache.iotdb.db.i18n;
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
 
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
+      "Missing Load TsFile slice metadata: %s";
+
     public static final String INVALID_PIPE_NAME =
       "Invalid pipeName";
   public static final String READ_OBJECT_CONTENT_FROM_REMOTE_FILE =

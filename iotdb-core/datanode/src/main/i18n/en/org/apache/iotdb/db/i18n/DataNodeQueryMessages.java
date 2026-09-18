@@ -21,6 +21,11 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
+      "Invalid Thrift maximum frame size %d from %s";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
+      "failed to dispatch load command %s to node %s because of exception: %s";
+
   // --- Common ---
 
   public static final String NO_MATCHED_DATABASE_PLEASE_CHECK_THE_PATH =
