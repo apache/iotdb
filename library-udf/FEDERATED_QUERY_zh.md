@@ -54,7 +54,7 @@ mvn clean package -pl library-udf -am \
 library-udf/target/library-udf-2.0.11-SNAPSHOT-federated-jar-with-dependencies.jar
 ```
 
-这个 profile 打入插件、第三方运行依赖及五种 JDBC 驱动：MySQL 9.3.0、PostgreSQL 42.7.7、ClickHouse 0.8.2、openGauss 6.0.3-og、GaussDB 506.0.0.b058-jdk7。合并 JDBC ServiceLoader 配置，排除由 IoTDB 提供的 UDF API、TsFile 和 SLF4J API。
+这个 profile 打入插件、第三方运行依赖及五种 JDBC 驱动：MySQL 9.3.0、PostgreSQL 42.7.7、ClickHouse 0.8.2、openGauss 6.0.3-og、GaussDB v2.0-8.218.0。GaussDB 的 Maven 坐标为 `com.huaweicloud:gaussdbjdbc:v2.0-8.218.0`，对应本次目标环境 GaussDB 25.1.32 / V2.0-8.218.0。合并 JDBC ServiceLoader 配置，排除由 IoTDB 提供的 UDF API、TsFile 和 SLF4J API。
 
 普通构建仍生成不含 JDBC 驱动的薄 JAR：
 
@@ -389,6 +389,8 @@ GROUP BY usename, state ORDER BY usename, state;
 官方 openGauss 5.0.0 ARM64 镜像的 gosu 工具存在架构错误；当前测试容器已换成校验过 SHA-256 的上游 gosu 1.19 ARM64 版本。本机测试实例平时保持停止，按测试记录中的启动脚本恢复即可。
 
 ## 12. 本次文档验证结果
+
+本节端到端结果使用初版 GaussDB 驱动 `com.huaweicloud.gaussdb:gaussdbjdbc:506.0.0.b058-jdk7`。当前默认依赖已升级为 `com.huaweicloud:gaussdbjdbc:v2.0-8.218.0`；原有 openGauss 验证记录不能替代目标商用 GaussDB 实例的验证。
 
 仅在 `ext/udf/` 放置一个 `federated-jar-with-dependencies.jar`，移出原薄插件及三个独立驱动 JAR 后，原有 14 项端到端断言全部通过。随后直接读取本目录提交的 SQL 文件执行，五个函数注册、九组成功查询、预期错误与错误恢复、PG 兼容查询合计 16 项检查通过。openGauss 的初始化与配置检查脚本也已在真实实例执行。
 

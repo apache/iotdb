@@ -86,7 +86,8 @@ into the plugin or propagated into IoTDB distributions.
 
 Driver versions declared for compilation/testing are MySQL 9.3.0, PostgreSQL
 42.7.7, ClickHouse 0.8.2 (`shaded-all`), openGauss 6.0.3-og, and GaussDB
-506.0.0.b058-jdk7. Install the appropriate vendor driver and its runtime dependencies
+v2.0-8.218.0 (`com.huaweicloud:gaussdbjdbc`), selected for GaussDB 25.1.32 /
+V2.0-8.218.0. Install the appropriate vendor driver and its runtime dependencies
 for the database being queried. Do not install GaussDB's `gsjdbc4.jar` or the
 PostgreSQL-namespaced openGauss driver alongside PostgreSQL JDBC; these share class
 names. The adapters in this plugin deliberately use distinct vendor namespaces.
@@ -166,6 +167,11 @@ namespace selection. End-to-end verification additionally requires real IoTDB
 and external database instances.
 
 ## Verified configuration
+
+The end-to-end results below used the initial GaussDB driver
+`com.huaweicloud.gaussdb:gaussdbjdbc:506.0.0.b058-jdk7`. The current default is
+`com.huaweicloud:gaussdbjdbc:v2.0-8.218.0`; changing the default does not establish
+verification against a commercial GaussDB server.
 
 On 2026-09-18, IoTDB 2.0.11-SNAPSHOT based on master `87a6d198a9` was tested
 against a real openGauss 5.0.0 ARM64 instance, using a UTF-8 database in PG
