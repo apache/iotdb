@@ -87,12 +87,12 @@ public class ThriftConnection {
       ZoneId zoneId,
       String version)
       throws IoTDBConnectionException {
-    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(thriftDefaultBufferSize);
-    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(thriftMaxFrameSize);
+    DeepCopyRpcTransportFactory transportFactory =
+        DeepCopyRpcTransportFactory.getInstance(thriftDefaultBufferSize, thriftMaxFrameSize);
     try {
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 connectionTimeoutInMs,
@@ -103,7 +103,7 @@ public class ThriftConnection {
                 sslProtocol);
       } else {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            transportFactory.getTransport(
                 // as there is a try-catch already, we do not need to use TSocket.wrap
                 endPoint.getIp(), endPoint.getPort(), connectionTimeoutInMs);
       }

@@ -49,6 +49,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private long memorySize = 0;
   private long retainedMemorySize = 0;
   private boolean serializedRequestsBuilt = false;
+  private boolean containsUserData = false;
   private final AtomicLong referenceCnt = new AtomicLong();
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
@@ -168,6 +169,15 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public IndexedConsensusRequest setNodeId(int nodeId) {
     this.nodeId = nodeId;
+    return this;
+  }
+
+  public boolean containsUserData() {
+    return containsUserData;
+  }
+
+  public IndexedConsensusRequest setContainsUserData(boolean containsUserData) {
+    this.containsUserData = containsUserData;
     return this;
   }
 

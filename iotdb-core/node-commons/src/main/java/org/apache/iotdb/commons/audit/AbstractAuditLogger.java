@@ -35,6 +35,8 @@ public abstract class AbstractAuditLogger {
   private static final long INTERNAL_AUDIT_LOG_USER_ID = 4;
   private static final ThreadLocal<Boolean> RECORDING_TRUSTED_CHANNEL_FAILURE =
       ThreadLocal.withInitial(() -> false);
+  private static final ThreadLocal<Boolean> RECORDING_USER_DATA_TRANSFER =
+      ThreadLocal.withInitial(() -> false);
 
   public static final String OBJECT_AUTHENTICATION_AUDIT_STR =
       "User %s (ID=%d) requests authority on object %s with result %s";
@@ -135,5 +137,52 @@ public abstract class AbstractAuditLogger {
     } finally {
       RECORDING_TRUSTED_CHANNEL_FAILURE.remove();
     }
+  }
+
+  /** Records one user-data transfer attempt without retaining any transferred payload. */
+  public void recordUserDataTransferAuditLog(UserDataTransferAuditEvent event) {
+    if (!IS_AUDIT_LOG_ENABLED
+        || event == null
+        || event.getInitiator() == null
+        || event.getSource() == null
+        || event.getTarget() == null
+        || Boolean.TRUE.equals(RECORDING_USER_DATA_TRANSFER.get())) {
+      return;
+    }
+
+    final String initiatorIdentifier = NodeUrlUtils.convertTEndPointUrl(event.getInitiator());
+    final String sourceIdentifier = NodeUrlUtils.convertTEndPointUrl(event.getSource());
+    final String targetIdentifier = NodeUrlUtils.convertTEndPointUrl(event.getTarget());
+    RECORDING_USER_DATA_TRANSFER.set(true);
+    try {
+      log(
+          createUserDataTransferAuditLogFields(event, initiatorIdentifier),
+          () ->
+              String.format(
+                  CommonMessages
+                      .LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF,
+                  event.getTimestamp(),
+                  initiatorIdentifier,
+                  sourceIdentifier,
+                  targetIdentifier,
+                  event.getProtectionMethod(),
+                  event.isSuccess(),
+                  event.getError()));
+    } catch (RuntimeException ignored) {
+      // Audit recording must not affect the user-data transfer being audited.
+    } finally {
+      RECORDING_USER_DATA_TRANSFER.remove();
+    }
+  }
+
+  static AuditLogFields createUserDataTransferAuditLogFields(
+      UserDataTransferAuditEvent event, String initiatorIdentifier) {
+    return new AuditLogFields(
+        INTERNAL_AUDIT_LOG_USER_ID,
+        User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME,
+        initiatorIdentifier,
+        AuditEventType.USER_DATA_TRANSFER,
+        AuditLogOperation.CONTROL,
+        event.isSuccess());
   }
 }

@@ -24,7 +24,23 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+
 public class CommonConfigTest {
+
+  @Test
+  public void testSubscriptionDisabledInCommonConfig() {
+    assertFalse(CommonConfig.SUBSCRIPTION_ENABLED);
+    assertFalse(new CommonConfig().getSubscriptionEnabled());
+  }
+
+  @Test
+  public void testSubscriptionIsNotExposedInConfigurationTemplate() throws IOException {
+    assertNull(ConfigurationFileUtils.getConfigurationDefaultValue("subscription_enabled"));
+  }
 
   @Test
   public void testSameNodeStatusDoesNotClearStatusReason() {

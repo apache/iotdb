@@ -94,6 +94,7 @@ public enum Metric {
   PAM_ALLOCATED_FAILURE_COUNT("primitive_array_manager_allocated_failure_count"),
   PAM_RELEASED_FAILURE_COUNT("primitive_array_manager_released_failure_count"),
   TABLE_DISK_USAGE_CACHE("table_disk_usage_cache"),
+  SUSPICIOUS_DISK_EXCEPTION_COUNT("suspicious_disk_exception_count"),
 
   // compaction related
   DATA_WRITTEN("data_written"),
@@ -236,7 +237,6 @@ public enum Metric {
   LOAD_TIME_COST("load_time_cost"),
   LOAD_POINT_COUNT("load_point_count"),
   MEMTABLE_POINT_COUNT("memtable_point_count"),
-  BINARY_ALLOCATOR("binary_allocator"),
   // memory related
   MEMORY_THRESHOLD_SIZE("memory_threshold_size"),
   MEMORY_ACTUAL_SIZE("memory_actual_size"),

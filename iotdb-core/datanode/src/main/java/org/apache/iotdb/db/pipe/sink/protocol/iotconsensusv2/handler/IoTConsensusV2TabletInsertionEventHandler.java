@@ -54,6 +54,7 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
   protected final IoTConsensusV2SinkMetrics metric;
 
   private final long createTime;
+  private boolean transferAuditRecorded;
 
   protected IoTConsensusV2TabletInsertionEventHandler(
       TabletInsertionEvent event,
@@ -83,6 +84,12 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
     }
 
     final TSStatus status = response.getStatus();
+    final boolean success =
+        status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
+    connector.recordUserDataTransferAudit(
+        success, success ? null : String.valueOf(status.getCode()), null);
+    transferAuditRecorded = true;
     try {
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -113,6 +120,10 @@ public abstract class IoTConsensusV2TabletInsertionEventHandler<
 
   @Override
   public void onError(Exception exception) {
+    if (!transferAuditRecorded) {
+      connector.recordUserDataTransferAudit(false, null, exception);
+      transferAuditRecorded = true;
+    }
     EnrichedEvent event = (EnrichedEvent) this.event;
     PipeLogger.log(
         ignored ->

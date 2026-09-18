@@ -22,7 +22,11 @@ package org.apache.iotdb.commons.utils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.math.BigInteger;
+
 import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.convertMillisecondToDurationStr;
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.saturateToLong;
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.timeDifferenceAsDouble;
 
 public class CommonDateTimeUtilsTest {
   @Test
@@ -37,5 +41,34 @@ public class CommonDateTimeUtilsTest {
         "3170979 year 2 month 12 day 9 hour 46 minute 39 second 999 ms",
         convertMillisecondToDurationStr(99999999999999999L));
     Assert.assertEquals("-(10 second 86 ms)", convertMillisecondToDurationStr(-10086));
+  }
+
+  @Test
+  public void timeDifferenceAsDoublePreservesSmallDeltasAtLargeTimestamps() {
+    long timestamp = 1L << 60;
+
+    Assert.assertEquals(50.0, timeDifferenceAsDouble(timestamp + 50, timestamp), 0.0);
+    Assert.assertEquals(100.0, timeDifferenceAsDouble(timestamp + 100, timestamp), 0.0);
+    Assert.assertEquals(
+        0.5,
+        timeDifferenceAsDouble(timestamp + 50, timestamp)
+            / timeDifferenceAsDouble(timestamp + 100, timestamp),
+        0.0);
+  }
+
+  @Test
+  public void timeDifferenceAsDoubleHandlesLongOverflow() {
+    Assert.assertEquals(
+        Math.scalb(1.0, 64) - 1,
+        timeDifferenceAsDouble(Long.MAX_VALUE, Long.MIN_VALUE),
+        Math.scalb(1.0, 11));
+  }
+
+  @Test
+  public void saturateToLongClampsAtBothBounds() {
+    Assert.assertEquals(Long.MAX_VALUE, saturateToLong(BigInteger.TWO.pow(63)));
+    Assert.assertEquals(
+        Long.MIN_VALUE, saturateToLong(BigInteger.TWO.pow(63).negate().subtract(BigInteger.ONE)));
+    Assert.assertEquals(123L, saturateToLong(BigInteger.valueOf(123L)));
   }
 }

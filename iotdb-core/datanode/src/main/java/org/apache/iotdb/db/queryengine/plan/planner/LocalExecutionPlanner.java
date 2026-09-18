@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -289,7 +290,10 @@ public class LocalExecutionPlanner {
         .forEach(
             pipeline -> {
               DataDriverContext dataDriverContext = (DataDriverContext) pipeline.getDriverContext();
-              sourcePaths.addAll(dataDriverContext.getPaths());
+              if (dataDriverContext.getSourceOperators().stream()
+                  .anyMatch(sourceOperator -> !sourceOperator.isBatchQueryDataSource())) {
+                sourcePaths.addAll(dataDriverContext.getPaths());
+              }
               dataDriverContext.clearPaths();
             });
     return sourcePaths;
@@ -336,15 +340,18 @@ public class LocalExecutionPlanner {
     }
     long allocated = allocateOperatorsMemory(memoryInBytes, isHighestPriority);
     if (allocated < 0) {
-      throw new MemoryNotEnoughException(
+      long freeBytes = OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes();
+      throw new OperatorMemoryNotEnoughException(
           String.format(
               DataNodeQueryMessages
                   .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_MEMORY_FOR_QUERY_S_THE_CONTEXTHOLDER_546CDD02,
               queryId,
               contextHolder,
-              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(),
+              freeBytes,
               reservedBytes,
-              memoryInBytes));
+              memoryInBytes),
+          memoryInBytes,
+          freeBytes);
     }
     return allocated;
   }

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -35,7 +36,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +71,13 @@ public class LoadUtil {
     }
 
     try {
+      // Validate the complete batch before moving any source file. Otherwise a later malformed
+      // file could leave earlier files queued in the active-load directory.
+      for (final File file : tsFiles) {
+        if (file != null && !isValidTsFile(file)) {
+          return false;
+        }
+      }
       for (File file : tsFiles) {
         if (!loadTsFilesToActiveDir(loadAttributes, file, isDeleteAfterLoad)) {
           return false;
@@ -119,6 +129,11 @@ public class LoadUtil {
       return true;
     }
 
+    // Validate before moving the source so ordinary or malformed files remain in place.
+    if (!isValidTsFile(file)) {
+      return false;
+    }
+
     final File targetFilePath;
     try {
       targetFilePath =
@@ -146,6 +161,19 @@ public class LoadUtil {
         isDeleteAfterLoad,
         attributes.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
     return true;
+  }
+
+  private static boolean isValidTsFile(final File file) {
+    if (!file.isFile() || !file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+      return false;
+    }
+    try (final TsFileSequenceReader reader =
+        new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+      return TSFileConfig.MAGIC_STRING.equals(reader.readHeadMagic())
+          && TSFileConfig.MAGIC_STRING.equals(reader.readTailMagic());
+    } catch (Exception e) {
+      return false;
+    }
   }
 
   private static Map<String, String> appendCurrentUserIfAbsent(
@@ -195,6 +223,16 @@ public class LoadUtil {
     final List<File> sourceFiles = new ArrayList<>(files.size());
     for (final String file : files) {
       sourceFiles.add(new File(file));
+    }
+    // The main TsFile must be valid before any TsFile or sidecar is transferred. Pipe acknowledges
+    // this method immediately, so deferring validation to the active loader is too late.
+    for (final File sourceFile : sourceFiles) {
+      if (isTsFile(sourceFile) && !isValidTsFile(sourceFile)) {
+        throw new IOException(
+            String.format(
+                DataNodeQueryMessages.THE_FILE_S_IS_NOT_A_VALID_TSFILE_PLEASE_CHECK_THE_INPUT_FILE,
+                sourceFile.getAbsolutePath()));
+      }
     }
     sourceFiles.sort(Comparator.comparing(LoadUtil::isTsFile));
     transferFilesToActiveDir(

@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -147,6 +148,50 @@ public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeTableMod
         "s4,",
         Collections.emptySet(),
         "sg1");
+
+    // Wait until the deletion mods are visible through every sender endpoint before creating the
+    // pipe. Historical extraction may otherwise read a source TsFile from a stale region leader.
+    for (DataNodeWrapper dataNode : senderEnv.getDataNodeWrapperList()) {
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t10' AND s1='t10' AND s2='t10' AND s3='t10'",
+          "count,",
+          Collections.singleton("1000,"),
+          "sg2");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t11' AND s1='t11' AND s2='t11' AND s3='t11'",
+          "count,",
+          Collections.singleton("0,"),
+          "sg2");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t12' AND s1='t12' AND s2='t12' AND s3='t12'",
+          "count,",
+          Collections.singleton("5900,"),
+          "sg2");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t13' AND s1='t13' AND s2='t13' AND s3='t13'",
+          "count,",
+          Collections.singleton("1000,"),
+          "sg2");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          senderEnv,
+          dataNode,
+          "SELECT COUNT(*) as count FROM table1 WHERE s0 ='t14' AND s1='t14' AND s2='t14' AND s3='t14'",
+          "count,",
+          Collections.singleton("10000,"),
+          "sg2");
+    }
 
     executeNonQueryWithRetry(
         senderEnv,

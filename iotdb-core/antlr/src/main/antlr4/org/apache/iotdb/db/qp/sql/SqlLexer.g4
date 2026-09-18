@@ -723,6 +723,10 @@ QUOTA
     : Q U O T A
     ;
 
+RECEIVERS
+    : R E C E I V E R S
+    ;
+
 RANGE
     : R A N G E
     ;

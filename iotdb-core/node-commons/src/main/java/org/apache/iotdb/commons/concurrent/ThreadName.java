@@ -191,6 +191,7 @@ public enum ThreadName {
   // -------------------------- Metrics --------------------------
   SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
   RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
+  PROMETHEUS_REPORTER_SNAPSHOT_UPDATER("PrometheusReporter-Snapshot-Updater"),
   PROMETHEUS_REACTOR_HTTP_EPOLL("reactor-http-epoll"),
   PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
@@ -209,8 +210,6 @@ public enum ThreadName {
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
   TABLE_SIZE_INDEX_RECORD("TableSizeIndexRecord"),
-  BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
-  BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
   FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL("FindEarliestTimeSlot-Parallel-Pool"),
   DATA_PARTITION_RECOVER_PARALLEL_POOL("DataPartitionRecover-Parallel-Pool"),
 
@@ -394,6 +393,7 @@ public enum ThreadName {
           Arrays.asList(
               SYSTEM_SCHEDULE_METRICS,
               RESOURCE_CONTROL_DISK_STATISTIC,
+              PROMETHEUS_REPORTER_SNAPSHOT_UPDATER,
               PROMETHEUS_REACTOR_HTTP_EPOLL,
               PROMETHEUS_REACTOR_HTTP_NIO,
               PROMETHEUS_REACTOR_HTTP_EPOLL,

@@ -495,11 +495,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
       throws StartupException {
     /* Store ConfigNodeList */
-    List<TEndPoint> configNodeList = new ArrayList<>();
-    for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
-      configNodeList.add(configNodeLocation.getInternalEndPoint());
-    }
-    ConfigNodeInfo.getInstance().updateConfigNodeList(configNodeList);
+    ConfigNodeInfo.getInstance().updateConfigNodeLocations(configNodeLocations);
 
     /* Store templateSetInfo */
     ClusterTemplateManager.getInstance()
@@ -598,7 +594,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       /* Store runtime configurations when register success */
       int dataNodeID = dataNodeRegisterResp.getDataNodeId();
       config.setDataNodeId(dataNodeID);
-      IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
+      IoTDBStartCheck.getInstance().serializeNodeId(dataNodeID);
 
       storeRuntimeConfigurations(
           dataNodeRegisterResp.getConfigNodeList(), dataNodeRegisterResp.getRuntimeConfiguration());

@@ -112,22 +112,23 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
 
   @Override
   public TreeDeviceViewScanNode clone() {
-    return new TreeDeviceViewScanNode(
-        getPlanNodeId(),
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice,
-        treeDBName,
-        measurementColumnNameMap);
+    return copyDeviceEntryDataSetTo(
+        new TreeDeviceViewScanNode(
+            getPlanNodeId(),
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice,
+            treeDBName,
+            measurementColumnNameMap));
   }
 
   protected static void serializeMemberVariables(

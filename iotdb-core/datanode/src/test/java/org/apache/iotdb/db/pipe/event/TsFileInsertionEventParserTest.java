@@ -96,6 +96,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -463,6 +465,66 @@ public class TsFileInsertionEventParserTest {
     Assert.assertNotNull(getEventParser(event).get());
 
     event.close();
+  }
+
+  @Test(timeout = 60000)
+  public void testCloseDefersPendingTabletReleaseUntilConsumerReturns() throws Exception {
+    final PipeTsFileInsertionEvent event =
+        createPipeTsFileInsertionEventForRetryTest("nonaligned-consume-close-race.tsfile");
+    final CountDownLatch consumerEntered = new CountDownLatch(1);
+    final CountDownLatch allowConsumerReturn = new CountDownLatch(1);
+    final AtomicReference<PipeRawTabletInsertionEvent> parsedEventReference =
+        new AtomicReference<>();
+    final AtomicReference<Throwable> consumerFailure = new AtomicReference<>();
+
+    final Thread consumerThread =
+        new Thread(
+            () -> {
+              try {
+                event.consumeTabletInsertionEventsWithRetry(
+                    parsedEvent -> {
+                      parsedEventReference.set(parsedEvent);
+                      consumerEntered.countDown();
+                      try {
+                        allowConsumerReturn.await();
+                      } catch (final InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException(e);
+                      }
+                      throw new RuntimeException("stop after close race");
+                    },
+                    "test");
+              } catch (final Throwable t) {
+                consumerFailure.set(t);
+              }
+            },
+            "pipe-tsfile-close-race-test");
+    consumerThread.start();
+
+    try {
+      Assert.assertTrue(consumerEntered.await(10, TimeUnit.SECONDS));
+      final PipeRawTabletInsertionEvent parsedEvent = parsedEventReference.get();
+      Assert.assertNotNull(parsedEvent);
+      Assert.assertFalse(parsedEvent.isReleased());
+      Assert.assertNotNull(getEventParser(event).get());
+
+      event.close();
+
+      // close() detaches the parser immediately, but the tablet remains valid for the callback
+      // that was already handed it.
+      Assert.assertFalse(parsedEvent.isReleased());
+      Assert.assertNull(getEventParser(event).get());
+
+      allowConsumerReturn.countDown();
+      consumerThread.join(10_000);
+      Assert.assertFalse(consumerThread.isAlive());
+      Assert.assertTrue(parsedEvent.isReleased());
+      Assert.assertNotNull(consumerFailure.get());
+    } finally {
+      allowConsumerReturn.countDown();
+      consumerThread.join(10_000);
+      event.close();
+    }
   }
 
   private PipeTsFileInsertionEvent createPipeTsFileInsertionEventForRetryTest(final String fileName)

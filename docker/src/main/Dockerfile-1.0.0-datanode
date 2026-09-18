@@ -18,7 +18,7 @@
 #
 FROM eclipse-temurin:17-jre-focal
 ARG version=1.0.0
-ARG target=apache-iotdb-${version}-datanode-bin
+ARG target=apache-iotdb-${version}-all-bin
 
 RUN apt update \
   && apt install lsof dos2unix procps unzip dumb-init wget inetutils-ping -y \
@@ -29,8 +29,7 @@ RUN apt update \
 COPY target/${target}.zip /
 RUN cd / && unzip ${target}.zip \
   && rm ${target}.zip \
-#  && mv ${target} iotdb
-  && mv apache-iotdb-${version}-server-bin iotdb
+  && mv ${target} iotdb
 
 ENV IOTDB_HOME=/iotdb VERSION=${version}
 WORKDIR ${IOTDB_HOME}/sbin

@@ -127,6 +127,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
@@ -749,6 +750,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
 
     } catch (IOException e) {
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
       throw new MetadataException(e);
     }
   }

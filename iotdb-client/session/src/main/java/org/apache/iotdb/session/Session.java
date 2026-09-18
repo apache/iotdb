@@ -2806,6 +2806,14 @@ public class Session implements ISession {
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    if (request == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
     insertTabletInternal(tablet, request);
   }
 
@@ -2849,8 +2857,15 @@ public class Session implements ISession {
       insertRelationalTabletWithLeaderCache(tablet);
     } else {
       TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+      if (request == null) {
+        logger.warn(
+            ALL_VALUES_ARE_NULL,
+            tablet.getDeviceId(),
+            tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+            tablet.getSchemas());
+        return;
+      }
       request.setWriteToTable(true);
-      request.setColumnCategories(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
       try {
         getDefaultSessionConnection().insertTablet(request);
       } catch (RedirectException ignored) {
@@ -2915,8 +2930,15 @@ public class Session implements ISession {
     SessionConnection connection = entry.getKey();
     Tablet tablet = entry.getValue();
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+    if (request == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
     request.setWriteToTable(true);
-    request.setColumnCategories(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
     try {
       connection.insertTablet(request);
     } catch (RedirectException e) {
@@ -2956,9 +2978,15 @@ public class Session implements ISession {
                   return CompletableFuture.runAsync(
                       () -> {
                         TSInsertTabletReq request = genTSInsertTabletReq(subTablet, false, false);
+                        if (request == null) {
+                          logger.warn(
+                              ALL_VALUES_ARE_NULL,
+                              subTablet.getDeviceId(),
+                              subTablet.getRowSize() > 0 ? subTablet.getTimestamp(0) : null,
+                              subTablet.getSchemas());
+                          return;
+                        }
                         request.setWriteToTable(true);
-                        request.setColumnCategories(
-                            toEnumOrdinalsAsBytes(subTablet.getColumnTypes()));
                         InsertConsumer<TSInsertTabletReq> insertConsumer =
                             SessionConnection::insertTablet;
                         try {
@@ -3037,6 +3065,14 @@ public class Session implements ISession {
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, true);
+    if (request == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
     try {
       getSessionConnection(tablet.getDeviceId()).insertTablet(request);
     } catch (RedirectException e) {
@@ -3065,9 +3101,14 @@ public class Session implements ISession {
       sortTablet(tablet);
     }
 
+    Tablet filtered = SessionUtils.filterNullColumns(tablet);
+    if (filtered == null) {
+      return null;
+    }
+
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+    for (IMeasurementSchema measurementSchema : filtered.getSchemas()) {
       if (measurementSchema.getMeasurementName() == null) {
         throw new IllegalArgumentException(SessionMessages.MEASUREMENT_NON_NULL);
       }
@@ -3075,22 +3116,25 @@ public class Session implements ISession {
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
-    request.setPrefixPath(tablet.getDeviceId());
+    request.setPrefixPath(filtered.getDeviceId());
     request.setIsAligned(isAligned);
+    if (filtered.getColumnTypes() != null) {
+      request.setColumnCategories(toEnumOrdinalsAsBytes(filtered.getColumnTypes()));
+    }
 
     boolean trulyEnableRpcCompression =
-        enableIoTDBRpcCompression && tablet.getRowSize() >= tabletCompressionMinRowSize;
+        enableIoTDBRpcCompression && filtered.getRowSize() >= tabletCompressionMinRowSize;
 
     List<Byte> encodingTypes;
     if (trulyEnableRpcCompression) {
-      encodingTypes = new ArrayList<>(tablet.getSchemas().size() + 1);
+      encodingTypes = new ArrayList<>(filtered.getSchemas().size() + 1);
       encodingTypes.add(
           this.columnEncodersMap
               .getOrDefault(
                   TSDataType.INT64,
                   TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()))
               .serialize());
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      for (IMeasurementSchema measurementSchema : filtered.getSchemas()) {
         if (measurementSchema.getMeasurementName() == null) {
           throw new IllegalArgumentException(SessionMessages.MEASUREMENT_NON_NULL);
         }
@@ -3105,7 +3149,7 @@ public class Session implements ISession {
       }
     } else {
       encodingTypes =
-          Collections.nCopies(tablet.getSchemas().size() + 1, TSEncoding.PLAIN.serialize());
+          Collections.nCopies(filtered.getSchemas().size() + 1, TSEncoding.PLAIN.serialize());
     }
 
     TabletEncoder encoder =
@@ -3118,10 +3162,10 @@ public class Session implements ISession {
       request.setCompressType(compressionType.serialize());
       request.setEncodingTypes(encodingTypes);
     }
-    request.setTimestamps(encoder.encodeTime(tablet));
-    request.setValues(encoder.encodeValues(tablet));
+    request.setTimestamps(encoder.encodeTime(filtered));
+    request.setValues(encoder.encodeValues(filtered));
 
-    request.setSize(tablet.getRowSize());
+    request.setSize(filtered.getRowSize());
     return request;
   }
 
@@ -3154,6 +3198,9 @@ public class Session implements ISession {
     } else {
       TSInsertTabletsReq request =
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
+      if (request == null) {
+        return;
+      }
       try {
         getDefaultSessionConnection().insertTablets(request);
       } catch (RedirectException ignored) {
@@ -3190,6 +3237,9 @@ public class Session implements ISession {
     } else {
       TSInsertTabletsReq request =
           genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, true);
+      if (request == null) {
+        return;
+      }
       try {
         getDefaultSessionConnection().insertTablets(request);
       } catch (RedirectException ignored) {
@@ -3208,6 +3258,11 @@ public class Session implements ISession {
       updateTSInsertTabletsReq(request, entry.getValue(), sorted, isAligned);
     }
 
+    tabletGroup.entrySet().removeIf(e -> e.getValue().getPrefixPathsSize() == 0);
+    if (tabletGroup.isEmpty()) {
+      return;
+    }
+
     if (tabletGroup.size() == 1) {
       insertOnce(tabletGroup, SessionConnection::insertTablets);
     } else {
@@ -3224,6 +3279,9 @@ public class Session implements ISession {
     for (Tablet tablet : tablets) {
       updateTSInsertTabletsReq(request, tablet, sorted, isAligned);
     }
+    if (request.getPrefixPathsSize() == 0) {
+      return null;
+    }
     return request;
   }
 
@@ -3232,11 +3290,20 @@ public class Session implements ISession {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
-    request.addToPrefixPaths(tablet.getDeviceId());
+    Tablet filtered = SessionUtils.filterNullColumns(tablet);
+    if (filtered == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
+    request.addToPrefixPaths(filtered.getDeviceId());
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
     request.setIsAligned(isAligned);
-    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+    for (IMeasurementSchema measurementSchema : filtered.getSchemas()) {
       if (measurementSchema.getMeasurementName() == null) {
         throw new IllegalArgumentException(SessionMessages.MEASUREMENT_NON_NULL);
       }
@@ -3245,9 +3312,9 @@ public class Session implements ISession {
     }
     request.addToMeasurementsList(measurements);
     request.addToTypesList(dataTypes);
-    request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
-    request.addToValuesList(SessionUtils.getValueBuffer(tablet));
-    request.addToSizeList(tablet.getRowSize());
+    request.addToTimestampsList(SessionUtils.getTimeBuffer(filtered));
+    request.addToValuesList(SessionUtils.getValueBuffer(filtered));
+    request.addToSizeList(filtered.getRowSize());
   }
 
   // sample some records and judge whether need to add too many null values to convert to tablet.
@@ -3465,6 +3532,14 @@ public class Session implements ISession {
   public void testInsertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    if (request == null) {
+      logger.warn(
+          ALL_VALUES_ARE_NULL,
+          tablet.getDeviceId(),
+          tablet.getRowSize() > 0 ? tablet.getTimestamp(0) : null,
+          tablet.getSchemas());
+      return;
+    }
     getDefaultSessionConnection().testInsertTablet(request);
   }
 
@@ -3487,6 +3562,9 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletsReq request =
         genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
+    if (request == null) {
+      return;
+    }
     getDefaultSessionConnection().testInsertTablets(request);
   }
 

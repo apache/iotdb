@@ -65,4 +65,6 @@ public interface DataNodeConfig {
   DataNodeConfig setDnDataDirs(String dnDataDirs);
 
   DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy);
+
+  DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes);
 }

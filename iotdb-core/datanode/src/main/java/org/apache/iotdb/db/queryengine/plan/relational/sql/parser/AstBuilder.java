@@ -1757,6 +1757,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitShowReceiversStatement(RelationalSqlParser.ShowReceiversStatementContext ctx) {
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.RECEIVERS,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  @Override
   public Node visitKillQueryStatement(RelationalSqlParser.KillQueryStatementContext ctx) {
     if (ctx.queryId == null) {
       return new KillQuery(null, getLocation(ctx));
@@ -3537,14 +3548,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     long time;
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if ("+".equals(ctx.getChild(i).getText())) {
-        time +=
+      try {
+        long duration =
             DataNodeDateTimeUtils.convertDurationStrToLong(
                 time, ctx.getChild(i + 1).getText(), false);
-      } else {
-        time -=
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), false);
+        time =
+            "+".equals(ctx.getChild(i).getText())
+                ? Math.addExact(time, duration)
+                : Math.subtractExact(time, duration);
+      } catch (ArithmeticException e) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1,
+                ctx.getText()));
       }
     }
     return time;

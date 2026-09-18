@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.AlterTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -66,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogica
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -88,6 +90,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -194,6 +197,32 @@ public class StatementGeneratorTest {
         () ->
             StatementGenerator.createStatement(
                 "show queries order by a", ZonedDateTime.now().getOffset()));
+  }
+
+  @Test
+  public void testShowReceivers() {
+    final Statement showReceivers =
+        StatementGenerator.createStatement("show receivers", ZonedDateTime.now().getOffset());
+    Assert.assertTrue(showReceivers instanceof ShowReceiversStatement);
+    Assert.assertEquals(
+        Arrays.asList(
+            new SortItem("ReceiverNodeType", Ordering.ASC),
+            new SortItem("ReceiverNodeId", Ordering.ASC),
+            new SortItem("Protocol", Ordering.ASC),
+            new SortItem("SenderClusterId", Ordering.ASC),
+            new SortItem("SenderAddress", Ordering.ASC),
+            new SortItem("UserName", Ordering.ASC)),
+        ((ShowReceiversStatement) showReceivers).getSortItemList());
+    Assert.assertThrows(
+        ParseCancellationException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show receivers where protocol = 'thrift'", ZonedDateTime.now().getOffset()));
+    Assert.assertThrows(
+        ParseCancellationException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show receivers order by ReceiverNodeId", ZonedDateTime.now().getOffset()));
   }
 
   @Test
@@ -603,6 +632,65 @@ public class StatementGeneratorTest {
         statement.getPaths());
     assertEquals(1L, statement.getDeleteStartTime());
     assertEquals(100L, statement.getDeleteEndTime());
+  }
+
+  @Test
+  public void testDeleteDataWithTimeRangeBoundary() {
+    DeleteDataStatement statement =
+        (DeleteDataStatement)
+            StatementGenerator.createStatement(
+                "DELETE FROM root.sg.d1.s1 WHERE time > 9223372036854775806",
+                ZonedDateTime.now().getOffset());
+    assertEquals(Long.MAX_VALUE, statement.getDeleteStartTime());
+    assertEquals(Long.MAX_VALUE, statement.getDeleteEndTime());
+
+    statement =
+        (DeleteDataStatement)
+            StatementGenerator.createStatement(
+                "DELETE FROM root.sg.d1.s1 WHERE time < -9223372036854775807",
+                ZonedDateTime.now().getOffset());
+    assertEquals(Long.MIN_VALUE, statement.getDeleteStartTime());
+    assertEquals(Long.MIN_VALUE, statement.getDeleteEndTime());
+  }
+
+  @Test
+  public void testDeleteDataWithEmptyTimeRangeBoundary() {
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "DELETE FROM root.sg.d1.s1 WHERE time > 9223372036854775807",
+                ZonedDateTime.now().getOffset()));
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "DELETE FROM root.sg.d1.s1 WHERE time < -9223372036854775808",
+                ZonedDateTime.now().getOffset()));
+  }
+
+  @Test
+  public void testGetRegionIdWithTimeRangeBoundary() {
+    GetRegionIdStatement statement =
+        (GetRegionIdStatement)
+            StatementGenerator.createStatement(
+                "SHOW DATA REGIONID WHERE DATABASE = root.sg AND time > 9223372036854775806",
+                ZonedDateTime.now().getOffset());
+    assertEquals(Long.MAX_VALUE, statement.getStartTimeStamp());
+    assertEquals(Long.MAX_VALUE, statement.getEndTimeStamp());
+
+    assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "SHOW DATA REGIONID WHERE DATABASE = root.sg AND time > 9223372036854775807",
+                ZonedDateTime.now().getOffset()));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "SHOW DATA REGIONID WHERE DATABASE = root.sg AND time < -9223372036854775808",
+                ZonedDateTime.now().getOffset()));
   }
 
   @Test

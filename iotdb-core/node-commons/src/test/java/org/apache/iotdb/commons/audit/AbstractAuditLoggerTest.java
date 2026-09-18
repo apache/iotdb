@@ -122,6 +122,25 @@ public class AbstractAuditLoggerTest {
     assertSame(auditFailure, channelFailure.getSuppressed()[0]);
   }
 
+  @Test
+  public void testUserDataTransferUsesControlOperation() {
+    final UserDataTransferAuditEvent event =
+        new UserDataTransferAuditEvent(
+            new TEndPoint("127.0.0.1", 10740),
+            new TEndPoint("127.0.0.2", 10740),
+            new TEndPoint("127.0.0.1", 10740),
+            UserDataTransferProtectionMethod.NONE,
+            true,
+            null);
+
+    final AuditLogFields auditLogFields =
+        AbstractAuditLogger.createUserDataTransferAuditLogFields(event, "127.0.0.1:10740");
+
+    assertEquals(AuditEventType.USER_DATA_TRANSFER, auditLogFields.getAuditEventType());
+    assertEquals(AuditLogOperation.CONTROL, auditLogFields.getAuditLogOperation());
+    assertTrue(auditLogFields.getResult());
+  }
+
   private static class TestAuditLogger extends AbstractAuditLogger {
 
     private IAuditEntity auditEntity;

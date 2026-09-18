@@ -268,26 +268,27 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
   @Override
   public AggregationTableScanNode clone() {
-    return new AggregationTableScanNode(
-        id,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        tagAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        containsNonAlignedDevice,
-        projection,
-        aggregations,
-        groupingSets,
-        preGroupedSymbols,
-        step,
-        groupIdSymbol);
+    return copyDeviceEntryDataSetTo(
+        new AggregationTableScanNode(
+            id,
+            qualifiedObjectName,
+            outputSymbols,
+            assignments,
+            deviceEntries,
+            tagAndAttributeIndexMap,
+            scanOrder,
+            timePredicate,
+            pushDownPredicate,
+            pushDownLimit,
+            pushDownOffset,
+            pushLimitToEachDevice,
+            containsNonAlignedDevice,
+            projection,
+            aggregations,
+            groupingSets,
+            preGroupedSymbols,
+            step,
+            groupIdSymbol));
   }
 
   @Override
@@ -330,50 +331,52 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     }
     if (tableScanNode instanceof TreeDeviceViewScanNode) {
       TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
-      return new AggregationTreeDeviceViewScanNode(
-          id,
-          tableScanNode.getQualifiedObjectName(),
-          tableScanNode.getOutputSymbols(),
-          tableScanNode.getAssignments(),
-          tableScanNode.getDeviceEntries(),
-          tableScanNode.getTagAndAttributeIndexMap(),
-          tableScanNode.getScanOrder(),
-          tableScanNode.getTimePredicate().orElse(null),
-          tableScanNode.getPushDownPredicate(),
-          tableScanNode.getPushDownLimit(),
-          tableScanNode.getPushDownOffset(),
-          tableScanNode.isPushLimitToEachDevice(),
-          tableScanNode.containsNonAlignedDevice(),
-          projectNode == null ? null : projectNode.getAssignments(),
-          aggregationNode.getAggregations(),
-          aggregationNode.getGroupingSets(),
-          aggregationNode.getPreGroupedSymbols(),
-          aggregationNode.getStep(),
-          aggregationNode.getGroupIdSymbol(),
-          treeDeviceViewScanNode.getTreeDBName(),
-          treeDeviceViewScanNode.getMeasurementColumnNameMap());
+      return tableScanNode.copyDeviceEntryDataSetTo(
+          new AggregationTreeDeviceViewScanNode(
+              id,
+              tableScanNode.getQualifiedObjectName(),
+              tableScanNode.getOutputSymbols(),
+              tableScanNode.getAssignments(),
+              tableScanNode.getDeviceEntries(),
+              tableScanNode.getTagAndAttributeIndexMap(),
+              tableScanNode.getScanOrder(),
+              tableScanNode.getTimePredicate().orElse(null),
+              tableScanNode.getPushDownPredicate(),
+              tableScanNode.getPushDownLimit(),
+              tableScanNode.getPushDownOffset(),
+              tableScanNode.isPushLimitToEachDevice(),
+              tableScanNode.containsNonAlignedDevice(),
+              projectNode == null ? null : projectNode.getAssignments(),
+              aggregationNode.getAggregations(),
+              aggregationNode.getGroupingSets(),
+              aggregationNode.getPreGroupedSymbols(),
+              aggregationNode.getStep(),
+              aggregationNode.getGroupIdSymbol(),
+              treeDeviceViewScanNode.getTreeDBName(),
+              treeDeviceViewScanNode.getMeasurementColumnNameMap()));
     }
 
-    return new AggregationTableScanNode(
-        id,
-        tableScanNode.getQualifiedObjectName(),
-        tableScanNode.getOutputSymbols(),
-        tableScanNode.getAssignments(),
-        tableScanNode.getDeviceEntries(),
-        tableScanNode.getTagAndAttributeIndexMap(),
-        tableScanNode.getScanOrder(),
-        tableScanNode.getTimePredicate().orElse(null),
-        tableScanNode.getPushDownPredicate(),
-        tableScanNode.getPushDownLimit(),
-        tableScanNode.getPushDownOffset(),
-        tableScanNode.isPushLimitToEachDevice(),
-        tableScanNode.containsNonAlignedDevice(),
-        projectNode == null ? null : projectNode.getAssignments(),
-        aggregationNode.getAggregations(),
-        aggregationNode.getGroupingSets(),
-        aggregationNode.getPreGroupedSymbols(),
-        aggregationNode.getStep(),
-        aggregationNode.getGroupIdSymbol());
+    return tableScanNode.copyDeviceEntryDataSetTo(
+        new AggregationTableScanNode(
+            id,
+            tableScanNode.getQualifiedObjectName(),
+            tableScanNode.getOutputSymbols(),
+            tableScanNode.getAssignments(),
+            tableScanNode.getDeviceEntries(),
+            tableScanNode.getTagAndAttributeIndexMap(),
+            tableScanNode.getScanOrder(),
+            tableScanNode.getTimePredicate().orElse(null),
+            tableScanNode.getPushDownPredicate(),
+            tableScanNode.getPushDownLimit(),
+            tableScanNode.getPushDownOffset(),
+            tableScanNode.isPushLimitToEachDevice(),
+            tableScanNode.containsNonAlignedDevice(),
+            projectNode == null ? null : projectNode.getAssignments(),
+            aggregationNode.getAggregations(),
+            aggregationNode.getGroupingSets(),
+            aggregationNode.getPreGroupedSymbols(),
+            aggregationNode.getStep(),
+            aggregationNode.getGroupIdSymbol()));
   }
 
   public static AggregationTableScanNode combineAggregationAndTableScan(
@@ -410,50 +413,52 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     }
     if (tableScanNode instanceof TreeDeviceViewScanNode) {
       TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
-      return new AggregationTreeDeviceViewScanNode(
-          id,
-          tableScanNode.getQualifiedObjectName(),
-          tableScanNode.getOutputSymbols(),
-          tableScanNode.getAssignments(),
-          tableScanNode.getDeviceEntries(),
-          tableScanNode.getTagAndAttributeIndexMap(),
-          tableScanNode.getScanOrder(),
-          tableScanNode.getTimePredicate().orElse(null),
-          tableScanNode.getPushDownPredicate(),
-          tableScanNode.getPushDownLimit(),
-          tableScanNode.getPushDownOffset(),
-          tableScanNode.isPushLimitToEachDevice(),
-          tableScanNode.containsNonAlignedDevice(),
-          projectNode == null ? null : projectNode.getAssignments(),
-          aggregationNode.getAggregations(),
-          aggregationNode.getGroupingSets(),
-          aggregationNode.getPreGroupedSymbols(),
-          step,
-          aggregationNode.getGroupIdSymbol(),
-          treeDeviceViewScanNode.getTreeDBName(),
-          treeDeviceViewScanNode.getMeasurementColumnNameMap());
+      return tableScanNode.copyDeviceEntryDataSetTo(
+          new AggregationTreeDeviceViewScanNode(
+              id,
+              tableScanNode.getQualifiedObjectName(),
+              tableScanNode.getOutputSymbols(),
+              tableScanNode.getAssignments(),
+              tableScanNode.getDeviceEntries(),
+              tableScanNode.getTagAndAttributeIndexMap(),
+              tableScanNode.getScanOrder(),
+              tableScanNode.getTimePredicate().orElse(null),
+              tableScanNode.getPushDownPredicate(),
+              tableScanNode.getPushDownLimit(),
+              tableScanNode.getPushDownOffset(),
+              tableScanNode.isPushLimitToEachDevice(),
+              tableScanNode.containsNonAlignedDevice(),
+              projectNode == null ? null : projectNode.getAssignments(),
+              aggregationNode.getAggregations(),
+              aggregationNode.getGroupingSets(),
+              aggregationNode.getPreGroupedSymbols(),
+              step,
+              aggregationNode.getGroupIdSymbol(),
+              treeDeviceViewScanNode.getTreeDBName(),
+              treeDeviceViewScanNode.getMeasurementColumnNameMap()));
     }
 
-    return new AggregationTableScanNode(
-        id,
-        tableScanNode.getQualifiedObjectName(),
-        tableScanNode.getOutputSymbols(),
-        tableScanNode.getAssignments(),
-        tableScanNode.getDeviceEntries(),
-        tableScanNode.getTagAndAttributeIndexMap(),
-        tableScanNode.getScanOrder(),
-        tableScanNode.getTimePredicate().orElse(null),
-        tableScanNode.getPushDownPredicate(),
-        tableScanNode.getPushDownLimit(),
-        tableScanNode.getPushDownOffset(),
-        tableScanNode.isPushLimitToEachDevice(),
-        tableScanNode.containsNonAlignedDevice(),
-        projectNode == null ? null : projectNode.getAssignments(),
-        aggregationNode.getAggregations(),
-        aggregationNode.getGroupingSets(),
-        aggregationNode.getPreGroupedSymbols(),
-        step,
-        aggregationNode.getGroupIdSymbol());
+    return tableScanNode.copyDeviceEntryDataSetTo(
+        new AggregationTableScanNode(
+            id,
+            tableScanNode.getQualifiedObjectName(),
+            tableScanNode.getOutputSymbols(),
+            tableScanNode.getAssignments(),
+            tableScanNode.getDeviceEntries(),
+            tableScanNode.getTagAndAttributeIndexMap(),
+            tableScanNode.getScanOrder(),
+            tableScanNode.getTimePredicate().orElse(null),
+            tableScanNode.getPushDownPredicate(),
+            tableScanNode.getPushDownLimit(),
+            tableScanNode.getPushDownOffset(),
+            tableScanNode.isPushLimitToEachDevice(),
+            tableScanNode.containsNonAlignedDevice(),
+            projectNode == null ? null : projectNode.getAssignments(),
+            aggregationNode.getAggregations(),
+            aggregationNode.getGroupingSets(),
+            aggregationNode.getPreGroupedSymbols(),
+            step,
+            aggregationNode.getGroupIdSymbol()));
   }
 
   public boolean mayUseLastCache() {

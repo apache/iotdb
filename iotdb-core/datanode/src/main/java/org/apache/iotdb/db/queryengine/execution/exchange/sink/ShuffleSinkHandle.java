@@ -33,7 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -65,8 +66,9 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private volatile boolean closed = false;
 
   // close() and abort() invoke channel callbacks, so they cannot be protected by this handle's
-  // lock.
-  private final AtomicBoolean terminationClaimed = new AtomicBoolean(false);
+  // lock. An abort caller that loses the claim waits for the owner to finish; otherwise it may
+  // release fragment memory while the owner is still releasing channel buffers.
+  private final AtomicReference<TerminationClaim> terminationClaim = new AtomicReference<>();
 
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
@@ -80,6 +82,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
       RamUsageEstimator.shallowSizeOfInstance(ShuffleSinkHandle.class)
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class)
           + RamUsageEstimator.shallowSizeOfInstance(DownStreamChannelIndex.class);
+
+  private static final class TerminationClaim {
+    private final Thread owner = Thread.currentThread();
+    private final CompletableFuture<Void> completion = new CompletableFuture<>();
+  }
 
   public ShuffleSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
@@ -149,11 +156,14 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public void setNoMoreTsBlocks() {
-    if (closed || aborted) {
+    if (closed || aborted || terminationClaim.get() != null) {
       return;
     }
     try {
       lock.lock();
+      if (closed || aborted || terminationClaim.get() != null) {
+        return;
+      }
       for (int i = 0; i < downStreamChannelList.size(); i++) {
         if (!hasSetNoMoreTsBlocks[i]) {
           downStreamChannelList.get(i).setNoMoreTsBlocks();
@@ -168,13 +178,16 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
-    if (closed || aborted) {
+    if (closed || aborted || terminationClaim.get() != null) {
       // if this ShuffleSinkHandle has been closed, Driver.close() will attempt to setNoMoreTsBlocks
       // for all the channels
       return;
     }
     try {
       lock.lock();
+      if (closed || aborted || terminationClaim.get() != null) {
+        return;
+      }
       if (!hasSetNoMoreTsBlocks[channelIndex]) {
         downStreamChannelList.get(channelIndex).setNoMoreTsBlocks();
         hasSetNoMoreTsBlocks[channelIndex] = true;
@@ -206,7 +219,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public boolean abort() {
-    if (aborted || closed || !terminationClaimed.compareAndSet(false, true)) {
+    TerminationClaim claim = claimTermination(true);
+    if (claim == null) {
       return false;
     }
     try {
@@ -240,9 +254,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
         return false;
       }
     } finally {
-      if (!aborted) {
-        terminationClaimed.set(false);
-      }
+      releaseTerminationClaim(claim);
     }
   }
 
@@ -252,7 +264,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
   // Lock ShuffleSinkHandle and wait to lock LocalSinkChannel
   @Override
   public boolean close() {
-    if (closed || aborted || !terminationClaimed.compareAndSet(false, true)) {
+    TerminationClaim claim = claimTermination(false);
+    if (claim == null) {
       return false;
     }
     try {
@@ -286,9 +299,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
         return false;
       }
     } finally {
-      if (!closed) {
-        terminationClaimed.set(false);
-      }
+      releaseTerminationClaim(claim);
     }
   }
 
@@ -314,6 +325,32 @@ public class ShuffleSinkHandle implements ISinkHandle {
       }
       throw new IllegalStateException(DataNodeQueryMessages.SHUFFLESINKHANDLE_IS_ABORTED);
     }
+  }
+
+  private TerminationClaim claimTermination(boolean waitForCurrentClaim) {
+    TerminationClaim claim = new TerminationClaim();
+    while (!aborted && !closed) {
+      TerminationClaim currentClaim = terminationClaim.get();
+      if (currentClaim == null) {
+        if (terminationClaim.compareAndSet(null, claim)) {
+          return claim;
+        }
+      } else {
+        // A channel callback can re-enter close() while holding the channel lock. Therefore close()
+        // must not wait for another termination operation. Abort callers are not invoked under a
+        // channel lock and need the completion barrier before fragment memory is deregistered.
+        if (!waitForCurrentClaim || currentClaim.owner == Thread.currentThread()) {
+          return null;
+        }
+        currentClaim.completion.join();
+      }
+    }
+    return null;
+  }
+
+  private void releaseTerminationClaim(TerminationClaim claim) {
+    terminationClaim.compareAndSet(claim, null);
+    claim.completion.complete(null);
   }
 
   private void switchChannelIfNecessary() {

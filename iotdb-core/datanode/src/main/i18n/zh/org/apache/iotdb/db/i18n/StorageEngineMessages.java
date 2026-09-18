@@ -47,6 +47,8 @@ public final class StorageEngineMessages {
   public static final String REBOOT_ALL_TIMED_SERVICE_SUCCESSFULLY = "所有定时服务重启成功";
   public static final String FAILED_TO_DELETE = "删除失败: {} -> {}";
   public static final String FAILED_TO_CHECK_OBJECT_FILES = "检查对象文件失败: {}";
+  public static final String EXCEPTION_CANNOT_REPAIR_ARG_BECAUSE_TARGET_FILE_ALREADY_EXISTS_AND_TIMESTAMP_IS_LONG_MAX_VALUE_F29F630A =
+      "无法修复 %s，因为目标文件已存在且文件时间戳为 Long.MAX_VALUE";
 
   // ======================== Buffer Cache ========================
 
@@ -62,7 +64,6 @@ public final class StorageEngineMessages {
 
   // ======================== Resource Control - Disk ========================
 
-  public static final String FAILED_TO_DEREGISTER_FILE_LOCK = "注销文件锁失败，原因: {}";
   public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY = "所有目录已满，切换系统为只读模式。";
   public static final String FAILED_TO_PROCESS_FOLDER = "处理目录失败 '";
   public static final String FAIL_TO_GET_CANONICAL_PATH = "获取数据目录 {} 的规范路径失败";
@@ -1371,12 +1372,6 @@ public final class StorageEngineMessages {
       "读取请求数量超限 - 等待 %sms";
   public static final String STORAGE_EXCEPTION_READ_SIZE_LIMIT_EXCEEDED_WAIT_SMS_E19598BA =
       "读取大小超限 - 等待 %sms";
-  public static final String STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_BECAUSE_THERE_IS_FILE_UNDER_1C59ACFC =
-      "无法创建目录 %s，原因：该路径下存在文件，请检查配置并重启。";
-  public static final String STORAGE_EXCEPTION_UNABLE_TO_CREATE_DIRECTORY_S_PLEASE_CHECK_CONFIGURATION_BA580B67 =
-      "无法创建目录 %s，请检查配置并重启。";
-  public static final String STORAGE_EXCEPTION_CONFLICT_IS_DETECTED_IN_DIRECTORY_S_WHICH_MAY_BE_BEING_USED_CB5C77FC =
-      "目录 %s 检测到冲突，可能正被另一个 IoTDB 使用 (ProcessId=%s)。请检查配置并重启。";
   public static final String COMPACTION_INNER_SPACE = "内部";
   public static final String COMPACTION_CROSS_SPACE = "跨空间";
   public static final String DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT =
