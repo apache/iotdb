@@ -222,7 +222,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     List<Integer> ranges = new ArrayList<>();
     for (int i = 1; i < rowCount; i++) { // times are sorted in session API.
-      if (times[i] >= upperBoundOfTimePartition) {
+      if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+          times[i], timePartitionSlot.getStartTime(), upperBoundOfTimePartition)) {
         // a new range.
         ranges.add(startLoc); // included
         ranges.add(i); // excluded
@@ -319,7 +320,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= upperBoundOfTimePartition) {
+      if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+          times[i], timePartitionSlot.getStartTime(), upperBoundOfTimePartition)) {
         result.add(timePartitionSlot);
         // next init
         upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);

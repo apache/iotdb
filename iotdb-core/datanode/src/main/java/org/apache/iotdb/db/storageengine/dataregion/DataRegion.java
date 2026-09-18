@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -125,6 +124,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1054,8 +1054,7 @@ public class DataRegion implements IDataRegionForQuery {
     long deviceTTL =
         DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
     if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
-      throw new OutOfTTLException(
-          insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - deviceTTL));
+      throw new OutOfTTLException(insertRowNode.getTime(), CommonUtils.getTTLLowerBound(deviceTTL));
     }
     StorageEngine.blockInsertionIfReject();
     long startTime = System.nanoTime();
@@ -1133,8 +1132,7 @@ public class DataRegion implements IDataRegionForQuery {
                   String.format(
                       "Insertion time [%s] is less than ttl time bound [%s]",
                       DateTimeUtils.convertLongToDate(currTime),
-                      DateTimeUtils.convertLongToDate(
-                          CommonDateTimeUtils.currentTime() - deviceTTL)));
+                      DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(deviceTTL))));
           loc++;
           noFailure = false;
         } else {
@@ -1145,7 +1143,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (loc == insertTabletNode.getRowCount()) {
         throw new OutOfTTLException(
             insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
-            (CommonDateTimeUtils.currentTime() - deviceTTL));
+            CommonUtils.getTTLLowerBound(deviceTTL));
       }
       // before is first start point
       int before = loc;
@@ -1210,7 +1208,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @return whether the given time falls in ttl
    */
   private boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+    return CommonUtils.isAlive(time, dataTTL);
   }
 
   private void initFlushTimeMap(long timePartitionId) {
@@ -3776,7 +3774,7 @@ public class DataRegion implements IDataRegionForQuery {
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(
-                              CommonDateTimeUtils.currentTime() - deviceTTL))));
+                              CommonUtils.getTTLLowerBound(deviceTTL)))));
           continue;
         }
         // init map
@@ -3876,7 +3874,7 @@ public class DataRegion implements IDataRegionForQuery {
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(
-                              CommonDateTimeUtils.currentTime() - deviceTTL))));
+                              CommonUtils.getTTLLowerBound(deviceTTL)))));
           continue;
         }
         // init map

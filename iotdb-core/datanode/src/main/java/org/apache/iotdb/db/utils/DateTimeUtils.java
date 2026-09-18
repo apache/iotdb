@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
@@ -591,32 +592,43 @@ public class DateTimeUtils {
    */
   public static long convertDurationStrToLong(
       long currentTime, String duration, String timestampPrecision, boolean convertYearToMonth) {
-    long total = 0;
-    long temp = 0;
-    for (int i = 0; i < duration.length(); i++) {
-      char ch = duration.charAt(i);
-      if (Character.isDigit(ch)) {
-        temp *= 10;
-        temp += (ch - '0');
-      } else {
-        String unit = String.valueOf(duration.charAt(i));
-        // This is to identify units with two letters.
-        if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
-          i++;
-          unit += duration.charAt(i);
+    try {
+      long total = 0;
+      long temp = 0;
+      for (int i = 0; i < duration.length(); i++) {
+        char ch = duration.charAt(i);
+        if (Character.isDigit(ch)) {
+          temp = Math.addExact(Math.multiplyExact(temp, 10), Character.digit(ch, 10));
+        } else {
+          String unit = String.valueOf(duration.charAt(i));
+          // This is to identify units with two letters.
+          if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
+            i++;
+            unit += duration.charAt(i);
+          }
+          unit = unit.toLowerCase();
+          if (convertYearToMonth && unit.equals("y")) {
+            temp = Math.multiplyExact(temp, 12);
+            unit = "mo";
+          }
+          long componentCurrentTime =
+              isMonthUnit(unit) ? (currentTime == -1 ? -1 : Math.addExact(currentTime, total)) : -1;
+          total =
+              Math.addExact(
+                  total,
+                  DateTimeUtils.convertDurationStrToLong(
+                      componentCurrentTime, temp, unit, timestampPrecision));
+          temp = 0;
         }
-        unit = unit.toLowerCase();
-        if (convertYearToMonth && unit.equals("y")) {
-          temp *= 12;
-          unit = "mo";
-        }
-        total +=
-            DateTimeUtils.convertDurationStrToLong(
-                currentTime == -1 ? -1 : currentTime + total, temp, unit, timestampPrecision);
-        temp = 0;
       }
+      return total;
+    } catch (ArithmeticException e) {
+      throw new SemanticException("Time duration is out of range.");
     }
-    return total;
+  }
+
+  private static boolean isMonthUnit(String unit) {
+    return "mo".equals(unit) || "month".equals(unit);
   }
 
   @TestOnly
@@ -628,37 +640,46 @@ public class DateTimeUtils {
   /** convert duration string to millisecond, microsecond or nanosecond. */
   public static long convertDurationStrToLong(
       long currentTime, long value, String unit, String timestampPrecision) {
+    try {
+      return convertDurationStrToLongInternal(currentTime, value, unit, timestampPrecision);
+    } catch (ArithmeticException e) {
+      throw new SemanticException("Time duration is out of range.");
+    }
+  }
+
+  private static long convertDurationStrToLongInternal(
+      long currentTime, long value, String unit, String timestampPrecision) {
     DurationUnit durationUnit = DurationUnit.valueOf(unit);
     long res = value;
     switch (durationUnit) {
       case y:
-        res *= 365 * 86_400_000L;
+        res = Math.multiplyExact(value, 365 * 86_400_000L);
         break;
       case mo:
         if (currentTime == -1) {
-          res *= 30 * 86_400_000L;
+          res = Math.multiplyExact(value, 30 * 86_400_000L);
         } else {
           Calendar calendar = Calendar.getInstance();
           calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
           calendar.setTimeInMillis(currentTime);
-          calendar.add(Calendar.MONTH, (int) (value));
-          res = calendar.getTimeInMillis() - currentTime;
+          calendar.add(Calendar.MONTH, Math.toIntExact(value));
+          res = Math.subtractExact(calendar.getTimeInMillis(), currentTime);
         }
         break;
       case w:
-        res *= 7 * 86_400_000L;
+        res = Math.multiplyExact(value, 7 * 86_400_000L);
         break;
       case d:
-        res *= 86_400_000L;
+        res = Math.multiplyExact(value, 86_400_000L);
         break;
       case h:
-        res *= 3_600_000L;
+        res = Math.multiplyExact(value, 3_600_000L);
         break;
       case m:
-        res *= 60_000L;
+        res = Math.multiplyExact(value, 60_000L);
         break;
       case s:
-        res *= 1_000L;
+        res = Math.multiplyExact(value, 1_000L);
         break;
       default:
         break;
@@ -670,15 +691,15 @@ public class DateTimeUtils {
       } else if (unit.equals(DurationUnit.us.toString())) {
         return value;
       } else {
-        return res * 1000;
+        return Math.multiplyExact(res, 1000);
       }
     } else if ("ns".equals(timestampPrecision)) {
       if (unit.equals(DurationUnit.ns.toString())) {
         return value;
       } else if (unit.equals(DurationUnit.us.toString())) {
-        return value * 1000;
+        return Math.multiplyExact(value, 1000);
       } else {
-        return res * 1000_000;
+        return Math.multiplyExact(res, 1000_000);
       }
     } else {
       if (unit.equals(DurationUnit.ns.toString())) {
@@ -779,39 +800,44 @@ public class DateTimeUtils {
    * @return the TimeDuration instance contains month part and non-month part
    */
   public static TimeDuration constructTimeDuration(String duration) {
-    duration = duration.toLowerCase();
-    String currTimePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-    long temp = 0;
-    long monthDuration = 0;
-    long nonMonthDuration = 0;
-    for (int i = 0; i < duration.length(); i++) {
-      char ch = duration.charAt(i);
-      if (Character.isDigit(ch)) {
-        temp *= 10;
-        temp += (ch - '0');
-      } else {
-        String unit = String.valueOf(duration.charAt(i));
-        // This is to identify units with two letters.
-        if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
-          i++;
-          unit += duration.charAt(i);
-        }
-        if (unit.equals("y")) {
-          monthDuration += temp * 12;
+    try {
+      duration = duration.toLowerCase();
+      String currTimePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+      long temp = 0;
+      long monthDuration = 0;
+      long nonMonthDuration = 0;
+      for (int i = 0; i < duration.length(); i++) {
+        char ch = duration.charAt(i);
+        if (Character.isDigit(ch)) {
+          temp = Math.addExact(Math.multiplyExact(temp, 10), Character.digit(ch, 10));
+        } else {
+          String unit = String.valueOf(duration.charAt(i));
+          // This is to identify units with two letters.
+          if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
+            i++;
+            unit += duration.charAt(i);
+          }
+          if (unit.equals("y")) {
+            monthDuration = Math.addExact(monthDuration, Math.multiplyExact(temp, 12));
+            temp = 0;
+            continue;
+          }
+          if (unit.equals("mo")) {
+            monthDuration = Math.addExact(monthDuration, temp);
+            temp = 0;
+            continue;
+          }
+          nonMonthDuration =
+              Math.addExact(
+                  nonMonthDuration,
+                  DateTimeUtils.convertDurationStrToLong(-1, temp, unit, currTimePrecision));
           temp = 0;
-          continue;
         }
-        if (unit.equals("mo")) {
-          monthDuration += temp;
-          temp = 0;
-          continue;
-        }
-        nonMonthDuration +=
-            DateTimeUtils.convertDurationStrToLong(-1, temp, unit, currTimePrecision);
-        temp = 0;
       }
+      return new TimeDuration(Math.toIntExact(monthDuration), nonMonthDuration);
+    } catch (ArithmeticException e) {
+      throw new SemanticException("Time duration is out of range.");
     }
-    return new TimeDuration((int) monthDuration, nonMonthDuration);
   }
 
   public static Long parseDateTimeExpressionToLong(String dateExpression, ZoneId zoneId) {

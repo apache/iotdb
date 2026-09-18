@@ -17,25 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.db.pipe.processor.downsampling;
 
-import com.google.common.math.LongMath;
+public class DownSamplingTimeUtils {
 
-/** This class is used to throw run time exception when query is time out. */
-public class QueryTimeoutRuntimeException extends RuntimeException {
-  public static final String QUERY_TIMEOUT_EXCEPTION_MESSAGE =
-      "Current query is time out, query start time is %d, ddl is %d, current time is %d, please check your statement or modify timeout parameter.";
-
-  public QueryTimeoutRuntimeException(long startTime, long currentTime, long timeout) {
-    super(
-        String.format(
-            QUERY_TIMEOUT_EXCEPTION_MESSAGE,
-            startTime,
-            LongMath.saturatedAdd(startTime, timeout),
-            currentTime));
+  private DownSamplingTimeUtils() {
+    // Utility class.
   }
 
-  public QueryTimeoutRuntimeException(String message) {
-    super(message);
+  public static boolean isTimeDistanceLessThanOrEqualTo(long left, long right, long distance) {
+    if (distance < 0) {
+      return false;
+    }
+    final long difference = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(difference, distance) <= 0;
+  }
+
+  public static boolean isTimeDistanceGreaterThanOrEqualTo(long left, long right, long distance) {
+    if (distance < 0) {
+      return true;
+    }
+    final long difference = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(difference, distance) >= 0;
   }
 }

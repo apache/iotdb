@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -74,6 +73,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushL
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -2304,9 +2304,7 @@ public class TsFileProcessor {
 
   private long getQueryTimeLowerBound(String[] device) {
     long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
-    return deviceTTL != Long.MAX_VALUE
-        ? CommonDateTimeUtils.currentTime() - deviceTTL
-        : Long.MIN_VALUE;
+    return deviceTTL != Long.MAX_VALUE ? CommonUtils.getTTLLowerBound(deviceTTL) : Long.MIN_VALUE;
   }
 
   public long getTimeRangeId() {

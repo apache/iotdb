@@ -17,25 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.db.utils;
 
-import com.google.common.math.LongMath;
+import org.junit.Assert;
+import org.junit.Test;
 
-/** This class is used to throw run time exception when query is time out. */
-public class QueryTimeoutRuntimeException extends RuntimeException {
-  public static final String QUERY_TIMEOUT_EXCEPTION_MESSAGE =
-      "Current query is time out, query start time is %d, ddl is %d, current time is %d, please check your statement or modify timeout parameter.";
+public class CommonUtilsTest {
 
-  public QueryTimeoutRuntimeException(long startTime, long currentTime, long timeout) {
-    super(
-        String.format(
-            QUERY_TIMEOUT_EXCEPTION_MESSAGE,
-            startTime,
-            LongMath.saturatedAdd(startTime, timeout),
-            currentTime));
+  @Test
+  public void testIsAliveDoesNotOverflowForLongMinTimestamp() {
+    Assert.assertFalse(CommonUtils.isAlive(Long.MIN_VALUE, 1));
+    Assert.assertTrue(CommonUtils.isAlive(Long.MAX_VALUE, 1));
+    Assert.assertTrue(CommonUtils.isAlive(Long.MIN_VALUE, Long.MAX_VALUE));
   }
 
-  public QueryTimeoutRuntimeException(String message) {
-    super(message);
+  @Test
+  public void testTTLLowerBoundDoesNotUnderflowWithHugeTTL() {
+    long ttl = Long.MAX_VALUE - 1;
+    long ttlLowerBound = CommonUtils.getTTLLowerBound(ttl);
+
+    Assert.assertTrue(ttlLowerBound > Long.MIN_VALUE);
+    Assert.assertFalse(CommonUtils.isAlive(Long.MIN_VALUE, ttl));
   }
 }
