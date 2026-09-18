@@ -21,6 +21,8 @@
 
 # Federated query table functions
 
+[中文使用说明（含打包、注册与完整 SQL）](FEDERATED_QUERY_zh.md)
+
 This plugin exposes remote JDBC query results as table-model relations in IoTDB.
 It was migrated from `ty/mysql-connector` at `b7dc14dd490289add5fa2a92f09082a8e5339a99`
 onto master at `87a6d198a901f46630a3455f59b264fc9368ca08`.
@@ -60,7 +62,18 @@ release. Use the GaussDB driver version supplied for the target deployment.
 
 ## Build and installation
 
-Build from the repository root:
+For a single plugin JAR containing all five JDBC drivers and runtime dependencies:
+
+```sh
+mvn clean package -pl library-udf -am -P federated-query-jar -DskipTests
+```
+
+Deploy `library-udf/target/library-udf-2.0.11-SNAPSHOT-federated-jar-with-dependencies.jar`
+on its own in each node's `ext/udf/`. This opt-in profile excludes the server's UDF,
+TsFile and SLF4J APIs, preserves reflective driver loading, and merges service metadata.
+Do not combine it with `get-jar-with-dependencies` or duplicate thin/driver JARs.
+
+For the thin JAR with separately installed drivers, build from the repository root:
 
 ```sh
 mvn clean package -pl library-udf -am -DskipTests
@@ -68,7 +81,7 @@ mvn clean package -pl library-udf -am -DskipTests
 
 Copy the resulting `library-udf-<version>.jar` and the driver JARs needed by your
 connectors into `ext/udf/` on every ConfigNode and DataNode, before registering
-functions. JDBC dependencies are `provided` and `optional`: they are not bundled
+functions. In the default thin build, JDBC dependencies are `provided` and `optional`: they are not bundled
 into the plugin or propagated into IoTDB distributions.
 
 Driver versions declared for compilation/testing are MySQL 9.3.0, PostgreSQL
@@ -114,6 +127,12 @@ serialized execution handle, so apply the deployment's existing query-log and
 transport protections.
 
 ## Type mapping and current limits
+
+On baseline `87a6d198a9`, an outer `ORDER BY device_id` on a standalone JDBC table
+function can hit a planner null pointer (`deviceTableScanNode`). The tested SQL
+examples put this ordering in the remote `SQL` argument. The local/remote JOIN
+example with `ORDER BY l.device_id` passes. Do not rely on remote input ordering
+after adding IoTDB operations that can reorder rows.
 
 Integer types map to INT32/INT64, floating-point and DECIMAL/NUMERIC to FLOAT/DOUBLE,
 character types to STRING, BOOLEAN/BIT to BOOLEAN, DATE to DATE, TIME/TIMESTAMP
