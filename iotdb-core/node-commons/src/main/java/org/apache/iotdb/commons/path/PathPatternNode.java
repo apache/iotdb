@@ -58,6 +58,10 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
 
   private final VSerializer serializer;
 
+  // Children names with wildcard, for accelerating wildcard searching.
+  // Here we do not include "*" or "**" to ensure that the set is empty in most cases.
+  private final Set<String> childrenNamesWithNonTrivialWildcard = new HashSet<>();
+
   public PathPatternNode(String name, VSerializer serializer) {
     this.name = name;
     this.children = new HashMap<>();
@@ -90,6 +94,10 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     if (children.containsKey(MULTI_LEVEL_PATH_WILDCARD)) {
       res.add(children.get(MULTI_LEVEL_PATH_WILDCARD));
     }
+    childrenNamesWithNonTrivialWildcard.stream()
+        .filter(path -> PathPatternUtil.isNodeMatch(path, nodeName))
+        .map(children::get)
+        .forEach(res::add);
     return res;
   }
 
@@ -98,7 +106,13 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   }
 
   public void addChild(PathPatternNode<V, VSerializer> tmpNode) {
-    children.put(tmpNode.getName(), tmpNode);
+    String nodeName = tmpNode.getName();
+    if (PathPatternUtil.hasWildcard(nodeName)
+        && !PathPatternUtil.isMultiLevelMatchWildcard(nodeName)
+        && !ONE_LEVEL_PATH_WILDCARD.equals(nodeName)) {
+      childrenNamesWithNonTrivialWildcard.add(nodeName);
+    }
+    children.put(nodeName, tmpNode);
   }
 
   public void deleteChild(PathPatternNode<V, VSerializer> tmpNode) {
@@ -265,6 +279,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     return SHALLOW_SIZE
         + RamUsageEstimator.sizeOf(name)
         + RamUsageEstimator.sizeOfHashSet(valueSet)
+        + RamUsageEstimator.sizeOfHashSet(childrenNamesWithNonTrivialWildcard)
         + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
             children,
             RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
