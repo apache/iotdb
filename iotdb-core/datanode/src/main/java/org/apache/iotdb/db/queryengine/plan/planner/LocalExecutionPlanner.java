@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -280,13 +282,18 @@ public class LocalExecutionPlanner {
     }
     long allocated = allocateOperatorsMemory(memoryInBytes, isHighestPriority);
     if (allocated < 0) {
-      throw new MemoryNotEnoughException(
+      long freeBytes = freeMemoryForOperators;
+      throw new OperatorMemoryNotEnoughException(
           String.format(
-              "There is not enough memory for Query %s, the contextHolder is %s,"
-                  + "current remaining free memory is %dB, "
-                  + "already reserved memory for this context in total is %dB, "
-                  + "the memory requested this time is %dB",
-              queryId, contextHolder, freeMemoryForOperators, reservedBytes, memoryInBytes));
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_MEMORY_FOR_QUERY_S_THE_CONTEXTHOLDER_546CDD02,
+              queryId,
+              contextHolder,
+              freeBytes,
+              reservedBytes,
+              memoryInBytes),
+          memoryInBytes,
+          freeBytes);
     }
     return allocated;
   }

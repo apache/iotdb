@@ -29,6 +29,7 @@
     <artifactId>iotdb-server</artifactId>
     <name>IoTDB: Core: Data-Node (Server)</name>
     <properties>
+        <i18n.locale>en</i18n.locale>
         <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
         <iotdb.test.skip>false</iotdb.test.skip>
         <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
@@ -372,6 +373,19 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                            <include>src/main/i18n/**/*.java</include>
+                        </includes>
+                    </java>
+                </configuration>
+            </plugin>
             <!--using `mvn test` to run UT, `mvn verify` to run ITs
                         Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
@@ -499,6 +513,7 @@
                         <configuration>
                             <sources>
                                 <source>${project.build.directory}/generated-sources/freemarker</source>
+                                <source>${project.basedir}/src/main/i18n/${i18n.locale}</source>
                             </sources>
                         </configuration>
                     </execution>
@@ -536,6 +551,12 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>with-zh-locale</id>
+            <properties>
+                <i18n.locale>zh</i18n.locale>
+            </properties>
+        </profile>
         <profile>
             <id>skipIoTDBTests</id>
             <activation>
