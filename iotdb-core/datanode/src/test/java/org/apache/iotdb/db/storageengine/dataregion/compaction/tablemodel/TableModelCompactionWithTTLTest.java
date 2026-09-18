@@ -170,6 +170,6 @@ public class TableModelCompactionWithTTLTest extends AbstractTableModelCompactio
         new FieldColumnSchema("s1", TSDataType.STRING, TSEncoding.PLAIN, CompressionType.LZ4));
     tsTable.addProp(TsTable.TTL_PROPERTY, ttl + "");
     DataNodeTableCache.getInstance().preUpdateTable(TABLE_MODEL_TEST_SG, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(TABLE_MODEL_TEST_SG, tableName, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(TABLE_MODEL_TEST_SG, tableName, null, null);
   }
 }

@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
+import org.apache.iotdb.commons.schema.table.TreeToTableViewOperationType;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTree2TableView;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -36,6 +40,17 @@ public class DropViewProcedure extends DropTableProcedure {
       final String queryId,
       final boolean isGeneratedByPipe) {
     super(database, tableName, queryId, isGeneratedByPipe);
+  }
+
+  /** A dropped view has to leave the tree-to-table view index of every DataNode. */
+  @Override
+  protected TUpdateTableReq buildCommitReleaseTableReq(final String oldName) {
+    // Unregistering a view needs nothing but its name, which the request already carries.
+    return SchemaUtils.buildCommitUpdateTableReq(
+        database,
+        table.getTableName(),
+        null,
+        new TUpdateTree2TableView(TreeToTableViewOperationType.REMOVE.getOperationType()));
   }
 
   @Override

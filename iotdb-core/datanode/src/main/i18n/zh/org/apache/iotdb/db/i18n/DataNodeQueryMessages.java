@@ -4696,5 +4696,7 @@ public final class DataNodeQueryMessages {
       "没有更多可用的 DeviceEntry 记录";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
+  public static final String EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215 =
+      "auto_sync_schema 仅支持树转表视图";
 
 }

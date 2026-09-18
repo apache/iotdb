@@ -3940,5 +3940,7 @@ public final class DataNodeQueryMessages {
       "No more DeviceEntry records are available";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
+  public static final String EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215 =
+      "auto_sync_schema is only supported by tree to table views";
 
 }

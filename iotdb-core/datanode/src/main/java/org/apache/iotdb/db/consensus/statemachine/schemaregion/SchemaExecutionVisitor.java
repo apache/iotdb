@@ -79,6 +79,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeries
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
+import org.apache.iotdb.db.schemaengine.table.TreeToTableViewCache;
+import org.apache.iotdb.db.schemaengine.table.TriggerAddViewColumnVisitor;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -94,9 +96,14 @@ import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Schema write {@link PlanNode} visitor */
 public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegion> {
@@ -105,6 +112,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitCreateTimeSeries(
       final CreateTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+    triggerAddViewColumn(node, null);
+
     try {
       schemaRegion.createTimeSeries(node, -1);
     } catch (final MetadataException e) {
@@ -117,6 +126,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitCreateAlignedTimeSeries(
       final CreateAlignedTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+    triggerAddViewColumn(node, null);
+
     try {
       if (node.isGeneratedByPipe()) {
         final ICreateAlignedTimeSeriesPlan plan =
@@ -144,6 +155,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+    triggerAddViewColumn(node, null);
+
     final Map<PartialPath, MeasurementGroup> measurementGroupMap = node.getMeasurementGroupMap();
     final List<TSStatus> failingStatus = new ArrayList<>();
     PartialPath devicePath;
@@ -194,6 +207,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitInternalCreateTimeSeries(
       final InternalCreateTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+    triggerAddViewColumn(node, null);
+
     final PartialPath devicePath = node.getDevicePath();
     final MeasurementGroup measurementGroup = node.getMeasurementGroup();
 
@@ -232,6 +247,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitInternalCreateMultiTimeSeries(
       final InternalCreateMultiTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+    triggerAddViewColumn(node, null);
+
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
 
@@ -411,6 +428,23 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
     }
   }
 
+  /**
+   * @param context the templates the node needs, which this visitor has already resolved for its
+   *     own use; null for the nodes which involve no template
+   */
+  private TSStatus triggerAddViewColumn(
+      final WritePlanNode node, final TriggerAddViewColumnVisitor.Context context) {
+    try {
+      if (TreeToTableViewCache.getInstance().hasView()) {
+        node.accept(new TriggerAddViewColumnVisitor(), context);
+      }
+    } catch (final Throwable e) {
+      logger.error(
+          DataNodeSchemaMessages.LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED, node.getPlanNodeId(), e);
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   @Override
   public TSStatus visitAlterTimeSeries(
       final AlterTimeSeriesNode node, final ISchemaRegion schemaRegion) {
@@ -465,15 +499,17 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitActivateTemplate(
       final ActivateTemplateNode node, final ISchemaRegion schemaRegion) {
+    // The template is resolved here, so that the view column trigger and the activation below share
+    // one instance instead of looking it up twice.
+    final Template template =
+        ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
+    final Map<Integer, Template> templateMap = new HashMap<>(1);
+    if (Objects.isNull(template)) {
+      return getUndefinedTemplateStatus(Collections.singleton(node.getTemplateId()));
+    }
+    templateMap.put(node.getTemplateId(), template);
     try {
-      final Template template =
-          ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
-      if (Objects.isNull(template)) {
-        return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
-            .setMessage(
-                DataNodeMiscMessages
-                    .MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779);
-      }
+      triggerAddViewColumn(node, new TriggerAddViewColumnVisitor.Context(templateMap));
       schemaRegion.activateSchemaTemplate(node, template);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
@@ -485,17 +521,20 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
   @Override
   public TSStatus visitBatchActivateTemplate(
       final BatchActivateTemplateNode node, final ISchemaRegion schemaRegion) {
+    final Map<Integer, Template> templateMap = new HashMap<>();
+    final Set<Integer> missingTemplateIds = new HashSet<>();
+    collectTemplates(node.getTemplateActivationMap(), templateMap, missingTemplateIds);
+
+    triggerAddViewColumn(node, new TriggerAddViewColumnVisitor.Context(templateMap));
+
     final List<TSStatus> statusList = new ArrayList<>();
     final List<PartialPath> alreadyActivatedDeviceList = new ArrayList<>();
     for (final Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
         node.getTemplateActivationMap().entrySet()) {
-      final Template template =
-          ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      final Template template = templateMap.get(entry.getValue().left);
       if (Objects.isNull(template)) {
-        return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
-            .setMessage(
-                DataNodeMiscMessages
-                    .MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779);
+        // its id is in missingTemplateIds, which is reported at the end
+        continue;
       }
       try {
         schemaRegion.activateSchemaTemplate(
@@ -517,21 +556,27 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       logMetaDataException(e);
       statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
+    if (!missingTemplateIds.isEmpty()) {
+      statusList.add(getUndefinedTemplateStatus(missingTemplateIds));
+    }
     return statusList.isEmpty() ? RpcUtils.SUCCESS_STATUS : RpcUtils.getStatus(statusList);
   }
 
   @Override
   public TSStatus visitInternalBatchActivateTemplate(
       final InternalBatchActivateTemplateNode node, final ISchemaRegion schemaRegion) {
+    final Map<Integer, Template> templateMap = new HashMap<>();
+    final Set<Integer> missingTemplateIds = new HashSet<>();
+    collectTemplates(node.getTemplateActivationMap(), templateMap, missingTemplateIds);
+
+    triggerAddViewColumn(node, new TriggerAddViewColumnVisitor.Context(templateMap));
+
     for (final Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
         node.getTemplateActivationMap().entrySet()) {
-      final Template template =
-          ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      final Template template = templateMap.get(entry.getValue().left);
       if (Objects.isNull(template)) {
-        return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
-            .setMessage(
-                DataNodeMiscMessages
-                    .MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779);
+        // its id is in missingTemplateIds, which is reported at the end
+        continue;
       }
       try {
         schemaRegion.activateSchemaTemplate(
@@ -548,7 +593,41 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
     }
+    if (!missingTemplateIds.isEmpty()) {
+      return getUndefinedTemplateStatus(missingTemplateIds);
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private static void collectTemplates(
+      final Map<PartialPath, Pair<Integer, Integer>> templateActivationMap,
+      final Map<Integer, Template> templateMap,
+      final Set<Integer> missingTemplateIds) {
+    final ClusterTemplateManager templateManager = ClusterTemplateManager.getInstance();
+    for (final Pair<Integer, Integer> activation : templateActivationMap.values()) {
+      final int templateId = activation.left;
+      if (templateMap.containsKey(templateId) || missingTemplateIds.contains(templateId)) {
+        // already resolved for another path of this plan
+        continue;
+      }
+      final Template template = templateManager.getTemplate(templateId);
+      if (Objects.isNull(template)) {
+        missingTemplateIds.add(templateId);
+      } else {
+        templateMap.put(templateId, template);
+      }
+    }
+  }
+
+  private static TSStatus getUndefinedTemplateStatus(final Set<Integer> missingTemplateIds) {
+    return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
+        .setMessage(
+            String.format(
+                DataNodeMiscMessages
+                    .MESSAGE_THE_TEMPLATE_IS_NULL_WHEN_TRYING_TO_ACTIVATE_TEMPLATE_MAY_BE_THE_TEMPLATE_IS_BEING_UNSET_THE_TEMPLATE_IDS_ARE_ARG_7B5F4F72,
+                missingTemplateIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(", "))));
   }
 
   @Override
