@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Before;
@@ -71,6 +72,7 @@ public class ProcedureManagerReconstructRegionTest {
 
   private ProcedureManager manager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
+  private NodeManager nodeManager;
   private PartitionManager partitionManager;
   private final ConcurrentHashMap<Long, Procedure<ConfigNodeProcedureEnv>> procedures =
       new ConcurrentHashMap<>();
@@ -78,7 +80,7 @@ public class ProcedureManagerReconstructRegionTest {
   @Before
   public void setUp() throws Exception {
     ConfigManager configManager = mock(ConfigManager.class);
-    NodeManager nodeManager = mock(NodeManager.class);
+    nodeManager = mock(NodeManager.class);
     partitionManager = mock(PartitionManager.class);
     ConfigNodeProcedureEnv env = mock(ConfigNodeProcedureEnv.class);
     RegionMaintainHandler handler = mock(RegionMaintainHandler.class);
@@ -90,10 +92,16 @@ public class ProcedureManagerReconstructRegionTest {
         .thenReturn(new TDataNodeConfiguration().setLocation(target));
     when(nodeManager.filterDataNodeThroughStatus(NodeStatus.Running))
         .thenReturn(Collections.singletonList(new TDataNodeConfiguration().setLocation(target)));
+    when(nodeManager.filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly))
+        .thenReturn(Collections.singletonList(new TDataNodeConfiguration().setLocation(target)));
     when(partitionManager.findTConsensusGroupIdByRegionId(12)).thenReturn(Optional.of(firstRegion));
     when(partitionManager.findTConsensusGroupIdByRegionId(14))
         .thenReturn(Optional.of(secondRegion));
     when(partitionManager.findTConsensusGroupIdByRegionId(99)).thenReturn(Optional.empty());
+    when(partitionManager.generateTConsensusGroupIdByRegionId(12))
+        .thenReturn(Optional.of(firstRegion));
+    when(partitionManager.generateTConsensusGroupIdByRegionId(14))
+        .thenReturn(Optional.of(secondRegion));
     when(partitionManager.getRegionDatabase(any(TConsensusGroupId.class))).thenReturn("root.sg");
 
     Map<TConsensusGroupId, TRegionReplicaSet> replicaSets = new HashMap<>();
@@ -165,5 +173,18 @@ public class ProcedureManagerReconstructRegionTest {
     assertEquals(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode(), status.getCode());
     assertTrue(status.getMessage().contains("in progress"));
     verify(executor, times(0)).submitProcedure(any());
+  }
+
+  @Test
+  public void testRemoveRegionAllowsReadOnlyTargetDataNode() {
+    procedures.clear();
+    when(nodeManager.filterDataNodeThroughStatus(NodeStatus.Running))
+        .thenReturn(
+            Collections.singletonList(new TDataNodeConfiguration().setLocation(coordinator)));
+    TRemoveRegionReq request = new TRemoveRegionReq(Collections.singletonList(12), 7, Model.TREE);
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), manager.removeRegions(request).getCode());
+    verify(executor, times(1)).submitProcedure(any());
   }
 }

@@ -897,7 +897,8 @@ public class ProcedureManager {
                     new Pair<>("Original DataNode", originalDataNode),
                     new Pair<>("Destination DataNode", destDataNode),
                     new Pair<>("Coordinator for add peer", coordinatorForAddPeer)),
-                migrateRegionReq.getModel()))
+                migrateRegionReq.getModel(),
+                NodeStatus.Running))
         != null) {
       // do nothing
     } else if (configManager
@@ -941,7 +942,8 @@ public class ProcedureManager {
             Arrays.asList(
                 new Pair<>("Target DataNode", targetDataNode),
                 new Pair<>("Coordinator", coordinator)),
-            req.getModel());
+            req.getModel(),
+            NodeStatus.Running);
 
     if (configManager
             .getPartitionManager()
@@ -982,7 +984,8 @@ public class ProcedureManager {
             Arrays.asList(
                 new Pair<>("Target DataNode", targetDataNode),
                 new Pair<>("Coordinator", coordinator)),
-            req.getModel());
+            req.getModel(),
+            NodeStatus.Running);
     if (configManager
         .getPartitionManager()
         .getAllReplicaSets(targetDataNode.getDataNodeId())
@@ -1013,7 +1016,9 @@ public class ProcedureManager {
             regionId,
             targetDataNode,
             Arrays.asList(new Pair<>("Coordinator", coordinator)),
-            req.getModel());
+            req.getModel(),
+            NodeStatus.Running,
+            NodeStatus.ReadOnly);
 
     if (configManager
             .getPartitionManager()
@@ -1047,15 +1052,17 @@ public class ProcedureManager {
    * removing
    *
    * @param regionId region group id, also called consensus group id
-   * @param targetDataNode DataNode should in Running status
+   * @param targetDataNode DataNode participating in the region operation
    * @param relatedDataNodes Pair<Identity, Node Location>
+   * @param targetDataNodeAllowedStatuses statuses accepted for the target DataNode
    * @return The reason if check failed, or null if check pass
    */
   private String regionOperationCommonCheck(
       TConsensusGroupId regionId,
       TDataNodeLocation targetDataNode,
       List<Pair<String, TDataNodeLocation>> relatedDataNodes,
-      Model model) {
+      Model model,
+      NodeStatus... targetDataNodeAllowedStatuses) {
     String failMessage;
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -1072,13 +1079,16 @@ public class ProcedureManager {
           relatedDataNodes.stream().filter(pair -> pair.getRight() == null).findAny().get();
       failMessage = String.format("Cannot find %s", nullPair.getLeft());
     } else if (targetDataNode != null
-        && !configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+        && !configManager
+            .getNodeManager()
+            .filterDataNodeThroughStatus(targetDataNodeAllowedStatuses)
+            .stream()
             .map(TDataNodeConfiguration::getLocation)
             .map(TDataNodeLocation::getDataNodeId)
             .collect(Collectors.toSet())
             .contains(targetDataNode.getDataNodeId())) {
-      // Here we only check Running DataNode to implement migration, because removing nodes may not
-      // exist when add peer is performing
+      // The accepted statuses depend on the region operation. For example, REMOVE REGION also
+      // accepts a ReadOnly target because the target replica is being removed.
       failMessage =
           String.format(
               "Target DataNode %s is not in Running status.", targetDataNode.getDataNodeId());
