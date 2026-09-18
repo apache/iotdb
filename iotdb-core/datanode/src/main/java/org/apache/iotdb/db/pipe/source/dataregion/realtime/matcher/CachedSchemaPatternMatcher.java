@@ -61,7 +61,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   // Use full cache to avoid queue stuck and block insertion
   protected final Map<IDeviceID, Set<PipeRealtimeDataRegionSource>> deviceToSourcesCache;
-  protected final Map<Pair<String, IDeviceID>, Set<PipeRealtimeDataRegionSource>>
+  protected final Map<Pair<String, String>, Set<PipeRealtimeDataRegionSource>>
       databaseAndTableToSourcesCache;
 
   public CachedSchemaPatternMatcher() {
@@ -102,7 +102,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   public void invalidateCache() {
     lock.writeLock().lock();
     try {
-      // Will invalidate device cache
+      // The table-model cache also depends on access control, so it must be invalidated separately.
       databaseAndTableToSourcesCache.clear();
     } finally {
       lock.writeLock().unlock();
@@ -144,6 +144,11 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         return new Pair<>(matchedSources, findUnmatchedSources(matchedSources));
       }
 
+      // tableNames is also used for privilege checks on table-model TsFile events, so it must be
+      // complete even after every source has already matched.
+      final boolean isTableModelTsFileEvent =
+          event.getEvent() instanceof PipeTsFileInsertionEvent
+              && ((PipeTsFileInsertionEvent) event.getEvent()).isTableModelEvent();
       final Set<String> tableNames = new HashSet<>();
       for (final Map.Entry<IDeviceID, String[]> entry : event.getSchemaInfo().entrySet()) {
         final IDeviceID deviceID = entry.getKey();
@@ -154,16 +159,17 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
             || deviceID.getTableName().equals(PATH_ROOT)) {
           matchTreeModelEvent(deviceID, entry.getValue(), matchedSources);
         } else {
-          tableNames.add(deviceID.getTableName());
-          matchTableModelEvent(
-              event.getEvent() instanceof PipeInsertionEvent
-                  ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
-                  : null,
-              deviceID,
-              matchedSources);
+          final String tableName = deviceID.getTableName();
+          if (tableNames.add(tableName) && matchedSources.size() < sources.size()) {
+            final String tableModelDatabaseName =
+                event.getEvent() instanceof PipeInsertionEvent
+                    ? ((PipeInsertionEvent) event.getEvent()).getTableModelDatabaseName()
+                    : null;
+            matchTableModelEvent(tableModelDatabaseName, tableName, matchedSources);
+          }
         }
 
-        if (matchedSources.size() == sources.size()) {
+        if (matchedSources.size() == sources.size() && !isTableModelTsFileEvent) {
           break;
         }
       }
@@ -171,7 +177,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       if (event.getEvent() instanceof PipeTsFileInsertionEvent) {
         final PipeTsFileInsertionEvent tsFileInsertionEvent =
             (PipeTsFileInsertionEvent) event.getEvent();
-        if (tsFileInsertionEvent.isTableModelEvent()) {
+        if (isTableModelTsFileEvent) {
           tsFileInsertionEvent.setTableNames(tableNames);
         } else {
           tsFileInsertionEvent.setTreeSchemaMap(event.getSchemaInfo());
@@ -273,7 +279,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   protected void matchTableModelEvent(
       final String databaseName,
-      final IDeviceID tableName,
+      final String tableName,
       final Set<PipeRealtimeDataRegionSource> matchedSources) {
     // this would not happen
     if (databaseName == null) {
@@ -294,7 +300,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   protected Set<PipeRealtimeDataRegionSource> filterSourcesByDatabaseAndTable(
-      final Pair<String, IDeviceID> databaseNameAndTableName) {
+      final Pair<String, String> databaseNameAndTableName) {
     final Set<PipeRealtimeDataRegionSource> filteredSources = new HashSet<>();
 
     for (final PipeRealtimeDataRegionSource source : sources) {
@@ -317,21 +323,20 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   private boolean matchesTablePattern(
-      final TablePattern tablePattern, final Pair<String, IDeviceID> databaseNameAndTableName) {
+      final TablePattern tablePattern, final Pair<String, String> databaseNameAndTableName) {
     return Objects.isNull(tablePattern)
         || (tablePattern.isTableModelDataAllowedToBeCaptured()
             && tablePattern.matchesDatabase(databaseNameAndTableName.getLeft())
-            && tablePattern.matchesTable(databaseNameAndTableName.getRight().getTableName()));
+            && tablePattern.matchesTable(databaseNameAndTableName.getRight()));
   }
 
   private boolean notFilteredByAccess(
-      final UserEntity userEntity, final Pair<String, IDeviceID> databaseNameAndTableName) {
+      final UserEntity userEntity, final Pair<String, String> databaseNameAndTableName) {
     return AuthorityChecker.getAccessControl()
         .checkCanSelectFromTable4Pipe(
             userEntity.getUsername(),
             new QualifiedObjectName(
-                databaseNameAndTableName.getLeft(),
-                databaseNameAndTableName.getRight().getTableName()),
+                databaseNameAndTableName.getLeft(), databaseNameAndTableName.getRight()),
             userEntity);
   }
 
