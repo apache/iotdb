@@ -43,6 +43,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil.calculateTabletSizeInBytes;
@@ -58,6 +59,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           .getLoadTsFileTabletConversionBatchMemorySizeInBytes();
 
   private final StatementExecutor statementExecutor;
+  private final Function<File, LoadTreeTsFileTabletIterator> tabletIteratorFactory;
 
   @FunctionalInterface
   public interface StatementExecutor {
@@ -66,7 +68,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
   public LoadTreeStatementDataTypeConvertExecutionVisitor(
       final StatementExecutor statementExecutor) {
+    this(statementExecutor, file -> new LoadTreeTsFileTabletIterator(file, true));
+  }
+
+  LoadTreeStatementDataTypeConvertExecutionVisitor(
+      final StatementExecutor statementExecutor,
+      final Function<File, LoadTreeTsFileTabletIterator> tabletIteratorFactory) {
     this.statementExecutor = statementExecutor;
+    this.tabletIteratorFactory = tabletIteratorFactory;
   }
 
   @Override
@@ -89,7 +98,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
     try {
       for (final File file : loadTsFileStatement.getTsFiles()) {
         try (final LoadTreeTsFileTabletIterator tabletIterator =
-            new LoadTreeTsFileTabletIterator(file, true)) {
+            tabletIteratorFactory.apply(file)) {
           for (final Pair<Tablet, Boolean> tabletWithIsAligned : tabletIterator) {
             final PipeTransferTabletRawReq tabletRawReq =
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(
@@ -123,9 +132,29 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-          return Optional.of(
+          final TSStatus status =
               loadTsFileStatement.accept(
-                  LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e));
+                  LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
+
+          // A parser can fail after producing tablets that are still waiting for the next batch
+          // boundary. Submit those tablets before reporting the parser error so the error does not
+          // discard successfully converted data.
+          if (!isRetryableConversionException(e) && !tabletRawReqs.isEmpty()) {
+            final TSStatus flushStatus =
+                executeInsertMultiTabletsWithRetry(
+                    tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
+
+            for (final long memoryCost : tabletRawReqSizes) {
+              block.reduceMemoryUsage(memoryCost);
+            }
+            tabletRawReqs.clear();
+            tabletRawReqSizes.clear();
+
+            if (!handleTSStatus(flushStatus, loadTsFileStatement)) {
+              return Optional.of(flushStatus);
+            }
+          }
+          return Optional.of(status);
         }
       }
 
@@ -177,6 +206,21 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+  }
+
+  private static boolean isRetryableConversionException(final Throwable throwable) {
+    if (LoadTsFileDataTypeConverter.isMemoryPressureException(throwable)) {
+      return true;
+    }
+
+    Throwable current = throwable;
+    while (current != null) {
+      if (current instanceof InterruptedException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 
   private TSStatus executeInsertMultiTabletsWithRetry(
