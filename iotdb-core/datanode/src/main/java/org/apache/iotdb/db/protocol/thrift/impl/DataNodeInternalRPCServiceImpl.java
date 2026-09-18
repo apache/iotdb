@@ -628,6 +628,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public int getThriftMaxFrameSize() {
+    return IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+  }
+
+  @Override
   public TLoadResp sendTsFilePieceNode(final TTsFilePieceReq req) {
     if (!req.isSetSliceIndex() || req.sliceIndex == 0) {
       LOGGER.info(DataNodeMiscMessages.RECEIVE_LOAD_NODE, req.uuid);
@@ -639,8 +644,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         req.isSetSliceIndex() || req.isSetSliceCount() || req.isSetOriginBodySize();
     if (isSliced) {
       if (!req.isSetSliceIndex() || !req.isSetSliceCount() || !req.isSetOriginBodySize()) {
+        final List<String> missingFields = new ArrayList<>(3);
+        if (!req.isSetSliceIndex()) {
+          missingFields.add("sliceIndex");
+        }
+        if (!req.isSetSliceCount()) {
+          missingFields.add("sliceCount");
+        }
+        if (!req.isSetOriginBodySize()) {
+          missingFields.add("originBodySize");
+        }
         return createTLoadResp(
-            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
+            RpcUtils.getStatus(
+                TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR,
+                String.format(
+                    DataNodeMiscMessages.MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA,
+                    String.join(", ", missingFields))));
       }
       return createTLoadResp(
           StorageEngine.getInstance()

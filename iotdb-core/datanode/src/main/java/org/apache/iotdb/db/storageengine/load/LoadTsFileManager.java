@@ -330,7 +330,13 @@ public class LoadTsFileManager {
           assembler = regionId2Assembler.get(dataRegionId);
           if (assembler == null) {
             removePieceNodeAssemblerIfEmpty(uuid, regionId2Assembler);
-            return LoadTsFilePieceNodeAssembler.Result.invalid();
+            return LoadTsFilePieceNodeAssembler.Result.invalid(
+                String.format(
+                    StorageEngineMessages
+                        .MESSAGE_MISSING_LOAD_TSFILE_ASSEMBLER_FOR_UUID_ARG_DATAREGION_ARG_SLICEINDEX_ARG_FF6EA463,
+                    uuid,
+                    dataRegionId,
+                    sliceIndex));
           }
         }
 

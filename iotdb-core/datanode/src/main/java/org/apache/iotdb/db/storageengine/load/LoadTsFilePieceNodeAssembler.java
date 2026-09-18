@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.utils.PublicBAOS;
 
 import java.nio.ByteBuffer;
@@ -27,13 +29,14 @@ public final class LoadTsFilePieceNodeAssembler {
 
   private final int sliceCount;
   private final int originBodySize;
-  private final PublicBAOS assembledBody = new PublicBAOS();
+  private final PublicBAOS assembledBody;
 
   private int nextSliceIndex;
 
   LoadTsFilePieceNodeAssembler(final int sliceCount, final int originBodySize) {
     this.sliceCount = sliceCount;
     this.originBodySize = originBodySize;
+    this.assembledBody = new PublicBAOS(Math.max(0, originBodySize));
   }
 
   synchronized Result append(
@@ -41,17 +44,45 @@ public final class LoadTsFilePieceNodeAssembler {
       final int sliceIndex,
       final int requestSliceCount,
       final int requestOriginBodySize) {
-    if (sliceBody == null
-        || !sliceBody.hasRemaining()
-        || sliceCount <= 1
-        || originBodySize <= 0
-        || sliceCount != requestSliceCount
-        || originBodySize != requestOriginBodySize
-        || sliceIndex != nextSliceIndex
-        || sliceIndex < 0
-        || sliceIndex >= sliceCount
-        || assembledBody.size() > originBodySize - sliceBody.remaining()) {
-      return Result.invalid();
+    if (sliceBody == null || !sliceBody.hasRemaining()) {
+      return Result.invalid(
+          StorageEngineMessages.MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C);
+    }
+    if (sliceCount <= 1 || originBodySize <= 0) {
+      return Result.invalid(
+          String.format(
+              StorageEngineMessages
+                  .MESSAGE_INVALID_LOAD_TSFILE_SLICE_METADATA_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_379BF1B8,
+              sliceCount,
+              originBodySize));
+    }
+    if (sliceCount != requestSliceCount || originBodySize != requestOriginBodySize) {
+      return Result.invalid(
+          String.format(
+              StorageEngineMessages
+                  .MESSAGE_LOAD_TSFILE_SLICE_METADATA_CHANGED_SLICECOUNT_ARG_EXPECTED_ARG_ORIGINBODYSIZE_ARG_EXPECTED_ARG_B16B3122,
+              requestSliceCount,
+              sliceCount,
+              requestOriginBodySize,
+              originBodySize));
+    }
+    if (sliceIndex != nextSliceIndex || sliceIndex < 0 || sliceIndex >= sliceCount) {
+      return Result.invalid(
+          String.format(
+              StorageEngineMessages
+                  .MESSAGE_UNEXPECTED_LOAD_TSFILE_SLICE_INDEX_ARG_EXPECTED_ARG_SLICECOUNT_ARG_76260F62,
+              sliceIndex,
+              nextSliceIndex,
+              sliceCount));
+    }
+    if (assembledBody.size() > originBodySize - sliceBody.remaining()) {
+      return Result.invalid(
+          String.format(
+              StorageEngineMessages
+                  .MESSAGE_LOAD_TSFILE_SLICE_EXCEEDS_ORIGINBODYSIZE_ASSEMBLEDSIZE_ARG_SLICESIZE_ARG_ORIGINBODYSIZE_ARG_0198E0D0,
+              assembledBody.size(),
+              sliceBody.remaining(),
+              originBodySize));
     }
 
     final ByteBuffer duplicatedBody = sliceBody.duplicate();
@@ -61,6 +92,7 @@ public final class LoadTsFilePieceNodeAssembler {
           duplicatedBody.arrayOffset() + duplicatedBody.position(),
           duplicatedBody.remaining());
     } else {
+      // Bulk reads avoid a ByteBuffer get and a stream capacity check for every byte.
       final byte[] bytes = new byte[Math.min(duplicatedBody.remaining(), 8192)];
       while (duplicatedBody.hasRemaining()) {
         final int size = Math.min(duplicatedBody.remaining(), bytes.length);
@@ -71,10 +103,23 @@ public final class LoadTsFilePieceNodeAssembler {
     nextSliceIndex++;
 
     if (nextSliceIndex < sliceCount) {
-      return assembledBody.size() < originBodySize ? Result.incomplete() : Result.invalid();
+      return assembledBody.size() < originBodySize
+          ? Result.incomplete()
+          : Result.invalid(
+              String.format(
+                  StorageEngineMessages
+                      .MESSAGE_LOAD_TSFILE_BODY_COMPLETED_BEFORE_THE_LAST_SLICE_RECEIVED_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_0425EA2C,
+                  nextSliceIndex,
+                  sliceCount,
+                  originBodySize));
     }
     if (assembledBody.size() != originBodySize) {
-      return Result.invalid();
+      return Result.invalid(
+          String.format(
+              StorageEngineMessages
+                  .MESSAGE_LOAD_TSFILE_BODY_SIZE_MISMATCH_ASSEMBLEDSIZE_ARG_ORIGINBODYSIZE_ARG_5733FC4B,
+              assembledBody.size(),
+              originBodySize));
     }
     return Result.complete(
         ByteBuffer.wrap(assembledBody.getBuf(), 0, assembledBody.size()).asReadOnlyBuffer());
@@ -82,27 +127,28 @@ public final class LoadTsFilePieceNodeAssembler {
 
   public static final class Result {
 
-    private static final Result INCOMPLETE = new Result(true, null);
-    private static final Result INVALID = new Result(false, null);
+    private static final Result INCOMPLETE = new Result(true, null, null);
 
     private final boolean valid;
     private final ByteBuffer body;
+    private final String errorMessage;
 
-    private Result(final boolean valid, final ByteBuffer body) {
+    private Result(final boolean valid, final ByteBuffer body, final String errorMessage) {
       this.valid = valid;
       this.body = body;
+      this.errorMessage = errorMessage;
     }
 
     static Result incomplete() {
       return INCOMPLETE;
     }
 
-    static Result invalid() {
-      return INVALID;
+    static Result invalid(final String errorMessage) {
+      return new Result(false, null, errorMessage);
     }
 
     static Result complete(final ByteBuffer body) {
-      return new Result(true, body);
+      return new Result(true, body, null);
     }
 
     public boolean isValid() {
@@ -115,6 +161,10 @@ public final class LoadTsFilePieceNodeAssembler {
 
     public ByteBuffer getBody() {
       return body;
+    }
+
+    public String getErrorMessage() {
+      return errorMessage;
     }
   }
 }

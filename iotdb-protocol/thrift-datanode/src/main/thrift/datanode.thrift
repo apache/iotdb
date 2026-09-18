@@ -923,6 +923,8 @@ service IDataNodeRPCService {
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req);
 
+  i32 getThriftMaxFrameSize();
+
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
   TLoadResp sendLoadCommand(TLoadCommandReq req);

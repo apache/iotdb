@@ -58,6 +58,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TApplicationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +72,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -95,6 +97,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
       internalServiceClientManager;
   private ExecutorService executor;
   private final boolean isGeneratedByPipe;
+  private final Map<TEndPoint, Integer> endPoint2ThriftMaxFrameSize = new ConcurrentHashMap<>();
 
   public LoadTsFileDispatcherImpl(
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
@@ -146,7 +149,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
 
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    List<TTsFilePieceReq> loadTsFileReqs = null;
+    ByteBuffer body = null;
 
     for (TDataNodeLocation dataNodeLocation :
         instance.getRegionReplicaSet().getDataNodeLocations()) {
@@ -154,23 +157,55 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
       if (isDispatchedToLocal(endPoint)) {
         dispatchLocally(instance);
       } else {
-        if (loadTsFileReqs == null) {
-          loadTsFileReqs =
-              splitTsFilePieceReq(
-                  instance.getFragment().getPlanNodeTree().serializeToByteBuffer(),
-                  uuid,
-                  instance.getRegionReplicaSet().getRegionId(),
-                  getLoadTsFilePieceBodySizeLimit());
+        if (body == null) {
+          body = instance.getFragment().getPlanNodeTree().serializeToByteBuffer();
         }
-        dispatchRemote(loadTsFileReqs, endPoint);
+        dispatchRemote(body, instance.getRegionReplicaSet().getRegionId(), endPoint);
       }
     }
   }
 
-  private static int getLoadTsFilePieceBodySizeLimit() {
-    final int thriftMaxFrameSize =
-        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
-    return Math.max(1, thriftMaxFrameSize - LOAD_TSFILE_PIECE_RPC_FRAME_RESERVED_BYTES);
+  private int getLoadTsFilePieceBodySizeLimit(final TEndPoint endPoint) throws Exception {
+    final int localMaxFrameSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    Integer remoteMaxFrameSize = endPoint2ThriftMaxFrameSize.get(endPoint);
+    if (remoteMaxFrameSize == null) {
+      // An oversized frame is rejected before the RPC handler runs and closes the connection, so
+      // the receiver's frame limit cannot be recovered from the sender's transport exception.
+      try (SyncDataNodeInternalServiceClient client =
+          internalServiceClientManager.borrowClient(endPoint)) {
+        remoteMaxFrameSize = client.getThriftMaxFrameSize();
+      } catch (Exception e) {
+        if (!isUnknownMethod(e)) {
+          throw e;
+        }
+        // Older receivers still accept unsliced pieces. The failed RPC invalidates its client,
+        // so dispatchRemote borrows another client before sending the piece.
+        remoteMaxFrameSize = localMaxFrameSize;
+      }
+      if (remoteMaxFrameSize <= 0) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B,
+                remoteMaxFrameSize,
+                endPoint));
+      }
+      endPoint2ThriftMaxFrameSize.put(endPoint, remoteMaxFrameSize);
+    }
+    return Math.max(
+        1,
+        Math.min(localMaxFrameSize, remoteMaxFrameSize)
+            - LOAD_TSFILE_PIECE_RPC_FRAME_RESERVED_BYTES);
+  }
+
+  private static boolean isUnknownMethod(Throwable e) {
+    do {
+      if (e instanceof TApplicationException
+          && ((TApplicationException) e).getType() == TApplicationException.UNKNOWN_METHOD) {
+        return true;
+      }
+    } while ((e = e.getCause()) != null);
+    return false;
   }
 
   static List<TTsFilePieceReq> splitTsFilePieceReq(
@@ -282,30 +317,36 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
     }
   }
 
-  private void dispatchRemote(List<TTsFilePieceReq> loadTsFileReqs, TEndPoint endPoint)
+  private void dispatchRemote(
+      ByteBuffer body, TConsensusGroupId consensusGroupId, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
     boolean transferAttemptRecorded = false;
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      client.setTimeout(CONNECTION_TIMEOUT_MS.get());
+    try {
+      final List<TTsFilePieceReq> loadTsFileReqs =
+          splitTsFilePieceReq(
+              body, uuid, consensusGroupId, getLoadTsFilePieceBodySizeLimit(endPoint));
+      try (SyncDataNodeInternalServiceClient client =
+          internalServiceClientManager.borrowClient(endPoint)) {
+        client.setTimeout(CONNECTION_TIMEOUT_MS.get());
 
-      for (final TTsFilePieceReq loadTsFileReq : loadTsFileReqs) {
-        final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
-        if (!loadResp.isAccepted()) {
-          recordTransferAttempt(
-              endPoint,
-              false,
-              loadResp.isSetStatus()
-                  ? String.valueOf(loadResp.getStatus().getCode())
-                  : UserDataTransferErrorCode.REMOTE_REJECTED.name(),
-              null);
-          transferAttemptRecorded = true;
-          LOGGER.warn(loadResp.message);
-          throw new FragmentInstanceDispatchException(loadResp.status);
+        for (final TTsFilePieceReq loadTsFileReq : loadTsFileReqs) {
+          final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
+          if (!loadResp.isAccepted()) {
+            recordTransferAttempt(
+                endPoint,
+                false,
+                loadResp.isSetStatus()
+                    ? String.valueOf(loadResp.getStatus().getCode())
+                    : UserDataTransferErrorCode.REMOTE_REJECTED.name(),
+                null);
+            transferAttemptRecorded = true;
+            LOGGER.warn(loadResp.message);
+            throw new FragmentInstanceDispatchException(loadResp.status);
+          }
         }
+        recordTransferAttempt(endPoint, true, null, null);
+        transferAttemptRecorded = true;
       }
-      recordTransferAttempt(endPoint, true, null, null);
-      transferAttemptRecorded = true;
     } catch (Exception e) {
       if (!transferAttemptRecorded) {
         recordTransferAttempt(endPoint, false, null, e);
@@ -314,8 +355,11 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
 
       final String exceptionMessage =
           String.format(
-              "failed to dispatch load command %s to node %s because of exception: %s",
-              uuid, endPoint, e);
+              DataNodeQueryMessages
+                  .MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D,
+              uuid,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()
@@ -423,8 +467,11 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher, AutoCl
 
       final String exceptionMessage =
           String.format(
-              "failed to dispatch load command %s to node %s because of exception: %s",
-              loadCommandReq, endPoint, e);
+              DataNodeQueryMessages
+                  .MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D,
+              loadCommandReq,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()

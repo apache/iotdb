@@ -1080,7 +1080,8 @@ public class StorageEngine implements IService {
         loadTsFileManager.appendPieceNodeSlice(
             dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
     if (!result.isValid()) {
-      return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
+      return RpcUtils.getStatus(
+          TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
     }
     if (!result.isComplete()) {
       return RpcUtils.SUCCESS_STATUS;

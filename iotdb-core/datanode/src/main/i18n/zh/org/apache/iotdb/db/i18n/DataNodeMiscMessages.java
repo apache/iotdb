@@ -22,6 +22,9 @@ package org.apache.iotdb.db.i18n;
 /** 编译时国际化常量 - DataNode 杂项子系统（中文）。 */
 public final class DataNodeMiscMessages {
 
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
+      "缺少 Load TsFile 分片元数据：%s";
+
     public static final String INVALID_PIPE_NAME =
       "无效的 pipeName";
   public static final String READ_OBJECT_CONTENT_FROM_REMOTE_FILE =
