@@ -186,26 +186,6 @@
             <artifactId>jna-platform</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.milo</groupId>
-            <artifactId>milo-stack-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.milo</groupId>
-            <artifactId>milo-sdk-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.milo</groupId>
-            <artifactId>milo-transport</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.milo</groupId>
-            <artifactId>milo-sdk-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk18on</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-pool2</artifactId>
         </dependency>
@@ -216,10 +196,6 @@
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>airline</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.milo</groupId>
-            <artifactId>milo-sdk-server</artifactId>
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>

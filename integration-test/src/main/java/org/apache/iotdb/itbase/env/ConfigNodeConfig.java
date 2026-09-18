@@ -32,5 +32,7 @@ public interface ConfigNodeConfig {
 
   ConfigNodeConfig setLeaderDistributionPolicy(String policy);
 
+  ConfigNodeConfig setRatisLogAppenderBufferSizeMax(int size);
+
   ConfigNodeConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs);
 }
