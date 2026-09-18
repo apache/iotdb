@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -71,6 +72,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -117,6 +119,9 @@ public class LoadTsFileManager {
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
 
+  private final Map<String, Map<DataRegionId, LoadTsFilePieceNodeAssembler>>
+      uuid2PieceNodeAssembler = new ConcurrentHashMap<>();
+
   private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
 
@@ -139,6 +144,7 @@ public class LoadTsFileManager {
       cleanupTaskQueue.clear();
     }
     new HashSet<>(uuid2WriterManager.keySet()).forEach(this::forceCloseWriterManager);
+    uuid2PieceNodeAssembler.clear();
   }
 
   private long getCleanupTaskDelayInMs() {
@@ -285,6 +291,56 @@ public class LoadTsFileManager {
     }
   }
 
+  public LoadTsFilePieceNodeAssembler.Result appendPieceNodeSlice(
+      final DataRegionId dataRegionId,
+      final String uuid,
+      final ByteBuffer body,
+      final int sliceIndex,
+      final int sliceCount,
+      final int originBodySize) {
+    createCleanupTaskIfAbsent(uuid);
+
+    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
+    cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
+    try {
+      final Map<DataRegionId, LoadTsFilePieceNodeAssembler> regionId2Assembler =
+          uuid2PieceNodeAssembler.computeIfAbsent(uuid, key -> new ConcurrentHashMap<>());
+      synchronized (regionId2Assembler) {
+        final LoadTsFilePieceNodeAssembler assembler;
+        if (sliceIndex == 0) {
+          assembler = new LoadTsFilePieceNodeAssembler(sliceCount, originBodySize);
+          regionId2Assembler.put(dataRegionId, assembler);
+        } else {
+          assembler = regionId2Assembler.get(dataRegionId);
+          if (assembler == null) {
+            removePieceNodeAssemblerIfEmpty(uuid, regionId2Assembler);
+            return LoadTsFilePieceNodeAssembler.Result.invalid(
+                String.format(
+                    "Missing Load TsFile assembler for uuid %s, DataRegion %s, sliceIndex=%d",
+                    uuid, dataRegionId, sliceIndex));
+          }
+        }
+
+        final LoadTsFilePieceNodeAssembler.Result result =
+            assembler.append(body, sliceIndex, sliceCount, originBodySize);
+        if (!result.isValid() || result.isComplete()) {
+          regionId2Assembler.remove(dataRegionId, assembler);
+          removePieceNodeAssemblerIfEmpty(uuid, regionId2Assembler);
+        }
+        return result;
+      }
+    } finally {
+      cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
+    }
+  }
+
+  private void removePieceNodeAssemblerIfEmpty(
+      final String uuid, final Map<DataRegionId, LoadTsFilePieceNodeAssembler> regionId2Assembler) {
+    if (regionId2Assembler.isEmpty()) {
+      uuid2PieceNodeAssembler.remove(uuid, regionId2Assembler);
+    }
+  }
+
   private String getNextFolder() throws DiskSpaceInsufficientException {
     if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
       synchronized (FOLDER_MANAGER) {
@@ -317,7 +373,7 @@ public class LoadTsFileManager {
       boolean isGeneratedByPipe,
       Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
-    if (!uuid2WriterManager.containsKey(uuid)) {
+    if (!uuid2WriterManager.containsKey(uuid) || uuid2PieceNodeAssembler.containsKey(uuid)) {
       return false;
     }
 
@@ -336,7 +392,9 @@ public class LoadTsFileManager {
   }
 
   public boolean deleteAll(String uuid) {
-    if (!uuid2WriterManager.containsKey(uuid)) {
+    if (!uuid2WriterManager.containsKey(uuid)
+        && !uuid2PieceNodeAssembler.containsKey(uuid)
+        && !uuid2CleanupTask.containsKey(uuid)) {
       return false;
     }
     clean(uuid);
@@ -352,6 +410,7 @@ public class LoadTsFileManager {
       }
     }
 
+    uuid2PieceNodeAssembler.remove(uuid);
     forceCloseWriterManager(uuid);
   }
 
@@ -798,6 +857,7 @@ public class LoadTsFileManager {
       } else {
         LOGGER.info("Load cleanup task {} starts.", uuid);
         try {
+          uuid2PieceNodeAssembler.remove(uuid);
           forceCloseWriterManager(uuid);
         } catch (Exception e) {
           LOGGER.warn("Load cleanup task {} error.", uuid, e);
