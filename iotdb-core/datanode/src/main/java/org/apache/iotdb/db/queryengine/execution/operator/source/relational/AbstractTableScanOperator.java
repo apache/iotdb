@@ -25,11 +25,14 @@ import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryDataSourceLease;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.BatchDeviceEntrySource;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.InMemoryDeviceEntrySource;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -61,9 +64,15 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private final int[] columnsIndexArray;
 
-  protected final List<DeviceEntry> deviceEntries;
+  protected List<DeviceEntry> deviceEntries;
 
-  protected final int deviceCount;
+  protected int deviceCount;
+
+  private final BatchDeviceEntrySource deviceEntrySource;
+  private final boolean batchQueryDataSource;
+  private QueryDataSourceLease currentLease;
+  private boolean currentBatchInitialized;
+  private boolean batchLeasePending;
 
   protected final Ordering scanOrder;
   protected final SeriesScanOptions seriesScanOptions;
@@ -90,11 +99,14 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     this.sourceId = parameter.sourceId;
     this.operatorContext = parameter.context;
     this.operatorContext.recordSpecifiedInfo(
-        DEVICE_NUMBER, Integer.toString(parameter.deviceEntries.size()));
+        DEVICE_NUMBER, Integer.toString(parameter.deviceCount));
     this.columnSchemas = parameter.columnSchemas;
     this.columnsIndexArray = parameter.columnsIndexArray;
-    this.deviceEntries = parameter.deviceEntries;
-    this.deviceCount = parameter.deviceEntries.size();
+    this.deviceEntrySource = parameter.deviceEntrySource;
+    this.batchQueryDataSource = parameter.batchQueryDataSource;
+    this.deviceEntries =
+        parameter.batchQueryDataSource ? new ArrayList<>() : parameter.deviceEntries;
+    this.deviceCount = parameter.batchQueryDataSource ? 0 : parameter.deviceCount;
     this.scanOrder = parameter.scanOrder;
     this.seriesScanOptions = parameter.seriesScanOptions;
     this.measurementColumnNames = parameter.measurementColumnNames;
@@ -114,13 +126,15 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
             maxReturnSize,
             allSensors.size() * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = parameter.maxTsBlockLineNum;
-    constructAlignedSeriesScanUtil();
   }
 
   @Override
   public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
+    }
+    if (!prepareNextDeviceBatch()) {
+      return null;
     }
 
     try {
@@ -223,10 +237,21 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     if (seriesScanOptions.limitConsumedUp()) {
       return true;
     }
-    if (currentDeviceIndex >= deviceCount) {
-      return true;
+    if (batchLeasePending) {
+      return false;
     }
-    return shouldStopScanByRuntimeFilter();
+    if (!batchQueryDataSource) {
+      if (currentDeviceIndex >= deviceCount) {
+        return true;
+      }
+      return shouldStopScanByRuntimeFilter();
+    }
+    return currentDeviceIndex >= deviceCount && !deviceEntrySource.hasNextBatch();
+  }
+
+  @Override
+  public boolean isBatchQueryDataSource() {
+    return batchQueryDataSource;
   }
 
   @Override
@@ -248,9 +273,11 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
-    this.queryDataSource = (QueryDataSource) dataSource;
-    if (this.seriesScanUtil != null) {
-      this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    if (!batchQueryDataSource) {
+      this.queryDataSource = (QueryDataSource) dataSource;
+      if (this.seriesScanUtil != null) {
+        this.seriesScanUtil.initQueryDataSource(this.queryDataSource);
+      }
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
@@ -261,10 +288,10 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   protected void moveToNextDevice() {
     if (shouldStopScanByRuntimeFilter()) {
       currentDeviceIndex = deviceCount;
-      return;
+    } else {
+      currentDeviceIndex++;
     }
-    currentDeviceIndex++;
-    if (currentDeviceIndex < deviceCount) {
+    if (currentDeviceIndex < deviceCount && queryDataSource != null) {
       // construct AlignedSeriesScanUtil for next device
       constructAlignedSeriesScanUtil();
 
@@ -273,12 +300,89 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       this.seriesScanUtil.initQueryDataSource(queryDataSource);
       this.operatorContext.recordSpecifiedInfo(
           CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
+    } else {
+      releaseCurrentBatch();
     }
   }
 
   /** Returns true when file-level RF has pruned all seq/unseq files — scan can stop globally. */
   protected boolean shouldStopScanByRuntimeFilter() {
-    return seriesScanOptions.getTopKRuntimeFilter() != null && !queryDataSource.hasValidResource();
+    return queryDataSource != null
+        && seriesScanOptions.getTopKRuntimeFilter() != null
+        && !queryDataSource.hasValidResource();
+  }
+
+  private boolean prepareNextDeviceBatch() throws Exception {
+    if (currentBatchInitialized) {
+      return currentDeviceIndex < deviceCount;
+    }
+    if (!batchQueryDataSource) {
+      if (currentDeviceIndex >= deviceCount) {
+        return false;
+      }
+      constructAlignedSeriesScanUtil();
+      seriesScanUtil.initQueryDataSource(queryDataSource);
+      currentBatchInitialized = true;
+      return true;
+    }
+    while (deviceEntries.isEmpty()) {
+      if (!deviceEntrySource.hasNextBatch()) {
+        return false;
+      }
+      deviceEntries = deviceEntrySource.nextBatch();
+    }
+    deviceCount = deviceEntries.size();
+    currentDeviceIndex = 0;
+    if (batchQueryDataSource) {
+      List<org.apache.iotdb.commons.path.IFullPath> paths = new ArrayList<>(deviceCount);
+      for (int i = 0; i < deviceCount; i++) {
+        DeviceEntry deviceEntry = deviceEntries.get(i);
+        if (deviceEntry == null) {
+          throw new IllegalStateException(
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_DEVICE_ENTRIES_OF_INDEX_S_IN_TABLESCANOPERATOR_IS_EMPTY_FDEB574F,
+                  i));
+        }
+        paths.add(
+            constructAlignedPath(
+                deviceEntry, measurementColumnNames, measurementSchemas, allSensors));
+      }
+      currentLease =
+          ((OperatorContext) operatorContext).getInstanceContext().initBatchQueryDataSource(paths);
+      if (currentLease == null) {
+        batchLeasePending = true;
+        return false;
+      }
+      batchLeasePending = false;
+      queryDataSource = currentLease.getDataSource();
+    }
+    constructAlignedSeriesScanUtil();
+    seriesScanUtil.initQueryDataSource(queryDataSource);
+    currentBatchInitialized = true;
+    return true;
+  }
+
+  private void releaseCurrentBatch() {
+    currentBatchInitialized = false;
+    if (!batchQueryDataSource) {
+      return;
+    }
+    deviceEntries = new ArrayList<>();
+    deviceCount = 0;
+    currentDeviceIndex = 0;
+    queryDataSource = null;
+    if (currentLease != null) {
+      currentLease.close();
+      currentLease = null;
+    }
+  }
+
+  @Override
+  public void close() throws Exception {
+    releaseCurrentBatch();
+    deviceEntrySource.close();
+    super.close();
   }
 
   protected void constructAlignedSeriesScanUtil() {
@@ -333,6 +437,9 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     public final List<ColumnSchema> columnSchemas;
     public final int[] columnsIndexArray;
     public final List<DeviceEntry> deviceEntries;
+    public final int deviceCount;
+    public final BatchDeviceEntrySource deviceEntrySource;
+    public final boolean batchQueryDataSource;
     public final Ordering scanOrder;
     public final SeriesScanOptions seriesScanOptions;
     public final List<String> measurementColumnNames;
@@ -347,6 +454,9 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
         List<ColumnSchema> columnSchemas,
         int[] columnsIndexArray,
         List<DeviceEntry> deviceEntries,
+        int deviceCount,
+        BatchDeviceEntrySource deviceEntrySource,
+        boolean batchQueryDataSource,
         Ordering scanOrder,
         SeriesScanOptions seriesScanOptions,
         List<String> measurementColumnNames,
@@ -358,11 +468,43 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       this.columnSchemas = columnSchemas;
       this.columnsIndexArray = columnsIndexArray;
       this.deviceEntries = deviceEntries;
+      this.deviceCount = deviceCount;
+      this.deviceEntrySource = deviceEntrySource;
+      this.batchQueryDataSource = batchQueryDataSource;
       this.scanOrder = scanOrder;
       this.seriesScanOptions = seriesScanOptions;
       this.measurementColumnNames = measurementColumnNames;
       this.measurementSchemas = measurementSchemas;
       this.maxTsBlockLineNum = maxTsBlockLineNum;
+    }
+
+    public AbstractTableScanOperatorParameter(
+        Set<String> allSensors,
+        OperatorContext context,
+        PlanNodeId sourceId,
+        List<ColumnSchema> columnSchemas,
+        int[] columnsIndexArray,
+        List<DeviceEntry> deviceEntries,
+        Ordering scanOrder,
+        SeriesScanOptions seriesScanOptions,
+        List<String> measurementColumnNames,
+        List<IMeasurementSchema> measurementSchemas,
+        int maxTsBlockLineNum) {
+      this(
+          allSensors,
+          context,
+          sourceId,
+          columnSchemas,
+          columnsIndexArray,
+          deviceEntries,
+          deviceEntries.size(),
+          new InMemoryDeviceEntrySource(deviceEntries),
+          false,
+          scanOrder,
+          seriesScanOptions,
+          measurementColumnNames,
+          measurementSchemas,
+          maxTsBlockLineNum);
     }
   }
 }

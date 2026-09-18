@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
@@ -90,7 +89,6 @@ import java.util.stream.StreamSupport;
 
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_ALREADY_EXIST_MSG;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
@@ -227,7 +225,19 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (!isPipeExisted(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel)) {
       final String exceptionMessage =
           String.format(
-              "Failed to alter pipe %s, %s", alterPipeRequest.getPipeName(), PIPE_NOT_EXIST_MSG);
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_DOES_NOT_EXIST_29E0DCEB,
+              alterPipeRequest.getPipeName());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (PipeStatus.PRE_DELETE.equals(
+        getPipeStatus(alterPipeRequest.getPipeName(), alterPipeRequest.isTableModel))) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B,
+              alterPipeRequest.getPipeName());
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -372,6 +382,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638,
+              pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
   }
 
   private void checkBeforeStartPipeInternal(final String pipeName, final boolean isTableModel)
@@ -389,6 +408,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_START_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638,
+              pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -430,6 +458,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B,
+              pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
   }
 
   private void checkBeforeStopPipeInternal(final String pipeName, final boolean isTableModel)
@@ -447,6 +484,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format(
               ConfigNodeMessages.FAILED_TO_STOP_PIPE_BECAUSE_PIPE_IS_ALREADY_DROPPED, pipeName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (pipeStatus == PipeStatus.PRE_DELETE) {
+      final String exceptionMessage =
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B,
+              pipeName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -484,6 +530,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return pipeMetaKeeper.containsPipeMeta(pipeName, isTableModel);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isPipeBeingDropped(final String pipeName, final boolean isTableModel) {
+    acquireReadLock();
+    try {
+      final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, isTableModel);
+      return pipeMeta != null
+          && PipeStatus.PRE_DELETE.equals(pipeMeta.getRuntimeMeta().getStatus().get());
     } finally {
       releaseReadLock();
     }
@@ -859,9 +916,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap
                                   .get(consensusGroupId.getId())
                                   .setLeaderNodeId(newLeader);
-                              // New region leader may contain un-transferred events
-                              ((PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta())
-                                  .markDataNodeUncompleted(newLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
@@ -1125,6 +1179,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
           final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
 
+          if (PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())) {
+            continue;
+          }
+
           // Keep user-stopped pipes out of the auto-restart flow. Otherwise, a failed STOPPED meta
           // sync can turn a manually stopped pipe into a runtime-stopped one and the next
           // PipeMetaSyncer round will restart it automatically.
@@ -1177,7 +1235,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .forEach(
             pipeMeta -> {
               final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-              if (runtimeMeta.getIsStoppedByRuntimeException()) {
+              if (!PipeStatus.PRE_DELETE.equals(runtimeMeta.getStatus().get())
+                  && runtimeMeta.getIsStoppedByRuntimeException()) {
                 runtimeMeta.setExceptionsClearTime(exceptionsClearTime);
                 runtimeMeta.getStatus().set(PipeStatus.RUNNING);
 

@@ -121,6 +121,7 @@ public final class DataNodeMiscMessages {
 
   public static final String CREATE_NEW_REGION_ERROR_FMT = "create new region %s error,  exception:%s";
   public static final String CREATE_NEW_REGION_SUCCEED_FMT = "create new region %s succeed";
+  public static final String LOG_USER_ARG_ROLE_ARG_422D48D3 = "user: %s, role: %s";
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -130,34 +131,6 @@ public final class DataNodeMiscMessages {
       "There are more than one ServerContextFactory implementation. pls check.";
   public static final String SET_SERVER_CONTEXT_FACTORY =
       "Will set ServerContextFactory from {} ";
-
-  // ---------------------------------------------------------------------------
-  // protocol – ConfigNodeInfo
-  // ---------------------------------------------------------------------------
-  public static final String UPDATE_CONFIG_NODE_SUCCESSFULLY =
-      "Update ConfigNode Successfully: {}, which takes {} ms.";
-  public static final String UPDATE_CONFIG_NODE_FAILED = "Update ConfigNode failed.";
-  public static final String SYSTEM_PROPERTIES_NOT_EXIST =
-      "System properties file not exist, not necessary to store ConfigNode list";
-  public static final String LOAD_CONFIG_NODE_SUCCESSFULLY =
-      "Load ConfigNode successfully: {}, which takes {} ms.";
-  public static final String CANNOT_PARSE_CONFIG_NODE_LIST =
-      "Cannot parse config node list in system.properties";
-
-  // ---------------------------------------------------------------------------
-  // protocol – ConfigNodeClient
-  // ---------------------------------------------------------------------------
-  public static final String NODE_LEADER_MAY_DOWN_TRY_NEXT =
-      "The current node leader may have been down {}, try next node";
-  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE =
-      "Unexpected interruption when waiting to try to connect to ConfigNode";
-  public static final String NODE_MAY_DOWN_TRY_NEXT =
-      "The current node may have been down {},try next node";
-  public static final String FAILED_CONNECT_CONFIG_NODE_NOT_LEADER =
-      "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
-          + "leader or not ready yet, will try again later";
-  public static final String UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK =
-      "Unexpected interruption when waiting to try to connect to ConfigNode, may because current node has been down. Will break current execution process to avoid meaningless wait.";
 
   // ---------------------------------------------------------------------------
   // protocol – DataNodeInternalClient
@@ -371,8 +344,9 @@ public final class DataNodeMiscMessages {
   public static final String SETTING_UP_DATANODE = "Setting up IoTDB DataNode...";
   public static final String RECOVER_SCHEMA = "Recover the schema...";
   public static final String DATANODE_FAILED_SETUP = "IoTDB DataNode failed to set up.";
-  public static final String WAIT_DATABASES_READY =
-      "Wait for all databases ready, which takes {} ms.";
+  public static final String
+      MISC_LOG_WAIT_FOR_LOCAL_DATAREGION_RECOVERY_TASKS_TO_FINISH_WHICH_TAKES_ARG_MS_8B33DC6C =
+          "Wait for local DataRegion recovery tasks to finish, which takes {} ms.";
   public static final String PREPARE_PIPE_RESOURCES =
       "Prepare pipe resources successfully, which takes {} ms.";
   public static final String RECOVER_SCHEMA_SUCCESSFULLY =
@@ -444,8 +418,6 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   // service – metrics
   // ---------------------------------------------------------------------------
-  public static final String FAILED_GET_PROCESS_RESIDENT_MEMORY =
-      "Failed to get process resident memory for pid {}";
   public static final String DATANODE_PORT_CHECK_SUCCESSFUL = "DataNode port check successful.";
 
   // ---------------------------------------------------------------------------
@@ -670,8 +642,6 @@ public final class DataNodeMiscMessages {
   public static final String STARTING_IOTDB = "Starting IoTDB {}";
   public static final String CANNOT_CREATE_SCHEMA_DIR = "Can not create schema dir: {}";
   public static final String SCHEMA_DIR_CREATED = " {} dir has been created.";
-  public static final String IOTDB_VERSION_TOO_OLD = "IoTDB version is too old";
-  public static final String REPAIR_SYSTEM_PROPERTIES = "repair system.properties, lack {}";
   public static final String UNEXPECTED_CONSENSUS_GROUP_TYPE =
       "Unexpected consensus group type";
   public static final String ENCRYPT_MAGIC_STRING_NOT_MATCHED =
@@ -948,12 +918,6 @@ public final class DataNodeMiscMessages {
       "cache role's path privileges error";
 
   // ---------------------------------------------------------------------------
-  // auth – BasicAuthorityCache
-  // ---------------------------------------------------------------------------
-  public static final String DATANODE_CACHE_INIT_FAILED =
-      "datanode cache initialization failed";
-
-  // ---------------------------------------------------------------------------
   // trigger – TriggerExecutor
   // ---------------------------------------------------------------------------
   public static final String TRIGGER_FIRE_ERROR =
@@ -1155,12 +1119,8 @@ public final class DataNodeMiscMessages {
       "Totally find {} tsFiles to be settled.";
   public static final String MISC_LOG_SYSTEM_PROPERTIES_FILE_HAS_BEEN_MOVED_SUCCESSFULLY_4445A448 =
       "system.properties file has been moved successfully: {} -> {}";
-  public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
-      "Serialize mutable system properties successfully, which takes {} ms.";
   public static final String MISC_LOG_SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY_BE1C725F =
       "[SystemProperties] Normalize {} from {} to {} for compatibility.";
-  public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
-      "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
   public static final String MISC_LOG_CANNOT_FIND_IOTDB_HOME_OR_IOTDB_CONF_ENVIRONMENT_VARIABLE_BE01B2FE =
       "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use "
           + "default configuration";
@@ -1392,6 +1352,15 @@ public final class DataNodeMiscMessages {
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962 =
       "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion "
           + "should be an integer, which is %s";
+  public static final String
+      EXCEPTION_QUERY_MEMORY_PROPORTIONS_MUST_CONTAIN_8_OR_9_COLON_SEPARATED_VALUES_BUT_FOUND_ARG_03A03941 =
+          "Query memory proportions must contain 8 or 9 colon-separated values, but found %d";
+  public static final String
+      EXCEPTION_QUERY_MEMORY_PROPORTION_AT_POSITION_ARG_MUST_BE_NON_NEGATIVE_BUT_FOUND_ARG_DC69BC75 =
+          "Query memory proportion at position %d must be non-negative, but found %d";
+  public static final String
+      EXCEPTION_THE_SUM_OF_QUERY_MEMORY_PROPORTIONS_MUST_BE_POSITIVE_BUT_WAS_ARG_407092B6 =
+          "The sum of query memory proportions must be positive, but was %d";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_CHUNKMETA_CHUNK_TIMESERIESMETA_77A43CE2 =
       "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion "
           + "should be an integer, which is %s";
@@ -1399,10 +1368,6 @@ public final class DataNodeMiscMessages {
       "Illegal defaultDatabaseLevel: %d, should >= 1";
   public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
       "loadTsFileSpiltPartitionMaxSize should be greater than or equal to 0";
-  public static final String MISC_EXCEPTION_REMOVING_IS_ONLY_ALLOWED_IN_AN_ENVIRONMENT_WHERE_THE_DATANODE_5A3E1FEA =
-      "Removing is only allowed in an environment where the datanode has been successfully "
-          + "started. Please check whether it is removed on the confignode, or if you have deleted the "
-          + "system.properties file by mistake.";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
       "StatementId: %sdoesn't exist in this session %s";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =
@@ -1425,8 +1390,6 @@ public final class DataNodeMiscMessages {
       "%s is not allowed, only support %s";
   public static final String MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_1B06E0B7 =
       " %s is not allowed, only support %s";
-  public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
-      "%s can't be modified after first startup";
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE =
       "This method is not supported for invocation by DataNode";
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE_USE_SUBMIT_LOAD_CONFIGURATION_TASK =
@@ -1491,12 +1454,39 @@ public final class DataNodeMiscMessages {
   public static final String EXCEPTION_RUNTIMESTATE_D4D018BA = "runtimeState";
   public static final String EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4 = "statementName is null";
   public static final String EXCEPTION_SQL_IS_NULL_BEDB2B7A = "sql is null";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_AAB5F962 = "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry.";
-  public static final String MESSAGE_CONFIGNODE_LEADER_ARG_IS_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
-      "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry. Reason: {}";
   public static final String EXCEPTION_TRUST_STORE_PATH_MUST_BE_SET_WHEN_THRIFT_SSL_CLIENT_AUTH_IS_TRUE_36016171 = "trust_store_path must be set when thrift_ssl_client_auth is true";
   public static final String EXCEPTION_CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER_THAN_0_BUT_CURRENT_VALUE_IS_F9A1BEC4 = "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is ";
   public static final String EXCEPTION_UNKNOWN_READ_CONSISTENCY_LEVEL_ARG_PLEASE_SET_TO_STRONG_OR_WEAK_8CF29949 = "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"";
   public static final String MESSAGE_INITIAL_ALLOCATEMEMORYFORAUTORESIZINGBUFFER_ARG_A0DB6DA0 = "initial allocateMemoryForAutoResizingBuffer = {}";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_IT_IS_UNDER_DATA_DIRECTORY_KEEP_USING_ORIGINAL_CONFIGURATION_EE87FFD9 =
+      "Skip setting {} to {} because it is under data directory. Keep using the original "
+          + "configuration: {}.";
+  public static final String LOG_SKIP_SETTING_ARG_TO_ARG_BECAUSE_ITS_CANONICAL_PATH_CANNOT_BE_RESOLVED_ARG_KEEP_USING_ORIGINAL_CONFIGURATION_C0A8ED09 =
+      "Skip setting {} to {} because its canonical path cannot be resolved: {}. Keep using the "
+          + "original configuration: {}.";
+  public static final String MISC_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_ACTIVE_LOAD_LISTENING_DIRECTORY_S_ARG_0E6A508E =
+      "Failed to resolve canonical path for active load listening directory %s: %s";
+
+  public static final String EXCEPTION_COLUMNSTOCLONE_CANNOT_BE_NULL_458FDF37 =
+      "columnsToClone cannot be null";
+  public static final String EXCEPTION_CLONELIST_CANNOT_BE_NULL_47AEEA8F =
+      "cloneList cannot be null";
+  public static final String EXCEPTION_TARGET_ALIGNEDTVLIST_HAS_INCOMPATIBLE_COLUMN_CONTAINERS_31FAC613 =
+      "Target AlignedTVList has incompatible column containers";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MOVE_08D46037 =
+      "Missing value arrays for aligned column index %d during move";
+  public static final String EXCEPTION_TARGET_VALUE_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_7889C74F =
+      "Target value column index %d is not ready for move";
+  public static final String EXCEPTION_TARGET_BITMAP_COLUMN_INDEX_ARG_IS_NOT_READY_FOR_MOVE_AE3B5F88 =
+      "Target bitmap column index %d is not ready for move";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_CLONE_795EB1C5 =
+      "Missing value arrays for aligned column index %d during clone";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_EXPAND_68E0C8B6 =
+      "Missing value arrays for aligned column index %d during expand";
+  public static final String EXCEPTION_MISSING_VALUE_ARRAYS_FOR_ALIGNED_COLUMN_INDEX_ARG_DURING_MARK_NULL_VALUE_2893628E =
+      "Missing value arrays for aligned column index %d during mark null value";
+  public static final String
+      LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA =
+          "table_query_device_entry_batch_size_in_bytes (%d) exceeds the maximum RPC payload (dn_thrift_max_frame_size %d minus 1024 bytes); using %d as the effective value";
 
 }

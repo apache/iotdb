@@ -390,7 +390,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
   private static Properties columnFilterTopicConfig(
       final String database, final String tableName, final String columnFilter) {
     final Properties topicConfig = new Properties();
-    topicConfig.put(TopicConstant.MODE_KEY, TopicConstant.MODE_LIVE_VALUE);
+    topicConfig.put(TopicConstant.MODE_KEY, TopicConstant.MODE_INITIAL_VALUE);
     topicConfig.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
     topicConfig.put(TopicConstant.DATABASE_KEY, database);
     topicConfig.put(TopicConstant.TABLE_KEY, tableName);

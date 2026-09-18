@@ -33,7 +33,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
-import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -88,7 +87,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     } finally {
       for (final Pair<String, File> sealedFilePair : sealedFilePairs) {
         final File sealedFile = sealedFilePair.right;
-        if (sealedFile.exists() && !FileUtils.deleteQuietly(sealedFile)) {
+        if (!org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(sealedFile)) {
           LOGGER.warn(DataNodePipeMessages.FAILED_TO_DELETE_BATCH_FILE_THIS_FILE, sealedFilePair);
         }
       }
@@ -159,7 +158,10 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
   private Tablet pruneTableModelTablet(final String databaseName, final Tablet tablet) {
     final ColumnFilterMatcher matcher =
-        SubscriptionAgent.broker().getColumnFilterMatcher(prefetchingQueue.getTopicName());
+        SubscriptionAgent.broker()
+            .getColumnFilterMatcher(
+                prefetchingQueue.getTopicName(),
+                SubscriptionAgent.consumer().isTableModel(prefetchingQueue.getConsumerGroupId()));
     return TabletColumnPruner.pruneTableModelTablet(tablet, databaseName, matcher);
   }
 }

@@ -142,6 +142,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
+    final Consumer<String> senderOnlyFailure =
+        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -190,12 +192,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s1) values (now(), 3)",
-              "insert into root.db.d1(time, s1) values (now(), 4)",
-              "insert into root.db.d1(time, s1) values (now(), 5)",
-              "insert into root.db.d1(time, s1) values (now(), 6)",
-              "insert into root.db.d1(time, s1) values (now(), 7)",
-              "insert into root.db.d1(time, s1) values (now(), 8)",
+              "insert into root.db.d1(time, s1) values (3, 3)",
+              "insert into root.db.d1(time, s1) values (4, 4)",
+              "insert into root.db.d1(time, s1) values (5, 5)",
+              "insert into root.db.d1(time, s1) values (6, 6)",
+              "insert into root.db.d1(time, s1) values (7, 7)",
+              "insert into root.db.d1(time, s1) values (8, 8)",
               "flush"),
           null);
 
@@ -204,7 +206,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
           "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"),
-          handleFailure);
+          senderOnlyFailure);
     }
   }
 

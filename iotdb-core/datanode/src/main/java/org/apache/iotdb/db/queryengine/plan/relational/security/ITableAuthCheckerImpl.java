@@ -167,8 +167,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 .setResult(false),
             () -> databaseName);
         throw new AccessDeniedException(
-            String.format(
-                DataNodeQueryMessages.QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE,
+            AccessControlImpl.getUnsupportedAuditDatabaseOperationMessage(
                 TABLE_MODEL_AUDIT_DATABASE));
       }
     }
@@ -401,6 +400,30 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   }
 
   @Override
+  public void checkGlobalPrivilege(
+      String userName,
+      TableModelPrivilege privilege,
+      AuditLogOperation auditLogOperation,
+      IAuditEntity auditEntity,
+      Supplier<String> auditObject) {
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          auditEntity
+              .setAuditLogOperation(auditLogOperation)
+              .setPrivilegeType(privilege.getPrivilegeType())
+              .setResult(true),
+          auditObject);
+      return;
+    }
+    TSStatus result =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, privilege.getPrivilegeType()),
+            privilege.getPrivilegeType());
+    recordAuditLogViaAuthenticationResult(
+        auditObject, privilege, auditLogOperation, auditEntity, result);
+  }
+
+  @Override
   public void checkGlobalPrivileges(
       String username, Collection<PrivilegeType> privileges, IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
@@ -469,10 +492,20 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       TableModelPrivilege privilege,
       IAuditEntity auditEntity,
       TSStatus result) {
+    recordAuditLogViaAuthenticationResult(
+        auditObject, privilege, privilege.getAuditLogOperation(), auditEntity, result);
+  }
+
+  private void recordAuditLogViaAuthenticationResult(
+      Supplier<String> auditObject,
+      TableModelPrivilege privilege,
+      AuditLogOperation auditLogOperation,
+      IAuditEntity auditEntity,
+      TSStatus result) {
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
-              .setAuditLogOperation(privilege.getAuditLogOperation())
+              .setAuditLogOperation(auditLogOperation)
               .setPrivilegeType(privilege.getPrivilegeType())
               .setResult(false),
           auditObject);
@@ -480,7 +513,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
-            .setAuditLogOperation(privilege.getAuditLogOperation())
+            .setAuditLogOperation(auditLogOperation)
             .setPrivilegeType(privilege.getPrivilegeType())
             .setResult(true),
         auditObject);

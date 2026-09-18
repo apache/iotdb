@@ -139,11 +139,11 @@ public class ReadOnlyMemChunk {
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
         entry.setValue(tvList.sort());
-        long tvListRamSize = tvList.calculateRamSize().getRamSize();
         tvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long tvListRamSize = tvList.calculateRamSize().getRamSize();
             long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
@@ -253,10 +253,10 @@ public class ReadOnlyMemChunk {
         (int)
             Math.min(
                 MAX_NUMBER_OF_FAKE_PAGE, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE));
-    long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
-    for (int i = 0; i < pageNum; i++) {
-      long pageStartTime = chunkStartTime + i * timeInterval;
-      long pageEndTime = (i == pageNum - 1) ? chunkEndTime : (pageStartTime + timeInterval - 1);
+    for (long[] pageTimeRange :
+        MemChunkTimeRangeUtils.splitFakePageTimeRanges(chunkStartTime, chunkEndTime, pageNum)) {
+      long pageStartTime = pageTimeRange[0];
+      long pageEndTime = pageTimeRange[1];
       pageStatisticsList.add(generateFakeStatistics(dataType, pageStartTime, pageEndTime));
     }
 
@@ -298,11 +298,11 @@ public class ReadOnlyMemChunk {
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
         entry.setValue(tvList.sort());
-        long tvListRamSize = tvList.calculateRamSize().getRamSize();
         tvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
           if (ownerQuery != null) {
+            long tvListRamSize = tvList.calculateRamSize().getRamSize();
             long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
             if (deltaBytes > 0) {
               ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);

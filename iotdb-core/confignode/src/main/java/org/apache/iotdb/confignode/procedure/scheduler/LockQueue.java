@@ -27,7 +27,7 @@ import java.util.ArrayDeque;
 public class LockQueue {
   private final ArrayDeque<Procedure<?>> deque = new ArrayDeque<>();
 
-  private Procedure<?> lockOwnerProcedure = null;
+  private volatile Procedure<?> lockOwnerProcedure = null;
 
   public boolean tryLock(Procedure<?> procedure) {
     if (lockOwnerProcedure == null) {
@@ -43,6 +43,10 @@ public class LockQueue {
     }
     lockOwnerProcedure = null;
     return true;
+  }
+
+  public Procedure<?> getLockOwnerProcedure() {
+    return lockOwnerProcedure;
   }
 
   public void waitProcedure(Procedure<?> procedure, ProcedureScheduler procedureScheduler) {

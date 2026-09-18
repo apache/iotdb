@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.JlineUtils;
@@ -26,6 +27,7 @@ import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -204,8 +206,7 @@ public class Cli extends AbstractCli {
 
   private static void executeSql(CliContext ctx) throws TException {
     try (IoTDBConnection connection =
-        (IoTDBConnection)
-            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
+        (IoTDBConnection) DriverManager.getConnection(buildJdbcUrl(host, port), info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
@@ -220,15 +221,15 @@ public class Cli extends AbstractCli {
 
   private static void receiveCommands(CliContext ctx) throws TException {
     try (IoTDBConnection connection =
-        (IoTDBConnection)
-            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
+        (IoTDBConnection) DriverManager.getConnection(buildJdbcUrl(host, port), info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting(ctx);
       displayLogo(ctx, properties.getLogo(), properties.getVersion(), properties.getBuildInfo());
-      ctx.getPrinter().println(String.format("Successfully login at %s:%s", host, port));
+      ctx.getPrinter()
+          .println(String.format(CliMessages.SUCCESSFULLY_LOGIN_AT, formatEndpoint(host, port)));
       while (true) {
         boolean readLine = readerReadLine(ctx, connection);
         if (readLine) {
@@ -239,6 +240,14 @@ public class Cli extends AbstractCli {
       ctx.getErr().printf("%s: %s%n", IOTDB_ERROR_PREFIX, e.getMessage());
       ctx.exit(CODE_ERROR);
     }
+  }
+
+  private static String formatEndpoint(String host, String port) {
+    return UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
+  }
+
+  private static String buildJdbcUrl(String host, String port) {
+    return Config.IOTDB_URL_PREFIX + formatEndpoint(host, port) + "/";
   }
 
   private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {

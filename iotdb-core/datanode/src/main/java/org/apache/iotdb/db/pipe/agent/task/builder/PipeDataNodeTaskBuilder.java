@@ -57,10 +57,19 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_REALTIME_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.areOptionsEnabled;
 
 public class PipeDataNodeTaskBuilder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskBuilder.class);
+
+  private static final String[] SCHEMA_OPTIONS_REQUIRED_BEFORE_LOAD = {
+    "schema.timeseries.ordinary.create",
+    "schema.timeseries.template.create",
+    "schema.timeseries.template.alter",
+    "schema.timeseries.template.set",
+    "schema.timeseries.template.activate"
+  };
 
   private final PipeStaticMeta pipeStaticMeta;
   private final int regionId;
@@ -265,13 +274,46 @@ public class PipeDataNodeTaskBuilder {
 
   private static void injectParameters(
       final PipeParameters sourceParameters, final PipeParameters sinkParameters) {
-    final boolean isSourceExternal =
-        !BuiltinPipePlugin.BUILTIN_SOURCES.contains(
-            sourceParameters
-                .getStringOrDefault(
-                    Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
-                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-                .toLowerCase());
+    final String sourcePluginName =
+        sourceParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+    final boolean isIoTDBSource =
+        BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName().equals(sourcePluginName)
+            || BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName().equals(sourcePluginName);
+    final boolean shouldMarkAsGeneralWriteRequest =
+        sinkParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeSinkConstant.CONNECTOR_MARK_AS_GENERAL_WRITE_REQUEST_KEY,
+                PipeSinkConstant.SINK_MARK_AS_GENERAL_WRITE_REQUEST_KEY),
+            PipeSinkConstant.CONNECTOR_MARK_AS_GENERAL_WRITE_REQUEST_DEFAULT_VALUE);
+    final boolean shouldMarkAsPipeRequest =
+        !shouldMarkAsGeneralWriteRequest
+            && sinkParameters.getBooleanOrDefault(
+                Arrays.asList(
+                    PipeSinkConstant.CONNECTOR_MARK_AS_PIPE_REQUEST_KEY,
+                    PipeSinkConstant.SINK_MARK_AS_PIPE_REQUEST_KEY),
+                PipeSinkConstant.CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE);
+
+    boolean shouldWaitForSchemaBeforeLoad = false;
+    try {
+      shouldWaitForSchemaBeforeLoad =
+          isIoTDBSource
+              && shouldMarkAsPipeRequest
+              && areOptionsEnabled(sourceParameters, SCHEMA_OPTIONS_REQUIRED_BEFORE_LOAD);
+    } catch (final IllegalPathException e) {
+      LOGGER.warn(
+          DataNodePipeMessages.PIPEDATANODETASKBUILDER_FAILED_TO_PARSE_INCLUSION_AND_EXCLUSION,
+          e.getMessage(),
+          e);
+    }
+    sinkParameters.addAttribute(
+        SystemConstant.SINK_WAIT_FOR_SCHEMA_BEFORE_LOAD_KEY,
+        Boolean.toString(shouldWaitForSchemaBeforeLoad));
+
+    final boolean isSourceExternal = !BuiltinPipePlugin.BUILTIN_SOURCES.contains(sourcePluginName);
 
     final String sinkPluginName =
         sinkParameters

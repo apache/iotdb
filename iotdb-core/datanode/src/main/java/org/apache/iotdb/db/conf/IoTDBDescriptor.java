@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
-import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -42,6 +41,7 @@ import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -140,7 +140,7 @@ public class IoTDBDescriptor {
   }
 
   protected IoTDBDescriptor() {
-    loadProps();
+    boolean hasLoadedProperties = loadProps();
     ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
         ServiceLoader.load(IPropertiesLoader.class);
     boolean hasProperties = false;
@@ -166,9 +166,9 @@ public class IoTDBDescriptor {
           .getConfig()
           .setCustomizedProperties(loader.getCustomizedProperties());
     }
-    // if there are no properties, we need to init memory config
-    if (!hasProperties) {
-      memoryConfig.init(new TrimProperties());
+    // If no configuration source initialized the memory config, initialize it with defaults.
+    if (!hasLoadedProperties && !hasProperties) {
+      memoryConfig.init(new TrimProperties(), conf.getThriftMaxFrameSize(), LOGGER);
     }
   }
 
@@ -226,7 +226,7 @@ public class IoTDBDescriptor {
 
   /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void loadProps() {
+  private boolean loadProps() {
     TrimProperties commonProperties = new TrimProperties();
     // if new properties file exist, skip old properties files
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
@@ -255,11 +255,13 @@ public class IoTDBDescriptor {
             .getMetricConfig()
             .updateRpcInstance(NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
       }
+      return true;
     } else {
       LOGGER.warn(
           DataNodeMiscMessages
               .MISC_LOG_COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN_SOURCES_EE3ED103,
           CommonConfig.SYSTEM_CONFIG_NAME);
+      return false;
     }
   }
 
@@ -333,7 +335,11 @@ public class IoTDBDescriptor {
                 "write_memory_variation_report_proportion",
                 Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
-    memoryConfig.init(properties);
+    conf.setThriftMaxFrameSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+    memoryConfig.init(properties, conf.getThriftMaxFrameSize(), LOGGER);
 
     String systemDir = properties.getProperty("dn_system_dir");
     if (systemDir == null) {
@@ -351,6 +357,7 @@ public class IoTDBDescriptor {
 
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
+
     String[] defaultTierDirs = new String[conf.getTierDataDirs().length];
     for (int i = 0; i < defaultTierDirs.length; ++i) {
       defaultTierDirs[i] = String.join(",", conf.getTierDataDirs()[i]);
@@ -505,6 +512,18 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
+
+    conf.setCopyToAllowedExportDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "copy_to_allowed_export_dirs",
+                        String.join(",", conf.getCopyToAllowedExportDirs()))
+                    .trim()
+                    .split(","))
+            .map(String::trim)
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
 
     conf.setSessionTimeoutThreshold(
         Integer.parseInt(
@@ -814,11 +833,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "primitive_array_size", String.valueOf(conf.getPrimitiveArraySize())))));
 
-    conf.setThriftMaxFrameSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
-
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
             properties.getProperty(
@@ -994,6 +1008,26 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "coordinator_read_executor_size",
                 Integer.toString(conf.getCoordinatorReadExecutorSize()))));
+    conf.setCoordinatorScheduledExecutorSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "coordinator_scheduled_executor_size",
+                Integer.toString(conf.getCoordinatorScheduledExecutorSize()))));
+    conf.setFragmentInstanceNotificationThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "fragment_instance_notification_thread_count",
+                Integer.toString(conf.getFragmentInstanceNotificationThreadCount()))));
+    conf.setDriverTaskSchedulerNotificationThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "driver_task_scheduler_notification_thread_count",
+                Integer.toString(conf.getDriverTaskSchedulerNotificationThreadCount()))));
+    conf.setFragmentInstanceDispatchThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "fragment_instance_dispatch_thread_count",
+                Integer.toString(conf.getFragmentInstanceDispatchThreadCount()))));
     conf.setDataNodeTableSchemaCacheSize(
         Long.parseLong(
             properties.getProperty(
@@ -1413,6 +1447,12 @@ public class IoTDBDescriptor {
       conf.setWALCacheShrinkClearEnabled(WALInsertNodeCacheShrinkClearEnabled);
     }
 
+    conf.setWalFileListCacheEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "wal_file_list_cache_enabled",
+                Boolean.toString(conf.isWalFileListCacheEnabled()))));
+
     loadWALHotModifiedProps(properties);
   }
 
@@ -1804,6 +1844,11 @@ public class IoTDBDescriptor {
     }
 
     long throttleDownThresholdInByte = Long.parseLong(getWalThrottleThreshold(properties));
+    if (throttleDownThresholdInByte < 0) {
+      throttleDownThresholdInByte =
+          Long.parseLong(
+              ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[1]));
+    }
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -2229,6 +2274,9 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "enable_topk_runtime_filter"))));
 
+      memoryConfig.loadTableQueryDeviceEntryBatchSize(
+          properties, conf.getThriftMaxFrameSize(), LOGGER);
+
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
       loadWALHotModifiedProps(properties);
@@ -2276,21 +2324,6 @@ public class IoTDBDescriptor {
 
       // update retry config
       commonDescriptor.loadRetryProperties(properties);
-
-      // update binary allocator
-      commonDescriptor
-          .getConfig()
-          .setEnableBinaryAllocator(
-              Boolean.parseBoolean(
-                  properties.getProperty(
-                      "enable_binary_allocator",
-                      ConfigurationFileUtils.getConfigurationDefaultValue(
-                          "enable_binary_allocator"))));
-      if (commonDescriptor.getConfig().isEnableBinaryAllocator()) {
-        BinaryAllocator.getInstance().start();
-      } else {
-        BinaryAllocator.getInstance().close(true);
-      }
 
       // update disk_space_warning_threshold; also refresh the static copy in JVMCommonUtils that
       // the ReadOnly disk guard reads, otherwise the new threshold would not take effect until
@@ -2418,6 +2451,11 @@ public class IoTDBDescriptor {
         Long.toString(commonDescriptor.getConfig().getSortBufferSize()));
     ConfigurationFileUtils.updateAppliedProperties(
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "table_query_device_entry_batch_size_in_bytes",
+        Long.toString(memoryConfig.getTableQueryDeviceEntryBatchSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
@@ -2602,6 +2640,18 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
+    conf.setCopyToAllowedExportDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "copy_to_allowed_export_dirs",
+                        String.join(",", conf.getCopyToAllowedExportDirs()))
+                    .trim()
+                    .split(","))
+            .map(String::trim)
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
             properties.getProperty(
@@ -2739,6 +2789,18 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_pipe_dir", conf.getLoadActiveListeningPipeDir()));
 
+    conf.setCopyToAllowedExportDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "copy_to_allowed_export_dirs",
+                        ConfigurationFileUtils.getConfigurationDefaultValue(
+                            "copy_to_allowed_export_dirs"))
+                    .trim()
+                    .split(","))
+            .map(String::trim)
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(
             properties.getProperty(
@@ -2766,6 +2828,7 @@ public class IoTDBDescriptor {
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {
     PipeDescriptor.loadPipeProps(commonDescriptor.getConfig(), properties, true);
+    PipeDataNodeResourceManager.memory().notifyNextTsFileParserMemoryReservation();
     LoggerPeriodicalLogReducer.update();
   }
 

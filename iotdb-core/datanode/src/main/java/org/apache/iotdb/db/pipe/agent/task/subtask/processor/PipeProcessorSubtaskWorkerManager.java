@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeProcessorSubtaskWorkerManager {
@@ -34,7 +37,9 @@ public class PipeProcessorSubtaskWorkerManager {
 
   private final AtomicLong scheduledTaskNumber;
 
-  public PipeProcessorSubtaskWorkerManager(ListeningExecutorService workerThreadPoolExecutor) {
+  public PipeProcessorSubtaskWorkerManager(
+      final ListeningExecutorService workerThreadPoolExecutor,
+      final ListeningScheduledExecutorService watcherScheduledExecutor) {
     workers = new PipeProcessorSubtaskWorker[MAX_THREAD_NUM];
     for (int i = 0; i < MAX_THREAD_NUM; i++) {
       workers[i] = new PipeProcessorSubtaskWorker();
@@ -42,10 +47,18 @@ public class PipeProcessorSubtaskWorkerManager {
     }
 
     scheduledTaskNumber = new AtomicLong(0);
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        watcherScheduledExecutor, this::watchLongRunningEvents, 1, 1, TimeUnit.MINUTES);
   }
 
   public void schedule(PipeProcessorSubtask pipeProcessorSubtask) {
     workers[(int) (scheduledTaskNumber.getAndIncrement() % MAX_THREAD_NUM)].schedule(
         pipeProcessorSubtask);
+  }
+
+  private void watchLongRunningEvents() {
+    for (final PipeProcessorSubtaskWorker worker : workers) {
+      worker.watchLongRunningEvent();
+    }
   }
 }

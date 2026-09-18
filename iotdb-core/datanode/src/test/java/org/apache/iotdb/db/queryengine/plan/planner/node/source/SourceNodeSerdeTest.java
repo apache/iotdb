@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelp
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowReceiversNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -112,6 +113,16 @@ public class SourceNodeSerdeTest {
     assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), node);
     node = new ShowQueriesNode(new PlanNodeId("test"), null, "root");
     byteBuffer = ByteBuffer.allocate(2048);
+    node.serialize(byteBuffer);
+    byteBuffer.flip();
+    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), node);
+  }
+
+  @Test
+  public void testShowReceiversNode() throws IllegalPathException {
+    ShowReceiversNode node = new ShowReceiversNode(new PlanNodeId("test"), null);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     node.serialize(byteBuffer);
     byteBuffer.flip();
     assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), node);

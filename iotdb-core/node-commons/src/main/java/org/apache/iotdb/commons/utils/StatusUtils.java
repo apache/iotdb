@@ -68,6 +68,7 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode());
   }
 
   /**
@@ -180,6 +181,9 @@ public class StatusUtils {
         break;
       case DISK_SPACE_INSUFFICIENT:
         status.setMessage(UtilMessages.MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0);
+        break;
+      case COPY_TO_WRITE_ERROR:
+        status.setMessage(UtilMessages.MESSAGE_FAILED_TO_WRITE_THE_TARGET_FILE_4C48CE25);
         break;
       case START_UP_ERROR:
         status.setMessage(UtilMessages.MESSAGE_MEET_ERROR_STARTING_UP_22A4CBFE);

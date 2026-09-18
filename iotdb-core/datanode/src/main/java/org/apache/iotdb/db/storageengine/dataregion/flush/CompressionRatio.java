@@ -155,7 +155,8 @@ public class CompressionRatio {
                     dataRegionCompressionRatio.getRight())
                 + "."
                 + dataRegionId);
-    if (!oldDataRegionFile.delete() && oldDataRegionFile.exists()) {
+    if (!org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(oldDataRegionFile)
+        && oldDataRegionFile.exists()) {
       LOGGER.warn(StorageEngineMessages.CANNOT_DELETE_OLD_COMPRESSION_FILE, oldDataRegionFile);
     }
   }
@@ -237,7 +238,7 @@ public class CompressionRatio {
 
     for (File ratioFile : ratioFiles) {
       if (ratioFile != null) {
-        if (!ratioFile.delete()) {
+        if (!org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(ratioFile)) {
           LOGGER.warn(StorageEngineMessages.CANNOT_DELETE_RATIO_FILE, ratioFile.getAbsolutePath());
         }
       }

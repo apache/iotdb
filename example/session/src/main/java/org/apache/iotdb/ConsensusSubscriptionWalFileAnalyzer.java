@@ -23,10 +23,10 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 
 /**
@@ -79,8 +79,7 @@ public class ConsensusSubscriptionWalFileAnalyzer {
   }
 
   private static WalFileAnalysis analyze(final File walFile) throws IOException {
-    try (RandomAccessFile raf = new RandomAccessFile(walFile, "r");
-        FileChannel channel = raf.getChannel()) {
+    try (FileChannel channel = FileChannel.open(walFile.toPath(), StandardOpenOption.READ)) {
       final long totalBytes = channel.size();
       final String version = detectVersion(channel, totalBytes);
       final int headMagicBytes = getHeadMagicBytes(version);

@@ -39,7 +39,8 @@ public class ActiveLoadPathHelperTest {
       final File targetDir =
           ActiveLoadPathHelper.resolveTargetDir(
               pendingDir,
-              ActiveLoadPathHelper.buildAttributes(null, null, null, null, null, null, userName));
+              ActiveLoadPathHelper.buildAttributes(
+                  null, null, null, null, null, null, null, userName));
       final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
 
       Assert.assertTrue(targetDir.getAbsolutePath().contains("user-v1-"));
@@ -121,6 +122,63 @@ public class ActiveLoadPathHelperTest {
           LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
       ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, true);
       Assert.assertTrue(statement.isVerifySchema());
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testPipeConversionTaskAttributeRoundTrip() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-task").toFile();
+    try {
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.buildAttributes(
+              null, null, true, true, true, null, true, "root", "task-123");
+      final File targetDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
+      final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
+      createFile(tsFile);
+
+      final Map<String, String> parsed = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertEquals("task-123", parsed.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
+
+      final File sharedTargetDir =
+          ActiveLoadPathHelper.resolvePipeTransferTargetDir(pendingDir, attributes);
+      final File taskTransferDir =
+          new File(
+              sharedTargetDir,
+              ActiveLoadPathHelper.formatPipeTaskTransferDirectoryName("task-123"));
+      final File taskTsFile = new File(taskTransferDir, "2-0-0-0.tsfile");
+      createFile(taskTsFile);
+      final Map<String, String> taskParsed =
+          ActiveLoadPathHelper.parseAttributes(taskTsFile, pendingDir);
+      Assert.assertEquals(
+          "task-123", taskParsed.get(ActiveLoadPathHelper.PIPE_CONVERSION_TASK_ID_KEY));
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testAutoCreateSchemaAttributeShouldSurviveActiveLoadPath() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-schema").toFile();
+    try {
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.buildAttributes(null, null, null, true, false, null, true, "root");
+      final File targetDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
+      final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
+      createFile(tsFile);
+
+      final Map<String, String> parsedAttributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertEquals(
+          Boolean.FALSE.toString(),
+          parsedAttributes.get(LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY));
+
+      final LoadTsFileStatement statement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      ActiveLoadPathHelper.applyAttributesToStatement(parsedAttributes, statement, false);
+      Assert.assertTrue(statement.isVerifySchema());
+      Assert.assertFalse(statement.isAutoCreateSchema());
     } finally {
       deleteRecursively(pendingDir);
     }

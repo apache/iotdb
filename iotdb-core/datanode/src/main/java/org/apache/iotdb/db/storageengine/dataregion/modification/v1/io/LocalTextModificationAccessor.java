@@ -31,12 +31,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -201,11 +205,11 @@ public class LocalTextModificationAccessor
 
   @Override
   public void truncate(long size) {
-    try (FileOutputStream outputStream =
-        new FileOutputStream(FSFactoryProducer.getFSFactory().getFile(filePath), true)) {
-      outputStream.getChannel().truncate(size);
+    try {
+      org.apache.iotdb.commons.utils.FileUtils.truncateFile(
+          FSFactoryProducer.getFSFactory().getFile(filePath), size);
       logger.warn(StorageEngineMessages.MODIFICATIONS_WILL_BE_TRUNCATED, filePath, size);
-    } catch (FileNotFoundException e) {
+    } catch (NoSuchFileException e) {
       logger.debug(NO_MODIFICATION_MSG, filePath);
     } catch (IOException e) {
       logger.error(
@@ -219,19 +223,20 @@ public class LocalTextModificationAccessor
 
   @Override
   public void mayTruncateLastLine() {
-    try (RandomAccessFile file = new RandomAccessFile(filePath, "r")) {
-      long filePointer = file.length() - 1;
+    try (FileChannel channel =
+        FileChannel.open(
+            FSFactoryProducer.getFSFactory().getFile(filePath).toPath(), StandardOpenOption.READ)) {
+      long filePointer = channel.size() - 1;
       if (filePointer <= 0) {
         return;
       }
 
-      file.seek(filePointer);
-      byte lastChar = file.readByte();
+      ByteBuffer byteBuffer = ByteBuffer.allocate(Byte.BYTES);
+      byte lastChar = readByte(channel, byteBuffer, filePointer);
       if (lastChar != '\n') {
         while (filePointer > -1 && lastChar != '\n') {
-          file.seek(filePointer);
+          lastChar = readByte(channel, byteBuffer, filePointer);
           filePointer--;
-          lastChar = file.readByte();
         }
         logger.warn(StorageEngineMessages.LAST_LINE_OF_MODS_INCOMPLETE);
         truncate(filePointer + 2);
@@ -239,6 +244,16 @@ public class LocalTextModificationAccessor
     } catch (IOException e) {
       logger.error(StorageEngineMessages.ERROR_READING_MODIFICATIONS, e);
     }
+  }
+
+  private static byte readByte(FileChannel channel, ByteBuffer byteBuffer, long position)
+      throws IOException {
+    byteBuffer.clear();
+    if (channel.read(byteBuffer, position) < Byte.BYTES) {
+      throw new EOFException();
+    }
+    byteBuffer.flip();
+    return byteBuffer.get();
   }
 
   private static String encodeModification(Modification mod) {

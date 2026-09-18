@@ -1448,6 +1448,8 @@ public abstract class TableOperatorGenerator<
             timeColumnName,
             measurementColumnNames,
             aggregation.isDistinct(),
+            step,
+            aggregation.isInputOrderedByTimeAscending(),
             memoryReservationManager,
             ioTDBLocal);
 
@@ -1731,6 +1733,8 @@ public abstract class TableOperatorGenerator<
             Collections.emptyMap(),
             true,
             aggregation.isDistinct(),
+            step,
+            aggregation.isInputOrderedByTimeAscending(),
             memoryReservationManager,
             ioTDBLocal);
 

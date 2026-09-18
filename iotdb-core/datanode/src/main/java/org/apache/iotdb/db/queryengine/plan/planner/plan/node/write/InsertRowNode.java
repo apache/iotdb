@@ -344,6 +344,73 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, LastCach
     subSerialize(stream);
   }
 
+  @Override
+  protected int serializedAttributesSize() {
+    return PlanNodeType.BYTES + serializedSubAttributesSize();
+  }
+
+  /**
+   * Returns the exact number of bytes written by the row serializer.
+   *
+   * @return the serialized row field size
+   */
+  protected int serializedSubAttributesSize() {
+    return Long.BYTES
+        + ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath())
+        + serializedMeasurementsAndValuesSize();
+  }
+
+  /**
+   * Returns the exact number of bytes written by the measurement and value serializer.
+   *
+   * @return the serialized measurement and value size
+   */
+  protected int serializedMeasurementsAndValuesSize() {
+    int size = Integer.BYTES + Byte.BYTES;
+
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!shouldSerializeMeasurement(i)) {
+        continue;
+      }
+      size +=
+          measurementSchemas == null
+              ? ReadWriteIOUtils.sizeToWrite(measurements[i])
+              : measurementSchemas[i].serializedSize();
+    }
+
+    for (int i = 0; values != null && i < values.length; i++) {
+      if (!shouldSerializeMeasurement(i)) {
+        continue;
+      }
+      size += serializedValueSize(i);
+    }
+
+    return size + Byte.BYTES + Byte.BYTES;
+  }
+
+  private int serializedValueSize(final int index) {
+    final TSDataType dataType = getDataTypeIfPresent(index);
+    if (values[index] == null) {
+      return Byte.BYTES + (dataType == null ? 0 : Byte.BYTES);
+    }
+
+    if (isNeedInferType) {
+      return Byte.BYTES + ReadWriteIOUtils.sizeToWrite(values[index].toString());
+    }
+
+    return Byte.BYTES
+        + switch (dataType) {
+          case BOOLEAN -> Byte.BYTES;
+          case INT32, DATE -> Integer.BYTES;
+          case INT64, TIMESTAMP -> Long.BYTES;
+          case FLOAT -> Float.BYTES;
+          case DOUBLE -> Double.BYTES;
+          case TEXT, STRING, BLOB, OBJECT -> ReadWriteIOUtils.sizeToWrite((Binary) values[index]);
+          case VECTOR, UNKNOWN ->
+              throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataType);
+        };
+  }
+
   void subSerialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(time, buffer);
     ReadWriteIOUtils.write(targetPath.getFullPath(), buffer);

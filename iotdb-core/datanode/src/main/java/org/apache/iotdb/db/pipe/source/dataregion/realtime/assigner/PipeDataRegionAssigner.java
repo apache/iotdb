@@ -192,6 +192,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 final PipeTsFileInsertionEvent tsFileInsertionEvent =
                     (PipeTsFileInsertionEvent) innerEvent;
                 tsFileInsertionEvent.bindTsFileDedupScopeID(source.getTsFileDedupScopeID());
+                tsFileInsertionEvent.setTsFileParser(source.getTsFileParser());
                 tsFileInsertionEvent.disableMod4NonTransferPipes(source.isShouldTransferModFile());
               }
 

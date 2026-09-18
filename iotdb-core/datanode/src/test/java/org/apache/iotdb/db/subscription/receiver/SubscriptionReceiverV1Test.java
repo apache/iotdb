@@ -70,6 +70,96 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  public void testHandleTimeoutRetriesAfterInFlightRequestCompletes() throws Exception {
+    final AtomicLong closeAttemptCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          void closeConsumer(final ConsumerConfig consumerConfig) {
+            closeAttemptCount.incrementAndGet();
+          }
+        };
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+    setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+    final AtomicLong inFlightRequestCount = (AtomicLong) getField(receiver, "inFlightRequestCount");
+
+    inFlightRequestCount.set(1L);
+    receiver.handleTimeout();
+
+    Assert.assertEquals(0L, closeAttemptCount.get());
+    Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
+
+    inFlightRequestCount.set(0L);
+    receiver.handleTimeout();
+
+    Assert.assertEquals(1L, closeAttemptCount.get());
+    Assert.assertNull(getField(receiver, "sharedConsumerConfig"));
+    Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
+  }
+
+  @Test
+  public void testHandleTimeoutRetriesAfterCleanupFailure() throws Exception {
+    final AtomicLong closeAttemptCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          void closeConsumer(final ConsumerConfig consumerConfig) {
+            closeAttemptCount.incrementAndGet();
+            throw new RuntimeException("expected cleanup failure");
+          }
+        };
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+    setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+
+    receiver.handleTimeout();
+    receiver.handleTimeout();
+
+    Assert.assertEquals(2L, closeAttemptCount.get());
+    Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
+    Assert.assertFalse((boolean) getField(receiver, "consumerInvalidated"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testHandleExitKeepsSharedConsumerStateForTimeoutCleanup() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
+        (ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal");
+    consumerConfigThreadLocal.set(consumerConfig);
+
+    receiver.handleExit();
+
+    Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
+    Assert.assertFalse((boolean) getField(receiver, "consumerInvalidated"));
+    Assert.assertTrue(receiver.hasActiveConsumer());
+    Assert.assertNull(consumerConfigThreadLocal.get());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testHandleExitClearsThreadLocalStateAfterInvalidation() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
+        (ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal");
+    consumerConfigThreadLocal.set(consumerConfig);
+
+    receiver.invalidateConsumer();
+    receiver.handleExit();
+
+    Assert.assertFalse(receiver.hasActiveConsumer());
+    Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
+    Assert.assertNull(consumerConfigThreadLocal.get());
+  }
+
+  @Test
   public void testCalculateConsumerInactivityTimeoutUsesDefaultTimeout() throws Exception {
     final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
 
@@ -195,14 +285,14 @@ public class SubscriptionReceiverV1Test {
   }
 
   private Object getField(final Object target, final String fieldName) throws Exception {
-    final Field field = target.getClass().getDeclaredField(fieldName);
+    final Field field = SubscriptionReceiverV1.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     return field.get(target);
   }
 
   private void setField(final Object target, final String fieldName, final Object value)
       throws Exception {
-    final Field field = target.getClass().getDeclaredField(fieldName);
+    final Field field = SubscriptionReceiverV1.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     field.set(target, value);
   }

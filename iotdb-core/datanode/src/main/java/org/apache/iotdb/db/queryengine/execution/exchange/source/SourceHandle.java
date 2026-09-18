@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.source;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -40,6 +42,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
@@ -73,6 +76,7 @@ public class SourceHandle implements ISourceHandle {
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000;
 
   private final TEndPoint remoteEndpoint;
+  private final TEndPoint localEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final TFragmentInstanceId localFragmentInstanceId;
 
@@ -175,6 +179,10 @@ public class SourceHandle implements ISourceHandle {
         Validate.notNull(
             remoteEndpoint,
             DataNodeQueryMessages.EXCEPTION_REMOTEENDPOINT_CAN_NOT_BE_NULL_DOT_DE2B5885);
+    this.localEndpoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
     this.remoteFragmentInstanceId =
         Validate.notNull(
             remoteFragmentInstanceId,
@@ -384,18 +392,35 @@ public class SourceHandle implements ISourceHandle {
 
   public synchronized void updatePendingDataBlockInfo(
       int startSequenceId, List<Long> dataBlockSizes) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          DataNodeQueryMessages.RECEIVENEWTSBLOCKNOTIFICATION_ARG_ARG_EACH_SIZE_IS_ARG,
-          startSequenceId,
-          startSequenceId + dataBlockSizes.size(),
-          dataBlockSizes);
+    try {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            DataNodeQueryMessages.RECEIVENEWTSBLOCKNOTIFICATION_ARG_ARG_EACH_SIZE_IS_ARG,
+            startSequenceId,
+            startSequenceId + dataBlockSizes.size(),
+            dataBlockSizes);
+      }
+      for (int i = 0; i < dataBlockSizes.size(); i++) {
+        sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
+      }
+      if (canGetTsBlockFromRemote) {
+        trySubmitGetDataBlocksTask();
+      }
+    } catch (RuntimeException | Error t) {
+      // This method runs in the inbound RPC thread. Mark the local FI failed before the same
+      // exception is returned to the upstream FI through the existing Thrift error channel.
+      notifyFailure(t);
+      throw t;
     }
-    for (int i = 0; i < dataBlockSizes.size(); i++) {
-      sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
-    }
-    if (canGetTsBlockFromRemote) {
-      trySubmitGetDataBlocksTask();
+  }
+
+  private void notifyFailure(Throwable t) {
+    try {
+      sourceHandleListener.onFailure(this, t);
+    } catch (Throwable callbackFailure) {
+      if (callbackFailure != t) {
+        t.addSuppressed(callbackFailure);
+      }
     }
   }
 
@@ -620,11 +645,19 @@ public class SourceHandle implements ISourceHandle {
           attempt += 1;
 
           long startTime = System.nanoTime();
+          boolean transferAttemptRecorded = false;
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             TGetDataBlockResponse resp = client.getDataBlock(req);
             int tsBlockNum = resp.getTsBlocks().size();
-            if (tsBlockNum == 0) {
+            if (tsBlockNum != endSequenceId - startSequenceId) {
+              recordTransferAttempt(
+                  false,
+                  tsBlockNum == 0
+                      ? UserDataTransferErrorCode.EMPTY_RESPONSE.name()
+                      : UserDataTransferErrorCode.UNEXPECTED_RESPONSE_SIZE.name(),
+                  null);
+              transferAttemptRecorded = true;
               if (!closed) {
                 // failed to pull TsBlocks
                 LOGGER.warn(
@@ -635,7 +668,11 @@ public class SourceHandle implements ISourceHandle {
                     remoteFragmentInstanceId,
                     indexOfUpstreamSinkHandle);
               }
-              return;
+              if (tsBlockNum == 0) {
+                return;
+              }
+              throw new TException(
+                  DataNodeQueryMessages.EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33);
             }
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
@@ -647,22 +684,36 @@ public class SourceHandle implements ISourceHandle {
                 GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
+            boolean receiverClosed = false;
             synchronized (SourceHandle.this) {
               if (aborted || closed) {
-                return;
+                receiverClosed = true;
+              } else {
+                for (int i = startSequenceId; i < endSequenceId; i++) {
+                  sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
+                }
+                if (LOGGER.isDebugEnabled()) {
+                  LOGGER.debug(DataNodeQueryMessages.PUT_TSBLOCKS_INTO_BUFFER);
+                }
+                if (!blocked.isDone()) {
+                  blocked.set(null);
+                }
               }
-              for (int i = startSequenceId; i < endSequenceId; i++) {
-                sequenceIdToTsBlock.put(i, tsBlocks.get(i - startSequenceId));
-              }
-              if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(DataNodeQueryMessages.PUT_TSBLOCKS_INTO_BUFFER);
-              }
-              if (!blocked.isDone()) {
-                blocked.set(null);
-              }
+            }
+            recordTransferAttempt(
+                !receiverClosed,
+                receiverClosed ? UserDataTransferErrorCode.RECEIVER_CLOSED.name() : null,
+                null);
+            transferAttemptRecorded = true;
+            if (receiverClosed) {
+              return;
             }
             break;
           } catch (Throwable e) {
+
+            if (!transferAttemptRecorded) {
+              recordTransferAttempt(false, null, e);
+            }
 
             LOGGER.warn(
                 DataNodeQueryMessages.FAILED_TO_GET_DATA_BLOCK,
@@ -691,6 +742,11 @@ public class SourceHandle implements ISourceHandle {
           }
         }
       }
+    }
+
+    private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
+      DataNodeUserDataTransferAuditor.record(
+          localEndpoint, remoteEndpoint, localEndpoint, success, errorCode, error);
     }
 
     private void fail(Throwable t) {

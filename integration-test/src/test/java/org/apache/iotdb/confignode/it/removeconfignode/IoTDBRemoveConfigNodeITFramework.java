@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.confignode.it.removeconfignode;
 
-import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.it.removedatanode.SQLModel;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.relational.it.query.old.aligned.TableUtils;
@@ -97,9 +97,7 @@ public class IoTDBRemoveConfigNodeITFramework {
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
     try (final Connection connection = makeItCloseQuietly(getConnectionWithSQLType(model));
-        final Statement statement = makeItCloseQuietly(connection.createStatement());
-        SyncConfigNodeIServiceClient client =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        final Statement statement = makeItCloseQuietly(connection.createStatement())) {
 
       if (SQLModel.TABLE_MODEL_SQL.equals(model)) {
         // Insert data in table model
@@ -120,14 +118,18 @@ public class IoTDBRemoveConfigNodeITFramework {
 
       // Get all config nodes
       ResultSet result = statement.executeQuery(SHOW_CONFIGNODES);
-      Set<Integer> allConfigNodeId = new HashSet<>();
+      int removeConfigNodeId = -1;
+      ConfigNodeWrapper leaderConfigNode =
+          EnvFactory.getEnv().getConfigNodeWrapper(EnvFactory.getEnv().getLeaderConfigNodeIndex());
       while (result.next()) {
-        allConfigNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
+        int configNodeId = result.getInt(ColumnHeaderConstant.NODE_ID);
+        if (leaderConfigNode.getIp().equals(result.getString(ColumnHeaderConstant.INTERNAL_ADDRESS))
+            && leaderConfigNode.getPort() == result.getInt(ColumnHeaderConstant.INTERNAL_PORT)) {
+          removeConfigNodeId = configNodeId;
+        }
       }
+      Assert.assertNotEquals(-1, removeConfigNodeId);
 
-      AtomicReference<SyncConfigNodeIServiceClient> clientRef = new AtomicReference<>(client);
-
-      int removeConfigNodeId = allConfigNodeId.iterator().next();
       String removeConfigNodeSQL = generateRemoveString(removeConfigNodeId);
       LOGGER.info("Remove ConfigNodes SQL: {}", removeConfigNodeSQL);
       try {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -355,6 +356,29 @@ public class LoadTsFileScheduler implements IScheduler {
     return true;
   }
 
+  static boolean isSameRegionReplicaSet(TRegionReplicaSet original, TRegionReplicaSet current) {
+    if (!Objects.equals(original.getRegionId(), current.getRegionId())) {
+      return false;
+    }
+
+    final Map<TDataNodeLocation, Integer> locationCounts = new HashMap<>();
+    for (TDataNodeLocation location : original.getDataNodeLocations()) {
+      locationCounts.merge(location, 1, Integer::sum);
+    }
+    for (TDataNodeLocation location : current.getDataNodeLocations()) {
+      final Integer count = locationCounts.get(location);
+      if (count == null) {
+        return false;
+      }
+      if (count == 1) {
+        locationCounts.remove(location);
+      } else {
+        locationCounts.put(location, count - 1);
+      }
+    }
+    return locationCounts.isEmpty();
+  }
+
   private boolean dispatchOnePieceNode(
       LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
     allReplicaSets.add(replicaSet);
@@ -625,7 +649,10 @@ public class LoadTsFileScheduler implements IScheduler {
             failedNode.isTableModel()
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        LoadTsFile.createUnchecked(null, filePath, Collections.emptyMap())
+                        (isGeneratedByPipe
+                                ? LoadTsFile.createForPipe(null, filePath, Collections.emptyMap())
+                                : LoadTsFile.createUnchecked(
+                                    null, filePath, Collections.emptyMap()))
                             .setDatabase(failedNode.getDatabase())
                             .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
                             .setConvertOnTypeMismatch(true))
@@ -684,7 +711,9 @@ public class LoadTsFileScheduler implements IScheduler {
       final String filePath, final boolean deleteAfterLoad, final String database)
       throws FileNotFoundException {
     final LoadTsFileStatement statement =
-        LoadTsFileStatement.createUnchecked(filePath)
+        (isGeneratedByPipe
+                ? LoadTsFileStatement.createForPipe(filePath)
+                : LoadTsFileStatement.createUnchecked(filePath))
             .setDeleteAfterLoad(deleteAfterLoad)
             .setConvertOnTypeMismatch(true);
     if (database != null) {
@@ -846,7 +875,8 @@ public class LoadTsFileScheduler implements IScheduler {
         final TRegionReplicaSet replicaSet = replicaSets.get(chunkPartitionIndexes[i]);
         final TConsensusGroupId regionId = replicaSet.getRegionId();
         if (regionId2ReplicaSetAndNode.containsKey(regionId)
-            && !Objects.equals(regionId2ReplicaSetAndNode.get(regionId).getLeft(), replicaSet)) {
+            && !isSameRegionReplicaSet(
+                regionId2ReplicaSetAndNode.get(regionId).getLeft(), replicaSet)) {
           // Detected region replica set changed (maybe due to region migration), throw an exception
           throw new RegionReplicaSetChangedException(
               regionId2ReplicaSetAndNode.get(regionId).getLeft(), replicaSet);

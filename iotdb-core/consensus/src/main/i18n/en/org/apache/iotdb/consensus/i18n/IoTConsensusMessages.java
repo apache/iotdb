@@ -256,6 +256,12 @@ public final class IoTConsensusMessages {
       "waiting target request timeout. current index: {}, target index: {}";
   public static final String CURRENT_WAITING_INTERRUPTED =
       "current waiting is interrupted. SyncIndex: {}. Exception: ";
+  public static final String
+      MESSAGE_SYNC_LOG_REQUEST_WITH_SYNC_INDEX_ARG_WAS_INTERRUPTED_WHILE_WAITING_81B4ABB2 =
+          "SyncLog request with SyncIndex %d was interrupted while waiting";
+  public static final String
+      MESSAGE_THE_REQUEST_MUST_WAIT_FOR_THE_PREVIOUS_REQUEST_TO_COMPLETE_470849A7 =
+          "The request must wait for the previous request to complete";
 
   // ===================== SyncStatus =====================
 
@@ -327,5 +333,8 @@ public final class IoTConsensusMessages {
   public static final String LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2 = "Reserved {} bytes for batch {}-{}, current total usage {}";
   public static final String LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD = "{}: Failed to send idle writer safe-time barrier to {}. status={}";
   public static final String LOG_ARG_WRITE_OPERATION_FAILED_SEARCHINDEX_ARG_CODE_ARG_SUBSCRIPTIONQUEUES_ARG_THIS_ARG_F4B17576 = "{}: write operation failed. searchIndex: {}. Code: {}, subscriptionQueues: {}, this: {}";
+  public static final String
+      LOG_FAILED_TO_RECORD_A_USER_DATA_TRANSFER_AUDIT_EVENT_CONSENSUS_REPLICATION_WILL_CONTINUE_F215E222 =
+          "Failed to record a user-data transfer audit event; consensus replication will continue.";
 
 }

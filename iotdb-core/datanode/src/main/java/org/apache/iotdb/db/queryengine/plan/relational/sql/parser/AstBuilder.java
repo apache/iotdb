@@ -1455,7 +1455,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.ShowSubscriptionsStatementContext ctx) {
     final String topicName =
         getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
-    return new ShowSubscriptions(topicName);
+    return new ShowSubscriptions(topicName, ctx.DETAILS() != null);
   }
 
   @Override
@@ -1608,8 +1608,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitRemoveDataNodeStatement(RelationalSqlParser.RemoveDataNodeStatementContext ctx) {
-    List<Integer> nodeIds =
-        ctx.dataNodeIds.stream().map(token -> Integer.parseInt(token.getText())).collect(toList());
+    List<Integer> nodeIds = Collections.singletonList(Integer.parseInt(ctx.dataNodeId.getText()));
     return new RemoveDataNode(nodeIds);
   }
 
@@ -1755,6 +1754,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         orderBy,
         offset,
         limit);
+  }
+
+  @Override
+  public Node visitShowReceiversStatement(RelationalSqlParser.ShowReceiversStatementContext ctx) {
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.RECEIVERS,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   @Override
@@ -2271,8 +2281,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     String targetFileName = parseStringLiteral(ctx.fileName.getText());
     CopyToOptions.Builder copyToOptionsBuilder = new CopyToOptions.Builder();
     if (optionsContext != null) {
+      Set<String> optionKeys = new HashSet<>();
       for (RelationalSqlParser.CopyToStatementOptionContext context :
           optionsContext.copyToStatementOption()) {
+        String optionKey = getCopyToOptionKey(context);
+        if (!optionKeys.add(optionKey)) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_DUPLICATE_OPTION_IN_COPY_TO_STATEMENT_ARG_99CFE09F,
+                  optionKey));
+        }
         addCopyToOption(copyToOptionsBuilder, context);
       }
     }
@@ -2295,6 +2314,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       queryNode = (Statement) visit(ctx.query());
     }
     return new CopyTo(queryNode, targetFileName, copyToOptionsBuilder.build());
+  }
+
+  private String getCopyToOptionKey(RelationalSqlParser.CopyToStatementOptionContext context) {
+    if (context.FORMAT() != null) {
+      return "FORMAT";
+    } else if (context.TABLE() != null) {
+      return "TABLE";
+    } else if (context.TIME() != null) {
+      return "TIME";
+    } else if (context.TAGS() != null) {
+      return "TAGS";
+    } else {
+      return "MEMORY_THRESHOLD";
+    }
   }
 
   private void addCopyToOption(
@@ -2326,7 +2359,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           context.identifierList().identifier();
       Set<String> targetTagColumns = new LinkedHashSet<>(identifierList.size());
       for (RelationalSqlParser.IdentifierContext identifierContext : identifierList) {
-        targetTagColumns.add(((Identifier) visit(identifierContext)).getValue());
+        String tagColumnName = ((Identifier) visit(identifierContext)).getValue();
+        if (!targetTagColumns.add(tagColumnName)) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_DUPLICATE_TAG_COLUMN_IN_TAGS_CLAUSE_ARG_61FD5422,
+                  tagColumnName));
+        }
       }
       builder.withTargetTagColumns(targetTagColumns);
     } else if (context.MEMORY_THRESHOLD() != null) {
@@ -3509,14 +3548,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     long time;
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if ("+".equals(ctx.getChild(i).getText())) {
-        time +=
+      try {
+        long duration =
             DataNodeDateTimeUtils.convertDurationStrToLong(
                 time, ctx.getChild(i + 1).getText(), false);
-      } else {
-        time -=
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), false);
+        time =
+            "+".equals(ctx.getChild(i).getText())
+                ? Math.addExact(time, duration)
+                : Math.subtractExact(time, duration);
+      } catch (ArithmeticException e) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_DATE_EXPRESSION_IS_OUT_OF_RANGE_ARG_ED35A8A1,
+                ctx.getText()));
       }
     }
     return time;

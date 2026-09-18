@@ -156,13 +156,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
     outputSeries = parseOutputSeries(parameters);
 
     if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
-      if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
-        pipeTaskMeta.updateProgressIndex(
-            new StateProgressIndex(Long.MIN_VALUE, new HashMap<>(), MinimumProgressIndex.INSTANCE));
-      }
-
-      final StateProgressIndex stateProgressIndex =
-          (StateProgressIndex) pipeTaskMeta.getProgressIndex();
+      final StateProgressIndex stateProgressIndex = initializeStateProgressIndex(pipeTaskMeta);
       localCommitProgressIndex.set(stateProgressIndex.getInnerProgressIndex());
       final Binary localCountState = stateProgressIndex.getState().get(LOCAL_COUNT_STATE_KEY);
       localCount.set(
@@ -189,6 +183,27 @@ public class TwoStageCountProcessor implements PipeProcessor {
       throws IllegalPathException {
     return new PartialPath(
         parameters.getStringByKeys(PROCESSOR_OUTPUT_SERIES_KEY, _PROCESSOR_OUTPUT_SERIES_KEY));
+  }
+
+  static StateProgressIndex initializeStateProgressIndex(final PipeTaskMeta pipeTaskMeta) {
+    final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    if (progressIndex instanceof StateProgressIndex stateProgressIndex) {
+      return stateProgressIndex;
+    }
+
+    final ProgressIndex updatedProgressIndex =
+        pipeTaskMeta.updateProgressIndex(
+            new StateProgressIndex(
+                Long.MIN_VALUE, Collections.emptyMap(), MinimumProgressIndex.INSTANCE));
+    return updatedProgressIndex
+        .getProgressIndexByType(StateProgressIndex.class)
+        .orElseThrow(
+            () ->
+                new PipeException(
+                    String.format(
+                        DataNodePipeMessages
+                            .EXCEPTION_FAILED_TO_INITIALIZE_STATEPROGRESSINDEX_FROM_PROGRESS_INDEX_ARG_E95617F9,
+                        updatedProgressIndex)));
   }
 
   @Override

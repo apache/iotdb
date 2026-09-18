@@ -145,6 +145,39 @@ public enum BuiltinPipePlugin {
                   DO_NOTHING_SOURCE.getPipePluginName().toLowerCase(),
                   IOTDB_SOURCE.getPipePluginName().toLowerCase())));
 
+  // Used to distinguish between builtin and external sinks.
+  public static final Set<String> BUILTIN_SINKS =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  DO_NOTHING_CONNECTOR.getPipePluginName().toLowerCase(),
+                  IOTDB_THRIFT_CONNECTOR.getPipePluginName().toLowerCase(),
+                  IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName().toLowerCase(),
+                  IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName().toLowerCase(),
+                  IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName().toLowerCase(),
+                  IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName().toLowerCase(),
+                  IOTDB_AIR_GAP_CONNECTOR.getPipePluginName().toLowerCase(),
+                  IOT_CONSENSUS_V2_ASYNC_CONNECTOR.getPipePluginName().toLowerCase(),
+                  PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName().toLowerCase(),
+                  WEBSOCKET_CONNECTOR.getPipePluginName().toLowerCase(),
+                  OPC_UA_CONNECTOR.getPipePluginName().toLowerCase(),
+                  OPC_DA_CONNECTOR.getPipePluginName().toLowerCase(),
+                  WRITE_BACK_CONNECTOR.getPipePluginName().toLowerCase(),
+                  DO_NOTHING_SINK.getPipePluginName().toLowerCase(),
+                  IOTDB_THRIFT_SINK.getPipePluginName().toLowerCase(),
+                  IOTDB_THRIFT_SSL_SINK.getPipePluginName().toLowerCase(),
+                  IOTDB_THRIFT_SYNC_SINK.getPipePluginName().toLowerCase(),
+                  IOTDB_THRIFT_ASYNC_SINK.getPipePluginName().toLowerCase(),
+                  IOTDB_LEGACY_PIPE_SINK.getPipePluginName().toLowerCase(),
+                  IOTDB_AIR_GAP_SINK.getPipePluginName().toLowerCase(),
+                  WEBSOCKET_SINK.getPipePluginName().toLowerCase(),
+                  OPC_UA_SINK.getPipePluginName().toLowerCase(),
+                  OPC_DA_SINK.getPipePluginName().toLowerCase(),
+                  WRITE_BACK_SINK.getPipePluginName().toLowerCase(),
+                  SUBSCRIPTION_SINK.getPipePluginName().toLowerCase(),
+                  IOT_CONSENSUS_V2_ASYNC_SINK.getPipePluginName().toLowerCase(),
+                  PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName().toLowerCase())));
+
   public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST =
       Collections.unmodifiableSet(
           new HashSet<>(

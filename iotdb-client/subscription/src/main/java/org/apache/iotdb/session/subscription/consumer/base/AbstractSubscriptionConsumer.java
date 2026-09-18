@@ -168,7 +168,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private boolean allTopicMessagesHaveBeenConsumed(final Collection<String> topicNames) {
     // For the topic that needs to be detected, there are two scenarios to consider:
-    //   1. If configs as live, it cannot be determined whether the topic has been fully consumed.
+    //   1. Initial topics are unbounded and cannot be fully consumed.
     //   2. If configs as snapshot, it means the topic has not been automatically unsubscribed.
     // Therefore, the logic can be summarized as follows: if there is a matching topic in subscribed
     // topics, then it has not been fully consumed.
@@ -338,24 +338,23 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     submitEndpointsSyncer();
   }
 
+  protected void prepareClose() {
+    providers.prepareClose();
+  }
+
   @Override
-  public synchronized void close() {
-    if (isClosed.get()) {
+  public void close() {
+    if (!isClosed.compareAndSet(false, true)) {
       return;
     }
 
-    // close subscription providers
-    providers.acquireWriteLock();
-    try {
-      providers.closeProviders();
-    } finally {
-      providers.releaseWriteLock();
-    }
-
-    isClosed.set(true);
-
     // mark is released to avoid reopening after closing
     isReleased.set(true);
+
+    // Do not wait for the providers write lock here. A poll or heartbeat may hold it while blocked
+    // in network I/O. prepareClose() bounds or interrupts those RPCs before providers are detached.
+    providers.prepareClose();
+    providers.closeProviders();
   }
 
   boolean isClosed() {
@@ -583,6 +582,20 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
 
     return provider;
+  }
+
+  String sanitizeConnectionFailureMessage(final Throwable throwable) {
+    String message = throwable.getMessage();
+    if (Objects.isNull(message) || message.isEmpty()) {
+      message = throwable.getClass().getName();
+    }
+    if (Objects.nonNull(password) && !password.isEmpty()) {
+      message = message.replace(password, "***");
+    }
+    if (Objects.nonNull(encryptedPassword) && !encryptedPassword.isEmpty()) {
+      message = message.replace(encryptedPassword, "***");
+    }
+    return message;
   }
 
   /////////////////////////////// file ops ///////////////////////////////
@@ -824,6 +837,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final List<SubscriptionMessage> messages = new ArrayList<>();
     List<SubscriptionPollResponse> currentResponses = new ArrayList<>();
     final PollTimer timer = new PollTimer(System.currentTimeMillis(), timeoutMs);
+    // Poll every available provider before backing off. Otherwise an idle provider adds the random
+    // backoff latency even when the next provider already has data ready.
+    int remainingProvidersBeforeBackoff = getAvailableProviderCount();
 
     try {
       do {
@@ -901,9 +917,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         // update timer
         timer.update();
 
-        // TODO: associated with timeoutMs instead of hardcoding
-        // random sleep time within the range [SLEEP_DELTA_MS, SLEEP_DELTA_MS + SLEEP_MS)
-        Thread.sleep(((long) (Math.random() * SLEEP_MS)) + SLEEP_DELTA_MS);
+        if (--remainingProvidersBeforeBackoff <= 0) {
+          sleepAfterEmptyPollRound();
+          remainingProvidersBeforeBackoff = getAvailableProviderCount();
+        }
 
         // the use of TIMER_DELTA_MS here slightly reduces the timeout to avoid being interrupted as
         // much as possible
@@ -931,6 +948,20 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
 
     return messages;
+  }
+
+  private int getAvailableProviderCount() {
+    providers.acquireReadLock();
+    try {
+      return providers.getAvailableProviderCount();
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  void sleepAfterEmptyPollRound() throws InterruptedException {
+    // Randomize the pause between fully empty provider rounds to avoid synchronized polling.
+    Thread.sleep(((long) (Math.random() * SLEEP_MS)) + SLEEP_DELTA_MS);
   }
 
   private Optional<SubscriptionMessage> pollFile(

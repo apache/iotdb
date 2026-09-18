@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
@@ -81,6 +82,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.storageengine.load.LoadTsFilePathUtils.getValidatedDevicePath;
+
 public class TreeSchemaAutoCreatorAndVerifier {
 
   private static final Logger LOGGER =
@@ -114,6 +117,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         device2TimeseriesMetadataList.entrySet()) {
       final IDeviceID device = entry.getKey();
+
+      getValidatedDevicePath(device);
 
       try {
         if (schemaCache.isDeviceDeletedByMods(device)) {
@@ -179,10 +184,13 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   public void checkWritePermission(
-      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList) throws AuthException {
+      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
+      throws AuthException, LoadAnalyzeInvalidPathException {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         device2TimeseriesMetadataList.entrySet()) {
       final IDeviceID device = entry.getKey();
+
+      getValidatedDevicePath(device);
 
       try {
         if (schemaCache.isDeviceDeletedByMods(device)) {
@@ -273,7 +281,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (loadTsFileAnalyzer.isVerifySchema()) {
         verifySchema(schemaTree);
       }
-    } catch (AuthException e) {
+    } catch (AuthException | LoadAnalyzeInvalidPathException e) {
       throw e;
     } catch (LoadAnalyzeTypeMismatchException e) {
       if (loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
@@ -356,7 +364,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
     final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
     for (final IDeviceID device : schemaCache.getDevice2TimeSeries().keySet()) {
-      final PartialPath devicePath = new PartialPath(device);
+      final PartialPath devicePath = getValidatedDevicePath(device);
 
       final String[] devicePrefixNodes = devicePath.getNodes();
       if (devicePrefixNodes.length < databasePrefixNodesLength) {
@@ -387,13 +395,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                 SchemaConstant.ALL_MATCH_SCOPE.serialize());
         final TShowDatabaseResp resp = configNodeClient.showDatabase(req);
 
-        for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
-          schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
-          databasesNeededToBeSet.removeIf(
-              database ->
-                  database.startsWith(databaseName)
-                      || databaseName.startsWith(database.getFullPath()));
-        }
+        filterAlreadySetDatabases(databasesNeededToBeSet, resp.getDatabaseInfoMap().keySet());
       } catch (IOException | TException | ClientManagerException e) {
         throw new LoadFileException(e);
       }
@@ -410,6 +412,28 @@ public class TreeSchemaAutoCreatorAndVerifier {
       executeSetDatabaseStatement(statement);
 
       schemaCache.addAlreadySetDatabase(databasePath);
+    }
+  }
+
+  void filterAlreadySetDatabases(
+      final Set<PartialPath> databasesNeededToBeSet, final Set<String> alreadySetDatabaseNames) {
+    for (final String databaseName : alreadySetDatabaseNames) {
+      final PartialPath databasePath;
+      try {
+        databasePath = new PartialPath(databaseName);
+      } catch (final IllegalPathException e) {
+        // Ignore malformed databases left by older versions so they do not block valid loads.
+        continue;
+      }
+
+      // The path parser normalizes a trailing separator away, for example, "root." to "root".
+      if (!databaseName.equals(databasePath.getFullPath())) {
+        continue;
+      }
+
+      schemaCache.addAlreadySetDatabase(databasePath);
+      databasesNeededToBeSet.removeIf(
+          database -> database.startsWithOrPrefixOf(databasePath.getNodes()));
     }
   }
 
@@ -497,6 +521,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         encodingsList,
         compressionTypesList,
         isAlignedList,
+        loadTsFileAnalyzer.isAutoCreateSchemaRequested(),
         loadTsFileAnalyzer.context);
   }
 

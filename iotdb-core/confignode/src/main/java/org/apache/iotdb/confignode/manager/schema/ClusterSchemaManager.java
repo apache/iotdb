@@ -98,6 +98,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.schema.ConfigSchemaStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
@@ -155,6 +156,14 @@ public class ClusterSchemaManager {
   private static final String CONSENSUS_WRITE_ERROR =
       ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE;
 
+  public static boolean isNeedLastCacheEnabled(final TDatabaseSchema databaseSchema) {
+    return !databaseSchema.isSetNeedLastCache() || databaseSchema.isNeedLastCache();
+  }
+
+  private static boolean needInvalidateLastCache(final TDatabaseSchema after) {
+    return after.isSetNeedLastCache() && !after.isNeedLastCache();
+  }
+
   public ClusterSchemaManager(
       final IManager configManager,
       final ClusterSchemaInfo clusterSchemaInfo,
@@ -207,6 +216,10 @@ public class ClusterSchemaManager {
           schema.getName(),
           schema.getDataReplicationFactor(),
           schema.getSchemaReplicationFactor());
+      PartitionMetrics.bindDatabaseTableMetrics(
+          MetricService.getInstance(),
+          clusterSchemaInfo.getConfigSchemaStatistics(),
+          schema.getName());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
     } catch (final ConsensusException e) {
@@ -230,7 +243,9 @@ public class ClusterSchemaManager {
     TSStatus result;
     final TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
 
-    if (!isDatabaseExist(databaseSchema.getName())) {
+    try {
+      getDatabaseSchemaByName(databaseSchema.getName());
+    } catch (final DatabaseNotExistsException e) {
       // Reject if Database doesn't exist
       result = new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       result.setMessage(
@@ -269,11 +284,16 @@ public class ClusterSchemaManager {
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(databaseSchemaPlan)
                       : databaseSchemaPlan);
-      PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
-          MetricService.getInstance(),
-          databaseSchemaPlan.getSchema().getName(),
-          databaseSchemaPlan.getSchema().getDataReplicationFactor(),
-          databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (needInvalidateLastCache(databaseSchema)) {
+          invalidateLastCache(databaseSchema.getName());
+        }
+        PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
+            MetricService.getInstance(),
+            databaseSchemaPlan.getSchema().getName(),
+            databaseSchemaPlan.getSchema().getDataReplicationFactor(),
+            databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
+      }
       return result;
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -383,6 +403,7 @@ public class ClusterSchemaManager {
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
       databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
+      databaseInfo.setNeedLastCache(isNeedLastCacheEnabled(databaseSchema));
       databaseInfo.setMaxSchemaRegionNum(
           getMaxRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
       databaseInfo.setMaxDataRegionNum(
@@ -644,6 +665,10 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getDatabaseNames(isTableModel).stream()
         .filter(this::isDatabaseExist)
         .collect(Collectors.toList());
+  }
+
+  public ConfigSchemaStatistics getConfigSchemaStatistics() {
+    return clusterSchemaInfo.getConfigSchemaStatistics();
   }
 
   /**
@@ -909,6 +934,10 @@ public class ClusterSchemaManager {
               .setMessage(
                   ManagerMessages
                       .MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONINTERVAL_SHOULD_POSITIVE_BB1B473F);
+    }
+
+    if (!databaseSchema.isSetNeedLastCache()) {
+      databaseSchema.setNeedLastCache(true);
     }
 
     if (isSystemDatabase || isAuditDatabase) {
@@ -1439,8 +1468,11 @@ public class ClusterSchemaManager {
       // 1. if the alteringTableList is null, means that executing the drop database is going on
       if (Objects.isNull(alteringTableList)) {
         List<TsTable> relatedTables = usingTableMap.remove(databaseName);
-        relatedTables.forEach(
-            table -> speicalMapList.add(new NonCommittableTsTable(table.getTableName())));
+        // The database schema may already be removed while its deletion procedure is still running.
+        if (Objects.nonNull(relatedTables)) {
+          relatedTables.forEach(
+              table -> speicalMapList.add(new NonCommittableTsTable(table.getTableName())));
+        }
       } else {
         // 2. if the table has existed, the procedure is modifying it.
         // so the usingTableMap and specialStatusMap both hold it
@@ -1760,6 +1792,13 @@ public class ClusterSchemaManager {
       return result.get();
     }
 
+    if (isTableView && updatedProperties.containsKey(TsTable.NEED_LAST_CACHE_PROPERTY)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.SEMANTIC_ERROR, TreeViewSchema.UNSUPPORTED_NEED_LAST_CACHE_PROPERTY),
+          null);
+    }
+
     updatedProperties
         .keySet()
         .removeIf(
@@ -1770,18 +1809,53 @@ public class ClusterSchemaManager {
       return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
     }
 
+    final TDatabaseSchema databaseSchema;
+    try {
+      databaseSchema =
+          updatedProperties.containsKey(TsTable.NEED_LAST_CACHE_PROPERTY)
+                  && Objects.isNull(updatedProperties.get(TsTable.NEED_LAST_CACHE_PROPERTY))
+              ? getDatabaseSchemaByName(database)
+              : null;
+    } catch (final DatabaseNotExistsException e) {
+      throw new MetadataException(e);
+    }
+
     final TsTable updatedTable = new TsTable(originalTable);
     updatedProperties.forEach(
         (k, v) -> {
           originalProperties.put(k, originalTable.getPropValue(k).orElse(null));
           if (Objects.nonNull(v)) {
             updatedTable.addProp(k, v);
+          } else if (TsTable.NEED_LAST_CACHE_PROPERTY.equals(k)
+              && Objects.nonNull(databaseSchema)
+              && databaseSchema.isSetNeedLastCache()) {
+            updatedTable.addProp(k, String.valueOf(databaseSchema.isNeedLastCache()));
           } else {
             updatedTable.removeProp(k);
           }
         });
-
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
+  }
+
+  private void invalidateLastCache(final String database) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        getNodeManager().getRegisteredDataNodeLocations();
+    final DataNodeAsyncRequestContext<String, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.INVALIDATE_LAST_CACHE, database, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    clientHandler
+        .getResponseMap()
+        .forEach(
+            (dataNodeId, status) -> {
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                LOGGER.warn(
+                    "Failed to invalidate last cache of database {} on DataNode {}, status: {}",
+                    database,
+                    dataNodeId,
+                    status);
+              }
+            });
   }
 
   public static Optional<Pair<TSStatus, TsTable>> checkTable4View(

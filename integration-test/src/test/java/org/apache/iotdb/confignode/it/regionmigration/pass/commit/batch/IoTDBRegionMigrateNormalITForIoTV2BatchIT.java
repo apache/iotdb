@@ -53,7 +53,7 @@ public class IoTDBRegionMigrateNormalITForIoTV2BatchIT
   @Test
   public void migrateRegionWithDegradedTimeIndexTest() throws Exception {
     // set TsFileResource memory to 0 to trigger degrading
-    EnvFactory.getEnv().getConfig().getCommonConfig().setQueryMemoryProportion("1:1:1:1:1:1:0");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setQueryMemoryProportion("1:1:1:1:1:1:0:1:1");
 
     successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
 

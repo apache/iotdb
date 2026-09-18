@@ -143,6 +143,8 @@ public final class SubscriptionMessages {
   public static final String LOG_ARG_FAILED_SENDING_HEARTBEAT_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_SET_0B38FB1F = "{} 无法向 SubscriptionProvider {} 发送心跳，原因：{}，将 SubscriptionProvider 设为不可用";
   public static final String LOG_EXCEPTION_OCCURRED_ARG_CLOSING_REMOVING_SUBSCRIPTION_PROVIDER_ARG_BECAUSE_ARG_2EC38739 = "{} 关闭并移除 SubscriptionProvider {} 时发生异常，原因：{}";
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_5DB83198 = "集群没有可连接初始 endpoint %s 的可用 SubscriptionProvider";
+  public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_CONNECT_INITIAL_ENDPOINTS_ARG_712D99EA =
+      "集群没有可连接初始 endpoint %s 的可用 SubscriptionProvider。连接失败原因：%s";
   public static final String LOG_ARG_HAS_BEEN_LAUNCHED_SET_CORE_POOL_SIZE_ARG_WILL_0FDECBE3 = "{} 已启动，将 core pool size 设置为 {} 的操作会被忽略";
   public static final String LOG_INTERRUPT_WORKER_WHICH_MAY_CAUSE_SOME_TASK_INCONSISTENT_PLEASE_CHECK_04926D9F = "中断 worker 可能造成某些任务不一致。请检查业务日志。";
   public static final String LOG_THREAD_POOL_CAN_T_SHUTDOWN_EVEN_INTERRUPTING_WORKER_THREADS_WHICH_A49166F9 =
@@ -219,7 +221,7 @@ public final class SubscriptionMessages {
   public static final String EXCEPTION_CLUSTER_HAS_NO_AVAILABLE_SUBSCRIPTION_PROVIDERS_ARG_FETCH_ALL_ENDPOINTS_D232693E = "%s 获取所有 endpoint 时，集群没有可用的 SubscriptionProvider";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_ENCRYPTEDPASSWORD_ALREADY_SET_E4548A43 = "password 与 encryptedPassword 互斥；已设置 encryptedPassword";
   public static final String EXCEPTION_PASSWORD_ENCRYPTEDPASSWORD_MUTUALLY_EXCLUSIVE_PASSWORD_ALREADY_SET_BB20AD1E = "password 与 encryptedPassword 互斥；已设置 password";
-  public static final String EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732 = "Consensus mode 主题不应生成 pipe source attributes";
+  public static final String EXCEPTION_INCREMENTAL_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_09D75393 = "incremental mode 的 topic 不应生成 pipe source attributes";
   public static final String EXCEPTION_UNSUPPORTED_SUBSCRIPTIONCOMMITCONTEXT_VERSION_8021B27B = "不支持的 SubscriptionCommitContext 版本：";
   public static final String OUTDATED_SUBSCRIPTION_EVENT = "过期的订阅事件";
   public static final String FIELD_SEPARATOR = "，";

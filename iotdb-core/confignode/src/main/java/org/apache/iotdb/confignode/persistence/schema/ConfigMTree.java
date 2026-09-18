@@ -969,6 +969,11 @@ public class ConfigMTree {
               && databaseNode.getDatabaseSchema().isSetTTL()
               && databaseNode.getDatabaseSchema().getTTL() != Long.MAX_VALUE) {
             table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
+          } else if (k.equals(TsTable.NEED_LAST_CACHE_PROPERTY)
+              && databaseNode.getDatabaseSchema().isSetNeedLastCache()) {
+            table.addProp(
+                TsTable.NEED_LAST_CACHE_PROPERTY,
+                String.valueOf(databaseNode.getDatabaseSchema().isNeedLastCache()));
           } else {
             table.removeProp(k);
           }
@@ -1193,7 +1198,8 @@ public class ConfigMTree {
     }
   }
 
-  public void deserialize(final InputStream inputStream) throws IOException {
+  public void deserialize(final InputStream inputStream, final ConfigSchemaStatistics statistics)
+      throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
 
     String name;
@@ -1201,11 +1207,16 @@ public class ConfigMTree {
     final Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
     IConfigMNode databaseMNode;
     IConfigMNode internalMNode;
-    IConfigMNode tableNode;
+    ConfigTableNode tableNode;
 
     if (type == DATABASE_MNODE_TYPE) {
       databaseMNode = deserializeDatabaseMNode(inputStream);
       name = databaseMNode.getName();
+      if (isTableModel) {
+        statistics.increaseTableDatabaseNum();
+      } else {
+        statistics.increaseTreeDatabaseNum();
+      }
       stack.push(new Pair<>(databaseMNode, true));
     } else if (type == TABLE_MNODE_TYPE) {
       tableNode = deserializeTableMNode(inputStream);
@@ -1234,15 +1245,28 @@ public class ConfigMTree {
           name = internalMNode.getName();
           break;
         case DATABASE_MNODE_TYPE:
-          databaseMNode = deserializeDatabaseMNode(inputStream).getAsMNode();
+          databaseMNode = deserializeDatabaseMNode(inputStream);
           while (!stack.isEmpty() && Boolean.FALSE.equals(stack.peek().right)) {
-            databaseMNode.addChild(stack.pop().left);
+            final IConfigMNode node = stack.pop().left;
+            databaseMNode.addChild(node);
+            if (node instanceof ConfigTableNode) {
+              if (TreeViewSchema.isTreeViewTable(((ConfigTableNode) node).getTable())) {
+                statistics.increaseTreeViewTableNum(databaseMNode.getName());
+              } else {
+                statistics.increaseBaseTableNum(databaseMNode.getName());
+              }
+            }
+          }
+          if (isTableModel) {
+            statistics.increaseTableDatabaseNum();
+          } else {
+            statistics.increaseTreeDatabaseNum();
           }
           stack.push(new Pair<>(databaseMNode, true));
           name = databaseMNode.getName();
           break;
         case TABLE_MNODE_TYPE:
-          tableNode = deserializeTableMNode(inputStream).getAsMNode();
+          tableNode = deserializeTableMNode(inputStream);
           stack.push(new Pair<>(tableNode, false));
           name = tableNode.getName();
           break;

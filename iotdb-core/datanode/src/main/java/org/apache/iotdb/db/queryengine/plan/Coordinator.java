@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -200,7 +201,6 @@ import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 public class Coordinator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
-  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
@@ -284,7 +284,10 @@ public class Coordinator {
     this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
     this.scheduledExecutor = getScheduledExecutor();
-    int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    int dispatchThreadNum = CONFIG.getFragmentInstanceDispatchThreadCount();
+    if (dispatchThreadNum == 0) {
+      dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    }
     this.dispatchExecutor =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
@@ -393,20 +396,28 @@ public class Coordinator {
       long timeOut,
       boolean userQuery,
       boolean debug) {
-    return execution(
-        queryId,
-        session,
-        sql,
-        userQuery,
-        debug,
-        ((queryContext, startTime) ->
-            createQueryExecutionForTreeModel(
-                statement,
-                queryContext,
-                partitionFetcher,
-                schemaFetcher,
-                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-                startTime)));
+    ExecutionResult result = null;
+    try {
+      result =
+          execution(
+              queryId,
+              session,
+              sql,
+              userQuery,
+              debug,
+              ((queryContext, startTime) ->
+                  createQueryExecutionForTreeModel(
+                      statement,
+                      queryContext,
+                      partitionFetcher,
+                      schemaFetcher,
+                      timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                      startTime)));
+      return result;
+    } finally {
+      DNAuditLogger.getInstance()
+          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+    }
   }
 
   private IQueryExecution createQueryExecutionForTreeModel(
@@ -531,22 +542,30 @@ public class Coordinator {
       boolean userQuery,
       boolean debug,
       boolean readOnlyInternalQuery) {
-    return execution(
-        queryId,
-        session,
-        sql,
-        userQuery,
-        debug,
-        readOnlyInternalQuery,
-        ((queryContext, startTime) ->
-            createQueryExecutionForTableModel(
-                statement,
-                sqlParser,
-                clientSession,
-                queryContext,
-                metadata,
-                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-                startTime)));
+    ExecutionResult result = null;
+    try {
+      result =
+          execution(
+              queryId,
+              session,
+              sql,
+              userQuery,
+              debug,
+              readOnlyInternalQuery,
+              ((queryContext, startTime) ->
+                  createQueryExecutionForTableModel(
+                      statement,
+                      sqlParser,
+                      clientSession,
+                      queryContext,
+                      metadata,
+                      timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                      startTime)));
+      return result;
+    } finally {
+      DNAuditLogger.getInstance()
+          .logRevokeFailure(statement, session, sql, result == null ? null : result.status);
+    }
   }
 
   /** For compatibility of MQTT and REST, this method should never be called. */
@@ -856,7 +875,7 @@ public class Coordinator {
 
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
-        COORDINATOR_SCHEDULED_EXECUTOR_SIZE,
+        CONFIG.getCoordinatorScheduledExecutorSize(),
         ThreadName.MPP_COORDINATOR_SCHEDULED_EXECUTOR.getName());
   }
 

@@ -102,7 +102,7 @@ public class SubscriptionRuntimeCoordinator {
             .getSubscriptionCoordinator()
             .getSubscriptionInfo()
             .getAllTopicMeta()) {
-      if (topicMeta.getConfig().isConsensusMode()) {
+      if (topicMeta.getConfig().isIncrementalMode()) {
         return true;
       }
     }

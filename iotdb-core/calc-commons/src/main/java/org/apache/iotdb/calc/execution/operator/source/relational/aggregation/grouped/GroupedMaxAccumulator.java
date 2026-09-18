@@ -62,10 +62,10 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
         longValues = new LongBigArray(Long.MIN_VALUE);
         return;
       case FLOAT:
-        floatValues = new FloatBigArray(Float.MIN_VALUE);
+        floatValues = new FloatBigArray(Float.NEGATIVE_INFINITY);
         return;
       case DOUBLE:
-        doubleValues = new DoubleBigArray(Double.MIN_VALUE);
+        doubleValues = new DoubleBigArray(Double.NEGATIVE_INFINITY);
         return;
       case TEXT:
       case STRING:

@@ -33,9 +33,11 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -350,6 +352,45 @@ public class PipeTaskInfoAutoRestartTest {
     Assert.assertEquals(
         SystemConstant.PIPE_VISIBILITY_STRICT_VALUE,
         extractorAttributes.get(SystemConstant.PIPE_VISIBILITY_KEY));
+  }
+
+  @Test
+  public void testPreDeletePipeReportsDroppingInsteadOfNotExist() {
+    final String pipeName = "droppingPipe";
+    createPipe(pipeName, PipeStatus.STOPPED, true);
+    pipeTaskInfo.setPipeStatus(new SetPipeStatusPlanV2(pipeName, PipeStatus.PRE_DELETE, true));
+
+    final PipeException alterException =
+        Assert.assertThrows(
+            PipeException.class,
+            () ->
+                pipeTaskInfo.checkAndUpdateRequestBeforeAlterPipe(
+                    createAlterPipeRequest(pipeName, true)));
+    Assert.assertEquals(
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B,
+            pipeName),
+        alterException.getMessage());
+
+    final PipeException startException =
+        Assert.assertThrows(
+            PipeException.class, () -> pipeTaskInfo.checkBeforeStartPipe(pipeName, true));
+    Assert.assertEquals(
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638,
+            pipeName),
+        startException.getMessage());
+
+    final PipeException stopException =
+        Assert.assertThrows(
+            PipeException.class, () -> pipeTaskInfo.checkBeforeStopPipe(pipeName, true));
+    Assert.assertEquals(
+        String.format(
+            ConfigNodeMessages.EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B,
+            pipeName),
+        stopException.getMessage());
   }
 
   private TAlterPipeReq createAlterPipeRequest(final String pipeName, final boolean isTableModel) {

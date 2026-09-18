@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
@@ -77,6 +76,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.utils.CommonUtils.getTTLLowerBound;
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
@@ -254,7 +254,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     for (int i = 1; i < rowCount; i++) { // times are sorted in session API.
       IDeviceID nextDeviceId = getDeviceID(i);
-      if (times[i] >= upperBoundOfTimePartition || !currDeviceId.equals(nextDeviceId)) {
+      if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+              times[i], timePartitionSlot.getStartTime(), upperBoundOfTimePartition)
+          || !currDeviceId.equals(nextDeviceId)) {
         final PartitionSplitInfo splitInfo =
             deviceIDSplitInfoMap.computeIfAbsent(
                 currDeviceId, deviceID1 -> new PartitionSplitInfo());
@@ -392,7 +394,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= upperBoundOfTimePartition) {
+      if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+          times[i], timePartitionSlot.getStartTime(), upperBoundOfTimePartition)) {
         result.add(timePartitionSlot);
         // next init
         upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
@@ -565,6 +568,89 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     writeBitMaps(stream);
     writeValues(stream);
     ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
+  }
+
+  @Override
+  protected int serializedAttributesSize() {
+    return PlanNodeType.BYTES + serializedSubAttributesSize();
+  }
+
+  /**
+   * Returns the exact number of bytes written by {@link #subSerialize(DataOutputStream)}.
+   *
+   * <p>This deliberately excludes the plan-node type, id, and children. {@link
+   * InsertMultiTabletsNode} embeds tablet nodes by calling {@code subSerialize}, rather than their
+   * complete plan-node serialization.
+   *
+   * @return the serialized tablet field size
+   */
+  final int serializedSubAttributesSize() {
+    int size = ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
+
+    size += Integer.BYTES; // valid measurement count
+    size += Byte.BYTES; // whether measurement schemas are serialized
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!shouldSerializeMeasurement(i)) {
+        continue;
+      }
+      size +=
+          measurementSchemas == null
+              ? ReadWriteIOUtils.sizeToWrite(measurements[i])
+              : measurementSchemas[i].serializedSize();
+    }
+
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        size += TSDataType.getSerializedSize();
+      }
+    }
+
+    size += Integer.BYTES; // row count
+    size += rowCount * Long.BYTES; // timestamps
+
+    size += Byte.BYTES; // whether bitmaps are serialized
+    if (bitMaps != null) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
+        if (!shouldSerializeMeasurement(i)) {
+          continue;
+        }
+        size += Byte.BYTES; // whether the current measurement has a bitmap
+        if (getBitMapIfPresent(i) != null) {
+          size += BitMap.getSizeOfBytes(rowCount);
+        }
+      }
+    }
+
+    for (int i = 0; columns != null && i < columns.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
+        size += serializedColumnSize(dataTypes[i], columns[i]);
+      }
+    }
+
+    return size + Byte.BYTES; // isAligned
+  }
+
+  private int serializedColumnSize(final TSDataType dataType, final Object column) {
+    return switch (dataType) {
+      case BOOLEAN -> rowCount * Byte.BYTES;
+      case INT32, DATE -> rowCount * Integer.BYTES;
+      case INT64, TIMESTAMP -> rowCount * Long.BYTES;
+      case FLOAT -> rowCount * Float.BYTES;
+      case DOUBLE -> rowCount * Double.BYTES;
+      case TEXT, BLOB, STRING, OBJECT -> serializedBinaryColumnSize((Binary[]) column);
+      case VECTOR, UNKNOWN ->
+          throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
+    };
+  }
+
+  private int serializedBinaryColumnSize(final Binary[] binaryValues) {
+    int size = 0;
+    for (int i = 0; i < rowCount; i++) {
+      final Binary binary = binaryValues[i];
+      final byte[] values = binary == null ? null : binary.getValues();
+      size += values == null ? Integer.BYTES : Integer.BYTES + values.length;
+    }
+    return size;
   }
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */
@@ -1545,7 +1631,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
                 String.format(
                     "Insertion time [%s] is less than ttl time bound [%s]",
                     DateTimeUtils.convertLongToDate(currTime),
-                    DateTimeUtils.convertLongToDate(CommonDateTimeUtils.currentTime() - ttl)));
+                    DateTimeUtils.convertLongToDate(getTTLLowerBound(ttl))));
       } else {
         if (firstAliveLoc == -1) {
           firstAliveLoc = loc;
@@ -1559,8 +1645,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     if (firstAliveLoc == -1) {
       // no alive data
-      throw new OutOfTTLException(
-          getTimes()[getTimes().length - 1], (CommonDateTimeUtils.currentTime() - ttl));
+      throw new OutOfTTLException(getTimes()[getTimes().length - 1], getTTLLowerBound(ttl));
     }
     return firstAliveLoc;
   }

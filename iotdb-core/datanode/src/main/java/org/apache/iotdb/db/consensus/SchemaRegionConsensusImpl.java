@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -31,10 +32,14 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.schemaregion.SchemaRegionStateMachine;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
@@ -43,6 +48,8 @@ import java.util.concurrent.TimeUnit;
  * schemaRegion's reading and writing
  */
 public class SchemaRegionConsensusImpl {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegionConsensusImpl.class);
 
   private SchemaRegionConsensusImpl() {
     // do nothing
@@ -184,15 +191,27 @@ public class SchemaRegionConsensusImpl {
                               .build())
                       .setStorageDir(CONF.getSchemaRegionConsensusDir())
                       .build(),
-                  gid ->
-                      new SchemaRegionStateMachine(
-                          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid)))
+                  SchemaRegionConsensusImplHolder::createSchemaRegionStateMachine)
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
                           String.format(
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
                               CONF.getSchemaRegionConsensusProtocolClass())));
+    }
+
+    private static SchemaRegionStateMachine createSchemaRegionStateMachine(ConsensusGroupId gid) {
+      ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid);
+      if (schemaRegion == null) {
+        String errorMsg =
+            String.format(
+                DataNodeSchemaMessages
+                    .EXCEPTION_FAILED_TO_CREATE_STATE_MACHINE_FOR_CONSENSUS_GROUP_ARG_BECAUSE_SCHEMA_REGION_DOES_NOT_EXIST_610DAE67,
+                gid);
+        LOGGER.error(errorMsg);
+        throw new IllegalArgumentException(errorMsg);
+      }
+      return new SchemaRegionStateMachine(schemaRegion);
     }
   }
 }

@@ -1014,7 +1014,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void SetPipeStatusPlanV2Test() throws IOException {
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
-            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING, true);
+            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.PRE_DELETE, true);
     final SetPipeStatusPlanV2 setPipeStatusPlanV21 =
         (SetPipeStatusPlanV2)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());
@@ -1294,7 +1294,13 @@ public class ConfigPhysicalPlanSerDeTest {
     final DropTopicPlan dropTopicPlan = new DropTopicPlan("test_topic");
     final DropTopicPlan dropTopicPlan1 =
         (DropTopicPlan) ConfigPhysicalPlan.Factory.create(dropTopicPlan.serializeToByteBuffer());
-    Assert.assertEquals(dropTopicPlan.getTopicName(), dropTopicPlan1.getTopicName());
+    Assert.assertEquals(dropTopicPlan, dropTopicPlan1);
+
+    final DropTopicPlan tableDropTopicPlan = new DropTopicPlan("test_topic", true);
+    final DropTopicPlan tableDropTopicPlan1 =
+        (DropTopicPlan)
+            ConfigPhysicalPlan.Factory.create(tableDropTopicPlan.serializeToByteBuffer());
+    Assert.assertEquals(tableDropTopicPlan, tableDropTopicPlan1);
   }
 
   @Test

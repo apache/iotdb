@@ -137,7 +137,7 @@ public class TagManager {
     File tagSnapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.TAG_LOG_SNAPSHOT);
     File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, SchemaConstant.TAG_LOG);
-    if (tagFile.exists() && !tagFile.delete()) {
+    if (tagFile.exists() && !FileUtils.deleteFileIfExist(tagFile)) {
       logger.warn(DataNodeSchemaMessages.FAILED_TO_DELETE_EXISTING_WHEN_LOADING, tagFile.getName());
     }
 
@@ -145,7 +145,7 @@ public class TagManager {
       org.apache.tsfile.external.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
       return new TagManager(sgSchemaDirPath, regionStatistics);
     } catch (IOException e) {
-      if (!tagFile.delete()) {
+      if (!FileUtils.deleteFileIfExist(tagFile)) {
         logger.warn(
             DataNodeSchemaMessages.FAILED_TO_DELETE_EXISTING_WHEN_COPY_FAILURE, tagFile.getName());
       }

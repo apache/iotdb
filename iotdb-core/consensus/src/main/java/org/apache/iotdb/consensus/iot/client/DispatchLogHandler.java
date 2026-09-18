@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.consensus.iot.client;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditEvent;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
+import org.apache.iotdb.commons.audit.UserDataTransferProtectionMethod;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
@@ -41,7 +45,7 @@ import java.util.stream.Collectors;
 
 public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRes> {
 
-  private final Logger logger = LoggerFactory.getLogger(DispatchLogHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DispatchLogHandler.class);
 
   private final LogDispatcherThread thread;
   private final Batch batch;
@@ -63,6 +67,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
+    recordTransferAttempt(response);
     if (response.getStatuses().stream()
         .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode()))) {
       List<String> retryStatusMessages =
@@ -73,14 +78,14 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
       String messages = String.join(", ", retryStatusMessages);
       if (++retryCount == 1) {
-        logger.warn(
+        LOGGER.warn(
             IoTConsensusMessages.CANNOT_SEND_TO_PEER,
             batch,
             thread.getPeer(),
             retryCount,
             messages);
       } else {
-        logger.debug(
+        LOGGER.debug(
             IoTConsensusMessages.CANNOT_SEND_TO_PEER,
             batch,
             thread.getPeer(),
@@ -89,13 +94,13 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
       }
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
-      if (logger.isDebugEnabled()) {
+      if (LOGGER.isDebugEnabled()) {
         boolean containsError =
             response.getStatuses().stream()
                 .anyMatch(
                     status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode());
         if (containsError) {
-          logger.debug(
+          LOGGER.debug(
               IoTConsensusMessages.SEND_COMPLETE_BUT_CONTAINS_ERROR,
               batch,
               thread.getPeer(),
@@ -113,18 +118,19 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onError(Exception exception) {
+    recordTransferAttempt(false, null, exception);
     ++retryCount;
     Throwable rootCause = ExceptionUtils.getRootCause(exception);
     final Throwable actualCause = rootCause == null ? exception : rootCause;
     if (retryCount == 1) {
-      logger.warn(
+      LOGGER.warn(
           IoTConsensusMessages.CANNOT_SEND_TO_PEER_ON_ERROR,
           batch,
           thread.getPeer(),
           retryCount,
           actualCause.toString());
     } else {
-      logger.debug(
+      LOGGER.debug(
           IoTConsensusMessages.CANNOT_SEND_TO_PEER_ON_ERROR,
           batch,
           thread.getPeer(),
@@ -134,7 +140,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     // skip TApplicationException caused by follower
     if (actualCause instanceof TApplicationException) {
       completeBatch(batch);
-      logger.warn(IoTConsensusMessages.SKIP_RETRY_TAPPLICATION_EXCEPTION, batch);
+      LOGGER.warn(IoTConsensusMessages.SKIP_RETRY_TAPPLICATION_EXCEPTION, batch);
       logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
       return;
     }
@@ -153,7 +159,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
         .schedule(
             () -> {
               if (thread.isStopped()) {
-                logger.debug(
+                LOGGER.debug(
                     IoTConsensusMessages.LOG_DISPATCHER_STOPPED_NO_RETRY,
                     thread.getPeer(),
                     batch,
@@ -171,5 +177,112 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     // update safely deleted search index after last flushed sync index may be updated by
     // removeBatch
     thread.updateSafelyDeletedSearchIndex();
+  }
+
+  private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
+    try {
+      final UserDataTransferAuditHandler auditHandler =
+          thread.getImpl().getUserDataTransferAuditHandler();
+      if (!batch.containsUserData() || !auditHandler.isEnabled()) {
+        return;
+      }
+      recordTransferAttempt(
+          auditHandler,
+          batch,
+          thread.getImpl().getThisNode().getEndpoint(),
+          thread.getPeer().getEndpoint(),
+          UserDataTransferProtectionMethod.fromTlsEnabled(
+              thread.getConfig().getRpc().isEnableSSL()),
+          success,
+          errorCode,
+          error);
+    } catch (RuntimeException auditFailure) {
+      warnAuditFailure(auditFailure);
+    }
+  }
+
+  private void recordTransferAttempt(TSyncLogEntriesRes response) {
+    try {
+      final UserDataTransferAuditHandler auditHandler =
+          thread.getImpl().getUserDataTransferAuditHandler();
+      if (!batch.containsUserData() || !auditHandler.isEnabled()) {
+        return;
+      }
+      recordTransferAttempt(
+          auditHandler,
+          batch,
+          thread.getImpl().getThisNode().getEndpoint(),
+          thread.getPeer().getEndpoint(),
+          UserDataTransferProtectionMethod.fromTlsEnabled(
+              thread.getConfig().getRpc().isEnableSSL()),
+          response);
+    } catch (RuntimeException auditFailure) {
+      warnAuditFailure(auditFailure);
+    }
+  }
+
+  static void recordTransferAttempt(
+      UserDataTransferAuditHandler auditHandler,
+      Batch batch,
+      TEndPoint source,
+      TEndPoint target,
+      UserDataTransferProtectionMethod protectionMethod,
+      TSyncLogEntriesRes response) {
+    try {
+      if (!batch.containsUserData() || !auditHandler.isEnabled()) {
+        return;
+      }
+      // One batch RPC is one physical transfer attempt, so keep one representative error value in
+      // the minimum audit record instead of concatenating an unbounded number of response details.
+      final TSStatus firstFailedStatus =
+          response.getStatuses().stream()
+              .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+              .findFirst()
+              .orElse(null);
+      recordTransferAttempt(
+          auditHandler,
+          batch,
+          source,
+          target,
+          protectionMethod,
+          firstFailedStatus == null,
+          firstFailedStatus == null ? null : String.valueOf(firstFailedStatus.getCode()),
+          null);
+    } catch (RuntimeException auditFailure) {
+      warnAuditFailure(auditFailure);
+    }
+  }
+
+  static void recordTransferAttempt(
+      UserDataTransferAuditHandler auditHandler,
+      Batch batch,
+      TEndPoint source,
+      TEndPoint target,
+      UserDataTransferProtectionMethod protectionMethod,
+      boolean success,
+      String errorCode,
+      Throwable error) {
+    try {
+      if (!batch.containsUserData() || !auditHandler.isEnabled()) {
+        return;
+      }
+      auditHandler.onAttempt(
+          new UserDataTransferAuditEvent(
+              source,
+              source,
+              target,
+              protectionMethod,
+              success,
+              errorCode != null ? errorCode : error == null ? null : error.getClass().getName()));
+    } catch (RuntimeException auditFailure) {
+      warnAuditFailure(auditFailure);
+    }
+  }
+
+  private static void warnAuditFailure(RuntimeException auditFailure) {
+    LOGGER.warn(
+        IoTConsensusMessages
+            .LOG_FAILED_TO_RECORD_A_USER_DATA_TRANSFER_AUDIT_EVENT_CONSENSUS_REPLICATION_WILL_CONTINUE_F215E222,
+        auditFailure);
   }
 }

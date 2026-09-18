@@ -677,7 +677,7 @@ public class ConsensusLogToTabletConverter {
 
   private ColumnFilterMatcher getColumnFilterMatcher() {
     return Objects.nonNull(topicName)
-        ? SubscriptionAgent.broker().getColumnFilterMatcher(topicName)
+        ? SubscriptionAgent.broker().getColumnFilterMatcher(topicName, true)
         : fallbackColumnFilterMatcher;
   }
 

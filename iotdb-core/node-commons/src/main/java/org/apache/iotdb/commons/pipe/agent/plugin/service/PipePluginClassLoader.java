@@ -36,7 +36,13 @@ import java.util.stream.Stream;
 public class PipePluginClassLoader extends URLClassLoader {
 
   private static final String[] PARENT_FIRST_CLASS_PREFIXES = {
-    "java.", "javax.", "jdk.", "sun.", "org.slf4j.", "org.apache.iotdb.pipe.api."
+    "java.",
+    "javax.",
+    "jdk.",
+    "sun.",
+    "org.slf4j.",
+    "org.apache.iotdb.pipe.api.",
+    "org.apache.tsfile."
   };
 
   private final String libRoot;

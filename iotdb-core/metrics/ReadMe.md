@@ -63,6 +63,7 @@ Configure the metrics module through `iotdb-system.properties`. The main options
 | `dn(cn)_metric_level` | Initial metric level. | `OFF`, `CORE`, `IMPORTANT`, `NORMAL`, `ALL` |
 | `cn_metric_prometheus_reporter_port` | Prometheus HTTP port for ConfigNode. | `9091` |
 | `dn_metric_prometheus_reporter_port` | Prometheus HTTP port for DataNode. | `9092` |
+| `prometheus_reporter_async_update` | Serve a cached Prometheus snapshot refreshed every 15 seconds. | `true` |
 
 More details, see the User Guide and the `iotdb-system.properties.template` file.
 

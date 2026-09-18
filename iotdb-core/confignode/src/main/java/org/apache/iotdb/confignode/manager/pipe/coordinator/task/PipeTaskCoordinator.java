@@ -227,6 +227,14 @@ public class PipeTaskCoordinator {
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
     final boolean isTableModel =
         resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (pipeTaskInfo.isPipeBeingDropped(pipeName, isTableModel)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_ALTER_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_919F1E2B,
+              pipeName));
+    }
     if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
@@ -266,6 +274,14 @@ public class PipeTaskCoordinator {
     final String pipeName = req.getPipeName();
     final boolean isTableModel =
         resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (pipeTaskInfo.isPipeBeingDropped(pipeName, isTableModel)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_START_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_B41F4638,
+              pipeName));
+    }
     if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
@@ -298,6 +314,14 @@ public class PipeTaskCoordinator {
     final String pipeName = req.getPipeName();
     final boolean isTableModel =
         resolveIsTableModel(pipeName, req.isSetIsTableModel(), req.isTableModel);
+    if (pipeTaskInfo.isPipeBeingDropped(pipeName, isTableModel)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR,
+          String.format(
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_STOP_PIPE_ARG_THE_PIPE_IS_BEING_DROPPED_37AFB22B,
+              pipeName));
+    }
     if (!pipeTaskInfo.isPipeExisted(pipeName, isTableModel)) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,

@@ -21,11 +21,11 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -438,7 +438,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public boolean isDeviceAlive(IDeviceID device, long ttl) {
     return ttl == Long.MAX_VALUE
-        || endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
+        || endTimes[deviceToIndex.get(device)] >= CommonUtils.getTTLLowerBound(ttl);
   }
 
   @Override

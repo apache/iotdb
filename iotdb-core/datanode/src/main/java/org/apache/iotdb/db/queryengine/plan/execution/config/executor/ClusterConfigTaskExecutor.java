@@ -375,6 +375,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -3085,6 +3086,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         showSubscriptionReq.setTopicName(showSubscriptionsStatement.getTopicName());
       }
       showSubscriptionReq.setIsTableModel(showSubscriptionsStatement.isTableModel());
+      showSubscriptionReq.setDetails(showSubscriptionsStatement.isDetails());
 
       final TShowSubscriptionResp showSubscriptionResp =
           configNodeClient.showSubscription(showSubscriptionReq);
@@ -3097,11 +3099,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
 
-      ShowSubscriptionsTask.buildTSBlock(
-          showSubscriptionResp.isSetSubscriptionInfoList()
-              ? showSubscriptionResp.getSubscriptionInfoList()
-              : Collections.emptyList(),
-          future);
+      if (showSubscriptionsStatement.isDetails()) {
+        ShowSubscriptionsTask.buildDetailsTSBlock(
+            showSubscriptionResp.isSetSubscriptionProgressList()
+                ? showSubscriptionResp.getSubscriptionProgressList()
+                : Collections.emptyList(),
+            future);
+      } else {
+        ShowSubscriptionsTask.buildTSBlock(
+            showSubscriptionResp.isSetSubscriptionInfoList()
+                ? showSubscriptionResp.getSubscriptionInfoList()
+                : Collections.emptyList(),
+            future);
+      }
     } catch (final Exception e) {
       future.setException(e);
     }
@@ -3172,7 +3182,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Validate topic config
     final TopicMeta temporaryTopicMeta =
         new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
-    if (!temporaryTopicMeta.getConfig().isConsensusMode()) {
+    if (!temporaryTopicMeta.getConfig().isIncrementalMode()) {
       try {
         PipeDataNodeAgent.plugin()
             .validate(
@@ -4502,6 +4512,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public TPipeTransferResp handleTransferConfigPlan(
       final String clientId, final TPipeTransferReq req) {
+    return handleTransferConfigPlanAndGetReceiverNodeId(clientId, req).left;
+  }
+
+  public Pair<TPipeTransferResp, Integer> handleTransferConfigPlanAndGetReceiverNodeId(
+      final String clientId, final TPipeTransferReq req) {
     final TPipeConfigTransferReq configTransferReq =
         new TPipeConfigTransferReq(
             req.version,
@@ -4514,18 +4529,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TPipeConfigTransferResp pipeConfigTransferResp =
           configNodeClient.handleTransferConfigPlan(configTransferReq);
+      final int receiverNodeId =
+          ConfigNodeInfo.getInstance().getConfigNodeId(configNodeClient.getConfigNode());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode()
           != pipeConfigTransferResp.getStatus().getCode()) {
         LOGGER.warn(
             DataNodeQueryMessages.FAILED_TO_HANDLETRANSFERCONFIGPLAN_STATUS_IS,
             pipeConfigTransferResp);
       }
-      return new TPipeTransferResp(pipeConfigTransferResp.status)
-          .setBody(pipeConfigTransferResp.body);
+      return new Pair<>(
+          new TPipeTransferResp(pipeConfigTransferResp.status).setBody(pipeConfigTransferResp.body),
+          receiverNodeId);
     } catch (Exception e) {
-      return new TPipeTransferResp(
-          new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-              .setMessage(e.toString()));
+      return new Pair<>(
+          new TPipeTransferResp(
+              new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                  .setMessage(e.toString())),
+          -1);
     }
   }
 

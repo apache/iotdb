@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.iot;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserDataTransferAuditHandler;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -45,6 +46,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
@@ -80,7 +82,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -105,6 +106,8 @@ public class IoTConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
+  private final UserDataTransferAuditHandler userDataTransferAuditHandler;
+  private final UserDataTransferAuditClassifier userDataTransferAuditClassifier;
   private IoTConsensusConfig config;
 
   /**
@@ -132,8 +135,12 @@ public class IoTConsensus implements IConsensus {
     this.recvSnapshotDirs = config.getRecvSnapshotDirs();
     this.recvFolderStrategyType = config.getDirectoryStrategyType();
     this.config = config.getIotConsensusConfig();
+    this.userDataTransferAuditHandler = config.getUserDataTransferAuditHandler();
+    this.userDataTransferAuditClassifier = config.getUserDataTransferAuditClassifier();
     this.registry = registry;
-    this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
+    this.service =
+        new IoTConsensusRPCService(
+            thisNode, config.getIotConsensusConfig(), config.getTrustedChannelFailureHandler());
     this.clientManager =
         new IClientManager.Factory<TEndPoint, AsyncIoTConsensusServiceClient>()
             .createClientManager(
@@ -201,12 +208,14 @@ public class IoTConsensus implements IConsensus {
                   recvSnapshotDirs,
                   recvFolderStrategyType,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
-                  new TreeSet<>(),
+                  Collections.emptyList(),
                   registry.apply(consensusGroupId),
                   backgroundTaskService,
                   clientManager,
                   syncClientManager,
-                  config);
+                  config,
+                  userDataTransferAuditHandler,
+                  userDataTransferAuditClassifier);
           stateMachineMap.put(consensusGroupId, consensus);
         }
       } catch (DiskSpaceInsufficientException e) {
@@ -316,12 +325,14 @@ public class IoTConsensus implements IConsensus {
                             recvSnapshotDirs,
                             recvFolderStrategyType,
                             new Peer(groupId, thisNodeId, thisNode),
-                            new TreeSet<>(peers),
+                            peers,
                             registry.apply(groupId),
                             backgroundTaskService,
                             clientManager,
                             syncClientManager,
-                            config);
+                            config,
+                            userDataTransferAuditHandler,
+                            userDataTransferAuditClassifier);
                   } catch (DiskSpaceInsufficientException e) {
                     throw new RuntimeException(e);
                   }

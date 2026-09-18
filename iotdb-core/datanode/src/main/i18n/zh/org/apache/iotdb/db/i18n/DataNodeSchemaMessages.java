@@ -34,6 +34,9 @@ public final class DataNodeSchemaMessages {
   public static final String SCHEMA_REGION_ALREADY_DELETED = "SchemaRegion(id = {}) 已被删除，已跳过";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
       "计算时间序列数量时获取表 {}.{} 失败，可能是集群正在重启或表正在被删除。";
+  public static final String
+      LOG_METADATA_LEASE_IS_FENCED_SKIP_REPORTING_SCHEMA_USAGE_IN_THIS_HEARTBEAT_81D36975 =
+          "元数据租约已被隔离，本次心跳跳过上报 schema 使用量。";
   public static final String TREE_VIEW_TABLE_CANNOT_BE_WRITTEN_OR_DELETED =
       "表 %s.%s 是树模型视图，不能写入或删除";
   public static final String PEER_IS_SHUTTING_DOWN = "节点正在关闭中。";
@@ -718,6 +721,7 @@ public final class DataNodeSchemaMessages {
       "该视图包含名为 [%s] 的聚合函数";
   public static final String EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB = "operatorContext 不能为空";
   public static final String EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C = "child operator 不能为空";
+  public static final String EXCEPTION_FAILED_TO_CREATE_STATE_MACHINE_FOR_CONSENSUS_GROUP_ARG_BECAUSE_SCHEMA_REGION_DOES_NOT_EXIST_610DAE67 = "共识组 %s 的状态机创建失败，因为 SchemaRegion 不存在";
   public static final String EXCEPTION_DOT_9D9B854A = ".";
   public static final String EMPTY_MESSAGE = "";
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";

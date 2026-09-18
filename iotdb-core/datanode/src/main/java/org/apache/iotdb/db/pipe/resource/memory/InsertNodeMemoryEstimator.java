@@ -760,24 +760,16 @@ public class InsertNodeMemoryEstimator {
     if (list == null) {
       return 0L;
     }
-    long size = RamUsageEstimator.shallowSizeOf(list);
-    if (list instanceof ArrayList) {
-      size +=
-          RamUsageEstimator.alignObjectSize(
-              NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * list.size());
-    }
-    return size;
+    return SIZE_OF_ARRAYLIST
+        + RamUsageEstimator.alignObjectSize(
+            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * list.size());
   }
 
   private static long sizeOfIntegerList(final List<Integer> integers) {
     if (integers == null) {
       return 0L;
     }
-    long size = sizeOfObjectList(integers);
-    for (Integer ignored : integers) {
-      size += SIZE_OF_INT;
-    }
-    return size;
+    return sizeOfObjectList(integers) + (long) SIZE_OF_INT * integers.size();
   }
 
   private static long sizeOfResults(final Map<Integer, TSStatus> results) {

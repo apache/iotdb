@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 
+import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -31,9 +32,16 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class AuthorizerTask implements IConfigTask {
 
   private final AuthorStatement authorStatement;
+  private final UserRoleModificationAuditContext userRoleAuditContext;
 
   public AuthorizerTask(AuthorStatement authorStatement) {
+    this(authorStatement, UserRoleModificationAuditContext.empty());
+  }
+
+  public AuthorizerTask(
+      AuthorStatement authorStatement, UserRoleModificationAuditContext userRoleAuditContext) {
     this.authorStatement = authorStatement;
+    this.userRoleAuditContext = userRoleAuditContext;
   }
 
   @Override
@@ -42,7 +50,8 @@ public class AuthorizerTask implements IConfigTask {
     // If your operation is async, you can return the corresponding future directly.
     if (authorStatement.getQueryType() != QueryType.READ
         && authorStatement.getQueryType() != QueryType.READ_WRITE) {
-      return AuthorityChecker.operatePermission(authorStatement);
+      return userRoleAuditContext.executeAndAudit(
+          () -> AuthorityChecker.operatePermission(authorStatement));
     } else {
       return AuthorityChecker.queryPermission(authorStatement);
     }
