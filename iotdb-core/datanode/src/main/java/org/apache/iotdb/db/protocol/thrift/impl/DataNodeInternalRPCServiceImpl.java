@@ -628,11 +628,50 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public int getThriftMaxFrameSize() {
+    return IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+  }
+
+  @Override
   public TLoadResp sendTsFilePieceNode(final TTsFilePieceReq req) {
-    LOGGER.info(DataNodeMiscMessages.RECEIVE_LOAD_NODE, req.uuid);
+    if (!req.isSetSliceIndex() || req.sliceIndex == 0) {
+      LOGGER.info(DataNodeMiscMessages.RECEIVE_LOAD_NODE, req.uuid);
+    }
 
     final ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
+    final boolean isSliced =
+        req.isSetSliceIndex() || req.isSetSliceCount() || req.isSetOriginBodySize();
+    if (isSliced) {
+      if (!req.isSetSliceIndex() || !req.isSetSliceCount() || !req.isSetOriginBodySize()) {
+        final List<String> missingFields = new ArrayList<>(3);
+        if (!req.isSetSliceIndex()) {
+          missingFields.add("sliceIndex");
+        }
+        if (!req.isSetSliceCount()) {
+          missingFields.add("sliceCount");
+        }
+        if (!req.isSetOriginBodySize()) {
+          missingFields.add("originBodySize");
+        }
+        return createTLoadResp(
+            RpcUtils.getStatus(
+                TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR,
+                String.format(
+                    DataNodeMiscMessages.MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA,
+                    String.join(", ", missingFields))));
+      }
+      return createTLoadResp(
+          StorageEngine.getInstance()
+              .writeLoadTsFileNodeSlice(
+                  (DataRegionId) groupId,
+                  req.body,
+                  req.uuid,
+                  req.sliceIndex,
+                  req.sliceCount,
+                  req.originBodySize));
+    }
+
     final LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
       return createTLoadResp(

@@ -21,6 +21,23 @@ package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
 
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_BODY_IS_NULL_OR_EMPTY_2A65366C =
+      "Load TsFile 分片内容为 null 或为空";
+  public static final String MESSAGE_INVALID_LOAD_TSFILE_SLICE_METADATA_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_379BF1B8 =
+      "Load TsFile 分片元数据无效：sliceCount=%d，originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_METADATA_CHANGED_SLICECOUNT_ARG_EXPECTED_ARG_ORIGINBODYSIZE_ARG_EXPECTED_ARG_B16B3122 =
+      "Load TsFile 分片元数据发生变化：sliceCount=%d（预期 %d），originBodySize=%d（预期 %d）";
+  public static final String MESSAGE_UNEXPECTED_LOAD_TSFILE_SLICE_INDEX_ARG_EXPECTED_ARG_SLICECOUNT_ARG_76260F62 =
+      "Load TsFile 分片索引 %d 不符合预期：预期 %d，sliceCount=%d";
+  public static final String MESSAGE_LOAD_TSFILE_SLICE_EXCEEDS_ORIGINBODYSIZE_ASSEMBLEDSIZE_ARG_SLICESIZE_ARG_ORIGINBODYSIZE_ARG_0198E0D0 =
+      "Load TsFile 分片超出 originBodySize：assembledSize=%d，sliceSize=%d，originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_BODY_COMPLETED_BEFORE_THE_LAST_SLICE_RECEIVED_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_0425EA2C =
+      "Load TsFile 内容在最后一个分片之前已达到原始大小：received=%d，sliceCount=%d，originBodySize=%d";
+  public static final String MESSAGE_LOAD_TSFILE_BODY_SIZE_MISMATCH_ASSEMBLEDSIZE_ARG_ORIGINBODYSIZE_ARG_5733FC4B =
+      "Load TsFile 内容大小不匹配：assembledSize=%d，originBodySize=%d";
+  public static final String MESSAGE_MISSING_LOAD_TSFILE_ASSEMBLER_FOR_UUID_ARG_DATAREGION_ARG_SLICEINDEX_ARG_FF6EA463 =
+      "缺少 Load TsFile 分片组装器：uuid %s，DataRegion %s，sliceIndex=%d";
+
     public static final String IS_NOT_SUPPORTED =
       " 不受支持";
 
