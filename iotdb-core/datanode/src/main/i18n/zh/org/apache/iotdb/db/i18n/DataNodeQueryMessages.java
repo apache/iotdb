@@ -1403,6 +1403,26 @@ public final class DataNodeQueryMessages {
       "获取数据块 [{}, {}) 失败，尝试次数：{}";
   public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
       "数据块响应数量异常。";
+  public static final String
+      EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
+          "序列化 TsBlock 分片偏移量 %s 无效，块大小为 %s。";
+  public static final String
+      EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303 =
+          "TsBlock 分片累计长度 %s 与 totalLength %s 不一致。";
+  public static final String
+      EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2 =
+          "首个分片数据块响应必须包含 totalLength。";
+  public static final String
+      EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E =
+          "下一个 sequence ID %s 超过请求的结束 sequence ID %s。";
+  public static final String
+      EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287 =
+          "已完成的数据块响应区间不能保留未完成的 TsBlock。";
+  public static final String EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863 =
+      "TsBlock 分片不能为空。";
+  public static final String
+      EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047 =
+          "下一分片偏移量 %s 必须大于当前偏移量 %s，并且等于分片累计长度 %s。";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "发送数据块确认事件 [{}, {}) 失败，尝试次数：{}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =

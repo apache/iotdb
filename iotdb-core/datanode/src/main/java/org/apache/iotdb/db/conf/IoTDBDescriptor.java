@@ -119,6 +119,10 @@ public class IoTDBDescriptor {
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
+  private static final int DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES = 4 * 1024 * 1024;
+
+  private static final int MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES = 128 * 1024;
+
   private static final String[] DEFAULT_WAL_THRESHOLD_NAME = {
     "iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte"
   };
@@ -2277,6 +2281,8 @@ public class IoTDBDescriptor {
       memoryConfig.loadTableQueryDeviceEntryBatchSize(
           properties, conf.getThriftMaxFrameSize(), LOGGER);
 
+      loadMppDataExchangeMaxPayloadSize(properties);
+
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
       loadWALHotModifiedProps(properties);
@@ -2454,6 +2460,9 @@ public class IoTDBDescriptor {
     ConfigurationFileUtils.updateAppliedProperties(
         "table_query_device_entry_batch_size_in_bytes",
         Long.toString(memoryConfig.getTableQueryDeviceEntryBatchSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "mpp_data_exchange_max_payload_size_in_bytes",
+        Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes()));
     ConfigurationFileUtils.updateAppliedProperties(
         DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
   }
@@ -3076,6 +3085,8 @@ public class IoTDBDescriptor {
                 "mpp_data_exchange_keep_alive_time_in_ms",
                 Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))));
 
+    loadMppDataExchangeMaxPayloadSize(properties);
+
     conf.setPartitionCacheSize(
         Integer.parseInt(
             properties.getProperty(
@@ -3086,6 +3097,44 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "driver_task_execution_time_slice_in_ms",
                 Integer.toString(commonConfig.getDriverTaskExecutionTimeSliceInMs()))));
+  }
+
+  private void loadMppDataExchangeMaxPayloadSize(TrimProperties properties) {
+    int configuredSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "mpp_data_exchange_max_payload_size_in_bytes",
+                Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes())));
+    if (configuredSize <= 0) {
+      LOGGER.warn(
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2,
+              configuredSize,
+              DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES));
+      configuredSize = DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES;
+    } else if (configuredSize < MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES) {
+      LOGGER.warn(
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76,
+              configuredSize,
+              MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES,
+              MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES));
+      configuredSize = MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES;
+    }
+    int maxAllowedSize = conf.getThriftMaxFrameSize() - 1024;
+    if (configuredSize > maxAllowedSize) {
+      LOGGER.warn(
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC,
+              configuredSize,
+              maxAllowedSize,
+              maxAllowedSize));
+      configuredSize = maxAllowedSize;
+    }
+    conf.setMppDataExchangeMaxPayloadSizeInBytes(configuredSize);
   }
 
   /** Get default encode algorithm by data type */

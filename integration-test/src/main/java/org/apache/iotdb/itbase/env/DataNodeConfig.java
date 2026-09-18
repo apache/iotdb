@@ -67,4 +67,6 @@ public interface DataNodeConfig {
   DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy);
 
   DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes);
+
+  DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes);
 }

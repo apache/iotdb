@@ -950,6 +950,8 @@ public class IoTDBConfig {
   /** Core pool size of mpp data exchange. */
   private int mppDataExchangeCorePoolSize = 10;
 
+  private int mppDataExchangeMaxPayloadSizeInBytes = 4 * 1024 * 1024;
+
   /** Max pool size of mpp data exchange. */
   private int mppDataExchangeMaxPoolSize = 10;
 
@@ -3415,6 +3417,14 @@ public class IoTDBConfig {
 
   public void setMppDataExchangeKeepAliveTimeInMs(int mppDataExchangeKeepAliveTimeInMs) {
     this.mppDataExchangeKeepAliveTimeInMs = mppDataExchangeKeepAliveTimeInMs;
+  }
+
+  public int getMppDataExchangeMaxPayloadSizeInBytes() {
+    return mppDataExchangeMaxPayloadSizeInBytes;
+  }
+
+  public void setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes) {
+    this.mppDataExchangeMaxPayloadSizeInBytes = mppDataExchangeMaxPayloadSizeInBytes;
   }
 
   public int getConnectionTimeoutInMS() {
