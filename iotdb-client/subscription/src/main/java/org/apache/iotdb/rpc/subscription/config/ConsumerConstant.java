@@ -40,6 +40,7 @@ public class ConsumerConstant {
 
   public static final String CONSUMER_ID_KEY = "consumer-id";
   public static final String CONSUMER_GROUP_ID_KEY = "group-id";
+  public static final String CONSUMER_INSTANCE_ID_KEY = "consumer-instance-id";
   public static final String OWNER_ID_KEY = "owner-id";
   public static final String OWNER_EPOCH_KEY = "owner-epoch";
 
