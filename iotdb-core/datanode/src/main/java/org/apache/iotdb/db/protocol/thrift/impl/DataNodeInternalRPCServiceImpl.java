@@ -498,12 +498,50 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) {
-    LOGGER.info("Receive load node from uuid {}.", req.uuid);
+  public int getThriftMaxFrameSize() {
+    return IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+  }
+
+  @Override
+  public TLoadResp sendTsFilePieceNode(final TTsFilePieceReq req) {
+    if (!req.isSetSliceIndex() || req.sliceIndex == 0) {
+      LOGGER.info("Receive load node from uuid {}.", req.uuid);
+    }
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
-    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
+    final boolean isSliced =
+        req.isSetSliceIndex() || req.isSetSliceCount() || req.isSetOriginBodySize();
+    if (isSliced) {
+      if (!req.isSetSliceIndex() || !req.isSetSliceCount() || !req.isSetOriginBodySize()) {
+        final List<String> missingFields = new ArrayList<>(3);
+        if (!req.isSetSliceIndex()) {
+          missingFields.add("sliceIndex");
+        }
+        if (!req.isSetSliceCount()) {
+          missingFields.add("sliceCount");
+        }
+        if (!req.isSetOriginBodySize()) {
+          missingFields.add("originBodySize");
+        }
+        return createTLoadResp(
+            RpcUtils.getStatus(
+                TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR,
+                String.format(
+                    "Missing Load TsFile slice metadata: %s", String.join(", ", missingFields))));
+      }
+      return createTLoadResp(
+          StorageEngine.getInstance()
+              .writeLoadTsFileNodeSlice(
+                  (DataRegionId) groupId,
+                  req.body,
+                  req.uuid,
+                  req.sliceIndex,
+                  req.sliceCount,
+                  req.originBodySize));
+    }
+
+    final LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
       return createTLoadResp(
           new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
