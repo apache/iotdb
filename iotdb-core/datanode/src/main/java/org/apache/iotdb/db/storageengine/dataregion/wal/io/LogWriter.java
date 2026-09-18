@@ -150,9 +150,6 @@ public abstract class LogWriter implements ILogWriter {
     while (headerBuffer.hasRemaining()) {
       logChannel.write(headerBuffer);
     }
-    while (buffer.hasRemaining()) {
-      logChannel.write(buffer);
-    }
     try {
       if (!TSFileDescriptor.getInstance()
               .getConfig()
