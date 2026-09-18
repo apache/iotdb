@@ -21,6 +21,32 @@ package org.apache.iotdb.library.i18n;
 
 public final class LibraryUdfMessages {
 
+  public static final String EXCEPTION_QUERY_EXECUTION_FAILED_IN_ARG_E4F52371 =
+      "在 %s 中执行查询失败。";
+
+  public static final String EXCEPTION_CLOSING_JDBC_RESOURCES_FAILED_IN_ARG_A300EDC2 =
+      "关闭 %s 的 JDBC 资源失败。";
+  public static final String EXCEPTION_SQL_AND_URL_MUST_BE_NON_EMPTY_STRINGS_USERNAME_AND_PASSWORD_MUST_NOT_BE_NULL_A253F77B =
+      "SQL 和 URL 必须为非空字符串；USERNAME 和 PASSWORD 不能为 null。";
+
+  public static final String EXCEPTION_SQL_MUST_BE_A_QUERY_THAT_RETURNS_AT_LEAST_ONE_COLUMN_1AF6E91B =
+      "SQL 必须是返回至少一列的查询语句。";
+
+  public static final String EXCEPTION_JDBC_URL_IS_NOT_ACCEPTED_BY_DRIVER_ARG_78687D88 =
+      "JDBC URL 不被驱动 %s 接受。";
+
+  public static final String EXCEPTION_FAILED_TO_LOAD_JDBC_DRIVER_ARG_INSTALL_ITS_JAR_IN_THE_UDF_LIBRARY_DIRECTORY_8B1BB953 =
+      "加载 JDBC 驱动 %s 失败，请将驱动 JAR 安装到 UDF 库目录。";
+
+  public static final String EXCEPTION_UNSUPPORTED_JDBC_TYPE_ARG_D8792616 =
+      "不支持的 JDBC 类型：%s";
+
+  public static final String EXCEPTION_FAILED_TO_READ_JDBC_RESULT_METADATA_ARG_16D4E50C =
+      "读取 JDBC 结果元数据失败：%s";
+
+  public static final String EXCEPTION_FAILED_TO_SERIALIZE_JDBC_TABLE_FUNCTION_HANDLE_ARG_1023C78A =
+      "序列化 JDBC 表函数句柄失败：%s";
+
   // UDTFRange, UDTFTwoSidedFilter
   public static final String NO_SUCH_DATA_TYPE = "不支持此数据类型。";
 
@@ -133,7 +159,8 @@ public final class LibraryUdfMessages {
       "非法参数，valuePattern 必须为 double,double...";
 
   // OnePassBucketizer
-  public static final String EXCEPTION_CAN_T_PRODUCE_1EF5D1BB = "无法生成 ";
+  public static final String EXCEPTION_CAN_T_PRODUCE_1EF5D1BB =
+      "无法生成 ";
   public static final String EXCEPTION_CAN_T_PRODUCE_ARG_BUCKETS_FROM_AN_INPUT_SERIES_OF_ARG_ELEMENTS_D17D0135 =
       "无法生成 %d 个 bucket，输入序列包含 %d 个元素";
 

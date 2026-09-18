@@ -35,8 +35,45 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>tsfile</artifactId>
             <version>${tsfile.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>9.3.0</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.7</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.clickhouse</groupId>
+            <artifactId>clickhouse-jdbc</artifactId>
+            <version>0.8.2</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+            <classifier>shaded-all</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.opengauss</groupId>
+            <artifactId>opengauss-jdbc</artifactId>
+            <version>6.0.3-og</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.huaweicloud.gaussdb</groupId>
+            <artifactId>gaussdbjdbc</artifactId>
+            <version>506.0.0.b058-jdk7</version>
+            <scope>provided</scope>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -82,6 +119,21 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <!-- JDBC drivers are loaded by class name through the UDF class loader. -->
+                    <usedDependencies>
+                        <usedDependency>com.mysql:mysql-connector-j</usedDependency>
+                        <usedDependency>org.postgresql:postgresql</usedDependency>
+                        <usedDependency>org.opengauss:opengauss-jdbc</usedDependency>
+                        <usedDependency>com.huaweicloud.gaussdb:gaussdbjdbc</usedDependency>
+                        <!-- The shaded ClickHouse driver also contains SLF4J API classes. -->
+                        <usedDependency>org.slf4j:slf4j-api</usedDependency>
+                    </usedDependencies>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>

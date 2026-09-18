@@ -21,6 +21,32 @@ package org.apache.iotdb.library.i18n;
 
 public final class LibraryUdfMessages {
 
+  public static final String EXCEPTION_QUERY_EXECUTION_FAILED_IN_ARG_E4F52371 =
+      "Query execution failed in %s.";
+
+  public static final String EXCEPTION_CLOSING_JDBC_RESOURCES_FAILED_IN_ARG_A300EDC2 =
+      "Closing JDBC resources failed in %s.";
+  public static final String EXCEPTION_SQL_AND_URL_MUST_BE_NON_EMPTY_STRINGS_USERNAME_AND_PASSWORD_MUST_NOT_BE_NULL_A253F77B =
+      "SQL and URL must be non-empty strings; USERNAME and PASSWORD must not be null.";
+
+  public static final String EXCEPTION_SQL_MUST_BE_A_QUERY_THAT_RETURNS_AT_LEAST_ONE_COLUMN_1AF6E91B =
+      "SQL must be a query that returns at least one column.";
+
+  public static final String EXCEPTION_JDBC_URL_IS_NOT_ACCEPTED_BY_DRIVER_ARG_78687D88 =
+      "JDBC URL is not accepted by driver %s.";
+
+  public static final String EXCEPTION_FAILED_TO_LOAD_JDBC_DRIVER_ARG_INSTALL_ITS_JAR_IN_THE_UDF_LIBRARY_DIRECTORY_8B1BB953 =
+      "Failed to load JDBC driver %s. Install its JAR in the UDF library directory.";
+
+  public static final String EXCEPTION_UNSUPPORTED_JDBC_TYPE_ARG_D8792616 =
+      "Unsupported JDBC type: %s";
+
+  public static final String EXCEPTION_FAILED_TO_READ_JDBC_RESULT_METADATA_ARG_16D4E50C =
+      "Failed to read JDBC result metadata: %s";
+
+  public static final String EXCEPTION_FAILED_TO_SERIALIZE_JDBC_TABLE_FUNCTION_HANDLE_ARG_1023C78A =
+      "Failed to serialize JDBC table function handle: %s";
+
   // UDTFRange, UDTFTwoSidedFilter
   public static final String NO_SUCH_DATA_TYPE = "No such kind of data type.";
 
@@ -144,7 +170,8 @@ public final class LibraryUdfMessages {
       "Illegal parameter, valuePattern must be double,double...";
 
   // OnePassBucketizer
-  public static final String EXCEPTION_CAN_T_PRODUCE_1EF5D1BB = "Can't produce ";
+  public static final String EXCEPTION_CAN_T_PRODUCE_1EF5D1BB =
+      "Can't produce ";
   public static final String EXCEPTION_CAN_T_PRODUCE_ARG_BUCKETS_FROM_AN_INPUT_SERIES_OF_ARG_ELEMENTS_D17D0135 =
       "Can't produce %d buckets from an input series of %d elements";
 
