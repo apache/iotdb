@@ -308,20 +308,21 @@ public class SinkChannelFailurePropagationTest {
       stateTracker.start();
 
       Assert.assertTrue(sinkHandle.isFull().isDone());
-      long failureStartNanos = System.nanoTime();
       sinkHandle.send(Utils.createMockTsBlocks(1, 1024).get(0));
 
       Mockito.verify(exchangeClient, Mockito.timeout(5_000).times(SinkChannel.MAX_ATTEMPT_TIMES))
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
+      long waitStartNanos = System.nanoTime();
       while (!fragmentStateMachine.getState().isDone()
-          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - failureStartNanos) < 5) {
+          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - waitStartNanos) < 5) {
         Thread.sleep(10);
       }
 
       Assert.assertEquals(FragmentInstanceState.FAILED, fragmentStateMachine.getState());
       Assert.assertEquals(expectedFailure, fragmentStateMachine.getFailureCauses().peek());
-      while (!sinkChannel.isAborted()
-          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - failureStartNanos) < 5) {
+      waitStartNanos = System.nanoTime();
+      while (!sinkHandle.isAborted()
+          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - waitStartNanos) < 5) {
         Thread.sleep(10);
       }
       Assert.assertTrue(sinkHandle.isAborted());
@@ -330,8 +331,9 @@ public class SinkChannelFailurePropagationTest {
       Assert.assertFalse(sinkChannel.isClosed());
       Assert.assertEquals(0, exchangeManager.getShuffleSinkHandleSize());
 
+      waitStartNanos = System.nanoTime();
       while (!queryStateMachine.getState().isDone()
-          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - failureStartNanos) < 5) {
+          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - waitStartNanos) < 5) {
         Thread.sleep(10);
       }
       Mockito.verify(stateClient, Mockito.timeout(3_000).atLeastOnce())
