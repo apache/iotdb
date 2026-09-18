@@ -22,6 +22,8 @@ on:
       - "rc/*"
       - "force_ci/**"
     paths-ignore:
+      - ".github/workflows/**"
+      - "integration-test/src/test/java/org/apache/iotdb/relational/it/schema/IoTDBConcurrentCreateTableIT.java"
       - "docs/**"
       - "site/**"
       - "iotdb-client/client-cpp/**"
