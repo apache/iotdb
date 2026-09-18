@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -92,6 +93,9 @@ final class AbstractSubscriptionProviders {
 
       try {
         defaultProvider = consumer.constructProviderAndHandshake(endPoint);
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+        throw e;
       } catch (final Exception e) {
         connectionFailures.put(endPoint, consumer.sanitizeConnectionFailureMessage(e));
         connectionFailureCauses.add(e);
@@ -109,6 +113,9 @@ final class AbstractSubscriptionProviders {
       final Map<Integer, TEndPoint> allEndPoints;
       try {
         allEndPoints = defaultProvider.heartbeat().getEndPoints();
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+        throw e;
       } catch (final Exception e) {
         LOGGER.warn(
             SubscriptionMessages.LOG_ARG_FAILED_FETCH_ALL_ENDPOINTS_ARG_BECAUSE_ARG_2C9E11D4,
@@ -127,6 +134,9 @@ final class AbstractSubscriptionProviders {
         final AbstractSubscriptionProvider provider;
         try {
           provider = consumer.constructProviderAndHandshake(entry.getValue());
+        } catch (final SubscriptionConsumerFencedException e) {
+          consumer.fence(e);
+          throw e;
         } catch (final Exception e) {
           LOGGER.warn(
               SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
@@ -164,11 +174,20 @@ final class AbstractSubscriptionProviders {
 
   /** Detaches and closes the current providers. Terminal consumer close may call this lock-free. */
   void closeProviders() {
+    closeProviders(true);
+  }
+
+  /** Detaches and closes the current providers. Terminal consumer close may call this lock-free. */
+  void closeProviders(final boolean closeConsumer) {
     final List<AbstractSubscriptionProvider> providers = getAllProviders();
     subscriptionProviders.clear();
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
-        provider.close();
+        if (closeConsumer) {
+          provider.close();
+        } else {
+          provider.closeSession();
+        }
       } catch (final Exception e) {
         LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
       }
@@ -293,13 +312,13 @@ final class AbstractSubscriptionProviders {
   /////////////////////////////// heartbeat ///////////////////////////////
 
   void heartbeat(final AbstractSubscriptionConsumer consumer) {
-    if (consumer.isClosed()) {
+    if (consumer.isClosed() || consumer.isFenced()) {
       return;
     }
 
     acquireWriteLock();
     try {
-      if (consumer.isClosed()) {
+      if (consumer.isClosed() || consumer.isFenced()) {
         return;
       }
       heartbeatInternal(consumer);
@@ -310,6 +329,9 @@ final class AbstractSubscriptionProviders {
 
   private void heartbeatInternal(final AbstractSubscriptionConsumer consumer) {
     for (final AbstractSubscriptionProvider provider : getAllProviders()) {
+      if (consumer.isFenced()) {
+        return;
+      }
       try {
         final List<SubscriptionCommitContext> processorBufferedCommitContexts =
             consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
@@ -326,6 +348,10 @@ final class AbstractSubscriptionProviders {
           consumer.unsubscribe(topicName);
         }
         provider.setAvailable();
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+        provider.setUnavailable();
+        return;
       } catch (final Exception e) {
         LOGGER.warn(
             SubscriptionMessages
@@ -342,13 +368,13 @@ final class AbstractSubscriptionProviders {
   /////////////////////////////// sync endpoints ///////////////////////////////
 
   void sync(final AbstractSubscriptionConsumer consumer) {
-    if (consumer.isClosed()) {
+    if (consumer.isClosed() || consumer.isFenced()) {
       return;
     }
 
     acquireWriteLock();
     try {
-      if (consumer.isClosed()) {
+      if (consumer.isClosed() || consumer.isFenced()) {
         return;
       }
       syncInternal(consumer);
@@ -358,9 +384,15 @@ final class AbstractSubscriptionProviders {
   }
 
   private void syncInternal(final AbstractSubscriptionConsumer consumer) {
+    if (consumer.isFenced()) {
+      return;
+    }
     if (hasNoAvailableProviders()) {
       try {
         openProviders(consumer);
+      } catch (final SubscriptionConsumerFencedException e) {
+        consumer.fence(e);
+        return;
       } catch (final Exception e) {
         LOGGER.warn(SubscriptionMessages.OPEN_PROVIDERS_FAILED, consumer, e, e);
         return;
@@ -370,6 +402,9 @@ final class AbstractSubscriptionProviders {
     final Map<Integer, TEndPoint> allEndPoints;
     try {
       allEndPoints = consumer.fetchAllEndPointsWithRedirection();
+    } catch (final SubscriptionConsumerFencedException e) {
+      consumer.fence(e);
+      return;
     } catch (final Exception e) {
       LOGGER.warn(SubscriptionMessages.FETCH_ENDPOINTS_FAILED, consumer, e, e);
       return;
@@ -377,6 +412,9 @@ final class AbstractSubscriptionProviders {
 
     // add new providers or handshake existing providers
     for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
+      if (consumer.isFenced()) {
+        return;
+      }
       final AbstractSubscriptionProvider provider = getProvider(entry.getKey());
       if (Objects.isNull(provider)) {
         // new provider
@@ -384,6 +422,9 @@ final class AbstractSubscriptionProviders {
         final AbstractSubscriptionProvider newProvider;
         try {
           newProvider = consumer.constructProviderAndHandshake(endPoint);
+        } catch (final SubscriptionConsumerFencedException e) {
+          consumer.fence(e);
+          return;
         } catch (final Exception e) {
           LOGGER.warn(
               SubscriptionMessages.LOG_ARG_FAILED_CREATE_CONNECTION_ARG_BECAUSE_ARG_E536E22A,
@@ -399,6 +440,10 @@ final class AbstractSubscriptionProviders {
         try {
           consumer.subscribedTopics = provider.heartbeat().getTopics();
           provider.setAvailable();
+        } catch (final SubscriptionConsumerFencedException e) {
+          consumer.fence(e);
+          provider.setUnavailable();
+          return;
         } catch (final Exception e) {
           LOGGER.warn(
               SubscriptionMessages
