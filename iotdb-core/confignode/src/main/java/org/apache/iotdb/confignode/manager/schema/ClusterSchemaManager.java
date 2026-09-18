@@ -129,6 +129,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1586,6 +1587,28 @@ public class ClusterSchemaManager {
                 .collect(Collectors.joining(", ")));
 
     final AtomicBoolean hasObject = new AtomicBoolean(false);
+    if (originalTable.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).isEmpty()) {
+      checkColumnSchema(originalTable, expandedTable, columnSchemaList, hasObject);
+    } else {
+      // only for tree_to_table view
+      checkColumnSchemaForTree2TableView(originalTable, expandedTable, columnSchemaList, hasObject);
+    }
+
+    if (columnSchemaList.isEmpty()) {
+      return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
+    }
+
+    if (hasObject.get()) {
+      expandedTable.checkTableNameAndObjectNames4Object();
+    }
+    return new Pair<>(StatusUtils.OK, expandedTable);
+  }
+
+  private static void checkColumnSchema(
+      TsTable originalTable,
+      TsTable expandedTable,
+      List<TsTableColumnSchema> columnSchemaList,
+      AtomicBoolean hasObject) {
     columnSchemaList.removeIf(
         columnSchema -> {
           if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
@@ -1597,15 +1620,54 @@ public class ClusterSchemaManager {
           }
           return true;
         });
+  }
 
-    if (columnSchemaList.isEmpty()) {
-      return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
+  private static void checkColumnSchemaForTree2TableView(
+      final TsTable originalView,
+      final TsTable expandedView,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final AtomicBoolean hasObject) {
+    final Set<String> existingColumnNames = new HashSet<>();
+    final Set<String> originalNames = new HashSet<>();
+
+    for (final TsTableColumnSchema columnSchema : originalView.getColumnList()) {
+      existingColumnNames.add(columnSchema.getColumnName());
+      Map<String, String> props = columnSchema.getProps();
+      if (props == null) {
+        originalNames.add(columnSchema.getColumnName());
+        continue;
+      }
+      String originalName = props.get(TreeViewSchema.ORIGINAL_NAME);
+      if (originalName == null) {
+        originalNames.add(columnSchema.getColumnName());
+        continue;
+      }
+      originalNames.add(originalName);
     }
 
-    if (hasObject.get()) {
-      expandedTable.checkTableNameAndObjectNames4Object();
-    }
-    return new Pair<>(StatusUtils.OK, expandedTable);
+    columnSchemaList.removeIf(
+        columnSchema -> {
+          if (existingColumnNames.contains(columnSchema.getColumnName())) {
+            // todo log
+            return true;
+          }
+
+          // The original time series can only be referenced once.
+          final String originalName = TreeViewSchema.getSourceName(columnSchema);
+          if (originalNames.contains(originalName)) {
+            // todo log
+            return true;
+          }
+
+          if (columnSchema.getDataType().equals(TSDataType.OBJECT)) {
+            hasObject.set(true);
+          }
+
+          existingColumnNames.add(columnSchema.getColumnName());
+          originalNames.add(originalName);
+          expandedView.addColumnSchema(columnSchema);
+          return false;
+        });
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnAltering(

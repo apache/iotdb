@@ -90,7 +90,7 @@ public class AddTableColumnProcedure
               ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_ADDING_COLUMN,
               database,
               tableName);
-          commitRelease(env);
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(

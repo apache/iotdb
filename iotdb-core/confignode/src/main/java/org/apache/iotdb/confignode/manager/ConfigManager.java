@@ -265,6 +265,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -3376,6 +3378,14 @@ public class ConfigManager implements IManager {
     } else {
       return status;
     }
+  }
+
+  @Override
+  public TUpdateTree2TableViewsResp updateTree2TableViews(TUpdateTree2TableViewsReq req) {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? procedureManager.addColumnForTree2TableViews(req)
+        : new TUpdateTree2TableViewsResp(status);
   }
 
   @Override

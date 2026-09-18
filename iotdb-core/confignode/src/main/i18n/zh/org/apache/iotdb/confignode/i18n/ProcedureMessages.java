@@ -1511,8 +1511,17 @@ public final class ProcedureMessages {
   public static final String MESSAGE_ROLLING_BACK_AFTER_FAILURE_ARG_474DF456 = "正在回滚，失败原因：%s。";
   public static final String MESSAGE_ROLLING_BACK_AFTER_AN_EARLIER_FAILURE_850D0AF5 =
       "正在回滚此前发生的失败。";
+<<<<<<< HEAD
   public static final String EXCEPTION_DATANODE_SETSYSTEMSTATUS_RPC_FAILED_ARG_ARG_ARG_7E8E5F9F =
       "DataNode setSystemStatus RPC 失败：%s：%s：%s； ";
   public static final String EXCEPTION_CONFIGNODE_TRYSETNODESTATUS_FAILED_ARG_ARG_ARG_C9BA78F4 =
       "ConfigNode trySetNodeStatus 失败：%s：%s：%s； ";
+=======
+  public static final String
+      LOG_FAILED_TO_COMMIT_RELEASE_ARG_FOR_TABLE_ARG_ARG_TO_DATANODE_FAILURE_RESULTS_ARG_55386572 =
+          "对表 {}.{} 在 DataNode 上提交释放 {} 失败，失败结果：{}";
+  public static final String
+      LOG_FAILED_TO_DETECT_THE_TREE_SERIES_UNDER_THE_NEW_VIEW_ARG_ARG_ARG_9544E1D9 =
+          "扫描新建视图 %s.%s 下的树序列失败：%s";
+>>>>>>> 9e29979e95 (support that auto-detection for creating measurements and adding columns for related tree-to-table view)
 }

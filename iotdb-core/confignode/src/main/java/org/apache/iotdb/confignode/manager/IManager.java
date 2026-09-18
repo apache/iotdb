@@ -168,6 +168,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateTree2TableViewsResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -918,6 +920,8 @@ public interface IManager {
   TSStatus createTableView(final TCreateTableViewReq req);
 
   TSStatus alterOrDropTable(final TAlterOrDropTableReq req);
+
+  TUpdateTree2TableViewsResp updateTree2TableViews(TUpdateTree2TableViewsReq req);
 
   TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req);
 

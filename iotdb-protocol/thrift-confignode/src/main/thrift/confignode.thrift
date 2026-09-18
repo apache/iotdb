@@ -1368,6 +1368,23 @@ struct TCreateTableViewReq {
     2: required bool replace
 }
 
+ struct TUpdateTree2TableViewFailure {
+      1: required string database
+      2: required string tableName
+      3: required common.TSStatus status
+  }
+
+
+struct TUpdateTree2TableViewsResp{
+    1: required common.TSStatus status
+    2: optional list<TUpdateTree2TableViewFailure> failedViews
+}
+
+struct TUpdateTree2TableViewsReq{
+    1:required list<TAlterOrDropTableReq> viewInfos
+}
+
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -2171,4 +2188,6 @@ service IConfigNodeRPCService {
   // Table view
 
   common.TSStatus createTableView(TCreateTableViewReq req)
+
+  TUpdateTree2TableViewsResp updateTree2TableViews(TUpdateTree2TableViewsReq req)
 }

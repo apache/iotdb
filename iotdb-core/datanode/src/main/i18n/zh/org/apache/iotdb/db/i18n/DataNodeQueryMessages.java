@@ -4792,6 +4792,8 @@ public final class DataNodeQueryMessages {
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
   public static final String EXCEPTION_LOAD_CONSENSUS_INVALID_PIECE_REF_F3498507 =
       "无效的 LOAD 共识分片引用：路径 %s，偏移 %d，大小 %d";
+  public static final String EXCEPTION_AUTO_SYNC_SCHEMA_IS_ONLY_SUPPORTED_BY_TREE_TO_TABLE_VIEWS_C6586215 =
+      "auto_sync_schema 仅支持树转表视图";
 
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData 中不包含任何物理 chunk";
