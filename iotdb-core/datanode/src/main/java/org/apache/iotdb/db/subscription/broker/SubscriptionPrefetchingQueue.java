@@ -677,12 +677,11 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   private boolean canPassThroughTsFile(final PipeTsFileInsertionEvent event) {
+    final boolean isTableModelSubscription = SubscriptionAgent.consumer().isTableModel(brokerId);
     return PipeEventCollector.canSkipParsing4TsFileEvent(event)
-        && (!event.isTableModelEvent()
-            || SubscriptionAgent.broker()
-                .getColumnFilterMatcher(
-                    topicName, SubscriptionAgent.consumer().isTableModel(brokerId))
-                .isMatchAll());
+        && (!isTableModelSubscription
+            || (SubscriptionAgent.broker().getColumnFilterMatcher(topicName, true).isMatchAll()
+                && SubscriptionAgent.broker().getTagFilterMatcher(topicName, true).isMatchAll()));
   }
 
   private RetryableState onRetryableTabletInsertionEvent(

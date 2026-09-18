@@ -1193,7 +1193,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   private Optional<SubscriptionMessage> pollTabletsInternal(
-      final SubscriptionPollResponse initialResponse, final PollTimer timer) {
+      final SubscriptionPollResponse initialResponse, final PollTimer timer)
+      throws SubscriptionException {
     final Map<String, List<Tablet>> tablets =
         ((TabletsPayload) initialResponse.getPayload()).getTabletsWithDBInfo();
     final SubscriptionCommitContext commitContext = initialResponse.getCommitContext();
@@ -1212,6 +1213,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                   tabletsSize, -nextOffset, this);
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+        }
+        if (tabletsSize == 0) {
+          ack(Collections.singletonList(new SubscriptionMessage(commitContext, tablets)));
+          return Optional.empty();
         }
         return Optional.of(
             new SubscriptionMessage(commitContext, tablets, timeSelected, timeSelectedByTable));

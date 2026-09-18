@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.subscription.tagfilter.TagFilterParser;
 import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -92,6 +93,7 @@ import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 public class SubscriptionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionInfo.class);
+  private static final TagFilterParser TAG_FILTER_PARSER = new TagFilterParser();
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -106,6 +108,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
           TopicConstant.DATABASE_KEY,
           TopicConstant.TABLE_KEY,
           TopicConstant.COLUMN_FILTER_KEY,
+          TopicConstant.TAG_FILTER_KEY,
           TopicConstant.RETENTION_BYTES_KEY,
           TopicConstant.RETENTION_MS_KEY,
           TopicConstant.START_TIME_KEY,
@@ -127,6 +130,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
           TopicConstant.DATABASE_KEY,
           TopicConstant.TABLE_KEY,
           TopicConstant.COLUMN_FILTER_KEY,
+          TopicConstant.TAG_FILTER_KEY,
           TopicConstant.RETENTION_BYTES_KEY,
           TopicConstant.RETENTION_MS_KEY,
           TopicConstant.MODE_KEY,
@@ -325,6 +329,11 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public void validateUpdatedTopicAttributes(final Map<String, String> updatedAttributes)
+      throws SubscriptionException {
+    validateDuplicateTopicAttributes(new TopicConfig(safeTopicAttributes(updatedAttributes)));
+  }
+
   private void checkBeforeAlteringTopicInternal(TopicMeta topicMeta) throws SubscriptionException {
     validateTopicConfig(topicMeta.getConfig());
 
@@ -396,6 +405,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
 
     validateColumnFilter(topicConfig);
+    validateTagFilter(topicConfig);
     validateIncrementalTopicRetentionConfig(topicConfig);
 
     final Long ownerLeaseDurationMs =
@@ -548,7 +558,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
       if (!seenKeys.add(normalizedKey)) {
         final String exceptionMessage =
             String.format(
-                "Failed to create or alter topic, duplicate %s attributes are not allowed",
+                ConfigNodeMessages
+                    .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578,
                 normalizedKey);
         LOGGER.warn(exceptionMessage);
         throw new SubscriptionException(exceptionMessage);
@@ -557,24 +568,50 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private void validateColumnFilter(final TopicConfig topicConfig) throws SubscriptionException {
-    if (!topicConfig.hasColumnFilter()) {
+    validateTableOnlyFilter(
+        topicConfig,
+        TopicConstant.COLUMN_FILTER_KEY,
+        topicConfig.hasColumnFilter(),
+        topicConfig.getColumnFilter());
+  }
+
+  private void validateTagFilter(final TopicConfig topicConfig) throws SubscriptionException {
+    validateTableOnlyFilter(
+        topicConfig,
+        TopicConstant.TAG_FILTER_KEY,
+        topicConfig.hasTagFilter(),
+        topicConfig.getTagFilter());
+    if (topicConfig.hasTagFilter()) {
+      TAG_FILTER_PARSER.parseAndValidate(topicConfig.getTagFilter());
+    }
+  }
+
+  private void validateTableOnlyFilter(
+      final TopicConfig topicConfig,
+      final String filterKey,
+      final boolean hasFilter,
+      final String filter)
+      throws SubscriptionException {
+    if (!hasFilter) {
       return;
     }
 
     if (!topicConfig.isTableTopic()) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, %s is only supported for table topics",
-              TopicConstant.COLUMN_FILTER_KEY);
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607,
+              filterKey);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
 
-    if (topicConfig.getColumnFilter().trim().isEmpty()) {
+    if (filter.trim().isEmpty()) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, %s should not be empty",
-              TopicConstant.COLUMN_FILTER_KEY);
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_SHOULD_NOT_BE_EMPTY_767B1148,
+              filterKey);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }

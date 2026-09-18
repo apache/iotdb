@@ -90,7 +90,7 @@ public class ColumnFilterParser {
     }
   }
 
-  Expression parse(final String rawColumnFilter) {
+  public Expression parse(final String rawColumnFilter) {
     if (rawColumnFilter == null || rawColumnFilter.trim().isEmpty()) {
       throw new ParsingException(
           DataNodeMiscMessages.COLUMN_FILTER_SHOULD_NOT_BE_EMPTY, null, 1, 1);
