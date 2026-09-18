@@ -218,6 +218,9 @@ public class TableHeaderSchemaValidator {
 
     boolean refreshed = false;
     boolean noField = true;
+    // Keep this cache scoped to the validation request. ConfigNode does not notify DataNode when
+    // DROP COLUMN commits, so a cross-request cache could reject a recreated column as still
+    // being deleted.
     Set<String> preDeletedColumns = null;
     for (final ColumnSchema columnSchema : inputColumnList) {
       TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
@@ -409,6 +412,9 @@ public class TableHeaderSchemaValidator {
     boolean refreshed = false;
     boolean noField = true;
     boolean hasAttribute = false;
+    // Keep this cache scoped to the validation request. ConfigNode does not notify DataNode when
+    // DROP COLUMN commits, so a cross-request cache could reject a recreated column as still
+    // being deleted.
     Set<String> preDeletedColumns = null;
 
     // Track TAG column measurement indices for batch processing after validation loop

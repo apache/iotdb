@@ -204,6 +204,31 @@ public class TableHeaderSchemaValidatorTest {
     Mockito.verify(executor).getPreDeletedColumns(DATABASE, TABLE);
   }
 
+  @Test
+  public void testTsFileMissingColumnsFetchDeletionStatusOnce() throws Exception {
+    config.setAutoCreateSchemaEnabled(false);
+    config.setEnablePartialInsert(true);
+    final TableSchema tableSchema =
+        new TableSchema(
+            TABLE,
+            Arrays.asList(
+                new ColumnSchema(
+                    "missing1",
+                    TypeFactory.getType(TSDataType.INT32),
+                    false,
+                    TsTableColumnCategory.FIELD),
+                new ColumnSchema(
+                    "missing2",
+                    TypeFactory.getType(TSDataType.INT32),
+                    false,
+                    TsTableColumnCategory.FIELD)));
+
+    validator.validateTableHeaderSchema4TsFile(
+        DATABASE, tableSchema, context, true, false, new AtomicBoolean());
+
+    Mockito.verify(executor).getPreDeletedColumns(DATABASE, TABLE);
+  }
+
   private InsertNodeMeasurementInfo measurements(
       final String name, final TsTableColumnCategory category) {
     final InsertNodeMeasurementInfo measurements = Mockito.mock(InsertNodeMeasurementInfo.class);
