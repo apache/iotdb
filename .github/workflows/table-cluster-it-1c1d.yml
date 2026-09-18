@@ -39,7 +39,7 @@ env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
-  # Ubuntu runs all ITs in a single job (already fast at ~39 min)
+  # This draft stress-test workflow intentionally runs only IoTDBConcurrentCreateTableIT.
   Ubuntu:
     runs-on: ubuntu-latest
 
@@ -67,7 +67,9 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 \
+          -Dit.test=IoTDBConcurrentCreateTableIT \
+          -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false \
+          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
           -pl integration-test \
           -am -PTableSimpleIT
       - name: Upload Artifact
@@ -78,12 +80,7 @@ jobs:
           path: integration-test/target/cluster-logs
           retention-days: 1
 
-  # Windows is ~67% slower than Ubuntu, so split into 3 shards to parallelize
   Windows:
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1, 2]
     runs-on: windows-latest
 
     steps:
@@ -108,41 +105,21 @@ jobs:
           netsh int ipv4 set dynamicport udp start=32768 num=32768
           netsh int ipv6 set dynamicport tcp start=32768 num=32768
           netsh int ipv6 set dynamicport udp start=32768 num=32768
-      - name: Build IT shard list
-        shell: bash
-        # Distribute TableLocalStandaloneIT test classes across 3 shards using hash-mod assignment.
-        # The list is written to a file so failsafe.includesFile can read it without command-line length limits.
-        run: |
-          set -euo pipefail
-          SHARD=${{ matrix.shard }}
-          TOTAL=3
-          # Write outside the repo so Apache RAT (license check) doesn't flag the file.
-          # Using a single grep -rl call instead of `find | xargs grep`: on Windows Git Bash,
-          # ARG_MAX is small so xargs batches the file list, and any batch with no matches
-          # makes grep exit 1, which makes xargs exit 123 and trips `set -o pipefail`.
-          grep -rl --include='*IT.java' 'TableLocalStandaloneIT' integration-test/src/test/java \
-            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
-            | sort \
-            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
-            > "$RUNNER_TEMP/it-shard.txt"
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
-          head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT/UT Test
         shell: bash
         run: |
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 \
-          -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
-          -DfailIfNoTests=false \
-          -Dfailsafe.failIfNoSpecifiedTests=false \
+          -Dit.test=IoTDBConcurrentCreateTableIT \
+          -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false \
+          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
           -pl integration-test \
           -am -PTableSimpleIT
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: table-standalone-log-Windows-shard${{ matrix.shard }}
+          name: table-standalone-log-Windows
           path: integration-test/target/cluster-logs
           retention-days: 1
