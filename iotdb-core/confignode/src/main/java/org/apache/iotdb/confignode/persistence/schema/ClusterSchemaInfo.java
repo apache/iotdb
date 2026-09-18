@@ -69,6 +69,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
@@ -1590,6 +1591,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             tableModelMTree.setTableProperties(
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
+                plan.getProperties()));
+  }
+
+  public TSStatus setTableColumnProperties(final SetTableColumnPropertiesPlan plan) {
+    return executeWithLock(
+        () ->
+            tableModelMTree.setTableColumnProperties(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTableName(),
+                plan.getColumnName(),
                 plan.getProperties()));
   }
 

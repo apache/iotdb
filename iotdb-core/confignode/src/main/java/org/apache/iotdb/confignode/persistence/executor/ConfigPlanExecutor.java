@@ -136,6 +136,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackPreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
@@ -588,6 +589,9 @@ public class ConfigPlanExecutor {
       case SetTableProperties:
       case SetViewProperties:
         return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
+      case SetTableColumnProperties:
+        return clusterSchemaInfo.setTableColumnProperties(
+            (SetTableColumnPropertiesPlan) physicalPlan);
       case PreDeleteColumn:
       case PreDeleteViewColumn:
         return clusterSchemaInfo.preDeleteColumn((PreDeleteColumnPlan) physicalPlan);

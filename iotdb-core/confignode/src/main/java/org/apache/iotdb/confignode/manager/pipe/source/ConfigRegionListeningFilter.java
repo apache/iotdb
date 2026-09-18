@@ -124,6 +124,7 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.SetTableProperties,
+                  ConfigPhysicalPlanType.SetTableColumnProperties,
                   ConfigPhysicalPlanType.SetViewProperties,
                   ConfigPhysicalPlanType.SetTableComment,
                   ConfigPhysicalPlanType.SetViewComment,
@@ -287,6 +288,7 @@ public class ConfigRegionListeningFilter {
       case AddTableColumn:
       case AddViewColumn:
       case SetTableProperties:
+      case SetTableColumnProperties:
       case SetViewProperties:
       case SetTableComment:
       case SetViewComment:

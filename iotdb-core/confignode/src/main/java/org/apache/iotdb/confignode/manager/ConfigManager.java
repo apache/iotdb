@@ -3314,6 +3314,8 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableAddColumn(req);
         case SET_PROPERTIES:
           return procedureManager.alterTableSetProperties(req);
+        case SET_COLUMN_PROPERTIES:
+          return procedureManager.alterTableSetColumnProperties(req);
         case RENAME_COLUMN:
           return procedureManager.alterTableRenameColumn(req);
         case DROP_COLUMN:
