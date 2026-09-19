@@ -35,6 +35,9 @@ public final class RpcMessages {
       "Frame size (%d) larger than protect max size (%d)%s!";
   public static final String FRAME_ERROR_STRING_LENGTH_EXCEEDED =
       "String length (%d) larger than protect max size (%d)%s!";
+  public static final String
+      EXCEPTION_REQUIRED_READ_SIZE_ARG_EXCEEDS_REMAINING_FRAME_SIZE_ARG_ARG_9C0541EE =
+          "Required read size (%d) exceeds remaining frame size (%d)%s!";
 
   // TElasticFramedTransport - SSL
   public static final String NON_SSL_TO_SSL_PORT =
