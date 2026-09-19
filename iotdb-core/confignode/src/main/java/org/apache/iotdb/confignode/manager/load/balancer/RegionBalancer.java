@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.balancer;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -39,6 +40,8 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +85,14 @@ public class RegionBalancer {
   public CreateRegionGroupsPlan genRegionGroupsAllocationPlan(
       final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
+    return genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType, null);
+  }
+
+  public CreateRegionGroupsPlan genRegionGroupsAllocationPlan(
+      final Map<String, Integer> allotmentMap,
+      final TConsensusGroupType consensusGroupType,
+      final Map<String, Integer> preferredDataNodeMap)
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // Some new RegionGroups will have to occupy unknown DataNodes if the number of online
     // DataNodes is insufficient (Unknown DataNodes are intentionally kept as candidates).
@@ -118,6 +129,12 @@ public class RegionBalancer {
       final int allotment = entry.getValue();
       final int replicationFactor =
           getClusterSchemaManager().getReplicationFactor(database, consensusGroupType);
+      final Integer requestPreferredDataNode =
+          preferredDataNodeMap == null ? null : preferredDataNodeMap.get(database);
+      final int preferredDataNodeId =
+          TConsensusGroupType.DataRegion.equals(consensusGroupType)
+              ? (requestPreferredDataNode != null ? requestPreferredDataNode : -1)
+              : -1;
       // Only considering the specified Database when doing allocation
       final List<TRegionReplicaSet> databaseAllocatedRegionGroups =
           getPartitionManager().getAllReplicaSets(database, consensusGroupType);
@@ -144,6 +161,7 @@ public class RegionBalancer {
                 replicationFactor,
                 new TConsensusGroupId(
                     consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
+        preferDataNodeIfPossible(newRegionGroup, preferredDataNodeId, availableDataNodeMap);
         createRegionGroupsPlan.addRegionGroup(database, newRegionGroup);
 
         // Mark the new RegionGroup as allocated
@@ -173,6 +191,37 @@ public class RegionBalancer {
 
   private ProcedureManager getProcedureManager() {
     return configManager.getProcedureManager();
+  }
+
+  private static void preferDataNodeIfPossible(
+      final TRegionReplicaSet regionReplicaSet,
+      final int preferredDataNodeId,
+      final Map<Integer, TDataNodeConfiguration> availableDataNodeMap) {
+    if (preferredDataNodeId < 0 || !availableDataNodeMap.containsKey(preferredDataNodeId)) {
+      return;
+    }
+
+    final List<TDataNodeLocation> locations =
+        new ArrayList<>(regionReplicaSet.getDataNodeLocations());
+    if (locations.isEmpty()) {
+      return;
+    }
+
+    int preferredIndex = -1;
+    for (int i = 0; i < locations.size(); i++) {
+      if (locations.get(i).getDataNodeId() == preferredDataNodeId) {
+        preferredIndex = i;
+        break;
+      }
+    }
+
+    if (preferredIndex > 0) {
+      Collections.swap(locations, 0, preferredIndex);
+    } else if (preferredIndex < 0) {
+      locations.set(
+          locations.size() - 1, availableDataNodeMap.get(preferredDataNodeId).getLocation());
+    }
+    regionReplicaSet.setDataNodeLocations(locations);
   }
 
   public enum RegionGroupAllocatePolicy {

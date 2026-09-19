@@ -35,6 +35,13 @@ public class GetOrCreateDataPartitionPlan extends GetDataPartitionPlan {
     this.partitionSlotsMap = partitionSlotsMap;
   }
 
+  public GetOrCreateDataPartitionPlan(
+      final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap,
+      final int preferredDataNodeId) {
+    this(partitionSlotsMap);
+    this.preferredDataNodeId = preferredDataNodeId;
+  }
+
   /**
    * Convert TDataPartitionReq to GetOrCreateDataPartitionPlan.
    *
@@ -43,6 +50,11 @@ public class GetOrCreateDataPartitionPlan extends GetDataPartitionPlan {
    */
   public static GetOrCreateDataPartitionPlan convertFromRpcTDataPartitionReq(
       final TDataPartitionReq req) {
-    return new GetOrCreateDataPartitionPlan(new ConcurrentHashMap<>(req.getPartitionSlotsMap()));
+    final GetOrCreateDataPartitionPlan plan =
+        new GetOrCreateDataPartitionPlan(new ConcurrentHashMap<>(req.getPartitionSlotsMap()));
+    if (req.isSetPreferredDataNodeId()) {
+      plan.setPreferredDataNodeId(req.getPreferredDataNodeId());
+    }
+    return plan;
   }
 }

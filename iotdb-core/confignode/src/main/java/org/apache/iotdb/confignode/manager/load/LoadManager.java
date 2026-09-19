@@ -126,6 +126,15 @@ public class LoadManager {
     return regionBalancer.genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType);
   }
 
+  public CreateRegionGroupsPlan allocateRegionGroups(
+      final Map<String, Integer> allotmentMap,
+      final TConsensusGroupType consensusGroupType,
+      final Map<String, Integer> preferredDataNodeMap)
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
+    return regionBalancer.genRegionGroupsAllocationPlan(
+        allotmentMap, consensusGroupType, preferredDataNodeMap);
+  }
+
   /**
    * Allocate SchemaPartitions.
    *
