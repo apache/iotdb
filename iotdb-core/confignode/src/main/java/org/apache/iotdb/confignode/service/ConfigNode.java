@@ -156,10 +156,18 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         ConfigNodeMessages.THE_REMOVE_CONFIGNODE_SCRIPT_HAS_BEEN_DEPRECATED_PLEASE_CONNECT_TO, -1);
   }
 
+  /**
+   * Starts ConfigNode services for restart, seed, or non-seed startup.
+   *
+   * <p>For restart and seed startup, the RPC service is started after the required initialization.
+   * During initial non-seed startup, the RPC service is intentionally started before registration
+   * so the leader can schedule capacity expansion.
+   */
   public void active() {
     LOGGER.info(ConfigNodeMessages.ACTIVATING, ConfigNodeConstant.GLOBAL_NAME);
 
     try {
+      // Process pid file, register deleteOnExit
       processPid();
       // Add shutdown hook
       addShutDownHook();
@@ -503,6 +511,13 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     LOGGER.info(ConfigNodeMessages.IS_DEACTIVATED, ConfigNodeConstant.GLOBAL_NAME);
   }
 
+  /**
+   * Best-effort deactivates ConfigNode services before exiting the process.
+   *
+   * <p>This method calls {@link #deactivate()} and then exits with {@code exitStatusCode}. The
+   * deactivation does not guarantee reverse-order cleanup of every background or consensus
+   * resource.
+   */
   public void stop() {
     try {
       deactivate();

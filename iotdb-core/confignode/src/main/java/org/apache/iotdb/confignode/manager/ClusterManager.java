@@ -84,6 +84,13 @@ public class ClusterManager {
     return clusterInfo.getClusterId();
   }
 
+  /**
+   * Waits up to the specified time for the cluster ID to become available.
+   *
+   * @param maxWaitTime maximum wait time in milliseconds
+   * @return the cluster ID, or null if it is unavailable after the timeout or the wait is
+   *     interrupted
+   */
   public String getClusterIdWithRetry(long maxWaitTime) {
     long startTime = System.currentTimeMillis();
     while (clusterInfo.getClusterId() == null
@@ -109,7 +116,14 @@ public class ClusterManager {
     }
   }
 
-  // TODO: Parallel test ConfigNode and DataNode
+  /**
+   * Coordinates an all-to-all connectivity test across registered ConfigNodes and DataNodes.
+   *
+   * <p>This ConfigNode sends the complete node list to every registered node. Each recipient
+   * performs its own connectivity tests, and the leader aggregates the per-node results.
+   *
+   * @return aggregated connection-test results
+   */
   public TTestConnectionResp submitTestConnectionTaskToEveryNode() {
     TTestConnectionResp resp = new TTestConnectionResp();
     resp.resultList = new ArrayList<>();

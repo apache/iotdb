@@ -254,6 +254,13 @@ import static org.apache.iotdb.db.utils.QueryDataSetUtils.convertTsBlockByFetchS
 import static org.apache.iotdb.rpc.RpcUtils.TIME_PRECISION;
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_WAS_KILLED;
 
+/**
+ * Implements the client-facing RPC surface for sessions, SQL execution, writes, query results,
+ * metadata operations, authentication, and resource control.
+ *
+ * <p>This class adapts protocol requests to the Coordinator and DataNode managers; it must preserve
+ * session ownership, query cleanup, authorization, timeout, and status-conversion semantics.
+ */
 public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClientRPCServiceImpl.class);

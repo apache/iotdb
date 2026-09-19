@@ -194,9 +194,10 @@ import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
 /**
- * The coordinator for MPP. It manages all the queries which are executed in current Node. And it
- * will be responsible for the lifecycle of a query. A query request will be represented as a
- * QueryExecution.
+ * Coordinates the lifecycle of queries executed on this DataNode.
+ *
+ * <p>The coordinator creates query contexts, analyzes and plans statements, dispatches fragment
+ * instances, tracks query state, handles retries, and releases query resources after completion.
  */
 public class Coordinator {
 

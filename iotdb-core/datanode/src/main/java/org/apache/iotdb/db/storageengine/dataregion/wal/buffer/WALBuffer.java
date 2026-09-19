@@ -71,8 +71,10 @@ import java.util.function.Predicate;
 import static org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode.DEFAULT_SEARCH_INDEX;
 
 /**
- * This buffer guarantees the concurrent safety and uses double buffers mechanism to accelerate
- * writes and avoid waiting for buffer syncing to disk.
+ * Buffers WAL entries with a lock-protected working, syncing, and idle buffer rotation.
+ *
+ * <p>The rotation allows serialization to continue while another buffer is written to disk. All
+ * buffer-state transitions must follow {@code buffersLock} and its conditions.
  */
 public class WALBuffer extends AbstractWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
