@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 
@@ -61,6 +62,34 @@ public class CreateCQProcedureTest {
       CreateCQProcedure createCQProcedure2 = new CreateCQProcedure(req, executor);
 
       assertNotEquals(createCQProcedure1.getCqToken(), createCQProcedure2.getCqToken());
+    } finally {
+      executor.shutdown();
+    }
+  }
+
+  @Test
+  public void mixedCalendarRangeWithFixedEveryUsesStructuredEveryDuration() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "mixedFixedEveryCq",
+            0,
+            0,
+            0,
+            0,
+            (byte) 0,
+            "select s1 into root.backup.d1(s1) from root.sg.d1",
+            "create cq mixedFixedEveryCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1_000));
+    req.setStartOffsetDuration(new TCQDuration(1, 1_000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+
+    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+    try {
+      new CreateCQProcedure(req, executor);
     } finally {
       executor.shutdown();
     }

@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCQEntry;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -353,6 +354,14 @@ public class IoTDBConfigNodeSnapshotIT {
             sql2,
             "UTC",
             "root");
+
+    for (TCreateCQReq req : new TCreateCQReq[] {req1, req2}) {
+      req.setDurationEncodingVersion((short) 1);
+      req.setEveryDuration(new TCQDuration(0, 1000));
+      req.setStartOffsetDuration(new TCQDuration(0, 1000));
+      req.setEndOffsetDuration(new TCQDuration(0, 0));
+      req.setBoundaryExplicit(true);
+    }
 
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.createCQ(req1).getCode());
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.createCQ(req2).getCode());

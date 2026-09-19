@@ -38,8 +38,70 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.ZoneId;
 import java.util.Calendar;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DataNodeDateTimeUtils {
+  private static final Pattern CQ_DURATION_COMPONENT =
+      // Match multi-character units before their one-character prefixes (for example, ms before
+      // m), otherwise 1ms would be tokenized as 1m followed by an invalid trailing s.
+      Pattern.compile("(\\d+)(y|mo|w|d|h|ms|us|ns|m|s)", Pattern.CASE_INSENSITIVE);
+
+  /**
+   * Parses the CQ duration grammar while retaining calendar months. Full aliases are deliberate not
+   * accepted here; CQ uses the same mo/y abbreviations as Tree SQL.
+   */
+  public static TimeDuration constructTimeDurationForCQ(String duration) {
+    if (duration == null || duration.isEmpty()) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_CQ_DURATION_CANNOT_BE_EMPTY_C7269AB2);
+    }
+    Matcher matcher = CQ_DURATION_COMPONENT.matcher(duration);
+    long months = 0;
+    long fixed = 0;
+    int end = 0;
+    String precision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    while (matcher.find()) {
+      if (matcher.start() != end) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_INVALID_CQ_DURATION_ARG_F4917D5C, duration));
+      }
+      long value;
+      try {
+        value = Long.parseLong(matcher.group(1));
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_CQ_DURATION_COMPONENT_OVERFLOWS_ARG_ED5B0962,
+                duration),
+            e);
+      }
+      String unit = matcher.group(2).toLowerCase(Locale.ROOT);
+      if (unit.equals("y")) {
+        months = Math.addExact(months, Math.multiplyExact(value, 12));
+      } else if (unit.equals("mo")) {
+        months = Math.addExact(months, value);
+      } else {
+        fixed = Math.addExact(fixed, convertDurationStrToLong(-1, value, unit, precision));
+      }
+      end = matcher.end();
+    }
+    if (end != duration.length()) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_CQ_DURATION_ARG_F4917D5C, duration));
+    }
+    if (months > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_CQ_DURATION_MONTH_COMPONENT_OVERFLOWS_ARG_EBF2A2B6,
+              duration));
+    }
+    return new TimeDuration((int) months, fixed);
+  }
+
   public static Long parseDateTimeExpressionToLong(String dateExpression, ZoneId zoneId) {
     ASTVisitor astVisitor = new ASTVisitor();
     astVisitor.setZoneId(zoneId);

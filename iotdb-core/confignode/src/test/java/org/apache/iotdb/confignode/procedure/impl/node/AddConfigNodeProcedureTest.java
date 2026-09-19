@@ -31,11 +31,30 @@ import org.junit.Test;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 
 public class AddConfigNodeProcedureTest {
 
   @Test
   public void serDeTest() throws IOException {
+    AddConfigNodeProcedure procedure0 =
+        new AddConfigNodeProcedure(
+            new TConfigNodeLocation(
+                0, new TEndPoint("127.0.0.1", 10710), new TEndPoint("0.0.0.0", 10720)),
+            new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO)
+                .setSupportedCQDurationEncodingVersions(Collections.singleton((short) 1)));
+
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      procedure0.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      Assert.assertEquals(procedure0, ProcedureFactory.getInstance().create(buffer));
+    }
+  }
+
+  @Test
+  public void deserializeLegacyPayloadWithoutCapabilities() throws IOException {
     AddConfigNodeProcedure procedure0 =
         new AddConfigNodeProcedure(
             new TConfigNodeLocation(
@@ -46,7 +65,7 @@ public class AddConfigNodeProcedureTest {
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       procedure0.serialize(outputStream);
       ByteBuffer buffer =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size() - 1);
       Assert.assertEquals(procedure0, ProcedureFactory.getInstance().create(buffer));
     }
   }

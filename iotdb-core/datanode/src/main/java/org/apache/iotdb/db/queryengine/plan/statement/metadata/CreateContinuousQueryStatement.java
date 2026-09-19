@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
@@ -32,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+
+import org.apache.tsfile.utils.TimeDuration;
 
 import java.util.Collections;
 import java.util.List;
@@ -51,6 +54,13 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   // The end time of each query execution, default value is 0.
   private long endTimeOffset = 0;
+
+  // Structured representations retained for calendar-aware CQ scheduling. The legacy long
+  // fields above are kept as wire/backward-compatible projections for fixed-only durations.
+  private TimeDuration everyDuration = new TimeDuration(0, 0);
+  private TimeDuration startTimeOffsetDuration = new TimeDuration(0, 0);
+  private TimeDuration endTimeOffsetDuration = new TimeDuration(0, 0);
+  private boolean boundaryExplicit;
 
   // Specify how we deal with the cq task whose previous time interval execution is not finished
   // while the next execution time has reached, default value is BLOCKED.
@@ -78,6 +88,19 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   public void setEveryInterval(long everyInterval) {
     this.everyInterval = everyInterval;
+    this.everyDuration = new TimeDuration(0, everyInterval);
+  }
+
+  public TimeDuration getEveryDuration() {
+    return everyDuration;
+  }
+
+  public void setEveryDuration(TimeDuration everyDuration) {
+    this.everyDuration = everyDuration;
+    this.everyInterval =
+        everyDuration.monthDuration == 0
+            ? everyDuration.getTotalDuration(TimestampPrecisionUtils.currPrecision)
+            : 0;
   }
 
   public long getBoundaryTime() {
@@ -88,12 +111,33 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     this.boundaryTime = boundaryTime;
   }
 
+  public boolean isBoundaryExplicit() {
+    return boundaryExplicit;
+  }
+
+  public void setBoundaryExplicit(boolean boundaryExplicit) {
+    this.boundaryExplicit = boundaryExplicit;
+  }
+
   public long getStartTimeOffset() {
     return startTimeOffset;
   }
 
   public void setStartTimeOffset(long startTimeOffset) {
     this.startTimeOffset = startTimeOffset;
+    this.startTimeOffsetDuration = new TimeDuration(0, startTimeOffset);
+  }
+
+  public TimeDuration getStartTimeOffsetDuration() {
+    return startTimeOffsetDuration;
+  }
+
+  public void setStartTimeOffsetDuration(TimeDuration duration) {
+    this.startTimeOffsetDuration = duration;
+    this.startTimeOffset =
+        duration.monthDuration == 0
+            ? duration.getTotalDuration(TimestampPrecisionUtils.currPrecision)
+            : 0;
   }
 
   public long getEndTimeOffset() {
@@ -102,6 +146,19 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   public void setEndTimeOffset(long endTimeOffset) {
     this.endTimeOffset = endTimeOffset;
+    this.endTimeOffsetDuration = new TimeDuration(0, endTimeOffset);
+  }
+
+  public TimeDuration getEndTimeOffsetDuration() {
+    return endTimeOffsetDuration;
+  }
+
+  public void setEndTimeOffsetDuration(TimeDuration duration) {
+    this.endTimeOffsetDuration = duration;
+    this.endTimeOffset =
+        duration.monthDuration == 0
+            ? duration.getTotalDuration(TimestampPrecisionUtils.currPrecision)
+            : 0;
   }
 
   public TimeoutPolicy getTimeoutPolicy() {
@@ -135,11 +192,28 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     StringBuilder sqlBuilder = new StringBuilder();
     sqlBuilder.append("CREATE CQ ").append(cqId).append('\n');
     sqlBuilder.append("RESAMPLE\n");
-    sqlBuilder.append('\t').append("EVERY ").append(everyInterval).append("ms\n");
+    sqlBuilder
+        .append('\t')
+        .append("EVERY ")
+        .append(
+            everyDuration.monthDuration == 0 ? everyInterval + "ms" : formatDuration(everyDuration))
+        .append('\n');
     sqlBuilder.append('\t').append("BOUNDARY ").append(boundaryTime).append("\n");
-    sqlBuilder.append('\t').append("RANGE ").append(startTimeOffset).append("ms");
-    if (endTimeOffset != 0) {
-      sqlBuilder.append(", ").append(endTimeOffset).append("ms\n");
+    sqlBuilder
+        .append('\t')
+        .append("RANGE ")
+        .append(
+            startTimeOffsetDuration.monthDuration == 0
+                ? startTimeOffset + "ms"
+                : formatDuration(startTimeOffsetDuration));
+    if (endTimeOffset != 0 || endTimeOffsetDuration.monthDuration != 0) {
+      sqlBuilder
+          .append(", ")
+          .append(
+              endTimeOffsetDuration.monthDuration == 0
+                  ? endTimeOffset + "ms"
+                  : formatDuration(endTimeOffsetDuration))
+          .append('\n');
     } else {
       sqlBuilder.append("\n");
     }
@@ -152,6 +226,24 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     sqlBuilder.append("END\n");
     sqlBuilder.append(";");
     return sqlBuilder.toString();
+  }
+
+  private static String formatDuration(TimeDuration duration) {
+    StringBuilder result = new StringBuilder();
+    int months = duration.monthDuration;
+    if (months >= 12) {
+      result.append(months / 12).append('y');
+      months %= 12;
+    }
+    if (months != 0) {
+      result.append(months).append("mo");
+    }
+    if (duration.nonMonthDuration != 0) {
+      result.append(duration.nonMonthDuration).append(TimestampPrecisionUtils.TIMESTAMP_PRECISION);
+    }
+    return result.length() == 0
+        ? "0" + TimestampPrecisionUtils.TIMESTAMP_PRECISION
+        : result.toString();
   }
 
   @Override
@@ -170,26 +262,43 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   }
 
   public void semanticCheck() {
-    if (everyInterval
-        < IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()) {
+    long minimumEvery =
+        IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval();
+    long minimumElapsed =
+        everyDuration.monthDuration == 0
+            ? everyDuration.nonMonthDuration
+            : Math.subtractExact(
+                Math.addExact(
+                    Math.multiplyExact(
+                        (long) everyDuration.monthDuration,
+                        TimestampPrecisionUtils.currPrecision.convert(
+                            28L * 86_400_000L, java.util.concurrent.TimeUnit.MILLISECONDS)),
+                    everyDuration.nonMonthDuration),
+                TimestampPrecisionUtils.currPrecision.convert(
+                    36L * 3_600_000L, java.util.concurrent.TimeUnit.MILLISECONDS));
+    if (minimumElapsed < minimumEvery) {
       throw new SemanticException(
           String.format(
               DataNodeQueryMessages
                   .CQ_EVERY_INTERVAL_D_SHOULD_NOT_BE_LOWER_THAN_THE_CONTINUOUS_QUERY_MINIMUM_EVERY_INTERVAL,
               everyInterval,
-              IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()));
+              minimumEvery));
     }
-    if (startTimeOffset <= 0) {
+    if (!isPositive(everyDuration)) {
+      throw new SemanticException(
+          DataNodeQueryMessages.EXCEPTION_CQ_EVERY_INTERVAL_MUST_BE_POSITIVE_26259019);
+    }
+    if (!isPositive(startTimeOffsetDuration)) {
       throw new SemanticException(DataNodeQueryMessages.CQ_THE_START_TIME_OFFSET_SHOULD_BE_GREATER);
     }
-    if (endTimeOffset < 0) {
+    if (endTimeOffsetDuration.monthDuration < 0 || endTimeOffsetDuration.nonMonthDuration < 0) {
       throw new SemanticException(DataNodeQueryMessages.CQ_THE_END_TIME_OFFSET_SHOULD_BE_GREATER);
     }
-    if (startTimeOffset <= endTimeOffset) {
+    if (!dominates(startTimeOffsetDuration, endTimeOffsetDuration, true)) {
       throw new SemanticException(
           DataNodeQueryMessages.CQ_THE_START_TIME_OFFSET_SHOULD_BE_GREATER_THAN_END_TIME_OFFSET);
     }
-    if (everyInterval > startTimeOffset) {
+    if (!dominates(startTimeOffsetDuration, everyDuration, false)) {
       throw new SemanticException(
           DataNodeQueryMessages
               .CQ_THE_START_TIME_OFFSET_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_EVERY_INTERVAL);
@@ -210,5 +319,21 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
       throw new SemanticException(
           DataNodeQueryMessages.CQ_SPECIFYING_TIME_FILTERS_IN_THE_QUERY_BODY);
     }
+  }
+
+  private static boolean dominates(TimeDuration left, TimeDuration right, boolean strict) {
+    boolean result =
+        left.monthDuration >= right.monthDuration
+            && left.nonMonthDuration >= right.nonMonthDuration;
+    if (!result) {
+      return false;
+    }
+    return !strict
+        || left.monthDuration != right.monthDuration
+        || left.nonMonthDuration != right.nonMonthDuration;
+  }
+
+  private static boolean isPositive(TimeDuration duration) {
+    return duration.monthDuration > 0 || duration.nonMonthDuration > 0;
   }
 }
