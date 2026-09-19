@@ -117,8 +117,10 @@ public class ClusterManager {
   }
 
   /**
-   * Tests connectivity from this ConfigNode to all registered ConfigNodes and DataNodes and
-   * aggregates the results.
+   * Coordinates an all-to-all connectivity test across registered ConfigNodes and DataNodes.
+   *
+   * <p>This ConfigNode sends the complete node list to every registered node. Each recipient
+   * performs its own connectivity tests, and the leader aggregates the per-node results.
    *
    * @return aggregated connection-test results
    */

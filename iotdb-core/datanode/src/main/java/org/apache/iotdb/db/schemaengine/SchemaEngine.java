@@ -78,8 +78,8 @@ import java.util.concurrent.TimeUnit;
  * schema-resource management, and lifecycle operations.
  *
  * <p>The selected schema-engine mode determines whether schema state is memory-resident or cached.
- * Schema metrics and shared schema resources must be initialized before schema regions, and cleared
- * only after all schema regions have been cleared.
+ * Shared schema resources are cleared before schema regions, and schema metrics are cleared after
+ * all schema regions have been cleared.
  */
 public class SchemaEngine {
 

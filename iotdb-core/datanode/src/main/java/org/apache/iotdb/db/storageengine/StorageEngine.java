@@ -918,7 +918,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * Run the consumer if the region is present. if the region is absent, do nothing.
+   * Run the consumer if the region is present. If the region is absent, do nothing.
    *
    * <p>Uses computeIfPresent to serialize consumer invocation and returns the existing region so it
    * remains in the map.

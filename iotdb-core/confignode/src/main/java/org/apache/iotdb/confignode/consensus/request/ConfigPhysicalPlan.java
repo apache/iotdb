@@ -150,6 +150,7 @@ import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -166,7 +167,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
   }
 
   /**
-   * Serializes this plan, including its type discriminator and implementation-specific payload.
+   * Serializes this plan using the bytes emitted by its concrete implementation. Read plans emit no
+   * bytes because their serialization implementation is a no-op.
    *
    * @return a buffer positioned at the beginning of the serialized plan
    */
@@ -199,7 +201,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
      *
      * @param buffer the buffer containing one serialized plan
      * @return the deserialized plan
-     * @throws IOException if the encoded plan type or payload cannot be read
+     * @throws IOException if the concrete plan payload cannot be deserialized
+     * @throws BufferUnderflowException if the buffer does not contain enough bytes
      */
     public static ConfigPhysicalPlan create(final ByteBuffer buffer) throws IOException {
       final short planType = buffer.getShort();

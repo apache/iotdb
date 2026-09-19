@@ -157,10 +157,11 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   }
 
   /**
-   * Starts the ConfigNode services in dependency order.
+   * Starts ConfigNode services for restart, seed, or non-seed startup.
    *
-   * <p>The method must preserve the distinction between seed and non-seed ConfigNodes and must
-   * start the RPC service only after the local services required to handle requests are ready.
+   * <p>For restart and seed startup, the RPC service is started after the required initialization.
+   * During initial non-seed startup, the RPC service is intentionally started before registration
+   * so the leader can schedule capacity expansion.
    */
   public void active() {
     LOGGER.info(ConfigNodeMessages.ACTIVATING, ConfigNodeConstant.GLOBAL_NAME);
@@ -511,10 +512,11 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   }
 
   /**
-   * Stops ConfigNode services and releases their resources in reverse dependency order.
+   * Best-effort deactivates ConfigNode services before exiting the process.
    *
-   * <p>The operation should be safe to invoke during partial startup and should not leave
-   * background scheduling, RPC, or consensus resources running.
+   * <p>This method calls {@link #deactivate()} and then exits with {@code exitStatusCode}. The
+   * deactivation does not guarantee reverse-order cleanup of every background or consensus
+   * resource.
    */
   public void stop() {
     try {
