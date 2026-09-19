@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -285,6 +286,7 @@ public class SeriesScanUtil implements Accountable {
   // Optional.empty(), it needs to return directly to the checkpoint method that checks the operator
   // execution time slice.
   public Optional<Boolean> hasNextFile() throws IOException {
+    checkFragmentInstanceState();
     if (runtimeFilterExhausted || !paginationController.hasCurLimit()) {
       return Optional.of(false);
     }
@@ -2016,8 +2018,10 @@ public class SeriesScanUtil implements Accountable {
   }
 
   private Optional<ITimeSeriesMetadata> unpackSeqTsFileResource() throws IOException {
+    checkFragmentInstanceState();
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
+    checkFragmentInstanceState();
     // skip if data type is mismatched which may be caused by delete
     if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(true);
@@ -2029,8 +2033,10 @@ public class SeriesScanUtil implements Accountable {
   }
 
   private Optional<ITimeSeriesMetadata> unpackUnseqTsFileResource() throws IOException {
+    checkFragmentInstanceState();
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
+    checkFragmentInstanceState();
     // skip if data type is mismatched which may be caused by delete
     if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(false);
@@ -2038,6 +2044,24 @@ public class SeriesScanUtil implements Accountable {
       return Optional.of(timeseriesMetadata);
     } else {
       return Optional.empty();
+    }
+  }
+
+  private void checkFragmentInstanceState() throws IOException {
+    // Compaction also uses this scanner, but its context has no fragment state machine.
+    if (context.getStateMachine() == null) {
+      return;
+    }
+    FragmentInstanceState state = context.getStateMachine().getState();
+    if (state.isDone()) {
+      // A scan over many overlapping files may stay in one operator call long after cancellation.
+      // Exit on the driver thread so it can release its lock and finish resource cleanup.
+      throw new IOException(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4,
+              context.getId(),
+              state),
+          context.getFailureCause().orElse(null));
     }
   }
 
