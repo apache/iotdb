@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
+      "Fragment instance %s 已处于 %s 状态";
+
   public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
       "Thrift 最大帧大小 %d 无效，来源：%s";
   public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
