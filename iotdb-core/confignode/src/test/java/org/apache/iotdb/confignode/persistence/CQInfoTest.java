@@ -203,6 +203,43 @@ public class CQInfoTest {
   }
 
   @Test
+  public void testOccurrenceIndexCasRejectsAheadCallbackAndTokenMismatch() {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "fencedCq",
+            1000,
+            0,
+            1000,
+            0,
+            (byte) 0,
+            "select 1",
+            "create cq fencedCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1000));
+    req.setStartOffsetDuration(new TCQDuration(0, 1000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "fencedToken", 1000)).getCode());
+
+    Assert.assertEquals(
+        TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan("fencedCq", 2000, "fencedToken", 2, 3))
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.NO_SUCH_CQ.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan("fencedCq", 1000, "otherToken", 1, 2))
+            .getCode());
+  }
+
+  @Test
   public void testCommittedProgressRetryIsDetectedAsStaleForReconciliation() throws TException {
     TCreateCQReq req =
         new TCreateCQReq(

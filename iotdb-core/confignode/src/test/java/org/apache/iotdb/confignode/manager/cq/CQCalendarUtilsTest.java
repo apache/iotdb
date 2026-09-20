@@ -146,6 +146,69 @@ public class CQCalendarUtilsTest {
     assertEquals(execution, task.calculateCalendarRangeEndpoint(zero, 3));
   }
 
+  @Test
+  public void testFirstOccurrenceRangeIsTheJustFinishedNaturalMonth() {
+    long boundary = epochTimestamp(2024, 3, 1, 0, 0, UTC);
+    TimeDuration month = new TimeDuration(1, 0);
+    TimeDuration zero = new TimeDuration(0, 0);
+    CQScheduleTask task = calendarTask(boundary, boundary, month, month, zero, UTC);
+
+    // Occurrence 0 is the user-visible first fire. RANGE 1mo must look backward from the original
+    // boundary, including the negative month vector, rather than subtracting from a later clamped
+    // occurrence.
+    assertEquals(
+        epochTimestamp(2024, 2, 1, 0, 0, UTC), task.calculateCalendarRangeEndpoint(month, 0));
+    assertEquals(boundary, task.calculateCalendarRangeEndpoint(zero, 0));
+    assertEquals(
+        epochTimestamp(2024, 2, 1, 0, 0, UTC), CQCalendarUtils.applyVector(boundary, -1, 0, UTC));
+  }
+
+  @Test
+  public void testMonthEndFirstOccurrenceRangeClampsFebruary() {
+    long boundary = epochTimestamp(2024, 3, 31, 0, 0, UTC);
+    TimeDuration month = new TimeDuration(1, 0);
+    TimeDuration zero = new TimeDuration(0, 0);
+    CQScheduleTask task = calendarTask(boundary, boundary, month, month, zero, UTC);
+
+    assertEquals(
+        epochTimestamp(2024, 2, 29, 0, 0, UTC), task.calculateCalendarRangeEndpoint(month, 0));
+    assertEquals(boundary, task.calculateCalendarRangeEndpoint(zero, 0));
+  }
+
+  @Test
+  public void testCalendarTimeoutUsesActualAdjacentOccurrenceDistance() throws Exception {
+    long boundary = epochTimestamp(2024, 1, 31, 0, 0, UTC);
+    TimeDuration month = new TimeDuration(1, 0);
+    TimeDuration zero = new TimeDuration(0, 0);
+    java.lang.reflect.Method timeout =
+        CQScheduleTask.class.getDeclaredMethod("calculateCalendarTimeoutMillis", long.class);
+    timeout.setAccessible(true);
+
+    long januaryToFebruary = epochTimestamp(2024, 2, 29, 0, 0, UTC) - boundary;
+    long februaryToMarch =
+        epochTimestamp(2024, 3, 31, 0, 0, UTC) - epochTimestamp(2024, 2, 29, 0, 0, UTC);
+    CQScheduleTask first = calendarTask(boundary, boundary, month, month, zero, UTC);
+    CQScheduleTask second =
+        calendarTask(boundary, epochTimestamp(2024, 2, 29, 0, 0, UTC), month, month, zero, UTC);
+    // n=0 spans 29 days (Jan 31 -> Feb 29); n=1 spans 31 days (Feb 29 -> Mar 31). Neither is 30d.
+    assertEquals(januaryToFebruary, timeout.invoke(first, 0L));
+    assertEquals(februaryToMarch, timeout.invoke(second, 1L));
+  }
+
+  @Test
+  public void testCheckedCalendarArithmeticRejectsOverflow() {
+    long boundary = epochTimestamp(2024, 1, 1, 0, 0, UTC);
+    try {
+      CQCalendarUtils.apply(boundary, new TimeDuration(1, 0), Integer.MAX_VALUE + 1L, UTC);
+      org.junit.Assert.fail("expected month multiplication to overflow");
+    } catch (IllegalArgumentException e) {
+      assertEquals(
+          org.apache.iotdb.confignode.i18n.ManagerMessages
+              .EXCEPTION_CQ_TIMESTAMP_OVERFLOWS_CONFIGURED_PRECISION_F5FB230C,
+          e.getMessage());
+    }
+  }
+
   private static CQScheduleTask calendarTask(
       long boundary,
       long execution,
@@ -237,6 +300,37 @@ public class CQCalendarUtilsTest {
             boundary,
             every,
             UTC));
+  }
+
+  @Test
+  public void testDiscardSkipsMultipleMissedCalendarOccurrences() {
+    long boundary = epochTimestamp(2024, 1, 1, 0, 0, UTC);
+    TimeDuration every = new TimeDuration(1, 0);
+    long executionTime = CQCalendarUtils.occurrence(boundary, every, 1, UTC);
+    long callbackTime = epochTimestamp(2024, 5, 15, 12, 0, UTC);
+
+    // Missed March/April/May. The next durable index is June (n=5), not February+1.
+    assertEquals(
+        5,
+        CQScheduleTask.calculateNextOccurrenceIndex(
+            TimeoutPolicy.DISCARD, 1, callbackTime, executionTime, 0, 1, boundary, every, UTC));
+    assertEquals(
+        2,
+        CQScheduleTask.calculateNextOccurrenceIndex(
+            TimeoutPolicy.BLOCKED, 1, callbackTime, executionTime, 0, 1, boundary, every, UTC));
+  }
+
+  @Test
+  public void testDiscardClockRollbackKeepsTheNextOccurrence() {
+    long boundary = epochTimestamp(2024, 1, 1, 0, 0, UTC);
+    TimeDuration every = new TimeDuration(1, 0);
+    long executionTime = CQCalendarUtils.occurrence(boundary, every, 2, UTC);
+    long callbackTime = epochTimestamp(2023, 12, 1, 0, 0, UTC);
+
+    assertEquals(
+        3,
+        CQScheduleTask.calculateNextOccurrenceIndex(
+            TimeoutPolicy.DISCARD, 2, callbackTime, executionTime, 0, 2, boundary, every, UTC));
   }
 
   private static long epochTimestamp(

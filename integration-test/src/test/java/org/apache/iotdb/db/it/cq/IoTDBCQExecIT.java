@@ -32,6 +32,9 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
@@ -50,6 +53,88 @@ public class IoTDBCQExecIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testCalendarMonthCQExecutionUsesNaturalMonthWindow() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      connection.setClientInfo("time_zone", "UTC");
+      long now = System.currentTimeMillis();
+      long firstExecutionTime = now + 10_000;
+      ZoneId utc = ZoneId.of("UTC");
+      long calendarStart =
+          ZonedDateTime.ofInstant(Instant.ofEpochMilli(firstExecutionTime), utc)
+              .minusMonths(1)
+              .toInstant()
+              .toEpochMilli();
+      long thirtyDayStart = firstExecutionTime - TimeUnit.DAYS.toMillis(30);
+
+      statement.execute("create timeseries root.sg.calendar.s1 WITH DATATYPE=INT64");
+      statement.execute("create timeseries root.sg.calendar.s1_max WITH DATATYPE=INT64");
+      statement.execute("INSERT INTO root.sg.calendar(time, s1) VALUES (0,0)");
+      statement.execute(
+          String.format(
+              "INSERT INTO root.sg.calendar(time, s1) VALUES (%d, 777), (%d, 100), (%d, 10), (%d, 999)",
+              calendarStart - 1, calendarStart, firstExecutionTime - 1, firstExecutionTime));
+      // On 28/29-day months the 30-day window starts before the natural month. A 30d RANGE
+      // would include this 888; a calendar RANGE 1mo must not.
+      if (thirtyDayStart < calendarStart - 1) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.sg.calendar(time, s1) VALUES (%d, 888)", thirtyDayStart));
+      }
+
+      statement.execute(
+          "CREATE CONTINUOUS QUERY cq_calendar_month\n"
+              + "RESAMPLE EVERY 1mo\n"
+              + String.format("BOUNDARY %d\n", firstExecutionTime)
+              + "RANGE 1mo\n"
+              + "BEGIN\n"
+              + "  SELECT max_value(s1)\n"
+              + "  INTO root.sg.calendar(s1_max)\n"
+              + "  FROM root.sg.calendar\n"
+              + "  GROUP BY(1mo)\n"
+              + "END");
+
+      if (System.currentTimeMillis() > firstExecutionTime) {
+        statement.execute("DROP CQ cq_calendar_month");
+        return;
+      }
+
+      long targetTime = firstExecutionTime + 10_000;
+      while (System.currentTimeMillis() - targetTime < 0) {
+        TimeUnit.SECONDS.sleep(1);
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.calendar")) {
+        boolean sawNaturalMonthBucket = false;
+        while (resultSet.next()) {
+          long time = resultSet.getLong(TIMESTAMP_STR);
+          long value = resultSet.getLong("root.sg.calendar.s1_max");
+          assertEquals(
+              "CQ RANGE must stay inside the just-finished natural month",
+              true,
+              time >= calendarStart && time < firstExecutionTime);
+          assertEquals(
+              "points before/after the natural month must not contribute", true, value != 777);
+          assertEquals("the BOUNDARY instant is exclusive", true, value != 999);
+          assertEquals("a 30-day-only point must not become the monthly max", true, value != 888);
+          if (time == calendarStart && value == 100) {
+            sawNaturalMonthBucket = true;
+          }
+        }
+        assertEquals(
+            "the first GROUP BY month bucket should start at BOUNDARY-1mo",
+            true,
+            sawNaturalMonthBucket);
+      } finally {
+        statement.execute("DROP CQ cq_calendar_month");
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @Test

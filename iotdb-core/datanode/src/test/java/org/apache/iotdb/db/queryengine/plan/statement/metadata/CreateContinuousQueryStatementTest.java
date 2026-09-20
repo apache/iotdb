@@ -93,6 +93,17 @@ public class CreateContinuousQueryStatementTest {
   }
 
   @Test
+  public void inheritedGroupByYearKeepsCalendarEvery() {
+    CreateContinuousQueryStatement statement =
+        parse(
+            "CREATE CQ cq_inherited_year BEGIN "
+                + "SELECT max_value(s1) INTO root.sg.d1(s1_max) FROM root.sg.d1 GROUP BY(1y) END");
+    statement.semanticCheck();
+    Assert.assertEquals(12, statement.getEveryDuration().monthDuration);
+    Assert.assertEquals(12, statement.getStartTimeOffsetDuration().monthDuration);
+  }
+
+  @Test
   public void calendarMinimumEveryUsesElapsedLowerBound() {
     // 1mo lower bound is M * 28d - 36h. Reject when the configured minimum exceeds that bound.
     IoTDBDescriptor.getInstance()

@@ -414,6 +414,9 @@ public class DateTimeUtilsTest {
     Assert.assertThrows(
         IllegalArgumentException.class,
         () -> DataNodeDateTimeUtils.constructTimeDurationForCQ("1year"));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> DataNodeDateTimeUtils.constructTimeDurationForCQ("1mo 1d"));
   }
 
   @Test

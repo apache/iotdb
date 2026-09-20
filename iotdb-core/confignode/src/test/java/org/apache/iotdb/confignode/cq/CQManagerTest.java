@@ -186,6 +186,115 @@ public class CQManagerTest {
     }
   }
 
+  @Test
+  public void unknownDurationEncodingVersionIsRejectedAtRpcIngress() {
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    CQManager cqManager = new CQManager(configManager);
+    try {
+      TCreateCQReq req = versionedReq("unknownVersionCq", 0, 1_000, 0, 1_000);
+      req.setDurationEncodingVersion((short) 2);
+      TSStatus status = cqManager.createCQ(req);
+      assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), status.getCode());
+      assertEquals(
+          org.apache.iotdb.confignode.i18n.ManagerMessages
+              .MESSAGE_INVALID_CQ_DURATION_ENCODING_VERSION_1_REQUIRES_ALL_STRUCTURED_FIELDS_FEAD7F92,
+          status.getMessage());
+    } finally {
+      cqManager.stopCQScheduler();
+    }
+  }
+
+  @Test
+  public void partialStructuredDurationFieldsAreRejectedAtRpcIngress() {
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    CQManager cqManager = new CQManager(configManager);
+    try {
+      TCreateCQReq req =
+          new TCreateCQReq(
+              "partialFieldsCq",
+              0,
+              0,
+              0,
+              0,
+              TimeoutPolicy.BLOCKED.getType(),
+              "select 1",
+              "create cq partialFieldsCq",
+              "UTC",
+              "root");
+      req.setDurationEncodingVersion((short) 1);
+      req.setEveryDuration(new TCQDuration(1, 0));
+      req.setStartOffsetDuration(new TCQDuration(1, 0));
+      req.setBoundaryExplicit(true);
+      TSStatus status = cqManager.createCQ(req);
+      assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), status.getCode());
+      assertEquals(
+          org.apache.iotdb.confignode.i18n.ManagerMessages
+              .MESSAGE_INVALID_CQ_DURATION_ENCODING_VERSION_1_REQUIRES_ALL_STRUCTURED_FIELDS_FEAD7F92,
+          status.getMessage());
+    } finally {
+      cqManager.stopCQScheduler();
+    }
+  }
+
+  @Test
+  public void calendarLegacySentinelConflictIsRejectedAtRpcIngress() {
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    CQManager cqManager = new CQManager(configManager);
+    try {
+      TCreateCQReq req = versionedReq("sentinelConflictCq", 1, 0, 1, 0);
+      req.everyInterval = 2_592_000_000L;
+      TSStatus status = cqManager.createCQ(req);
+      assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), status.getCode());
+      assertEquals(
+          org.apache.iotdb.confignode.i18n.ManagerMessages
+              .MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67,
+          status.getMessage());
+    } finally {
+      cqManager.stopCQScheduler();
+    }
+  }
+
+  @Test
+  public void fixedLegacyFieldsMustMirrorStructuredDurations() {
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    CQManager cqManager = new CQManager(configManager);
+    try {
+      TCreateCQReq req = versionedReq("fixedConflictCq", 0, 1_000, 0, 1_000);
+      req.everyInterval = 2_000;
+      TSStatus status = cqManager.createCQ(req);
+      assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), status.getCode());
+      assertEquals(
+          org.apache.iotdb.confignode.i18n.ManagerMessages
+              .MESSAGE_CQ_LEGACY_DURATION_FIELDS_CONFLICT_WITH_STRUCTURED_DURATION_FIELDS_4D6C6D67,
+          status.getMessage());
+    } finally {
+      cqManager.stopCQScheduler();
+    }
+  }
+
+  private static TCreateCQReq versionedReq(
+      String cqId, long everyMonths, long everyFixed, long startMonths, long startFixed) {
+    boolean calendar = everyMonths != 0 || startMonths != 0;
+    TCreateCQReq req =
+        new TCreateCQReq(
+            cqId,
+            calendar ? 0 : everyFixed,
+            0,
+            calendar ? 0 : startFixed,
+            0,
+            TimeoutPolicy.BLOCKED.getType(),
+            "select 1",
+            "create cq " + cqId,
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(everyMonths, everyFixed));
+    req.setStartOffsetDuration(new TCQDuration(startMonths, startFixed));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+    return req;
+  }
+
   @SuppressWarnings("unchecked")
   private CQScheduleTask newScheduledTask(
       ConfigManager configManager, ScheduledFuture<?> scheduledFuture, String cqToken) {
