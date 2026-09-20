@@ -111,3 +111,6 @@ python3 -m unittest discover -s . -p 'test_*.py' -v
 固定命令的 CLI 基准位于 [../cli-fs-comparison](../cli-fs-comparison/README.md)。
 已有测试结果保存在 `results/`；接口链路复核见
 [INTERFACE_EFFICIENCY_ANALYSIS.md](INTERFACE_EFFICIENCY_ANALYSIS.md)。
+
+公开时序查询的迁移预检见 [NLQTSBench 筛选器与计划](../nlqtsbench/README.md)。
+该工具仅生成静态候选清单，尚未接入本目录的模型运行器。

@@ -1,0 +1,787 @@
+{
+  "sha": "abd11b6db92a1c9f809b32f7564c7c71b34d67f0",
+  "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/abd11b6db92a1c9f809b32f7564c7c71b34d67f0",
+  "tree": [
+    {
+      "path": ".gitignore",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "496ee2ca6a2f08396a4076fe43dedf3dc0da8b6d",
+      "size": 9,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/496ee2ca6a2f08396a4076fe43dedf3dc0da8b6d"
+    },
+    {
+      "path": "README.md",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "e5dc59c2c1c8fcfef73f224b964d2978c2ca3466",
+      "size": 19444,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/e5dc59c2c1c8fcfef73f224b964d2978c2ca3466"
+    },
+    {
+      "path": "evaluation",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5e056e289326eca34aefe816fce2b7538c8de4b1",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/5e056e289326eca34aefe816fce2b7538c8de4b1"
+    },
+    {
+      "path": "evaluation/SQLite_example_result.txt",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "8f253956175e89bc01e0f543fe087af38c4adafc",
+      "size": 567,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/8f253956175e89bc01e0f543fe087af38c4adafc"
+    },
+    {
+      "path": "evaluation/__pycache__",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "666c20b949c121d465d9d89a8327735a5eb11d91",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/666c20b949c121d465d9d89a8327735a5eb11d91"
+    },
+    {
+      "path": "evaluation/__pycache__/evaluation_utils.cpython-310.pyc",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "26e1d5f74d0fa151be69fac4dd02a4c10d363bf0",
+      "size": 3860,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/26e1d5f74d0fa151be69fac4dd02a4c10d363bf0"
+    },
+    {
+      "path": "evaluation/__pycache__/evaluation_utils.cpython-311.pyc",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "c73b8cda91f6308d3044f4e3ce2d098072756377",
+      "size": 6856,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/c73b8cda91f6308d3044f4e3ce2d098072756377"
+    },
+    {
+      "path": "evaluation/evaluation_ex.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "45cc3bb8cb6edf039e6a8a2897b7b5f06aa23970",
+      "size": 4779,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/45cc3bb8cb6edf039e6a8a2897b7b5f06aa23970"
+    },
+    {
+      "path": "evaluation/evaluation_f1.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "5a3e080a9a66839c2d819ed97fab524498de0d96",
+      "size": 7829,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/5a3e080a9a66839c2d819ed97fab524498de0d96"
+    },
+    {
+      "path": "evaluation/evaluation_utils.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "1c2c9bea73f7c77429848d0c289f4ca19b906e36",
+      "size": 4314,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/1c2c9bea73f7c77429848d0c289f4ca19b906e36"
+    },
+    {
+      "path": "evaluation/evaluation_ves.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "637e3e5596d14fadbb040aee2c24d6af0a20df8a",
+      "size": 7535,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/637e3e5596d14fadbb040aee2c24d6af0a20df8a"
+    },
+    {
+      "path": "evaluation/run_evaluation.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "8910ed0b6e0d4cab5586ea905b649f47c197f558",
+      "size": 2700,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/8910ed0b6e0d4cab5586ea905b649f47c197f558"
+    },
+    {
+      "path": "examples",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3d3385ead758f6d8201801656bac55602494090c",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/3d3385ead758f6d8201801656bac55602494090c"
+    },
+    {
+      "path": "examples/MySQL.ipynb",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "df00fb211bda676edb6b0784c89bdb3c5c6a2794",
+      "size": 2756,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/df00fb211bda676edb6b0784c89bdb3c5c6a2794"
+    },
+    {
+      "path": "examples/PostgreSQL.ipynb",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "45de05d3ec5a0efff322e605d7b6337a1a218639",
+      "size": 2663,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/45de05d3ec5a0efff322e605d7b6337a1a218639"
+    },
+    {
+      "path": "finetuning",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fe168b734008074ecb8470588122d0936f8bb06d",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/fe168b734008074ecb8470588122d0936f8bb06d"
+    },
+    {
+      "path": "finetuning/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3a0cc157109a15cae8d98a3189da6970ab7230c",
+      "size": 3339,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/d3a0cc157109a15cae8d98a3189da6970ab7230c"
+    },
+    {
+      "path": "finetuning/data_processing",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "bb99251050403f52530fe80a3ae9bfa33bfc2d49",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/bb99251050403f52530fe80a3ae9bfa33bfc2d49"
+    },
+    {
+      "path": "finetuning/data_processing/split_data.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2a1163d25f45774ccb50ad925af169a73e92044e",
+      "size": 4203,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/2a1163d25f45774ccb50ad925af169a73e92044e"
+    },
+    {
+      "path": "finetuning/data_processing/verl_data_process.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "69d58a89974cf745465360fe4f54b33cdcc1ef8e",
+      "size": 2819,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/69d58a89974cf745465360fe4f54b33cdcc1ef8e"
+    },
+    {
+      "path": "finetuning/inference",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f2fae0b94e1bf922cf32d101ebc8644c0c1a4508",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/f2fae0b94e1bf922cf32d101ebc8644c0c1a4508"
+    },
+    {
+      "path": "finetuning/inference/dev_prompt.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40b5ecab9d5423f2626c35e23dbd939aa11894cb",
+      "size": 21003662,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/40b5ecab9d5423f2626c35e23dbd939aa11894cb"
+    },
+    {
+      "path": "finetuning/inference/infer_bird_sql.sh",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fc94f1299cfc7a941ced14201fbe3be186d9b6a9",
+      "size": 1076,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/fc94f1299cfc7a941ced14201fbe3be186d9b6a9"
+    },
+    {
+      "path": "finetuning/inference/mini_dev_prompt.jsonl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf30ef4f200e256e880fbda8a3b286d1b9a9cc96",
+      "size": 6987878,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/cf30ef4f200e256e880fbda8a3b286d1b9a9cc96"
+    },
+    {
+      "path": "finetuning/inference/vllm_infer.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5deefe7bb6e0953fc322e14c93ac549af1dbc61",
+      "size": 6981,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/c5deefe7bb6e0953fc322e14c93ac549af1dbc61"
+    },
+    {
+      "path": "finetuning/training",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "aee940ea80a83be600b3578d8539b8a2d02dfa87",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/aee940ea80a83be600b3578d8539b8a2d02dfa87"
+    },
+    {
+      "path": "finetuning/training/sft_bird_sql.sh",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5676ad8b0f2b5879b72188cb8f02ad2f61945393",
+      "size": 3461,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/5676ad8b0f2b5879b72188cb8f02ad2f61945393"
+    },
+    {
+      "path": "live_sql_bench_sqlite",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c198f21ba34514168b9e7e6970427a00ff5714c3",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/c198f21ba34514168b9e7e6970427a00ff5714c3"
+    },
+    {
+      "path": "live_sql_bench_sqlite/README.md",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "b162a0ebceca857bc213c368cea47e1ad5d32e0e",
+      "size": 3807,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/b162a0ebceca857bc213c368cea47e1ad5d32e0e"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ea26e99fa149b4ce1db790a249c87902f584bcd8",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/ea26e99fa149b4ce1db790a249c87902f584bcd8"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/__pycache__",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5dd69f2966c828c8663edab6dab8869bdab2b527",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/5dd69f2966c828c8663edab6dab8869bdab2b527"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/__pycache__/db_utils.cpython-311.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "578a735b1f74e3b78fb12ab6d2f081dfa8f3e199",
+      "size": 14997,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/578a735b1f74e3b78fb12ab6d2f081dfa8f3e199"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/__pycache__/db_utils.cpython-313.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da11883eb370f8cec922ac320bde14cbcea9c31f",
+      "size": 12859,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/da11883eb370f8cec922ac320bde14cbcea9c31f"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/__pycache__/logger.cpython-311.pyc",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "a155e9988c52e10676b7891deb9debedf86a5d0f",
+      "size": 3588,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/a155e9988c52e10676b7891deb9debedf86a5d0f"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/__pycache__/logger.cpython-313.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81e3af32ddb4d2719872868005d179182dcf1003",
+      "size": 3272,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/81e3af32ddb4d2719872868005d179182dcf1003"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/__pycache__/test_utils.cpython-311.pyc",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "43a3a9a3966cc80f510833eccfa50ff28438203d",
+      "size": 17113,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/43a3a9a3966cc80f510833eccfa50ff28438203d"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/__pycache__/test_utils.cpython-313.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "580f18b3d75f5f8c6a94976141dcfd58abb23c8b",
+      "size": 14924,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/580f18b3d75f5f8c6a94976141dcfd58abb23c8b"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/__pycache__/utils.cpython-311.pyc",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "8ece08b3e76769c4a5a911e572661f88c4792947",
+      "size": 8182,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/8ece08b3e76769c4a5a911e572661f88c4792947"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/__pycache__/utils.cpython-313.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ec09afd2112cec832cd943fc0c8162ac28dcca9",
+      "size": 6976,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/9ec09afd2112cec832cd943fc0c8162ac28dcca9"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/db_utils.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "0eace20f3a3f9796a1de4f7ca477e440c3049c14",
+      "size": 11080,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/0eace20f3a3f9796a1de4f7ca477e440c3049c14"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/logger.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "3ecdb95c120551ddd9c04723692aaa2f4dbf0732",
+      "size": 1519,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/3ecdb95c120551ddd9c04723692aaa2f4dbf0732"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/run_eval.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "4ad7ec74f76d30e9f932b8905fb5e256ed0135fa",
+      "size": 223,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/4ad7ec74f76d30e9f932b8905fb5e256ed0135fa"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/single_instance_eval_sqlite.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "31fbde4c382b9d8c2b32cae170d00321ff5eda98",
+      "size": 12989,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/31fbde4c382b9d8c2b32cae170d00321ff5eda98"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/test_utils.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "96483a02fd6c731e6259bb58e3db88c1b1c6afcc",
+      "size": 12859,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/96483a02fd6c731e6259bb58e3db88c1b1c6afcc"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/utils.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "7d7b94d76add44c8d6b4acc1439cf0517f86aaa6",
+      "size": 7170,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/7d7b94d76add44c8d6b4acc1439cf0517f86aaa6"
+    },
+    {
+      "path": "live_sql_bench_sqlite/evaluation/wrapper_evaluation_sqlite.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "86d00a1ea8d807736ba966cb106159d915402a93",
+      "size": 14027,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/86d00a1ea8d807736ba966cb106159d915402a93"
+    },
+    {
+      "path": "live_sql_bench_sqlite/prompt",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b9b2dcad476dc38a43a4b0d9d226e63c616d0e48",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/b9b2dcad476dc38a43a4b0d9d226e63c616d0e48"
+    },
+    {
+      "path": "live_sql_bench_sqlite/prompt/baseline.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "e34a64364364c0e267c65783dbf207ef8a1fc889",
+      "size": 1688,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/e34a64364364c0e267c65783dbf207ef8a1fc889"
+    },
+    {
+      "path": "live_sql_bench_sqlite/utils",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "97ebfd8a80e4b2c4a7152d3e493683478b027fb0",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/97ebfd8a80e4b2c4a7152d3e493683478b027fb0"
+    },
+    {
+      "path": "live_sql_bench_sqlite/utils/post_process.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "cf5cd49cc9d295405002a5d8bf0bad9adcadaf5a",
+      "size": 3390,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/cf5cd49cc9d295405002a5d8bf0bad9adcadaf5a"
+    },
+    {
+      "path": "live_sql_bench_sqlite/utils/prompt_generator.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "154984831cc64eb0ca56091d8efd145d4d6ed49c",
+      "size": 5454,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/154984831cc64eb0ca56091d8efd145d4d6ed49c"
+    },
+    {
+      "path": "llm",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "63ed504b61d1feab335fb8ee0a97d6fd4d15535e",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/63ed504b61d1feab335fb8ee0a97d6fd4d15535e"
+    },
+    {
+      "path": "llm/exp_result",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "dcda7177cec7413c27ec5f924cd1d3200cfefd52",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/dcda7177cec7413c27ec5f924cd1d3200cfefd52"
+    },
+    {
+      "path": "llm/exp_result/TA_output",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "60df55fbb6dc839704dafa3d495404b8480adb7c",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/60df55fbb6dc839704dafa3d495404b8480adb7c"
+    },
+    {
+      "path": "llm/exp_result/TA_output/predict_mini_dev_gpt-35-turbo_cot_SQLite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "420ee8433a33b6f61e2505a8f8ab3cc92299fa30",
+      "size": 127329,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/420ee8433a33b6f61e2505a8f8ab3cc92299fa30"
+    },
+    {
+      "path": "llm/exp_result/TA_output/predict_mini_dev_gpt-4-o_cot_SQLite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "fe32d5b287c35e92c55b1fb4fc687cb96e37d297",
+      "size": 135392,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/fe32d5b287c35e92c55b1fb4fc687cb96e37d297"
+    },
+    {
+      "path": "llm/exp_result/TA_output/predict_mini_dev_gpt-4-turbo_cot_SQLite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "f64d97fed593dbda24ad797fee39cf3f7eebccac",
+      "size": 131505,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/f64d97fed593dbda24ad797fee39cf3f7eebccac"
+    },
+    {
+      "path": "llm/exp_result/TA_output/predict_mini_dev_meta-llama-3-70b-instruct2_cot_SQLite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "eb407a56a337f2fe864a7d42d5f35a885a5ed68a",
+      "size": 120769,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/eb407a56a337f2fe864a7d42d5f35a885a5ed68a"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c4a8e229166caff57c46bf9262ba987f72147ad3",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/c4a8e229166caff57c46bf9262ba987f72147ad3"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-35-turbo-instruct_mysql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "c6c3bcb7e889bf6edb5cb2a85ac93c5b869bc815",
+      "size": 116394,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/c6c3bcb7e889bf6edb5cb2a85ac93c5b869bc815"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-35-turbo-instruct_postgresql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "5d0a22303c509c2f74c7a6b8d941dc6d8b63d930",
+      "size": 119919,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/5d0a22303c509c2f74c7a6b8d941dc6d8b63d930"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-35-turbo-instruct_sqlite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "5e383f853eac5e605a8624b25fc73cedc4bc56f3",
+      "size": 118857,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/5e383f853eac5e605a8624b25fc73cedc4bc56f3"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-35-turbo_mysql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "1f44a47937d396d9c6cd6d6d46e8b6087700bc62",
+      "size": 120545,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/1f44a47937d396d9c6cd6d6d46e8b6087700bc62"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-35-turbo_postgresql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "e0961dce5df4e705e6032ce7c1a4e02db2d91339",
+      "size": 123664,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/e0961dce5df4e705e6032ce7c1a4e02db2d91339"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-35-turbo_sqlite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "85051f45ce35d4030af0bb657b0644ff315919cd",
+      "size": 121149,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/85051f45ce35d4030af0bb657b0644ff315919cd"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-4-32k_mysql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "edcb6cb7ae1c2b20f808e3e5543bfc7cfe22884d",
+      "size": 125735,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/edcb6cb7ae1c2b20f808e3e5543bfc7cfe22884d"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-4-32k_postgresql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "e73df225be1c92716be4b8312f78a947bb85b2f6",
+      "size": 128512,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/e73df225be1c92716be4b8312f78a947bb85b2f6"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-4-32k_sqlite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "089ee94b3784aab2eb8ac8e7afd7110ae9060ce7",
+      "size": 127003,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/089ee94b3784aab2eb8ac8e7afd7110ae9060ce7"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-4-turbo_mysql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "88e8055e7ae720eabae9ea5dee0e476de1b6a2a4",
+      "size": 123527,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/88e8055e7ae720eabae9ea5dee0e476de1b6a2a4"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-4-turbo_postgresql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "5cf78a2b6a7311eb71cf36ce1bac696468a5bc1e",
+      "size": 124091,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/5cf78a2b6a7311eb71cf36ce1bac696468a5bc1e"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-4-turbo_sqlite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "323b9a9b97efcdee1a8f0533e233fcd8b97c61f5",
+      "size": 126113,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/323b9a9b97efcdee1a8f0533e233fcd8b97c61f5"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-4_mysql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "5f6be0585a4b5c02c7c254cff620e395f29ab449",
+      "size": 126123,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/5f6be0585a4b5c02c7c254cff620e395f29ab449"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-4_postgresql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "e4246ab2da836ad8d7c22be08e760faebbcc6917",
+      "size": 129012,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/e4246ab2da836ad8d7c22be08e760faebbcc6917"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_gpt-4_sqlite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "67de8c62248aaf349b4e8ac4131a374998299b16",
+      "size": 126649,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/67de8c62248aaf349b4e8ac4131a374998299b16"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_meta-llama-3-70b-instruct-2_mysqljson.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "ce083923531c1c69d1dbc3e74b0d0de1c260736b",
+      "size": 122547,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/ce083923531c1c69d1dbc3e74b0d0de1c260736b"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_meta-llama-3-70b-instruct-2_postgresql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "1eca2b08fbd95ae959599e34fff8c3ad541be90d",
+      "size": 129436,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/1eca2b08fbd95ae959599e34fff8c3ad541be90d"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_meta-llama-3-70b-instruct-2_sqlite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "66b2bc8aeeef9c63f525adcd01164a4b82485229",
+      "size": 122527,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/66b2bc8aeeef9c63f525adcd01164a4b82485229"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_meta-llama-3-8b-instruct-2_mysql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "358cf796c2e93dac180bd0f5ac96115c59adecb7",
+      "size": 123329,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/358cf796c2e93dac180bd0f5ac96115c59adecb7"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_meta-llama-3-8b-instruct-2_postgresql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "1cbba7dc164ce4ceb4e4c1370d01609b4afdfa6b",
+      "size": 124982,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/1cbba7dc164ce4ceb4e4c1370d01609b4afdfa6b"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_meta-llama-3-8b-instruct-2_sqlite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "0e160142054d058e288b1429e03d1bc338dd0215",
+      "size": 124587,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/0e160142054d058e288b1429e03d1bc338dd0215"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_mistralai-mixtral-8x7b-instru-4_mysql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "3e48ab1ffe6af928a3520a245e30ca5492b80253",
+      "size": 136574,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/3e48ab1ffe6af928a3520a245e30ca5492b80253"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_mistralai-mixtral-8x7b-instru-4_postgresql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "c7ef17e4afa84bcef05d3fa8e3119e3bf89aaa08",
+      "size": 139756,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/c7ef17e4afa84bcef05d3fa8e3119e3bf89aaa08"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_mistralai-mixtral-8x7b-instru-4_sqlite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "68f2f033733e28e7dc921785bb7c586a479e6697",
+      "size": 135903,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/68f2f033733e28e7dc921785bb7c586a479e6697"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_phi-3-medium-128k-instruct-1_mysql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "d78b759eab659ea7021ccf636469c6b788540d31",
+      "size": 134998,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/d78b759eab659ea7021ccf636469c6b788540d31"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_phi-3-medium-128k-instruct-1_postgresql.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "f2ffd6faa1f388402c981d42b1fe7ffc4a57c3d7",
+      "size": 132468,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/f2ffd6faa1f388402c981d42b1fe7ffc4a57c3d7"
+    },
+    {
+      "path": "llm/exp_result/sql_output_kg/predict_mini_dev_phi-3-medium-128k-instruct-1_sqlite.json",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "b8bfb962d182028f1dba72fc76a8f506034965f6",
+      "size": 129207,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/b8bfb962d182028f1dba72fc76a8f506034965f6"
+    },
+    {
+      "path": "llm/mini_dev_data",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e4b49512094e7a106bea1456e3012f96aa4e7caf",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/e4b49512094e7a106bea1456e3012f96aa4e7caf"
+    },
+    {
+      "path": "llm/mini_dev_data/README.md",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "a3d4891a3129cf8e015b3231fff935a060a9d139",
+      "size": 227,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/a3d4891a3129cf8e015b3231fff935a060a9d139"
+    },
+    {
+      "path": "llm/run",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "16fa3e3edb983a89036cb551bff68bd3f58f7b54",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/16fa3e3edb983a89036cb551bff68bd3f58f7b54"
+    },
+    {
+      "path": "llm/run/run_gpt.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "9dfa3584b7a5fa900f935b278c349643b51809f1",
+      "size": 1269,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/9dfa3584b7a5fa900f935b278c349643b51809f1"
+    },
+    {
+      "path": "llm/src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4ead9f02eab4f472ef7dfeea809d5622bf1a9d0e",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/4ead9f02eab4f472ef7dfeea809d5622bf1a9d0e"
+    },
+    {
+      "path": "llm/src/gpt_request.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "e1d5cdec0d7f7db9bc76fbe00ec66c4711d65c01",
+      "size": 7150,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/e1d5cdec0d7f7db9bc76fbe00ec66c4711d65c01"
+    },
+    {
+      "path": "llm/src/prompt.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "422111d9782cb1e40ee46e5243d963124da2ee72",
+      "size": 1529,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/422111d9782cb1e40ee46e5243d963124da2ee72"
+    },
+    {
+      "path": "llm/src/table_schema.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "bea50479c4a74f7d40a97eb5b2d6d4a57f48b81e",
+      "size": 7590,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/bea50479c4a74f7d40a97eb5b2d6d4a57f48b81e"
+    },
+    {
+      "path": "materials",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cc686b34669dccd94bda62cbaf2366e2bbe913af",
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/trees/cc686b34669dccd94bda62cbaf2366e2bbe913af"
+    },
+    {
+      "path": "materials/bird_circle_main.png",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "c6e5d2fb8aa5a64398d1c691ee5f6eadb65cf3d4",
+      "size": 1171786,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/c6e5d2fb8aa5a64398d1c691ee5f6eadb65cf3d4"
+    },
+    {
+      "path": "materials/intro.png",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "355d16ce95a68799bad0275c9ddd48817637c8ea",
+      "size": 667339,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/355d16ce95a68799bad0275c9ddd48817637c8ea"
+    },
+    {
+      "path": "materials/time_ratio_formula.png",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "6b86f8b7ff61e41cd20edb2ce0f3ac2588f4f41b",
+      "size": 81363,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/6b86f8b7ff61e41cd20edb2ce0f3ac2588f4f41b"
+    },
+    {
+      "path": "materials/time_ratio_sqlite.png",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "16f9cb410442008e21aea6de0f33fd37369cdc57",
+      "size": 269069,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/16f9cb410442008e21aea6de0f33fd37369cdc57"
+    },
+    {
+      "path": "requirements.txt",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "2cc4313b302571aae55f1c8b24d2ae1667ad6f6c",
+      "size": 916,
+      "url": "https://api.github.com/repos/bird-bench/mini_dev/git/blobs/2cc4313b302571aae55f1c8b24d2ae1667ad6f6c"
+    }
+  ],
+  "truncated": false
+}
