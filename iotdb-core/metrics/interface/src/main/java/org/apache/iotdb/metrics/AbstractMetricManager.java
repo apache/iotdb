@@ -76,10 +76,10 @@ public abstract class AbstractMetricManager {
    * @param metric the created metric
    * @param metricInfo the created metric info
    */
-  private void notifyReporterOnAdd(IMetric metric, MetricInfo metricInfo, JmxReporter reporter) {
+  private static void notifyReporterOnAdd(
+      IMetric metric, MetricInfo metricInfo, JmxReporter reporter) {
     // if the reporter type is JMX, register the new metric
-    Optional.ofNullable(reporter)
-        .ifPresent(x -> bindJmxReporter.registerMetric(metric, metricInfo));
+    Optional.ofNullable(reporter).ifPresent(x -> x.registerMetric(metric, metricInfo));
   }
 
   /**
@@ -88,10 +88,10 @@ public abstract class AbstractMetricManager {
    * @param metric the removed metric
    * @param metricInfo the removed metric info
    */
-  private void notifyReporterOnRemove(IMetric metric, MetricInfo metricInfo, JmxReporter reporter) {
-    // if the reporter type is JMX, unregister the new metric
-    Optional.ofNullable(reporter)
-        .ifPresent(x -> bindJmxReporter.unregisterMetric(metric, metricInfo));
+  private static void notifyReporterOnRemove(
+      IMetric metric, MetricInfo metricInfo, JmxReporter reporter) {
+    // Use the captured reporter even if the current binding has changed.
+    Optional.ofNullable(reporter).ifPresent(x -> x.unregisterMetric(metric, metricInfo));
   }
 
   /**
