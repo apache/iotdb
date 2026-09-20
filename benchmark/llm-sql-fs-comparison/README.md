@@ -18,6 +18,8 @@
 
 # 大模型操作 IoTDB：SQL / filesystem 基准
 
+新环境部署、失败重跑、报告整合和分支交接见 [统一操作手册](../README.md)。
+
 通过本地 Codex 客户端调用 `gpt-5.6-sol`，比较同一模型使用 SQL 和 filesystem
 接口完成数据库任务的正确性与端到端耗时。两种接口共用 IoTDB SQL 后端。
 本地客户端的接入、隔离和计时说明见 [LOCAL_CODEX.md](LOCAL_CODEX.md)。
