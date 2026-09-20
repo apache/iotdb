@@ -68,6 +68,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -722,6 +723,19 @@ public class NodeInfo implements SnapshotProcessor {
       ReadWriteIOUtils.write(entry.getValue().getVersion(), outputStream);
       ReadWriteIOUtils.write(entry.getValue().getBuildInfo(), outputStream);
     }
+    // Optional tail; legacy snapshots end after the two strings above.
+    ReadWriteIOUtils.write(0x43515631, outputStream);
+    ReadWriteIOUtils.write(nodeVersionInfo.size(), outputStream);
+    for (Entry<Integer, TNodeVersionInfo> entry : nodeVersionInfo.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      Set<Short> capabilities = entry.getValue().getSupportedCQDurationEncodingVersions();
+      ReadWriteIOUtils.write(capabilities == null ? 0 : capabilities.size(), outputStream);
+      if (capabilities != null) {
+        for (short capability : capabilities) {
+          ReadWriteIOUtils.write(capability, outputStream);
+        }
+      }
+    }
   }
 
   @Override
@@ -826,6 +840,31 @@ public class NodeInfo implements SnapshotProcessor {
         String buildInfo = ReadWriteIOUtils.readString(inputStream);
         nodeVersionInfo.put(nodeId, new TNodeVersionInfo(version, buildInfo));
         size--;
+      }
+      if (inputStream.available() >= Integer.BYTES) {
+        inputStream.mark(Integer.BYTES);
+        int marker = ReadWriteIOUtils.readInt(inputStream);
+        if (marker == 0x43515631) {
+          int capabilitySize = ReadWriteIOUtils.readInt(inputStream);
+          for (int i = 0; i < capabilitySize; i++) {
+            int nodeId = ReadWriteIOUtils.readInt(inputStream);
+            int sizeOfCapabilities = ReadWriteIOUtils.readInt(inputStream);
+            TNodeVersionInfo info = nodeVersionInfo.get(nodeId);
+            if (info != null) {
+              Set<Short> capabilities = new java.util.HashSet<>();
+              for (int j = 0; j < sizeOfCapabilities; j++) {
+                capabilities.add(ReadWriteIOUtils.readShort(inputStream));
+              }
+              info.setSupportedCQDurationEncodingVersions(capabilities);
+            } else {
+              for (int j = 0; j < sizeOfCapabilities; j++) {
+                ReadWriteIOUtils.readShort(inputStream);
+              }
+            }
+          }
+        } else {
+          inputStream.reset();
+        }
       }
     }
   }

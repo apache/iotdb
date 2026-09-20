@@ -395,6 +395,28 @@ public class DateTimeUtilsTest {
   }
 
   @Test
+  public void testConstructTimeDurationForCQSupportsMinuteAndSecond() {
+    TimeDuration timeDuration = DataNodeDateTimeUtils.constructTimeDurationForCQ("5m30s");
+    Assert.assertEquals(0, timeDuration.monthDuration);
+    Assert.assertEquals(330_000L, timeDuration.nonMonthDuration);
+
+    timeDuration = DataNodeDateTimeUtils.constructTimeDurationForCQ("1ms");
+    Assert.assertEquals(0, timeDuration.monthDuration);
+    Assert.assertEquals(1L, timeDuration.nonMonthDuration);
+
+    timeDuration = DataNodeDateTimeUtils.constructTimeDurationForCQ("1y2mo");
+    Assert.assertEquals(14, timeDuration.monthDuration);
+    Assert.assertEquals(0, timeDuration.nonMonthDuration);
+
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> DataNodeDateTimeUtils.constructTimeDurationForCQ("1month"));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> DataNodeDateTimeUtils.constructTimeDurationForCQ("1year"));
+  }
+
+  @Test
   public void testConstructTimeDurationOverflow() {
     Assert.assertThrows(
         SemanticException.class, () -> DataNodeDateTimeUtils.constructTimeDuration("178956971y"));

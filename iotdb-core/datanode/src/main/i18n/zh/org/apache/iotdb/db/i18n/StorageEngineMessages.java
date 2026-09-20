@@ -63,7 +63,7 @@ public final class StorageEngineMessages {
   public static final String FILE_NO_SUCH_TIME_SERIES = "文件中不包含该时间序列 {}。";
 
   // ======================== Resource Control - Disk ========================
-  
+
   public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY = "所有目录已满，切换系统为只读模式。";
   public static final String FAILED_TO_PROCESS_FOLDER = "处理目录失败 '";
   public static final String FAIL_TO_GET_CANONICAL_PATH = "获取数据目录 {} 的规范路径失败";

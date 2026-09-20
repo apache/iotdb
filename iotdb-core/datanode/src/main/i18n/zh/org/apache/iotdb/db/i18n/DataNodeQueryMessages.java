@@ -1211,6 +1211,16 @@ public final class DataNodeQueryMessages {
       "连续查询：起始时间偏移量应大于 0。";
   public static final String CQ_THE_END_TIME_OFFSET_SHOULD_BE_GREATER =
       "连续查询：结束时间偏移量应大于或等于 0。";
+  public static final String EXCEPTION_CQ_DURATION_CANNOT_BE_EMPTY_C7269AB2 =
+      "CQ duration 不能为空";
+  public static final String EXCEPTION_INVALID_CQ_DURATION_ARG_F4917D5C =
+      "无效的 CQ duration：%s";
+  public static final String EXCEPTION_CQ_DURATION_COMPONENT_OVERFLOWS_ARG_ED5B0962 =
+      "CQ duration 组件溢出：%s";
+  public static final String EXCEPTION_CQ_DURATION_MONTH_COMPONENT_OVERFLOWS_ARG_EBF2A2B6 =
+      "CQ duration 月份组件溢出：%s";
+  public static final String EXCEPTION_CQ_EVERY_INTERVAL_MUST_BE_POSITIVE_26259019 =
+      "CQ：every interval 应大于 0。";
   public static final String CQ_THE_QUERY_BODY_MISSES_AN_INTO_CLAUSE =
       "连续查询：查询体缺少 INTO 子句。";
   public static final String CQ_SPECIFYING_TIME_FILTERS_IN_THE_QUERY_BODY =
@@ -2065,6 +2075,9 @@ public final class DataNodeQueryMessages {
   public static final String CQ_EVERY_INTERVAL_D_SHOULD_NOT_BE_LOWER_THAN_THE_CONTINUOUS_QUERY_MINIMUM_EVERY_INTERVAL =
 
       "CQ：every interval [%d] 不应小于配置项 `continuous_query_minimum_every_interval` [%d]。";
+  public static final String CQ_EVERY_INTERVAL_SHOULD_NOT_BE_LOWER_THAN_THE_CONTINUOUS_QUERY_MINIMUM_EVERY_INTERVAL =
+
+      "CQ：every interval [%s] 不应小于配置项 `continuous_query_minimum_every_interval` [%d]。";
   public static final String CQ_THE_START_TIME_OFFSET_SHOULD_BE_GREATER_THAN_END_TIME_OFFSET =
 
       "CQ：开始时间偏移量应大于结束时间偏移量。";
@@ -4635,4 +4648,6 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
 
+  public static final String MESSAGE_CQ_CALENDAR_DURATION_REQUIRES_ALL_NODES_SUPPORT_AC724DE3 =
+      "集群所有节点支持 duration encoding version 1 后才能创建 CQ 日历 duration";
 }
