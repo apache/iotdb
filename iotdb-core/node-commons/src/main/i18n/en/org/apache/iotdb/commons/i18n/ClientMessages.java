@@ -30,6 +30,9 @@ public final class ClientMessages {
   public static final String CLEAR_CLIENT_POOL_FAILED =
       "Clear all client in pool for node {} failed.";
 
+  public static final String LOG_FAILED_TO_UNREGISTER_CLIENT_POOL_METRICS_WHILE_CLOSING_CLIENT_MANAGER_101A9751 =
+      "Failed to unregister client pool metrics while closing client manager";
+
   // ThriftClient
   public static final String EXCEPTION_LEVEL_DETAIL =
       "level-{} Exception class {}, message {}";

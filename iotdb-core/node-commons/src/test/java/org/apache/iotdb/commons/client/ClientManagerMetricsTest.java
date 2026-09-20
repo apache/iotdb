@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.client;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -47,10 +48,13 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -63,7 +67,12 @@ import java.util.stream.Collectors;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 
 public class ClientManagerMetricsTest {
 
@@ -286,9 +295,150 @@ public class ClientManagerMetricsTest {
   }
 
   private void assertJmxMetrics(MBeanServer server) throws Exception {
-    for (IMetric metric : service.getAllMetrics().values()) {
+    assertJmxMetrics(server, service.getAllMetrics());
+  }
+
+  private void assertJmxMetrics(MBeanServer server, Map<MetricInfo, IMetric> allMetrics)
+      throws Exception {
+    for (IMetric metric : allMetrics.values()) {
       IoTDBAutoGauge<?> gauge = (IoTDBAutoGauge<?>) metric;
       assertEquals(gauge.getValue(), (double) server.getAttribute(gauge.objectName(), "Value"), 0);
+    }
+  }
+
+  @Test
+  public void testCloseAndCoreRestartAreSerialized() throws Exception {
+    service.removeMetricSet(metrics);
+    config.setMetricReporterList("JMX");
+    MetricService realService = MetricService.getInstance();
+    realService.startService();
+    CountDownLatch removed = new CountDownLatch(1);
+    CountDownLatch resume = new CountDownLatch(1);
+    ExecutorService executor = Executors.newFixedThreadPool(3);
+    try {
+      realService.addMetricSet(metrics);
+      ClientManager<String, Object> closing = createManager("closing");
+      closing.borrowClient("node");
+      ClientManager<String, Object> live = createManager("live");
+      live.borrowClient("node");
+      AutoGauge liveGauge =
+          realService.getAutoGauge(
+              Metric.CLIENT_MANAGER.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              "client_manager_num_active",
+              Tag.TYPE.toString(),
+              "live");
+      AbstractMetricManager manager = realService.getMetricManager();
+      AtomicBoolean pauseOnce = new AtomicBoolean(true);
+      Map<MetricInfo, IMetric> registry =
+          new ConcurrentHashMap<MetricInfo, IMetric>(manager.getAllMetrics()) {
+            @Override
+            public IMetric remove(Object key) {
+              IMetric metric = super.remove(key);
+              if (metric != null
+                  && "closing".equals(((MetricInfo) key).getTags().get(Tag.TYPE.toString()))
+                  && pauseOnce.compareAndSet(true, false)) {
+                removed.countDown();
+                try {
+                  assertTrue(resume.await(10, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  throw new AssertionError(e);
+                }
+              }
+              return metric;
+            }
+          };
+      Field field = AbstractMetricManager.class.getDeclaredField("metrics");
+      field.setAccessible(true);
+      field.set(manager, registry);
+      AtomicReference<Thread> closingThread = new AtomicReference<>();
+      AtomicReference<Thread> restartingThread = new AtomicReference<>();
+      CountDownLatch restarting = new CountDownLatch(1);
+      Future<?> close =
+          executor.submit(
+              () -> {
+                closingThread.set(Thread.currentThread());
+                closing.close();
+              });
+      assertTrue(removed.await(5, TimeUnit.SECONDS));
+      Future<?> restart =
+          executor.submit(
+              () -> {
+                restartingThread.set(Thread.currentThread());
+                restarting.countDown();
+                realService.restartService();
+              });
+      assertTrue(restarting.await(5, TimeUnit.SECONDS));
+      await()
+          .atMost(5, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                ThreadInfo info =
+                    ManagementFactory.getThreadMXBean()
+                        .getThreadInfo(restartingThread.get().getId());
+                return restart.isDone()
+                    || (info != null
+                        && info.getThreadState() == Thread.State.BLOCKED
+                        && info.getLockOwnerId() == closingThread.get().getId());
+              });
+      assertFalse(restart.isDone());
+      // The core registry must not change while removal is paused, even before metric-set rebind.
+      assertSame(registry, manager.getAllMetrics());
+      assertEquals(1, executor.submit(liveGauge::getValue).get(5, TimeUnit.SECONDS), 0);
+      resume.countDown();
+      close.get(5, TimeUnit.SECONDS);
+      restart.get(5, TimeUnit.SECONDS);
+      assertEquals(8, realService.getAllMetrics().size());
+      assertMetrics(realService.getAllMetrics(), "live", live.getPool());
+      assertJmxMetrics(ManagementFactory.getPlatformMBeanServer(), realService.getAllMetrics());
+    } finally {
+      resume.countDown();
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      realService.removeMetricSet(metrics);
+      realService.stopService();
+    }
+  }
+
+  @Test
+  public void testMetricCleanupFailureDoesNotFailClose() {
+    ClientManager<String, Object> manager = createManager("pool");
+    service.beforeRemove =
+        () -> {
+          throw new IllegalStateException("metric cleanup failure");
+        };
+    try {
+      manager.close();
+      assertTrue(manager.getPool().isClosed());
+    } finally {
+      service.beforeRemove = () -> {};
+    }
+  }
+
+  @Test
+  public void testMetricCleanupFailureDoesNotMaskPoolCloseFailure() {
+    @SuppressWarnings("unchecked")
+    GenericKeyedObjectPool<String, Object> pool = mock(GenericKeyedObjectPool.class);
+    ClientManager<String, Object> manager =
+        new ClientManager<>(
+            owner -> {
+              metrics.registerClientManager("pool", pool);
+              return pool;
+            });
+    managers.add(manager);
+    IllegalStateException poolFailure = new IllegalStateException("pool close failure");
+    doThrow(poolFailure).when(pool).close();
+    service.beforeRemove =
+        () -> {
+          throw new IllegalStateException("metric cleanup failure");
+        };
+    try {
+      assertSame(poolFailure, assertThrows(IllegalStateException.class, manager::close));
+    } finally {
+      doNothing().when(pool).close();
+      service.beforeRemove = () -> {};
     }
   }
 

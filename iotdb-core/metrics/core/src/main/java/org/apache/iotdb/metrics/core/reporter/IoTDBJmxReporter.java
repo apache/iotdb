@@ -59,6 +59,8 @@ public class IoTDBJmxReporter implements JmxReporter {
   /** Registrations owned by this reporter, guarded by the map's monitor. */
   private final Map<ObjectName, Registration> registered;
 
+  private boolean started;
+
   /** The JMX MBeanServer */
   private final MBeanServer mBeanServer;
 
@@ -95,6 +97,10 @@ public class IoTDBJmxReporter implements JmxReporter {
     try {
       final ObjectName objectName = createName(metricName, metricInfo);
       synchronized (registered) {
+        // Ignore callbacks from a stopped reporter or a superseded registry entry.
+        if (!started || metricManager.getAllMetrics().get(metricInfo) != metric) {
+          return;
+        }
         metric.setObjectName(objectName);
         registerMBean(metric, objectName);
       }
@@ -152,17 +158,19 @@ public class IoTDBJmxReporter implements JmxReporter {
   @Override
   public boolean start() {
     try {
-      boolean alreadyRegistered;
+      boolean alreadyStarted;
       synchronized (registered) {
-        alreadyRegistered = !registered.isEmpty();
+        alreadyStarted = started;
+        started = true;
       }
-      if (alreadyRegistered) {
+      if (alreadyStarted) {
         LOGGER.warn(MetricsCoreMessages.JMX_REPORTER_ALREADY_START);
         return false;
       }
       // register all existed metrics into JmxReporter
       metricManager.getAllMetrics().forEach((key, value) -> registerMetric(value, key));
     } catch (Exception e) {
+      stop();
       LOGGER.warn(MetricsCoreMessages.JMX_REPORTER_START_FAILED, e);
       return false;
     }
@@ -173,7 +181,10 @@ public class IoTDBJmxReporter implements JmxReporter {
   @Override
   public boolean stop() {
     try {
-      unregisterAll();
+      synchronized (registered) {
+        started = false;
+        unregisterAll();
+      }
     } catch (Exception e) {
       LOGGER.warn(MetricsCoreMessages.JMX_REPORTER_STOP_FAILED, e);
       return false;

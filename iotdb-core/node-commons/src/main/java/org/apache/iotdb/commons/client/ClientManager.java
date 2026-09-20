@@ -132,7 +132,14 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
         ((AsyncThriftClientFactory<K, V>) pool.getFactory()).close();
       }
     } finally {
-      ClientManagerMetrics.getInstance().unregisterClientManager(pool);
+      try {
+        ClientManagerMetrics.getInstance().unregisterClientManager(pool);
+      } catch (RuntimeException e) {
+        LOGGER.warn(
+            ClientMessages
+                .LOG_FAILED_TO_UNREGISTER_CLIENT_POOL_METRICS_WHILE_CLOSING_CLIENT_MANAGER_101A9751,
+            e);
+      }
     }
   }
 }

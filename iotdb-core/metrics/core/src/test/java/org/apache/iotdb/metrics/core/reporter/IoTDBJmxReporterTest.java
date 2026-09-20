@@ -37,6 +37,8 @@ import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 import javax.management.ObjectName;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.ToDoubleFunction;
 
@@ -49,6 +51,7 @@ public class IoTDBJmxReporterTest {
   private TestMetricManager manager;
   private MBeanServer server;
   private IoTDBJmxReporter reporter;
+  private final List<AtomicInteger> values = new ArrayList<>();
 
   @Before
   public void setUp() {
@@ -98,6 +101,7 @@ public class IoTDBJmxReporterTest {
   @Test
   public void testUnregisterDoesNotRemoveUnownedMBean() throws Exception {
     AtomicInteger value = new AtomicInteger(3);
+    values.add(value);
     IoTDBAutoGauge<AtomicInteger> external = new IoTDBAutoGauge<>(value, AtomicInteger::get);
     ObjectName name =
         IoTDBMetricObjNameFactory.getInstance()
@@ -132,7 +136,39 @@ public class IoTDBJmxReporterTest {
     assertEquals(7L, server.getAttribute(counter.objectName(), "Count"));
   }
 
+  @Test
+  public void testDelayedRegistrationCannotResurrectRemovedMetric() {
+    IoTDBAutoGauge<?> gauge = gauge(new AtomicInteger(1), "pool");
+    manager.remove(MetricType.AUTO_GAUGE, "client_manager", "name", "num_active", "type", "pool");
+    reporter.registerMetric(gauge, info("pool"));
+    assertFalse(server.isRegistered(gauge.objectName()));
+  }
+
+  @Test
+  public void testDelayedRegistrationCannotReplaceNewMetric() throws Exception {
+    IoTDBAutoGauge<?> old = gauge(new AtomicInteger(1), "pool");
+    IoTDBAutoGauge<?> next = gauge(new AtomicInteger(2), "pool");
+    reporter.registerMetric(old, info("pool"));
+    assertEquals(2, (double) server.getAttribute(next.objectName(), "Value"), 0);
+  }
+
+  @Test
+  public void testRegistrationWhileStoppedIsDeferred() throws Exception {
+    assertTrue(reporter.stop());
+    IoTDBAutoGauge<?> gauge = gauge(new AtomicInteger(1), "pool");
+    ObjectName pattern = new ObjectName("org.apache.iotdb.metrics:*");
+    assertTrue(server.queryNames(pattern, null).isEmpty());
+    for (int i = 0; i < 3; i++) {
+      assertTrue(reporter.start());
+      assertEquals(1, server.queryNames(pattern, null).size());
+      assertEquals(1, (double) server.getAttribute(gauge.objectName(), "Value"), 0);
+      assertTrue(reporter.stop());
+      assertTrue(server.queryNames(pattern, null).isEmpty());
+    }
+  }
+
   private IoTDBAutoGauge<?> gauge(AtomicInteger value, String pool) {
+    values.add(value);
     return (IoTDBAutoGauge<?>)
         manager.createAutoGauge(
             "client_manager",
