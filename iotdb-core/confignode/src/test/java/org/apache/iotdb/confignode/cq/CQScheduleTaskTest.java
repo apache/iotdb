@@ -20,11 +20,14 @@ package org.apache.iotdb.confignode.cq;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
+import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQCalendarUtils;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
+import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -176,6 +179,39 @@ public class CQScheduleTaskTest {
     long lowerBound = CQCalendarUtils.firstOccurrenceIndex(boundary, month, current, zone);
     assertEquals(2, lowerBound);
     assertEquals(3, Math.max(2 + 1, lowerBound));
+  }
+
+  @Test
+  public void recoveredMixedCalendarRangeKeepsPositiveRetryWait() throws Exception {
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "mixedRetryCq",
+            0,
+            0,
+            0,
+            0,
+            TimeoutPolicy.BLOCKED.getType(),
+            "select 1",
+            "create cq mixedRetryCq",
+            "UTC",
+            "root");
+    req.setDurationEncodingVersion((short) 1);
+    req.setEveryDuration(new TCQDuration(0, 1_000));
+    req.setStartOffsetDuration(new TCQDuration(1, 1_000));
+    req.setEndOffsetDuration(new TCQDuration(0, 0));
+    req.setBoundaryExplicit(true);
+
+    CQInfo cqInfo = new CQInfo();
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo.addCQ(new AddCQPlan(req, "mixedRetryToken", 10_000)).getCode());
+    CQInfo.CQEntry entry = cqInfo.showCQ(new ShowCQPlan("mixedRetryCq")).getCqList().get(0);
+
+    CQScheduleTask recovered = new CQScheduleTask(entry, null, null);
+    Field retryWaitTimeInMS = CQScheduleTask.class.getDeclaredField("retryWaitTimeInMS");
+    retryWaitTimeInMS.setAccessible(true);
+    // Structured EVERY is 1000ms; the persisted legacy everyInterval is the zero sentinel.
+    assertEquals(1_000L, retryWaitTimeInMS.getLong(recovered));
   }
 
   @Test

@@ -195,8 +195,13 @@ public class CQScheduleTask implements Runnable {
     // Fixed-duration CQs do not need calendar arithmetic. Keep the zone opaque in that case so
     // legacy persisted entries containing a non-canonical zone string remain compatible.
     this.scheduleZone = calendarAware ? ZoneId.of(entry.getZoneId()) : null;
-    if (scheduleCalendarAware) {
+    // Mixed CQs (fixed EVERY + calendar RANGE) persist everyInterval as the zero sentinel.
+    // Retry delay must follow calendarAware, matching the create constructor; otherwise
+    // recovery inherits everyInterval / FACTOR == 0 and busy-spins on failure.
+    if (calendarAware) {
       this.retryWaitTimeInMS = calculateRetryWaitTime(everyDuration);
+    }
+    if (scheduleCalendarAware) {
       if (!entry.isBoundaryExplicit()) {
         this.boundaryTime = CQCalendarUtils.localEpochBoundary(scheduleZone);
       }
