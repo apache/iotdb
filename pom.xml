@@ -27,6 +27,10 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
+        <repository>
+            <id>tsfile-staging</id>
+            <url>https://repository.apache.org/content/repositories/orgapachetsfile-1041</url>
+        </repository>
     </repositories>
     <parent>
         <groupId>org.apache</groupId>
@@ -165,7 +169,7 @@
         <thrift.version>0.23.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>1.1.4-260130-SNAPSHOT</tsfile.version>
+        <tsfile.version>1.1.4</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim

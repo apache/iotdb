@@ -49,4 +49,6 @@ jobs:
       - name: Compiler Test
         shell: bash
         run: |
-          mvn clean compile -P with-integration-tests -ntp
+          # These modules resolve ZIP/test artifacts that are only attached in the package phase.
+          # Exclude them here because this job intentionally stops at compile.
+          mvn clean compile -P with-integration-tests -ntp -pl '!distribution,!integration-test'
