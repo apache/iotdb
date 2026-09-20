@@ -214,6 +214,7 @@ public class ClientManagerMetricsTest {
   @Test
   public void testClosedPoolCanBeReplacedBeforeUnregistration() throws Exception {
     IoTDBJmxReporter reporter = IoTDBJmxReporter.getInstance();
+    assertTrue(reporter.start());
     service.getMetricManager().setBindJmxReporter(reporter);
     try {
       ClientManager<String, Object> first = createManager("pool");
@@ -243,6 +244,51 @@ public class ClientManagerMetricsTest {
     } finally {
       service.getMetricManager().setBindJmxReporter(null);
       reporter.stop();
+    }
+  }
+
+  @Test
+  public void testClosingAnotherPoolPreservesAllLivePoolMBeans() throws Exception {
+    IoTDBJmxReporter reporter = IoTDBJmxReporter.getInstance();
+    assertTrue(reporter.start());
+    service.getMetricManager().setBindJmxReporter(reporter);
+    MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    ObjectName pattern =
+        new ObjectName("org.apache.iotdb.metrics:name=client_manager,type=IoTDBAutoGauge,*");
+    try {
+      ClientManager<String, Object> first = createManager("first");
+      first.borrowClient("node");
+      ClientManager<String, Object> second = createManager("second");
+      second.borrowClient("node");
+      second.borrowClient("node");
+      assertEquals(16, server.queryNames(pattern, null).size());
+      assertJmxMetrics(server);
+
+      second.close();
+      assertEquals(8, server.queryNames(pattern, null).size());
+      assertMetrics(service.getAllMetrics(), "first", first.getPool());
+      assertJmxMetrics(server);
+
+      ClientManager<String, Object> replacement = createManager("second");
+      replacement.borrowClient("node");
+      second.close();
+      assertEquals(16, server.queryNames(pattern, null).size());
+      assertJmxMetrics(server);
+      replacement.close();
+      assertEquals(8, server.queryNames(pattern, null).size());
+      assertJmxMetrics(server);
+      first.close();
+      assertTrue(server.queryNames(pattern, null).isEmpty());
+    } finally {
+      service.getMetricManager().setBindJmxReporter(null);
+      reporter.stop();
+    }
+  }
+
+  private void assertJmxMetrics(MBeanServer server) throws Exception {
+    for (IMetric metric : service.getAllMetrics().values()) {
+      IoTDBAutoGauge<?> gauge = (IoTDBAutoGauge<?>) metric;
+      assertEquals(gauge.getValue(), (double) server.getAttribute(gauge.objectName(), "Value"), 0);
     }
   }
 

@@ -40,8 +40,9 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
 import java.lang.management.ManagementFactory;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class IoTDBJmxReporter implements JmxReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJmxReporter.class);
@@ -55,37 +56,36 @@ public class IoTDBJmxReporter implements JmxReporter {
   /** The objectNameFactory used to create objectName for metrics */
   private final ObjectNameFactory objectNameFactory;
 
-  /** The map that stores all registered metrics */
-  private final Map<ObjectName, ObjectName> registered;
+  /** Registrations owned by this reporter, guarded by the map's monitor. */
+  private final Map<ObjectName, Registration> registered;
 
   /** The JMX MBeanServer */
   private final MBeanServer mBeanServer;
 
-  private void registerMBean(Object mBean, ObjectName objectName) throws JMException {
-    if (!mBeanServer.isRegistered(objectName)) {
-      ObjectInstance objectInstance = mBeanServer.registerMBean(mBean, objectName);
-      if (objectInstance != null) {
-        // the websphere mbeanserver rewrites the objectname to include
-        // cell, node & server info
-        // make sure we capture the new objectName for unregistration
-        registered.put(objectName, objectInstance.getObjectName());
-      } else {
-        registered.put(objectName, objectName);
+  private void registerMBean(IMetric metric, ObjectName objectName) throws JMException {
+    Registration previous = registered.get(objectName);
+    if (previous != null) {
+      if (previous.metric == metric && mBeanServer.isRegistered(previous.actualName)) {
+        return;
       }
+      unregisterMBean(previous);
+      registered.remove(objectName);
+    }
+    if (!mBeanServer.isRegistered(objectName)) {
+      ObjectInstance objectInstance = mBeanServer.registerMBean(metric, objectName);
+      // Some MBean servers rewrite ObjectNames. Keep the actual name together with its owner.
+      registered.put(
+          objectName,
+          new Registration(
+              metric, objectInstance == null ? objectName : objectInstance.getObjectName()));
     }
   }
 
-  private void unregisterMBean(ObjectName originalObjectName)
-      throws InstanceNotFoundException, MBeanRegistrationException {
-    ObjectName storedObjectName = registered.remove(originalObjectName);
-    if (storedObjectName != null) {
-      if (mBeanServer.isRegistered(storedObjectName)) {
-        mBeanServer.unregisterMBean(storedObjectName);
-      }
-    } else {
-      if (mBeanServer.isRegistered(originalObjectName)) {
-        mBeanServer.unregisterMBean(originalObjectName);
-      }
+  private void unregisterMBean(Registration registration) throws MBeanRegistrationException {
+    try {
+      mBeanServer.unregisterMBean(registration.actualName);
+    } catch (InstanceNotFoundException ignored) {
+      // An externally removed MBean is already unregistered.
     }
   }
 
@@ -94,8 +94,10 @@ public class IoTDBJmxReporter implements JmxReporter {
     String metricName = metric.getClass().getSimpleName();
     try {
       final ObjectName objectName = createName(metricName, metricInfo);
-      metric.setObjectName(objectName);
-      registerMBean(metric, objectName);
+      synchronized (registered) {
+        metric.setObjectName(objectName);
+        registerMBean(metric, objectName);
+      }
     } catch (Exception e) {
       LOGGER.warn(MetricsCoreMessages.JMX_REGISTER_FAILED + metricName, e);
     }
@@ -103,12 +105,20 @@ public class IoTDBJmxReporter implements JmxReporter {
 
   @Override
   public void unregisterMetric(IMetric metric, MetricInfo metricInfo) {
+    if (metric == null) {
+      return;
+    }
     String metricName = metric.getClass().getSimpleName();
     try {
       final ObjectName objectName = createName(metricName, metricInfo);
-      unregisterMBean(objectName);
-    } catch (InstanceNotFoundException e) {
-      LOGGER.debug(MetricsCoreMessages.JMX_UNREGISTER_FAILED, e);
+      synchronized (registered) {
+        Registration registration = registered.get(objectName);
+        // A delayed callback for an old metric must not delete its replacement.
+        if (registration != null && registration.metric == metric) {
+          unregisterMBean(registration);
+          registered.remove(objectName);
+        }
+      }
     } catch (MBeanRegistrationException e) {
       LOGGER.warn(MetricsCoreMessages.JMX_UNREGISTER_FAILED, e);
     }
@@ -116,31 +126,37 @@ public class IoTDBJmxReporter implements JmxReporter {
 
   private ObjectName createName(String type, MetricInfo metricInfo) {
     String name = metricInfo.getName();
-    return objectNameFactory.createName(type, DOMAIN, name);
+    return objectNameFactory.createName(type, DOMAIN, name, metricInfo.getTags());
   }
 
-  void unregisterAll() throws InstanceNotFoundException, MBeanRegistrationException {
-    for (ObjectName name : registered.keySet()) {
-      unregisterMBean(name);
+  void unregisterAll() throws MBeanRegistrationException {
+    synchronized (registered) {
+      Iterator<Registration> iterator = registered.values().iterator();
+      while (iterator.hasNext()) {
+        unregisterMBean(iterator.next());
+        iterator.remove();
+      }
     }
-    // clear registered
-    registered.clear();
   }
 
-  private IoTDBJmxReporter(
+  IoTDBJmxReporter(
       AbstractMetricManager metricManager,
       MBeanServer mBeanServer,
       ObjectNameFactory objectNameFactory) {
     this.metricManager = metricManager;
     this.mBeanServer = mBeanServer;
     this.objectNameFactory = objectNameFactory;
-    this.registered = new ConcurrentHashMap<>();
+    this.registered = new HashMap<>();
   }
 
   @Override
   public boolean start() {
     try {
-      if (!registered.isEmpty()) {
+      boolean alreadyRegistered;
+      synchronized (registered) {
+        alreadyRegistered = !registered.isEmpty();
+      }
+      if (alreadyRegistered) {
         LOGGER.warn(MetricsCoreMessages.JMX_REPORTER_ALREADY_START);
         return false;
       }
@@ -169,6 +185,16 @@ public class IoTDBJmxReporter implements JmxReporter {
   @Override
   public ReporterType getReporterType() {
     return ReporterType.JMX;
+  }
+
+  private static class Registration {
+    private final IMetric metric;
+    private final ObjectName actualName;
+
+    private Registration(IMetric metric, ObjectName actualName) {
+      this.metric = metric;
+      this.actualName = actualName;
+    }
   }
 
   private static class IoTDBJmxReporterHolder {
