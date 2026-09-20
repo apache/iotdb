@@ -37,6 +37,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.file.Files;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
@@ -337,5 +339,63 @@ public class CQInfoTest {
     Assert.assertEquals(2, response.getCqList().get(0).getNextOccurrenceIndex());
     Assert.assertEquals(firstOccurrence, response.getCqList().get(0).getLastExecutionTime());
     FileUtils.deleteDirectory(calendarSnapshotDir);
+  }
+
+  @Test
+  public void testPreExtensionSnapshotLoadsAsLegacyCq() throws Exception {
+    File legacyDir = new File(BASE_OUTPUT_PATH, "snapshot-pre-extension");
+    if (legacyDir.exists()) {
+      FileUtils.deleteDirectory(legacyDir);
+    }
+    legacyDir.mkdirs();
+    try {
+      TCreateCQReq req =
+          new TCreateCQReq(
+              "legacySnapshotCq",
+              1000,
+              0,
+              1000,
+              0,
+              (byte) 0,
+              "select 1",
+              "create cq legacySnapshotCq",
+              "Asia",
+              "root");
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          cqInfo.addCQ(new AddCQPlan(req, "legacySnapshotToken", 10_000)).getCode());
+      Assert.assertTrue(cqInfo.processTakeSnapshot(legacyDir));
+
+      File snapshotFile = new File(legacyDir, "cq_info.snapshot");
+      byte[] bytes = Files.readAllBytes(snapshotFile.toPath());
+      byte[] marker = new byte[] {0x43, 0x51, 0x56, 0x31};
+      int markerAt = indexOf(bytes, marker);
+      Assert.assertTrue(markerAt >= 0);
+      try (RandomAccessFile raf = new RandomAccessFile(snapshotFile, "rw")) {
+        raf.setLength(markerAt);
+      }
+
+      CQInfo restored = new CQInfo();
+      restored.processLoadSnapshot(legacyDir);
+      ShowCQResp response = restored.showCQ(new ShowCQPlan("legacySnapshotCq"));
+      Assert.assertEquals(1, response.getCqList().size());
+      Assert.assertEquals("legacySnapshotCq", response.getCqList().get(0).getCqId());
+      Assert.assertEquals(-1, response.getCqList().get(0).getNextOccurrenceIndex());
+    } finally {
+      FileUtils.deleteDirectory(legacyDir);
+    }
+  }
+
+  private static int indexOf(byte[] haystack, byte[] needle) {
+    outer:
+    for (int i = 0; i <= haystack.length - needle.length; i++) {
+      for (int j = 0; j < needle.length; j++) {
+        if (haystack[i + j] != needle[j]) {
+          continue outer;
+        }
+      }
+      return i;
+    }
+    return -1;
   }
 }

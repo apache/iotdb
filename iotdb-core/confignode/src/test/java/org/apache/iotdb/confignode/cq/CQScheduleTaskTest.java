@@ -18,20 +18,32 @@
  */
 package org.apache.iotdb.confignode.cq;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQCalendarUtils;
+import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 import org.apache.iotdb.confignode.rpc.thrift.TCQDuration;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Test;
+import org.mockito.Mockito;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class CQScheduleTaskTest {
 
@@ -164,5 +176,66 @@ public class CQScheduleTaskTest {
     long lowerBound = CQCalendarUtils.firstOccurrenceIndex(boundary, month, current, zone);
     assertEquals(2, lowerBound);
     assertEquals(3, Math.max(2 + 1, lowerBound));
+  }
+
+  @Test
+  public void staleLastExecUpdateOnLegacyCqReconciles() throws Exception {
+    ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    ConsensusManager consensusManager = Mockito.mock(ConsensusManager.class);
+    CQManager cqManager = Mockito.mock(CQManager.class);
+    Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+    Mockito.when(configManager.getCQManager()).thenReturn(cqManager);
+    Mockito.when(consensusManager.isLeader()).thenReturn(true);
+    Mockito.when(consensusManager.write(Mockito.any()))
+        .thenReturn(new TSStatus(TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode()));
+
+    ScheduledExecutorService executor = Mockito.mock(ScheduledExecutorService.class);
+    Mockito.when(executor.isShutdown()).thenReturn(false);
+    ScheduledFuture<?> future = Mockito.mock(ScheduledFuture.class);
+    Mockito.when(
+            executor.schedule(
+                Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any(TimeUnit.class)))
+        .thenReturn((ScheduledFuture) future);
+
+    CQScheduleTask task =
+        new CQScheduleTask(
+            "legacyCq",
+            1000,
+            0,
+            1000,
+            TimeoutPolicy.BLOCKED,
+            "select 1",
+            "token",
+            "Asia",
+            "root",
+            executor,
+            configManager,
+            10_000);
+
+    Field occurrenceIndex = CQScheduleTask.class.getDeclaredField("occurrenceIndex");
+    occurrenceIndex.setAccessible(true);
+    assertEquals(-1L, occurrenceIndex.getLong(task));
+
+    Class<?> callbackClass = null;
+    for (Class<?> nested : CQScheduleTask.class.getDeclaredClasses()) {
+      if (nested.getSimpleName().equals("AsyncExecuteCQCallback")) {
+        callbackClass = nested;
+        break;
+      }
+    }
+    assertNotNull(callbackClass);
+    Constructor<?> constructor =
+        callbackClass.getDeclaredConstructor(
+            CQScheduleTask.class, long.class, long.class, long.class);
+    constructor.setAccessible(true);
+    Object callback = constructor.newInstance(task, 0L, 1000L, 0L);
+    Method onComplete = callbackClass.getMethod("onComplete", TSStatus.class);
+    onComplete.setAccessible(true);
+    onComplete.invoke(callback, new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
+    Mockito.verify(consensusManager, Mockito.times(1)).write(Mockito.any());
+    Mockito.verify(cqManager).reconcileCQ("legacyCq", "token");
+    Mockito.verify(executor, Mockito.never())
+        .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any(TimeUnit.class));
   }
 }

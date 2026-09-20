@@ -500,6 +500,8 @@ public class CQScheduleTask implements Runnable {
               () -> persistProgress(targetIndex, callbackTime),
               retryWaitTimeInMS,
               TimeUnit.MILLISECONDS);
+        } else if (needSubmit()) {
+          configManager.getCQManager().reconcileCQ(cqId, cqToken);
         }
         return;
       }

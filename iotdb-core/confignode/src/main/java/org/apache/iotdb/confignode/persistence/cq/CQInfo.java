@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -339,13 +338,11 @@ public class CQInfo implements SnapshotProcessor {
       CQEntry cqEntry = CQEntry.deserializeLegacy(stream);
       cqMap.put(cqEntry.cqId, cqEntry);
     }
-    final int extensionMarker;
-    try {
-      extensionMarker = ReadWriteIOUtils.readInt(stream);
-    } catch (EOFException e) {
-      // Legacy snapshots end immediately after the legacy records.
+    if (stream.available() < Integer.BYTES) {
+      // Pre-extension snapshots end after the legacy records.
       return;
     }
+    int extensionMarker = ReadWriteIOUtils.readInt(stream);
     if (extensionMarker != SNAPSHOT_EXTENSION_MARKER) {
       return;
     }
