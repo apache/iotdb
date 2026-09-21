@@ -25,4 +25,8 @@ public final class LBACMessages {
 
   public static final String EXCEPTION_LBAC_CHECK_FAILED_FOR_USER_ARG_ARG_TO_LABEL_ARG_VALUE_ARG_UNDER_POLICY_ARG_USER_S_MERGED_GRANT_ARG_DOES_NOT_DOMINATE_REQUIRED_ARG_C18D4EA7 = "LBAC check failed for user '%s' %s to label '%s' (value: %s) under policy '%s': user's merged grant %s does not dominate required %s";
   public static final String EXCEPTION_LABELNAME_IS_NULL_856ABAE4 = "labelName is null";
+  public static final String EXCEPTION_LOCATION_IS_NULL_399F8D73 = "location is null";
+  public static final String EXCEPTION_TABLENAME_IS_NULL_6B6687B9 = "tableName is null";
+  public static final String EXCEPTION_COLUMNNAME_IS_NULL_46BD2848 = "columnName is null";
+  public static final String EXCEPTION_PROPERTIES_IS_NULL_08E70FBB = "properties is null";
 }
