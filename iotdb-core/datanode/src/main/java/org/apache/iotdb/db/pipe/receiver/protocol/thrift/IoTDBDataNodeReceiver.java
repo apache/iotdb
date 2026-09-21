@@ -529,7 +529,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
-            : executeStatementAndClassifyExceptions(statement));
+            : executeStatementAndAddRedirectInfo(statement));
   }
 
   private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
@@ -537,7 +537,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
-            : executeStatementAndClassifyExceptions(statement));
+            : executeStatementAndAddRedirectInfo(statement));
   }
 
   private TPipeTransferResp handleTransferTabletRaw(final PipeTransferTabletRawReq req) {
@@ -1287,7 +1287,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
    * message field.
    */
   private TSStatus executeBatchStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
-    final TSStatus result = executeStatementAndClassifyExceptions(statement, 5);
+    return addRedirectInfo(statement, executeStatementAndClassifyExceptions(statement, 5));
+  }
+
+  private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
+    return addRedirectInfo(statement, executeStatementAndClassifyExceptions(statement));
+  }
+
+  private TSStatus addRedirectInfo(final InsertBaseStatement statement, final TSStatus result) {
 
     if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && result.getSubStatusSize() > 0) {
