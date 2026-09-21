@@ -41,7 +41,6 @@ import org.apache.iotdb.calc.utils.TypeServices.PrimitiveColumnValueSetter;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
@@ -51,7 +50,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
-import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -128,9 +126,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
-import org.eclipse.milo.opcua.stack.core.Identifiers;
-import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
-import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -3364,30 +3359,6 @@ public class TypeServices {
 
   public static final class Pipe {
 
-    public static final TypeService<Function<Object, Object>> OPC_UA_LAST_VALUE_CONVERTER_SERVICE =
-        type ->
-            switch (type.getTypeEnum()) {
-              case DATE ->
-                  value ->
-                      new DateTime(
-                          new java.util.Date(
-                              DateUtils.parseIntToDate(((Number) value).intValue()).getTime()));
-              case TIMESTAMP ->
-                  value ->
-                      new DateTime(
-                          TimestampPrecisionUtils.currPrecision.toNanos(
-                                      ((Number) value).longValue())
-                                  / 100L
-                              + 116444736000000000L);
-              case TEXT, BLOB, STRING -> String::valueOf;
-              case BOOLEAN, INT32, INT64, FLOAT, DOUBLE -> Function.identity();
-              case ROW, VECTOR, OBJECT, UNKNOWN ->
-                  value -> {
-                    throw new UnSupportedDataTypeException(
-                        DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum());
-                  };
-            };
-
     public static final TypeService<SameTypeNumericOperatorStrategy>
         SAME_TYPE_NUMERIC_OPERATOR_STRATEGY_SERVICE =
             type ->
@@ -3574,20 +3545,6 @@ public class TypeServices {
                   };
             };
 
-    public static final TypeService<Function<Object, String>> OPC_UA_VALUE_STRINGIFIER_SERVICE =
-        type ->
-            switch (type.getTypeEnum()) {
-              case BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, BLOB, STRING -> Object::toString;
-              case DATE ->
-                  value -> ((LocalDate) value).atStartOfDay(ZoneId.systemDefault()).toString();
-              case TIMESTAMP -> value -> DateTimeUtils.convertLongToDate((long) value);
-              case OBJECT, ROW, UNKNOWN, VECTOR ->
-                  value -> {
-                    throw new PipeRuntimeNonCriticalException(
-                        DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
-                  };
-            };
-
     public static final TypeService<ToIntFunction<Object>>
         CUSTOMIZED_INTERMEDIATE_RESULT_TO_INT_SERVICE =
             type ->
@@ -3735,61 +3692,6 @@ public class TypeServices {
                                 type.getTypeEnum()));
                       };
                 };
-
-    public static final TypeService<TabletObjectValueGetter>
-        OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE =
-            type ->
-                switch (type.getTypeEnum()) {
-                  case BOOLEAN -> (column, rowIndex) -> ((boolean[]) column)[rowIndex];
-                  case INT32 -> (column, rowIndex) -> ((int[]) column)[rowIndex];
-                  // Milo calls Date.toInstant(), which java.sql.Date does not support.
-                  case DATE ->
-                      (column, rowIndex) ->
-                          new DateTime(
-                              java.util.Date.from(
-                                  ((LocalDate[]) column)
-                                      [rowIndex].atStartOfDay(ZoneId.systemDefault())
-                                      .toInstant()));
-                  case INT64 -> (column, rowIndex) -> ((long[]) column)[rowIndex];
-                  case TIMESTAMP ->
-                      (column, rowIndex) ->
-                          new DateTime(
-                              TimestampPrecisionUtils.currPrecision.toNanos(
-                                          ((long[]) column)[rowIndex])
-                                      / 100L
-                                  + 116444736000000000L);
-                  case FLOAT -> (column, rowIndex) -> ((float[]) column)[rowIndex];
-                  case DOUBLE -> (column, rowIndex) -> ((double[]) column)[rowIndex];
-                  case TEXT, BLOB, STRING ->
-                      (column, rowIndex) -> ((Binary[]) column)[rowIndex].toString();
-                  case OBJECT, ROW, UNKNOWN, VECTOR ->
-                      (column, rowIndex) -> {
-                        throw new UnSupportedDataTypeException(
-                            DataNodePipeMessages.UNSUPPORTED_DATATYPE + type.getTypeEnum());
-                      };
-                };
-
-    public static final TypeService<Supplier<NodeId>> OPC_UA_DATA_TYPE_SERVICE =
-        type ->
-            switch (type.getTypeEnum()) {
-              case BOOLEAN -> () -> Identifiers.Boolean;
-              case INT32 -> () -> Identifiers.Int32;
-              case DATE, TIMESTAMP -> () -> Identifiers.DateTime;
-              case INT64 -> () -> Identifiers.Int64;
-              case FLOAT -> () -> Identifiers.Float;
-              case DOUBLE -> () -> Identifiers.Double;
-              case TEXT, BLOB, STRING -> () -> Identifiers.String;
-              case OBJECT, ROW, UNKNOWN, VECTOR ->
-                  () -> {
-                    throw new PipeRuntimeNonCriticalException(
-                        DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type.getTypeEnum());
-                  };
-            };
-
-    @FunctionalInterface
-    public interface TabletObjectValueGetter {
-      Object get(Object column, int rowIndex);
-    }
 
     @FunctionalInterface
     public interface PipeRowObjectGetter {
@@ -4094,8 +3996,6 @@ public class TypeServices {
     static {
       SAME_TYPE_NUMERIC_OPERATOR_STRATEGY_SERVICE.check();
       OPC_DA_TABLET_VALUE_SETTER_SERVICE.check();
-      OPC_UA_VALUE_STRINGIFIER_SERVICE.check();
-      OPC_UA_LAST_VALUE_CONVERTER_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_INT_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_LONG_SERVICE.check();
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_FLOAT_SERVICE.check();
@@ -4103,8 +4003,6 @@ public class TypeServices {
       CUSTOMIZED_INTERMEDIATE_RESULT_TO_STRING_SERVICE.check();
       AGGREGATE_TABLET_COLUMN_ALLOCATOR_SERVICE.check();
       AGGREGATE_TABLET_COLUMN_VALUE_WRITER_SERVICE.check();
-      OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE.check();
-      OPC_UA_DATA_TYPE_SERVICE.check();
       PIPE_INSERT_EVENT_VALUE_LIST_TYPE_SERVICE.check();
       // PIPE_DATA_TYPE_TRANSFORMER_SERVICE returns a value directly and intentionally rejects
       // internal TsFile types, so the generic service check cannot be applied to it.

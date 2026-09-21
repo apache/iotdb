@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
-import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.plugin.sink.opcua.OpcUaSink;
 
@@ -197,7 +196,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
   private static Object getObjectValue4Opc(
       final TimeValuePair timeValuePair, final TSDataType dataType) {
-    return TypeServices.Pipe.OPC_UA_LAST_VALUE_CONVERTER_SERVICE
+    return OpcUaTypeServices.OPC_UA_LAST_VALUE_CONVERTER_SERVICE
         .call(Type.fromTsDataType(dataType))
         .apply(timeValuePair.getValue().getValue());
   }
@@ -465,7 +464,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     } catch (final UnsupportedOperationException ignored) {
       throw new UnSupportedDataTypeException(DataNodePipeMessages.UNSUPPORTED_DATATYPE + type);
     }
-    return TypeServices.Pipe.OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE
+    return OpcUaTypeServices.OPC_UA_TABLET_OBJECT_VALUE_GETTER_SERVICE
         .call(valueType)
         .get(column, rowIndex);
   }
@@ -510,7 +509,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
       final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
       final Function<Object, String> valueStringifier =
-          TypeServices.Pipe.OPC_UA_VALUE_STRINGIFIER_SERVICE.call(Type.fromTsDataType(dataType));
+          OpcUaTypeServices.OPC_UA_VALUE_STRINGIFIER_SERVICE.call(Type.fromTsDataType(dataType));
 
       // Source name --> Sensor path, like root.test.d_0.s_0
       if (!isTableModel) {
@@ -561,7 +560,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     } catch (final UnsupportedOperationException ignored) {
       throw new PipeRuntimeNonCriticalException(DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + type);
     }
-    return TypeServices.Pipe.OPC_UA_DATA_TYPE_SERVICE.call(dataType).get();
+    return OpcUaTypeServices.OPC_UA_DATA_TYPE_SERVICE.call(dataType).get();
   }
 
   /**
