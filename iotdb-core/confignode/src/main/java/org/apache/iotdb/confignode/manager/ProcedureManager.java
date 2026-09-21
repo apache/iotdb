@@ -2290,10 +2290,6 @@ public class ProcedureManager {
     return waitingProcedureFinished(procedure);
   }
 
-  private TSStatus waitingProcedureFinished(final long procedureId) {
-    return waitingProcedureFinished(executor.getProcedures().get(procedureId));
-  }
-
   protected TSStatus waitingProcedureFinished(final Procedure<?> procedure) {
     return waitingProcedureFinished(procedure, PROCEDURE_WAIT_TIME_OUT);
   }
@@ -2717,9 +2713,8 @@ public class ProcedureManager {
 
   public TDeleteTableDeviceResp deleteDevices(
       final TDeleteTableDeviceReq req, final boolean isGeneratedByPipe) {
-    long procedureId;
     DeleteDevicesProcedure procedure = null;
-    final TSStatus status;
+    final Procedure<?> procedureToWait;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
           checkDuplicateTableTask(
@@ -2730,7 +2725,7 @@ public class ProcedureManager {
               null,
               req.queryId,
               ProcedureType.DELETE_DEVICES_PROCEDURE);
-      procedureId = procedureIdDuplicatePair.getLeft();
+      final long procedureId = procedureIdDuplicatePair.getLeft();
 
       if (procedureId == -1) {
         if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
@@ -2749,11 +2744,12 @@ public class ProcedureManager {
                 req.getModInfo(),
                 isGeneratedByPipe);
         this.executor.submitProcedure(procedure);
-        status = waitingProcedureFinished(procedure);
+        procedureToWait = procedure;
       } else {
-        status = waitingProcedureFinished(procedureId);
+        procedureToWait = executor.getProcedures().get(procedureId);
       }
     }
+    final TSStatus status = waitingProcedureFinished(procedureToWait);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new TDeleteTableDeviceResp(StatusUtils.OK)
           .setDeletedNum(
@@ -2818,12 +2814,12 @@ public class ProcedureManager {
       final String queryId,
       final ProcedureType thisType,
       final Procedure<ConfigNodeProcedureEnv> procedure) {
-    final long procedureId;
+    final Procedure<?> procedureToWait;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
           checkDuplicateTableTask(
               database, secondDatabase, table, tableName, secondTableName, queryId, thisType);
-      procedureId = procedureIdDuplicatePair.getLeft();
+      final long procedureId = procedureIdDuplicatePair.getLeft();
 
       if (procedureId == -1) {
         if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
@@ -2832,11 +2828,12 @@ public class ProcedureManager {
               "Some other task is operating table with same name.");
         }
         this.executor.submitProcedure(procedure);
+        procedureToWait = procedure;
       } else {
-        return waitingProcedureFinished(procedureId);
+        procedureToWait = executor.getProcedures().get(procedureId);
       }
     }
-    return waitingProcedureFinished(procedure);
+    return waitingProcedureFinished(procedureToWait);
   }
 
   // Some table procedures may match 2 tables
