@@ -133,11 +133,14 @@ public class ColumnSchema {
   }
 
   public static ColumnSchema ofTsColumnSchema(TsTableColumnSchema schema) {
-    return new ColumnSchema(
-        schema.getColumnName(),
-        TypeFactory.getType(schema.getDataType()),
-        false,
-        schema.getColumnCategory());
+    final ColumnSchema columnSchema =
+        new ColumnSchema(
+            schema.getColumnName(),
+            TypeFactory.getType(schema.getDataType()),
+            false,
+            schema.getColumnCategory());
+    columnSchema.setProps(schema.getProps());
+    return columnSchema;
   }
 
   public static Builder builder() {
