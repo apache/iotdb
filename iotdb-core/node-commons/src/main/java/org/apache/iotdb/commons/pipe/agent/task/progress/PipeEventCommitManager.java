@@ -173,6 +173,16 @@ public class PipeEventCommitManager {
     return generateCommitterKey(pipeName, creationTime, regionId);
   }
 
+  public boolean isCurrentCommitterKey(final CommitterKey committerKey) {
+    return committerKey != null
+        && eventCommitterMap.containsKey(committerKey)
+        && committerKey.equals(
+            generateCommitterKey(
+                committerKey.getPipeName(),
+                committerKey.getCreationTime(),
+                committerKey.getRegionId()));
+  }
+
   private CommitterKey generateCommitterKey(
       final String pipeName, final long creationTime, final int regionId) {
     return taskAgent.getCommitterKey(

@@ -228,7 +228,13 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               .markTsFileCollectInvocationCount(
                   pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
-          pipeProcessor.process(event, outputEventCollector);
+          // A completion barrier is an internal ordering event. It must not be swallowed or
+          // transformed by a user processor.
+          if (((PipeHeartbeatEvent) event).isCompletionBarrier()) {
+            outputEventCollector.collect(event);
+          } else {
+            pipeProcessor.process(event, outputEventCollector);
+          }
           ((PipeHeartbeatEvent) event).onProcessed();
           PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {

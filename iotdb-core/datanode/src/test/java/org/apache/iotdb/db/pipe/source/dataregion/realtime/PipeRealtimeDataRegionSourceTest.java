@@ -68,6 +68,25 @@ public class PipeRealtimeDataRegionSourceTest {
     }
   }
 
+  @Test
+  public void completionBarrierIsNeverDroppedByProgressOrHeartbeatMerging() throws Exception {
+    try (final ProgressReportTestSource source = new ProgressReportTestSource()) {
+      final PipeRealtimeEvent heartbeatEvent = createHeartbeatEvent();
+      final PipeRealtimeEvent completionBarrier = createCompletionBarrierEvent();
+      source.extract(heartbeatEvent);
+      source.extract(completionBarrier);
+
+      Assert.assertFalse(heartbeatEvent.getEvent().isReleased());
+      Assert.assertFalse(completionBarrier.getEvent().isReleased());
+      Assert.assertEquals(2, source.getEventCount());
+
+      final PipeRealtimeEvent progressReportEvent = createProgressReportEvent();
+      source.extract(progressReportEvent);
+      Assert.assertFalse(completionBarrier.getEvent().isReleased());
+      Assert.assertEquals(3, source.getEventCount());
+    }
+  }
+
   private static PipeRealtimeEvent createHeartbeatEvent() {
     final PipeRealtimeEvent event = PipeRealtimeEventFactory.createRealtimeEvent(1, false);
     Assert.assertTrue(event.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -80,6 +99,12 @@ public class PipeRealtimeDataRegionSourceTest {
 
     final PipeRealtimeEvent event =
         PipeRealtimeEventFactory.createRealtimeEvent(progressReportEvent);
+    Assert.assertTrue(event.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+    return event;
+  }
+
+  private static PipeRealtimeEvent createCompletionBarrierEvent() {
+    final PipeRealtimeEvent event = PipeRealtimeEventFactory.createCompletionBarrierEvent(1);
     Assert.assertTrue(event.increaseReferenceCount(TEST_REFERENCE_HOLDER));
     return event;
   }
