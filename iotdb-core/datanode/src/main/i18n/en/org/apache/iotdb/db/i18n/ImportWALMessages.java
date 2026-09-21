@@ -148,5 +148,8 @@ public final class ImportWALMessages {
   public static final String MESSAGE_ACCEPT_ALL_INFERRED_DATABASE_NAMES_WITHOUT_CONFIRMATION_DB_DATABASE_STILL_TAKES_PRECEDENCE_FA49A73C =
       "Accept all inferred database names without confirmation; -db/--database still takes precedence.";
 
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_SNAPSHOT_DEVICE_ARG_HAS_ARG_TAG_SEGMENTS_BUT_TARGET_TABLE_ARG_HAS_ONLY_ARG_TAG_COLUMNS_012AF9B6 =
+      "Cannot replay table snapshot: device %s has %d TAG segments, but target table %s has only %d TAG columns.";
+
   private ImportWALMessages() {}
 }

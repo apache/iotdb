@@ -147,5 +147,8 @@ public final class ImportWALMessages {
   public static final String MESSAGE_ACCEPT_ALL_INFERRED_DATABASE_NAMES_WITHOUT_CONFIRMATION_DB_DATABASE_STILL_TAKES_PRECEDENCE_FA49A73C =
       "自动接受所有推断出的数据库名，不再询问确认；-db/--database 仍优先。";
 
+  public static final String EXCEPTION_CANNOT_REPLAY_TABLE_SNAPSHOT_DEVICE_ARG_HAS_ARG_TAG_SEGMENTS_BUT_TARGET_TABLE_ARG_HAS_ONLY_ARG_TAG_COLUMNS_012AF9B6 =
+      "无法重放表模型快照：设备 %s 有 %d 个 TAG 段，但目标表 %s 只有 %d 个 TAG 列。";
+
   private ImportWALMessages() {}
 }

@@ -1417,6 +1417,18 @@ public class ImportWAL {
       }
       final List<IMeasurementSchema> tagSchemas =
           getTableSchema(deviceId.getTableName()).tagSchemas;
+      // Segment zero is the table name. Dropping extra TAG segments would change device identity;
+      // fewer segments remain valid because trailing null TAGs may be omitted in the WAL.
+      if (deviceId.segmentNum() - 1 > tagSchemas.size()) {
+        throw new StatementExecutionException(
+            String.format(
+                ImportWALMessages
+                    .EXCEPTION_CANNOT_REPLAY_TABLE_SNAPSHOT_DEVICE_ARG_HAS_ARG_TAG_SEGMENTS_BUT_TARGET_TABLE_ARG_HAS_ONLY_ARG_TAG_COLUMNS_012AF9B6,
+                deviceId,
+                deviceId.segmentNum() - 1,
+                deviceId.getTableName(),
+                tagSchemas.size()));
+      }
       final List<IMeasurementSchema> schemas =
           new ArrayList<>(tagSchemas.size() + fieldSchemas.size());
       schemas.addAll(tagSchemas);

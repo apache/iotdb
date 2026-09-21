@@ -57,6 +57,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -1653,6 +1654,93 @@ public class ImportWALTest {
                 .replay(new WALInfoEntry(1, memTable)));
 
     verify(treeSession, never()).insertAlignedTablet(any(Tablet.class));
+  }
+
+  /** An extra TAG must not be silently dropped, even when skip policies are enabled. */
+  @Test
+  public void testTableSnapshotRejectsExtraTagSegmentsAndRetainsWAL() throws Exception {
+    for (final boolean aligned : Arrays.asList(false, true)) {
+      final PrimitiveMemTable memTable = new PrimitiveMemTable("db", "0");
+      final StringArrayDeviceID deviceId = new StringArrayDeviceID("table1", "device1", "extra");
+      final List<IMeasurementSchema> schemas =
+          Collections.singletonList(new MeasurementSchema("temperature", TSDataType.FLOAT));
+      if (aligned) {
+        memTable.writeAlignedRow(deviceId, schemas, 1, new Object[] {1.0F});
+      } else {
+        memTable.write(deviceId, schemas, 1, new Object[] {1.0F});
+      }
+      final File walFile = createWALFile(aligned ? 1 : 0);
+      writeWAL(walFile, new WALInfoEntry(1, memTable));
+      final byte[] original = Files.readAllBytes(walFile.toPath());
+      final Session tree = mock(Session.class);
+      final Session table = mock(Session.class);
+      mockTableSchema(table, "table1", "time", "tag1");
+      final IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  ImportWAL.replayWALFiles(
+                      Collections.singletonList(walFile.toPath()),
+                      new ImportWAL.WALReplayer(
+                          tree,
+                          table,
+                          "db",
+                          policyController("--on_unsupported", "skip", "--on_corrupted", "skip")),
+                      null,
+                      true));
+      assertTrue(failure.getCause() instanceof StatementExecutionException);
+      assertTrue(
+          failure
+              .getMessage()
+              .contains(
+                  String.format(
+                      ImportWALMessages
+                          .EXCEPTION_CANNOT_REPLAY_TABLE_SNAPSHOT_DEVICE_ARG_HAS_ARG_TAG_SEGMENTS_BUT_TARGET_TABLE_ARG_HAS_ONLY_ARG_TAG_COLUMNS_012AF9B6,
+                      deviceId,
+                      2,
+                      "table1",
+                      1)));
+      verify(table, never()).insertRelationalTablet(any(Tablet.class));
+      verifyZeroInteractions(tree);
+      assertArrayEquals(original, Files.readAllBytes(walFile.toPath()));
+    }
+  }
+
+  /** Equal TAG counts and omitted trailing null TAGs preserve the device identity. */
+  @Test
+  public void testTableSnapshotAcceptsMatchingAndMissingTagSegments() throws Exception {
+    for (final boolean aligned : Arrays.asList(false, true)) {
+      for (final int targetTagCount : Arrays.asList(1, 2)) {
+        final PrimitiveMemTable memTable = new PrimitiveMemTable("db", "0");
+        final StringArrayDeviceID deviceId = new StringArrayDeviceID("table1", "device1");
+        final List<IMeasurementSchema> schemas =
+            Collections.singletonList(new MeasurementSchema("temperature", TSDataType.FLOAT));
+        if (aligned) {
+          memTable.writeAlignedRow(deviceId, schemas, 1, new Object[] {1.0F});
+        } else {
+          memTable.write(deviceId, schemas, 1, new Object[] {1.0F});
+        }
+        final Session tree = mock(Session.class);
+        final Session table = mock(Session.class);
+        mockTableSchema(
+            table,
+            "table1",
+            "time",
+            targetTagCount == 1 ? new String[] {"tag1"} : new String[] {"tag1", "tag2"});
+        assertEquals(
+            ReplayResult.REPLAYED,
+            new ImportWAL.WALReplayer(tree, table, "db").replay(new WALInfoEntry(1, memTable)));
+        final ArgumentCaptor<Tablet> captor = ArgumentCaptor.forClass(Tablet.class);
+        verify(table).insertRelationalTablet(captor.capture());
+        final Tablet tablet = captor.getValue();
+        assertEquals("device1", ((Binary[]) tablet.getValues()[0])[0].toString());
+        if (targetTagCount == 2) {
+          assertTrue(tablet.getBitMaps()[1].isMarked(0));
+        }
+        assertEquals(1.0F, ((float[]) tablet.getValues()[targetTagCount])[0], 0.0F);
+        verifyZeroInteractions(tree);
+      }
+    }
   }
 
   /** Covers table-model identifier quoting, including an embedded double quote. */
