@@ -1,0 +1,315 @@
+{
+  "recorded_at": "2026-09-20T09:04:24.158072+00:00",
+  "host": "timecho",
+  "address": "192.168.99.49",
+  "root": "/data_01/iotdb-fs-exp",
+  "architecture": "x86_64",
+  "kernel": "6.8.0-139-generic",
+  "sources": {
+    "iotdb": {
+      "commit": "ce9b227b860d2af3beb5e0b603ed39c716a7f855",
+      "worktree_clean": true
+    },
+    "Sonar-TS-iotdb": {
+      "commit": "99866c43cd7ceb91a929de745e9f49cea92962e5",
+      "worktree_clean": true
+    },
+    "deepseek-harness": {
+      "commit": "fb2c4b9e698e30edb738bca4cf0618587db7d203",
+      "worktree_clean": true
+    }
+  },
+  "versions": {
+    "java": "openjdk version \"21.0.12\" 2026-07-21\nOpenJDK Runtime Environment (build 21.0.12+8-1-24.04-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12+8-1-24.04-Ubuntu, mixed mode, sharing)",
+    "python": "Python 3.12.3",
+    "node": "v22.23.2",
+    "harness": "0.1.5-rc.2"
+  },
+  "iotdb": {
+    "version": "2.0.11-SNAPSHOT",
+    "rpc_host": "127.0.0.1",
+    "rpc_port": 32867,
+    "config_node_memory": "2G",
+    "data_node_memory": "8G",
+    "build_exit_code": 0,
+    "distribution_sha256": "43d30b3985de2bece964700b011a8bf630c5905ee649a41630fe4d0938956bd8"
+  },
+  "dataset": {
+    "repository": "mrtan/NLQTSBench",
+    "revision": "81571171c5c614d01698497626bff8eb6ad8dcf4",
+    "files": 274,
+    "bytes": 1147254133,
+    "manifest_sha256": "3f7501a4ecff97bb78478e69aef47cc34c7f5e9df46501f215c3f5fa401d5dd3",
+    "imported_to_iotdb": false
+  },
+  "locks": {
+    "runtime/agent/package-lock.json": "dcf8e3bebc749c4caf4b86a7f92c4012613c8f489c41acefb61d0ce137ffc52f",
+    "config/requirements.lock.txt": "2dfe10be8f29f61fd549a850ad935fdb9fcd30b2b3740beb1cebae6f7e1b79a2",
+    "config/agent.patch.yml": "0b8249ca5ba9b04fc3c38978e45cede0538857de1e9a957e522e538d8670360f",
+    "config/iotdb-system.properties": "6122b014e573dfa2d18d3440d2356da66394db21f43a3e156875b7c34359e163"
+  },
+  "verification": {
+    "cli_measurements": 18,
+    "cli_results": "results/cli-smoke/20260920T085734056324Z/results.csv",
+    "cli_rows": [
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "point_lookup",
+        "mode": "sql",
+        "iteration": "0",
+        "elapsed_ms": "1019.821",
+        "return_code": "0",
+        "stdout_bytes": "452",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "point_lookup",
+        "mode": "filesystem",
+        "iteration": "0",
+        "elapsed_ms": "1370.171",
+        "return_code": "0",
+        "stdout_bytes": "94",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "range_scan",
+        "mode": "sql",
+        "iteration": "0",
+        "elapsed_ms": "1168.378",
+        "return_code": "0",
+        "stdout_bytes": "1005",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "range_scan",
+        "mode": "filesystem",
+        "iteration": "0",
+        "elapsed_ms": "1322.198",
+        "return_code": "0",
+        "stdout_bytes": "322",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "head",
+        "mode": "sql",
+        "iteration": "0",
+        "elapsed_ms": "1318.110",
+        "return_code": "0",
+        "stdout_bytes": "1005",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "head",
+        "mode": "filesystem",
+        "iteration": "0",
+        "elapsed_ms": "1066.896",
+        "return_code": "0",
+        "stdout_bytes": "312",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "full_scan",
+        "mode": "sql",
+        "iteration": "0",
+        "elapsed_ms": "1419.581",
+        "return_code": "0",
+        "stdout_bytes": "14116",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "full_scan",
+        "mode": "filesystem",
+        "iteration": "0",
+        "elapsed_ms": "1418.900",
+        "return_code": "0",
+        "stdout_bytes": "5700",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "count",
+        "mode": "sql",
+        "iteration": "0",
+        "elapsed_ms": "1016.970",
+        "return_code": "0",
+        "stdout_bytes": "78",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "count",
+        "mode": "filesystem",
+        "iteration": "0",
+        "elapsed_ms": "1217.935",
+        "return_code": "0",
+        "stdout_bytes": "317",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "aggregate",
+        "mode": "sql",
+        "iteration": "0",
+        "elapsed_ms": "1118.271",
+        "return_code": "0",
+        "stdout_bytes": "173",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "aggregate",
+        "mode": "filesystem",
+        "iteration": "0",
+        "elapsed_ms": "1218.270",
+        "return_code": "0",
+        "stdout_bytes": "310",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "schema",
+        "mode": "sql",
+        "iteration": "0",
+        "elapsed_ms": "1118.294",
+        "return_code": "0",
+        "stdout_bytes": "470",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "schema",
+        "mode": "filesystem",
+        "iteration": "0",
+        "elapsed_ms": "1220.051",
+        "return_code": "0",
+        "stdout_bytes": "276",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "metadata",
+        "mode": "sql",
+        "iteration": "0",
+        "elapsed_ms": "1167.466",
+        "return_code": "0",
+        "stdout_bytes": "338",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "metadata",
+        "mode": "filesystem",
+        "iteration": "0",
+        "elapsed_ms": "1167.399",
+        "return_code": "0",
+        "stdout_bytes": "96",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "list_tables",
+        "mode": "sql",
+        "iteration": "0",
+        "elapsed_ms": "1220.182",
+        "return_code": "0",
+        "stdout_bytes": "138",
+        "stderr_bytes": "0"
+      },
+      {
+        "run_id": "20260920T085734056324Z",
+        "case": "list_tables",
+        "mode": "filesystem",
+        "iteration": "0",
+        "elapsed_ms": "1117.899",
+        "return_code": "0",
+        "stdout_bytes": "29",
+        "stderr_bytes": "0"
+      }
+    ],
+    "agent": {
+      "kind": "local_mock_not_model_evaluation",
+      "exit_code": 0,
+      "requests": 2,
+      "final_answer_verified": true,
+      "bash_result_verified": true,
+      "tool_names": [
+        "bash",
+        "create_goal",
+        "edit",
+        "exit_plan_mode",
+        "get_goal",
+        "glob",
+        "grep",
+        "interrupt_agent",
+        "job_kill",
+        "job_list",
+        "job_output",
+        "list_agents",
+        "ralph",
+        "read",
+        "read_image",
+        "send_message",
+        "skill",
+        "subagent",
+        "subagent_fork",
+        "todo_write",
+        "update_goal",
+        "web_fetch",
+        "web_search",
+        "workflow",
+        "write"
+      ]
+    },
+    "real_model_tested": false,
+    "selector_unit_tests_passed": 14
+  },
+  "limitations": [
+    "Model endpoint and credential not configured.",
+    "Harness benchmark adapter and SQL/FS oracle equivalence remain to be implemented and verified.",
+    "Harness sandbox reports partial Landlock enforcement on this kernel.",
+    "Host is shared with existing workloads."
+  ],
+  "selection_summary": {
+    "total": 1153,
+    "candidate_count": 274,
+    "excluded_count": 879,
+    "experiment_ready_count": 0,
+    "candidate_data": {
+      "pass_static": 274
+    },
+    "candidate_subtasks": {
+      "Global Aggregation": 72,
+      "Interval Discovery": 72,
+      "Temporal Localization": 72,
+      "Sliding Window": 58
+    },
+    "candidate_sql_adapter": {
+      "requires_extension": 105,
+      "supported_surface": 126,
+      "query_dependent_probe": 43
+    },
+    "candidate_fs_native": {
+      "requires_composition": 220,
+      "conditional_on_whole_file_scope": 53,
+      "supported_with_scalar_arithmetic": 1
+    },
+    "semantic_reviews": {
+      "PRIVATE_TIME_RANGE_BOUNDARIES": 63,
+      "EXACT_MEDIAN_EVEN_AND_NULL_SEMANTICS": 18,
+      "ROUNDING_AND_OFFICIAL_RELATIVE_SCORE": 72,
+      "GAP_AND_NULL_CONTINUITY": 72,
+      "DURATION_AND_TIE_BREAK": 72,
+      "TIE_BREAK_AND_THRESHOLD_CROSSING": 72,
+      "NATIVE_CADENCE_WINDOW_LENGTH": 58,
+      "COMPLETE_WINDOW_AND_TIE_BREAK": 58,
+      "VARIANCE_DDOF_ONE": 15
+    }
+  }
+}

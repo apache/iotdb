@@ -18,6 +18,12 @@
 
 # NLQTSBench 选题筛选器与迁移计划
 
+后续的数据导入、TsFile 准备和确定性答案核验见 [MIGRATION.md](MIGRATION.md)。
+完整执行结果见 [EQUIVALENCE.md](EQUIVALENCE.md)，逐题证据索引见
+[equivalence-summary.json](equivalence-summary.json)。
+以下记录保留第一阶段静态筛选的状态；`execution=not_verified` 等字段描述筛选器
+本身的输出，实际执行证据由迁移报告单独记录，不覆盖历史筛选结果。
+
 本目录实现只读的第一阶段筛选器：检查数据可导入性、SQL/fs 表达能力以及
 模型/方言/评分所需改动。官方名称是 **NLQTSBench**。
 实验对象是一个自然语言问题对应的一条复杂 SQL 或一组 FS 操作；不增加长程业务任务。

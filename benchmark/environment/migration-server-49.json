@@ -1,0 +1,67 @@
+{
+  "recorded_at": "2026-09-20T10:27:45.358282+00:00",
+  "root": "/data_01/iotdb-fs-exp",
+  "address": "192.168.99.49",
+  "scope": "all_274_L1_candidates",
+  "model_used": false,
+  "iotdb_source_commit": "ce9b227b860d2af3beb5e0b603ed39c716a7f855",
+  "sonar_source_commit": "99866c43cd7ceb91a929de745e9f49cea92962e5",
+  "dataset_revision": "81571171c5c614d01698497626bff8eb6ad8dcf4",
+  "distribution_sha256": "43d30b3985de2bece964700b011a8bf630c5905ee649a41630fe4d0938956bd8",
+  "data_node_memory": {
+    "reason": "Per-task database region buffer reservations exceeded the original direct-memory accounting limit",
+    "heap_mb": 6552,
+    "direct_memory_mb": 32768,
+    "old_direct_memory_mb": 1640,
+    "old_direct_accounting_limit_bytes": 1375731712
+  },
+  "verification_python": "Python 3.12.3",
+  "verification_packages": [
+    "numpy==2.2.6",
+    "pandas==2.2.3",
+    "pyarrow==19.0.1",
+    "python-dateutil==2.9.0.post0",
+    "pytz==2025.2",
+    "six==1.17.0",
+    "tsfile==2.4.0",
+    "tzdata==2025.2"
+  ],
+  "verification_workers": 8,
+  "unit_tests_passed": 24,
+  "evidence_sha256": {
+    "bin/start-iotdb": "d68e7af72ab68d3f6aa30b3f8d6146cb3db11d68d76fe5dbd628e2f595e8c55c",
+    "config/nlqts-requirements.lock.txt": "e139ba2ace3c20c04a9a0ffdc21b7244e3db3418ad8ef299f1a42c165aa34ad1",
+    "config/migration-memory-adjustment.json": "65478fce3a187b1c6352f1117feccf2dfea6f404cf946f922a37927c5b115f0f",
+    "datasets/nlqtsbench/dataset-manifest.json": "3f7501a4ecff97bb78478e69aef47cc34c7f5e9df46501f215c3f5fa401d5dd3",
+    "src/Sonar-TS-iotdb/nlqtsbench/tasks.json": "8a9604571854efe08d74cd6dd8ccbd686a06c6f412938d4d7e3b0e3333cc788e",
+    "src/Sonar-TS-iotdb/sonar_ts/evaluator.py": "e0c1ec6cf727bf9b0ada7b233376c95e48449907fe0721353fff254661232a87",
+    "results/migration-v1/equivalence-summary.json": "3fb8d7673b44ff017878a02cc3f26ed5d481f8a789d635676799b4cdf3fc8b27",
+    "logs/migration-final-health.log": "a3a217bdf21651b6d0ece337ed3b43d1b296bdefb2d07060300d0ec1e98a9e36"
+  },
+  "summary": {
+    "tasks": 274,
+    "rows": 43666522,
+    "storage_verified": 274,
+    "sql_oracle_equal": 274,
+    "private_sql_oracle_equal": 274,
+    "fs_composed_oracle_equal": 274,
+    "sql_fs_equal": 274,
+    "public_gold_equal": 250,
+    "private_gold_equal": 267,
+    "private_time_boundary": 63,
+    "gold_issues": {
+      "none": 250,
+      "private_time_boundary": 17,
+      "incomplete_gold_window": 7
+    },
+    "tsfile_bytes": 40302631,
+    "code_sha256": {
+      "migrate.py": "9737108c6ea231e5e19955d3ddb02980996ae68c1c56790c70c6e7fe69b3d4f7",
+      "equivalence.py": "c4ca6f5396adcbd32c8e4e2bc69e89277a9d559cc6d03263250d4f082e9df156"
+    },
+    "model_used": false,
+    "fs_profile": "cat_plus_external_generic_composition_not_native_fs",
+    "experiment_ready": false
+  },
+  "performance_measurement": false
+}
