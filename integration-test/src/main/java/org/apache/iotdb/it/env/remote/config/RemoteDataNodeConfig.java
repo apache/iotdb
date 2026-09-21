@@ -49,6 +49,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     return this;
