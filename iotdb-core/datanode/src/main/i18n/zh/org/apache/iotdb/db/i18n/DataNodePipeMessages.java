@@ -1667,6 +1667,12 @@ public final class DataNodePipeMessages {
       "Subscription：握手时 consumer {} 已存在，跳过 consumer 创建。";
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_HANDSHAKE_SUCCESSFULLY_DATA_NODE_ID_58DA6A5F =
       "Subscription：consumer {} 握手成功，data node id：{}";
+  public static final String
+      LOG_SUBSCRIPTION_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_WAS_TAKEN_OVER_BY_A_NEWER_CONNECTION_FENCED_THE_PREVIOUS_CONNECTION_4E72DBD9 =
+          "Subscription：consumer {}（consumer group {}）已被新连接接管，旧连接已被隔离。";
+  public static final String
+      MESSAGE_SUBSCRIPTION_CONSUMER_CONNECTION_WAS_FENCED_BECAUSE_A_NEWER_CONNECTION_WITH_THE_SAME_CONSUMER_ID_AND_CONSUMER_GROUP_ID_COMPLETED_THE_HANDSHAKE_THIS_CONSUMER_INSTANCE_CANNOT_BE_REUSED_CREATE_A_NEW_CONSUMER_INSTANCE_TO_RECONNECT_B0C2CCBE =
+          "Subscription：consumer 连接已被隔离，因为具有相同 consumer ID 和 consumer group ID 的新连接已完成握手。当前 consumer 实例不可复用，请创建新的 consumer 实例进行重连。";
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_UNSUBSCRIBE_SUCCESSFULLY_AA5E0AA9 =
       "Subscription：consumer {} 取消订阅 {} 成功";
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_ACCEPTED_SUCCESSFULLY_58D1C111 =

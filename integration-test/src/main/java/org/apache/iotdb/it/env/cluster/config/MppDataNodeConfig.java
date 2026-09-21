@@ -186,4 +186,13 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("table_query_device_entry_batch_size_in_bytes", String.valueOf(batchSizeInBytes));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(
+      int mppDataExchangeMaxPayloadSizeInBytes) {
+    setProperty(
+        "mpp_data_exchange_max_payload_size_in_bytes",
+        String.valueOf(mppDataExchangeMaxPayloadSizeInBytes));
+    return this;
+  }
 }

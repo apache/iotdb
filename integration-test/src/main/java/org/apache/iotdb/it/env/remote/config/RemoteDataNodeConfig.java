@@ -130,4 +130,10 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(
+      int mppDataExchangeMaxPayloadSizeInBytes) {
+    return this;
+  }
 }

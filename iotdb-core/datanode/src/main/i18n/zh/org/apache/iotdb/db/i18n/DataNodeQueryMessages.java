@@ -21,6 +21,14 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
+      "Fragment instance %s 已处于 %s 状态";
+
+  public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
+      "Thrift 最大帧大小 %d 无效，来源：%s";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
+      "向节点派发 Load 命令失败，命令：%s，节点：%s，异常：%s";
+
   // --- Common ---
 
   public static final String NO_MATCHED_DATABASE_PLEASE_CHECK_THE_PATH =
@@ -152,6 +160,8 @@ public final class DataNodeQueryMessages {
           + "原始错误：%s";
   public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
       "匹配的源列超过了当前估算内存容量，至少超出 %,d 列。";
+  public static final String RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT =
+      "本次失败的内存申请超出可用内存，按已记录列的平均内存估算，至少超出相当于 %,d 列的容量。";
   public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
       "查询分析拉取元数据时内存不足。结果集可能包含过多列。"
           + "失败前，IoTDB 已从 schema 拉取结果中反序列化 %,d 个时间序列列。"
@@ -1396,6 +1406,26 @@ public final class DataNodeQueryMessages {
       "获取数据块 [{}, {}) 失败，尝试次数：{}";
   public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
       "数据块响应数量异常。";
+  public static final String
+      EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
+          "序列化 TsBlock 分片偏移量 %s 无效，块大小为 %s。";
+  public static final String
+      EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303 =
+          "TsBlock 分片累计长度 %s 与 totalLength %s 不一致。";
+  public static final String
+      EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2 =
+          "首个分片数据块响应必须包含 totalLength。";
+  public static final String
+      EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E =
+          "下一个 sequence ID %s 超过请求的结束 sequence ID %s。";
+  public static final String
+      EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287 =
+          "已完成的数据块响应区间不能保留未完成的 TsBlock。";
+  public static final String EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863 =
+      "TsBlock 分片不能为空。";
+  public static final String
+      EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047 =
+          "下一分片偏移量 %s 必须大于当前偏移量 %s，并且等于分片累计长度 %s。";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "发送数据块确认事件 [{}, {}) 失败，尝试次数：{}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =

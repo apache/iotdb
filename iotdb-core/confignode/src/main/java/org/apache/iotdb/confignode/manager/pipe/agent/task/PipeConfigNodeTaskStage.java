@@ -73,6 +73,16 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
   }
 
   @Override
+  public void registerReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    subtask.registerReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
+  @Override
+  public void discardReceiverRuntimeSessions(final String pipeName, final long creationTime) {
+    subtask.discardReceiverRuntimeSessions(pipeName, creationTime);
+  }
+
+  @Override
   public void dropSubtask() throws PipeException {
     PipeConfigNodeSubtaskExecutor.getInstance().deregister(subtask.getTaskID());
   }
