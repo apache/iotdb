@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.lbac;
 
 import org.apache.iotdb.commons.i18n.LBACMessages;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -28,37 +29,51 @@ import java.util.Set;
 /** The object-side LBAC requirement: protected column labels grouped by READ and WRITE. */
 public final class RequiredLabels {
 
-  private final Set<String> readLabels = new HashSet<>();
-  private final Set<String> writeLabels = new HashSet<>();
+  // Lazily created on first use: a requirement usually carries only READ or only WRITE labels.
+  private Set<String> readLabels;
+  private Set<String> writeLabels;
 
   public RequiredLabels requireLabelWithReadAccess(final String labelName) {
     Objects.requireNonNull(labelName, LBACMessages.EXCEPTION_LABELNAME_IS_NULL_856ABAE4);
+    if (readLabels == null) {
+      readLabels = new HashSet<>();
+    }
     readLabels.add(labelName);
     return this;
   }
 
   public RequiredLabels requireLabelWithWriteAccess(final String labelName) {
     Objects.requireNonNull(labelName, LBACMessages.EXCEPTION_LABELNAME_IS_NULL_856ABAE4);
+    if (writeLabels == null) {
+      writeLabels = new HashSet<>();
+    }
     writeLabels.add(labelName);
     return this;
   }
 
   public RequiredLabels requireLabelWithAllAccess(final String labelName) {
     Objects.requireNonNull(labelName, LBACMessages.EXCEPTION_LABELNAME_IS_NULL_856ABAE4);
+    if (readLabels == null) {
+      readLabels = new HashSet<>();
+    }
+    if (writeLabels == null) {
+      writeLabels = new HashSet<>();
+    }
     readLabels.add(labelName);
     writeLabels.add(labelName);
     return this;
   }
 
   public Set<String> getReadLabels() {
-    return readLabels;
+    return readLabels == null ? Collections.emptySet() : readLabels;
   }
 
   public Set<String> getWriteLabels() {
-    return writeLabels;
+    return writeLabels == null ? Collections.emptySet() : writeLabels;
   }
 
   public boolean isEmpty() {
-    return readLabels.isEmpty() && writeLabels.isEmpty();
+    return (readLabels == null || readLabels.isEmpty())
+        && (writeLabels == null || writeLabels.isEmpty());
   }
 }
