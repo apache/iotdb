@@ -83,7 +83,12 @@ public class CachedSchemaPatternMatcherTest {
 
   private static class CountingCachedSchemaPatternMatcher extends CachedSchemaPatternMatcher {
 
+    private final int sourcesToAddOnEachMatch;
     private int tableMatchCount;
+
+    private CountingCachedSchemaPatternMatcher(final int sourcesToAddOnEachMatch) {
+      this.sourcesToAddOnEachMatch = sourcesToAddOnEachMatch;
+    }
 
     @Override
     protected void matchTableModelEvent(
@@ -91,8 +96,13 @@ public class CachedSchemaPatternMatcherTest {
         final String tableName,
         final Set<PipeRealtimeDataRegionSource> matchedSources) {
       ++tableMatchCount;
-      // Simulate a successful table-level match so this test focuses on match orchestration.
-      matchedSources.addAll(sources);
+      int addedSourceCount = 0;
+      for (final PipeRealtimeDataRegionSource source : sources) {
+        matchedSources.add(source);
+        if (++addedSourceCount >= sourcesToAddOnEachMatch) {
+          break;
+        }
+      }
     }
 
     private int getTableMatchCount() {
@@ -208,9 +218,9 @@ public class CachedSchemaPatternMatcherTest {
   @Test
   public void testTableModelMatchesEachTableOncePerEvent() throws Exception {
     final CountingCachedSchemaPatternMatcher countingMatcher =
-        new CountingCachedSchemaPatternMatcher();
-    final PipeRealtimeDataRegionSource source = new PipeRealtimeDataRegionFakeSource();
-    countingMatcher.register(source);
+        new CountingCachedSchemaPatternMatcher(1);
+    countingMatcher.register(new PipeRealtimeDataRegionFakeSource());
+    countingMatcher.register(new PipeRealtimeDataRegionFakeSource());
 
     final PipeInsertionEvent insertionEvent = Mockito.mock(PipeInsertionEvent.class);
     Mockito.when(insertionEvent.getTableModelDatabaseName()).thenReturn("db");
@@ -218,20 +228,21 @@ public class CachedSchemaPatternMatcherTest {
     schemaInfo.put(new StringArrayDeviceID("table1", "tag1"), new String[0]);
     schemaInfo.put(new StringArrayDeviceID("table1", "tag2"), new String[0]);
 
-    Assert.assertTrue(
+    Assert.assertEquals(
+        1,
         countingMatcher
             .match(new MockedPipeRealtimeEvent(insertionEvent, null, schemaInfo))
             .getLeft()
-            .contains(source));
+            .size());
     Assert.assertEquals(1, countingMatcher.getTableMatchCount());
   }
 
   @Test
   public void testMultiTableTsFileCollectsAllTableNamesAfterAllSourcesMatched() throws Exception {
     final CountingCachedSchemaPatternMatcher countingMatcher =
-        new CountingCachedSchemaPatternMatcher();
-    final PipeRealtimeDataRegionSource source = new PipeRealtimeDataRegionFakeSource();
-    countingMatcher.register(source);
+        new CountingCachedSchemaPatternMatcher(Integer.MAX_VALUE);
+    countingMatcher.register(new PipeRealtimeDataRegionFakeSource());
+    countingMatcher.register(new PipeRealtimeDataRegionFakeSource());
 
     final PipeTsFileInsertionEvent tsFileInsertionEvent =
         Mockito.mock(PipeTsFileInsertionEvent.class);
