@@ -439,16 +439,20 @@ public class IoTDBTableModelSessionIT {
     final int warmupRounds = 2;
     final int measuredRounds = 6;
     final int fieldCount = 99;
+    final String databasePrefix = "numeric_perf_";
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      session.executeNonQueryStatement("CREATE DATABASE numeric_perf");
-      session.executeNonQueryStatement("USE numeric_perf");
       StringBuilder ddl = new StringBuilder("CREATE TABLE prepared_perf (tag STRING TAG");
       for (int i = 0; i < fieldCount; i++) {
         ddl.append(", f").append(i).append(" DOUBLE FIELD");
       }
       ddl.append(")");
-      session.executeNonQueryStatement(ddl.toString());
-      session.executeNonQueryStatement(ddl.toString().replace("prepared_perf", "tablet_perf"));
+      // Give each writer its own database so concurrent writes use independent DataRegions.
+      for (int i = 0; i < concurrency; i++) {
+        session.executeNonQueryStatement("CREATE DATABASE " + databasePrefix + i);
+        session.executeNonQueryStatement("USE " + databasePrefix + i);
+        session.executeNonQueryStatement(ddl.toString());
+        session.executeNonQueryStatement(ddl.toString().replace("prepared_perf", "tablet_perf"));
+      }
     }
 
     List<String> names = new ArrayList<>();
@@ -474,7 +478,7 @@ public class IoTDBTableModelSessionIT {
       // Connections, USE, prepare and reusable input allocation are outside every timed round.
       for (int i = 0; i < concurrency; i++) {
         sessions[i] = EnvFactory.getEnv().getTableSessionConnection();
-        sessions[i].executeNonQueryStatement("USE numeric_perf");
+        sessions[i].executeNonQueryStatement("USE " + databasePrefix + i);
         prepared[i] =
             sessions[i].prepareInsertNumericRow("prepared_perf", names, types, categories);
         tablets[i] = new Tablet("tablet_perf", names, types, categories, 1);
@@ -551,12 +555,15 @@ public class IoTDBTableModelSessionIT {
       // Per-device monotonic timestamps span warmup and measurement, so no rows overwrite others.
       for (int path = 0; path < 2; path++) {
         String table = path == 0 ? "prepared_perf" : "tablet_perf";
-        long expectedRows = Arrays.stream(path == 0 ? preparedRows : tabletRows).sum();
-        try (SessionDataSet dataSet =
-            sessions[0].executeQueryStatement("SELECT count(*) FROM " + table)) {
-          assertTrue(dataSet.hasNext());
-          assertEquals(expectedRows, dataSet.next().getFields().get(0).getLongV());
-          assertFalse(dataSet.hasNext());
+        long[] rowsByThread = path == 0 ? preparedRows : tabletRows;
+        long expectedRows = Arrays.stream(rowsByThread).sum();
+        for (int i = 0; i < concurrency; i++) {
+          try (SessionDataSet dataSet =
+              sessions[i].executeQueryStatement("SELECT count(*) FROM " + table)) {
+            assertTrue(dataSet.hasNext());
+            assertEquals(rowsByThread[i], dataSet.next().getFields().get(0).getLongV());
+            assertFalse(dataSet.hasNext());
+          }
         }
         System.out.printf("verified %s: %d rows%n", table, expectedRows);
       }
