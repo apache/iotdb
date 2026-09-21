@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
@@ -65,6 +66,8 @@ public class TreeViewTest {
 
   @Before
   public void setup() {
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(Long.MAX_VALUE);
+    MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
     TsTable tsTable = new TsTable(DEVICE_VIEW_TEST_TABLE);
     tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
     tsTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.test" + ".**");
@@ -75,6 +78,8 @@ public class TreeViewTest {
   @After
   public void tearDown() {
     DataNodeTableCache.getInstance().invalid(TREE_VIEW_DB);
+    MetadataLeaseManager.getInstance().updateFenceThresholdMs(20_000);
+    MetadataLeaseManager.getInstance().recoveryLeaseForTest(true);
   }
 
   @Test

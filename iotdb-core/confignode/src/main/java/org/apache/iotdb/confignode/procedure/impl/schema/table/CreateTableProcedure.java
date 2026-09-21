@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.TableInDeletionException;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
@@ -40,6 +42,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +52,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
@@ -117,10 +121,14 @@ public class CreateTableProcedure
 
   protected void checkTableExistence(final ConfigNodeProcedureEnv env) {
     try {
-      if (env.getConfigManager()
-          .getClusterSchemaManager()
-          .getTableIfExists(database, table.getTableName())
-          .isPresent()) {
+      final Optional<Pair<TsTable, TableNodeStatus>> existingTable =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .getTableAndStatusIfExists(database, table.getTableName());
+      if (existingTable.isPresent()) {
+        if (existingTable.get().getRight() == TableNodeStatus.PRE_DELETE) {
+          throw new TableInDeletionException(database, table.getTableName());
+        }
         setFailure(
             new ProcedureException(
                 new IoTDBException(

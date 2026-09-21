@@ -21,6 +21,14 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
+      "Fragment instance %s is already %s";
+
+  public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
+      "Invalid Thrift maximum frame size %d from %s";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
+      "failed to dispatch load command %s to node %s because of exception: %s";
+
   // --- Common ---
 
   public static final String NO_MATCHED_DATABASE_PLEASE_CHECK_THE_PATH =
@@ -156,6 +164,9 @@ public final class DataNodeQueryMessages {
   public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
       "The matched source columns exceed the estimated current memory capacity by "
           + "at least %,d columns. ";
+  public static final String RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT =
+      "The failed memory reservation exceeds available memory by the equivalent of at least "
+          + "%,d columns, estimated from the observed average column size. ";
   public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
       "Not enough memory while fetching metadata for query analysis. "
           + "The result set may have too many columns. "
@@ -535,6 +546,18 @@ public final class DataNodeQueryMessages {
       "TIMESTAMP does not support REGEXP/NOT REGEXP";
   public static final String GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER =
       "GroupByTime filter cannot exist in value filter.";
+  public static final String EXCEPTION_ARG_CANNOT_BE_CAST_TO_ARG_28F0C5FC =
+      "\"%s\" cannot be cast to [%s]";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_751BF348 =
+      "Unsupported data type %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXBY_MINBY_ARG_DD30FAB1 =
+      "Unsupported data type in MaxBy/MinBy: %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_EQUAL_EVENT_AGGREGATION_ARG_77E085EB =
+      "Unsupported data type in equal event aggregation : %s";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_VARIATION_EVENT_AGGREGATION_ARG_3D0F0388 =
+      "Unsupported data type in variation event aggregation : %s";
+  public static final String EXCEPTION_TIMESTAMP_IN_LIST_LITERAL_CAN_ONLY_BE_LONGLITERAL_DOUBLELITERAL_OR_GENERICLITERAL_ACTUAL_TYPE_ARG_D751BE79 =
+      "TIMESTAMP IN-list literal can only be LongLiteral, DoubleLiteral, or GenericLiteral; actual type: %s";
   public static final String IS_NULL_CAN_BE_PUSHED_DOWN =
       "IS NULL can be pushed down";
   public static final String GROUP_BY_TIME_CANNOT_BE_REVERSED =
@@ -1027,6 +1050,8 @@ public final class DataNodeQueryMessages {
       "Unexpected expression: ";
   public static final String FAILED_TO_FETCH_SUBQUERY_RESULT =
       "Failed to Fetch Subquery Result.";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_FOR_SCALAR_SUBQUERY_RESULT_ARG_D58CBB00 =
+      "Unsupported data type for scalar subquery result: %s";
 
   // --- Plan / Relational / Planner / Iterative ---
 
@@ -1400,6 +1425,8 @@ public final class DataNodeQueryMessages {
       "Error occurred during getting UDF access strategy";
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils should not be instantiated.";
+  public static final String EXCEPTION_THE_DATA_TYPE_OF_THE_STATE_WINDOW_STRATEGY_IS_NOT_VALID_61F4E273 =
+      "The data type of the state window strategy is not valid.";
 
   // --- Execution / Exchange (additional) ---
 
@@ -1419,6 +1446,26 @@ public final class DataNodeQueryMessages {
       "failed to get data block [{}, {}), attempt times: {}";
   public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
       "Unexpected data block response size.";
+  public static final String
+      EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
+          "Invalid serialized TsBlock fragment offset %s for block size %s.";
+  public static final String
+      EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303 =
+          "Accumulated TsBlock fragment length %s does not match totalLength %s.";
+  public static final String
+      EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2 =
+          "The first fragmented data block response must include totalLength.";
+  public static final String
+      EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E =
+          "Next sequence ID %s exceeds requested end sequence ID %s.";
+  public static final String
+      EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287 =
+          "A completed data block response range must not retain a partial TsBlock.";
+  public static final String EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863 =
+      "TsBlock fragment must not be empty.";
+  public static final String
+      EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047 =
+          "Next fragment offset %s must be greater than current offset %s and match accumulated fragment length %s.";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "failed to send ack data block event [{}, {}), attempt times: {}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =

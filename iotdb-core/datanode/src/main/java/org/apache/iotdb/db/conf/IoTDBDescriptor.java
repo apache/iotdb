@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
@@ -77,6 +78,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,7 +121,9 @@ public class IoTDBDescriptor {
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
-  private static final long DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES = 1024;
+  private static final int DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES = 4 * 1024 * 1024;
+
+  private static final int MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES = 128 * 1024;
 
   private static final String[] DEFAULT_WAL_THRESHOLD_NAME = {
     "iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte"
@@ -170,7 +174,7 @@ public class IoTDBDescriptor {
     }
     // If no configuration source initialized the memory config, initialize it with defaults.
     if (!hasLoadedProperties && !hasProperties) {
-      memoryConfig.init(new TrimProperties());
+      memoryConfig.init(new TrimProperties(), conf.getThriftMaxFrameSize(), LOGGER);
     }
   }
 
@@ -337,7 +341,11 @@ public class IoTDBDescriptor {
                 "write_memory_variation_report_proportion",
                 Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
-    memoryConfig.init(properties);
+    conf.setThriftMaxFrameSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+    memoryConfig.init(properties, conf.getThriftMaxFrameSize(), LOGGER);
 
     String systemDir = properties.getProperty("dn_system_dir");
     if (systemDir == null) {
@@ -830,13 +838,6 @@ public class IoTDBDescriptor {
         (Integer.parseInt(
             properties.getProperty(
                 "primitive_array_size", String.valueOf(conf.getPrimitiveArraySize())))));
-
-    conf.setThriftMaxFrameSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
-
-    loadTableQueryDeviceEntryBatchSize(properties);
 
     conf.setThriftDefaultBufferSize(
         Integer.parseInt(
@@ -2279,7 +2280,10 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "enable_topk_runtime_filter"))));
 
-      loadTableQueryDeviceEntryBatchSize(properties);
+      memoryConfig.loadTableQueryDeviceEntryBatchSize(
+          properties, conf.getThriftMaxFrameSize(), LOGGER);
+
+      loadMppDataExchangeMaxPayloadSize(properties);
 
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
@@ -2457,36 +2461,12 @@ public class IoTDBDescriptor {
         "mods_cache_size_limit_per_fi_in_bytes", Long.toString(conf.getModsCacheSizeLimitPerFI()));
     ConfigurationFileUtils.updateAppliedProperties(
         "table_query_device_entry_batch_size_in_bytes",
-        Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes()));
+        Long.toString(memoryConfig.getTableQueryDeviceEntryBatchSizeInBytes()));
+    ConfigurationFileUtils.updateAppliedProperties(
+        "mpp_data_exchange_max_payload_size_in_bytes",
+        Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes()));
     ConfigurationFileUtils.updateAppliedProperties(
         DEFAULT_WAL_THRESHOLD_NAME[1], Long.toString(conf.getThrottleThreshold()));
-  }
-
-  private void loadTableQueryDeviceEntryBatchSize(TrimProperties properties) {
-    long deviceEntryBatchSize =
-        Long.parseLong(
-            properties.getProperty(
-                "table_query_device_entry_batch_size_in_bytes",
-                Long.toString(conf.getTableQueryDeviceEntryBatchSizeInBytes())));
-    if (deviceEntryBatchSize <= 0) {
-      deviceEntryBatchSize =
-          memoryConfig.getOperatorsMemoryManager().getTotalMemorySizeInBytes()
-              / memoryConfig.getQueryThreadCount()
-              / 4;
-    }
-    long maxBatchSize =
-        Math.max(1, conf.getThriftMaxFrameSize() - DEVICE_ENTRY_RPC_FRAME_RESERVED_BYTES);
-    long effectiveBatchSize = Math.min(deviceEntryBatchSize, maxBatchSize);
-    if (deviceEntryBatchSize > maxBatchSize) {
-      LOGGER.warn(
-          String.format(
-              DataNodeMiscMessages
-                  .LOG_TABLE_QUERY_DEVICE_ENTRY_BATCH_SIZE_IN_BYTES_ARG_EXCEEDS_DN_THRIFT_MAX_FRAME_SIZE_ARG_USING_ARG_AS_THE_EFFECTIVE_VALUE_2AE1BEDA,
-              deviceEntryBatchSize,
-              conf.getThriftMaxFrameSize(),
-              effectiveBatchSize));
-    }
-    conf.setTableQueryDeviceEntryBatchSizeInBytes(effectiveBatchSize);
   }
 
   private void loadQuerySampleThroughput(TrimProperties properties) throws IOException {
@@ -3107,6 +3087,8 @@ public class IoTDBDescriptor {
                 "mpp_data_exchange_keep_alive_time_in_ms",
                 Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))));
 
+    loadMppDataExchangeMaxPayloadSize(properties);
+
     conf.setPartitionCacheSize(
         Integer.parseInt(
             properties.getProperty(
@@ -3119,28 +3101,49 @@ public class IoTDBDescriptor {
                 Integer.toString(commonConfig.getDriverTaskExecutionTimeSliceInMs()))));
   }
 
+  private void loadMppDataExchangeMaxPayloadSize(TrimProperties properties) {
+    int configuredSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "mpp_data_exchange_max_payload_size_in_bytes",
+                Integer.toString(conf.getMppDataExchangeMaxPayloadSizeInBytes())));
+    if (configuredSize <= 0) {
+      LOGGER.warn(
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_NOT_POSITIVE_USING_DEFAULT_VALUE_ARG_1AA821B2,
+              configuredSize,
+              DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES));
+      configuredSize = DEFAULT_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES;
+    } else if (configuredSize < MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES) {
+      LOGGER.warn(
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_IS_BELOW_MINIMUM_ALLOWED_VALUE_ARG_USING_ARG_794ABC76,
+              configuredSize,
+              MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES,
+              MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES));
+      configuredSize = MIN_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_IN_BYTES;
+    }
+    int maxAllowedSize = conf.getThriftMaxFrameSize() - 1024;
+    if (configuredSize > maxAllowedSize) {
+      LOGGER.warn(
+          String.format(
+              DataNodeMiscMessages
+                  .LOG_MPP_DATA_EXCHANGE_MAX_PAYLOAD_SIZE_ARG_EXCEEDS_MAXIMUM_ALLOWED_VALUE_ARG_USING_ARG_D9BF0BBC,
+              configuredSize,
+              maxAllowedSize,
+              maxAllowedSize));
+      configuredSize = maxAllowedSize;
+    }
+    conf.setMppDataExchangeMaxPayloadSizeInBytes(configuredSize);
+  }
+
   /** Get default encode algorithm by data type */
   public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return conf.getDefaultBooleanEncoding();
-      case INT32:
-      case DATE:
-        return conf.getDefaultInt32Encoding();
-      case INT64:
-      case TIMESTAMP:
-        return conf.getDefaultInt64Encoding();
-      case FLOAT:
-        return conf.getDefaultFloatEncoding();
-      case DOUBLE:
-        return conf.getDefaultDoubleEncoding();
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      default:
-        return conf.getDefaultTextEncoding();
-    }
+    return TypeServices.DEFAULT_ENCODING_BY_TYPE_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .apply(conf);
   }
 
   // These configurations are received from config node when registering

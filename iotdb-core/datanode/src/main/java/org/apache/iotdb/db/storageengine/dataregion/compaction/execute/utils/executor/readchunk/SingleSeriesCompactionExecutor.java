@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
@@ -36,6 +35,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
@@ -337,34 +337,8 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void writeTimeAndValueToChunkWriter(TimeValuePair timeValuePair) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        break;
-      case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        break;
-      case DOUBLE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        break;
-      case BOOLEAN:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        break;
-      case INT64:
-      case TIMESTAMP:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        break;
-      case INT32:
-      case DATE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            StorageEngineMessages.UNKNOWN_DATA_TYPE + chunkWriter.getDataType());
-    }
+    Type.fromTsDataType(chunkWriter.getDataType())
+        .write(chunkWriter, timeValuePair.getTimestamp(), timeValuePair.getValue());
   }
 
   private void flushChunkToFileWriter(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {

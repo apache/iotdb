@@ -58,6 +58,7 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.IBatchDataIterator;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.read.reader.page.PageReader;
@@ -154,8 +155,8 @@ public class CompactionCheckerUtils {
                     batchDataIterator.currentTime(),
                     new TimeValuePair(
                         batchDataIterator.currentTime(),
-                        TsPrimitiveType.getByType(
-                            chunkMetadata.getDataType(), batchDataIterator.currentValue())));
+                        Type.fromTsDataType(chunkMetadata.getDataType())
+                            .getTsPrimitiveType(batchDataIterator.currentValue())));
                 batchDataIterator.next();
               }
             }
@@ -266,8 +267,8 @@ public class CompactionCheckerUtils {
                   currTimeValuePairs.add(
                       new TimeValuePair(
                           batchDataIterator.currentTime(),
-                          TsPrimitiveType.getByType(
-                              header.getDataType(), batchDataIterator.currentValue())));
+                          Type.fromTsDataType(header.getDataType())
+                              .getTsPrimitiveType(batchDataIterator.currentValue())));
                   batchDataIterator.next();
                 }
                 dataSize -= pageHeader.getSerializedPageSize();

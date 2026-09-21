@@ -145,13 +145,15 @@ public class AuthorityChecker {
   }
 
   public static boolean invalidateCache(String username, String roleName) {
+    final boolean invalidated =
+        authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
     PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
-    return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
+    return invalidated;
   }
 
   public static void invalidateAllCache() {
-    PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
     authorityFetcher.get().getAuthorCache().invalidAllCache();
+    PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
   }
 
   public static User getUser(String username) {

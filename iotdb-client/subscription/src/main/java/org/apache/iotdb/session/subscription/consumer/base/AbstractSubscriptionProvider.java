@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionOwnerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
@@ -91,6 +92,7 @@ public abstract class AbstractSubscriptionProvider {
 
   private String consumerId;
   private String consumerGroupId;
+  private String consumerInstanceId;
   private final String ownerId;
   private final Long ownerEpoch;
 
@@ -189,6 +191,10 @@ public abstract class AbstractSubscriptionProvider {
     return consumerGroupId;
   }
 
+  void setConsumerInstanceId(final String consumerInstanceId) {
+    this.consumerInstanceId = consumerInstanceId;
+  }
+
   TEndPoint getEndPoint() {
     return endPoint;
   }
@@ -206,6 +212,9 @@ public abstract class AbstractSubscriptionProvider {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    if (consumerInstanceId != null) {
+      consumerAttributes.put(ConsumerConstant.CONSUMER_INSTANCE_ID_KEY, consumerInstanceId);
+    }
     if (ownerId != null) {
       consumerAttributes.put(ConsumerConstant.OWNER_ID_KEY, ownerId);
     }
@@ -324,6 +333,15 @@ public abstract class AbstractSubscriptionProvider {
           isClosed.set(true);
         }
       }
+    }
+  }
+
+  synchronized void closeSession() throws IoTDBConnectionException {
+    try {
+      session.close();
+    } finally {
+      setUnavailable();
+      isClosed.set(true);
     }
   }
 
@@ -711,6 +729,9 @@ public abstract class AbstractSubscriptionProvider {
           LOGGER.warn(errorMessage);
           throw new SubscriptionOwnerFencedException(errorMessage);
         }
+      case 1919: // SUBSCRIPTION_CONSUMER_FENCED
+        LOGGER.warn(status.message);
+        throw new SubscriptionConsumerFencedException(status.message);
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CONSUMER

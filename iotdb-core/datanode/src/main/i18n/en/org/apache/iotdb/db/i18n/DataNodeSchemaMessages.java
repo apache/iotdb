@@ -584,8 +584,6 @@ public final class DataNodeSchemaMessages {
   public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
       "Update table {}.{} by table fetch, {}";
   public static final String UPDATE_TABLE_BY_FETCH = "Update table {}.{} by table fetch.";
-  public static final String THE_TABLE_IS_IN_PRE_DELETE_STATE =
-      "The table %s.%s is in the pre-delete state. Please wait a few seconds. If the table is still in this state, please drop it again.";
   public static final String COMPARE_TABLE_ADDED = "Added table: ";
   public static final String COMPARE_TABLE_REMOVED = "Removed table: ";
   public static final String COMPARE_TABLE_NAME = "Table name: ";

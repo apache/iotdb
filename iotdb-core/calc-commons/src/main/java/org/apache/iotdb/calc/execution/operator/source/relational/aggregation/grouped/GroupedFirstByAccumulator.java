@@ -27,6 +27,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -34,6 +35,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -41,18 +43,22 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.utils.BytesUtils.boolToBytes;
-import static org.apache.tsfile.utils.BytesUtils.doubleToBytes;
-import static org.apache.tsfile.utils.BytesUtils.floatToBytes;
-import static org.apache.tsfile.utils.BytesUtils.intToBytes;
 import static org.apache.tsfile.utils.BytesUtils.longToBytes;
 
-public class GroupedFirstByAccumulator implements GroupedAccumulator {
+public class GroupedFirstByAccumulator
+    implements GroupedAccumulator,
+        TypeServices.GroupedValueAccessor,
+        TypeServices.GroupedByValueConsumer {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedFirstByAccumulator.class);
 
   private final TSDataType xDataType;
   private final TSDataType yDataType;
+  private final TypeServices.GroupedValueService valueService;
+  private final TypeServices.GroupedValueSerializer valueSerializer;
+  private final TypeServices.GroupedByInputReader inputReader;
+  private final TypeServices.GroupedByValueDeserializer valueDeserializer;
 
   private final LongBigArray yFirstTimes = new LongBigArray(Long.MAX_VALUE);
 
@@ -71,75 +77,18 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
   public GroupedFirstByAccumulator(TSDataType xDataType, TSDataType yDataType) {
     this.xDataType = xDataType;
     this.yDataType = yDataType;
-
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        xIntValues = new IntBigArray();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        xLongValues = new LongBigArray();
-        break;
-      case FLOAT:
-        xFloatValues = new FloatBigArray();
-        break;
-      case DOUBLE:
-        xDoubleValues = new DoubleBigArray();
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        xBinaryValues = new BinaryBigArray();
-        break;
-      case BOOLEAN:
-        xBooleanValues = new BooleanBigArray();
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
-                xDataType));
-    }
+    Type type = Type.fromTsDataType(xDataType);
+    this.valueService = TypeServices.GROUPED_VALUE_SERVICE.call(type);
+    this.valueSerializer = TypeServices.GROUPED_VALUE_SERIALIZER_SERVICE.call(type);
+    this.inputReader = TypeServices.GROUPED_BY_INPUT_READER_SERVICE.call(type);
+    this.valueDeserializer = TypeServices.GROUPED_BY_VALUE_DESERIALIZER_SERVICE.call(type);
+    valueService.initialize(this);
   }
 
   @Override
   public long getEstimatedSize() {
-    long valuesSize = 0;
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        valuesSize += xIntValues.sizeOf();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        valuesSize += xLongValues.sizeOf();
-        break;
-      case FLOAT:
-        valuesSize += xFloatValues.sizeOf();
-        break;
-      case DOUBLE:
-        valuesSize += xDoubleValues.sizeOf();
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        valuesSize += xBinaryValues.sizeOf();
-        break;
-      case BOOLEAN:
-        valuesSize += xBooleanValues.sizeOf();
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
-                xDataType));
-    }
-
     return INSTANCE_SIZE
-        + valuesSize
+        + valueService.sizeOf(this)
         + yFirstTimes.sizeOf()
         + inits.sizeOf()
         + initNullTimeValues.sizeOf()
@@ -152,36 +101,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
     inits.ensureCapacity(groupCount);
     initNullTimeValues.ensureCapacity(groupCount);
     xNulls.ensureCapacity(groupCount);
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        xIntValues.ensureCapacity(groupCount);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        xLongValues.ensureCapacity(groupCount);
-        return;
-      case FLOAT:
-        xFloatValues.ensureCapacity(groupCount);
-        return;
-      case DOUBLE:
-        xDoubleValues.ensureCapacity(groupCount);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        xBinaryValues.ensureCapacity(groupCount);
-        return;
-      case BOOLEAN:
-        xBooleanValues.ensureCapacity(groupCount);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
-                xDataType));
-    }
+    valueService.ensureCapacity(this, groupCount);
   }
 
   @Override
@@ -193,36 +113,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
     inits.reset();
     initNullTimeValues.reset();
     xNulls.reset();
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        xIntValues.reset();
-        break;
-      case INT64:
-      case TIMESTAMP:
-        xLongValues.reset();
-        break;
-      case FLOAT:
-        xFloatValues.reset();
-        break;
-      case DOUBLE:
-        xDoubleValues.reset();
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        xBinaryValues.reset();
-        break;
-      case BOOLEAN:
-        xBooleanValues.reset();
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
-                xDataType));
-    }
+    valueService.reset(this);
   }
 
   @Override
@@ -233,36 +124,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
             .EXCEPTION_LENGTH_OF_INPUT_COLUMN_LEFT_BRACKET_RIGHT_BRACKET_FOR_LASTBY_SLASH_FIRSTBY_SHOUL_9E836ABA);
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        addIntInput(groupIds, arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case INT64:
-      case TIMESTAMP:
-        addLongInput(groupIds, arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case FLOAT:
-        addFloatInput(groupIds, arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case DOUBLE:
-        addDoubleInput(groupIds, arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-        addBinaryInput(groupIds, arguments[0], arguments[1], arguments[2], mask);
-        return;
-      case BOOLEAN:
-        addBooleanInput(groupIds, arguments[0], arguments[1], arguments[2], mask);
-        return;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
-                xDataType));
-    }
+    inputReader.addInput(groupIds, arguments, mask, this);
   }
 
   @Override
@@ -288,75 +150,8 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
       offset += 1;
       int groupId = groupIds[i];
 
-      switch (xDataType) {
-        case INT32:
-        case DATE:
-          int intVal = isXValueNull ? 0 : BytesUtils.bytesToInt(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateIntFirstValue(groupId, isXValueNull, intVal, curTime);
-          } else {
-            updateIntNullTimeValue(groupId, isXValueNull, intVal);
-          }
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long longVal =
-              isXValueNull ? 0 : BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          if (!isOrderTimeNull) {
-            updateLongFirstValue(groupId, isXValueNull, longVal, curTime);
-          } else {
-            updateLongNullTimeValue(groupId, isXValueNull, longVal);
-          }
-          break;
-        case FLOAT:
-          float floatVal = isXValueNull ? 0 : BytesUtils.bytesToFloat(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateFloatFirstValue(groupId, isXValueNull, floatVal, curTime);
-          } else {
-            updateFloatNullTimeValue(groupId, isXValueNull, floatVal);
-          }
-          break;
-        case DOUBLE:
-          double doubleVal = isXValueNull ? 0 : BytesUtils.bytesToDouble(bytes, offset);
-          if (!isOrderTimeNull) {
-            updateDoubleFirstValue(groupId, isXValueNull, doubleVal, curTime);
-          } else {
-            updateDoubleNullTimeValue(groupId, isXValueNull, doubleVal);
-          }
-          break;
-        case TEXT:
-        case BLOB:
-        case OBJECT:
-        case STRING:
-          Binary binaryVal = null;
-          if (!isXValueNull) {
-            int length = BytesUtils.bytesToInt(bytes, offset);
-            offset += Integer.BYTES;
-            binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-          }
-          if (!isOrderTimeNull) {
-            updateBinaryFirstValue(groupId, isXValueNull, binaryVal, curTime);
-          } else {
-            updateBinaryNullTimeValue(groupId, isXValueNull, binaryVal);
-          }
-          break;
-        case BOOLEAN:
-          boolean boolVal = false;
-          if (!isXValueNull) {
-            boolVal = BytesUtils.bytesToBool(bytes, offset);
-          }
-          if (!isOrderTimeNull) {
-            updateBooleanFirstValue(groupId, isXValueNull, boolVal, curTime);
-          } else {
-            updateBooleanNullTimeValue(groupId, isXValueNull, boolVal);
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
-                  xDataType));
-      }
+      valueDeserializer.deserialize(
+          bytes, offset, groupId, isXValueNull, curTime, isOrderTimeNull, this);
     }
   }
 
@@ -377,7 +172,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
   /** Serializes group state: Time (8B) | xNull (1B) | OrderTimeNull (1B) | [Value] */
   private byte[] serializeTimeWithValue(int groupId) {
     boolean xNull = xNulls.get(groupId);
-    int length = Long.BYTES + 2 + (xNull ? 0 : calculateValueLength(groupId));
+    int length = Long.BYTES + 2 + (xNull ? 0 : valueSerializer.calcTypeSize(this, groupId));
     byte[] bytes = new byte[length];
     boolean isOrderTimeNull = !inits.get(groupId);
 
@@ -387,67 +182,9 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
 
     if (!xNull) {
       int valueOffset = Long.BYTES + 2;
-      switch (xDataType) {
-        case INT32:
-        case DATE:
-          intToBytes(xIntValues.get(groupId), bytes, valueOffset);
-          return bytes;
-        case INT64:
-        case TIMESTAMP:
-          longToBytes(xLongValues.get(groupId), bytes, valueOffset);
-          return bytes;
-        case FLOAT:
-          floatToBytes(xFloatValues.get(groupId), bytes, valueOffset);
-          return bytes;
-        case DOUBLE:
-          doubleToBytes(xDoubleValues.get(groupId), bytes, valueOffset);
-          return bytes;
-        case TEXT:
-        case BLOB:
-        case OBJECT:
-        case STRING:
-          byte[] values = xBinaryValues.get(groupId).getValues();
-          intToBytes(values.length, bytes, valueOffset);
-          System.arraycopy(values, 0, bytes, length - values.length, values.length);
-          return bytes;
-        case BOOLEAN:
-          boolToBytes(xBooleanValues.get(groupId), bytes, valueOffset);
-          return bytes;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
-                  xDataType));
-      }
+      valueSerializer.serialize(this, groupId, bytes, valueOffset);
     }
     return bytes;
-  }
-
-  private int calculateValueLength(int groupId) {
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        return Integer.BYTES;
-      case INT64:
-      case TIMESTAMP:
-        return Long.BYTES;
-      case FLOAT:
-        return Float.BYTES;
-      case DOUBLE:
-        return Double.BYTES;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        return Integer.BYTES + xBinaryValues.get(groupId).getValues().length;
-      case BOOLEAN:
-        return 1;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
-                xDataType));
-    }
   }
 
   @Override
@@ -457,36 +194,7 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
       return;
     }
 
-    switch (xDataType) {
-      case INT32:
-      case DATE:
-        columnBuilder.writeInt(xIntValues.get(groupId));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        columnBuilder.writeLong(xLongValues.get(groupId));
-        break;
-      case FLOAT:
-        columnBuilder.writeFloat(xFloatValues.get(groupId));
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(xDoubleValues.get(groupId));
-        break;
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      case STRING:
-        columnBuilder.writeBinary(xBinaryValues.get(groupId));
-        break;
-      case BOOLEAN:
-        columnBuilder.writeBoolean(xBooleanValues.get(groupId));
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_FIRST_AGGREGATION_ARG_8D31C6CA,
-                xDataType));
-    }
+    valueService.write(this, groupId, columnBuilder);
   }
 
   private boolean checkAndUpdateFirstTime(int groupId, boolean isXValueNull, long curTime) {
@@ -750,6 +458,127 @@ public class GroupedFirstByAccumulator implements GroupedAccumulator {
   protected void updateBooleanNullTimeValue(int groupId, boolean isXValueNull, boolean xValue) {
     if (checkAndUpdateNullTime(groupId, isXValueNull)) {
       xBooleanValues.set(groupId, xValue);
+    }
+  }
+
+  @Override
+  public RuntimeException unsupportedException() {
+    return new UnSupportedDataTypeException(
+        String.format(CalcMessages.UNSUPPORTED_DATA_TYPE_IN_FIRST_BY_AGGREGATION, xDataType));
+  }
+
+  @Override
+  public void initializeIntValues() {
+    xIntValues = new IntBigArray();
+  }
+
+  @Override
+  public void initializeLongValues() {
+    xLongValues = new LongBigArray();
+  }
+
+  @Override
+  public void initializeFloatValues() {
+    xFloatValues = new FloatBigArray();
+  }
+
+  @Override
+  public void initializeDoubleValues() {
+    xDoubleValues = new DoubleBigArray();
+  }
+
+  @Override
+  public void initializeBinaryValues() {
+    xBinaryValues = new BinaryBigArray();
+  }
+
+  @Override
+  public void initializeBooleanValues() {
+    xBooleanValues = new BooleanBigArray();
+  }
+
+  @Override
+  public IntBigArray getIntValues() {
+    return xIntValues;
+  }
+
+  @Override
+  public LongBigArray getLongValues() {
+    return xLongValues;
+  }
+
+  @Override
+  public FloatBigArray getFloatValues() {
+    return xFloatValues;
+  }
+
+  @Override
+  public DoubleBigArray getDoubleValues() {
+    return xDoubleValues;
+  }
+
+  @Override
+  public BinaryBigArray getBinaryValues() {
+    return xBinaryValues;
+  }
+
+  @Override
+  public BooleanBigArray getBooleanValues() {
+    return xBooleanValues;
+  }
+
+  @Override
+  public void updateInt(int groupId, boolean xNull, int value, boolean timeNull, long time) {
+    if (timeNull) {
+      updateIntNullTimeValue(groupId, xNull, value);
+    } else {
+      updateIntFirstValue(groupId, xNull, value, time);
+    }
+  }
+
+  @Override
+  public void updateLong(int groupId, boolean xNull, long value, boolean timeNull, long time) {
+    if (timeNull) {
+      updateLongNullTimeValue(groupId, xNull, value);
+    } else {
+      updateLongFirstValue(groupId, xNull, value, time);
+    }
+  }
+
+  @Override
+  public void updateFloat(int groupId, boolean xNull, float value, boolean timeNull, long time) {
+    if (timeNull) {
+      updateFloatNullTimeValue(groupId, xNull, value);
+    } else {
+      updateFloatFirstValue(groupId, xNull, value, time);
+    }
+  }
+
+  @Override
+  public void updateDouble(int groupId, boolean xNull, double value, boolean timeNull, long time) {
+    if (timeNull) {
+      updateDoubleNullTimeValue(groupId, xNull, value);
+    } else {
+      updateDoubleFirstValue(groupId, xNull, value, time);
+    }
+  }
+
+  @Override
+  public void updateBinary(int groupId, boolean xNull, Binary value, boolean timeNull, long time) {
+    if (timeNull) {
+      updateBinaryNullTimeValue(groupId, xNull, value);
+    } else {
+      updateBinaryFirstValue(groupId, xNull, value, time);
+    }
+  }
+
+  @Override
+  public void updateBoolean(
+      int groupId, boolean xNull, boolean value, boolean timeNull, long time) {
+    if (timeNull) {
+      updateBooleanNullTimeValue(groupId, xNull, value);
+    } else {
+      updateBooleanFirstValue(groupId, xNull, value, time);
     }
   }
 }

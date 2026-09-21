@@ -25,6 +25,7 @@ import static org.apache.iotdb.calc.execution.operator.source.relational.aggrega
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BigArrays.SEGMENT_SIZE;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BigArrays.offset;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.BigArrays.segment;
+import static org.apache.tsfile.utils.BytesUtils.boolToBytes;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOf;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfBooleanArray;
@@ -65,6 +66,10 @@ public final class BooleanBigArray {
    */
   public boolean get(long index) {
     return array[segment(index)][offset(index)];
+  }
+
+  public void toBytes(long index, byte[] bytes, int offset) {
+    boolToBytes(get(index), bytes, offset);
   }
 
   /**

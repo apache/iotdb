@@ -44,10 +44,12 @@
         <module>iotdb-client</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>
+        <module>library-pipe</module>
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
         <module>external-service-impl</module>
+        <module>architecture-test</module>
     </modules>
     <properties>
         <airlift-units.version>1.7</airlift-units.version>
@@ -109,7 +111,6 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>1.1.6</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!--mockito.version>4.11.0</mockito.version-->
@@ -146,7 +147,7 @@
         <thrift.version>0.24.0</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.4.1-260914-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.4.1-260915-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
     </properties>
@@ -371,26 +372,6 @@
                 <artifactId>units</artifactId>
                 <version>${airlift-units.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-stack-core</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-sdk-core</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-transport</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-sdk-client</artifactId>
-                <version>${milo.version}</version>
-            </dependency>
             <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -402,11 +383,6 @@
                         <artifactId>javax.inject</artifactId>
                     </exclusion>
                 </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.milo</groupId>
-                <artifactId>milo-sdk-server</artifactId>
-                <version>${milo.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.reflections</groupId>
@@ -716,7 +692,7 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.1.2</version>
                     <configuration>
-                        <argLine>${argLine} -Xmx1024m</argLine>
+                        <argLine>${argLine} -Xmx1024m -Dsurefire.forkNumber=${surefire.forkNumber}</argLine>
                         <!-- Subscription UT is maintained and executed by the enterprise edition. -->
                         <excludes>
                             <exclude>**/subscription/**</exclude>
@@ -1965,7 +1941,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m -Dsurefire.forkNumber=${surefire.forkNumber}</argLine>
                         </configuration>
                     </plugin>
                     <!-- for IT-->
