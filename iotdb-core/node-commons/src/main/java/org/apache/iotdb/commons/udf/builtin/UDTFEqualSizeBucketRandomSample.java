@@ -26,8 +26,8 @@ import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.udf.api.type.Type;
+
+import org.apache.tsfile.read.common.type.Type;
 
 import java.io.IOException;
 import java.security.SecureRandom;
@@ -35,48 +35,20 @@ import java.security.SecureRandom;
 public class UDTFEqualSizeBucketRandomSample extends UDTFEqualSizeBucketSample {
 
   private SecureRandom random;
+  private TypeServices.NumericRowCollector rowCollector;
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     random = new SecureRandom();
+    rowCollector = TypeServices.NUMERIC_ROW_COLLECTOR_SERVICE.call(Type.fromTsDataType(dataType));
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(bucketSize))
         .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
   @Override
-  public void transform(RowWindow rowWindow, PointCollector collector)
-      throws IOException, UDFInputSeriesDataTypeNotValidException {
+  public void transform(RowWindow rowWindow, PointCollector collector) throws IOException {
     Row row = rowWindow.getRow(random.nextInt(rowWindow.windowSize()));
-    switch (dataType) {
-      case INT32:
-        collector.putInt(row.getTime(), row.getInt(0));
-        break;
-      case INT64:
-        collector.putLong(row.getTime(), row.getLong(0));
-        break;
-      case FLOAT:
-        collector.putFloat(row.getTime(), row.getFloat(0));
-        break;
-      case DOUBLE:
-        collector.putDouble(row.getTime(), row.getDouble(0));
-        break;
-      case BOOLEAN:
-      case TIMESTAMP:
-      case DATE:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      default:
-        // This will not happen
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    rowCollector.collect(row, collector);
   }
 }
