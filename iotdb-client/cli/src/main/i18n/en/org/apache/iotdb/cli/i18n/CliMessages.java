@@ -128,8 +128,8 @@ public final class CliMessages {
   public static final String EXCEPTION_LOGICAL_BACKUP_REQUEST_TYPE_ARG_FAILED_ARG_75EE2D11 =
       "Logical backup request type %d failed: %s";
   public static final String
-      LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_4677380E =
-          "Use --input to specify the input. Export also requires --output; import requires --host and --port. Use --password-stdin or --password-env to avoid command-line passwords.";
+      LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_EXPORT_CAN_USE_BACKUP_DIR_TO_CREATE_MONITOR_AND_CLEAN_UP_A_SNAPSHOT_PIPE_AUTOMATICALLY_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_F5B223CB =
+          "Use --input to specify the input. Export also requires --output; export can use --backup-dir to create, monitor, and clean up a snapshot Pipe automatically. Import requires --host and --port. Use --password-stdin or --password-env to avoid command-line passwords.";
   public static final String LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_6D62F9CE =
       "pipe-logical-backup <inspect|verify|export|import>";
   public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_ENTRY_IS_UNSAFE_ARG_3E548152 =
@@ -151,5 +151,22 @@ public final class CliMessages {
       "Logical backup checkpoint is invalid: %s";
   public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EXPORT_FORMAT_ARG_A6D7DEB1 =
       "Unsupported logical backup export format: %s";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_TIMEOUT_AND_POLL_INTERVAL_MUST_BE_POSITIVE_38622769 =
+      "Logical backup export timeout and poll interval must be positive";
+  public static final String
+      LOG_LOGICAL_BACKUP_EXPORT_ARG_STATE_ARG_REMAINING_ARG_ESTIMATED_SECONDS_ARG_6256B85B =
+      "Logical backup export %s: state=%s, remaining=%s, estimated_seconds=%s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_EXPORT_PIPE_ARG_FAILED_ARG_F52EB190 =
+      "Logical backup export pipe %s failed: %s";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_PIPE_ARG_TIMED_OUT_AFTER_ARG_SECONDS_76CF4B4B =
+      "Logical backup export pipe %s timed out after %d seconds";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_MUST_BE_AN_INTEGER_C9B397BE =
+      "Logical backup option --%s must be an integer";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_HAS_INVALID_IDENTIFIER_ARG_BB015204 =
+      "Logical backup option --%s has invalid identifier: %s";
 
 }

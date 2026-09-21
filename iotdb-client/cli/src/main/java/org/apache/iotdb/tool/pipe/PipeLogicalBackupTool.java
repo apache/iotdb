@@ -30,9 +30,11 @@ import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupManifest;
 import org.apache.iotdb.commons.pipe.sink.logicalbackup.LogicalBackupRecord;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.session.Session;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -97,6 +99,11 @@ public final class PipeLogicalBackupTool {
   private static final String OPTION_DRY_RUN = "dry-run";
   private static final String OPTION_ALLOW_INCOMPLETE = "allow-incomplete";
   private static final String OPTION_JSON = "json";
+  private static final String OPTION_BACKUP_DIR = "backup-dir";
+  private static final String OPTION_PIPE_NAME = "pipe-name";
+  private static final String OPTION_BACKUP_ID = "backup-id";
+  private static final String OPTION_TIMEOUT_SECONDS = "timeout-seconds";
+  private static final String OPTION_POLL_INTERVAL_SECONDS = "poll-interval-seconds";
   private static final int MAX_ARCHIVE_ENTRIES = 1_000_000;
   private static final long MAX_ARCHIVE_BYTES = 4L * 1024 * 1024 * 1024 * 1024;
   private static final String CHECKPOINT_FORMAT_NAME =
@@ -162,9 +169,15 @@ public final class PipeLogicalBackupTool {
     addOption(options, OPTION_DRY_RUN, false, false);
     addOption(options, OPTION_ALLOW_INCOMPLETE, false, false);
     addOption(options, OPTION_JSON, false, false);
+    addOption(options, OPTION_BACKUP_DIR, true, false);
+    addOption(options, OPTION_PIPE_NAME, true, false);
+    addOption(options, OPTION_BACKUP_ID, true, false);
+    addOption(options, OPTION_TIMEOUT_SECONDS, true, false);
+    addOption(options, OPTION_POLL_INTERVAL_SECONDS, true, false);
     final CommandLine line = new DefaultParser().parse(options, args);
     final String input = optionValue(line, OPTION_INPUT, OPTION_SOURCE);
-    if (input == null || input.isBlank()) {
+    if ((input == null || input.isBlank())
+        && (!COMMAND_EXPORT.equals(command) || !line.hasOption(OPTION_BACKUP_DIR))) {
       throw new ParseException(
           String.format(
               CliMessages.EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_IS_REQUIRED_1E7449AA, OPTION_INPUT));
@@ -231,32 +244,108 @@ public final class PipeLogicalBackupTool {
     return 0;
   }
 
-  private static int export(final CommandLine line) throws IOException {
+  private static int export(final CommandLine line) throws Exception {
+    if (!line.hasOption(OPTION_INPUT) && !line.hasOption(OPTION_SOURCE)) {
+      return managedExport(line);
+    }
     final Path source = Path.of(input(line)).toAbsolutePath().normalize();
     final Path target =
         Path.of(optionValue(line, OPTION_OUTPUT, OPTION_TARGET)).toAbsolutePath().normalize();
     final List<BackupStream> streams = read(line);
+    return exportArchive(source, target, streams);
+  }
+
+  private static int managedExport(final CommandLine line) throws Exception {
+    final String host = required(line, OPTION_HOST);
+    final int port = Integer.parseInt(required(line, OPTION_PORT));
+    final String user = line.getOptionValue(OPTION_USER, "root");
+    final String password = password(line);
+    final Path backupRoot = Path.of(required(line, OPTION_BACKUP_DIR)).toAbsolutePath().normalize();
+    final Path target =
+        Path.of(optionValue(line, OPTION_OUTPUT, OPTION_TARGET)).toAbsolutePath().normalize();
+    final String pipeName =
+        line.getOptionValue(
+            OPTION_PIPE_NAME,
+            "logical_backup_export_" + UUID.randomUUID().toString().replace('-', '_'));
+    validateIdentifier(pipeName, OPTION_PIPE_NAME);
+    final String backupId = line.getOptionValue(OPTION_BACKUP_ID, pipeName);
+    validateIdentifier(backupId, OPTION_BACKUP_ID);
+    final long timeoutSeconds = longOption(line, OPTION_TIMEOUT_SECONDS, 3600L);
+    final long pollIntervalSeconds = longOption(line, OPTION_POLL_INTERVAL_SECONDS, 2L);
+    if (timeoutSeconds <= 0 || pollIntervalSeconds <= 0) {
+      throw new IOException(
+          CliMessages
+              .EXCEPTION_LOGICAL_BACKUP_EXPORT_TIMEOUT_AND_POLL_INTERVAL_MUST_BE_POSITIVE_38622769);
+    }
+
+    final String createSql =
+        "CREATE PIPE "
+            + pipeName
+            + " WITH SOURCE ('source'='iotdb-source','source.mode'='snapshot','source.inclusion'='all',"
+            + "'source.capture.tree'='true','source.capture.table'='true',"
+            + "'source.realtime.enable'='false') WITH SINK ('sink'='logical-backup-sink','sink.dir'='"
+            + sqlString(backupRoot.toString())
+            + "','sink.backup-id'='"
+            + sqlString(backupId)
+            + "','sink.resume'='append')";
+    boolean created = false;
+    try (final Session session =
+        new Session.Builder().host(host).port(port).username(user).password(password).build()) {
+      session.open();
+      session.executeNonQueryStatement(createSql);
+      created = true;
+      session.executeNonQueryStatement("START PIPE " + pipeName);
+      waitForSnapshotPipe(session, pipeName, timeoutSeconds, pollIntervalSeconds);
+      final Path source = backupRoot.resolve(backupId).normalize();
+      final List<BackupStream> streams = new LogicalBackupArchiveReader().read(source, false);
+      return exportArchive(source, target, streams);
+    } finally {
+      if (created) {
+        try (final Session cleanup =
+            new Session.Builder().host(host).port(port).username(user).password(password).build()) {
+          cleanup.open();
+          try {
+            cleanup.executeNonQueryStatement("STOP PIPE " + pipeName);
+          } catch (final Exception ignored) {
+            // A completed snapshot pipe may already have been auto-dropped.
+          }
+          try {
+            cleanup.executeNonQueryStatement("DROP PIPE " + pipeName);
+          } catch (final Exception ignored) {
+            // Keep the original export failure when cleanup races with auto-drop.
+          }
+        } catch (final Exception ignored) {
+          // The archive is complete once the generated pipe disappears; cleanup is best effort.
+        }
+      }
+    }
+  }
+
+  private static int exportArchive(
+      final Path source, final Path target, final List<BackupStream> streams) throws IOException {
+    final Path normalizedSource = source.toAbsolutePath().normalize();
+    final Path normalizedTarget = target.toAbsolutePath().normalize();
     final Path root;
-    if (Files.isDirectory(source)) {
-      root = source;
-    } else if (Files.isRegularFile(source)
-        && "manifest.json".equals(source.getFileName().toString())) {
-      root = source.getParent();
+    if (Files.isDirectory(normalizedSource)) {
+      root = normalizedSource;
+    } else if (Files.isRegularFile(normalizedSource)
+        && "manifest.json".equals(normalizedSource.getFileName().toString())) {
+      root = normalizedSource.getParent();
     } else {
       throw new IOException(
           String.format(
               CliMessages
                   .EXCEPTION_LOGICAL_BACKUP_EXPORT_SOURCE_MUST_BE_A_DIRECTORY_OR_MANIFEST_ARG_0BBDE9F0,
-              source));
+              normalizedSource));
     }
-    if (target.startsWith(root)) {
+    if (normalizedTarget.startsWith(root)) {
       throw new IOException(
           CliMessages.EXCEPTION_LOGICAL_BACKUP_EXPORT_TARGET_MUST_NOT_BE_INSIDE_SOURCE_A499F994);
     }
-    if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
-      throw new java.nio.file.FileAlreadyExistsException(target.toString());
+    if (Files.exists(normalizedTarget, LinkOption.NOFOLLOW_LINKS)) {
+      throw new java.nio.file.FileAlreadyExistsException(normalizedTarget.toString());
     }
-    final Path parent = target.toAbsolutePath().normalize().getParent();
+    final Path parent = normalizedTarget.getParent();
     if (parent != null) {
       Files.createDirectories(parent);
     }
@@ -276,9 +365,9 @@ public final class PipeLogicalBackupTool {
         archiveChannel.force(true);
       }
       try {
-        Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE);
+        Files.move(temporary, normalizedTarget, StandardCopyOption.ATOMIC_MOVE);
       } catch (final java.nio.file.AtomicMoveNotSupportedException e) {
-        Files.move(temporary, target);
+        Files.move(temporary, normalizedTarget);
       }
       published = true;
     } finally {
@@ -288,8 +377,110 @@ public final class PipeLogicalBackupTool {
     }
     System.out.println(
         String.format(
-            CliMessages.LOG_LOGICAL_BACKUP_EXPORTED_FROM_ARG_TO_ARG_B3E8D280, source, target));
+            CliMessages.LOG_LOGICAL_BACKUP_EXPORTED_FROM_ARG_TO_ARG_B3E8D280,
+            normalizedSource,
+            normalizedTarget));
     return 0;
+  }
+
+  private static void waitForSnapshotPipe(
+      final Session session,
+      final String pipeName,
+      final long timeoutSeconds,
+      final long pollSeconds)
+      throws Exception {
+    final long deadline = System.nanoTime() + timeoutSeconds * 1_000_000_000L;
+    while (System.nanoTime() < deadline) {
+      final PipeStatus status = readPipeStatus(session, pipeName);
+      if (status == null) {
+        return;
+      } else {
+        System.out.println(
+            String.format(
+                CliMessages
+                    .LOG_LOGICAL_BACKUP_EXPORT_ARG_STATE_ARG_REMAINING_ARG_ESTIMATED_SECONDS_ARG_6256B85B,
+                pipeName,
+                status.state,
+                status.remainingEvents,
+                status.estimatedSeconds));
+        if (status.state != null
+            && (status.state.equalsIgnoreCase("ERROR")
+                || status.state.equalsIgnoreCase("STOPPED"))) {
+          throw new IOException(
+              String.format(
+                  CliMessages.EXCEPTION_LOGICAL_BACKUP_EXPORT_PIPE_ARG_FAILED_ARG_F52EB190,
+                  pipeName,
+                  status.exceptionMessage));
+        }
+      }
+      Thread.sleep(pollSeconds * 1000L);
+    }
+    throw new IOException(
+        String.format(
+            CliMessages
+                .EXCEPTION_LOGICAL_BACKUP_EXPORT_PIPE_ARG_TIMED_OUT_AFTER_ARG_SECONDS_76CF4B4B,
+            pipeName,
+            timeoutSeconds));
+  }
+
+  private static PipeStatus readPipeStatus(final Session session, final String pipeName)
+      throws Exception {
+    try (final SessionDataSet dataSet = session.executeQueryStatement("SHOW PIPE " + pipeName)) {
+      final SessionDataSet.DataIterator iterator = dataSet.iterator();
+      if (!iterator.next()) {
+        return null;
+      }
+      final PipeStatus status = new PipeStatus();
+      status.state = value(iterator, dataSet, "State");
+      status.remainingEvents = value(iterator, dataSet, "RemainingEventCount");
+      status.estimatedSeconds = value(iterator, dataSet, "EstimatedRemainingSeconds");
+      status.exceptionMessage = value(iterator, dataSet, "ExceptionMessage");
+      return status;
+    }
+  }
+
+  private static String value(
+      final SessionDataSet.DataIterator iterator, final SessionDataSet dataSet, final String name)
+      throws Exception {
+    for (final String column : dataSet.getColumnNames()) {
+      if (column.equalsIgnoreCase(name)) {
+        return iterator.getString(column);
+      }
+    }
+    return "Unknown";
+  }
+
+  private static long longOption(final CommandLine line, final String name, final long fallback)
+      throws ParseException {
+    try {
+      return Long.parseLong(line.getOptionValue(name, Long.toString(fallback)));
+    } catch (final NumberFormatException e) {
+      throw new ParseException(
+          String.format(
+              CliMessages.EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_MUST_BE_AN_INTEGER_C9B397BE, name));
+    }
+  }
+
+  private static void validateIdentifier(final String value, final String option)
+      throws IOException {
+    if (!value.matches("[A-Za-z_][A-Za-z0-9_]{0,127}")) {
+      throw new IOException(
+          String.format(
+              CliMessages.EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_HAS_INVALID_IDENTIFIER_ARG_BB015204,
+              option,
+              value));
+    }
+  }
+
+  private static String sqlString(final String value) {
+    return value.replace("'", "''");
+  }
+
+  private static final class PipeStatus {
+    private String state;
+    private String remainingEvents;
+    private String estimatedSeconds;
+    private String exceptionMessage;
   }
 
   private static List<Path> exportFiles(final Path root, final List<BackupStream> streams)
@@ -748,7 +939,7 @@ public final class PipeLogicalBackupTool {
         120,
         CliMessages.LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_6D62F9CE,
         CliMessages
-            .LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_4677380E,
+            .LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_EXPORT_CAN_USE_BACKUP_DIR_TO_CREATE_MONITOR_AND_CLEAN_UP_A_SNAPSHOT_PIPE_AUTOMATICALLY_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_F5B223CB,
         optionsForHelp(),
         2,
         2,
@@ -772,6 +963,11 @@ public final class PipeLogicalBackupTool {
     addOption(options, OPTION_DRY_RUN, false, false);
     addOption(options, OPTION_ALLOW_INCOMPLETE, false, false);
     addOption(options, OPTION_JSON, false, false);
+    addOption(options, OPTION_BACKUP_DIR, true, false);
+    addOption(options, OPTION_PIPE_NAME, true, false);
+    addOption(options, OPTION_BACKUP_ID, true, false);
+    addOption(options, OPTION_TIMEOUT_SECONDS, true, false);
+    addOption(options, OPTION_POLL_INTERVAL_SECONDS, true, false);
     return options;
   }
 

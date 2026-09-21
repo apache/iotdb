@@ -124,8 +124,8 @@ public final class CliMessages {
   public static final String EXCEPTION_LOGICAL_BACKUP_REQUEST_TYPE_ARG_FAILED_ARG_75EE2D11 =
       "逻辑备份请求类型 %d 执行失败：%s";
   public static final String
-      LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_4677380E =
-          "使用 --input 指定输入。导出还需要 --output；导入需要 --host 和 --port。请使用 --password-stdin 或 --password-env，避免密码出现在命令行中。";
+      LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_EXPORT_CAN_USE_BACKUP_DIR_TO_CREATE_MONITOR_AND_CLEAN_UP_A_SNAPSHOT_PIPE_AUTOMATICALLY_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_F5B223CB =
+          "使用 --input 指定输入。导出还需要 --output；导出也可使用 --backup-dir 自动创建、监控并清理快照 Pipe。导入需要 --host 和 --port。请使用 --password-stdin 或 --password-env，避免密码出现在命令行中。";
   public static final String LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_6D62F9CE =
       "pipe-logical-backup <inspect|verify|export|import>";
   public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_ENTRY_IS_UNSAFE_ARG_3E548152 =
@@ -148,4 +148,21 @@ public final class CliMessages {
   public static final String EXCEPTION_UNSUPPORTED_LOGICAL_BACKUP_EXPORT_FORMAT_ARG_A6D7DEB1 =
       "不支持的逻辑备份导出格式：%s";
 
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_TIMEOUT_AND_POLL_INTERVAL_MUST_BE_POSITIVE_38622769 =
+      "逻辑备份导出 timeout 和轮询间隔必须为正数";
+  public static final String
+      LOG_LOGICAL_BACKUP_EXPORT_ARG_STATE_ARG_REMAINING_ARG_ESTIMATED_SECONDS_ARG_6256B85B =
+      "逻辑备份导出 %s：状态=%s，剩余=%s，预计秒数=%s";
+  public static final String EXCEPTION_LOGICAL_BACKUP_EXPORT_PIPE_ARG_FAILED_ARG_F52EB190 =
+      "逻辑备份导出 pipe %s 失败：%s";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_EXPORT_PIPE_ARG_TIMED_OUT_AFTER_ARG_SECONDS_76CF4B4B =
+      "逻辑备份导出 pipe %s 在 %d 秒后超时";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_MUST_BE_AN_INTEGER_C9B397BE =
+      "逻辑备份选项 --%s 必须是整数";
+  public static final String
+      EXCEPTION_LOGICAL_BACKUP_OPTION_ARG_HAS_INVALID_IDENTIFIER_ARG_BB015204 =
+      "逻辑备份选项 --%s 的标识符无效：%s";
 }
