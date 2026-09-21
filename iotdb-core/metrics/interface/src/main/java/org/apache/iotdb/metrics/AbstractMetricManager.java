@@ -21,7 +21,6 @@ package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
@@ -53,13 +52,18 @@ public abstract class AbstractMetricManager {
   private static final String ALREADY_EXISTS = " is already used for a different type of name";
 
   /** The map from metric name to metric metaInfo. */
-  protected Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
+  protected volatile Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
 
   /** The map from metricInfo to metric. */
-  protected Map<MetricInfo, IMetric> metrics;
+  protected volatile Map<MetricInfo, IMetric> metrics;
 
   /** The bind IoTDBJmxReporter */
-  protected JmxReporter bindJmxReporter = null;
+  protected volatile JmxReporter bindJmxReporter = null;
+
+  /**
+   * Serializes creation/removal with registry resets; existing metric reads do not take this lock.
+   */
+  private final Object metricLifecycleLock = new Object();
 
   protected AbstractMetricManager() {
     nameToMetaInfo = new ConcurrentHashMap<>();
@@ -72,10 +76,10 @@ public abstract class AbstractMetricManager {
    * @param metric the created metric
    * @param metricInfo the created metric info
    */
-  private void notifyReporterOnAdd(IMetric metric, MetricInfo metricInfo) {
+  private static void notifyReporterOnAdd(
+      IMetric metric, MetricInfo metricInfo, JmxReporter reporter) {
     // if the reporter type is JMX, register the new metric
-    Optional.ofNullable(bindJmxReporter)
-        .ifPresent(x -> bindJmxReporter.registerMetric(metric, metricInfo));
+    Optional.ofNullable(reporter).ifPresent(x -> x.registerMetric(metric, metricInfo));
   }
 
   /**
@@ -84,10 +88,10 @@ public abstract class AbstractMetricManager {
    * @param metric the removed metric
    * @param metricInfo the removed metric info
    */
-  private void notifyReporterOnRemove(IMetric metric, MetricInfo metricInfo) {
-    // if the reporter type is JMX, unregister the new metric
-    Optional.ofNullable(bindJmxReporter)
-        .ifPresent(x -> bindJmxReporter.unregisterMetric(metric, metricInfo));
+  private static void notifyReporterOnRemove(
+      IMetric metric, MetricInfo metricInfo, JmxReporter reporter) {
+    // Use the captured reporter even if the current binding has changed.
+    Optional.ofNullable(reporter).ifPresent(x -> x.unregisterMetric(metric, metricInfo));
   }
 
   /**
@@ -103,15 +107,23 @@ public abstract class AbstractMetricManager {
       return DoNothingMetricManager.DO_NOTHING_COUNTER;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.COUNTER, name, tags);
-    IMetric metric =
-        metrics.computeIfAbsent(
-            metricInfo,
-            key -> {
-              Counter counter = createCounter();
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
-              notifyReporterOnAdd(counter, metricInfo);
-              return counter;
-            });
+    IMetric metric = metrics.get(metricInfo);
+    if (metric == null) {
+      JmxReporter reporter = null;
+      synchronized (metricLifecycleLock) {
+        if (invalid(metricLevel, name, tags)) {
+          return DoNothingMetricManager.DO_NOTHING_COUNTER;
+        }
+        metric = metrics.get(metricInfo);
+        if (metric == null) {
+          metric = createCounter();
+          nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+          metrics.put(metricInfo, metric);
+          reporter = bindJmxReporter;
+        }
+      }
+      notifyReporterOnAdd(metric, metricInfo, reporter);
+    }
     if (metric instanceof Counter) {
       return (Counter) metric;
     }
@@ -134,14 +146,24 @@ public abstract class AbstractMetricManager {
    */
   public <T> AutoGauge createAutoGauge(
       String name, MetricLevel metricLevel, T obj, ToDoubleFunction<T> mapper, String... tags) {
-    if (invalid(metricLevel, name, tags)) {
-      return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
-    }
     MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
-    AutoGauge gauge = createAutoGauge(obj, mapper);
-    nameToMetaInfo.put(name, metricInfo.getMetaInfo());
-    metrics.put(metricInfo, gauge);
-    notifyReporterOnAdd(gauge, metricInfo);
+    AutoGauge gauge;
+    IMetric previous;
+    JmxReporter reporter;
+    synchronized (metricLifecycleLock) {
+      if (invalid(metricLevel, name, tags)) {
+        return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
+      }
+      gauge = createAutoGauge(obj, mapper);
+      nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+      previous = metrics.put(metricInfo, gauge);
+      reporter = bindJmxReporter;
+    }
+    // Publish before notifying, and never hold the registry lock across MBean-server callbacks.
+    if (previous != null) {
+      notifyReporterOnRemove(previous, metricInfo, reporter);
+    }
+    notifyReporterOnAdd(gauge, metricInfo, reporter);
     return gauge;
   }
 
@@ -187,15 +209,23 @@ public abstract class AbstractMetricManager {
       return DoNothingMetricManager.DO_NOTHING_GAUGE;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
-    IMetric metric =
-        metrics.computeIfAbsent(
-            metricInfo,
-            key -> {
-              Gauge gauge = createGauge();
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
-              notifyReporterOnAdd(gauge, metricInfo);
-              return gauge;
-            });
+    IMetric metric = metrics.get(metricInfo);
+    if (metric == null) {
+      JmxReporter reporter = null;
+      synchronized (metricLifecycleLock) {
+        if (invalid(metricLevel, name, tags)) {
+          return DoNothingMetricManager.DO_NOTHING_GAUGE;
+        }
+        metric = metrics.get(metricInfo);
+        if (metric == null) {
+          metric = createGauge();
+          nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+          metrics.put(metricInfo, metric);
+          reporter = bindJmxReporter;
+        }
+      }
+      notifyReporterOnAdd(metric, metricInfo, reporter);
+    }
     if (metric instanceof Gauge) {
       return (Gauge) metric;
     }
@@ -218,15 +248,23 @@ public abstract class AbstractMetricManager {
       return DoNothingMetricManager.DO_NOTHING_RATE;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.RATE, name, tags);
-    IMetric metric =
-        metrics.computeIfAbsent(
-            metricInfo,
-            key -> {
-              Rate rate = createRate();
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
-              notifyReporterOnAdd(rate, metricInfo);
-              return rate;
-            });
+    IMetric metric = metrics.get(metricInfo);
+    if (metric == null) {
+      JmxReporter reporter = null;
+      synchronized (metricLifecycleLock) {
+        if (invalid(metricLevel, name, tags)) {
+          return DoNothingMetricManager.DO_NOTHING_RATE;
+        }
+        metric = metrics.get(metricInfo);
+        if (metric == null) {
+          metric = createRate();
+          nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+          metrics.put(metricInfo, metric);
+          reporter = bindJmxReporter;
+        }
+      }
+      notifyReporterOnAdd(metric, metricInfo, reporter);
+    }
     if (metric instanceof Rate) {
       return (Rate) metric;
     }
@@ -249,15 +287,23 @@ public abstract class AbstractMetricManager {
       return DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.HISTOGRAM, name, tags);
-    IMetric metric =
-        metrics.computeIfAbsent(
-            metricInfo,
-            key -> {
-              Histogram histogram = createHistogram();
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
-              notifyReporterOnAdd(histogram, metricInfo);
-              return histogram;
-            });
+    IMetric metric = metrics.get(metricInfo);
+    if (metric == null) {
+      JmxReporter reporter = null;
+      synchronized (metricLifecycleLock) {
+        if (invalid(metricLevel, name, tags)) {
+          return DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+        }
+        metric = metrics.get(metricInfo);
+        if (metric == null) {
+          metric = createHistogram();
+          nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+          metrics.put(metricInfo, metric);
+          reporter = bindJmxReporter;
+        }
+      }
+      notifyReporterOnAdd(metric, metricInfo, reporter);
+    }
     if (metric instanceof Histogram) {
       return (Histogram) metric;
     }
@@ -280,15 +326,23 @@ public abstract class AbstractMetricManager {
       return DoNothingMetricManager.DO_NOTHING_TIMER;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.TIMER, name, tags);
-    IMetric metric =
-        metrics.computeIfAbsent(
-            metricInfo,
-            key -> {
-              Timer timer = createTimer();
-              nameToMetaInfo.put(name, metricInfo.getMetaInfo());
-              notifyReporterOnAdd(timer, metricInfo);
-              return timer;
-            });
+    IMetric metric = metrics.get(metricInfo);
+    if (metric == null) {
+      JmxReporter reporter = null;
+      synchronized (metricLifecycleLock) {
+        if (invalid(metricLevel, name, tags)) {
+          return DoNothingMetricManager.DO_NOTHING_TIMER;
+        }
+        metric = metrics.get(metricInfo);
+        if (metric == null) {
+          metric = createTimer();
+          nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+          metrics.put(metricInfo, metric);
+          reporter = bindJmxReporter;
+        }
+      }
+      notifyReporterOnAdd(metric, metricInfo, reporter);
+    }
     if (metric instanceof Timer) {
       return (Timer) metric;
     }
@@ -419,26 +473,27 @@ public abstract class AbstractMetricManager {
   // region remove metric
 
   /**
-   * remove name.
+   * Remove a metric. Removing an already absent metric is a no-op.
    *
    * @param type the type of name
    * @param name the name of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
-   * @throws IllegalArgumentException when there has different type metric with same name
    */
   public void remove(MetricType type, String name, String... tags) {
     MetricInfo metricInfo = new MetricInfo(type, name, tags);
-    if (metrics.containsKey(metricInfo)) {
-      if (type == metricInfo.getMetaInfo().getType()) {
-        notifyReporterOnRemove(metrics.get(metricInfo), metricInfo);
-        nameToMetaInfo.remove(metricInfo.getName());
-        metrics.remove(metricInfo);
-        removeMetric(type, metricInfo);
-      } else {
-        throw new IllegalArgumentException(
-            metricInfo + MetricsMessages.EXCEPTION_FAILED_REMOVE_BECAUSE_MISMATCH_TYPE_044E55F6);
+    IMetric removed;
+    JmxReporter reporter;
+    synchronized (metricLifecycleLock) {
+      removed = metrics.remove(metricInfo);
+      if (removed == null) {
+        return;
       }
+      nameToMetaInfo.remove(metricInfo.getName());
+      removeMetric(type, metricInfo);
+      reporter = bindJmxReporter;
     }
+    // The removed instance remains valid even if stop() replaces the registry before this callback.
+    notifyReporterOnRemove(removed, metricInfo, reporter);
   }
 
   protected abstract void removeMetric(MetricType type, MetricInfo metricInfo);
@@ -451,14 +506,18 @@ public abstract class AbstractMetricManager {
   }
 
   public void setBindJmxReporter(JmxReporter reporter) {
-    this.bindJmxReporter = reporter;
+    synchronized (metricLifecycleLock) {
+      this.bindJmxReporter = reporter;
+    }
   }
 
   /** Stop and clear metric manager. */
   protected boolean stop() {
-    metrics = new ConcurrentHashMap<>();
-    nameToMetaInfo = new ConcurrentHashMap<>();
-    return stopFramework();
+    synchronized (metricLifecycleLock) {
+      metrics = new ConcurrentHashMap<>();
+      nameToMetaInfo = new ConcurrentHashMap<>();
+      return stopFramework();
+    }
   }
 
   protected abstract boolean stopFramework();
