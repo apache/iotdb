@@ -45,19 +45,24 @@ public class LeaderCacheUtils {
     // requests may contain any number of statements because rows are grouped by database and table.
     final List<Pair<String, TEndPoint>> redirectList = new ArrayList<>();
 
-    if (!status.isSetSubStatus()) {
+    if (status == null || !status.isSetSubStatus()) {
       return redirectList;
     }
 
     for (final TSStatus subStatus : status.getSubStatus()) {
-      if (subStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      if (subStatus == null
+          || subStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+          || !subStatus.isSetSubStatus()) {
         continue;
       }
 
       for (final TSStatus innerSubStatus : subStatus.getSubStatus()) {
-        if (innerSubStatus.isSetRedirectNode()) {
-          // We assume that innerSubStatus.getMessage() is a device path.
-          // The message field should be a device path.
+        if (innerSubStatus != null
+            && innerSubStatus.isSetRedirectNode()
+            && innerSubStatus.isSetMessage()
+            && !innerSubStatus.getMessage().isEmpty()) {
+          // The receiver sets the message to a device path only when it can safely associate the
+          // redirection with a single tree-model device.
           redirectList.add(
               new Pair<>(innerSubStatus.getMessage(), innerSubStatus.getRedirectNode()));
         }

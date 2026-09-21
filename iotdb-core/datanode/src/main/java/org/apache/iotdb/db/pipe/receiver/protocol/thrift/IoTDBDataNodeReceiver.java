@@ -1279,18 +1279,27 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   /**
-   * For {@link InsertRowsStatement} and {@link InsertMultiTabletsStatement}, the returned {@link
-   * TSStatus} will use sub-status to record the endpoint for redirection. Each sub-status records
-   * the redirection endpoint for one device path, and the order is the same as the order of the
-   * device paths in the statement. However, this order is not guaranteed to be the same as in the
-   * request. So for each sub-status which needs to redirect, we record the device path using the
-   * message field.
+   * For tree-model {@link InsertRowsStatement} and {@link InsertMultiTabletsStatement}, the
+   * returned {@link TSStatus} uses sub-statuses to record redirection endpoints. Their order is the
+   * same as the device paths in the statement, but not necessarily the request, so attach the
+   * device path to each redirected sub-status.
    */
   private TSStatus executeBatchStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
     final TSStatus result = executeStatementAndClassifyExceptions(statement, 5);
+    return addRedirectInfoForBatch(statement, result, receiverId.get());
+  }
 
+  static TSStatus addRedirectInfoForBatch(
+      final InsertBaseStatement statement, final TSStatus result, final long receiverId) {
     if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && result.getSubStatusSize() > 0) {
+      // A table-model batch may contain rows for multiple devices. The pipe sink currently routes
+      // the entire event by its device ID, so caching a row's endpoint for the whole tablet/table
+      // could misroute later writes. Keep the successful write status without cache hints.
+      if (statement.isWriteToTable()) {
+        return result;
+      }
+
       final List<PartialPath> devicePaths;
       if (statement instanceof InsertRowsStatement) {
         devicePaths = ((InsertRowsStatement) statement).getDevicePaths();
@@ -1299,7 +1308,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       } else {
         LOGGER.warn(
             DataNodePipeMessages.RECEIVER_ID_UNSUPPORTED_STATEMENT_TYPE_FOR_REDIRECTION,
-            receiverId.get(),
+            receiverId,
             statement);
         return result;
       }
@@ -1313,7 +1322,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       } else {
         LOGGER.warn(
             DataNodePipeMessages.RECEIVER_ID_THE_NUMBER_OF_DEVICE_PATHS,
-            receiverId.get(),
+            receiverId,
             statement,
             result);
       }
