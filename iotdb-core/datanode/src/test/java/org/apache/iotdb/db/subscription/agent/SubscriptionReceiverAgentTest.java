@@ -243,8 +243,7 @@ public class SubscriptionReceiverAgentTest {
               }
               return receiver;
             },
-            false,
-            () -> true);
+            false);
     final TPipeSubscribeReq oldHandshake = createHandshakeRequest("group", "consumer");
     final TPipeSubscribeReq newHandshake = createHandshakeRequest("group", "consumer");
     final AtomicReference<TPipeSubscribeResp> oldHandshakeResponse = new AtomicReference<>();
@@ -366,8 +365,7 @@ public class SubscriptionReceiverAgentTest {
               receivers.add(receiver);
               return receiver;
             },
-            false,
-            () -> true);
+            false);
     final TPipeSubscribeReq handshake = createHandshakeRequestWithoutIdentity();
     final AtomicReference<TPipeSubscribeResp> oldHandshakeResponse = new AtomicReference<>();
     final AtomicReference<TPipeSubscribeResp> newHandshakeResponse = new AtomicReference<>();
