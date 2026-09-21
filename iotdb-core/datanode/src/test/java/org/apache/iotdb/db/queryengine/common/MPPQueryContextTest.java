@@ -21,8 +21,12 @@ package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class MPPQueryContextTest {
@@ -58,6 +62,62 @@ public class MPPQueryContextTest {
     assertContains(message, "requested this time");
     assertContains(message, "current free memory");
     assertContains(message, "Original error:");
+  }
+
+  @Test
+  public void resultSetColumnMemoryNotEnoughExceptionReportsOverageAfterExpansion() {
+    // The old estimate returned zero when all (or all but one) source columns were expanded.
+    Assume.assumeTrue(LocalExecutionPlanner.getInstance().getFreeMemoryForOperators() > 0);
+    for (int unmatchedColumns = 0; unmatchedColumns <= 1; unmatchedColumns++) {
+      MPPQueryContext context =
+          new MPPQueryContext(new QueryId("result_column_overage_" + unmatchedColumns));
+      context.initResultSetColumnMemoryTracking(0, 0, false);
+      context.recordMatchedSourceColumnsForResultSet(2 + unmatchedColumns);
+      context.recordExpandedSourceColumnForResultSet(1);
+      context.recordExpandedSourceColumnForResultSet(1);
+      context.recordGeneratedResultSetColumn(2);
+
+      MemoryNotEnoughException exception =
+          Assert.assertThrows(
+              MemoryNotEnoughException.class,
+              () -> context.reserveMemoryForFrontEnd(requestLargerThanFreeOperatorMemory()));
+
+      String message = exception.getMessage();
+      assertContains(message, "expanded 2 source columns, and generated 1 result-set columns");
+      assertContains(message, "equivalent of at least 1 columns");
+      Assert.assertFalse(message, message.contains("The matched source columns exceed"));
+      assertContains(message, "increase query memory by at least");
+    }
+  }
+
+  @Test
+  public void resultSetColumnMemoryNotEnoughExceptionUsesFailedBatchSize() {
+    MPPQueryContext context = new MPPQueryContext(new QueryId("result_column_batch_oom_test"));
+    context.initResultSetColumnMemoryTracking(0, 0, false);
+    context.recordMatchedSourceColumnsForResultSet(2);
+    context.recordExpandedSourceColumnForResultSet(1);
+    context.recordExpandedSourceColumnForResultSet(1);
+    context.recordGeneratedResultSetColumn(2);
+
+    long failedBatchBytes = 1_048_840;
+    long freeBytesAtFailure = 702_452;
+    long lastExpressionBytes = 760;
+    MemoryNotEnoughException original =
+        new OperatorMemoryNotEnoughException(
+            "the memory requested this time is 1048840B", failedBatchBytes, freeBytesAtFailure);
+
+    MemoryNotEnoughException exception =
+        context.enrichResultSetColumnMemoryNotEnoughException(original, lastExpressionBytes);
+    String message = exception.getMessage();
+
+    Assert.assertEquals(
+        TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH.getStatusCode(),
+        ErrorHandlingUtils.onQueryException(exception, "query").getCode());
+    assertContains(message, "requested this time 1.00 MB (1048840 B)");
+    assertContains(message, "increase query memory by at least 338.27 KB (346388 B)");
+    assertContains(message, "at least 173,194 columns");
+    assertContains(message, "the memory requested this time is 1048840B");
+    Assert.assertFalse(message, message.contains("requested this time 760 B"));
   }
 
   @Test
