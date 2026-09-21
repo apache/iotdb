@@ -1804,6 +1804,12 @@ public final class DataNodePipeMessages {
       "Subscription: The consumer {} has already existed when handshaking, skip creating consumer.";
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_HANDSHAKE_SUCCESSFULLY_DATA_NODE_ID_58DA6A5F =
       "Subscription: consumer {} handshake successfully, data node id: {}";
+  public static final String
+      LOG_SUBSCRIPTION_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_WAS_TAKEN_OVER_BY_A_NEWER_CONNECTION_FENCED_THE_PREVIOUS_CONNECTION_4E72DBD9 =
+          "Subscription: consumer {} in consumer group {} was taken over by a newer connection; fenced the previous connection.";
+  public static final String
+      MESSAGE_SUBSCRIPTION_CONSUMER_CONNECTION_WAS_FENCED_BECAUSE_A_NEWER_CONNECTION_WITH_THE_SAME_CONSUMER_ID_AND_CONSUMER_GROUP_ID_COMPLETED_THE_HANDSHAKE_THIS_CONSUMER_INSTANCE_CANNOT_BE_REUSED_CREATE_A_NEW_CONSUMER_INSTANCE_TO_RECONNECT_B0C2CCBE =
+          "Subscription: consumer connection was fenced because a newer connection with the same consumer ID and consumer group ID completed the handshake. This consumer instance cannot be reused; create a new consumer instance to reconnect.";
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_UNSUBSCRIBE_SUCCESSFULLY_AA5E0AA9 =
       "Subscription: consumer {} unsubscribe {} successfully";
   public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_ACCEPTED_SUCCESSFULLY_58D1C111 =

@@ -44,7 +44,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +65,19 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.S
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
 
 public class SinkChannel implements ISinkChannel {
+
+  private static class TsBlockInfo {
+    private TsBlock tsBlock;
+    private ByteBuffer serializedTsBlock;
+    private final long tsBlockSize;
+
+    // private Class, no need to do access control
+    private TsBlockInfo(TsBlock tsBlock, ByteBuffer serializedTsBlock, long tsBlockSize) {
+      this.tsBlock = tsBlock;
+      this.serializedTsBlock = serializedTsBlock;
+      this.tsBlockSize = tsBlockSize;
+    }
+  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SinkChannel.class);
 
@@ -93,8 +105,7 @@ public class SinkChannel implements ISinkChannel {
   // Use LinkedHashMap to meet 2 needs,
   //   1. Predictable iteration order so that removing buffered TsBlocks can be efficient.
   //   2. Fast lookup.
-  private final LinkedHashMap<Integer, Pair<TsBlock, Long>> sequenceIdToTsBlock =
-      new LinkedHashMap<>();
+  private final LinkedHashMap<Integer, TsBlockInfo> sequenceIdToTsBlock = new LinkedHashMap<>();
 
   // size for current TsBlock to reserve and free
   private long currentTsBlockSize;
@@ -274,7 +285,7 @@ public class SinkChannel implements ISinkChannel {
       blocked = reserveResult.getFuture();
       bufferRetainedSizeInBytes += reserveResult.getReservedBytes();
 
-      sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
+      sequenceIdToTsBlock.put(nextSequenceId, new TsBlockInfo(tsBlock, null, currentTsBlockSize));
       nextSequenceId += 1;
       currentTsBlockSize = reserveResult.getReservedBytes();
 
@@ -407,8 +418,8 @@ public class SinkChannel implements ISinkChannel {
       throw new GetTsBlockFromClosedOrAbortedChannelException(
           DataNodeQueryMessages.SINKCHANNEL_IS_ABORTED_OR_CLOSED);
     }
-    Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
-    if (pair == null || pair.left == null) {
+    TsBlockInfo tsBlockInfo = sequenceIdToTsBlock.get(sequenceId);
+    if (tsBlockInfo == null) {
       LOGGER.warn(
           DataNodeQueryMessages.THE_TSBLOCK_DOESNT_EXIST_SEQUENCE_ID_REMAINING,
           sequenceId,
@@ -416,7 +427,22 @@ public class SinkChannel implements ISinkChannel {
       throw new IllegalStateException(
           DataNodeQueryMessages.THE_DATA_BLOCK_DOESN_T_EXIST_SEQUENCE_ID + sequenceId);
     }
-    return serde.serialize(pair.left);
+    ByteBuffer serializedTsBlock = tsBlockInfo.serializedTsBlock;
+    if (serializedTsBlock != null) {
+      return serializedTsBlock.duplicate();
+    }
+    if (tsBlockInfo.tsBlock == null) {
+      LOGGER.warn(
+          DataNodeQueryMessages.THE_TSBLOCK_DOESNT_EXIST_SEQUENCE_ID_REMAINING,
+          sequenceId,
+          sequenceIdToTsBlock.entrySet());
+      throw new IllegalStateException(
+          DataNodeQueryMessages.THE_DATA_BLOCK_DOESN_T_EXIST_SEQUENCE_ID + sequenceId);
+    }
+    serializedTsBlock = serde.serialize(tsBlockInfo.tsBlock);
+    tsBlockInfo.serializedTsBlock = serializedTsBlock;
+    tsBlockInfo.tsBlock = null;
+    return serializedTsBlock.duplicate();
   }
 
   public void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {
@@ -425,10 +451,9 @@ public class SinkChannel implements ISinkChannel {
       if (aborted || closed) {
         return;
       }
-      Iterator<Entry<Integer, Pair<TsBlock, Long>>> iterator =
-          sequenceIdToTsBlock.entrySet().iterator();
+      Iterator<Entry<Integer, TsBlockInfo>> iterator = sequenceIdToTsBlock.entrySet().iterator();
       while (iterator.hasNext()) {
-        Entry<Integer, Pair<TsBlock, Long>> entry = iterator.next();
+        Entry<Integer, TsBlockInfo> entry = iterator.next();
         if (entry.getKey() < startSequenceId) {
           continue;
         }
@@ -436,8 +461,8 @@ public class SinkChannel implements ISinkChannel {
           break;
         }
 
-        freedBytes += entry.getValue().right;
-        bufferRetainedSizeInBytes -= entry.getValue().right;
+        freedBytes += entry.getValue().tsBlockSize;
+        bufferRetainedSizeInBytes -= entry.getValue().tsBlockSize;
         iterator.remove();
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(DataNodeQueryMessages.ACK_TSBLOCK, entry.getKey());

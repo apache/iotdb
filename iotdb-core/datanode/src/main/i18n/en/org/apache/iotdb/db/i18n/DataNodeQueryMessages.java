@@ -21,6 +21,14 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_FRAGMENT_INSTANCE_ARG_IS_ALREADY_ARG_B44984B4 =
+      "Fragment instance %s is already %s";
+
+  public static final String EXCEPTION_INVALID_THRIFT_MAXIMUM_FRAME_SIZE_ARG_FROM_ARG_A639588B =
+      "Invalid Thrift maximum frame size %d from %s";
+  public static final String MESSAGE_FAILED_TO_DISPATCH_LOAD_COMMAND_ARG_TO_NODE_ARG_BECAUSE_OF_EXCEPTION_ARG_2D8A483D =
+      "failed to dispatch load command %s to node %s because of exception: %s";
+
   // --- Common ---
 
   public static final String NO_MATCHED_DATABASE_PLEASE_CHECK_THE_PATH =
@@ -156,6 +164,9 @@ public final class DataNodeQueryMessages {
   public static final String RESULT_SET_COLUMNS_EXCEED_MEMORY_CAPACITY =
       "The matched source columns exceed the estimated current memory capacity by "
           + "at least %,d columns. ";
+  public static final String RESULT_SET_COLUMN_MEMORY_SHORTAGE_EQUIVALENT =
+      "The failed memory reservation exceeds available memory by the equivalent of at least "
+          + "%,d columns, estimated from the observed average column size. ";
   public static final String SCHEMA_FETCH_METADATA_MEMORY_NOT_ENOUGH =
       "Not enough memory while fetching metadata for query analysis. "
           + "The result set may have too many columns. "
@@ -1431,6 +1442,26 @@ public final class DataNodeQueryMessages {
       "failed to get data block [{}, {}), attempt times: {}";
   public static final String EXCEPTION_UNEXPECTED_DATA_BLOCK_RESPONSE_SIZE_A7DD7E33 =
       "Unexpected data block response size.";
+  public static final String
+      EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284 =
+          "Invalid serialized TsBlock fragment offset %s for block size %s.";
+  public static final String
+      EXCEPTION_ACCUMULATED_TSBLOCK_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_TOTALLENGTH_ARG_1B784303 =
+          "Accumulated TsBlock fragment length %s does not match totalLength %s.";
+  public static final String
+      EXCEPTION_THE_FIRST_FRAGMENTED_DATA_BLOCK_RESPONSE_MUST_INCLUDE_TOTALLENGTH_C5C79BC2 =
+          "The first fragmented data block response must include totalLength.";
+  public static final String
+      EXCEPTION_NEXT_SEQUENCE_ID_ARG_EXCEEDS_REQUESTED_END_SEQUENCE_ID_ARG_30B1726E =
+          "Next sequence ID %s exceeds requested end sequence ID %s.";
+  public static final String
+      EXCEPTION_A_COMPLETED_DATA_BLOCK_RESPONSE_RANGE_MUST_NOT_RETAIN_A_PARTIAL_TSBLOCK_85E5C287 =
+          "A completed data block response range must not retain a partial TsBlock.";
+  public static final String EXCEPTION_TSBLOCK_FRAGMENT_MUST_NOT_BE_EMPTY_C7D19863 =
+      "TsBlock fragment must not be empty.";
+  public static final String
+      EXCEPTION_NEXT_FRAGMENT_OFFSET_ARG_MUST_BE_GREATER_THAN_CURRENT_OFFSET_ARG_AND_MATCH_ACCUMULATED_FRAGMENT_LENGTH_ARG_ECC31047 =
+          "Next fragment offset %s must be greater than current offset %s and match accumulated fragment length %s.";
   public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
       "failed to send ack data block event [{}, {}), attempt times: {}";
   public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =

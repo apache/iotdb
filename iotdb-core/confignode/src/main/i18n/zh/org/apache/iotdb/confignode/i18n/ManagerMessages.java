@@ -142,6 +142,8 @@ public final class ManagerMessages {
       "为用户 id {} 收集用户名失败";
   public static final String FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "在 consumer group {} 中创建 consumer {} 失败。结果状态：{}。";
+  public static final String EXCEPTION_FAILED_TO_SUBSCRIBE_TOPIC_ARG_FOR_CONSUMER_ARG_CONSUMER_DOES_NOT_EXIST_IN_CONSUMER_GROUP_BFF68F12 =
+      "订阅 topic %s 失败，因为 consumer %s 不存在于 consumer group 中";
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "为 consensus group 创建 peer 失败";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
@@ -285,6 +287,12 @@ public final class ManagerMessages {
       "LoadStatistics 服务已成功启动。";
   public static final String LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "LoadStatistics 服务已成功停止。";
+  public static final String
+      LOG_SKIP_DUPLICATE_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_ED195F69 =
+          "跳过 ReconstructRegion 请求中重复的 Region ID {}，目标 DataNode 为 {}。";
+  public static final String
+      LOG_SKIP_NON_EXISTENT_REGION_ID_ARG_IN_RECONSTRUCTREGION_REQUEST_TO_DATANODE_ARG_7F76D789 =
+          "跳过 ReconstructRegion 请求中不存在的 Region ID {}，目标 DataNode 为 {}。";
   public static final String MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE =
       "[MigrateRegion] 成功提交 RegionMigrateProcedure，Region：{}，原 DataNode：{}，目标 DataNode：{}，新增 Coordinator：{}，移除 Coordinator：{}";
   public static final String SUBMIT_REGIONMIGRATEPROCEDURE_FAILED_BECAUSE_REGIONGROUP_DOESN_T_EXIST =

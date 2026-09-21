@@ -33,6 +33,8 @@ public interface DataNodeConfig {
 
   DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
 
+  DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize);
+
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
 
@@ -67,4 +69,6 @@ public interface DataNodeConfig {
   DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy);
 
   DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes);
+
+  DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes);
 }

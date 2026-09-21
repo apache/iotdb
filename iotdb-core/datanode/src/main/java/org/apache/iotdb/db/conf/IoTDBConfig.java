@@ -261,12 +261,6 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   private String queryDir =
       IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
-  /**
-   * Maximum DeviceEntry bytes kept in memory before a table-query spill, capped by the effective
-   * Thrift frame size minus 1 KiB reserved for the RPC response envelope.
-   */
-  private long tableQueryDeviceEntryBatchSizeInBytes;
-
   /** External lib directory, stores user-uploaded JAR files */
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
 
@@ -956,6 +950,8 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   /** Core pool size of mpp data exchange. */
   private int mppDataExchangeCorePoolSize = 10;
+
+  private int mppDataExchangeMaxPayloadSizeInBytes = 4 * 1024 * 1024;
 
   /** Max pool size of mpp data exchange. */
   private int mppDataExchangeMaxPoolSize = 10;
@@ -1820,14 +1816,6 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
-  }
-
-  public long getTableQueryDeviceEntryBatchSizeInBytes() {
-    return tableQueryDeviceEntryBatchSizeInBytes;
-  }
-
-  public void setTableQueryDeviceEntryBatchSizeInBytes(long tableQueryDeviceEntryBatchSizeInBytes) {
-    this.tableQueryDeviceEntryBatchSizeInBytes = tableQueryDeviceEntryBatchSizeInBytes;
   }
 
   public String getRatisDataRegionSnapshotDir() {
@@ -3436,6 +3424,14 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setMppDataExchangeKeepAliveTimeInMs(int mppDataExchangeKeepAliveTimeInMs) {
     this.mppDataExchangeKeepAliveTimeInMs = mppDataExchangeKeepAliveTimeInMs;
+  }
+
+  public int getMppDataExchangeMaxPayloadSizeInBytes() {
+    return mppDataExchangeMaxPayloadSizeInBytes;
+  }
+
+  public void setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes) {
+    this.mppDataExchangeMaxPayloadSizeInBytes = mppDataExchangeMaxPayloadSizeInBytes;
   }
 
   public int getConnectionTimeoutInMS() {

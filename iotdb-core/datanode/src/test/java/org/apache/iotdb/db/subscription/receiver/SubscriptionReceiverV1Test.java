@@ -26,6 +26,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -157,6 +159,45 @@ public class SubscriptionReceiverV1Test {
     Assert.assertFalse(receiver.hasActiveConsumer());
     Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
     Assert.assertNull(consumerConfigThreadLocal.get());
+  }
+
+  @Test
+  public void testInvalidatedConsumerReturnsFencedStatus() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+
+    receiver.invalidateConsumer();
+
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_CONSUMER_FENCED.getStatusCode(),
+        receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
+  }
+
+  @Test
+  public void testFencedConsumerCannotHandshakeAgain() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    receiver.invalidateConsumer();
+
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_CONSUMER_FENCED.getStatusCode(),
+        receiver
+            .handle(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig))
+            .getStatus()
+            .getCode());
+    Assert.assertTrue((boolean) getField(receiver, "consumerFenced"));
+  }
+
+  @Test
+  public void testNeverHandshakenConsumerStillReturnsMissingConsumerStatus() {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
+        receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
   }
 
   @Test

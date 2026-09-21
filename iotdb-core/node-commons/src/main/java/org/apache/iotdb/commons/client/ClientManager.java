@@ -125,10 +125,21 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public void close() {
-    pool.close();
-    // we need to release tManagers for AsyncThriftClientFactory
-    if (pool.getFactory() instanceof AsyncThriftClientFactory) {
-      ((AsyncThriftClientFactory<K, V>) pool.getFactory()).close();
+    try {
+      pool.close();
+      // we need to release tManagers for AsyncThriftClientFactory
+      if (pool.getFactory() instanceof AsyncThriftClientFactory) {
+        ((AsyncThriftClientFactory<K, V>) pool.getFactory()).close();
+      }
+    } finally {
+      try {
+        ClientManagerMetrics.getInstance().unregisterClientManager(pool);
+      } catch (RuntimeException e) {
+        LOGGER.warn(
+            ClientMessages
+                .LOG_FAILED_TO_UNREGISTER_CLIENT_POOL_METRICS_WHILE_CLOSING_CLIENT_MANAGER_101A9751,
+            e);
+      }
     }
   }
 }
