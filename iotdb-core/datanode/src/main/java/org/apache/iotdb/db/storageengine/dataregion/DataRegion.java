@@ -2520,7 +2520,25 @@ public class DataRegion implements IDataRegionForQuery {
   /** This method will be blocked until all tsfile processors are closed. */
   public void syncCloseAllWorkingTsFileProcessors() {
     try {
-      List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
+      List<Future<?>> tsFileProcessorsClosingFutures = new ArrayList<>();
+      writeLock("syncCloseAllWorkingTsFileProcessors");
+      try {
+        for (TsFileProcessor tsFileProcessor : closingSequenceTsFileProcessor) {
+          Future<?> closeFuture = tsFileProcessor.getCloseFuture();
+          if (closeFuture != null) {
+            tsFileProcessorsClosingFutures.add(closeFuture);
+          }
+        }
+        for (TsFileProcessor tsFileProcessor : closingUnSequenceTsFileProcessor) {
+          Future<?> closeFuture = tsFileProcessor.getCloseFuture();
+          if (closeFuture != null) {
+            tsFileProcessorsClosingFutures.add(closeFuture);
+          }
+        }
+        tsFileProcessorsClosingFutures.addAll(asyncCloseAllWorkingTsFileProcessors());
+      } finally {
+        writeUnlock();
+      }
       for (Future<?> f : tsFileProcessorsClosingFutures) {
         if (f != null) {
           f.get();
