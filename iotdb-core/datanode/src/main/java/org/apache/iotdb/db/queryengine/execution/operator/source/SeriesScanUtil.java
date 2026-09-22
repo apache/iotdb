@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceFinishedException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -1587,6 +1588,9 @@ public class SeriesScanUtil implements Accountable {
       return;
     }
     FragmentInstanceState state = context.getStateMachine().getState();
+    if (state == FragmentInstanceState.FINISHED) {
+      throw new FragmentInstanceFinishedException(context.getId());
+    }
     if (state.isDone()) {
       // A scan over many overlapping files may stay in one operator call long after cancellation.
       // Exit on the driver thread so it can release its lock and finish resource cleanup.
