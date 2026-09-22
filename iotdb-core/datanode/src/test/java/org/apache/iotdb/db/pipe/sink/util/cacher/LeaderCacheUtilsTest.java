@@ -106,4 +106,46 @@ public class LeaderCacheUtilsTest {
         .setMessage(deviceId)
         .setRedirectNode(endPoint);
   }
+
+  @Test
+  public void testIgnoreRedirectsWithoutDevicePath() {
+    final TEndPoint redirectEndPoint = new TEndPoint("127.0.0.2", 6667);
+    final TSStatus tableRowWithoutPath =
+        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS).setRedirectNode(redirectEndPoint);
+    final TSStatus rowWithEmptyPath =
+        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+            .setMessage("")
+            .setRedirectNode(redirectEndPoint);
+    final TSStatus treeRowWithPath =
+        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+            .setMessage("root.sg.d1")
+            .setRedirectNode(redirectEndPoint);
+    final TSStatus batchStatus =
+        RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)
+            .setSubStatus(
+                Arrays.asList(
+                    RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)
+                        .setSubStatus(Arrays.asList(tableRowWithoutPath, rowWithEmptyPath)),
+                    RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)
+                        .setSubStatus(Collections.singletonList(treeRowWithPath))));
+
+    final List<Pair<String, TEndPoint>> redirects =
+        LeaderCacheUtils.parseRecommendedRedirections(batchStatus);
+
+    Assert.assertEquals(1, redirects.size());
+    Assert.assertEquals("root.sg.d1", redirects.get(0).getLeft());
+    Assert.assertEquals(redirectEndPoint, redirects.get(0).getRight());
+  }
+
+  @Test
+  public void testIgnoreMalformedRedirectStatus() {
+    final TSStatus redirectWithoutSubStatus =
+        RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND);
+    final TSStatus batchStatus =
+        RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND)
+            .setSubStatus(Arrays.asList(null, redirectWithoutSubStatus));
+
+    Assert.assertTrue(LeaderCacheUtils.parseRecommendedRedirections(batchStatus).isEmpty());
+    Assert.assertTrue(LeaderCacheUtils.parseRecommendedRedirections(null).isEmpty());
+  }
 }

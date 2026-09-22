@@ -76,8 +76,9 @@ public class LeaderCacheUtils {
 
   private static void addRedirectIfPresent(
       final List<Pair<String, TEndPoint>> redirectList, final TSStatus status) {
-    if (status.isSetRedirectNode() && status.isSetMessage()) {
-      // The receiver records the device path in the message field for redirected devices.
+    if (status.isSetRedirectNode() && status.isSetMessage() && !status.getMessage().isEmpty()) {
+      // The receiver sets the message to a device path only when it can safely associate the
+      // redirection with a single tree-model device.
       redirectList.add(new Pair<>(status.getMessage(), status.getRedirectNode()));
     }
   }

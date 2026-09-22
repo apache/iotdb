@@ -909,6 +909,11 @@ public class ConfigManager implements IManager {
   @Override
   public TSchemaPartitionTableResp getSchemaPartition(
       final Map<String, List<TSeriesPartitionSlot>> dbSlotMap) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TSchemaPartitionTableResp().setStatus(status);
+    }
+
     // Construct empty response
     TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
     // Return empty resp if the partitionSlotsMap is empty
