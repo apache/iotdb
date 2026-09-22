@@ -30,7 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
 import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -54,6 +56,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URI;
+import java.time.Duration;
 import java.util.stream.Collectors;
 
 public class S3ObjectStorageConnector implements ObjectStorageConnector {
@@ -65,11 +68,21 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
   private static final String DEFAULT_ENDPOINT = "yourEndpoint";
   private static final String DEFAULT_REGION = "yourRegion";
 
+  // Bound both a single attempt and the whole read (including retries and response-body reads).
+  // Apply this to query reads only; large uploads and copies can legitimately take longer.
+  static final AwsRequestOverrideConfiguration READ_REQUEST_CONFIGURATION =
+      AwsRequestOverrideConfiguration.builder()
+          .apiCallTimeout(Duration.ofMinutes(1))
+          .apiCallAttemptTimeout(Duration.ofSeconds(30))
+          .build();
+
   private final AWSS3Config s3config =
       (AWSS3Config) ObjectStorageDescriptor.getInstance().getConfig().getProviderConfig();
   private final S3Client s3Client;
+  private final AwsRequestOverrideConfiguration readRequestConfiguration;
 
   public S3ObjectStorageConnector() {
+    readRequestConfiguration = READ_REQUEST_CONFIGURATION;
     S3ClientBuilder builder =
         S3Client.builder()
             .region(Region.of(s3config.getRegion()))
@@ -86,6 +99,12 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
     s3Client = builder.build();
   }
 
+  S3ObjectStorageConnector(
+      S3Client s3Client, AwsRequestOverrideConfiguration readRequestConfiguration) {
+    this.s3Client = s3Client;
+    this.readRequestConfiguration = readRequestConfiguration;
+  }
+
   @Override
   public boolean isConnectorEnabled() {
     return !DEFAULT_REGION.equals(s3config.getRegion());
@@ -95,12 +114,16 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
   public boolean doesObjectExist(OSURI osUri) throws ObjectStorageException {
     try {
       HeadObjectRequest req =
-          HeadObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
+          HeadObjectRequest.builder()
+              .bucket(osUri.getBucket())
+              .key(osUri.getKey())
+              .overrideConfiguration(readRequestConfiguration)
+              .build();
       s3Client.headObject(req);
       return true;
     } catch (NoSuchKeyException e) {
       return false;
-    } catch (S3Exception e) {
+    } catch (SdkException e) {
       throw new ObjectStorageException(e);
     } catch (Throwable t) {
       throw new S3ConnectionException(S3_CONNECTION_ERROR);
@@ -111,10 +134,14 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
   public IMetaData getMetaData(OSURI osUri) throws ObjectStorageException {
     try {
       HeadObjectRequest req =
-          HeadObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
+          HeadObjectRequest.builder()
+              .bucket(osUri.getBucket())
+              .key(osUri.getKey())
+              .overrideConfiguration(readRequestConfiguration)
+              .build();
       HeadObjectResponse resp = s3Client.headObject(req);
       return new S3MetaData(resp.contentLength(), resp.lastModified().toEpochMilli());
-    } catch (S3Exception e) {
+    } catch (SdkException e) {
       throw new ObjectStorageException(e);
     } catch (Throwable t) {
       throw new S3ConnectionException(S3_CONNECTION_ERROR);
@@ -227,6 +254,7 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
               .bucket(osUri.getBucket())
               .key(osUri.getKey())
               .range(rangeStr)
+              .overrideConfiguration(readRequestConfiguration)
               .build();
       ResponseBytes<GetObjectResponse> resp = s3Client.getObjectAsBytes(req);
       return resp.asByteArray();
