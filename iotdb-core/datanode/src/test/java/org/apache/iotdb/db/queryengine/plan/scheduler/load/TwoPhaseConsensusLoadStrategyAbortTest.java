@@ -50,9 +50,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * The second phase of a consensus LOAD has to leave no staged pieces behind: whenever a region
- * cannot be prepared or committed, the regions that have not committed yet are rolled back with
- * ABORT instead of being left with half a load on disk.
+ * The second phase of a consensus LOAD is a two-phase commit: every touched region is prepared
+ * first and the commit is sent only once every one of them agreed. A region that cannot be prepared
+ * therefore rolls the whole transaction back, and a commit that fails afterwards rolls nothing
+ * back, because the regions that agreed must not be left with half a load on disk.
  */
 public class TwoPhaseConsensusLoadStrategyAbortTest {
 
@@ -152,15 +153,17 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             pieceCounts());
 
     assertTrue(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
-    assertEquals(Arrays.asList("PREPARE@1", "COMMIT@1", "PREPARE@2", "COMMIT@2"), submitted);
+    // Both regions vote first: no region commits before every region was prepared.
+    assertEquals(Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@2"), submitted);
   }
 
   /**
-   * The failure that used to leave staged data behind: the region that committed keeps its import,
-   * while every region that did not commit is rolled back.
+   * The failure that used to leave staged data behind: a region that refuses to prepare turns the
+   * whole transaction into a rollback, so the region that already agreed does not keep an import
+   * the other one refused.
    */
   @Test
-  public void testPrepareFailureAbortsTheRegionsThatDidNotCommit() throws Exception {
+  public void testPrepareFailureOfTheSecondRegionRollsBackEveryRegion() throws Exception {
     final List<String> submitted = new ArrayList<>();
     final TwoPhaseConsensusLoadStrategy strategy =
         strategy(
@@ -170,7 +173,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             pieceCounts());
 
     assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
-    assertEquals(Arrays.asList("PREPARE@1", "COMMIT@1", "PREPARE@2", "ABORT@2"), submitted);
+    assertEquals(Arrays.asList("PREPARE@1", "PREPARE@2", "ABORT@1", "ABORT@2"), submitted);
   }
 
   @Test
@@ -187,8 +190,12 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
     assertEquals(Arrays.asList("PREPARE@1", "ABORT@1", "ABORT@2"), submitted);
   }
 
+  /**
+   * Once every region agreed, the decision cannot be undone: a commit that fails on one region must
+   * not roll the other regions back, so the remaining regions are committed as well.
+   */
   @Test
-  public void testCommitFailureAbortsTheRegionItFailedOn() throws Exception {
+  public void testCommitFailureDoesNotRollBackTheRegionsThatAgreed() throws Exception {
     final List<String> submitted = new ArrayList<>();
     final TwoPhaseConsensusLoadStrategy strategy =
         strategy(
@@ -198,7 +205,7 @@ public class TwoPhaseConsensusLoadStrategyAbortTest {
             pieceCounts());
 
     assertFalse(prepareAndCommit(strategy, mock(LoadSingleTsFileNode.class)));
-    assertEquals(Arrays.asList("PREPARE@1", "COMMIT@1", "ABORT@2"), submitted);
+    assertEquals(Arrays.asList("PREPARE@1", "PREPARE@2", "COMMIT@1", "COMMIT@2"), submitted);
   }
 
   @Test

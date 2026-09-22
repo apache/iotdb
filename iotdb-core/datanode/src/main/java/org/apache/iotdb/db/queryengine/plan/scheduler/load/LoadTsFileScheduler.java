@@ -123,16 +123,25 @@ import java.util.Set;
  * <pre>{@code
  * coordinator                          region write peer
  *      |                                      |
- *      |---- BEGIN(loadId) ------------------>| create staged writer
- *      |---- PIECE(0, chunks) --------------->| append chunks
+ *      |---- PIECE(0, chunks) --------------->| create the staged writer, append chunks
  *      |---- PIECE(1, chunks) --------------->| append chunks
  *      |---- ...                              |
- *      |---- PREPARE(count, bytes)----------->| seal staged TsFile
- *      |---- COMMIT ------------------------->| load staged TsFile
  *      |                                      |
- *   on failure:
- *      |---- ABORT -------------------------->| drop staged data
+ *      |   commit protocol, round 1: every touched region votes
+ *      |---- PREPARE(count, bytes) ---------->| region 1: seal its staged TsFile
+ *      |---- PREPARE(count, bytes) ---------->| region 2: seal its staged TsFile
+ *      |                                      |
+ *      |   round 2 runs only when every PREPARE succeeded
+ *      |---- COMMIT ------------------------->| region 1: load its staged TsFile
+ *      |---- COMMIT ------------------------->| region 2: load its staged TsFile
+ *      |                                      |
+ *   before the commit point, on failure:
+ *      |---- ABORT -------------------------->| every touched region drops its staged data
  * }</pre>
+ *
+ * <p>BEGIN is a server-side no-op kept for compatibility: the staged writer of a region is created
+ * by its first PIECE. The commit point is the moment every region prepared successfully, so a
+ * failure before it rolls every region back, while a failure after it rolls no region back.
  *
  * <h2>Result handling</h2>
  *

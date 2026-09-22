@@ -59,9 +59,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * increasing {@code pieceIndex}. Submission goes through {@link LoadConsensusSubmitter} with
  * bounded retries for transient failures only.
  *
- * <p><b>Phase 2 (commit or abort).</b> If every region received all its pieces, each touched region
- * gets PREPARE (with the accumulated count/bytes) followed by COMMIT; otherwise every touched
- * region gets ABORT so the staged data is dropped.
+ * <p><b>Phase 2 (commit or abort).</b> If every region received all its pieces, the two rounds of
+ * the commit protocol run: every touched region is asked to PREPARE first (with the accumulated
+ * count/bytes), and only once every region agreed is COMMIT sent to all of them. A region that
+ * refuses to prepare, or a first phase that did not deliver every piece, turns the transaction into
+ * an ABORT for every touched region, so no region keeps an imported file of a transaction another
+ * region refused.
  *
  * <p>Per-file state tracks the touched regions, their load ids, piece counters and pipe progress
  * indexes.
@@ -295,10 +298,10 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   }
 
   /**
-   * Drops the staged data of the given regions. Every failure of the second phase goes through
-   * here, so a load that cannot be committed leaves no staged pieces behind: they would otherwise
-   * keep disk space of a task nobody ever finishes, and a later replay of the same pieces would
-   * find a half-filled file.
+   * Drops the staged data of the given regions. Every failure that happens before the commit
+   * decision goes through here, so a load that cannot be committed leaves no staged pieces behind:
+   * they would otherwise keep disk space of a task nobody ever finishes, and a later replay of the
+   * same pieces would find a half-filled file.
    */
   private boolean abortRegions(final Set<TRegionReplicaSet> replicaSets) {
     boolean allAborted = true;
@@ -327,9 +330,20 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   private boolean prepareAndCommitAllRegions(LoadSingleTsFileNode node) {
     final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex =
         serializeTimePartitionProgressIndexes();
-    // Regions that already committed keep what they imported: their staged files are gone and an
-    // ABORT cannot undo the import, so only the regions that did not commit are rolled back.
-    final Set<TRegionReplicaSet> committedReplicaSets = new HashSet<>();
+    // The two rounds of the commit protocol: every touched region is asked to prepare first, and
+    // the commit is sent only once every one of them agreed to it. No region may end up having
+    // imported a file of a transaction that another region refused.
+    if (!prepareAllRegions(timePartition2ProgressIndex)) {
+      // Nothing was committed anywhere yet, so every touched region drops what it staged.
+      abortAllRegions();
+      return false;
+    }
+    return commitAllRegions(node, timePartition2ProgressIndex);
+  }
+
+  /** The prepare round: every touched region seals its staged data without importing anything. */
+  private boolean prepareAllRegions(
+      final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
     for (TRegionReplicaSet replicaSet : allReplicaSets) {
       final TConsensusGroupId regionId = replicaSet.getRegionId();
       final String loadId = regionLoadIds.get(regionId);
@@ -354,10 +368,25 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
             allReplicaSets,
             TSStatusCode.representOf(prepareStatus.getCode()).name(),
             prepareStatus.getMessage());
-        abortUncommittedRegions(committedReplicaSets);
         return false;
       }
+    }
+    return true;
+  }
 
+  /**
+   * The commit round: every touched region agreed to commit, so the decision can no longer be taken
+   * back. A region whose commit failed is therefore not rolled back either - it may have imported
+   * its files before the failure was reported - and the regions behind it are still committed, so
+   * the transaction reaches as many of its participants as it can.
+   */
+  private boolean commitAllRegions(
+      LoadSingleTsFileNode node,
+      final Map<TTimePartitionSlot, byte[]> timePartition2ProgressIndex) {
+    boolean allCommitted = true;
+    for (TRegionReplicaSet replicaSet : allReplicaSets) {
+      final TConsensusGroupId regionId = replicaSet.getRegionId();
+      final String loadId = regionLoadIds.get(regionId);
       final LoadTsFileConsensusNode commit =
           LoadTsFileConsensusNode.commit(
               new PlanNodeId("load-commit-" + loadId),
@@ -377,24 +406,10 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
             allReplicaSets,
             TSStatusCode.representOf(commitStatus.getCode()).name(),
             commitStatus.getMessage());
-        // This region may have imported its files before the failure was reported, so it is left
-        // alone as well; the regions behind it have not committed anything yet.
-        committedReplicaSets.add(replicaSet);
-        abortUncommittedRegions(committedReplicaSets);
-        return false;
+        allCommitted = false;
       }
-      committedReplicaSets.add(replicaSet);
     }
-    return true;
-  }
-
-  /** Rolls back every touched region that is not known to have committed its staged data. */
-  private void abortUncommittedRegions(final Set<TRegionReplicaSet> committedReplicaSets) {
-    final Set<TRegionReplicaSet> toAbort = new HashSet<>(allReplicaSets);
-    toAbort.removeAll(committedReplicaSets);
-    if (!toAbort.isEmpty()) {
-      abortRegions(toAbort);
-    }
+    return allCommitted;
   }
 
   /**
