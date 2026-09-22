@@ -18,4 +18,4 @@
 # under the License.
 #
 
-exec "$(dirname "$0")/pipe-logical-backup.sh" import "$@"
+exec "$(dirname "$0")/logical-backup.sh" import "$@"

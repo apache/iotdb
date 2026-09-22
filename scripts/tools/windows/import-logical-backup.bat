@@ -17,5 +17,5 @@
 @REM under the License.
 @REM
 
-@call "%~dp0pipe-logical-backup.bat" import %*
+@call "%~dp0logical-backup.bat" import %*
 @exit /B %ERRORLEVEL%

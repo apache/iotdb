@@ -127,7 +127,7 @@ public final class CliMessages {
       LOG_USE_INPUT_TO_SPECIFY_THE_INPUT_EXPORT_ALSO_REQUIRES_OUTPUT_EXPORT_CAN_USE_BACKUP_DIR_TO_CREATE_MONITOR_AND_CLEAN_UP_A_SNAPSHOT_PIPE_AUTOMATICALLY_IMPORT_REQUIRES_HOST_AND_PORT_USE_PASSWORD_STDIN_OR_PASSWORD_ENV_TO_AVOID_COMMAND_LINE_PASSWORDS_F5B223CB =
           "使用 --input 指定输入。导出还需要 --output；导出也可使用 --backup-dir 自动创建、监控并清理快照 Pipe。导入需要 --host 和 --port。请使用 --password-stdin 或 --password-env，避免密码出现在命令行中。";
   public static final String LOG_PIPE_LOGICAL_BACKUP_INSPECT_VERIFY_EXPORT_IMPORT_6D62F9CE =
-      "pipe-logical-backup <inspect|verify|export|import>";
+      "logical-backup <inspect|verify|export|import>";
   public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_ENTRY_IS_UNSAFE_ARG_3E548152 =
       "逻辑备份归档项路径不安全：%s";
   public static final String EXCEPTION_LOGICAL_BACKUP_ARCHIVE_EXCEEDS_SAFETY_LIMIT_FFC54432 =
